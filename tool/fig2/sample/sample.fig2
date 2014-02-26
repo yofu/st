@@ -1,0 +1,61 @@
+common
+# 変数の定義
+# このファイルで定義した変数はloadしたファイルでも反映される
+# angle0: 全体表示時の視点
+# angle1: 梁・床表示時の視点
+# rl    : distsの値
+# roof  : section-で非表示にしたい断面番号
+# gf    : gfactの値
+const angle0 20 -120
+const angle1 50 -120
+const rl 100 400
+const roof 805
+const gf 1.5
+
+
+# chap     : 節番号
+# k        : ページ番号、定義し直す度に1にリセットされる
+# period   : 荷重時を表す記号
+# pertext  : 荷重時を表す文字
+# direction: dispを表示する方向
+
+# 2.2節: モデル図
+const chap 2.2
+    iota k
+    load sample_model.fig2
+# 4.3節: 各断面の検定比最大部材
+const chap 4.3
+    iota k
+    load sample_max.fig2
+# 4.4節: 検定比図
+const chap 4.4
+    iota k
+    load sample_srcan.fig2
+# 7.2節: 長期解析結果
+const chap 7.2
+    iota k
+    const period L
+    const pertext 長期
+    const direction Z
+    # 各階変形図を表示
+    load sample_deform.fig2
+    # X通り軸組図を表示
+    load sample_stress_x.fig2
+    # Y通り軸組図を表示
+    load sample_stress_y.fig2
+# 7.3節: X方向地震時解析結果
+const chap 7.3
+    iota k
+    const period X
+    const pertext X方向地震時
+    const direction X
+    load sample_deform.fig2
+    load sample_stress_y.fig2
+# 7.4節: Y方向地震時解析結果
+const chap 7.4
+    iota k
+    const period Y
+    const pertext Y方向地震時
+    const direction Y
+    load sample_deform.fig2
+    load sample_stress_x.fig2

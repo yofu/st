@@ -1,0 +1,210 @@
+common
+### CONST VALUE ###
+# g*f : 梁床表示用のZ座標
+# c*f : 柱壁表示用のZ座標
+# tit : タイトルの共通部分
+const g1f 0 0
+const g2f 3.5 3.6
+const g3f 6.5 6.6
+const g4f 6.6 11.6
+const grf 11.0 111
+const c1f 0 3.6
+const c2f 3.5 6.6
+const c3f 6.5 11.6
+const c4f 9.5 111
+const tit 断面番号
+header {name} {time}
+### COLOUR ###
+pen black 0.1 0 0 0
+black etype wall slab
+### POSITION ###
+position pagetitle 20 190
+position title 30 180
+position data 200 45
+### MISC ###
+inputfile
+outputfile
+viewpoint
+
+page a4yoko $chap.$k
+{
+    perspective
+    gfact $gf
+    focus centre
+    angle $angle0
+    dists $rl
+    pagetitle $chap: モデル図
+    title 解析モデル全体図
+    elem column girder wall slab
+    nodecode
+    conf 2
+}
+
+page a4yoko $chap.$k
+{
+    title 解析モデル全体図(柱梁のみ表示)
+    elem  column girder
+    nodecode
+    conf 2
+}
+
+page a4yoko $chap.$k
+{
+    angle $angle1
+    title $tit: 1F柱
+    z     $c1f
+    elem  column
+    sectcode
+    conf 2
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 2F柱
+    z     $c2f
+    elem  column
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 3F柱
+    z     $c3f
+    elem  column
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 4F柱
+    z     $c4f
+    elem  column
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 1F梁
+    z     $g1f
+    elem  girder
+    sectcode
+    conf 2
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 2F梁
+    z     $g2f
+    elem  girder
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 3F梁
+    z     $g3f
+    elem  girder
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 4F梁
+    z     $g4f
+    elem  girder
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: RF梁
+    z     $grf
+    elem  girder
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    angle $angle1
+    title $tit: 1F壁
+    z     $c1f
+    elem  wall
+    sectcode
+    conf 2
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 2F壁
+    z     $c2f
+    elem  wall
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 3F壁
+    z     $c3f
+    elem  wall
+    section- $roof
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 4F壁
+    z     $c4f
+    elem  wall
+    section- $roof
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 1F床
+    z     $g1f
+    elem  slab
+    sectcode
+    conf 2
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 2F床
+    z     $g2f
+    elem  slab
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 3F床
+    z     $g3f
+    elem  slab
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 4F床
+    z     $g4f
+    elem  slab
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 屋根
+    z     $grf
+    elem  wall
+    section $roof
+    sectcode
+}
+
+page a4yoko $chap.$k
+{
+    angle $angle0
+    title 壁・床をブレース置換したモデル
+    elem column girder wbrace sbrace
+}
+

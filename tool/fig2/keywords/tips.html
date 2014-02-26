@@ -1,0 +1,49 @@
+<link href="keywords.css" rel="stylesheet" />
+
+<h3 id="tips">TIPS</h3>
+
+<ol>
+  <li><a href="COMMON.html">COMMON</a>の中で定数や変数を定義して、ページ番号の指定や表示範囲の変更を楽にする。<br />
+<a href="COMMON.html"><code>COMMON</code></a><br />
+<a href="IOTA.html"><code>IOTA</code></a> <code>k</code><br />
+<a href="CONST.html"><code>CONST</code></a> <code>chapter 2.2</code><br />
+<a href="CONST.html"><code>CONST</code></a> <code>2f 3.9 4.1</code><br />
+<a href="PAGE.html"><code>PAGE</code></a> <code>a4tate $chapter.$k #ページ番号が2.2.1になる</code><br />
+<a href="ELEM.html"><code>ELEM</code></a> <code>GIRDER</code><br />
+<a href="Z.html"><code>Z</code></a> <code>$2f #Z=3.9からZ=4.1の範囲だけ表示する</code><br />
+<br /></li>
+  <li>periodは長期の場合L、X方向地震時の場合X、Y方向地震時の場合Y、<br />
+座屈解析の場合Bで指定し、増分解析の場合は「拡張子@ステップ数」で指定する。<br />
+<br /></li>
+  <li>st.exeで偏心率・剛性率を求めるときに使用している水平剛性と部材変形角はそれぞれ<a href="STIFF.html">STIFF</a>と<a href="DRIFT.html">DRIFT</a>で<br />
+表示できる。<br />
+例えば、1Fの偏心率の偏りの原因を調べるとき、<br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> column</code><br />
+<a href="FENCE.html"><code>FENCE</code></a><code> z 1</code><br />
+<a href="STIFF.html"><code>STIFF</code></a><code> X</code><br />
+とすると、Z=1を通過する柱の水平剛性を表示できるので、偏心率を大きくしている原因の部材が見て取れる。<br />
+<br /></li>
+  <li>1F柱と2F梁のみ表示したい場合には、<br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> column girder</code><br />
+<a href="Z.html"><code>Z</code></a><code> 3 4</code><br />
+<a href="FENCE.html"><code>FENCE+</code></a><code> z 1</code><br />
+のように、<a href="FENCE.html">FENCE+</a>を使う。<br />
+<br /></li>
+  <li>kjnファイルに軸組図表示用の基準線を定義しておき、<br />
+名前を_X1のようにアンダーバー＋基準線名としておくと、<br />
+<a href="AXONOMETRIC.html"><code>AXONOMETRIC</code></a><br />
+<a href="KIJUN.html"><code>KIJUN</code></a><code> ^_X</code><br />
+<a href="NAME_KIJUN.html"><code>Y1</code></a><br />
+のようにして、Y1通り軸組図上にX方向通り芯を表示できる。<br />
+kjnファイルの例&gt;<br />
+<code>X1 0.000 -2.000 0.000 0.000 -1.000 0.000</code><br />
+<code>_X1 0.000 0.000 -2.000 0.000 0.000 -1.000</code><br />
+このとき、通常の基準線のみを表示するには<br />
+<a href="KIJUN.html"><code>KIJUN</code></a><code> !^_</code><br />
+のように指定する。</li>
+</ol>
+
+<hr />
+<p><a href="../fig2.html">back to TOP</a></p>

@@ -1,0 +1,56 @@
+<link href="keywords.css" rel="stylesheet" />
+
+<h3 id="ev">EV</h3>
+
+<h4 id="format">format:</h4>
+<p><strong>EV</strong> <em>name format function</em></p>
+
+<h4 id="argument">argument:</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">name</th>
+      <th style="text-align: left">type</th>
+      <th style="text-align: center">default</th>
+      <th style="text-align: left">&#160;</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">name</td>
+      <td style="text-align: left">&lt;string&gt;</td>
+      <td style="text-align: center">*</td>
+      <td style="text-align: left">表示データ名</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">format</td>
+      <td style="text-align: left">&lt;string&gt;</td>
+      <td style="text-align: center">*</td>
+      <td style="text-align: left">データ出力用フォーマット</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">function</td>
+      <td style="text-align: left">&lt;string&gt;</td>
+      <td style="text-align: center">*</td>
+      <td style="text-align: left">データ計算用の関数</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="memo">memo:</h4>
+
+<p>functionで定義した任意の関数の返り値をformatで指定した<br />
+フォーマットで出力する。<br />
+例&gt;<br />
+断面番号が101,102,105,111のものは柱幅0.3m、その他のものは柱幅0.2mとして<br />
+柱の小径を1/12.3のように分数表記で分母を小数点第1位まで表示する。<br />
+<a href="ELEM.html"><code>ELEM</code></a><code> column </code><br />
+<code>EV 柱の小径 "1/{:.1f}" x.length()/(0.3 if x.sect in [101,102,105,111] else 0.2)</code></p>
+
+<h4 id="link">link:</h4>
+
+<p><a href="EF.html">EF</a></p>
+
+<hr />
+<p><a href="../fig2.html">back to TOP</a></p>

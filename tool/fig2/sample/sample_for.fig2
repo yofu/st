@@ -1,0 +1,54 @@
+page a4tate 2.2.1
+    gfact 1
+    focus centre
+    angle 20 -60
+    dists 1000 5000
+    mfact 0.005
+    title ‰ğÍƒ‚ƒfƒ‹‘S‘Ì}
+    elem column girder wall slab
+    nodecode
+
+for pnum,etype,name in #2[column,girder,wall,slab]x[’Œ,—À,•Ç,°]
+    page a4tate 2.2.$pnum
+        title ’f–Ê”Ô†: $name‚Ì‚İ•\¦
+        elem $etype
+        sectcode
+endfor
+
+for pnum,kjn in #[A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,A17]
+    figure a4tate 7.2.$pnum
+        $kjn
+        elem column girder wbrace
+        stress column l n qx my
+        stress girder l n qy mx
+        stress wbrace l n
+endfor
+
+for pnum,kjn in #18[B1,B2,B3,B4,B5,B6,B7,B8]
+    figure a4tate 7.2.$pnum
+        gfact 4
+        $kjn
+        elem column girder wbrace
+        stress column l n qx my
+        stress girder l n qy mx
+        stress wbrace l n
+endfor
+
+for pnum,kjn in #[B1,B2,B3,B4,B5,B6,B7,B8]
+    figure a4tate 7.3.$pnum
+        $kjn
+        elem column girder wbrace
+        stress column l n qy mx
+        stress girder l n qy mx
+        stress wbrace l n
+endfor
+
+for pnum,kjn in #[A1,A2,A3,A4,A5,A6,A7,A8,A9,A10,A11,A12,A13,A14,A15,A16,A17]
+    figure a4tate 7.4.$pnum
+        gfact 5
+        $kjn
+        elem column girder wbrace
+        stress column y n qx my
+        stress girder y n qy mx
+        stress wbrace y n
+endfor

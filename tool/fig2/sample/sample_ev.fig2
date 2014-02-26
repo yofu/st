@@ -1,0 +1,62 @@
+common
+### CONST VALUE ###
+const chap ’Ç‰Á1
+iota k 2
+const angle1 60 -120
+const rl 1000 5000
+const c1f 0 4.1
+const c2f 4.0 7.1
+const c3f 7.0 12.1
+const c4f 10.0 111
+const tit ’Œ‚Ì¬Œa‚ª1/15‚ğ‰º‰ñ‚é’Œ
+header {name} {time}
+### POSITION ###
+position pagetitle 20 190
+position title 30 180
+position data 180 45
+position legend 250 45
+### MISC ###
+const lens {8418:4.45,1338:3.5,1327:4.207,1331:6,11777:6,5130:4.207,5870:4.185,5896:4.185,2869:3.75,11340:3.75,5823:3.75,5824:3.75,8303:3.75,2862:3.75,4713:3.75,5215:3.75,8442:4.155,5665:4.425,8445:3.571,5214:3.166,11554:4.155,11555:3.571,8565:4.45,8567:3.5,8514:4.207,11193:4.207,8580:4.185,8569:4.185,11126:3.75,11342:3.75,11591:3.75,11564:3.75,11375:3.75,11382:3.75,11286:3.75,11281:3.75,11378:4.155,11287:4.425,11379:3.571,11385:3.166,11616:4.155,11617:3.571,11383:3.75,11384:3.75,11622:3.75,11621:3.75}
+elem  column
+elemcode
+ev ŒŸ’è”ä(’Œ‚Ì¬Œa‚É‚æ‚éŠ„‘‚ğl—¶) "{:.3f}" max(x.rate)*notice433(1/($lens.get(x.num,x.length())/(0.3 if x.sect in [101,102,105,111] else 0.2)))
+rainbow 0.5 0.6 0.7 0.71428 0.9 1.0
+rf max(x.rate)*notice433(1/($lens.get(x.num,x.length())/(0.3 if x.sect in [101,102,105,111] else 0.2)))
+shift 20 10
+inputfile
+outputfile
+viewpoint
+
+page a4yoko $chap.$k
+{
+    gfact 1
+    angle $angle1
+    focus centre
+    dists $rl
+    title $tit: 1F’Œ
+    title ã’i‚É’f–Ê”Ô†A‰º’i‚ÉŠ„‘Œã‚ÌŒŸ’è”ä‚ğ¦‚·
+    z     $c1f
+    elem 1135 11338 1134 4343 3847 2390 2389 4391 4661 4059 1100
+    # ef (x.sect in [101,102,105,111] and x.length()>4.5001) or (x.sect in [103,104,112,113] and x.length()>3.0001)
+    # ev ’Œ‚Ì¬Œa "1/{:.1f}" $lens.get(x.num,x.length())/(0.3 if x.sect in [101,102,105,111] else 0.2)
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 3F’Œ
+    title ã’i‚É’f–Ê”Ô†A‰º’i‚ÉŠ„‘Œã‚ÌŒŸ’è”ä‚ğ¦‚·
+    z     $c3f
+    elem 8418 1338 5870 1327 1331 11777 8565 8567 8514 11193 8580
+    # ef (x.sect in [101,102,105,111] and x.length()>4.5001) or (x.sect in [103,104,112,113] and x.length()>3.0001)
+    # ev ’Œ‚Ì¬Œa "1/{:.1f}" $lens.get(x.num,x.length())/(0.3 if x.sect in [101,102,105,111] else 0.2)
+}
+
+page a4yoko $chap.$k
+{
+    title $tit: 4F’Œ
+    title ã’i‚É’f–Ê”Ô†A‰º’i‚ÉŠ„‘Œã‚ÌŒŸ’è”ä‚ğ¦‚·
+    z     $c4f
+    elem 4713 5215 8303 2862 8442 5665 8445 11340 2869 5214 11554 11555 5823 5824 11126 11342 11591 11564 11375 11382 11286 11281 11378 11287 11379 11385 11616 11617 11383 11384 11622 11621
+    # ef (x.sect in [101,102,105,111] and x.length()>4.5001) or (x.sect in [103,104,112,113] and x.length()>3.0001)
+    # ev ’Œ‚Ì¬Œa "1/{:.1f}" $lens.get(x.num,x.length())/(0.3 if x.sect in [101,102,105,111] else 0.2)
+}

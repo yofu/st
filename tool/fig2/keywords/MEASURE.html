@@ -1,0 +1,95 @@
+<link href="keywords.css" rel="stylesheet" />
+
+<h3 id="measure">MEASURE</h3>
+
+<h4 id="format">format:</h4>
+<p><strong>MEASURE</strong> <em>n1 n2 direction offset overwrite dotsize rotate</em><br />
+<strong>MEASURE</strong> <em>kijun k1 k2 offset dotsize rotate overwrite</em></p>
+
+<h4 id="argument">argument:</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">name</th>
+      <th style="text-align: left">type</th>
+      <th style="text-align: center">default</th>
+      <th style="text-align: left">&#160;</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">n1</td>
+      <td style="text-align: left">&lt;int&gt;</td>
+      <td style="text-align: center">*</td>
+      <td style="text-align: left">始端の節点番号</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">n2</td>
+      <td style="text-align: left">&lt;int&gt;</td>
+      <td style="text-align: center">*</td>
+      <td style="text-align: left">終端の節点番号</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">direction</td>
+      <td style="text-align: left">&lt;選択&gt;</td>
+      <td style="text-align: center">*</td>
+      <td style="text-align: left">寸法線の引き出し方向 [X, Y, Z]</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">offset</td>
+      <td style="text-align: left">&lt;float&gt;</td>
+      <td style="text-align: center">*</td>
+      <td style="text-align: left">寸法線の引き出し寸法</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">overwrite</td>
+      <td style="text-align: left">&lt;string&gt;</td>
+      <td style="text-align: center">&#160;</td>
+      <td style="text-align: left">寸法の上書き値</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">dotsize</td>
+      <td style="text-align: left">&lt;float&gt;</td>
+      <td style="text-align: center">0.1</td>
+      <td style="text-align: left">黒丸の大きさ</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">rotate</td>
+      <td style="text-align: left">&lt;float&gt;</td>
+      <td style="text-align: center">0.0</td>
+      <td style="text-align: left">寸法値の回転角</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">kijun</td>
+      <td style="text-align: left">&#160;</td>
+      <td style="text-align: center">&#160;</td>
+      <td style="text-align: left">基準線を使って寸法を指定する</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="memo">memo:</h4>
+
+<p>寸法値を記入する。<br />
+上書き値が指定されない場合は、始端と終端の距離または基準線の始端同士の<br />
+距離を表示する。<br />
+<code>MEASURE 101 102 X 0.1</code><br />
+<code>MEASURE kijun X1 X2 0.1</code><br />
+のように、オフセット値まで指定すれば描画可能で、<br />
+途中のオプション指定を飛ばしたい場合には、<br />
+<code>MEASURE 101 102 X 0.1 _ 0.5 90</code><br />
+のように、アンダーバーを書いておく。<br />
+ちなみに、overwriteの値はアンダーバーが距離で置換されるので、<br />
+<code>MEASURE 101 102 X 0.1 @_</code><br />
+としておくと、寸法値が@500のように表示される。<br />
+overwriteの位置にNoneと書いておくと、寸法値が表示されない。</p>
+
+<h4 id="link">link:</h4>
+
+<p><a href="XMEASURE.html">XMEASURE</a>
+<a href="YMEASURE.html">YMEASURE</a>
+<a href="ZMEASURE.html">ZMEASURE</a></p>
+
+<hr />
+<p><a href="../fig2.html">back to TOP</a></p>

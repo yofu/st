@@ -1,0 +1,20 @@
+<link href="fig2.css" rel="stylesheet"/>
+
+###SAMPLE
+
+* [sample](sample/sample.fig2): fig2ファイルの本体。このファイルから他のfig2を[load](keywords/LOAD.html)する
+  + [sample\_model](sample/sample_model.fig2): 2.2節表示用のfig2ファイル
+  + [sample\_max](sample/sample_max.fig2): 4.3節表示用のfig2ファイル
+  + [sample\_srcan](sample/sample_srcan.fig2): 4.4節表示用のfig2ファイル
+  + [sample\_deform](sample/sample_deform.fig2): 変形図表示用のfig2ファイル
+  + [sample\_stress\_x](sample/sample_stress_x.fig2): X軸応力図表示用のfig2ファイル
+  + [sample\_stress\_y](sample/sample_stress_y.fig2): X軸応力図表示用のfig2ファイル
+* [sample\_R](sample/sample_R.fig2): 反力図表示用のfig2ファイル
+* [sample\_for](sample/sample_for.fig2): [for](keywords/for.html)と[endfor](keywords/for.html)を使ったfig2ファイル
+* [sample\_ev](sample/sample_ev.fig2): evとrfのサンプル。
+  + [EV](keywords/EV.html)で柱の小径による割増を考慮した検定比を出力している
+  + [RF](keywords/RF.html)で上記検定比を使って[RAINBOW](keywords/RAINBOW.html)による色分けを行う
+  + [`rainbow`](keywords/RAINBOW.html)` 0.5 0.6 0.7 0.71428 0.9 1.0`で通常の検定比と同じ区分で色分け
+  + [EV](keywords/EV.html)と[RF](keywords/RF.html)の最後の部分は共通なのでCONSTで括れるが、<br/>
+  内部で$lensを参照しているのでlensの行の[CONST](keywords/CONST.html)を[CONST\*](keywords/CONST.html)にする必要がある<br/>
+  コメントアウトしてあるが、[EF](keywords/EF.html)の使用例も入っている

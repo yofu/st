@@ -1,0 +1,50 @@
+<link href="keywords.css" rel="stylesheet"/>
+
+### st \[ƒÐƒÑ]
+GUI software for structural analysis
+
+> `, the name of which stands for ...`<br/>
+> + `STructure`<br/>
+> + `STress = Sigma + Tau`<br/>
+> + `STeel`<br/>
+> + `Seiteichi Taishou (Symmetry Positive-definite)`<br/>
+> + `...Stuff like That`<br/>
+
++ ver 0.1.0
+  * New Features
+    + MENU-Open
+    + MENU-Open Dxf
+    + MENU-Save
+    + MENU-SaveAS
+    + MENU-Read
+    + MENU-Command Font
+    + MENU-Canvas Font
+    + MENU-Release Note
+    + MENU-About
+    + COMMAND-DISTS
+    + COMMAND-OPEN
+    + COMMAND-SETFOCUS
+    + COMMAND-SELECTNODE
+    + COMMAND-SELECTELEM
+    + COMMAND-ERRORELEM
+    + COMMAND-FENCE
+    + COMMAND-ADDLINEELEM
+    + COMMAND-COPYELEM
+    + COMMAND-MOVEELEM
+    + COMMAND-MOVENODE
+    + COMMAND-SEARCHELEM
+    + COMMAND-NODETOELEM
+    + COMMAND-ELEMTONODE
+    + COMMAND-CONNECTED
+    + COMMAND-NODENOREFERENCE
+    + COMMAND-ELEMSAMENODE
+    + COMMAND-GRAVITY
+    + COMMAND-SMOOTH
+    + COMMAND-HANGING
+    + COMMAND-RING
+  * Known Bugs
+    + \[0.1.0-1] GENERAL: When executed, canvas background color is 255 255 255, while it should be 0 0 0.
+    + \[0.1.0-2] GENERAL: When window size is changed, canvas background color changes to 255 255 255, while it should stay 0 0 0.
+    + \[0.1.0-3] COMMAND-DISTS: When LEFT/CENTER button is released, tail line remains.
+    + \[0.1.0-4] COMMAND-DISTS: When 2nd node is selected in command line, tail line remains.
+

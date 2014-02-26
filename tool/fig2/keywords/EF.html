@@ -1,0 +1,52 @@
+<link href="keywords.css" rel="stylesheet" />
+
+<h3 id="ef">EF</h3>
+
+<h4 id="format">format:</h4>
+<p><strong>EF</strong> <em>function</em></p>
+
+<h4 id="argument">argument:</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">name</th>
+      <th style="text-align: left">type</th>
+      <th style="text-align: center">default</th>
+      <th style="text-align: left">&#160;</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">function</td>
+      <td style="text-align: left">&lt;string&gt;</td>
+      <td style="text-align: center">*</td>
+      <td style="text-align: left">部材絞込み用の関数</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 id="memo">memo:</h4>
+
+<p>functionの返り値がTrueの部材のみ表示する。<br />
+例&gt;<br />
+検定比が0.9を超える部材のみ表示する。<br />
+<code>EF max(x.rate)&gt;0.9</code><br />
+部材長が4.0mを超える柱のみ赤太線で表示し、部材番号と細長比を表示。<br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> column</code><br />
+<a href="NOFEED.html"><code>NOFEED</code></a><br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> column</code><br />
+<a href="PEN.html"><code>PEN</code></a><code> red 0.5 255 0 0</code><br />
+<a href="NAME_PEN.html"><code>RED</code></a><code> etype column</code><br />
+<code>EF x.length()&gt;4.0</code><br />
+<a href="ELEMCODE.html"><code>ELEMCODE</code></a><br />
+<a href="EV.html"><code>EV</code></a><code> 細長比 {:.1f} x.length()/min(x.allows[x.sect].shape.ix(),x.allows[x.sect].shape.iy())</code></p>
+
+<h4 id="link">link:</h4>
+
+<p><a href="EV.html">EV</a></p>
+
+<hr />
+<p><a href="../fig2.html">back to TOP</a></p>

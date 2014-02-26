@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <link href="sttool.css" rel="stylesheet"/>
+        <title>RC lstfile</title>
+        <script src='jquery-2.0.3.min.js'></script>
+        <script src='sprintf.js'></script>
+        <script>
+            var areas = {"D10":0.7133, "D13":1.267, "D16":1.986, "D19":2.865, "D22":3.871, "D25":5.067, "D29":6.424, "D32":7.942};
+            var diameters = {"D10":11, "D13":14, "D16":18, "D19":21, "D22":25, "D25":28, "D29":33, "D32":36};
+            round_zero = function(val, index) {
+                if (val >= 0) {
+                    return Math.floor(val*Math.pow(10, index))/Math.pow(10, index)
+                } else {
+                    return Math.ceil(val*Math.pow(10, index))/Math.pow(10, index)
+                }
+            }
+            min_pitch = function(diameter) {
+                var d = diameters[diameter];
+                if (Number(diameter.slice(1)) <= 19) {
+                    return 31.25 + d;
+                } else {
+                    return Number(diameter.slice(1)) * 1.5 + d
+                }
+            }
+            createlst = function(code, type, sname, width, height, kaburi, m, n, diameter, sd, stp_sd, nstpx, stpx_diameter, stpx_pitch, nstpy, stpy_diameter,stpy_pitch) {
+                var rtn =  sprintf('CODE %s RC %s %-56s\n', code, type, sprintf("\"%s\"",sname));
+                // var rtn =  sprintf('CODE %s RC %s                                                   \"=%s\"\n', code, type, sname);
+                var nreins = Number(m)*Number(n);
+                var reins = new Array(2*nreins);
+                var d = diameters[diameter];
+                var stpxd = diameters[stpx_diameter];
+                var stpyd = diameters[stpy_diameter];
+                var tmpy = (0.5*Number(height) - Number(kaburi) - stpxd - 0.5*d)*0.1;
+                var min_p = min_pitch(diameter)*0.1;
+                var at = nreins*areas[diameter];
+                if (type == "COLUMN") {
+                    var valy = (Number(height) - 2*Number(kaburi) - 2*stpxd - d)*0.1 / (2*m-1);
+                } else {
+                    var valy = min_p + 0.5;
+                }
+                if (n > 1) {
+                    var valx = (Number(width) - 2*Number(kaburi) - 2*stpyd - d)*0.1 / (n-1);
+                } else {
+                    var valx = 0.0;
+                }
+                for (i=0; i<Number(m); i++) {
+                    var tmpx = (-0.5*Number(width) + Number(kaburi) + stpyd + 0.5*d)*0.1;
+                    for (j=0; j<Number(n); j++) {
+                        if (type == "GIRDER" || (type == "COLUMN" && (i == 0 || j == 0 || j == Number(n)-1))) {
+                            if (i == 0 && j == 0) {
+                                if (type == "GIRDER") {
+                                    rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s %-30s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd, sprintf('"%d-%s"', Number(m)*Number(n), diameter));
+                                } else {
+                                    rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s %-30s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd, sprintf('"%d-%s"', 2*Number(n)+4*(Number(m)-1), diameter));
+                                }
+                                reins[0] = [Number(diameter.slice(1)), tmpx, tmpy];
+                            } else {
+                                rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd);
+                                reins[Number(n)*i+j] = [Number(diameter.slice(1)), tmpx, tmpy];
+                            }
+                        } else {
+                            reins[Number(n)*i+j] = [0,0,0];
+                        }
+                        tmpx += valx;
+                    }
+                    tmpy -= valy;
+                }
+                var tmpy = -(0.5*Number(height) - Number(kaburi) - stpxd - 0.5*d)*0.1;
+                for (i=0; i<Number(m); i++) {
+                    var tmpx = (-0.5*Number(width) + Number(kaburi) + stpyd + 0.5*d)*0.1;
+                    for (j=0; j<Number(n); j++) {
+                        if (type == "GIRDER" || (type == "COLUMN" && (i == 0 || j == 0 || j == Number(n)-1))) {
+                            if (i == 0 && j == 0) {
+                                if (type == "GIRDER") {
+                                    rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s %-30s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd, sprintf('"%d-%s"', Number(m)*Number(n), diameter));
+                                } else {
+                                    rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd, Number(m)*Number(n), diameter);
+                                }
+                                reins[nreins] = [Number(diameter.slice(1)), tmpx, tmpy];
+                            } else {
+                                rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd);
+                                reins[nreins+Number(n)*i+j] = [Number(diameter.slice(1)), tmpx, tmpy];
+                            }
+                        } else {
+                            reins[nreins+Number(n)*i+j] = [0,0,0];
+                        }
+                        tmpx += valx;
+                    }
+                    tmpy += valy;
+                }
+                if ((Number(stpx_pitch) != 0) && (Number(width) != 0)) {
+                    var psx = Number(nstpx) * areas[stpx_diameter] / Number(stpx_pitch) / Number(height) * 100.0;
+                } else {
+                    var psx = 0.0;
+                }
+                if ((Number(stpx_pitch) != 0) && (Number(width) != 0)) {
+                    var psy = Number(nstpy) * areas[stpy_diameter] / Number(stpy_pitch) / Number(width) * 100.0;
+                } else {
+                    var psy = 0.0;
+                }
+                rtn += sprintf('         CRECT %6.1f %6.1f %6.1f %6.1f   FC24 %-25s\n', -0.05*width, -0.05*height, 0.05*width, 0.05*height, sprintf('"CONCRETE %dx%d[cm]"',0.1*width, 0.1*height));
+                rtn += sprintf('         HOOPS %8.6f %8.6f %s     "HOOP Qx:%d-%s@%d Qy:%d-%s@%d"\n', psx, psy, stp_sd, nstpx, stpx_diameter, stpx_pitch, nstpy, stpy_diameter,stpy_pitch);
+                rtn += sprintf('         XFACE   0.0   0.0              FACE LENGTH FOR Mx ON HEAD,TAIL[cm]\n');
+                rtn += sprintf('         YFACE   0.0   0.0              FACE LENGTH FOR My ON HEAD,TAIL[cm]\n');
+                if (valx<min_p) {
+                    $("#pitch").text(sprintf('ピッチ = %.1f[cm] ERROR, ', valx));
+                } else {
+                    $("#pitch").text(sprintf('ピッチ = %.1f[cm], ', valx));
+                }
+                if (width*height == 0) {
+                    var pt = 0;
+                } else {
+                    var pt = at/(width*height)*100;
+                }
+                if (type=="COLUMN") {
+                    if (2*pt<0.008) {
+                        $("#pt").text(sprintf('Pa = %.4f%% ERROR', 200*pt));
+                    } else {
+                        $("#pt").text(sprintf('Pa = %.4f%%', 200*pt));
+                    }
+                } else {
+                    if (pt<0.004) {
+                        $("#pt").text(sprintf('Pt = %.4f%% ERROR', pt*100));
+                    } else {
+                        $("#pt").text(sprintf('Pt = %.4f%%', pt*100));
+                    }
+                }
+                if (psy<0.002) {
+                    $("#stpy_ps").text(sprintf('Ps = %.4f%% ERROR', psy*100));
+                } else {
+                    $("#stpy_ps").text(sprintf('Ps = %.4f%%', psy*100));
+                }
+                // draw
+                var canvas = document.getElementById('sectfig');
+                var ctx    = canvas.getContext('2d');
+                var cx = canvas.width/2;
+                var cy = canvas.height/2;
+                // var scale = 0.2;
+                var scale = Number($("#figscale").val())*0.01;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeRect(cx-0.5*scale*Number(width), cy-0.5*scale*Number(height), scale*width, scale*height);
+                for (i=0; i<2*nreins; i++) {
+                    ctx.beginPath();
+                    ctx.arc(cx+scale*10*reins[i][1], cy+scale*10*reins[i][2], scale*reins[i][0]/2, 0, Math.PI*2, false);
+                    ctx.stroke();
+                }
+                return rtn
+            }
+            update_text_fig = function(code, type, sname, width, height, kaburi, m, n, diameter, sd, stp_sd, nstpx, stpx_diameter, stpx_pitch, nstpy, stpy_diameter,stpy_pitch) {
+                $("#result").text(createlst(code,
+                                            type,
+                                            sname,
+                                            width,
+                                            height,
+                                            kaburi,
+                                            m,
+                                            n,
+                                            diameter,
+                                            sd,
+                                            stp_sd,
+                                            nstpx,
+                                            stpx_diameter,
+                                            stpx_pitch,
+                                            nstpy,
+                                            stpy_diameter,
+                                            stpy_pitch));
+            }
+            $(document).ready(function(){
+                $("input").bind('click blur keydown keyup keypress change', function(){
+                    update_text_fig($("#sectcode").val(),
+                                    $("#etype").val(),
+                                    $("#sname").val(),
+                                    $("#width").val(),
+                                    $("#depth").val(),
+                                    $("#kaburi").val(),
+                                    $("#mnum").val(),
+                                    $("#nnum").val(),
+                                    $("#diameter").val(),
+                                    $("#sd").val(),
+                                    $("#stp_sd").val(),
+                                    $("#nstpx").val(),
+                                    $("#stpx_diameter").val(),
+                                    $("#stpx_pitch").val(),
+                                    $("#nstpy").val(),
+                                    $("#stpy_diameter").val(),
+                                    $("#stpy_pitch").val());
+                });
+            });
+        </script>
+        <script>
+            var radios = $("input[name=axis]");
+
+            radios.on("change", function(e) {
+                    radios.closest("label").removeClass("selected");
+                    $(e.target).closest("label").addClass("selected");
+                    console.log("Changed to " + $(e.target).value);
+            })
+
+
+            radios.filter(":checked").trigger("change");
+        </script>
+    </head>
+    <body>
+        <h3>RC lst</h3>
+        <br/>
+        <form onsubmit="return false;">
+            <input id="sectcode" type="number" name="sectcode" class="text" size="5" placeholder="断面番号" value="101" min="0" pattern="^[0-9]+$" autofocus/>
+            <input id="etype" type="text" name="etype" class="text" size="5" placeholder="タイプ" value="COLUMN" list="etypes" />
+            <input id="sname" type="text" name="sname" class="text" size="5" placeholder="断面記号" value="CR1" /><br/>
+            <ul class="axis-list">
+                <li><label><input type="radio" name="axis" value="strong" checked />強軸</label></li>
+                <li><label><input type="radio" name="axis" value="weak" checked />弱軸</label></li>
+            </ul>
+            <label>外形</label><br/>
+            <input id="width" type="number" name="width" class="text" size="5" placeholder="幅[mm]" value="" min="0" pattern="^[0-9.]+$" />
+            <label>[mm]×</label>
+            <input id="depth" type="number" name="depth" class="text" size="5" placeholder="せい[mm]" value="" min="0" pattern="^[0-9.]+$" />
+            <label>[mm]（かぶり</label>
+            <input id="kaburi" type="number" name="kaburi" class="text" size="5" placeholder="かぶり[mm]" value="40" min="0" pattern="^[0-9.]+$" />
+            <label>[mm]）</label><br/>
+            <label>主筋</label><br/>
+            <input id="mnum" type="number" name="mnum" class="text" size="5" placeholder="段数[本]" value="" pattern="^[0-9]+$" />
+            <label>×</label>
+            <input id="nnum" type="number" name="nnum" class="text" size="5" placeholder="列数[本]" value="" pattern="^[0-9]+$" />
+            <label>-</label>
+            <input id="diameter" type="text" name="diameter" class="text" size="5" placeholder="呼び径" value="D19" list="reinsname"/>
+            <input id="sd" type="text" name="sd" class="text" size="5" placeholder="種別" value="SD345" list="sd" />
+            <label id="pitch" type="text" name="pitch" class="text" size="5" value="" /></label>
+            <label id="pt" type="text" name="pt" class="text" size="5" value="" /></label><br/>
+            <label>STP(Qx)</label><br/>
+            <input id="nstpx" type="number" name="nstpx" class="text" size="5" placeholder="本数" value="2" min="0" />
+            <label>-</label>
+            <input id="stpx_diameter" type="text" name="stpx_diameter" class="text" size="5" placeholder="呼び径" value="D10" list="reinsname" />
+            <label>@</label>
+            <input id="stpx_pitch" type="number" name="stpx_pitch" class="text" size="5" placeholder="ピッチ[mm]" value="200" step="5" pattern="^[0-9]+$" />
+            <input id="stp_sd" type="text" name="stp_sd" class="text" size="5" placeholder="種別" value="SD295" list="sd"/><br/>
+            <label>STP(Qy)</label><br/>
+            <input id="nstpy" type="number" name="nstpy" class="text" size="5" placeholder="本数" value="2" min="0" />
+            <label>-</label>
+            <input id="stpy_diameter" type="text" name="stpy_diameter" class="text" size="5" placeholder="呼び径" value="D10" list="reinsname" />
+            <label>@</label>
+            <input id="stpy_pitch" type="number" name="stpy_pitch" class="text" size="5" placeholder="ピッチ[mm]" value="200" step="5" pattern="^[0-9]+$" />
+            <label id="stpy_ps" type="text" name="stpy_ps" class="text" size="5" value="" /></label>
+        </form>
+        <datalist id="etypes">
+            <option value="COLUMN">
+            <option value="GIRDER">
+        </datalist>
+        <datalist id="reinsname">
+            <option value="D10">
+            <option value="D13">
+            <option value="D16">
+            <option value="D19">
+            <option value="D22">
+            <option value="D25">
+            <option value="D29">
+            <option value="D32">
+        </datalist>
+        <datalist id="sd">
+            <option value="SD295">
+            <option value="SD345">
+        </datalist>
+        <textarea id="result" type="text" name="result" cols="80" value="" spellcheck=false > </textarea>
+        <canvas id="sectfig" width="650" height="650"></canvas>
+        <label>scale</label>
+        <input id="figscale" type="range" value="20" />
+    </body>
+</html>
+

@@ -1,0 +1,88 @@
+common
+{
+    # ”½—Í‚Ì–îˆóƒTƒCƒY
+    const size 0.1 
+    header {name} {time}
+    position title 30 120
+    position data 150 45
+    shift 0 10
+    inputfile
+    outputfile
+    viewpoint
+}
+
+# ã‰º•ûŒü‚É‚Q•ªŠ„‚µ‚Ä•\¦
+multiple 2 1
+{
+    page a4tate 8.1.1
+    {
+        perspective
+        pagetitle 8: x“_”½—Í}
+        pagetitle 8.1: ’·Šúx“_”½—Í}
+        title 1F: x“_ß“_”Ô†
+        focus centre
+        gfact 1.0
+        gaxis 0.5
+        dists 1000 4000
+        angle 60 -120
+        elem column girder
+        z 0 1
+        conf 2
+        nodecode conf
+        position title 30 100
+        shift 0 -20
+        nodata
+    }
+    page a4tate
+    {
+        title 1FL: ’·Šúx“_”½—ÍL + x“_d—ÊF
+        unit kN,m
+        elem column girder
+        z 0 1
+        reaction z l w $size
+    }
+}
+
+multiple 2 1
+{
+    page a4tate 8.2.1
+    {
+        pagetitle 8.2: X•ûŒü’nkx“_”½—Í}
+        title 1F: ’·Šúx“_”½—ÍL + x“_d—ÊF + X•ûŒü’nkx“_”½—ÍX
+        elem column girder
+        z 0 1
+        reaction z l w x $size
+        position title 30 100
+        shift 0 -20
+        nodata
+    }
+    page a4tate
+    {
+        title 1F: ’·Šúx“_”½—ÍL + x“_d—ÊF - X•ûŒü’nkx“_”½—ÍX
+        elem column girder
+        z 0 1
+        reaction z l w -x $size
+    }
+}
+
+multiple 2 1
+{
+    page a4tate 8.3.1
+    {
+        pagetitle 8.3: Y•ûŒü’nkx“_”½—Í}
+        title 1F: ’·Šúx“_”½—ÍL + x“_d—ÊF + Y•ûŒü’nkx“_”½—ÍY
+        elem column girder
+        z 0 1
+        reaction z l w y $size
+        position title 30 100
+        shift 0 -20
+        nodata
+    }
+    page a4tate
+    {
+        title 1F: ’·Šúx“_”½—ÍL + x“_d—ÊF - Y•ûŒü’nkx“_”½—ÍY
+        elem column girder
+        z 0 1
+        reaction z l w -y $size
+    }
+}

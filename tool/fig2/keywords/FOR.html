@@ -1,0 +1,91 @@
+<link href="keywords.css" rel="stylesheet" />
+
+<h3 id="for">FOR</h3>
+
+<h4 id="format">format:</h4>
+<p><strong>for</strong> <em>x</em> <strong>in</strong> <em>[x1,x2,x3,…]</em><br />
+…<br />
+<strong>endfor</strong></p>
+
+<ol>
+  <li><strong>for</strong> <em>x</em> <strong>in</strong> <em>[x1,x2,x3,…]</em><br /></li>
+  <li><strong>for</strong> <em>num,x</em> <strong>in</strong> <em>#N[x1,x2,x3,…]</em><br /></li>
+  <li><strong>for</strong> <em>v,w</em> <strong>in</strong> <em>[v1,v2,v3,…]x[w1,w2,w3,…]</em><br /></li>
+  <li><strong>for</strong> <em>num,v,w</em> <strong>in</strong> <em>#N[v1,v2,v3,…]x[w1,w2,w3,…]</em><br /></li>
+  <li><strong>for</strong> <em>n</em> <strong>in</strong> <em>#M~N</em><br /></li>
+</ol>
+
+<h4 id="memo">memo:</h4>
+
+<p>FORとENDFORの間に記述した内容を複製する。<br />
+その際、内部にある「$+変数名」はx1,x2,x3…<br />
+で置換される。<br />
+例えば、<br />
+<code>for etype in [column,girder,wall,slab]</code><br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.1</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> $etype</code><br />
+<code>endfor</code><br />
+は<br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.1</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> column</code><br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.1</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> girder</code><br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.1</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> wall</code><br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.1</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> slab</code><br />
+に展開される。 <br />
+<br />
+forの指定の仕方には上記5通りがある。<br /></p>
+
+<ul>
+  <li>#Nを用いるとNから始まる数字が変数の先頭に追加される。<br />
+Nを省略した場合は#1と同じ。<br />
+<code>for num,etype in #2[column,girder,wall,slab]</code><br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.$num</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> $etype</code><br />
+<code>endfor</code><br />
+↓<br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.2</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> column</code><br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.3</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> girder</code><br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.4</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> wall</code><br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.5</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> slab</code><br /></li>
+  <li>*(アスタリスク)で複数の配列をつなげると、<br />
+それぞれの配列から要素を１つずつ取り出して変数に展開する。<br />
+つなげる配列は要素数が同じである必要があり、<br />
+いくつでもつなげられる。<br />
+先述の#Nと同時に使用することも可能。<br />
+<code>for num,etype,name,phi in #2[column,girder,wall,slab]*[柱,梁,壁,床]*[20,60,20,60]</code><br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.$num</code><br />
+<a href="ANGLE.html"><code>ANGLE</code></a><code> $phi -120</code><br />
+<a href="TITLE.html"><code>TITLE</code></a><code> $nameのみ表示</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> $etype</code><br />
+<code>endfor</code><br />
+↓<br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.2</code><br />
+<a href="ANGLE.html"><code>ANGLE</code></a><code> 20 -120</code><br />
+<a href="TITLE.html"><code>TITLE</code></a><code> 柱のみ表示</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> column</code><br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.3</code><br />
+<a href="ANGLE.html"><code>ANGLE</code></a><code> 60 -120</code><br />
+<a href="TITLE.html"><code>TITLE</code></a><code> 梁のみ表示</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> girder</code><br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.4</code><br />
+<a href="ANGLE.html"><code>ANGLE</code></a><code> 20 -120</code><br />
+<a href="TITLE.html"><code>TITLE</code></a><code> 壁のみ表示</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> wall</code><br />
+<a href="PAGE.html"><code>PAGE</code></a><code> a4tate 2.2.5</code><br />
+<a href="ANGLE.html"><code>ANGLE</code></a><code> 60 -120</code><br />
+<a href="TITLE.html"><code>TITLE</code></a><code> 床のみ表示</code><br />
+<a href="ELEM.html"><code>ELEM</code></a><code> slab</code><br /></li>
+  <li>#M~Nで指定すると、MからNまでの整数を順次変数に代入する。<br /></li>
+</ul>
+
+<h4 id="link">link:</h4>
+
+<hr />
+<p><a href="../fig2.html">back to TOP</a></p>
