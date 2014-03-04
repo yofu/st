@@ -7,10 +7,10 @@ import (
     "errors"
     "fmt"
     "strconv"
-    "github.com/visualfc/go-iup/iup"
-    "github.com/visualfc/go-iup/cd"
     "math"
     "strings"
+    "github.com/visualfc/go-iup/iup"
+    "github.com/visualfc/go-iup/cd"
 )
 
 var (
@@ -23,6 +23,7 @@ var (
     BONDRIGID = &Command{"BOND RIGID", "set bond of selected elem to rigid-rigid", bondrigid}
     CONFFIX = &Command{"CONF FIX", "set conf of selected node to fix", conffix}
     CONFPIN = &Command{"CONF PIN", "set conf of selected node to pin", confpin}
+    CONFXYROLLER = &Command{"CONF XYROLLER", "set conf of selected node to xy-roller", confxyroller}
     CONFFREE = &Command{"CONF FREE", "set conf of selected node to free", conffree}
     OPEN  = &Command{"OEPN INPUT", "open inp file", openinput}
     INSERT = &Command{"INSERT", "insert new frame", insert}
@@ -42,6 +43,7 @@ var (
     COPYELEM = &Command{"COPY ELEM", "copy selected elems", copyelem}
     MOVEELEM = &Command{"MOVE ELEM", "move selected elems", moveelem}
     MOVENODE = &Command{"MOVE NODE", "move selected nodes", movenode}
+    PINCHNODE = &Command{"PINCH NODE", "pinch nodes", pinchnode}
     ROTATE = &Command{"ROTATE", "rotate selected nodes", rotate}
     MIRROR = &Command{"MIRROR", "mirror selected elems", mirror}
     SEARCHELEM = &Command{"SEARCH ELEM", "search elems using node", searchelem}
@@ -74,6 +76,7 @@ func init() {
     Commands["BONDRIGID"]=BONDRIGID
     Commands["CONFFIX"]=CONFFIX
     Commands["CONFPIN"]=CONFPIN
+    Commands["CONFXYROLLER"]=CONFXYROLLER
     Commands["CONFFREE"]=CONFFREE
     Commands["OPEN"]=OPEN
     Commands["INSERT"]=INSERT
@@ -93,6 +96,7 @@ func init() {
     Commands["COPYELEM"]=COPYELEM
     Commands["MOVEELEM"]=MOVEELEM
     Commands["MOVENODE"]=MOVENODE
+    Commands["PINCHNODE"]=PINCHNODE
     Commands["ROTATE"]=ROTATE
     Commands["MIRROR"]=MIRROR
     Commands["SEARCHELEM"]=SEARCHELEM
@@ -863,6 +867,63 @@ func movenode (stw *Window) {
 // }}}
 
 
+// PINCHNODE
+func pinchnode (stw *Window) {
+    var target *Node
+    movefunc := func (node *Node, dx, dy float64, arg *iup.MouseButton) {
+                    node.Coord[2] += dy*0.01
+                }
+    stw.canv.SetCallback(func (arg *iup.MouseButton) {
+                             stw.dbuff.UpdateYAxis(&arg.Y)
+                             switch arg.Button {
+                             case BUTTON_LEFT:
+                                 if stw.Frame != nil {
+                                     if arg.Pressed == 0 { // Released
+                                         if target != nil {
+                                             movefunc(target, float64(arg.X-stw.startX), float64(arg.Y-stw.startY), arg)
+                                             target = nil
+                                             stw.Redraw()
+                                         }
+                                     } else { // Pressed
+                                         target = stw.PickNode(arg.X, arg.Y)
+                                         stw.startX = arg.X; stw.startY = arg.Y
+                                     }
+                                 }
+                             case BUTTON_CENTER:
+                                 if arg.Pressed == 0 { // Released
+                                     stw.Redraw()
+                                 } else { // Pressed
+                                     if isDouble(arg.Status) {
+                                         stw.Frame.SetFocus()
+                                         stw.DrawFrameNode()
+                                         stw.ShowCenter()
+                                     } else {
+                                         stw.startX = arg.X; stw.startY = arg.Y
+                                     }
+                                 }
+                             }
+                         })
+    stw.canv.SetCallback(func (arg *iup.MouseMotion) {
+                             stw.dbuff.UpdateYAxis(&arg.Y)
+                             switch statusKey(arg.Status) {
+                             case STATUS_LEFT:
+                                 if target != nil {
+                                     fmt.Println(target.Num, float64(arg.X-stw.startX), float64(arg.Y-stw.startY))
+                                 }
+                             case STATUS_CENTER:
+                                 if isShift(arg.Status) {
+                                     stw.Frame.View.Center[0] += float64(arg.X - stw.startX) * CanvasMoveSpeedX
+                                     stw.Frame.View.Center[1] += float64(arg.Y - stw.startY) * CanvasMoveSpeedY
+                                 } else {
+                                     stw.Frame.View.Angle[0] -= float64(arg.Y - stw.startY) * CanvasRotateSpeedY
+                                     stw.Frame.View.Angle[1] -= float64(arg.X - stw.startX) * CanvasRotateSpeedX
+                                 }
+                                 stw.DrawFrameNode()
+                             }
+                         })
+}
+
+
 // ROTATE// {{{
 func rotate (stw *Window) {
     ns := make([]*Node, 0)
@@ -1245,11 +1306,24 @@ func confpin (stw *Window) {
     if stw.SelectNode == nil { stw.EscapeAll(); return }
     for _, n := range stw.SelectNode {
         if n == nil || n.Lock { continue }
-        fmt.Println(n.Num)
         for i:=0; i<3; i++ {
             n.Conf[i] = true
             n.Conf[i+3] = false
         }
+    }
+    stw.EscapeAll()
+}
+
+// CONFXYROLLER
+func confxyroller (stw *Window) {
+    if stw.SelectNode == nil { stw.EscapeAll(); return }
+    for _, n := range stw.SelectNode {
+        if n == nil || n.Lock { continue }
+        for i:=0; i<6; i++ {
+            n.Conf[i] = false
+            n.Conf[i+3] = false
+        }
+        n.Conf[2] = true
     }
     stw.EscapeAll()
 }

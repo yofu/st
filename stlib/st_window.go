@@ -9,13 +9,13 @@ import (
     "path/filepath"
     "strconv"
     "runtime"
-    "github.com/visualfc/go-iup/iup"
-    "github.com/visualfc/go-iup/cd"
     "io/ioutil"
     "math"
     "regexp"
     "sort"
     "time"
+    "github.com/visualfc/go-iup/iup"
+    "github.com/visualfc/go-iup/cd"
 )
 
 

@@ -234,9 +234,11 @@ func (frame *Frame) ParseDxfVertex(lis []string, coord []float64, vertices []*No
     var err error
     var index int64
     var x, y, z float64
+    var etype int
     nnum := make([]int, 4)
     var size int
     var addelem bool
+    var sect *Sect
     for i, word := range(lis) {
         if i%2 != 0 { continue }
         index, err = strconv.ParseInt(word, 10, 64)
@@ -244,6 +246,18 @@ func (frame *Frame) ParseDxfVertex(lis []string, coord []float64, vertices []*No
             return vertices, err
         }
         switch int(index) {
+        case 8:
+            etype = Etype(layeretype.FindString(lis[i+1]))
+            tmp, err := strconv.ParseInt(layersect.FindString(lis[i+1]), 10, 64)
+            if err != nil {
+                return nil, err
+            }
+            if val, ok := frame.Sects[int(tmp)]; ok {
+                sect = val
+            } else {
+                sec := frame.AddSect(int(tmp))
+                sect = sec
+            }
         case 10:
             x, err = strconv.ParseFloat(lis[i+1],64)
         case 20:
@@ -264,16 +278,15 @@ func (frame *Frame) ParseDxfVertex(lis []string, coord []float64, vertices []*No
         }
     }
     if addelem {
-        var sect *Sect
         enod := make([]*Node, size)
         for i:=0; i<size; i++ {
             enod[i] = vertices[nnum[i]-1]
         }
-        if sec, ok := frame.Sects[201]; ok {
-            sect = sec
-        } else {
-            sect = frame.AddSect(201)
-        }
+        // if sec, ok := frame.Sects[201]; ok {
+        //     sect = sec
+        // } else {
+        //     sect = frame.AddSect(201)
+        // }
         for i:=0; i<size; i++ {
             addline := true
             var j int
@@ -287,13 +300,14 @@ func (frame *Frame) ParseDxfVertex(lis []string, coord []float64, vertices []*No
                 if el.IsLineElem() { addline = false; break }
             }
             if addline {
-                frame.AddLineElem([]*Node{enod[i], enod[j]}, sect, COLUMN)
+                frame.AddLineElem([]*Node{enod[i], enod[j]}, sect, etype)
             }
         }
-        if sec, ok := frame.Sects[801]; ok {
+        wsect := sect.Num + 300
+        if sec, ok := frame.Sects[wsect]; ok {
             sect = sec
         } else {
-            sect = frame.AddSect(801)
+            sect = frame.AddSect(wsect)
         }
         frame.AddPlateElem(enod, sect, WALL)
     } else {

@@ -5,8 +5,8 @@ import (
     "fmt"
     "math"
     "sort"
-    "github.com/visualfc/go-iup/iup"
     "os"
+    "github.com/visualfc/go-iup/iup"
 )
 
 var (
