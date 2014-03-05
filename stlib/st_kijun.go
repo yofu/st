@@ -1,7 +1,6 @@
 package st
 
 import (
-    "github.com/visualfc/go-iup/cd"
     "math"
 )
 
@@ -62,18 +61,4 @@ func (k *Kijun) PDirection(normalize bool) []float64 {
         vec[i] = (k.Pend[i]-k.Pstart[i])/l
     }
     return vec
-}
-
-func (k *Kijun) Draw (cvs *cd.Canvas, show *Show) {
-    d := k.PDirection(true)
-    if (math.Abs(d[0]) <= 1e-6 && math.Abs(d[1]) <= 1e-6) { return }
-    cvs.LineStyle(cd.CD_DASH_DOT)
-    cvs.FLine(k.Pstart[0], k.Pstart[1], k.Pend[0], k.Pend[1])
-    cvs.LineStyle(cd.CD_CONTINUOUS)
-    cvs.FCircle(k.Pstart[0]-d[0]*show.KijunSize, k.Pstart[1]-d[1]*show.KijunSize, show.KijunSize*2)
-    if k.Name[0] == '_' {
-        cvs.FText(k.Pstart[0]-d[0]*show.KijunSize, k.Pstart[1]-d[1]*show.KijunSize, k.Name[1:])
-    } else {
-        cvs.FText(k.Pstart[0]-d[0]*show.KijunSize, k.Pstart[1]-d[1]*show.KijunSize, k.Name)
-    }
 }

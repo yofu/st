@@ -102,7 +102,7 @@ type View struct {
     Angle []float64
     Dists []float64
     Perspective bool
-    viewpoint [][]float64
+    Viewpoint [][]float64
     Center []float64
 }
 
@@ -113,9 +113,9 @@ func NewView() *View {
     v.Angle = make([]float64,2)
     v.Dists = make([]float64,2)
     v.Dists[0] = 1000; v.Dists[1] = 5000
-    v.viewpoint = make([][]float64,3)
+    v.Viewpoint = make([][]float64,3)
     for i:=0; i<3; i++ {
-        v.viewpoint[i] = make([]float64, 3)
+        v.Viewpoint[i] = make([]float64, 3)
     }
     v.Perspective = true
     v.Center = make([]float64, 2)
@@ -127,7 +127,7 @@ func (v *View) Copy () *View {
     nv.Gfact = v.Gfact
     for i:=0; i<3; i++ {
         nv.Focus[i] = v.Focus[i]
-        nv.viewpoint[i] = v.viewpoint[i]
+        nv.Viewpoint[i] = v.Viewpoint[i]
     }
     for i:=0; i<2; i++ {
         nv.Angle[i] = v.Angle[i]
@@ -167,7 +167,7 @@ func (frame *Frame) Bbox() (xmin, xmax, ymin, ymax, zmin, zmax float64) {
 
 // Read
 // ReadInp// {{{
-func (frame *Frame) ReadInp(filename string, coord []float64) error {
+func (frame *Frame) ReadInp(filename string, coord []float64, angle float64) error {
     tmp := make([]string, 0)
     nodemap := make(map[int]int)
     if len(coord)<3 {
@@ -186,7 +186,7 @@ func (frame *Frame) ReadInp(filename string, coord []float64) error {
                                    default:
                                        tmp=append(tmp,words...)
                                    case "PROP", "SECT", "NODE", "ELEM":
-                                       nodemap, err = frame.ParseInp(tmp, coord, nodemap)
+                                       nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap)
                                        tmp = words
                                    case "BASE":
                                        frame.Base, err =strconv.ParseFloat(words[1],64)
@@ -216,7 +216,7 @@ func (frame *Frame) ReadInp(filename string, coord []float64) error {
                                    }
                                    return nil
                                })
-    nodemap, err = frame.ParseInp(tmp, coord, nodemap)
+    nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap)
     if err != nil {
         return err
     }
@@ -246,7 +246,7 @@ func (frame *Frame) ReadInp(filename string, coord []float64) error {
     return nil
 }
 
-func (frame *Frame) ParseInp(lis []string, coord []float64, nodemap map[int]int) (map[int]int, error) {
+func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodemap map[int]int) (map[int]int, error) {
     var err error
     var def, num int
     if len(lis)==0 {
@@ -257,7 +257,7 @@ func (frame *Frame) ParseInp(lis []string, coord []float64, nodemap map[int]int)
     case "ELEM":
         err = frame.ParseElem(lis, nodemap)
     case "NODE":
-        def, num, err = frame.ParseNode(lis, coord)
+        def, num, err = frame.ParseNode(lis, coord, angle)
         nodemap[def] = num
     case "SECT":
         err = frame.ParseSect(lis)
@@ -387,7 +387,7 @@ func (sect *Sect) ParseFig(frame *Frame, lis []string) error {
     return err
 }
 
-func (frame *Frame) ParseNode(lis []string, coord []float64) (int, int, error) {
+func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (int, int, error) {
     var num int64
     var err error
     n := NewNode()
@@ -418,7 +418,9 @@ func (frame *Frame) ParseNode(lis []string, coord []float64) (int, int, error) {
             return 0, 0, err
         }
     }
-    newnode := frame.SearchNode(n.Coord[0], n.Coord[1], n.Coord[2])
+    c := RotateVector(n.Coord, coord, []float64{0.0, 0.0, 1.0}, angle)
+    n.Coord = c
+    newnode := frame.SearchNode(c[0], c[1], c[2])
     if newnode == nil {
         if n.Num > frame.Maxnnum {
             frame.Maxnnum = n.Num
@@ -1300,6 +1302,13 @@ func (frame *Frame) ElemToNode (els... *Elem) []*Node {
     return ns
 }
 
+func abs (val int) int {
+    if val >= 0 {
+        return val
+    } else {
+        return -val
+    }
+}
 func (frame *Frame) Fence (axis int, coord float64, plate bool) []*Elem {
     rtn := make([]*Elem, 0)
     for _, el := range frame.Elems {
@@ -1877,25 +1886,25 @@ func (view *View) Set(direction int) {
     c0 := math.Cos(a0); s0 := math.Sin(a0)
     c1 := math.Cos(a1); s1 := math.Sin(a1)
     if direction == 0 {
-        view.viewpoint[0][0] = c1*c0
-        view.viewpoint[0][1] = s1*c0
-        view.viewpoint[0][2] = s0
-        view.viewpoint[1][0] = -s1
-        view.viewpoint[1][1] = c1
-        view.viewpoint[1][2] = 0.0
-        view.viewpoint[2][0] = -c1*s0
-        view.viewpoint[2][1] = -s1*s0
-        view.viewpoint[2][2] = c0
+        view.Viewpoint[0][0] = c1*c0
+        view.Viewpoint[0][1] = s1*c0
+        view.Viewpoint[0][2] = s0
+        view.Viewpoint[1][0] = -s1
+        view.Viewpoint[1][1] = c1
+        view.Viewpoint[1][2] = 0.0
+        view.Viewpoint[2][0] = -c1*s0
+        view.Viewpoint[2][1] = -s1*s0
+        view.Viewpoint[2][2] = c0
     } else if direction == 1 {
-        view.viewpoint[0][0] = c1*c0
-        view.viewpoint[0][1] = s1*c0
-        view.viewpoint[0][2] = s0
-        view.viewpoint[1][0] = -s1
-        view.viewpoint[1][1] = c1
-        view.viewpoint[1][2] = 0.0
-        view.viewpoint[2][0] = c1*s0
-        view.viewpoint[2][1] = s1*s0
-        view.viewpoint[2][2] = -c0
+        view.Viewpoint[0][0] = c1*c0
+        view.Viewpoint[0][1] = s1*c0
+        view.Viewpoint[0][2] = s0
+        view.Viewpoint[1][0] = -s1
+        view.Viewpoint[1][1] = c1
+        view.Viewpoint[1][2] = 0.0
+        view.Viewpoint[2][0] = c1*s0
+        view.Viewpoint[2][1] = s1*s0
+        view.Viewpoint[2][2] = -c0
     }
 }
 
@@ -1906,13 +1915,13 @@ func (view *View) ProjectCoord (coord []float64) []float64 {
     pc := make([]float64, 2)
     for i:=0; i<3; i++ {
         p[i] = coord[i] - view.Focus[i]
-        pv[i] = view.viewpoint[0][i]*view.Dists[0] - p[i]
+        pv[i] = view.Viewpoint[0][i]*view.Dists[0] - p[i]
     }
     for i:=0; i<2; i++ {
-        pc[i] = Dot(view.viewpoint[i+1], p, 3)
+        pc[i] = Dot(view.Viewpoint[i+1], p, 3)
     }
     if view.Perspective {
-        vnai := Dot(view.viewpoint[0], pv, 3)
+        vnai := Dot(view.Viewpoint[0], pv, 3)
         for i:=0; i<2; i++ {
             rtn[i] = view.Gfact*view.Dists[1]*pc[i]/vnai + view.Center[i]
         }
@@ -1930,42 +1939,19 @@ func (view *View) ProjectNode (node *Node) {
     pc := make([]float64, 2)
     for i:=0; i<3; i++ {
         p[i] = node.Coord[i] - view.Focus[i]
-        pv[i] = view.viewpoint[0][i]*view.Dists[0] - p[i]
+        pv[i] = view.Viewpoint[0][i]*view.Dists[0] - p[i]
     }
     for i:=0; i<2; i++ {
-        pc[i] = Dot(view.viewpoint[i+1], p, 3)
+        pc[i] = Dot(view.Viewpoint[i+1], p, 3)
     }
     if view.Perspective {
-        vnai := Dot(view.viewpoint[0], pv, 3)
+        vnai := Dot(view.Viewpoint[0], pv, 3)
         for i:=0; i<2; i++ {
             node.Pcoord[i] = view.Gfact*view.Dists[1]*pc[i]/vnai + view.Center[i]
         }
     } else {
         for i:=0; i<2; i++ {
             node.Pcoord[i] = view.Gfact*pc[i] + view.Center[i]
-        }
-    }
-}
-
-func (view *View) ProjectDeformation (node *Node, show *Show) {
-    p  := make([]float64, 3)
-    pv := make([]float64, 3)
-    pc := make([]float64, 2)
-    for i:=0; i<3; i++ {
-        p[i] = (node.Coord[i] + show.Dfact * node.ReturnDisp(show.Period, i)) - view.Focus[i]
-        pv[i] = view.viewpoint[0][i]*view.Dists[0] - p[i]
-    }
-    for i:=0; i<2; i++ {
-        pc[i] = Dot(view.viewpoint[i+1], p, 3)
-    }
-    if view.Perspective {
-        vnai := Dot(view.viewpoint[0], pv, 3)
-        for i:=0; i<2; i++ {
-            node.Dcoord[i] = view.Gfact*view.Dists[1]*pc[i]/vnai + view.Center[i]
-        }
-    } else {
-        for i:=0; i<2; i++ {
-            node.Dcoord[i] = view.Gfact*pc[i] + view.Center[i]
         }
     }
 }

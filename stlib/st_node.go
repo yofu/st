@@ -3,7 +3,6 @@ package st
 import (
     "bytes"
     "fmt"
-    "github.com/visualfc/go-iup/cd"
     "math"
     "strings"
 )
@@ -270,113 +269,6 @@ func (node *Node) ConfState () int {
 }
 
 
-// Draw// {{{
-func (node *Node) Draw (cvs *cd.Canvas, show *Show) {
-    // Caption
-    var ncap bytes.Buffer
-    var oncap bool
-    if show.NodeCaption & NC_NUM != 0 {
-        ncap.WriteString(fmt.Sprintf("%d\n", node.Num))
-        oncap = true
-    }
-    for i, j := range []uint{NC_DX, NC_DY, NC_DZ} {
-        if show.NodeCaption & j != 0 {
-            if !node.Conf[i] {
-                ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["DISP"]), node.ReturnDisp(show.Period, i)*100.0))
-                oncap = true
-            }
-        }
-    }
-    for i, j := range []uint{NC_RX, NC_RY, NC_RZ} {
-        if show.NodeCaption & j != 0 {
-            if node.Conf[i] {
-                ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), node.ReturnReaction(show.Period, i)))
-                oncap = true
-            }
-        }
-    }
-    if show.NodeCaption & NC_ZCOORD != 0 {
-        ncap.WriteString(fmt.Sprintf("%.1f\n", node.Coord[2]))
-        oncap = true
-    }
-    if oncap {
-        cvs.FText(node.Pcoord[0], node.Pcoord[1], ncap.String())
-    }
-    if show.NodeNormal {
-        node.DrawNormal(cvs, show)
-    }
-    // Conffigure
-    if show.Conf {
-        cvs.InteriorStyle(cd.CD_SOLID)
-        cvs.Foreground(show.ConfColor)
-        switch node.ConfState() {
-        default:
-            return
-        case CONF_PIN:
-            PinFigure(cvs, node.Pcoord[0], node.Pcoord[1], show.ConfSize)
-        case CONF_XROL, CONF_YROL, CONF_XYROL:
-            RollerFigure(cvs, node.Pcoord[0], node.Pcoord[1], show.ConfSize, 0)
-        case CONF_ZROL:
-            RollerFigure(cvs, node.Pcoord[0], node.Pcoord[1], show.ConfSize, 1)
-        case CONF_FIX:
-            FixFigure(cvs, node.Pcoord[0], node.Pcoord[1], show.ConfSize)
-        }
-    }
-}
-
-func PinFigure (cvs *cd.Canvas, x, y , size float64) {
-    val := y - 0.5*math.Sqrt(3)*size
-    cvs.Begin(cd.CD_FILL)
-    cvs.FVertex(x, y)
-    cvs.FVertex(x+0.5*size, val)
-    cvs.FVertex(x-0.5*size, val)
-    cvs.End()
-}
-
-func RollerFigure (cvs *cd.Canvas, x, y , size float64, direction int) {
-    switch direction {
-    case 0:
-        val1 := y - 0.5*math.Sqrt(3)*size
-        val2 := y - 0.75*math.Sqrt(3)*size
-        cvs.Begin(cd.CD_FILL)
-        cvs.FVertex(x, y)
-        cvs.FVertex(x+0.5*size, val1)
-        cvs.FVertex(x-0.5*size, val1)
-        cvs.End()
-        cvs.FLine(x-0.5*size, val2, x+0.5*size, val2)
-    case 1:
-        val1 := x - 0.5*math.Sqrt(3)*size
-        val2 := x - 0.75*math.Sqrt(3)*size
-        cvs.Begin(cd.CD_FILL)
-        cvs.FVertex(x, y)
-        cvs.FVertex(val1, y+0.5*size)
-        cvs.FVertex(val1, y-0.5*size)
-        cvs.End()
-        cvs.FLine(val2, y-0.5*size, val2, y+0.5*size)
-    }
-}
-
-func FixFigure (cvs *cd.Canvas, x, y , size float64) {
-    cvs.FLine(x-size, y, x+size, y)
-    cvs.FLine(x-0.25*size, y, x-0.75*size, y-0.5*size)
-    cvs.FLine(x+0.25*size, y, x-0.25*size, y-0.5*size)
-    cvs.FLine(x+0.75*size, y, x+0.25*size, y-0.5*size)
-}
-
-func (node *Node) DrawNormal (canv *cd.Canvas, show *Show) {
-    v := make([]float64, 3)
-    d := node.Normal(true)
-    for i:=0; i<3; i++ {
-        v[i] = node.Coord[i] + show.NodeNormalSize*d[i]
-    }
-    vec  := node.Frame.View.ProjectCoord(v)
-    arrow := 0.3
-    angle := 10.0*math.Pi/180.0
-    canv.LineStyle(cd.CD_CONTINUOUS)
-    Arrow(canv, node.Pcoord[0], node.Pcoord[1], vec[0], vec[1], arrow, angle)
-}
-
-// }}}
 
 
 // Miscellaneous// {{{

@@ -5,7 +5,6 @@ import (
     "errors"
     "fmt"
     "math"
-    "github.com/visualfc/go-iup/cd"
     "sort"
     "strings"
 )
@@ -754,6 +753,94 @@ func (elem *Elem) DivideAtOns () (n []*Node, els []*Elem, err error) {
 }
 // }}}
 
+func (elem *Elem) BetweenNode (index, size int) []*Node {
+    var rtn []*Node
+    var dst []float64
+    var all bool
+    if size < 0 {
+        all = true
+        rtn = make([]*Node, 0)
+    } else {
+        all = false
+        rtn = make([]*Node, size)
+        dst = make([]float64, size)
+    }
+    if size==0 || !elem.IsLineElem() { return rtn }
+    d := elem.Direction(true)
+    L := elem.Length()
+    maxlen := 1000.0
+    cand := 0
+    for _, n := range elem.Frame.Nodes {
+        if n.Hide { continue }
+        if n == elem.Enod[0] || n == elem.Enod[1] { continue }
+        d2 := Direction(elem.Enod[index], n, false)
+        var ip float64
+        if index == 0 {
+            ip = Dot(d, d2, 3)
+        } else {
+            ip = -Dot(d, d2, 3)
+        }
+        if 0 < ip && ip < L {
+            if all {
+                rtn = append(rtn, n)
+            } else {
+                tmpd := Distance(elem.Enod[index], n)
+                if cand < size {
+                    last := true
+                    for i:=0; i<cand; i++ {
+                        if tmpd < dst[i] {
+                            for j:=cand; j>i; j-- {
+                                rtn[j] = rtn[j-1]
+                                dst[j]=dst[j-1]
+                            }
+                            rtn[i] = n
+                            dst[i] = tmpd
+                            last = false
+                            break
+                        }
+                    }
+                    if last {
+                        rtn[cand] = n
+                        dst[cand] = tmpd
+                    }
+                    maxlen  = dst[cand]
+                } else {
+                    if tmpd < maxlen {
+                        first := true
+                        for i:=size-1; i>0; i-- {
+                            if tmpd > dst[i-1] {
+                                for j:=size-1; j>i; j-- {
+                                    rtn[j] = rtn[j-1]
+                                    dst[j] = dst[j-1]
+                                }
+                                rtn[i] = n
+                                dst[i] = tmpd
+                                first = false
+                                break
+                            }
+                        }
+                        if first {
+                            for i:=size-1; i>0; i-- {
+                                rtn[i] = rtn[i-1]
+                                dst[i] = dst[i-1]
+                            }
+                            rtn[0] = n
+                            dst[0] = tmpd
+                        }
+                        maxlen = dst[size-1]
+                    }
+                }
+            }
+            cand++
+        }
+    }
+    if all {
+        return rtn[:cand]
+    } else {
+        return rtn[:size]
+    }
+}
+
 
 // Enod// {{{
 func (elem *Elem) EnodIndex (side int) (int, error) {
@@ -888,242 +975,6 @@ func (elem *Elem) BondState () (rtn int) {
 // }}}
 
 
-// Draw// {{{
-func (elem *Elem) Draw (cvs *cd.Canvas, show *Show) {
-    var ecap bytes.Buffer
-    var oncap bool
-    if show.ElemCaption & EC_NUM != 0 {
-        ecap.WriteString(fmt.Sprintf("%d\n", elem.Num))
-        oncap = true
-    }
-    if show.ElemCaption & EC_SECT != 0 {
-        ecap.WriteString(fmt.Sprintf("%d\n", elem.Sect.Num))
-        oncap = true
-    }
-    if elem.IsLineElem() {
-        if show.ElemCaption & EC_RATE_L != 0 || show.ElemCaption & EC_RATE_S != 0 {
-            val := elem.RateMax(show)
-            ecap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n",show.Formats["RATE"]),val))
-            oncap = true
-        }
-    }
-    if oncap {
-        var textpos []float64
-        if BRACE <= elem.Etype && elem.Etype <= SBRACE {
-            coord := make([]float64, 3)
-            for j, en := range elem.Enod {
-                for k:=0; k<3; k++ {
-                    coord[k] += (-0.5*float64(j)+0.75)*en.Coord[k]
-                }
-            }
-            textpos = elem.Frame.View.ProjectCoord(coord)
-        } else {
-            textpos = make([]float64, 2)
-            for _, en := range elem.Enod {
-                for i:=0; i<2; i++ {
-                    textpos[i] += en.Pcoord[i]
-                }
-            }
-            for i:=0; i<2; i++ {
-                textpos[i] /= float64(elem.Enods)
-            }
-        }
-        cvs.FText(textpos[0], textpos[1], ecap.String())
-    }
-    if elem.IsLineElem() {
-        cvs.FLine(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1], elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
-        if show.Bond {
-            cvs.Foreground(show.BondColor)
-            switch elem.BondState() {
-            case PIN_RIGID:
-                d := elem.PDirection(true)
-                cvs.FCircle(elem.Enod[0].Pcoord[0]+d[0]*show.BondSize, elem.Enod[0].Pcoord[1]+d[1]*show.BondSize, show.BondSize*2)
-            case RIGID_PIN:
-                d := elem.PDirection(true)
-                cvs.FCircle(elem.Enod[1].Pcoord[0]-d[0]*show.BondSize, elem.Enod[1].Pcoord[1]-d[1]*show.BondSize, show.BondSize*2)
-            case PIN_PIN:
-                d := elem.PDirection(true)
-                cvs.FCircle(elem.Enod[0].Pcoord[0]+d[0]*show.BondSize, elem.Enod[0].Pcoord[1]+d[1]*show.BondSize, show.BondSize*2)
-                cvs.FCircle(elem.Enod[1].Pcoord[0]-d[0]*show.BondSize, elem.Enod[1].Pcoord[1]-d[1]*show.BondSize, show.BondSize*2)
-            }
-        }
-        if show.ElementAxis {
-            elem.DrawElementAxis(cvs, show)
-        }
-        // Deformation
-        if show.Deformation {
-            cvs.LineStyle(cd.CD_DOTTED)
-            cvs.FLine(elem.Enod[0].Dcoord[0], elem.Enod[0].Dcoord[1], elem.Enod[1].Dcoord[0], elem.Enod[1].Dcoord[1])
-            cvs.LineStyle(cd.CD_CONTINUOUS)
-        }
-        // Stress
-        var flag uint
-        if f, ok := show.Stress[elem.Sect.Num]; ok {
-            flag = f
-        } else if f, ok := show.Stress[elem.Etype]; ok {
-            flag = f
-        }
-        if flag != 0 {
-            sttext := make([]bytes.Buffer, 2)
-            for i, st := range []uint{ STRESS_NZ, STRESS_QX, STRESS_QY, STRESS_MZ, STRESS_MX, STRESS_MY } {
-                if flag & st != 0 {
-                    sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)))
-                    if i != 0 { // not showing NZ
-                        sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i)))
-                        if i == 4 || i == 5 {
-                            mcoord := elem.MomentCoord(show, i)
-                            cvs.Foreground(show.MomentColor)
-                            cvs.Begin(cd.CD_OPEN_LINES)
-                            cvs.FVertex(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1])
-                            for _, c := range mcoord {
-                                tmp := elem.Frame.View.ProjectCoord(c)
-                                cvs.FVertex(tmp[0], tmp[1])
-                            }
-                            cvs.FVertex(elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
-                            cvs.End()
-                        }
-                    }
-                }
-            }
-            cvs.Foreground(show.StressTextColor)
-            for j:=0; j<2; j++ {
-                if tex := sttext[j].String(); tex != "" {
-                    coord := make([]float64, 3)
-                    for i, en := range elem.Enod {
-                        for k:=0; k<3; k++ {
-                            coord[k] += (-0.5*math.Abs(float64(i-j))+0.75)*en.Coord[k]
-                        }
-                    }
-                    stpos := elem.Frame.View.ProjectCoord(coord)
-                    // TODO: rotate text
-                    if j == 0 {
-                        cvs.TextAlignment(cd.CD_SOUTH)
-                    } else {
-                        cvs.TextAlignment(cd.CD_NORTH)
-                    }
-                    cvs.FText(stpos[0], stpos[1], tex[:len(tex)-1])
-                    cvs.TextAlignment(DefaultTextAlignment)
-                }
-            }
-        }
-    } else {
-        cvs.Begin(cd.CD_FILL)
-        cvs.FVertex(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1])
-        for i:=1; i<elem.Enods; i++ {
-            cvs.FVertex(elem.Enod[i].Pcoord[0], elem.Enod[i].Pcoord[1])
-        }
-        cvs.End()
-        cvs.Foreground(show.PlateEdgeColor)
-        cvs.Begin(cd.CD_CLOSED_LINES)
-        cvs.FVertex(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1])
-        for i:=1; i<elem.Enods; i++ {
-            cvs.FVertex(elem.Enod[i].Pcoord[0], elem.Enod[i].Pcoord[1])
-        }
-        cvs.End()
-        if show.ElemNormal {
-            elem.DrawNormal(cvs, show)
-        }
-    }
-}
-
-func (elem *Elem) MomentCoord (show *Show, index int) [][]float64 {
-    var axis []float64
-    if index == 4 {
-        axis = elem.Weak
-    } else if index == 5 {
-        axis = make([]float64, 3)
-        for i:=0; i<3; i++ {
-            axis[i] = -elem.Strong[i]
-        }
-    } else {
-        return nil
-    }
-    ms := make([]float64, 2)
-    qs := make([]float64, 2)
-    for i:=0; i<2; i++ {
-        ms[i] = elem.ReturnStress(show.Period, i, index)
-        qs[i] = elem.ReturnStress(show.Period, i, 6-index)
-    }
-    l := elem.Length()
-    rtn := make([][]float64, 3)
-    rtn[0] = make([]float64, 3)
-    for i:=0; i<3; i++ {
-        rtn[0][i] = -show.Mfact * axis[i] * ms[0] + elem.Enod[0].Coord[i]
-    }
-    rtn[2] = make([]float64, 3)
-    for i:=0; i<3; i++ {
-        rtn[2][i] = show.Mfact * axis[i] * ms[1] + elem.Enod[1].Coord[i]
-    }
-    if math.Abs(qs[0]+qs[1]) > 1.0 {
-        tmp := make([]float64, 3)
-        d := elem.Direction(true)
-        val := (qs[1]*l - (ms[0]+ms[1])) / (qs[0]+qs[1])
-        for i:=0; i<3; i++ {
-            tmp[i] = elem.Enod[0].Coord[i] + d[i]*val
-        }
-        ll := 0.0
-        for i:=0; i<3; i++ {
-            ll += math.Pow(elem.Enod[1].Coord[i] - tmp[i], 2.0)
-        }
-        ll = math.Sqrt(ll)
-        if 0.0 < ll && ll < l {
-            rtn[1] = make([]float64, 3)
-            val := (qs[0]*ms[1] - qs[1]*ms[0] - qs[0]*qs[1]*l) / (qs[0]+qs[1])
-            for i:=0; i<3; i++ {
-                rtn[1][i] = tmp[i] + show.Mfact * axis[i] * val
-            }
-        } else {
-            return [][]float64{rtn[0], rtn[2]}
-        }
-        return rtn
-    } else {
-        return [][]float64{rtn[0], rtn[2]}
-    }
-}
-
-func (elem *Elem) DrawElementAxis (canv *cd.Canvas, show *Show) {
-    if !elem.IsLineElem() { return }
-    x := make([]float64, 3)
-    y := make([]float64, 3)
-    z := make([]float64, 3)
-    position := elem.MidPoint()
-    d := elem.Direction(true)
-    for i:=0; i<3; i++ {
-        x[i] = position[i] + show.ElementAxisSize*elem.Strong[i]
-        y[i] = position[i] + show.ElementAxisSize*elem.Weak[i]
-        z[i] = position[i] + show.ElementAxisSize*d[i]
-    }
-    origin := elem.Frame.View.ProjectCoord(position)
-    xaxis  := elem.Frame.View.ProjectCoord(x)
-    yaxis  := elem.Frame.View.ProjectCoord(y)
-    zaxis  := elem.Frame.View.ProjectCoord(z)
-    arrow := 0.3
-    angle := 10.0*math.Pi/180.0
-    canv.LineStyle(cd.CD_CONTINUOUS)
-    canv.Foreground(cd.CD_RED)
-    Arrow(canv, origin[0], origin[1], xaxis[0], xaxis[1], arrow, angle)
-    canv.Foreground(cd.CD_GREEN)
-    Arrow(canv, origin[0], origin[1], yaxis[0], yaxis[1], arrow, angle)
-    canv.Foreground(cd.CD_BLUE)
-    Arrow(canv, origin[0], origin[1], zaxis[0], zaxis[1], arrow, angle)
-    canv.Foreground(cd.CD_WHITE)
-}
-
-func (elem *Elem) DrawNormal (canv *cd.Canvas, show *Show) {
-    v := make([]float64, 3)
-    mid := elem.MidPoint()
-    d := elem.Normal(true)
-    for i:=0; i<3; i++ {
-        v[i] = mid[i] + show.NodeNormalSize*d[i]
-    }
-    vec  := elem.Frame.View.ProjectCoord(v)
-    mp := elem.Frame.View.ProjectCoord(mid)
-    arrow := 0.3
-    angle := 10.0*math.Pi/180.0
-    canv.LineStyle(cd.CD_CONTINUOUS)
-    Arrow(canv, mp[0], mp[1], vec[0], vec[1], arrow, angle)
-}
-
 func (elem *Elem) DistFromProjection () float64 {
     v := elem.Frame.View
     vec := make([]float64, 3)
@@ -1131,36 +982,5 @@ func (elem *Elem) DistFromProjection () float64 {
     for i:=0; i<3; i++ {
         vec[i] = coord[i] - v.Focus[i]
     }
-    return v.Dists[0] - Dot(vec, v.viewpoint[0], 3)
+    return v.Dists[0] - Dot(vec, v.Viewpoint[0], 3)
 }
-
-func (elem *Elem) RateMax(show *Show) float64 {
-     if len(elem.Rate)%3 != 0 || (show.ElemCaption & EC_RATE_L == 0 && show.ElemCaption & EC_RATE_S == 0) {
-        val := 0.0
-        for _, tmp := range elem.Rate {
-            if tmp > val { val = tmp }
-        }
-        return val
-    } else {
-        vall := 0.0
-        vals := 0.0
-        for i, tmp := range elem.Rate {
-            switch i%3 {
-            default:
-                continue
-            case 0:
-                if tmp > vall { vall = tmp }
-            case 1:
-                if tmp > vals { vals = tmp }
-            }
-        }
-        if show.ElemCaption & EC_RATE_L == 0 { vall = 0.0 }
-        if show.ElemCaption & EC_RATE_S == 0 { vals = 0.0 }
-        if vall >= vals {
-            return vall
-        } else {
-            return vals
-        }
-    }
-}
-// }}}
