@@ -59,24 +59,11 @@ const (
 // Draw
 var (
     first = 1
-
-)
-
-const ( // NodeCaption
-    NC_NUM = 1 << iota
-    NC_ZCOORD
-    NC_DX
-    NC_DY
-    NC_DZ
-    NC_RX
-    NC_RY
-    NC_RZ
-)
-const ( // ElemCaption
-    EC_NUM = 1 << iota
-    EC_SECT
-    EC_RATE_L
-    EC_RATE_S
+    PlateEdgeColor = cd.CD_GRAY
+    BondColor = cd.CD_GRAY
+    ConfColor = cd.CD_GRAY
+    MomentColor = cd.CD_DARK_MAGENTA
+    StressTextColor = cd.CD_GRAY
 )
 
 var (
@@ -133,23 +120,6 @@ var (
     pressed time.Time
 )
 
-// Line Color
-var ( // Boundary for Rainbow (length should be <= 6)
-    RateBoundary = []float64{0.5, 0.6, 0.7, 0.71428, 0.9, 1.0}
-    HeightBoundary = []float64{0.5, 1.0, 1.5, 2.0, 2.5, 3.0}
-)
-var (
-    ECOLORS = []string{ "WHITE", "BLACK", "BY SECTION", "BY RATE", "BY HEIGHT" }
-    PERIODS = []string{ "L", "X", "Y" }
-)
-const (
-    ECOLOR_WHITE = iota
-    ECOLOR_BLACK
-    ECOLOR_SECT
-    ECOLOR_RATE
-    ECOLOR_HEIGHT
-)
-
 var (
     axrn_minmax = regexp.MustCompile("([+-]?[-0-9.]+)<=([XYZxyz]{1})<=([+-]?[-0-9.]+)")
     axrn_min = regexp.MustCompile("([+-]?[-0-9.]+)<=([XYZxyz]{1})")
@@ -161,8 +131,6 @@ var (
 
 type Window struct {// {{{
     Home   string
-
-    Show *Show
 
     Frame  *st.Frame
     Dlg    *iup.Handle
@@ -194,6 +162,12 @@ type Window struct {// {{{
     endY   int
 
     lastcommand *Command
+
+    Labels   map[string]*iup.Handle
+
+    Property bool
+    Selected []*iup.Handle
+    Props []*iup.Handle
 }
 // }}}
 
@@ -201,9 +175,88 @@ type Window struct {// {{{
 func NewWindow(homedir string) *Window {// {{{
     stw := new(Window)
     stw.Home = homedir
-    stw.Show = NewShow(stw)
     stw.SelectNode = make([]*st.Node, 0)
     stw.SelectElem = make([]*st.Elem, 0)
+    stw.Labels = make(map[string]*iup.Handle)
+    stw.Labels["GAXIS"]       = stw.displayLabel("GAXIS", true)
+    stw.Labels["EAXIS"]       = stw.displayLabel("EAXIS", false)
+    stw.Labels["BOND"]        = stw.displayLabel("BOND", true)
+    stw.Labels["CONF"]        = stw.displayLabel("CONF", true)
+    stw.Labels["KIJUN"]       = stw.displayLabel("KIJUN", false)
+    stw.Labels["DEFORMATION"] = stw.displayLabel("DEFORMATION", false)
+    stw.Labels["GFACT"]       = datatext("0.0")
+    stw.Labels["DISTR"]       = datatext("0.0")
+    stw.Labels["DISTL"]       = datatext("0.0")
+    stw.Labels["PHI"]         = datatext("0.0")
+    stw.Labels["THETA"]       = datatext("0.0")
+    stw.Labels["FOCUSX"]      = datatext("0.0")
+    stw.Labels["FOCUSY"]      = datatext("0.0")
+    stw.Labels["FOCUSZ"]      = datatext("0.0")
+    stw.Labels["CENTERX"]     = datatext("0.0")
+    stw.Labels["CENTERY"]     = datatext("0.0")
+    stw.Labels["COLUMN"]      = stw.etypeLabel("  COLUMN", datalabelwidth+datatextwidth, st.COLUMN, true)
+    stw.Labels["GIRDER"]      = stw.etypeLabel("  GIRDER", datalabelwidth+datatextwidth, st.GIRDER, true)
+    stw.Labels["BRACE"]       = stw.etypeLabel("  BRACE",  datalabelwidth+datatextwidth, st.BRACE, true)
+    stw.Labels["WALL"]        = stw.etypeLabel("  WALL",   datalabelwidth-10, st.WALL, true)
+    stw.Labels["SLAB"]        = stw.etypeLabel("  SLAB",   datalabelwidth-10, st.SLAB, true)
+    stw.Labels["WBRACE"]      = stw.etypeLabel("WBRACE", datatextwidth, st.WBRACE, false)
+    stw.Labels["SBRACE"]      = stw.etypeLabel("SBRACE", datatextwidth, st.SBRACE, false)
+    stw.Labels["NC_NUM"]      = stw.captionLabel("NODE", "  CODE", datalabelwidth+datatextwidth, st.NC_NUM, true)
+    stw.Labels["NC_DX"]       = stw.captionLabel("NODE", "  dX", (datalabelwidth+datatextwidth)/3, st.NC_DX, false)
+    stw.Labels["NC_DY"]       = stw.captionLabel("NODE", "  dY", (datalabelwidth+datatextwidth)/3, st.NC_DY, false)
+    stw.Labels["NC_DZ"]       = stw.captionLabel("NODE", "  dZ", (datalabelwidth+datatextwidth)/3, st.NC_DZ, false)
+    stw.Labels["NC_RX"]       = stw.captionLabel("NODE", "  Rx", (datalabelwidth+datatextwidth)/3, st.NC_RX, false)
+    stw.Labels["NC_RY"]       = stw.captionLabel("NODE", "  Ry", (datalabelwidth+datatextwidth)/3, st.NC_RY, false)
+    stw.Labels["NC_RZ"]       = stw.captionLabel("NODE", "  Rz", (datalabelwidth+datatextwidth)/3, st.NC_RZ, false)
+    stw.Labels["EC_NUM"]      = stw.captionLabel("ELEM", "  CODE", datalabelwidth+datatextwidth, st.EC_NUM, false)
+    stw.Labels["EC_SECT"]     = stw.captionLabel("ELEM", "  SECT", datalabelwidth+datatextwidth, st.EC_SECT, false)
+    stw.Labels["EC_RATE_L"]   = stw.captionLabel("ELEM", "  RATE_L", datalabelwidth, st.EC_RATE_L, false)
+    stw.Labels["EC_RATE_S"]   = stw.captionLabel("ELEM", "RATE_S", datatextwidth, st.EC_RATE_S, false)
+    stw.Labels["COLORMODE"]   = stw.toggleLabel(2, st.ECOLORS)
+    stw.Labels["PERIOD"]      = datatext("L")
+    stw.Labels["GAXISSIZE"]   = datatext("1.0")
+    stw.Labels["EAXISSIZE"]   = datatext("0.5")
+    stw.Labels["BONDSIZE"]    = datatext("3.0")
+    stw.Labels["CONFSIZE"]    = datatext("9.0")
+    stw.Labels["DFACT"]       = datatext("100.0")
+    stw.Labels["MFACT"]       = datatext("0.5")
+    stw.Labels["XMAX"]        = datatext("1000.0")
+    stw.Labels["XMIN"]        = datatext("-100.0")
+    stw.Labels["YMAX"]        = datatext("1000.0")
+    stw.Labels["YMIN"]        = datatext("-100.0")
+    stw.Labels["ZMAX"]        = datatext("1000.0")
+    stw.Labels["ZMIN"]        = datatext("-100.0")
+    stw.Labels["COLUMN_NZ"]   = stw.stressLabel(st.COLUMN, 0)
+    stw.Labels["COLUMN_QX"]   = stw.stressLabel(st.COLUMN, 1)
+    stw.Labels["COLUMN_QY"]   = stw.stressLabel(st.COLUMN, 2)
+    stw.Labels["COLUMN_MZ"]   = stw.stressLabel(st.COLUMN, 3)
+    stw.Labels["COLUMN_MX"]   = stw.stressLabel(st.COLUMN, 4)
+    stw.Labels["COLUMN_MY"]   = stw.stressLabel(st.COLUMN, 5)
+    stw.Labels["GIRDER_NZ"]   = stw.stressLabel(st.GIRDER, 0)
+    stw.Labels["GIRDER_QX"]   = stw.stressLabel(st.GIRDER, 1)
+    stw.Labels["GIRDER_QY"]   = stw.stressLabel(st.GIRDER, 2)
+    stw.Labels["GIRDER_MZ"]   = stw.stressLabel(st.GIRDER, 3)
+    stw.Labels["GIRDER_MX"]   = stw.stressLabel(st.GIRDER, 4)
+    stw.Labels["GIRDER_MY"]   = stw.stressLabel(st.GIRDER, 5)
+    stw.Labels["BRACE_NZ"]    = stw.stressLabel(st.BRACE, 0)
+    stw.Labels["BRACE_QX"]    = stw.stressLabel(st.BRACE, 1)
+    stw.Labels["BRACE_QY"]    = stw.stressLabel(st.BRACE, 2)
+    stw.Labels["BRACE_MZ"]    = stw.stressLabel(st.BRACE, 3)
+    stw.Labels["BRACE_MX"]    = stw.stressLabel(st.BRACE, 4)
+    stw.Labels["BRACE_MY"]    = stw.stressLabel(st.BRACE, 5)
+    stw.Labels["WALL_NZ"]     = stw.stressLabel(st.WBRACE, 0)
+    stw.Labels["WALL_QX"]     = stw.stressLabel(st.WBRACE, 1)
+    stw.Labels["WALL_QY"]     = stw.stressLabel(st.WBRACE, 2)
+    stw.Labels["WALL_MZ"]     = stw.stressLabel(st.WBRACE, 3)
+    stw.Labels["WALL_MX"]     = stw.stressLabel(st.WBRACE, 4)
+    stw.Labels["WALL_MY"]     = stw.stressLabel(st.WBRACE, 5)
+    stw.Labels["SLAB_NZ"]     = stw.stressLabel(st.SBRACE, 0)
+    stw.Labels["SLAB_QX"]     = stw.stressLabel(st.SBRACE, 1)
+    stw.Labels["SLAB_QY"]     = stw.stressLabel(st.SBRACE, 2)
+    stw.Labels["SLAB_MZ"]     = stw.stressLabel(st.SBRACE, 3)
+    stw.Labels["SLAB_MX"]     = stw.stressLabel(st.SBRACE, 4)
+    stw.Labels["SLAB_MY"]     = stw.stressLabel(st.SBRACE, 5)
+
     iup.Menu(
         iup.Attrs("BGCOLOR", labelBGColor,),
         iup.SubMenu("TITLE=File",
@@ -306,7 +359,7 @@ func NewWindow(homedir string) *Window {// {{{
                 iup.Item(
                     iup.Attr("TITLE","Property\tCtrl+Q"),
                     func (arg *iup.ItemAction) {
-                        if !stw.Show.Property {
+                        if !stw.Property {
                             stw.PropertyDialog()
                         }
                     },
@@ -646,94 +699,94 @@ func NewWindow(homedir string) *Window {// {{{
                          }
                      })
     vlabels := iup.Vbox(iup.Hbox(datasectionlabel("VIEW"),),
-                            iup.Hbox(datalabel("GFACT"), stw.Show.Label["GFACT"], ),
+                            iup.Hbox(datalabel("GFACT"), stw.Labels["GFACT"], ),
                             iup.Hbox(pers),
                         iup.Hbox(datasectionlabel("DISTS"),),
-                            iup.Hbox(datalabel("R"), stw.Show.Label["DISTR"], ),
-                            iup.Hbox(datalabel("L"), stw.Show.Label["DISTL"], ),
+                            iup.Hbox(datalabel("R"), stw.Labels["DISTR"], ),
+                            iup.Hbox(datalabel("L"), stw.Labels["DISTL"], ),
                         iup.Hbox(datasectionlabel("ANGLE"),),
-                            iup.Hbox(datalabel("PHI"), stw.Show.Label["PHI"], ),
-                            iup.Hbox(datalabel("THETA"), stw.Show.Label["THETA"], ),
+                            iup.Hbox(datalabel("PHI"), stw.Labels["PHI"], ),
+                            iup.Hbox(datalabel("THETA"), stw.Labels["THETA"], ),
                         iup.Hbox(datasectionlabel("FOCUS"),),
-                            iup.Hbox(datalabel("X"), stw.Show.Label["FOCUSX"], ),
-                            iup.Hbox(datalabel("Y"), stw.Show.Label["FOCUSY"], ),
-                            iup.Hbox(datalabel("Z"), stw.Show.Label["FOCUSZ"], ),
+                            iup.Hbox(datalabel("X"), stw.Labels["FOCUSX"], ),
+                            iup.Hbox(datalabel("Y"), stw.Labels["FOCUSY"], ),
+                            iup.Hbox(datalabel("Z"), stw.Labels["FOCUSZ"], ),
                         iup.Hbox(datasectionlabel("CENTER"),),
-                            iup.Hbox(datalabel("X"), stw.Show.Label["CENTERX"], ),
-                            iup.Hbox(datalabel("Y"), stw.Show.Label["CENTERY"], ),
+                            iup.Hbox(datalabel("X"), stw.Labels["CENTERX"], ),
+                            iup.Hbox(datalabel("Y"), stw.Labels["CENTERY"], ),
                         "MARGIN=0x0",
                        )
     tgelem := iup.Vbox(datasectionlabel("ETYPE"),
-                           stw.Show.Label["COLUMN"],
-                           iup.Hbox(stw.Show.Label["COLUMN_NZ"],
-                                    stw.Show.Label["COLUMN_QX"],
-                                    stw.Show.Label["COLUMN_QY"],
-                                    stw.Show.Label["COLUMN_MZ"],
-                                    stw.Show.Label["COLUMN_MX"],
-                                    stw.Show.Label["COLUMN_MY"]),
-                           stw.Show.Label["GIRDER"],
-                           iup.Hbox(stw.Show.Label["GIRDER_NZ"],
-                                    stw.Show.Label["GIRDER_QX"],
-                                    stw.Show.Label["GIRDER_QY"],
-                                    stw.Show.Label["GIRDER_MZ"],
-                                    stw.Show.Label["GIRDER_MX"],
-                                    stw.Show.Label["GIRDER_MY"]),
-                           stw.Show.Label["BRACE"],
-                           iup.Hbox(stw.Show.Label["BRACE_NZ"],
-                                    stw.Show.Label["BRACE_QX"],
-                                    stw.Show.Label["BRACE_QY"],
-                                    stw.Show.Label["BRACE_MZ"],
-                                    stw.Show.Label["BRACE_MX"],
-                                    stw.Show.Label["BRACE_MY"]),
-                           iup.Hbox(stw.Show.Label["WALL"], stw.Show.switchLabel(st.WALL), stw.Show.Label["WBRACE"],),
-                           iup.Hbox(stw.Show.Label["WALL_NZ"],
-                                    stw.Show.Label["WALL_QX"],
-                                    stw.Show.Label["WALL_QY"],
-                                    stw.Show.Label["WALL_MZ"],
-                                    stw.Show.Label["WALL_MX"],
-                                    stw.Show.Label["WALL_MY"]),
-                           iup.Hbox(stw.Show.Label["SLAB"], stw.Show.switchLabel(st.SLAB), stw.Show.Label["SBRACE"],),
-                           iup.Hbox(stw.Show.Label["SLAB_NZ"],
-                                    stw.Show.Label["SLAB_QX"],
-                                    stw.Show.Label["SLAB_QY"],
-                                    stw.Show.Label["SLAB_MZ"],
-                                    stw.Show.Label["SLAB_MX"],
-                                    stw.Show.Label["SLAB_MY"]),)
+                           stw.Labels["COLUMN"],
+                           iup.Hbox(stw.Labels["COLUMN_NZ"],
+                                    stw.Labels["COLUMN_QX"],
+                                    stw.Labels["COLUMN_QY"],
+                                    stw.Labels["COLUMN_MZ"],
+                                    stw.Labels["COLUMN_MX"],
+                                    stw.Labels["COLUMN_MY"]),
+                           stw.Labels["GIRDER"],
+                           iup.Hbox(stw.Labels["GIRDER_NZ"],
+                                    stw.Labels["GIRDER_QX"],
+                                    stw.Labels["GIRDER_QY"],
+                                    stw.Labels["GIRDER_MZ"],
+                                    stw.Labels["GIRDER_MX"],
+                                    stw.Labels["GIRDER_MY"]),
+                           stw.Labels["BRACE"],
+                           iup.Hbox(stw.Labels["BRACE_NZ"],
+                                    stw.Labels["BRACE_QX"],
+                                    stw.Labels["BRACE_QY"],
+                                    stw.Labels["BRACE_MZ"],
+                                    stw.Labels["BRACE_MX"],
+                                    stw.Labels["BRACE_MY"]),
+                           iup.Hbox(stw.Labels["WALL"], stw.switchLabel(st.WALL), stw.Labels["WBRACE"],),
+                           iup.Hbox(stw.Labels["WALL_NZ"],
+                                    stw.Labels["WALL_QX"],
+                                    stw.Labels["WALL_QY"],
+                                    stw.Labels["WALL_MZ"],
+                                    stw.Labels["WALL_MX"],
+                                    stw.Labels["WALL_MY"]),
+                           iup.Hbox(stw.Labels["SLAB"], stw.switchLabel(st.SLAB), stw.Labels["SBRACE"],),
+                           iup.Hbox(stw.Labels["SLAB_NZ"],
+                                    stw.Labels["SLAB_QX"],
+                                    stw.Labels["SLAB_QY"],
+                                    stw.Labels["SLAB_MZ"],
+                                    stw.Labels["SLAB_MX"],
+                                    stw.Labels["SLAB_MY"]),)
     tgncap := iup.Vbox(datasectionlabel("NODE CAPTION"),
-                           stw.Show.Label["NC_NUM"],
-                           iup.Hbox(stw.Show.Label["NC_DX"],
-                                    stw.Show.Label["NC_DY"],
-                                    stw.Show.Label["NC_DZ"],),
-                           iup.Hbox(stw.Show.Label["NC_RX"],
-                                    stw.Show.Label["NC_RY"],
-                                    stw.Show.Label["NC_RZ"],),)
+                           stw.Labels["NC_NUM"],
+                           iup.Hbox(stw.Labels["NC_DX"],
+                                    stw.Labels["NC_DY"],
+                                    stw.Labels["NC_DZ"],),
+                           iup.Hbox(stw.Labels["NC_RX"],
+                                    stw.Labels["NC_RY"],
+                                    stw.Labels["NC_RZ"],),)
     tgecap := iup.Vbox(datasectionlabel("ELEM CAPTION"),
-                           stw.Show.Label["EC_NUM"],
-                           stw.Show.Label["EC_SECT"],
-                           iup.Hbox(stw.Show.Label["EC_RATE_L"],stw.Show.Label["EC_RATE_S"]),)
-    tgcolmode:= iup.Vbox(datasectionlabel("COLOR MODE"),stw.Show.Label["COLORMODE"])
+                           stw.Labels["EC_NUM"],
+                           stw.Labels["EC_SECT"],
+                           iup.Hbox(stw.Labels["EC_RATE_L"],stw.Labels["EC_RATE_S"]),)
+    tgcolmode:= iup.Vbox(datasectionlabel("COLOR MODE"),stw.Labels["COLORMODE"])
     tgparam := iup.Vbox(datasectionlabel("PARAMETER"),
-                           iup.Hbox(datalabel("PERIOD"), stw.Show.Label["PERIOD"],),
-                           iup.Hbox(datalabel("GAXIS"), stw.Show.Label["GAXISSIZE"],),
-                           iup.Hbox(datalabel("EAXIS"), stw.Show.Label["EAXISSIZE"],),
-                           iup.Hbox(datalabel("BOND"), stw.Show.Label["BONDSIZE"],),
-                           iup.Hbox(datalabel("CONF"), stw.Show.Label["CONFSIZE"],),
-                           iup.Hbox(datalabel("DFACT"), stw.Show.Label["DFACT"],),
-                           iup.Hbox(datalabel("MFACT"), stw.Show.Label["MFACT"],),)
+                           iup.Hbox(datalabel("PERIOD"), stw.Labels["PERIOD"],),
+                           iup.Hbox(datalabel("GAXIS"), stw.Labels["GAXISSIZE"],),
+                           iup.Hbox(datalabel("EAXIS"), stw.Labels["EAXISSIZE"],),
+                           iup.Hbox(datalabel("BOND"), stw.Labels["BONDSIZE"],),
+                           iup.Hbox(datalabel("CONF"), stw.Labels["CONFSIZE"],),
+                           iup.Hbox(datalabel("DFACT"), stw.Labels["DFACT"],),
+                           iup.Hbox(datalabel("MFACT"), stw.Labels["MFACT"],),)
     tgshow := iup.Vbox(datasectionlabel("SHOW"),
-                           stw.Show.Label["GAXIS"],
-                           stw.Show.Label["EAXIS"],
-                           stw.Show.Label["BOND"],
-                           stw.Show.Label["CONF"],
-                           stw.Show.Label["KIJUN"],
-                           stw.Show.Label["DEFORMATION"])
+                           stw.Labels["GAXIS"],
+                           stw.Labels["EAXIS"],
+                           stw.Labels["BOND"],
+                           stw.Labels["CONF"],
+                           stw.Labels["KIJUN"],
+                           stw.Labels["DEFORMATION"])
     tgrang := iup.Vbox(datasectionlabel("RANGE"),
-                           iup.Hbox(datalabel("Xmax"), stw.Show.Label["XMAX"]),
-                           iup.Hbox(datalabel("Xmin"), stw.Show.Label["XMIN"]),
-                           iup.Hbox(datalabel("Ymax"), stw.Show.Label["YMAX"]),
-                           iup.Hbox(datalabel("Ymin"), stw.Show.Label["YMIN"]),
-                           iup.Hbox(datalabel("Zmax"), stw.Show.Label["ZMAX"]),
-                           iup.Hbox(datalabel("Zmin"), stw.Show.Label["ZMIN"]),)
+                           iup.Hbox(datalabel("Xmax"), stw.Labels["XMAX"]),
+                           iup.Hbox(datalabel("Xmin"), stw.Labels["XMIN"]),
+                           iup.Hbox(datalabel("Ymax"), stw.Labels["YMAX"]),
+                           iup.Hbox(datalabel("Ymin"), stw.Labels["YMIN"]),
+                           iup.Hbox(datalabel("Zmax"), stw.Labels["ZMAX"]),
+                           iup.Hbox(datalabel("Zmin"), stw.Labels["ZMIN"]),)
     stw.Dlg = iup.Dialog(
                   iup.Attrs(
                       "MENU", "main_menu",
@@ -755,7 +808,9 @@ func NewWindow(homedir string) *Window {// {{{
                       arg.Return = iup.CLOSE
                   },
                   func (arg *iup.CommonGetFocus) {
-                      stw.Redraw()
+                      if stw.Frame != nil {
+                          stw.Redraw()
+                      }
                   },
               )
     stw.Dlg.Map()
@@ -766,250 +821,6 @@ func NewWindow(homedir string) *Window {// {{{
     stw.EscapeAll()
     return stw
 }
-// }}}
-
-
-type Show struct {// {{{
-    Window *Window
-
-    ColorMode uint
-
-    NodeCaption uint
-    ElemCaption uint
-
-    GlobalAxis bool
-    GlobalAxisSize float64
-    ElementAxis bool
-    ElementAxisSize float64
-
-    NodeNormal bool
-    NodeNormalSize float64
-    ElemNormal bool
-    ElemNormalSize float64
-
-    PlateEdgeColor int
-
-    Conf bool
-    ConfSize float64
-    ConfColor int
-
-    Bond bool
-    BondSize float64
-    BondColor int
-
-    Period string
-
-    Deformation bool
-    Dfact float64
-
-    Stress   map[int]uint
-
-    Mfact float64
-    MomentColor int
-    StressTextColor int
-
-    Kijun bool
-    KijunSize float64
-
-    Select bool
-
-    Sect     map[int]bool
-    Etype    map[int]bool
-
-    Label    map[string]*iup.Handle
-
-    Xrange []float64
-    Yrange []float64
-    Zrange []float64
-
-    Property bool
-    Selected []*iup.Handle
-    Props []*iup.Handle
-
-    Formats map[string]string
-}
-
-func NewShow(stw *Window) *Show {
-    s := new(Show)
-
-    s.Window = stw
-
-    s.ColorMode = ECOLOR_SECT
-
-    s.NodeCaption = NC_NUM
-    s.ElemCaption = 0
-
-    s.GlobalAxis = true
-    s.GlobalAxisSize = 1.0
-    s.ElementAxis = false
-    s.ElementAxisSize = 0.5
-
-    s.NodeNormal = false
-    s.NodeNormalSize = 0.2
-    s.ElemNormal = false
-    s.ElemNormalSize = 0.2
-
-    s.PlateEdgeColor = cd.CD_GRAY
-
-    s.Bond = true
-    s.BondSize = 3.0
-    s.BondColor = cd.CD_GRAY
-    s.Conf = true
-    s.ConfSize = 9.0
-    s.ConfColor = cd.CD_GRAY
-
-    s.Period = "L"
-
-    s.Deformation = false
-    s.Dfact = 100.0
-
-    s.Stress = map[int]uint{st.COLUMN: 0, st.GIRDER: 0, st.BRACE: 0, st.WBRACE: 0, st.SBRACE: 0}
-    s.Mfact = 0.5
-    s.MomentColor = cd.CD_DARK_MAGENTA
-    s.StressTextColor = cd.CD_GRAY
-
-    s.Kijun = false
-    s.KijunSize = 12.0
-
-    s.Select = false
-
-    s.Sect  = make(map[int]bool)
-    s.Etype = make(map[int]bool)
-    for i, _ := range st.ETYPES {
-        if i == st.WBRACE || i == st.SBRACE {
-            s.Etype[i] = false
-        } else {
-            s.Etype[i] = true
-        }
-    }
-    s.Label = make(map[string]*iup.Handle)
-    s.Label["GAXIS"]       = s.displayLabel("GAXIS", true)
-    s.Label["EAXIS"]       = s.displayLabel("EAXIS", false)
-    s.Label["BOND"]        = s.displayLabel("BOND", true)
-    s.Label["CONF"]        = s.displayLabel("CONF", true)
-    s.Label["KIJUN"]       = s.displayLabel("KIJUN", false)
-    s.Label["DEFORMATION"] = s.displayLabel("DEFORMATION", false)
-    s.Label["GFACT"]       = datatext("0.0")
-    s.Label["DISTR"]       = datatext("0.0")
-    s.Label["DISTL"]       = datatext("0.0")
-    s.Label["PHI"]         = datatext("0.0")
-    s.Label["THETA"]       = datatext("0.0")
-    s.Label["FOCUSX"]      = datatext("0.0")
-    s.Label["FOCUSY"]      = datatext("0.0")
-    s.Label["FOCUSZ"]      = datatext("0.0")
-    s.Label["CENTERX"]     = datatext("0.0")
-    s.Label["CENTERY"]     = datatext("0.0")
-    s.Label["COLUMN"]      = s.etypeLabel("  COLUMN", datalabelwidth+datatextwidth, st.COLUMN, true)
-    s.Label["GIRDER"]      = s.etypeLabel("  GIRDER", datalabelwidth+datatextwidth, st.GIRDER, true)
-    s.Label["BRACE"]       = s.etypeLabel("  BRACE",  datalabelwidth+datatextwidth, st.BRACE, true)
-    s.Label["WALL"]        = s.etypeLabel("  WALL",   datalabelwidth-10, st.WALL, true)
-    s.Label["SLAB"]        = s.etypeLabel("  SLAB",   datalabelwidth-10, st.SLAB, true)
-    s.Label["WBRACE"]      = s.etypeLabel("WBRACE", datatextwidth, st.WBRACE, false)
-    s.Label["SBRACE"]      = s.etypeLabel("SBRACE", datatextwidth, st.SBRACE, false)
-    s.Label["NC_NUM"]      = s.captionLabel("NODE", "  CODE", datalabelwidth+datatextwidth, NC_NUM, true)
-    s.Label["NC_DX"]       = s.captionLabel("NODE", "  dX", (datalabelwidth+datatextwidth)/3, NC_DX, false)
-    s.Label["NC_DY"]       = s.captionLabel("NODE", "  dY", (datalabelwidth+datatextwidth)/3, NC_DY, false)
-    s.Label["NC_DZ"]       = s.captionLabel("NODE", "  dZ", (datalabelwidth+datatextwidth)/3, NC_DZ, false)
-    s.Label["NC_RX"]       = s.captionLabel("NODE", "  Rx", (datalabelwidth+datatextwidth)/3, NC_RX, false)
-    s.Label["NC_RY"]       = s.captionLabel("NODE", "  Ry", (datalabelwidth+datatextwidth)/3, NC_RY, false)
-    s.Label["NC_RZ"]       = s.captionLabel("NODE", "  Rz", (datalabelwidth+datatextwidth)/3, NC_RZ, false)
-    s.Label["EC_NUM"]      = s.captionLabel("ELEM", "  CODE", datalabelwidth+datatextwidth, EC_NUM, false)
-    s.Label["EC_SECT"]     = s.captionLabel("ELEM", "  SECT", datalabelwidth+datatextwidth, EC_SECT, false)
-    s.Label["EC_RATE_L"]   = s.captionLabel("ELEM", "  RATE_L", datalabelwidth, EC_RATE_L, false)
-    s.Label["EC_RATE_S"]   = s.captionLabel("ELEM", "RATE_S", datatextwidth, EC_RATE_S, false)
-    s.Label["COLORMODE"]   = s.toggleLabel(2, ECOLORS)
-    s.Label["PERIOD"]      = datatext("L")
-    s.Label["GAXISSIZE"]   = datatext("1.0")
-    s.Label["EAXISSIZE"]   = datatext("0.5")
-    s.Label["BONDSIZE"]    = datatext("3.0")
-    s.Label["CONFSIZE"]    = datatext("9.0")
-    s.Label["DFACT"]       = datatext("100.0")
-    s.Label["MFACT"]       = datatext("0.5")
-    s.Label["XMAX"]        = datatext("1000.0")
-    s.Label["XMIN"]        = datatext("-100.0")
-    s.Label["YMAX"]        = datatext("1000.0")
-    s.Label["YMIN"]        = datatext("-100.0")
-    s.Label["ZMAX"]        = datatext("1000.0")
-    s.Label["ZMIN"]        = datatext("-100.0")
-    s.Label["COLUMN_NZ"]   = s.stressLabel(st.COLUMN, 0)
-    s.Label["COLUMN_QX"]   = s.stressLabel(st.COLUMN, 1)
-    s.Label["COLUMN_QY"]   = s.stressLabel(st.COLUMN, 2)
-    s.Label["COLUMN_MZ"]   = s.stressLabel(st.COLUMN, 3)
-    s.Label["COLUMN_MX"]   = s.stressLabel(st.COLUMN, 4)
-    s.Label["COLUMN_MY"]   = s.stressLabel(st.COLUMN, 5)
-    s.Label["GIRDER_NZ"]   = s.stressLabel(st.GIRDER, 0)
-    s.Label["GIRDER_QX"]   = s.stressLabel(st.GIRDER, 1)
-    s.Label["GIRDER_QY"]   = s.stressLabel(st.GIRDER, 2)
-    s.Label["GIRDER_MZ"]   = s.stressLabel(st.GIRDER, 3)
-    s.Label["GIRDER_MX"]   = s.stressLabel(st.GIRDER, 4)
-    s.Label["GIRDER_MY"]   = s.stressLabel(st.GIRDER, 5)
-    s.Label["BRACE_NZ"]    = s.stressLabel(st.BRACE, 0)
-    s.Label["BRACE_QX"]    = s.stressLabel(st.BRACE, 1)
-    s.Label["BRACE_QY"]    = s.stressLabel(st.BRACE, 2)
-    s.Label["BRACE_MZ"]    = s.stressLabel(st.BRACE, 3)
-    s.Label["BRACE_MX"]    = s.stressLabel(st.BRACE, 4)
-    s.Label["BRACE_MY"]    = s.stressLabel(st.BRACE, 5)
-    s.Label["WALL_NZ"]     = s.stressLabel(st.WBRACE, 0)
-    s.Label["WALL_QX"]     = s.stressLabel(st.WBRACE, 1)
-    s.Label["WALL_QY"]     = s.stressLabel(st.WBRACE, 2)
-    s.Label["WALL_MZ"]     = s.stressLabel(st.WBRACE, 3)
-    s.Label["WALL_MX"]     = s.stressLabel(st.WBRACE, 4)
-    s.Label["WALL_MY"]     = s.stressLabel(st.WBRACE, 5)
-    s.Label["SLAB_NZ"]     = s.stressLabel(st.SBRACE, 0)
-    s.Label["SLAB_QX"]     = s.stressLabel(st.SBRACE, 1)
-    s.Label["SLAB_QY"]     = s.stressLabel(st.SBRACE, 2)
-    s.Label["SLAB_MZ"]     = s.stressLabel(st.SBRACE, 3)
-    s.Label["SLAB_MX"]     = s.stressLabel(st.SBRACE, 4)
-    s.Label["SLAB_MY"]     = s.stressLabel(st.SBRACE, 5)
-
-    s.Xrange = []float64{ -100.0, 1000.0 }
-    s.Yrange = []float64{ -100.0, 1000.0 }
-    s.Zrange = []float64{ -100.0, 1000.0 }
-
-    s.Property = false
-
-    s.Formats = make(map[string]string)
-
-    s.Formats["STRESS"]   = "%.3f"
-    s.Formats["RATE"]     = "%.3f"
-    s.Formats["DISP"]     = "%.3f"
-    s.Formats["REACTION"] = "%.3f"
-
-    return s
-}
-
-func (show *Show) All () {
-    for i, et := range st.ETYPES {
-        show.Etype[i] = true
-        if lb, ok := show.Label[et]; ok {
-            lb.SetAttribute("FGCOLOR", labelFGColor)
-        }
-    }
-    for i, _ := range show.Sect {
-        show.Sect[i] = true
-        if lb, ok := show.Label[fmt.Sprintf("%d",i)]; ok {
-            lb.SetAttribute("FGCOLOR", labelFGColor)
-        }
-    }
-    show.Xrange[0] = -100.0
-    show.Xrange[1] = 1000.0
-    show.Yrange[0] = -100.0
-    show.Yrange[1] = 1000.0
-    show.Zrange[0] = -100.0
-    show.Zrange[1] = 1000.0
-    show.Label["XMIN"].SetAttribute("VALUE", "-100.0")
-    show.Label["XMAX"].SetAttribute("VALUE", "1000.0")
-    show.Label["YMIN"].SetAttribute("VALUE", "-100.0")
-    show.Label["YMAX"].SetAttribute("VALUE", "1000.0")
-    show.Label["ZMIN"].SetAttribute("VALUE", "-100.0")
-    show.Label["ZMAX"].SetAttribute("VALUE", "1000.0")
-}
-
-func (show *Show) SetColorMode (mode uint) {
-    show.ColorMode = mode
-    show.Label["COLORMODE"].SetAttribute("VALUE", fmt.Sprintf("  %s", ECOLORS[mode]))
-}
-
 // }}}
 
 
@@ -1215,15 +1026,15 @@ func (stw *Window) Print() {
     stw.Frame.View.Gfact *= factor
     stw.Frame.View.Center[0] = 0.5*float64(pw)
     stw.Frame.View.Center[1] = 0.5*float64(ph)
-    stw.Show.ConfSize *= factor
-    stw.Show.BondSize *= factor
-    stw.DrawFrame(pcanv, ECOLOR_BLACK)
+    stw.Frame.Show.ConfSize *= factor
+    stw.Frame.Show.BondSize *= factor
+    stw.DrawFrame(pcanv, st.ECOLOR_BLACK)
     pcanv.Kill()
     stw.Frame.View.Gfact /= factor
     stw.Frame.View.Center[0] = 0.5*stw.CanvasSize[0]
     stw.Frame.View.Center[1] = 0.5*stw.CanvasSize[1]
-    stw.Show.ConfSize /= factor
-    stw.Show.BondSize /= factor
+    stw.Frame.Show.ConfSize /= factor
+    stw.Frame.Show.BondSize /= factor
     stw.Frame.View = v
     stw.Redraw()
 }
@@ -1424,20 +1235,20 @@ func axisrange(stw *Window, axis int, min, max float64, any bool) {
     }
     switch axis {
     case 0:
-        stw.Show.Xrange[0] = min
-        stw.Show.Xrange[1] = max
-        stw.Show.Label["XMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", min))
-        stw.Show.Label["XMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", max))
+        stw.Frame.Show.Xrange[0] = min
+        stw.Frame.Show.Xrange[1] = max
+        stw.Labels["XMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", min))
+        stw.Labels["XMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", max))
     case 1:
-        stw.Show.Yrange[0] = min
-        stw.Show.Yrange[1] = max
-        stw.Show.Label["YMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", min))
-        stw.Show.Label["YMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", max))
+        stw.Frame.Show.Yrange[0] = min
+        stw.Frame.Show.Yrange[1] = max
+        stw.Labels["YMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", min))
+        stw.Labels["YMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", max))
     case 2:
-        stw.Show.Zrange[0] = min
-        stw.Show.Zrange[1] = max
-        stw.Show.Label["ZMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", min))
-        stw.Show.Label["ZMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", max))
+        stw.Frame.Show.Zrange[0] = min
+        stw.Frame.Show.Zrange[1] = max
+        stw.Labels["ZMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", min))
+        stw.Labels["ZMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", max))
     }
     stw.Redraw()
 }
@@ -1452,24 +1263,24 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
         canv.Hatch(cd.CD_FDIAGONAL)
         canv.Clear()
         stw.Frame.View.Set(0)
-        if stw.Show.GlobalAxis {
+        if stw.Frame.Show.GlobalAxis {
             stw.DrawGlobalAxis(canv)
         }
-        if stw.Show.Kijun {
+        if stw.Frame.Show.Kijun {
             canv.TextAlignment(cd.CD_CENTER)
             canv.Foreground(cd.CD_GRAY)
             for _, k := range stw.Frame.Kijuns {
                 if k.Hide { continue }
                 k.Pstart = stw.Frame.View.ProjectCoord(k.Start)
                 k.Pend   = stw.Frame.View.ProjectCoord(k.End)
-                DrawKijun(k, canv, stw.Show)
+                DrawKijun(k, canv, stw.Frame.Show)
             }
             canv.TextAlignment(DefaultTextAlignment)
         }
         canv.Foreground(cd.CD_WHITE)
         for _, n := range(stw.Frame.Nodes) {
             stw.Frame.View.ProjectNode(n)
-            if stw.Show.Deformation { ProjectDeformation(stw.Frame.View, n, stw.Show) }
+            if stw.Frame.Show.Deformation { stw.Frame.View.ProjectDeformation(n, stw.Frame.Show) }
             if n.Hide { continue }
             if n.Lock {
                 canv.Foreground(LOCKED_NODE_COLOR)
@@ -1485,17 +1296,17 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
             for _, j := range(stw.SelectNode) {
                 if j==n {canv.Foreground(cd.CD_RED); break}
             }
-            DrawNode(n, canv, stw.Show)
+            DrawNode(n, canv, stw.Frame.Show)
         }
         canv.LineStyle(cd.CD_CONTINUOUS)
         canv.Hatch(cd.CD_FDIAGONAL)
-        if !stw.Show.Select {
+        if !stw.Frame.Show.Select {
             els := st.SortedElem(stw.Frame.Elems, func (e *st.Elem) float64 { return -e.DistFromProjection() })
             loop:
                 for _, el := range(els) {
                     if el.Hide { continue }
-                    if !stw.Show.Etype[el.Etype] { el.Hide = true; continue }
-                    if b, ok := stw.Show.Sect[el.Sect.Num]; ok {
+                    if !stw.Frame.Show.Etype[el.Etype] { el.Hide = true; continue }
+                    if b, ok := stw.Frame.Show.Sect[el.Sect.Num]; ok {
                         if !b { el.Hide = true; continue }
                     }
                     canv.LineStyle(cd.CD_CONTINUOUS)
@@ -1507,19 +1318,19 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
                         canv.Foreground(LOCKED_ELEM_COLOR)
                     } else {
                         switch color {
-                        case ECOLOR_WHITE:
+                        case st.ECOLOR_WHITE:
                             canv.Foreground(cd.CD_WHITE)
-                        case ECOLOR_BLACK:
+                        case st.ECOLOR_BLACK:
                             canv.Foreground(cd.CD_BLACK)
-                        case ECOLOR_SECT:
+                        case st.ECOLOR_SECT:
                             canv.Foreground(el.Sect.Color)
-                        case ECOLOR_RATE:
-                            canv.Foreground(st.Rainbow(RateMax(el, stw.Show), RateBoundary))
-                        case ECOLOR_HEIGHT:
-                            canv.Foreground(st.Rainbow(el.MidPoint()[2], HeightBoundary))
+                        case st.ECOLOR_RATE:
+                            canv.Foreground(st.Rainbow(RateMax(el, stw.Frame.Show), st.RateBoundary))
+                        case st.ECOLOR_HEIGHT:
+                            canv.Foreground(st.Rainbow(el.MidPoint()[2], st.HeightBoundary))
                         }
                     }
-                    DrawElem(el, canv, stw.Show)
+                    DrawElem(el, canv, stw.Frame.Show)
                 }
         }
         canv.InteriorStyle(cd.CD_HATCH)
@@ -1527,27 +1338,27 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
         for _, el := range(stw.SelectElem) {
             canv.LineStyle(cd.CD_DOTTED)
             if el == nil || el.Hide { continue }
-            if !stw.Show.Etype[el.Etype] { el.Hide = true; continue }
-            if b, ok := stw.Show.Sect[el.Sect.Num]; ok {
+            if !stw.Frame.Show.Etype[el.Etype] { el.Hide = true; continue }
+            if b, ok := stw.Frame.Show.Sect[el.Sect.Num]; ok {
                 if !b { el.Hide = true; continue }
             }
             if el.Lock {
                 canv.Foreground(LOCKED_ELEM_COLOR)
             } else {
                 switch color {
-                case ECOLOR_WHITE:
+                case st.ECOLOR_WHITE:
                     canv.Foreground(cd.CD_WHITE)
-                case ECOLOR_BLACK:
+                case st.ECOLOR_BLACK:
                     canv.Foreground(cd.CD_BLACK)
-                case ECOLOR_SECT:
+                case st.ECOLOR_SECT:
                     canv.Foreground(el.Sect.Color)
-                case ECOLOR_RATE:
-                    canv.Foreground(st.Rainbow(RateMax(el, stw.Show), RateBoundary))
-                case ECOLOR_HEIGHT:
-                    canv.Foreground(st.Rainbow(el.MidPoint()[2], HeightBoundary))
+                case st.ECOLOR_RATE:
+                    canv.Foreground(st.Rainbow(RateMax(el, stw.Frame.Show), st.RateBoundary))
+                case st.ECOLOR_HEIGHT:
+                    canv.Foreground(st.Rainbow(el.MidPoint()[2], st.HeightBoundary))
                 }
             }
-            DrawElem(el, canv, stw.Show)
+            DrawElem(el, canv, stw.Frame.Show)
         }
         canv.Flush()
         stw.SetViewData()
@@ -1555,8 +1366,8 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
 }
 
 func (stw *Window) Redraw() {
-    stw.DrawFrame(stw.dbuff,stw.Show.ColorMode)
-    if stw.Show.Property {
+    stw.DrawFrame(stw.dbuff,stw.Frame.Show.ColorMode)
+    if stw.Property {
         stw.UpdatePropertyDialog()
     }
 }
@@ -1565,7 +1376,7 @@ func (stw *Window) DrawFrameNode() {
     if stw.Frame != nil {
         stw.dbuff.Clear()
         stw.Frame.View.Set(0)
-        if stw.Show.GlobalAxis {
+        if stw.Frame.Show.GlobalAxis {
             stw.DrawGlobalAxis(stw.dbuff)
         }
         for _, n := range(stw.Frame.Nodes) {
@@ -1578,7 +1389,7 @@ func (stw *Window) DrawFrameNode() {
             for _, j := range(stw.SelectNode) {
                 if j==n {stw.dbuff.Foreground(cd.CD_RED); break}
             }
-            DrawNode(n, stw.dbuff, stw.Show)
+            DrawNode(n, stw.dbuff, stw.Frame.Show)
         }
         if len(stw.SelectElem) > 0  && stw.SelectElem[0] != nil {
             stw.dbuff.Hatch(cd.CD_DIAGCROSS)
@@ -1590,7 +1401,7 @@ func (stw *Window) DrawFrameNode() {
                 } else {
                     stw.dbuff.Foreground(cd.CD_WHITE)
                 }
-                DrawElem(el, stw.dbuff, stw.Show)
+                DrawElem(el, stw.dbuff, stw.Frame.Show)
             }
             stw.dbuff.LineStyle(cd.CD_CONTINUOUS)
             stw.dbuff.Hatch(cd.CD_FDIAGONAL)
@@ -1601,9 +1412,9 @@ func (stw *Window) DrawFrameNode() {
 
 func (stw *Window) DrawGlobalAxis (canv *cd.Canvas) {
     origin := stw.Frame.View.ProjectCoord([]float64{ 0.0, 0.0, 0.0 })
-    xaxis  := stw.Frame.View.ProjectCoord([]float64{ stw.Show.GlobalAxisSize, 0.0, 0.0 })
-    yaxis  := stw.Frame.View.ProjectCoord([]float64{ 0.0, stw.Show.GlobalAxisSize, 0.0 })
-    zaxis  := stw.Frame.View.ProjectCoord([]float64{ 0.0, 0.0, stw.Show.GlobalAxisSize })
+    xaxis  := stw.Frame.View.ProjectCoord([]float64{ stw.Frame.Show.GlobalAxisSize, 0.0, 0.0 })
+    yaxis  := stw.Frame.View.ProjectCoord([]float64{ 0.0, stw.Frame.Show.GlobalAxisSize, 0.0 })
+    zaxis  := stw.Frame.View.ProjectCoord([]float64{ 0.0, 0.0, stw.Frame.Show.GlobalAxisSize })
     size := 0.3
     theta := 10.0 * math.Pi / 180.0
     canv.LineStyle(cd.CD_CONTINUOUS)
@@ -1634,16 +1445,16 @@ func (stw *Window) SetSelectData() {
 // DataLabel
 func (stw *Window) SetViewData() {
     if stw.Frame != nil {
-        stw.Show.Label["GFACT"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Gfact))
-        stw.Show.Label["DISTR"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Dists[0]))
-        stw.Show.Label["DISTL"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Dists[1]))
-        stw.Show.Label["PHI"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Angle[0]))
-        stw.Show.Label["THETA"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Angle[1]))
-        stw.Show.Label["FOCUSX"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Focus[0]))
-        stw.Show.Label["FOCUSY"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Focus[1]))
-        stw.Show.Label["FOCUSZ"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Focus[2]))
-        stw.Show.Label["CENTERX"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Center[0]))
-        stw.Show.Label["CENTERY"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Center[1]))
+        stw.Labels["GFACT"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Gfact))
+        stw.Labels["DISTR"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Dists[0]))
+        stw.Labels["DISTL"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Dists[1]))
+        stw.Labels["PHI"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Angle[0]))
+        stw.Labels["THETA"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Angle[1]))
+        stw.Labels["FOCUSX"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Focus[0]))
+        stw.Labels["FOCUSY"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Focus[1]))
+        stw.Labels["FOCUSZ"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Focus[2]))
+        stw.Labels["CENTERX"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Center[0]))
+        stw.Labels["CENTERY"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Center[1]))
     }
 }
 
@@ -1673,15 +1484,15 @@ func (stw *Window) Bbox() (xmin, xmax, ymin, ymax float64) {
 
 func (stw *Window) SetShowRange() {
     xmin, xmax, ymin, ymax, zmin, zmax := stw.Frame.Bbox()
-    stw.Show.Xrange[0] = xmin; stw.Show.Xrange[1] = xmax
-    stw.Show.Yrange[0] = ymin; stw.Show.Yrange[1] = ymax
-    stw.Show.Zrange[0] = zmin; stw.Show.Zrange[1] = zmax
-    stw.Show.Label["XMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", xmax))
-    stw.Show.Label["XMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", xmin))
-    stw.Show.Label["YMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", ymax))
-    stw.Show.Label["YMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", ymin))
-    stw.Show.Label["ZMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", zmax))
-    stw.Show.Label["ZMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", zmin))
+    stw.Frame.Show.Xrange[0] = xmin; stw.Frame.Show.Xrange[1] = xmax
+    stw.Frame.Show.Yrange[0] = ymin; stw.Frame.Show.Yrange[1] = ymax
+    stw.Frame.Show.Zrange[0] = zmin; stw.Frame.Show.Zrange[1] = zmax
+    stw.Labels["XMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", xmax))
+    stw.Labels["XMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", xmin))
+    stw.Labels["YMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", ymax))
+    stw.Labels["YMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", ymin))
+    stw.Labels["ZMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", zmax))
+    stw.Labels["ZMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", zmin))
 }
 
 func (stw *Window) HideNodes () {
@@ -1777,7 +1588,7 @@ func (stw *Window) ShowAll() {
     for _, k := range stw.Frame.Kijuns {
         k.Hide = false
     }
-    stw.Show.All()
+    stw.Frame.Show.All()
     stw.Redraw()
 }
 
@@ -2550,7 +2361,7 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
         }
     case 'Q':
         if key.IsCtrl() {
-            if !stw.Show.Property {
+            if !stw.Property {
                 stw.PropertyDialog()
             }
         }
@@ -2593,38 +2404,38 @@ func (stw *Window) CB_CommonKeyAny() {
 }
 
 func (stw *Window) LinkProperty (index int, eval func ()) {
-    stw.Show.Props[index].SetCallback(func (arg *iup.CommonGetFocus) {
-                                          stw.Show.Props[index].SetAttribute("SELECTION", "1:100")
-                                      })
-    stw.Show.Props[index].SetCallback(func (arg *iup.CommonKillFocus) {
-                                          if stw.Frame != nil && stw.SelectElem != nil {
-                                              eval()
-                                          }
-                                      })
-    stw.Show.Props[index].SetCallback(func (arg *iup.CommonKeyAny) {
-                                          key := iup.KeyState(arg.Key)
-                                          switch key.Key() {
-                                          case KEY_ENTER:
-                                              if stw.Frame != nil && stw.SelectElem != nil {
-                                                  eval()
-                                              }
-                                          case KEY_TAB:
-                                              if stw.Frame != nil && stw.SelectElem != nil {
-                                                  eval()
-                                              }
-                                          }
-                                      })
+    stw.Props[index].SetCallback(func (arg *iup.CommonGetFocus) {
+                                     stw.Props[index].SetAttribute("SELECTION", "1:100")
+                                 })
+    stw.Props[index].SetCallback(func (arg *iup.CommonKillFocus) {
+                                     if stw.Frame != nil && stw.SelectElem != nil {
+                                         eval()
+                                     }
+                                 })
+    stw.Props[index].SetCallback(func (arg *iup.CommonKeyAny) {
+                                     key := iup.KeyState(arg.Key)
+                                     switch key.Key() {
+                                     case KEY_ENTER:
+                                         if stw.Frame != nil && stw.SelectElem != nil {
+                                             eval()
+                                         }
+                                     case KEY_TAB:
+                                         if stw.Frame != nil && stw.SelectElem != nil {
+                                             eval()
+                                         }
+                                     }
+                                 })
 }
 
 func (stw *Window) PropertyDialog () {
     selected := make([]*iup.Handle, 4)
-    stw.Show.Selected = make([]*iup.Handle, 4)
+    stw.Selected = make([]*iup.Handle, 4)
     selected[0] = datasectionlabel("LINE")
     selected[1] = datasectionlabel(" (TOTAL LENGTH)")
     selected[2] = datasectionlabel("PLATE")
     selected[3] = datasectionlabel(" (TOTAL AREA)")
     labels := make([]*iup.Handle, 8)
-    stw.Show.Props = make([]*iup.Handle, 8)
+    stw.Props = make([]*iup.Handle, 8)
     labels[0] = datasectionlabel("CODE")
     labels[1] = datasectionlabel("SECTION")
     labels[2] = datasectionlabel("ETYPE")
@@ -2634,13 +2445,13 @@ func (stw *Window) PropertyDialog () {
     labels[6] = datasectionlabel("")
     labels[7] = datasectionlabel("")
     for i:=0; i<4; i++ {
-        stw.Show.Selected[i] = datatext("-")
+        stw.Selected[i] = datatext("-")
     }
     for i:=0; i<8; i++ {
-        stw.Show.Props[i] = datatext("-")
+        stw.Props[i] = datatext("-")
     }
     stw.LinkProperty(1, func () {
-                            val, err := strconv.ParseInt(stw.Show.Props[1].GetAttribute("VALUE"), 10, 64)
+                            val, err := strconv.ParseInt(stw.Props[1].GetAttribute("VALUE"), 10, 64)
                             if err == nil {
                                 if sec, ok := stw.Frame.Sects[int(val)]; ok {
                                     for _, el := range stw.SelectElem {
@@ -2653,7 +2464,7 @@ func (stw *Window) PropertyDialog () {
                             stw.Redraw()
                         })
     stw.LinkProperty(2, func () {
-                            word := stw.Show.Props[2].GetAttribute("VALUE")
+                            word := stw.Props[2].GetAttribute("VALUE")
                             var val int
                             col := regexp.MustCompile("(?i)co(l(u(m(n){0,1}){0,1}){0,1}){0,1}$")
                             gir := regexp.MustCompile("(?i)gi(r(d(e(r){0,1}){0,1}){0,1}){0,1}$")
@@ -2672,7 +2483,7 @@ func (stw *Window) PropertyDialog () {
                             case sla.MatchString(word) :
                                 val = st.SLAB
                             }
-                            stw.Show.Props[2].SetAttribute("VALUE", st.ETYPES[val])
+                            stw.Props[2].SetAttribute("VALUE", st.ETYPES[val])
                             if val != 0 {
                                 for _, el := range stw.SelectElem {
                                     if el != nil {
@@ -2683,27 +2494,27 @@ func (stw *Window) PropertyDialog () {
                             stw.Redraw()
                         })
     dlg := iup.Dialog(
-               iup.Vbox(iup.Hbox(selected[0], stw.Show.Selected[0]),
-                        iup.Hbox(selected[1], stw.Show.Selected[1]),
-                        iup.Hbox(selected[2], stw.Show.Selected[2]),
-                        iup.Hbox(selected[3], stw.Show.Selected[3]),
-                        iup.Hbox(labels[0], stw.Show.Props[0]),
-                        iup.Hbox(labels[1], stw.Show.Props[1]),
-                        iup.Hbox(labels[2], stw.Show.Props[2]),
-                        iup.Hbox(labels[3], stw.Show.Props[3]),
-                        iup.Hbox(labels[4], stw.Show.Props[4]),
-                        iup.Hbox(labels[5], stw.Show.Props[5]),
-                        iup.Hbox(labels[6], stw.Show.Props[6]),
-                        iup.Hbox(labels[7], stw.Show.Props[7]),),
+               iup.Vbox(iup.Hbox(selected[0], stw.Selected[0]),
+                        iup.Hbox(selected[1], stw.Selected[1]),
+                        iup.Hbox(selected[2], stw.Selected[2]),
+                        iup.Hbox(selected[3], stw.Selected[3]),
+                        iup.Hbox(labels[0], stw.Props[0]),
+                        iup.Hbox(labels[1], stw.Props[1]),
+                        iup.Hbox(labels[2], stw.Props[2]),
+                        iup.Hbox(labels[3], stw.Props[3]),
+                        iup.Hbox(labels[4], stw.Props[4]),
+                        iup.Hbox(labels[5], stw.Props[5]),
+                        iup.Hbox(labels[6], stw.Props[6]),
+                        iup.Hbox(labels[7], stw.Props[7]),),
            )
     dlg.SetAttribute("TITLE", "Property")
     dlg.SetAttribute("PARENTDIALOG", "mainwindow")
     dlg.SetCallback(func (arg *iup.DialogClose) {
-                        stw.Show.Property = false
+                        stw.Property = false
                     })
     dlg.Map()
     dlg.Show()
-    stw.Show.Property = true
+    stw.Property = true
 }
 
 func (stw *Window) UpdatePropertyDialog () {
@@ -2721,13 +2532,13 @@ func (stw *Window) UpdatePropertyDialog () {
                     area += el.Area()
                 }
                 if !selected {
-                    stw.Show.Props[0].SetAttribute("VALUE", fmt.Sprintf("%d", el.Num))
-                    stw.Show.Props[1].SetAttribute("VALUE", fmt.Sprintf("%d", el.Sect.Num))
-                    stw.Show.Props[2].SetAttribute("VALUE", st.ETYPES[el.Etype])
-                    stw.Show.Props[3].SetAttribute("VALUE", fmt.Sprintf("%d", el.Enods))
+                    stw.Props[0].SetAttribute("VALUE", fmt.Sprintf("%d", el.Num))
+                    stw.Props[1].SetAttribute("VALUE", fmt.Sprintf("%d", el.Sect.Num))
+                    stw.Props[2].SetAttribute("VALUE", st.ETYPES[el.Etype])
+                    stw.Props[3].SetAttribute("VALUE", fmt.Sprintf("%d", el.Enods))
                     for i:=0; i<el.Enods; i++ {
                         if i>=4 { break }
-                        stw.Show.Props[4+i].SetAttribute("VALUE", fmt.Sprintf("%d", el.Enod[i].Num))
+                        stw.Props[4+i].SetAttribute("VALUE", fmt.Sprintf("%d", el.Enod[i].Num))
                     }
                 }
                 selected = true
@@ -2735,26 +2546,26 @@ func (stw *Window) UpdatePropertyDialog () {
         }
         if !selected {
             for i:=0; i<4; i++ {
-                stw.Show.Selected[i].SetAttribute("VALUE", "-")
+                stw.Selected[i].SetAttribute("VALUE", "-")
             }
             for i:=0; i<8; i++ {
-                stw.Show.Props[i].SetAttribute("VALUE", "-")
+                stw.Props[i].SetAttribute("VALUE", "-")
             }
         }
         if lines > 0 {
-            stw.Show.Selected[0].SetAttribute("VALUE", fmt.Sprintf("%d", lines))
-            stw.Show.Selected[1].SetAttribute("VALUE", fmt.Sprintf("%.3f", length))
+            stw.Selected[0].SetAttribute("VALUE", fmt.Sprintf("%d", lines))
+            stw.Selected[1].SetAttribute("VALUE", fmt.Sprintf("%.3f", length))
         }
         if plates > 0 {
-            stw.Show.Selected[2].SetAttribute("VALUE", fmt.Sprintf("%d", plates))
-            stw.Show.Selected[3].SetAttribute("VALUE", fmt.Sprintf("%.3f", area))
+            stw.Selected[2].SetAttribute("VALUE", fmt.Sprintf("%d", plates))
+            stw.Selected[3].SetAttribute("VALUE", fmt.Sprintf("%.3f", area))
         }
     } else {
         for i:=0; i<4; i++ {
-            stw.Show.Selected[i].SetAttribute("VALUE", "-")
+            stw.Selected[i].SetAttribute("VALUE", "-")
         }
         for i:=0; i<8; i++ {
-            stw.Show.Props[i].SetAttribute("VALUE", "-")
+            stw.Props[i].SetAttribute("VALUE", "-")
         }
     }
 }
@@ -2853,7 +2664,7 @@ func (stw *Window) CMenu () {
                                iup.Item(
                                    iup.Attr("TITLE","Property\tCtrl+Q"),
                                    func (arg *iup.ItemAction) {
-                                       if !stw.Show.Property {
+                                       if !stw.Property {
                                            stw.PropertyDialog()
                                        }
                                    },
@@ -2963,8 +2774,8 @@ func (stw *Window) SectionDialog () {
     sort.Ints(skeys)
     sects := iup.Vbox()
     for _, k := range(skeys) {
-        labels[snum] = stw.Show.sectionLabel(k)
-        stw.Show.Label[fmt.Sprintf("%d",k)] = labels[snum]
+        labels[snum] = stw.sectionLabel(k)
+        stw.Labels[fmt.Sprintf("%d",k)] = labels[snum]
         sects.Append(labels[snum])
         snum++
     }
@@ -2975,16 +2786,16 @@ func (stw *Window) SectionDialog () {
     dlg.Show()
 }
 
-func (show *Show) sectionLabel (val int) *iup.Handle {
+func (stw *Window) sectionLabel (val int) *iup.Handle {
     var col string
-    if b, ok := show.Sect[val]; ok {
+    if b, ok := stw.Frame.Show.Sect[val]; ok {
         if b {
             col = labelFGColor
         } else {
             col = labelOFFColor
         }
     } else {
-        show.Sect[val] = true
+        stw.Frame.Show.Sect[val] = true
         col = labelFGColor
     }
     rtn := iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
@@ -2997,27 +2808,27 @@ func (show *Show) sectionLabel (val int) *iup.Handle {
                     fmt.Sprintf("SIZE=%dx%d",datalabelwidth, dataheight),
                     )
     rtn.SetCallback(func (arg *iup.MouseButton) {
-                        if show.Window.Frame != nil {
+                        if stw.Frame != nil {
                             switch arg.Button {
                             case BUTTON_LEFT:
                                 if arg.Pressed == 0 { // Released
-                                    if show.Sect[val] {
-                                        show.Sect[val] = false
-                                        for _, el := range(show.Window.Frame.Elems) {
+                                    if stw.Frame.Show.Sect[val] {
+                                        stw.Frame.Show.Sect[val] = false
+                                        for _, el := range(stw.Frame.Elems) {
                                             if el.Sect.Num == val { el.Hide = true }
                                         }
                                         rtn.SetAttribute("FGCOLOR", labelOFFColor)
                                     } else {
-                                        show.Sect[val] = true
-                                        for _, el := range(show.Window.Frame.Elems) {
+                                        stw.Frame.Show.Sect[val] = true
+                                        for _, el := range(stw.Frame.Elems) {
                                             if el.Sect.Num == val { el.Hide = false }
                                         }
                                         rtn.SetAttribute("FGCOLOR", labelFGColor)
                                     }
-                                    // show.Window.UpdateShowRange()
-                                    show.Window.HideNodes()
-                                    show.Window.Redraw()
-                                    // iup.SetFocus(show.Window.canv)
+                                    // stw.UpdateShowRange()
+                                    stw.HideNodes()
+                                    stw.Redraw()
+                                    // iup.SetFocus(stw.canv)
                                 }
                             }
                         }
@@ -3063,7 +2874,7 @@ func datatext (defval string) *iup.Handle {
     return rtn
 }
 
-func (show *Show) etypeLabel (name string, width int, etype int, defval bool) *iup.Handle {
+func (stw *Window) etypeLabel (name string, width int, etype int, defval bool) *iup.Handle {
     var col string
     if defval {
         col = labelFGColor
@@ -3079,28 +2890,28 @@ func (show *Show) etypeLabel (name string, width int, etype int, defval bool) *i
                     "BORDER=NO",
                     fmt.Sprintf("SIZE=%dx%d",width, dataheight),)
     rtn.SetCallback(func (arg *iup.MouseButton) {
-                        if show.Window.Frame != nil {
+                        if stw.Frame != nil {
                             switch arg.Button {
                             case BUTTON_LEFT:
                                 if arg.Pressed == 0 { // Released
-                                    if show.Etype[etype] {
-                                        show.Etype[etype] = false
-                                        for _, el := range(show.Window.Frame.Elems) {
+                                    if stw.Frame.Show.Etype[etype] {
+                                        stw.Frame.Show.Etype[etype] = false
+                                        for _, el := range(stw.Frame.Elems) {
                                             if el.Etype == etype { el.Hide = true }
                                         }
                                         rtn.SetAttribute("FGCOLOR", labelOFFColor)
                                     } else {
-                                        show.Etype[etype] = true
-                                        for _, el := range(show.Window.Frame.Elems) {
+                                        stw.Frame.Show.Etype[etype] = true
+                                        for _, el := range(stw.Frame.Elems) {
                                             if el.Etype == etype { el.Hide = false }
                                         }
-                                        show.Window.UpdateShowRange() // TODO: ShowRange
+                                        stw.UpdateShowRange() // TODO: ShowRange
                                         rtn.SetAttribute("FGCOLOR", labelFGColor)
                                     }
-                                    // show.Window.UpdateShowRange() // TODO: ShowRange
-                                    // show.Window.HideNodes()
-                                    show.Window.Redraw()
-                                    iup.SetFocus(show.Window.canv)
+                                    // stw.UpdateShowRange() // TODO: ShowRange
+                                    // stw.HideNodes()
+                                    stw.Redraw()
+                                    iup.SetFocus(stw.canv)
                                 }
                             }
                         }
@@ -3108,9 +2919,9 @@ func (show *Show) etypeLabel (name string, width int, etype int, defval bool) *i
     return rtn
 }
 
-func (show *Show) switchLabel (etype int) *iup.Handle {
+func (stw *Window) switchLabel (etype int) *iup.Handle {
     var col string
-    if show.Etype[etype] {
+    if stw.Frame != nil && stw.Frame.Show.Etype[etype] { // TODO: when stw.Frame is created, set value
         col = labelFGColor
     } else {
         col = labelOFFColor
@@ -3124,64 +2935,64 @@ func (show *Show) switchLabel (etype int) *iup.Handle {
                     "BORDER=NO",
                     fmt.Sprintf("SIZE=%dx%d",10, dataheight),)
     rtn.SetCallback(func (arg *iup.MouseButton) {
-                        if show.Window.Frame != nil {
+                        if stw.Frame != nil {
                             switch arg.Button {
                             case BUTTON_LEFT:
                                 if arg.Pressed == 0 { // Released
-                                    if show.Etype[etype] {
-                                        if !show.Etype[etype-2] {
-                                            show.Etype[etype] = false
-                                            show.Etype[etype-2] = true
-                                            show.Label[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelOFFColor)
-                                            show.Label[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelFGColor)
-                                            for _, el := range(show.Window.Frame.Elems) {
+                                    if stw.Frame.Show.Etype[etype] {
+                                        if !stw.Frame.Show.Etype[etype-2] {
+                                            stw.Frame.Show.Etype[etype] = false
+                                            stw.Frame.Show.Etype[etype-2] = true
+                                            stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelOFFColor)
+                                            stw.Labels[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelFGColor)
+                                            for _, el := range(stw.Frame.Elems) {
                                                 if el.Etype == etype { el.Hide = true }
                                                 if el.Etype == etype-2 { el.Hide = false }
                                             }
                                         } else {
-                                            show.Etype[etype-2] = false
-                                            show.Label[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelOFFColor)
-                                            for _, el := range(show.Window.Frame.Elems) {
+                                            stw.Frame.Show.Etype[etype-2] = false
+                                            stw.Labels[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelOFFColor)
+                                            for _, el := range(stw.Frame.Elems) {
                                                 if el.Etype == etype-2 { el.Hide = true }
                                             }
                                         }
                                     } else {
-                                        if show.Etype[etype-2] {
-                                            show.Etype[etype] = true
-                                            show.Etype[etype-2] = false
-                                            show.Label[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelFGColor)
-                                            show.Label[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelOFFColor)
-                                            for _, el := range(show.Window.Frame.Elems) {
+                                        if stw.Frame.Show.Etype[etype-2] {
+                                            stw.Frame.Show.Etype[etype] = true
+                                            stw.Frame.Show.Etype[etype-2] = false
+                                            stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelFGColor)
+                                            stw.Labels[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelOFFColor)
+                                            for _, el := range(stw.Frame.Elems) {
                                                 if el.Etype == etype { el.Hide = false }
                                                 if el.Etype == etype-2 { el.Hide = true }
                                             }
                                         } else {
-                                            show.Etype[etype] = true
-                                            show.Label[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelFGColor)
-                                            for _, el := range(show.Window.Frame.Elems) {
+                                            stw.Frame.Show.Etype[etype] = true
+                                            stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelFGColor)
+                                            for _, el := range(stw.Frame.Elems) {
                                                 if el.Etype == etype { el.Hide = false }
                                             }
                                         }
                                     }
-                                    show.Window.UpdateShowRange()
-                                    show.Window.HideNodes()
-                                    show.Window.Redraw()
-                                    iup.SetFocus(show.Window.canv)
+                                    stw.UpdateShowRange()
+                                    stw.HideNodes()
+                                    stw.Redraw()
+                                    iup.SetFocus(stw.canv)
                                 }
                             case BUTTON_CENTER:
                                 if arg.Pressed == 0 {
-                                    show.Etype[etype] = false
-                                    show.Etype[etype-2] = false
-                                    show.Label[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelOFFColor)
-                                    show.Label[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelOFFColor)
-                                    for _, el := range(show.Window.Frame.Elems) {
+                                    stw.Frame.Show.Etype[etype] = false
+                                    stw.Frame.Show.Etype[etype-2] = false
+                                    stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelOFFColor)
+                                    stw.Labels[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelOFFColor)
+                                    for _, el := range(stw.Frame.Elems) {
                                         if el.Etype == etype { el.Hide = true }
                                         if el.Etype == etype-2 { el.Hide = true }
                                     }
-                                    show.Window.UpdateShowRange()
-                                    show.Window.HideNodes()
-                                    show.Window.Redraw()
-                                    iup.SetFocus(show.Window.canv)
+                                    stw.UpdateShowRange()
+                                    stw.HideNodes()
+                                    stw.Redraw()
+                                    iup.SetFocus(stw.canv)
                                 }
                             }
                         }
@@ -3189,7 +3000,7 @@ func (show *Show) switchLabel (etype int) *iup.Handle {
     return rtn
 }
 
-func (show *Show) stressLabel (etype int, index uint) *iup.Handle {
+func (stw *Window) stressLabel (etype int, index uint) *iup.Handle {
     rtn := iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
                     fmt.Sprintf("FGCOLOR=\"%s\"", labelOFFColor),
                     fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
@@ -3199,19 +3010,19 @@ func (show *Show) stressLabel (etype int, index uint) *iup.Handle {
                     "BORDER=NO",
                     fmt.Sprintf("SIZE=%dx%d",(datalabelwidth+datatextwidth)/6, dataheight),)
     rtn.SetCallback(func (arg *iup.MouseButton) {
-                        if show.Window.Frame != nil {
+                        if stw.Frame != nil {
                             switch arg.Button {
                             case BUTTON_LEFT:
                                 if arg.Pressed == 0 { // Released
-                                    if show.Stress[etype] & (1 << index) != 0 {
-                                        show.Stress[etype] &= ^(1 << index)
+                                    if stw.Frame.Show.Stress[etype] & (1 << index) != 0 {
+                                        stw.Frame.Show.Stress[etype] &= ^(1 << index)
                                         rtn.SetAttribute("FGCOLOR", labelOFFColor)
                                     } else {
-                                        show.Stress[etype] |= (1 << index)
+                                        stw.Frame.Show.Stress[etype] |= (1 << index)
                                         rtn.SetAttribute("FGCOLOR", labelFGColor)
                                     }
-                                    show.Window.Redraw()
-                                    iup.SetFocus(show.Window.canv)
+                                    stw.Redraw()
+                                    iup.SetFocus(stw.canv)
                                 }
                             }
                         }
@@ -3219,7 +3030,7 @@ func (show *Show) stressLabel (etype int, index uint) *iup.Handle {
     return rtn
 }
 
-func (show *Show) displayLabel (name string, defval bool) *iup.Handle {
+func (stw *Window) displayLabel (name string, defval bool) *iup.Handle {
     var col string
     if defval {
         col = labelFGColor
@@ -3235,31 +3046,31 @@ func (show *Show) displayLabel (name string, defval bool) *iup.Handle {
                     "BORDER=NO",
                     fmt.Sprintf("SIZE=%dx%d",datalabelwidth+datatextwidth, dataheight),)
     rtn.SetCallback(func (arg *iup.MouseButton) {
-                        if show.Window.Frame != nil {
+                        if stw.Frame != nil {
                             switch arg.Button {
                             case BUTTON_LEFT:
                                 if arg.Pressed == 0 { // Released
                                     switch name {
                                     case "GAXIS":
-                                        show.GlobalAxis = !show.GlobalAxis
+                                        stw.Frame.Show.GlobalAxis = !stw.Frame.Show.GlobalAxis
                                     case "EAXIS":
-                                        show.ElementAxis = !show.ElementAxis
+                                        stw.Frame.Show.ElementAxis = !stw.Frame.Show.ElementAxis
                                     case "BOND":
-                                        show.Bond = !show.Bond
+                                        stw.Frame.Show.Bond = !stw.Frame.Show.Bond
                                     case "CONF":
-                                        show.Conf = !show.Conf
+                                        stw.Frame.Show.Conf = !stw.Frame.Show.Conf
                                     case "KIJUN":
-                                        show.Kijun = !show.Kijun
+                                        stw.Frame.Show.Kijun = !stw.Frame.Show.Kijun
                                     case "DEFORMATION":
-                                        show.Deformation = !show.Deformation
+                                        stw.Frame.Show.Deformation = !stw.Frame.Show.Deformation
                                     }
                                     if rtn.GetAttribute("FGCOLOR") == labelFGColor {
                                         rtn.SetAttribute("FGCOLOR", labelOFFColor)
                                     } else {
                                         rtn.SetAttribute("FGCOLOR", labelFGColor)
                                     }
-                                    show.Window.Redraw()
-                                    iup.SetFocus(show.Window.canv)
+                                    stw.Redraw()
+                                    iup.SetFocus(stw.canv)
                                 }
                             }
                         }
@@ -3267,19 +3078,21 @@ func (show *Show) displayLabel (name string, defval bool) *iup.Handle {
     return rtn
 }
 
-func (show *Show) captionLabel (ne string, name string, width int, val uint, on bool) *iup.Handle {
+func (stw *Window) captionLabel (ne string, name string, width int, val uint, on bool) *iup.Handle {
     var col string
     if on {
         col = labelFGColor
     } else {
         col = labelOFFColor
     }
-    if on {
-        switch ne {
-        case "NODE":
-            show.NodeCaption |= val
-        case "ELEM":
-            show.ElemCaption |= val
+    if stw.Frame != nil {// TODO: when stw.Frame is created, set value
+        if on {
+            switch ne {
+            case "NODE":
+                stw.Frame.Show.NodeCaption |= val
+            case "ELEM":
+                stw.Frame.Show.ElemCaption |= val
+            }
         }
     }
     rtn := iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
@@ -3291,30 +3104,30 @@ func (show *Show) captionLabel (ne string, name string, width int, val uint, on 
                     "BORDER=NO",
                     fmt.Sprintf("SIZE=%dx%d",width, dataheight),)
     rtn.SetCallback(func (arg *iup.MouseButton) {
-                        if show.Window.Frame != nil {
+                        if stw.Frame != nil {
                             switch arg.Button {
                             case BUTTON_LEFT:
                                 if arg.Pressed == 0 { // Released
                                     switch ne {
                                     case "NODE":
-                                        if show.NodeCaption & val != 0{
+                                        if stw.Frame.Show.NodeCaption & val != 0{
                                             rtn.SetAttribute("FGCOLOR", labelOFFColor)
-                                            show.NodeCaption &= ^val
+                                            stw.Frame.Show.NodeCaption &= ^val
                                         } else {
                                             rtn.SetAttribute("FGCOLOR", labelFGColor)
-                                            show.NodeCaption |= val
+                                            stw.Frame.Show.NodeCaption |= val
                                         }
                                     case "ELEM":
-                                        if show.ElemCaption & val != 0 {
+                                        if stw.Frame.Show.ElemCaption & val != 0 {
                                             rtn.SetAttribute("FGCOLOR", labelOFFColor)
-                                            show.ElemCaption &= ^val
+                                            stw.Frame.Show.ElemCaption &= ^val
                                         } else {
                                             rtn.SetAttribute("FGCOLOR", labelFGColor)
-                                            show.ElemCaption |= val
+                                            stw.Frame.Show.ElemCaption |= val
                                         }
                                     }
-                                    show.Window.Redraw()
-                                    iup.SetFocus(show.Window.canv)
+                                    stw.Redraw()
+                                    iup.SetFocus(stw.canv)
                                 }
                             }
                         }
@@ -3322,7 +3135,7 @@ func (show *Show) captionLabel (ne string, name string, width int, val uint, on 
     return rtn
 }
 
-func (show *Show) toggleLabel (def uint, values []string) *iup.Handle {
+func (stw *Window) toggleLabel (def uint, values []string) *iup.Handle {
     col := labelFGColor
     l := len(values)
     rtn := iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
@@ -3334,7 +3147,7 @@ func (show *Show) toggleLabel (def uint, values []string) *iup.Handle {
                     "BORDER=NO",
                     fmt.Sprintf("SIZE=%dx%d",datalabelwidth+datatextwidth, dataheight),)
     rtn.SetCallback(func (arg *iup.MouseButton) {
-                        if show.Window.Frame != nil {
+                        if stw.Frame != nil {
                             switch arg.Button {
                             case BUTTON_LEFT:
                                 if arg.Pressed == 0 { // Released
@@ -3345,9 +3158,9 @@ func (show *Show) toggleLabel (def uint, values []string) *iup.Handle {
                                     }
                                     next := now + 1
                                     if next >= l { next = 0 }
-                                    if next == ECOLOR_BLACK { next++ }
+                                    if next == st.ECOLOR_BLACK { next++ }
                                     rtn.SetAttribute("VALUE", fmt.Sprintf("  %s",values[next]))
-                                    show.ColorMode = uint(next)
+                                    stw.Frame.Show.ColorMode = uint(next)
                                 }
                             case BUTTON_CENTER:
                                 if arg.Pressed == 0 { // Released
@@ -3358,13 +3171,13 @@ func (show *Show) toggleLabel (def uint, values []string) *iup.Handle {
                                     }
                                     next := now - 1
                                     if next < 0 { next = l -1 }
-                                    if next == ECOLOR_BLACK { next-- }
+                                    if next == st.ECOLOR_BLACK { next-- }
                                     rtn.SetAttribute("VALUE", fmt.Sprintf("  %s",values[next]))
-                                    show.ColorMode = uint(next)
+                                    stw.Frame.Show.ColorMode = uint(next)
                                 }
                             }
-                            show.Window.Redraw()
-                            iup.SetFocus(show.Window.canv)
+                            stw.Redraw()
+                            iup.SetFocus(stw.canv)
                         }
                     })
     return rtn
@@ -3428,11 +3241,11 @@ func (stw *Window) UpdateShowRange () {
     for _, n := range stw.Frame.Nodes {
         // if n.Hide { continue }
         n.Hide = false
-        if n.Coord[0] < stw.Show.Xrange[0] || stw.Show.Xrange[1] < n.Coord[0] {
+        if n.Coord[0] < stw.Frame.Show.Xrange[0] || stw.Frame.Show.Xrange[1] < n.Coord[0] {
             n.Hide = true
-        } else if n.Coord[1] < stw.Show.Yrange[0] || stw.Show.Yrange[1] < n.Coord[1] {
+        } else if n.Coord[1] < stw.Frame.Show.Yrange[0] || stw.Frame.Show.Yrange[1] < n.Coord[1] {
             n.Hide = true
-        } else if n.Coord[2] < stw.Show.Zrange[0] || stw.Show.Zrange[1] < n.Coord[2] {
+        } else if n.Coord[2] < stw.Frame.Show.Zrange[0] || stw.Frame.Show.Zrange[1] < n.Coord[2] {
             n.Hide = true
         }
     }
@@ -3451,16 +3264,16 @@ func (stw *Window) UpdateShowRange () {
         k.Hide = false
         d := k.Direction()
         if math.Abs(d[0])<1e-4 {
-            if k.Start[0] < stw.Show.Xrange[0] || stw.Show.Xrange[1] < k.Start[0] { k.Hide = true }
-            if k.End[0] < stw.Show.Xrange[0] || stw.Show.Xrange[1] < k.End[0] { k.Hide = true }
+            if k.Start[0] < stw.Frame.Show.Xrange[0] || stw.Frame.Show.Xrange[1] < k.Start[0] { k.Hide = true }
+            if k.End[0] < stw.Frame.Show.Xrange[0] || stw.Frame.Show.Xrange[1] < k.End[0] { k.Hide = true }
         }
         if math.Abs(d[1])<1e-4 {
-            if k.Start[1] < stw.Show.Yrange[0] || stw.Show.Yrange[1] < k.Start[1] { k.Hide = true }
-            if k.End[1] < stw.Show.Yrange[0] || stw.Show.Yrange[1] < k.End[1] { k.Hide = true }
+            if k.Start[1] < stw.Frame.Show.Yrange[0] || stw.Frame.Show.Yrange[1] < k.Start[1] { k.Hide = true }
+            if k.End[1] < stw.Frame.Show.Yrange[0] || stw.Frame.Show.Yrange[1] < k.End[1] { k.Hide = true }
         }
         if math.Abs(d[2])<1e-4 {
-            if k.Start[2] < stw.Show.Zrange[0] || stw.Show.Zrange[1] < k.Start[2] { k.Hide = true }
-            if k.End[2] < stw.Show.Zrange[0] || stw.Show.Zrange[1] < k.End[2] { k.Hide = true }
+            if k.Start[2] < stw.Frame.Show.Zrange[0] || stw.Frame.Show.Zrange[1] < k.Start[2] { k.Hide = true }
+            if k.End[2] < stw.Frame.Show.Zrange[0] || stw.Frame.Show.Zrange[1] < k.End[2] { k.Hide = true }
         }
     }
 }
@@ -3491,29 +3304,29 @@ func (stw *Window) CB_Period (h *iup.Handle, valptr *string) {
 
 // DataLabel
 func (stw *Window) LinkTextValue() {
-    stw.CB_TextValue(stw.Show.Label["GFACT"], &stw.Frame.View.Gfact)
-    stw.CB_TextValue(stw.Show.Label["DISTR"], &stw.Frame.View.Dists[0])
-    stw.CB_TextValue(stw.Show.Label["DISTL"], &stw.Frame.View.Dists[1])
-    stw.CB_TextValue(stw.Show.Label["PHI"], &stw.Frame.View.Angle[0])
-    stw.CB_TextValue(stw.Show.Label["THETA"], &stw.Frame.View.Angle[1])
-    stw.CB_TextValue(stw.Show.Label["FOCUSX"], &stw.Frame.View.Focus[0])
-    stw.CB_TextValue(stw.Show.Label["FOCUSY"], &stw.Frame.View.Focus[1])
-    stw.CB_TextValue(stw.Show.Label["FOCUSZ"], &stw.Frame.View.Focus[2])
-    stw.CB_TextValue(stw.Show.Label["CENTERX"], &stw.Frame.View.Center[0])
-    stw.CB_TextValue(stw.Show.Label["CENTERY"], &stw.Frame.View.Center[1])
-    stw.CB_RangeValue(stw.Show.Label["XMAX"], &stw.Show.Xrange[1])
-    stw.CB_RangeValue(stw.Show.Label["XMIN"], &stw.Show.Xrange[0])
-    stw.CB_RangeValue(stw.Show.Label["YMAX"], &stw.Show.Yrange[1])
-    stw.CB_RangeValue(stw.Show.Label["YMIN"], &stw.Show.Yrange[0])
-    stw.CB_RangeValue(stw.Show.Label["ZMAX"], &stw.Show.Zrange[1])
-    stw.CB_RangeValue(stw.Show.Label["ZMIN"], &stw.Show.Zrange[0])
-    stw.CB_Period(stw.Show.Label["PERIOD"], &stw.Show.Period)
-    stw.CB_TextValue(stw.Show.Label["GAXISSIZE"], &stw.Show.GlobalAxisSize)
-    stw.CB_TextValue(stw.Show.Label["EAXISSIZE"], &stw.Show.ElementAxisSize)
-    stw.CB_TextValue(stw.Show.Label["BONDSIZE"], &stw.Show.BondSize)
-    stw.CB_TextValue(stw.Show.Label["CONFSIZE"], &stw.Show.ConfSize)
-    stw.CB_TextValue(stw.Show.Label["DFACT"], &stw.Show.Dfact)
-    stw.CB_TextValue(stw.Show.Label["MFACT"], &stw.Show.Mfact)
+    stw.CB_TextValue(stw.Labels["GFACT"], &stw.Frame.View.Gfact)
+    stw.CB_TextValue(stw.Labels["DISTR"], &stw.Frame.View.Dists[0])
+    stw.CB_TextValue(stw.Labels["DISTL"], &stw.Frame.View.Dists[1])
+    stw.CB_TextValue(stw.Labels["PHI"], &stw.Frame.View.Angle[0])
+    stw.CB_TextValue(stw.Labels["THETA"], &stw.Frame.View.Angle[1])
+    stw.CB_TextValue(stw.Labels["FOCUSX"], &stw.Frame.View.Focus[0])
+    stw.CB_TextValue(stw.Labels["FOCUSY"], &stw.Frame.View.Focus[1])
+    stw.CB_TextValue(stw.Labels["FOCUSZ"], &stw.Frame.View.Focus[2])
+    stw.CB_TextValue(stw.Labels["CENTERX"], &stw.Frame.View.Center[0])
+    stw.CB_TextValue(stw.Labels["CENTERY"], &stw.Frame.View.Center[1])
+    stw.CB_RangeValue(stw.Labels["XMAX"], &stw.Frame.Show.Xrange[1])
+    stw.CB_RangeValue(stw.Labels["XMIN"], &stw.Frame.Show.Xrange[0])
+    stw.CB_RangeValue(stw.Labels["YMAX"], &stw.Frame.Show.Yrange[1])
+    stw.CB_RangeValue(stw.Labels["YMIN"], &stw.Frame.Show.Yrange[0])
+    stw.CB_RangeValue(stw.Labels["ZMAX"], &stw.Frame.Show.Zrange[1])
+    stw.CB_RangeValue(stw.Labels["ZMIN"], &stw.Frame.Show.Zrange[0])
+    stw.CB_Period(stw.Labels["PERIOD"], &stw.Frame.Show.Period)
+    stw.CB_TextValue(stw.Labels["GAXISSIZE"], &stw.Frame.Show.GlobalAxisSize)
+    stw.CB_TextValue(stw.Labels["EAXISSIZE"], &stw.Frame.Show.ElementAxisSize)
+    stw.CB_TextValue(stw.Labels["BONDSIZE"], &stw.Frame.Show.BondSize)
+    stw.CB_TextValue(stw.Labels["CONFSIZE"], &stw.Frame.Show.ConfSize)
+    stw.CB_TextValue(stw.Labels["DFACT"], &stw.Frame.Show.Dfact)
+    stw.CB_TextValue(stw.Labels["MFACT"], &stw.Frame.Show.Mfact)
 }
 
 func (stw *Window) EscapeCB () {
@@ -3525,8 +3338,9 @@ func (stw *Window) EscapeCB () {
     stw.CB_MouseMotion()
     stw.CB_CanvasWheel()
     stw.CB_CommonKeyAny()
-    // stw.Show.SetColorMode(ECOLOR_SECT)
-    stw.Redraw()
+    if stw.Frame != nil {
+        stw.Redraw()
+    }
 }
 
 func (stw *Window) EscapeAll () {

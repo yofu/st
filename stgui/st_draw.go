@@ -9,40 +9,17 @@ import (
 )
 
 // FRAME
-func ProjectDeformation (view *st.View, node *st.Node, show *Show) {
-    p  := make([]float64, 3)
-    pv := make([]float64, 3)
-    pc := make([]float64, 2)
-    for i:=0; i<3; i++ {
-        p[i] = (node.Coord[i] + show.Dfact * node.ReturnDisp(show.Period, i)) - view.Focus[i]
-        pv[i] = view.Viewpoint[0][i]*view.Dists[0] - p[i]
-    }
-    for i:=0; i<2; i++ {
-        pc[i] = st.Dot(view.Viewpoint[i+1], p, 3)
-    }
-    if view.Perspective {
-        vnai := st.Dot(view.Viewpoint[0], pv, 3)
-        for i:=0; i<2; i++ {
-            node.Dcoord[i] = view.Gfact*view.Dists[1]*pc[i]/vnai + view.Center[i]
-        }
-    } else {
-        for i:=0; i<2; i++ {
-            node.Dcoord[i] = view.Gfact*pc[i] + view.Center[i]
-        }
-    }
-}
-
 
 // NODE
-func DrawNode (node *st.Node, cvs *cd.Canvas, show *Show) {
+func DrawNode (node *st.Node, cvs *cd.Canvas, show *st.Show) {
     // Caption
     var ncap bytes.Buffer
     var oncap bool
-    if show.NodeCaption & NC_NUM != 0 {
+    if show.NodeCaption & st.NC_NUM != 0 {
         ncap.WriteString(fmt.Sprintf("%d\n", node.Num))
         oncap = true
     }
-    for i, j := range []uint{NC_DX, NC_DY, NC_DZ} {
+    for i, j := range []uint{st.NC_DX, st.NC_DY, st.NC_DZ} {
         if show.NodeCaption & j != 0 {
             if !node.Conf[i] {
                 ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["DISP"]), node.ReturnDisp(show.Period, i)*100.0))
@@ -50,7 +27,7 @@ func DrawNode (node *st.Node, cvs *cd.Canvas, show *Show) {
             }
         }
     }
-    for i, j := range []uint{NC_RX, NC_RY, NC_RZ} {
+    for i, j := range []uint{st.NC_RX, st.NC_RY, st.NC_RZ} {
         if show.NodeCaption & j != 0 {
             if node.Conf[i] {
                 ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), node.ReturnReaction(show.Period, i)))
@@ -58,7 +35,7 @@ func DrawNode (node *st.Node, cvs *cd.Canvas, show *Show) {
             }
         }
     }
-    if show.NodeCaption & NC_ZCOORD != 0 {
+    if show.NodeCaption & st.NC_ZCOORD != 0 {
         ncap.WriteString(fmt.Sprintf("%.1f\n", node.Coord[2]))
         oncap = true
     }
@@ -71,7 +48,7 @@ func DrawNode (node *st.Node, cvs *cd.Canvas, show *Show) {
     // Conffigure
     if show.Conf {
         cvs.InteriorStyle(cd.CD_SOLID)
-        cvs.Foreground(show.ConfColor)
+        cvs.Foreground(ConfColor)
         switch node.ConfState() {
         default:
             return
@@ -126,7 +103,7 @@ func FixFigure (cvs *cd.Canvas, x, y , size float64) {
     cvs.FLine(x+0.75*size, y, x+0.25*size, y-0.5*size)
 }
 
-func  DrawNodeNormal (node *st.Node, canv *cd.Canvas, show *Show) {
+func  DrawNodeNormal (node *st.Node, canv *cd.Canvas, show *st.Show) {
     v := make([]float64, 3)
     d := node.Normal(true)
     for i:=0; i<3; i++ {
@@ -141,19 +118,19 @@ func  DrawNodeNormal (node *st.Node, canv *cd.Canvas, show *Show) {
 
 
 // ELEM
-func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *Show) {
+func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
     var ecap bytes.Buffer
     var oncap bool
-    if show.ElemCaption & EC_NUM != 0 {
+    if show.ElemCaption & st.EC_NUM != 0 {
         ecap.WriteString(fmt.Sprintf("%d\n", elem.Num))
         oncap = true
     }
-    if show.ElemCaption & EC_SECT != 0 {
+    if show.ElemCaption & st.EC_SECT != 0 {
         ecap.WriteString(fmt.Sprintf("%d\n", elem.Sect.Num))
         oncap = true
     }
     if elem.IsLineElem() {
-        if show.ElemCaption & EC_RATE_L != 0 || show.ElemCaption & EC_RATE_S != 0 {
+        if show.ElemCaption & st.EC_RATE_L != 0 || show.ElemCaption & st.EC_RATE_S != 0 {
             val := RateMax(elem, show)
             ecap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n",show.Formats["RATE"]),val))
             oncap = true
@@ -185,7 +162,7 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *Show) {
     if elem.IsLineElem() {
         cvs.FLine(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1], elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
         if show.Bond {
-            cvs.Foreground(show.BondColor)
+            cvs.Foreground(BondColor)
             switch elem.BondState() {
             case st.PIN_RIGID:
                 d := elem.PDirection(true)
@@ -224,7 +201,7 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *Show) {
                         sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i)))
                         if i == 4 || i == 5 {
                             mcoord := MomentCoord(elem, show, i)
-                            cvs.Foreground(show.MomentColor)
+                            cvs.Foreground(MomentColor)
                             cvs.Begin(cd.CD_OPEN_LINES)
                             cvs.FVertex(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1])
                             for _, c := range mcoord {
@@ -237,7 +214,7 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *Show) {
                     }
                 }
             }
-            cvs.Foreground(show.StressTextColor)
+            cvs.Foreground(StressTextColor)
             for j:=0; j<2; j++ {
                 if tex := sttext[j].String(); tex != "" {
                     coord := make([]float64, 3)
@@ -265,7 +242,7 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *Show) {
             cvs.FVertex(elem.Enod[i].Pcoord[0], elem.Enod[i].Pcoord[1])
         }
         cvs.End()
-        cvs.Foreground(show.PlateEdgeColor)
+        cvs.Foreground(PlateEdgeColor)
         cvs.Begin(cd.CD_CLOSED_LINES)
         cvs.FVertex(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1])
         for i:=1; i<elem.Enods; i++ {
@@ -278,7 +255,7 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *Show) {
     }
 }
 
-func DrawElementAxis (elem *st.Elem, canv *cd.Canvas, show *Show) {
+func DrawElementAxis (elem *st.Elem, canv *cd.Canvas, show *st.Show) {
     if !elem.IsLineElem() { return }
     x := make([]float64, 3)
     y := make([]float64, 3)
@@ -306,7 +283,7 @@ func DrawElementAxis (elem *st.Elem, canv *cd.Canvas, show *Show) {
     canv.Foreground(cd.CD_WHITE)
 }
 
-func DrawElemNormal (elem *st.Elem, canv *cd.Canvas, show *Show) {
+func DrawElemNormal (elem *st.Elem, canv *cd.Canvas, show *st.Show) {
     v := make([]float64, 3)
     mid := elem.MidPoint()
     d := elem.Normal(true)
@@ -321,7 +298,7 @@ func DrawElemNormal (elem *st.Elem, canv *cd.Canvas, show *Show) {
     Arrow(canv, mp[0], mp[1], vec[0], vec[1], arrow, angle)
 }
 
-func MomentCoord (elem *st.Elem, show *Show, index int) [][]float64 {
+func MomentCoord (elem *st.Elem, show *st.Show, index int) [][]float64 {
     var axis []float64
     if index == 4 {
         axis = elem.Weak
@@ -376,8 +353,8 @@ func MomentCoord (elem *st.Elem, show *Show, index int) [][]float64 {
     }
 }
 
-func RateMax(elem *st.Elem, show *Show) float64 {
-     if len(elem.Rate)%3 != 0 || (show.ElemCaption & EC_RATE_L == 0 && show.ElemCaption & EC_RATE_S == 0) {
+func RateMax(elem *st.Elem, show *st.Show) float64 {
+     if len(elem.Rate)%3 != 0 || (show.ElemCaption & st.EC_RATE_L == 0 && show.ElemCaption & st.EC_RATE_S == 0) {
         val := 0.0
         for _, tmp := range elem.Rate {
             if tmp > val { val = tmp }
@@ -396,8 +373,8 @@ func RateMax(elem *st.Elem, show *Show) float64 {
                 if tmp > vals { vals = tmp }
             }
         }
-        if show.ElemCaption & EC_RATE_L == 0 { vall = 0.0 }
-        if show.ElemCaption & EC_RATE_S == 0 { vals = 0.0 }
+        if show.ElemCaption & st.EC_RATE_L == 0 { vall = 0.0 }
+        if show.ElemCaption & st.EC_RATE_S == 0 { vals = 0.0 }
         if vall >= vals {
             return vall
         } else {
@@ -408,7 +385,7 @@ func RateMax(elem *st.Elem, show *Show) float64 {
 
 
 // KIJUN
-func DrawKijun (k *st.Kijun, cvs *cd.Canvas, show *Show) {
+func DrawKijun (k *st.Kijun, cvs *cd.Canvas, show *st.Show) {
     d := k.PDirection(true)
     if (math.Abs(d[0]) <= 1e-6 && math.Abs(d[1]) <= 1e-6) { return }
     cvs.LineStyle(cd.CD_DASH_DOT)

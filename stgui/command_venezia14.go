@@ -144,7 +144,7 @@ func ven14surface (stw *Window) {
 
 func ven14normal (stw *Window) {
     // stw.Show.NodeNormal = true
-    stw.Show.ElemNormal = true
+    stw.Frame.Show.ElemNormal = true
     stw.Redraw()
     stw.canv.SetCallback( func (arg *iup.CommonKeyAny) {
                               key := iup.KeyState(arg.Key)
@@ -153,7 +153,7 @@ func ven14normal (stw *Window) {
                                   stw.DefaultKeyAny(key)
                               case KEY_ESCAPE:
                                   // stw.Show.NodeNormal = false
-                                  stw.Show.ElemNormal = false
+                                  stw.Frame.Show.ElemNormal = false
                                   stw.EscapeAll()
                               }
                           })

@@ -1515,8 +1515,8 @@ func selectelem (stw *Window) {
 
 // SELECTSECT// {{{
 func selectsect (stw *Window) {
-    stw.Show.ElemCaption |= EC_SECT
-    stw.Show.Label["EC_SECT"].SetAttribute("FGCOLOR", labelFGColor)
+    stw.Frame.Show.ElemCaption |= st.EC_SECT
+    stw.Labels["EC_SECT"].SetAttribute("FGCOLOR", labelFGColor)
     stw.Deselect()
     stw.Redraw()
     iup.SetFocus(stw.canv)
@@ -1696,11 +1696,11 @@ func fence (stw *Window) {
 func errorelem (stw *Window) {
     iup.SetFocus(stw.canv)
     stw.Deselect()
-    stw.Show.SetColorMode(ECOLOR_RATE)
-    stw.Show.ElemCaption |= EC_RATE_L
-    stw.Show.ElemCaption |= EC_RATE_S
-    stw.Show.Label["EC_RATE_L"].SetAttribute("FGCOLOR", labelFGColor)
-    stw.Show.Label["EC_RATE_S"].SetAttribute("FGCOLOR", labelFGColor)
+    stw.Frame.Show.SetColorMode(st.ECOLOR_RATE)
+    stw.Frame.Show.ElemCaption |= st.EC_RATE_L
+    stw.Frame.Show.ElemCaption |= st.EC_RATE_S
+    stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelFGColor)
+    stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelFGColor)
     stw.Redraw()
     tmpels := make([]*st.Elem, len(stw.Frame.Elems))
     i:=0
@@ -2114,7 +2114,7 @@ func notice1459 (stw *Window) {
                           var delta float64
                           ds := make([]float64, num)
                           for i:=0; i<num; i++ {
-                              ds[i] = -stw.SelectNode[i].ReturnDisp(stw.Show.Period, 2)*100
+                              ds[i] = -stw.SelectNode[i].ReturnDisp(stw.Frame.Show.Period, 2)*100
                           }
                           switch num {
                           default:

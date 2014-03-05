@@ -53,7 +53,7 @@ type Frame struct {
     Locate float64
     Tfact float64
     Gperiod float64
-    View  *View
+    View *View
     Nodes map[int]*Node
     Elems map[int]*Elem
     Props map[int]*Prop
@@ -67,8 +67,7 @@ type Frame struct {
 
     Level []float64
 
-    Unit []float64
-    UnitName []string
+    Show *Show
 }
 
 func NewFrame() *Frame {
@@ -88,8 +87,7 @@ func NewFrame() *Frame {
     f.Maxenum = 1000
     f.Maxsnum = 900
     f.Level = make([]float64, 0)
-    f.Unit = []float64{1.0, 1.0}
-    f.UnitName = []string{"tf", "m"}
+    f.Show = NewShow(f)
     return f
 }
 // }}}
@@ -1622,7 +1620,7 @@ func (frame *Frame) WeightDistribution () {
     otp.WriteString("3.2 : 節点重量\n\n")
     otp.WriteString("節点ごとに重量を集計した結果を記す。\n")
     otp.WriteString("柱，壁は階高の中央で上下に分配するものとする。\n\n")
-    otp.WriteString(fmt.Sprintf(" 節点番号          積載荷重別の重量 [%s]\n\n", frame.UnitName[0]))
+    otp.WriteString(fmt.Sprintf(" 節点番号          積載荷重別の重量 [%s]\n\n", frame.Show.UnitName[0]))
     otp.WriteString("                 床用     柱梁用     地震用\n")
     for _, el := range frame.Elems {
         el.Distribute()
@@ -1651,13 +1649,13 @@ func (frame *Frame) WeightDistribution () {
         otp.WriteString(fmt.Sprintf("%9d %9.3f\n", k, amount[k]))
     }
     otp.WriteString("\n")
-    switch frame.UnitName[0] {
+    switch frame.Show.UnitName[0] {
     default:
-        otp.WriteString(fmt.Sprintf("Unit Factor  =%7.5f \"[%s]\"\n\n", frame.Unit[0], frame.UnitName[0]))
+        otp.WriteString(fmt.Sprintf("Unit Factor  =%7.5f \"[%s]\"\n\n", frame.Show.Unit[0], frame.Show.UnitName[0]))
     case "tf":
-        otp.WriteString(fmt.Sprintf("Unit Factor  =%7.5f \"Classic Units [%s]\"\n\n", frame.Unit[0], frame.UnitName[0]))
+        otp.WriteString(fmt.Sprintf("Unit Factor  =%7.5f \"Classic Units [%s]\"\n\n", frame.Show.Unit[0], frame.Show.UnitName[0]))
     case "kN":
-        otp.WriteString(fmt.Sprintf("Unit Factor  =%7.5f \"SI Units [%s]\"\n\n", frame.Unit[0], frame.UnitName[0]))
+        otp.WriteString(fmt.Sprintf("Unit Factor  =%7.5f \"SI Units [%s]\"\n\n", frame.Show.Unit[0], frame.Show.UnitName[0]))
     }
     otp.WriteString(frame.Ai())
     w, err := os.Create(filepath.Join(frame.Home, DEFAULT_WGT))
@@ -1955,4 +1953,28 @@ func (view *View) ProjectNode (node *Node) {
         }
     }
 }
+
+func (view *View) ProjectDeformation (node *Node, show *Show) {
+    p  := make([]float64, 3)
+    pv := make([]float64, 3)
+    pc := make([]float64, 2)
+    for i:=0; i<3; i++ {
+        p[i] = (node.Coord[i] + show.Dfact * node.ReturnDisp(show.Period, i)) - view.Focus[i]
+        pv[i] = view.Viewpoint[0][i]*view.Dists[0] - p[i]
+    }
+    for i:=0; i<2; i++ {
+        pc[i] = Dot(view.Viewpoint[i+1], p, 3)
+    }
+    if view.Perspective {
+        vnai := Dot(view.Viewpoint[0], pv, 3)
+        for i:=0; i<2; i++ {
+            node.Dcoord[i] = view.Gfact*view.Dists[1]*pc[i]/vnai + view.Center[i]
+        }
+    } else {
+        for i:=0; i<2; i++ {
+            node.Dcoord[i] = view.Gfact*pc[i] + view.Center[i]
+        }
+    }
+}
+
 // }}}
