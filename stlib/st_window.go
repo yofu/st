@@ -824,6 +824,8 @@ type Show struct {// {{{
     Property bool
     Selected []*iup.Handle
     Props []*iup.Handle
+
+    Formats map[string]string
 }
 
 func NewShow(stw *Window) *Show {
@@ -964,6 +966,13 @@ func NewShow(stw *Window) *Show {
     s.Zrange = []float64{ -100.0, 1000.0 }
 
     s.Property = false
+
+    s.Formats = make(map[string]string)
+
+    s.Formats["STRESS"]   = "%.3f"
+    s.Formats["RATE"]     = "%.3f"
+    s.Formats["DISP"]     = "%.3f"
+    s.Formats["REACTION"] = "%.3f"
 
     return s
 }
@@ -2503,7 +2512,7 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
             switch stw.Frame.Project {
             default:
                 stw.cline.SetAttribute("INSERT", ";")
-            case "ven":
+            case "venhira":
                 stw.cline.SetAttribute("INSERT", "V4")
             }
         }

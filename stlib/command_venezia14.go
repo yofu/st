@@ -164,7 +164,7 @@ func ven14setcang (stw *Window) {
             walls := stw.Frame.SearchElem(el.Enod...)
             vec := make([]float64, 3)
             for _, w := range walls {
-                if w.Etype == WALL {
+                if w.Etype == WALL && (w.Sect.Num-el.Sect.Num)%100 == 0 {
                     tmp := w.Normal(true)
                     for i:=0; i<3; i++ {
                         vec[i] += tmp[i]

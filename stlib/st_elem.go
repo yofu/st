@@ -903,7 +903,7 @@ func (elem *Elem) Draw (cvs *cd.Canvas, show *Show) {
     if elem.IsLineElem() {
         if show.ElemCaption & EC_RATE_L != 0 || show.ElemCaption & EC_RATE_S != 0 {
             val := elem.RateMax(show)
-            ecap.WriteString(fmt.Sprintf("%.3f\n",val))
+            ecap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n",show.Formats["RATE"]),val))
             oncap = true
         }
     }
@@ -967,9 +967,9 @@ func (elem *Elem) Draw (cvs *cd.Canvas, show *Show) {
             sttext := make([]bytes.Buffer, 2)
             for i, st := range []uint{ STRESS_NZ, STRESS_QX, STRESS_QY, STRESS_MZ, STRESS_MX, STRESS_MY } {
                 if flag & st != 0 {
-                    sttext[0].WriteString(fmt.Sprintf("%.3f\n", elem.ReturnStress(show.Period, 0, i)))
-                    if i != 0 {
-                        sttext[1].WriteString(fmt.Sprintf("%.3f\n", elem.ReturnStress(show.Period, 1, i)))
+                    sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)))
+                    if i != 0 { // not showing NZ
+                        sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i)))
                         if i == 4 || i == 5 {
                             mcoord := elem.MomentCoord(show, i)
                             cvs.Foreground(show.MomentColor)

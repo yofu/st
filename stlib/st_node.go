@@ -135,6 +135,14 @@ func (node *Node) Rotate (center, vector []float64, angle float64) {
     node.MoveTo(c[0], c[1], c[2])
 }
 
+func (node *Node) Scale (center []float64, val float64) {
+    c := make([]float64, 3)
+    for i:=0; i<3; i++ {
+        c[i] = (node.Coord[i] - center[i])*val + center[i]
+    }
+    node.MoveTo(c[0], c[1], c[2])
+}
+
 func (node *Node) MirrorCoord (coord, vec []float64) []float64 {
     vec = Normalize(vec)
     rtn := make([]float64, 3)
@@ -271,40 +279,20 @@ func (node *Node) Draw (cvs *cd.Canvas, show *Show) {
         ncap.WriteString(fmt.Sprintf("%d\n", node.Num))
         oncap = true
     }
-    if show.NodeCaption & NC_DX != 0 {
-        if !node.Conf[0] {
-            ncap.WriteString(fmt.Sprintf("%.3f\n", node.ReturnDisp(show.Period, 0)*100.0))
-            oncap = true
+    for i, j := range []uint{NC_DX, NC_DY, NC_DZ} {
+        if show.NodeCaption & j != 0 {
+            if !node.Conf[i] {
+                ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["DISP"]), node.ReturnDisp(show.Period, i)*100.0))
+                oncap = true
+            }
         }
     }
-    if show.NodeCaption & NC_DY != 0 {
-        if !node.Conf[1] {
-            ncap.WriteString(fmt.Sprintf("%.3f\n", node.ReturnDisp(show.Period, 1)*100.0))
-            oncap = true
-        }
-    }
-    if show.NodeCaption & NC_DZ != 0 {
-        if !node.Conf[2] {
-            ncap.WriteString(fmt.Sprintf("%.3f\n", node.ReturnDisp(show.Period, 2)*100.0))
-            oncap = true
-        }
-    }
-    if show.NodeCaption & NC_RX != 0 {
-        if node.Conf[0] {
-            ncap.WriteString(fmt.Sprintf("%.3f\n", node.ReturnReaction(show.Period, 0)))
-            oncap = true
-        }
-    }
-    if show.NodeCaption & NC_RY != 0 {
-        if node.Conf[1] {
-            ncap.WriteString(fmt.Sprintf("%.3f\n", node.ReturnReaction(show.Period, 1)))
-            oncap = true
-        }
-    }
-    if show.NodeCaption & NC_RZ != 0 {
-        if node.Conf[2] {
-            ncap.WriteString(fmt.Sprintf("%.3f\n", node.ReturnReaction(show.Period, 2)))
-            oncap = true
+    for i, j := range []uint{NC_RX, NC_RY, NC_RZ} {
+        if show.NodeCaption & j != 0 {
+            if node.Conf[i] {
+                ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), node.ReturnReaction(show.Period, i)))
+                oncap = true
+            }
         }
     }
     if show.NodeCaption & NC_ZCOORD != 0 {

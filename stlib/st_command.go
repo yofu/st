@@ -46,6 +46,7 @@ var (
     PINCHNODE = &Command{"PINCH NODE", "pinch nodes", pinchnode}
     ROTATE = &Command{"ROTATE", "rotate selected nodes", rotate}
     MIRROR = &Command{"MIRROR", "mirror selected elems", mirror}
+    SCALE = &Command{"SCALE", "scale selected nodes", scale}
     SEARCHELEM = &Command{"SEARCH ELEM", "search elems using node", searchelem}
     NODETOELEM = &Command{"NODE TO ELEM", "select elems using selected node", nodetoelemall}
     ELEMTONODE = &Command{"ELEM TO NODE", "select nodes used by selected elem", elemtonode}
@@ -99,6 +100,7 @@ func init() {
     Commands["PINCHNODE"]=PINCHNODE
     Commands["ROTATE"]=ROTATE
     Commands["MIRROR"]=MIRROR
+    Commands["SCALE"]=SCALE
     Commands["SEARCHELEM"]=SEARCHELEM
     Commands["NODETOELEM"]=NODETOELEM
     Commands["ELEMTONODE"]=ELEMTONODE
@@ -189,7 +191,6 @@ func get1node (stw *Window, f func(n *Node)) {
                               switch key.Key() {
                               default:
                                   stw.DefaultKeyAny(key)
-                                  // stw.cline.SetAttribute("INSERT", string(key.Key()))
                               case KEY_BS:
                                   val := stw.cline.GetAttribute("VALUE")
                                   if val != "" {
@@ -1075,6 +1076,47 @@ func mirror (stw *Window) {
 // }}}
 
 
+// SCALE// {{{
+func scale (stw *Window) {
+    ns := make([]*Node, 0)
+    if stw.SelectNode != nil {
+        for _, n := range stw.SelectNode {
+            if n != nil { ns = append(ns, n) }
+        }
+    }
+    if stw.SelectElem != nil {
+        en := stw.Frame.ElemToNode(stw.SelectElem...)
+        var add bool
+        for _, n := range en {
+            add = true
+            for _, m := range(ns) {
+                if m == n { add = false; break}
+            }
+            if add { ns = append(ns, n) }
+        }
+    }
+    if len(ns)==0 { return }
+    stw.addHistory("原点を指定[ダイアログ(D)]")
+    get1node(stw, func (n0 *Node) {
+                      tmp, err := stw.Query("倍率を指定")
+                      if err != nil {
+                          stw.addHistory(err.Error())
+                          stw.EscapeCB()
+                      }
+                      val, err := strconv.ParseFloat(tmp, 64)
+                      if err != nil {
+                          stw.addHistory(err.Error())
+                          stw.EscapeCB()
+                      }
+                      for _, n := range ns {
+                          if n == nil || n.Hide || n.Lock { continue }
+                          n.Scale(n0.Coord, val)
+                      }
+                      stw.EscapeCB()
+                  })
+}
+// }}}
+
 
 // OPEN
 func openinput(stw *Window) {
@@ -1319,7 +1361,7 @@ func confxyroller (stw *Window) {
     if stw.SelectNode == nil { stw.EscapeAll(); return }
     for _, n := range stw.SelectNode {
         if n == nil || n.Lock { continue }
-        for i:=0; i<6; i++ {
+        for i:=0; i<3; i++ {
             n.Conf[i] = false
             n.Conf[i+3] = false
         }
