@@ -1142,7 +1142,7 @@ func (stw *Window) addHistory(str string) {
     stw.hist.SetAttribute("SCROLLTO",setpos)
 }
 
-func (stw *Window) execCommand(com *Command) {
+func (stw *Window) ExecCommand(com *Command) {
     stw.addHistory(com.Name)
     stw.cname.SetAttribute("VALUE", com.Name)
     stw.lastcommand = com
@@ -1156,10 +1156,10 @@ func (stw *Window) execAliasCommand(al string) {
     }
     al = strings.ToUpper(al)
     if value,ok := aliases[al]; ok {
-        stw.execCommand(value)
+        stw.ExecCommand(value)
         return
     } else if value,ok := Commands[al]; ok{
-        stw.execCommand(value)
+        stw.ExecCommand(value)
         return
     } else {
         switch {
@@ -1526,7 +1526,6 @@ func (stw *Window) HideNotSelected() {
         }
     }
     stw.SetShowRange()
-    stw.Deselect()
     stw.Redraw()
 }
 
@@ -1547,7 +1546,26 @@ func (stw *Window) HideSelected() {
         }
     }
     stw.SetShowRange()
-    stw.Deselect()
+    stw.Redraw()
+}
+
+func (stw *Window) LockNotSelected() {
+    if stw.SelectElem != nil{
+        for _, n := range stw.Frame.Nodes {
+            n.Lock = true
+        }
+        for _, el := range stw.Frame.Elems {
+            el.Lock = true
+        }
+        for _, el := range stw.SelectElem {
+            if el != nil {
+                el.Lock = false
+                for _, en := range el.Enod {
+                    en.Lock = false
+                }
+            }
+        }
+    }
     stw.Redraw()
 }
 
@@ -1562,7 +1580,6 @@ func (stw *Window) LockSelected() {
             }
         }
     }
-    stw.Deselect()
     stw.Redraw()
 }
 
@@ -2247,7 +2264,7 @@ func (stw *Window) CB_MouseButton() {
                                           } else {
                                               if time.Since(pressed).Seconds() < repeatcommand {
                                                   if stw.lastcommand != nil {
-                                                      stw.execCommand(stw.lastcommand)
+                                                      stw.ExecCommand(stw.lastcommand)
                                                   }
                                               } else {
                                                   stw.context.Popup(iup.MOUSEPOS, iup.MOUSEPOS)
@@ -2296,7 +2313,9 @@ func (stw *Window) CB_CanvasWheel() {
                               if stw.Frame != nil {
                                   stw.dbuff.UpdateYAxis(&arg.Y)
                                   val := math.Pow(2.0, float64(arg.Delta)/CanvasScaleSpeed)
-                                  stw.Frame.View.Center[0] += (val-1.0)*(stw.Frame.View.Center[0] - float64(arg.X))
+                                  x := arg.X
+                                  if x > 65535 { x -= 65535 }
+                                  stw.Frame.View.Center[0] += (val-1.0)*(stw.Frame.View.Center[0] - float64(x))
                                   stw.Frame.View.Center[1] += (val-1.0)*(stw.Frame.View.Center[1] - float64(arg.Y))
                                   if stw.Frame.View.Perspective {
                                       stw.Frame.View.Dists[1] *= val
@@ -2874,6 +2893,35 @@ func datatext (defval string) *iup.Handle {
     return rtn
 }
 
+func (stw *Window) HideEtype (etype int) {
+    stw.Frame.Show.Etype[etype] = false
+    for _, el := range(stw.Frame.Elems) {
+        if el.Etype == etype { el.Hide = true }
+    }
+    stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelOFFColor)
+    stw.Redraw()
+    iup.SetFocus(stw.canv)
+}
+
+func (stw *Window) ShowEtype (etype int) {
+    stw.Frame.Show.Etype[etype] = true
+    for _, el := range(stw.Frame.Elems) {
+        if el.Etype == etype { el.Hide = false }
+    }
+    stw.UpdateShowRange() // TODO: ShowRange
+    stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelFGColor)
+    stw.Redraw()
+    iup.SetFocus(stw.canv)
+}
+
+func (stw *Window) ToggleEtype (etype int) {
+    if stw.Frame.Show.Etype[etype] {
+        stw.HideEtype(etype)
+    } else {
+        stw.ShowEtype(etype)
+    }
+}
+
 func (stw *Window) etypeLabel (name string, width int, etype int, defval bool) *iup.Handle {
     var col string
     if defval {
@@ -2894,24 +2942,25 @@ func (stw *Window) etypeLabel (name string, width int, etype int, defval bool) *
                             switch arg.Button {
                             case BUTTON_LEFT:
                                 if arg.Pressed == 0 { // Released
-                                    if stw.Frame.Show.Etype[etype] {
-                                        stw.Frame.Show.Etype[etype] = false
-                                        for _, el := range(stw.Frame.Elems) {
-                                            if el.Etype == etype { el.Hide = true }
-                                        }
-                                        rtn.SetAttribute("FGCOLOR", labelOFFColor)
-                                    } else {
-                                        stw.Frame.Show.Etype[etype] = true
-                                        for _, el := range(stw.Frame.Elems) {
-                                            if el.Etype == etype { el.Hide = false }
-                                        }
-                                        stw.UpdateShowRange() // TODO: ShowRange
-                                        rtn.SetAttribute("FGCOLOR", labelFGColor)
-                                    }
-                                    // stw.UpdateShowRange() // TODO: ShowRange
-                                    // stw.HideNodes()
-                                    stw.Redraw()
-                                    iup.SetFocus(stw.canv)
+                                    stw.ToggleEtype(etype)
+                                    // if stw.Frame.Show.Etype[etype] {
+                                    //     stw.Frame.Show.Etype[etype] = false
+                                    //     for _, el := range(stw.Frame.Elems) {
+                                    //         if el.Etype == etype { el.Hide = true }
+                                    //     }
+                                    //     rtn.SetAttribute("FGCOLOR", labelOFFColor)
+                                    // } else {
+                                    //     stw.Frame.Show.Etype[etype] = true
+                                    //     for _, el := range(stw.Frame.Elems) {
+                                    //         if el.Etype == etype { el.Hide = false }
+                                    //     }
+                                    //     stw.UpdateShowRange() // TODO: ShowRange
+                                    //     rtn.SetAttribute("FGCOLOR", labelFGColor)
+                                    // }
+                                    // // stw.UpdateShowRange() // TODO: ShowRange
+                                    // // stw.HideNodes()
+                                    // stw.Redraw()
+                                    // iup.SetFocus(stw.canv)
                                 }
                             }
                         }
@@ -3078,6 +3127,58 @@ func (stw *Window) displayLabel (name string, defval bool) *iup.Handle {
     return rtn
 }
 
+func (stw *Window) NodeCaptionOn (name string) {
+    for i, j := range st.NODECAPTIONS {
+        if j == name {
+            if lbl, ok := stw.Labels[name]; ok {
+                lbl.SetAttribute("FGCOLOR", labelFGColor)
+            }
+            if stw.Frame != nil {
+                stw.Frame.Show.NodeCaptionOn(1<<uint(i))
+            }
+        }
+    }
+}
+
+func (stw *Window) NodeCaptionOff (name string) {
+    for i, j := range st.NODECAPTIONS {
+        if j == name {
+            if lbl, ok := stw.Labels[name]; ok {
+                lbl.SetAttribute("FGCOLOR", labelOFFColor)
+            }
+            if stw.Frame != nil {
+                stw.Frame.Show.NodeCaptionOff(1<<uint(i))
+            }
+        }
+    }
+}
+
+func (stw *Window) ElemCaptionOn (name string) {
+    for i, j := range st.ELEMCAPTIONS {
+        if j == name {
+            if lbl, ok := stw.Labels[name]; ok {
+                lbl.SetAttribute("FGCOLOR", labelFGColor)
+            }
+            if stw.Frame != nil {
+                stw.Frame.Show.ElemCaptionOn(1<<uint(i))
+            }
+        }
+    }
+}
+
+func (stw *Window) ElemCaptionOff (name string) {
+    for i, j := range st.ELEMCAPTIONS {
+        if j == name {
+            if lbl, ok := stw.Labels[name]; ok {
+                lbl.SetAttribute("FGCOLOR", labelOFFColor)
+            }
+            if stw.Frame != nil {
+                stw.Frame.Show.ElemCaptionOff(1<<uint(i))
+            }
+        }
+    }
+}
+
 func (stw *Window) captionLabel (ne string, name string, width int, val uint, on bool) *iup.Handle {
     var col string
     if on {
@@ -3235,6 +3336,11 @@ func (stw *Window) CB_RangeValue (h *iup.Handle, valptr *float64) {
                            }
                        }
                    })
+}
+
+func (stw *Window) SetColorMode (mode uint) {
+    stw.Labels["COLORMODE"].SetAttribute("VALUE", fmt.Sprintf("  %s", st.ECOLORS[mode]))
+    stw.Frame.Show.ColorMode = mode
 }
 
 func (stw *Window) UpdateShowRange () {

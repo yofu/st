@@ -1696,7 +1696,7 @@ func fence (stw *Window) {
 func errorelem (stw *Window) {
     iup.SetFocus(stw.canv)
     stw.Deselect()
-    stw.Frame.Show.SetColorMode(st.ECOLOR_RATE)
+    stw.SetColorMode(st.ECOLOR_RATE)
     stw.Frame.Show.ElemCaption |= st.EC_RATE_L
     stw.Frame.Show.ElemCaption |= st.EC_RATE_S
     stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelFGColor)
