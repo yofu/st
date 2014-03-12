@@ -949,11 +949,28 @@ func (stw *Window) SearchInp() {
                          key := iup.KeyState(arg.Key)
                          switch key.Key() {
                          case KEY_ENTER:
-                             openfile(result.GetAttribute("1"))
+                             val := result.GetAttribute("VALUE")
+                             if val == "0" { val = "1" }
+                             openfile(result.GetAttribute(val))
                          case KEY_ESCAPE:
                              if searchinginps_r { brk <- true }
                              dlg.Destroy()
-                         case 'R','r':
+                         case 'J':
+                             if key.IsCtrl() {
+                                 tmp := result.GetAttribute("VALUE")
+                                 val, _ := strconv.ParseInt(tmp, 10, 64)
+                                 next := val+1
+                                 result.SetAttribute("VALUE", fmt.Sprintf("%d", next))
+                             }
+                         case 'K':
+                             if key.IsCtrl() {
+                                 tmp := result.GetAttribute("VALUE")
+                                 val, _ := strconv.ParseInt(tmp, 10, 64)
+                                 next := val-1
+                                 if next < 0 { next = 0 }
+                                 result.SetAttribute("VALUE", fmt.Sprintf("%d", next))
+                             }
+                         case 'R':
                              if key.IsCtrl() {
                                  if !SearchingInps {
                                      result.SetAttribute("REMOVEITEM", "ALL")
