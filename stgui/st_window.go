@@ -1605,6 +1605,16 @@ func (stw *Window) ShowAll() {
     for _, k := range stw.Frame.Kijuns {
         k.Hide = false
     }
+    for _, et := range st.ETYPES {
+        if lb, ok := stw.Labels[et]; ok {
+            lb.SetAttribute("FGCOLOR", labelFGColor)
+        }
+    }
+    for i, _ := range stw.Frame.Show.Sect {
+        if lb, ok := stw.Labels[fmt.Sprintf("%d", i)]; ok {
+            lb.SetAttribute("FGCOLOR", labelFGColor)
+        }
+    }
     stw.Frame.Show.All()
     stw.Redraw()
 }

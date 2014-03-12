@@ -129,13 +129,13 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
         ecap.WriteString(fmt.Sprintf("%d\n", elem.Sect.Num))
         oncap = true
     }
-    if elem.IsLineElem() {
-        if show.ElemCaption & st.EC_RATE_L != 0 || show.ElemCaption & st.EC_RATE_S != 0 {
-            val := RateMax(elem, show)
-            ecap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n",show.Formats["RATE"]),val))
-            oncap = true
-        }
+    // if elem.IsLineElem() {
+    if show.ElemCaption & st.EC_RATE_L != 0 || show.ElemCaption & st.EC_RATE_S != 0 {
+        val := RateMax(elem, show)
+        ecap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n",show.Formats["RATE"]),val))
+        oncap = true
     }
+    // }
     if oncap {
         var textpos []float64
         if st.BRACE <= elem.Etype && elem.Etype <= st.SBRACE {
@@ -354,32 +354,41 @@ func MomentCoord (elem *st.Elem, show *st.Show, index int) [][]float64 {
 }
 
 func RateMax(elem *st.Elem, show *st.Show) float64 {
-     if len(elem.Rate)%3 != 0 || (show.ElemCaption & st.EC_RATE_L == 0 && show.ElemCaption & st.EC_RATE_S == 0) {
-        val := 0.0
-        for _, tmp := range elem.Rate {
-            if tmp > val { val = tmp }
-        }
-        return val
-    } else {
-        vall := 0.0
-        vals := 0.0
-        for i, tmp := range elem.Rate {
-            switch i%3 {
-            default:
-                continue
-            case 0:
-                if tmp > vall { vall = tmp }
-            case 1:
-                if tmp > vals { vals = tmp }
+    if elem.IsLineElem() {
+        if len(elem.Rate)%3 != 0 || (show.ElemCaption & st.EC_RATE_L == 0 && show.ElemCaption & st.EC_RATE_S == 0) {
+            val := 0.0
+            for _, tmp := range elem.Rate {
+                if tmp > val { val = tmp }
+            }
+            return val
+        } else {
+            vall := 0.0
+            vals := 0.0
+            for i, tmp := range elem.Rate {
+                switch i%3 {
+                default:
+                    continue
+                case 0:
+                    if tmp > vall { vall = tmp }
+                case 1:
+                    if tmp > vals { vals = tmp }
+                }
+            }
+            if show.ElemCaption & st.EC_RATE_L == 0 { vall = 0.0 }
+            if show.ElemCaption & st.EC_RATE_S == 0 { vals = 0.0 }
+            if vall >= vals {
+                return vall
+            } else {
+                return vals
             }
         }
-        if show.ElemCaption & st.EC_RATE_L == 0 { vall = 0.0 }
-        if show.ElemCaption & st.EC_RATE_S == 0 { vals = 0.0 }
-        if vall >= vals {
-            return vall
-        } else {
-            return vals
-        }
+    } else {
+        return 0.0
+        // rtn := 0.0
+        // for _, el := range elem.Children {
+        //     rtn += Ratemax(el, show)
+        // }
+        // return rtn
     }
 }
 
