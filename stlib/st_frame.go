@@ -214,6 +214,9 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64) err
                                    }
                                    return nil
                                })
+    if err != nil {
+        return err
+    }
     nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap)
     if err != nil {
         return err

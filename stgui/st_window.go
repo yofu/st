@@ -1012,26 +1012,27 @@ func (stw *Window) OpenDxf() {
 
 func (stw *Window) OpenFile(fn string) error {
     var err error
-    stw.Frame = st.NewFrame()
+    frame := st.NewFrame()
     w, h := stw.cdcanv.GetSize()
     stw.CanvasSize = []float64{ float64(w), float64(h) }
-    stw.Frame.View.Center[0]=stw.CanvasSize[0]*0.5
-    stw.Frame.View.Center[1]=stw.CanvasSize[1]*0.5
+    frame.View.Center[0]=stw.CanvasSize[0]*0.5
+    frame.View.Center[1]=stw.CanvasSize[1]*0.5
     switch filepath.Ext(fn) {
     case ".inp":
-        err = stw.Frame.ReadInp(fn, []float64{0.0,0.0,0.0}, 0.0)
+        err = frame.ReadInp(fn, []float64{0.0,0.0,0.0}, 0.0)
         if err != nil {
             return err
         }
     case ".dxf":
-        err = stw.Frame.ReadDxf(fn, []float64{0.0,0.0,0.0})
+        err = frame.ReadDxf(fn, []float64{0.0,0.0,0.0})
         if err != nil {
             return err
         }
-        stw.Frame.SetFocus()
+        frame.SetFocus()
         stw.DrawFrameNode()
         stw.ShowCenter()
     }
+    stw.Frame = frame
     openstr := fmt.Sprintf("OPEN: %s", fn)
     stw.addHistory(openstr)
     stw.Dlg.SetAttribute("TITLE", stw.Frame.Name)
