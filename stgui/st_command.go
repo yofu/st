@@ -65,6 +65,7 @@ var (
     INTERSECTALL = &Command{"INTERSECT ALL", "divide selected elems at all intersection", intersectall}
     TRIM = &Command{"TRIM", "trim elements with selected elem", trim}
     EXTEND = &Command{"EXTEND", "extend elements to selected elem", extend}
+    MERGENODE = &Command{"MERGE NODE", "merge nodes", mergenode}
     ERASE = &Command{"ERASE", "erase selected elems", erase}
     REACTION = &Command{"REACTION", "show sum of reaction", reaction}
     NOTICE1459 = &Command{"NOTICE1459", "shishou", notice1459}
@@ -119,6 +120,7 @@ func init() {
     Commands["INTERSECTALL"]=INTERSECTALL
     Commands["TRIM"]=TRIM
     Commands["EXTEND"]=EXTEND
+    Commands["MERGENODE"]=MERGENODE
     Commands["ERASE"]=ERASE
     Commands["REACTION"]=REACTION
     Commands["NOTICE1459"]=NOTICE1459
@@ -2251,6 +2253,47 @@ func joinlineelem (stw *Window) {
                       })
 }
 // }}}
+
+
+// MERGENODE
+func mergenode (stw *Window) {
+    merge := func (ns []*st.Node) {
+                 c := make([]float64, 3)
+                 num := 0
+                 for _, n := range ns {
+                     if n == nil { continue }
+                     for i:=0; i<3; i++ {
+                         c[i] += n.Coord[i]
+                     }
+                     num++
+                 }
+                 if num > 0 {
+                     for i:=0; i<3; i++ {
+                         c[i]/=float64(num)
+                     }
+                     var del bool
+                     delmap := make(map[*st.Node]*st.Node)
+                     var n0 *st.Node
+                     for _, n := range ns {
+                         if n == nil { continue }
+                         if del {
+                             delmap[n] = n0
+                         } else {
+                             n.Coord = c
+                             n0 = n
+                             del = true
+                         }
+                     }
+                     stw.Frame.ReplaceNode(delmap)
+                 }
+             }
+    if stw.SelectNode != nil {
+        merge(stw.SelectNode)
+        stw.EscapeAll()
+        return
+    }
+    getnnodes(stw, len(stw.Frame.Nodes), func (num int) { merge(stw.SelectNode); stw.EscapeAll() })
+}
 
 
 // ERASE// {{{
