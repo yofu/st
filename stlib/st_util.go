@@ -124,6 +124,30 @@ func SelectInp(path string) (fn string, err error) {
     }
 }
 
+// TODO: Is it possible to make filepath.Walk working concurrerntly?
+func SearchInp(dirname string) (chan string) {
+    rtn := make(chan string)
+    go func () {
+        filepath.Walk(dirname,
+                      func (path string, info os.FileInfo, err error) error {
+                          stat, err := os.Stat(path)
+                          if err != nil {
+                              return err
+                          }
+                          if !stat.IsDir() {
+                              if filepath.Ext(path) == ".inp" {
+                                  rtn <- path
+                              }
+                              return nil
+                          }
+                          return nil
+                      })
+        rtn <- ""
+        defer close(rtn)
+    }()
+    return rtn
+}
+
 func ColorInt(str string) (rtn int) {
     sep, _ := regexp.Compile(" +")
     lis := sep.Split(str,-1)

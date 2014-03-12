@@ -24,6 +24,9 @@ import (
 // General
 var (
     aliases  map[string]*Command
+    Inps []string
+    SearchingInps bool
+    SearchingInpsDone chan bool
     DoubleClickCommand = []string{"TOGGLEBOND", "EDITPLATEELEM"}
 )
 var (
@@ -267,6 +270,14 @@ func NewWindow(homedir string) *Window {// {{{
                     func (arg *iup.ItemAction) {
                         runtime.GC()
                         stw.Open()
+                    },
+                ),
+                iup.Item(
+                    iup.Attr("TITLE","Search Inp\t/"),
+                    iup.Attr("TIP","Search Inp file"),
+                    func (arg *iup.ItemAction) {
+                        runtime.GC()
+                        stw.SearchInp()
                     },
                 ),
                 iup.Item(
@@ -844,6 +855,135 @@ func (stw *Window) Open() {
         }
         stw.Redraw()
     }
+}
+
+func UpdateInps (dirname string, brk chan bool) {
+    Inps = make([]string, 0)
+    SearchingInps = true
+    SearchingInpsDone = make(chan bool)
+    inpch := st.SearchInp(dirname)
+    createinps:
+        for {
+            select {
+            case <-brk:
+                break createinps
+            case fn := <-inpch:
+                if fn == "" {
+                    break createinps
+                } else {
+                    Inps = append(Inps, fn)
+                }
+            }
+        }
+    SearchingInps = false
+    SearchingInpsDone <- true
+}
+
+func (stw *Window) SearchInp() {
+    var dlg, basedir, result, text *iup.Handle
+    basedir = iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
+                       fmt.Sprintf("FGCOLOR=\"%s\"", labelOFFColor),
+                       fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+                       fmt.Sprintf("VALUE=\"%s\"", stw.Home),
+                       "BORDER=NO",
+                       "CANFOCUS=NO",
+                       fmt.Sprintf("SIZE=%dx%d",datalabelwidth*8, dataheight),
+                       )
+    result = iup.List(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
+                      fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+                      fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+                      "VALUE=\"\"",
+                      "CANFOCUS=NO",
+                      "BORDER=NO",
+                      fmt.Sprintf("SIZE=%dx%d",datalabelwidth*8, dataheight*20),
+                      )
+    text = iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
+                    fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+                    fmt.Sprintf("BGCOLOR=\"%s\"", commandBGColor),
+                    "VALUE=\"\"",
+                    "BORDER=NO",
+                    "ALIGNMENT=ALEFT",
+                    fmt.Sprintf("SIZE=%dx%d",datalabelwidth*8, dataheight),
+                    )
+    brk := make(chan bool)
+    searchinginps_r := false
+    updateresult := func () {
+                        result.SetAttribute("REMOVEITEM", "ALL")
+                        word := text.GetAttribute("VALUE")
+                        re := regexp.MustCompile(word)
+                        for _, fn := range Inps {
+                            if re.MatchString(fn) {
+                                result.SetAttribute("APPENDITEM", fn)
+                            }
+                        }
+                        if SearchingInps {
+                            result.SetAttribute("APPENDITEM", "Searching...")
+                        }
+                    }
+    openfile := func (fn string) {
+                    err := stw.OpenFile(fn)
+                    if err != nil {
+                        stw.addHistory(err.Error())
+                    }
+                    if searchinginps_r { brk <- true }
+                    dlg.Destroy()
+                }
+    go func () {
+        searchinp:
+            for {
+                if !SearchingInps { break }
+                select {
+                case <-SearchingInpsDone:
+                    updateresult()
+                    break searchinp
+                }
+            }
+    }()
+    basedir.SetCallback(func (arg *iup.CommonKillFocus) {
+                            updateresult()
+                        })
+    text.SetCallback(func (arg *iup.ValueChanged) {
+                         updateresult()
+                     })
+    text.SetCallback(func (arg *iup.CommonKeyAny) {
+                         key := iup.KeyState(arg.Key)
+                         switch key.Key() {
+                         case KEY_ENTER:
+                             openfile(result.GetAttribute("1"))
+                         case KEY_ESCAPE:
+                             if searchinginps_r { brk <- true }
+                             dlg.Destroy()
+                         case 'R','r':
+                             if key.IsCtrl() {
+                                 if !SearchingInps {
+                                     result.SetAttribute("REMOVEITEM", "ALL")
+                                     result.SetAttribute("1", "Searching...")
+                                     searchinginps_r = true
+                                     go UpdateInps(basedir.GetAttribute("VALUE"), brk)
+                                     go func () {
+                                         searchinp_r:
+                                             for {
+                                                 if !searchinginps_r { break }
+                                                 select {
+                                                 case <-SearchingInpsDone:
+                                                     updateresult()
+                                                     searchinginps_r = false
+                                                     break searchinp_r
+                                                 }
+                                             }
+                                     }()
+                                 }
+                             }
+                         }
+                     })
+    result.SetCallback(func (arg *iup.ListDblclick) {
+                           openfile(arg.Text)
+                       })
+    dlg = iup.Dialog(iup.Vbox(basedir, result, text,))
+    dlg.SetAttribute("TITLE", "Search Inp")
+    dlg.SetAttribute("PARENTDIALOG", "mainwindow")
+    dlg.Popup(iup.CENTER, iup.CENTER)
+    iup.SetFocus(text)
 }
 
 func (stw *Window) Insert() {
@@ -2347,7 +2487,8 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
     switch key.Key() {
     default:
         stw.cline.SetAttribute("INSERT", string(key.Key()))
-        // iup.SetFocus(stw.cline)
+    case '/':
+        stw.SearchInp()
     case ';':
         if stw.Frame != nil {
             switch stw.Frame.Project {
@@ -2610,6 +2751,14 @@ func (stw *Window) CMenu () {
                                    func (arg *iup.ItemAction) {
                                        runtime.GC()
                                        stw.Open()
+                                   },
+                               ),
+                               iup.Item(
+                                   iup.Attr("TITLE","Search Inp\t/"),
+                                   iup.Attr("TIP","Search Inp file"),
+                                   func (arg *iup.ItemAction) {
+                                       runtime.GC()
+                                       stw.SearchInp()
                                    },
                                ),
                                iup.Item(
@@ -3515,6 +3664,8 @@ func init() {
         aliases["F"] = FENCE
         aliases["AD"] = ADDLINEELEM
     }
+    brk := make(chan bool)
+    go UpdateInps("C:/D/CDOCS/Hogan", brk)
 }
 
 
