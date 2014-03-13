@@ -1192,6 +1192,7 @@ func (frame *Frame) AddElem (enum int, el *Elem) {
             frame.AddElem(-1, el)
         } else {
             el.Num = enum
+            el.Frame= frame
             frame.Elems[el.Num] = el
         }
     }
