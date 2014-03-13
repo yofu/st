@@ -58,6 +58,7 @@ var (
     NODEDUPLICATION = &Command{"NODE DUPLICATION", "delete duplicated nodes", nodeduplication}
     CATBYNODE = &Command{"CAT BY NODE", "join 2 elems using selected node", catbynode}
     JOINLINEELEM = &Command{"JOIN LINE ELEM", "join selected 2 elems", joinlineelem}
+    JOINPLATEELEM = &Command{"JOIN PLATE ELEM", "join selected 2 elems", joinplateelem}
     EXTRACTARCLM = &Command{"EXTRACT ARCLM", "extract arclm", extractarclm}
     DIVIDEATONS = &Command{"DIVIDE AT ONS", "divide selected elems at onnode", divideatons}
     DIVIDEATMID = &Command{"DIVIDE AT MID", "divide selected elems at midpoint", divideatmid}
@@ -113,6 +114,7 @@ func init() {
     Commands["NODEDUPLICATION"]=NODEDUPLICATION
     Commands["CATBYNODE"]=CATBYNODE
     Commands["JOINLINEELEM"]=JOINLINEELEM
+    Commands["JOINPLATEELEM"]=JOINPLATEELEM
     Commands["EXTRACTARCLM"]=EXTRACTARCLM
     Commands["DIVIDEATONS"]=DIVIDEATONS
     Commands["DIVIDEATMID"]=DIVIDEATMID
@@ -2244,6 +2246,31 @@ func joinlineelem (stw *Window) {
                           }
                           if num == 2 {
                               err := stw.Frame.JoinLineElem(els[0], els[1], true)
+                              if err != nil {
+                                  stw.addHistory(err.Error())
+                              } else {
+                                  stw.EscapeAll()
+                              }
+                          }
+                      })
+}
+// }}}
+
+
+// JOINPLATEELEM// {{{
+func joinplateelem (stw *Window) {
+    getnelems(stw, 2, func (size int) {
+                          els := make([]*st.Elem, 2)
+                          num := 0
+                          for _, el := range stw.SelectElem {
+                              if el != nil && !el.IsLineElem() {
+                                  els[num] = el
+                                  num++
+                                  if num >= 2 { break }
+                              }
+                          }
+                          if num == 2 {
+                              err := stw.Frame.JoinPlateElem(els[0], els[1])
                               if err != nil {
                                   stw.addHistory(err.Error())
                               } else {

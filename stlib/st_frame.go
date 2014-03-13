@@ -1508,6 +1508,47 @@ func (frame *Frame) JoinLineElem (e1, e2 *Elem, parallel bool) error {
     return errors.New("JoinLineElem: No Common Enod")
 }
 
+func (frame *Frame) JoinPlateElem (e1, e2 *Elem) error {
+    if e1.IsLineElem() || e2.IsLineElem() { return errors.New("JoinPlateElem: Not PlateElem") }
+    var n2 *Node
+    for i, en1 := range e1.Enod {
+        for j, en2 := range e2.Enod {
+            if en1 == en2 {
+                if i == e1.Enods-1 {
+                    n2 = e1.Enod[0]
+                } else {
+                    n2 = e1.Enod[i+1]
+                }
+                for h, en3 := range e2.Enod {
+                    if n2 == en3 {
+                        switch h - j {
+                        case 1, 1-e2.Enods:
+                            for k:=0; k<2; k++ {
+                                num1 := i+k
+                                if num1 > e1.Enods { num1 -= e1.Enods}
+                                num2 := j-k-1
+                                if num2 < 0 { num2 += e2.Enods }
+                                e1.Enod[num1] = e2.Enod[num2]
+                            }
+                        case -1, e2.Enods-1:
+                            for k:=0; k<2; k++ {
+                                num1 := i+k
+                                if num1 > e1.Enods { num1 -= e1.Enods}
+                                num2 := j+k+1
+                                if num2 > e2.Enods { num2 -= e2.Enods }
+                                e1.Enod[num1] = e2.Enod[num2]
+                            }
+                        }
+                        return nil
+                    }
+                }
+                return errors.New(fmt.Sprintf("JoinPlateElem: Only 1 Common Enod %d", en1.Num))
+            }
+        }
+    }
+    return errors.New("JoinPlateElem: No Common Enod")
+}
+
 func (frame *Frame) CatByNode (n *Node, parallel bool) error {
     els := frame.SearchElem(n)
     var d []float64
