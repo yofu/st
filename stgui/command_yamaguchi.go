@@ -371,9 +371,9 @@ func ring (stw *Window) {
     }
     sec := stw.Frame.DefaultSect()
     for i:=0; i<num-1; i++ {
-        stw.Frame.AddLineElem([]*st.Node{sortednodes[i], sortednodes[i+1]}, sec, st.COLUMN)
+        stw.Frame.AddLineElem(-1, []*st.Node{sortednodes[i], sortednodes[i+1]}, sec, st.COLUMN)
     }
-    stw.Frame.AddLineElem([]*st.Node{sortednodes[num-1], sortednodes[0]}, sec, st.COLUMN)
+    stw.Frame.AddLineElem(-1, []*st.Node{sortednodes[num-1], sortednodes[0]}, sec, st.COLUMN)
     stw.EscapeAll()
 }
 // }}}

@@ -193,7 +193,9 @@ func tensegrityadd (stw *Window) {
                         stw.SelectElem = tmpelems[:num]
                         stw.Redraw()
                         if stw.Yn("TENSEGRITY ADD", "部材を追加しますか?") {
-                            stw.Frame.AddElem(tmpelems[:num]...)
+                            for _, el := range tmpelems[:num] {
+                                stw.Frame.AddElem(-1, el)
+                            }
                         }
                         stw.EscapeAll()
                     }, 201, 211, 2)

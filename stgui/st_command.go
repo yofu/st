@@ -380,7 +380,7 @@ func addlineelem (stw *Window) {
     get2nodes(stw, func (n *st.Node) {
                        stw.SelectNode[1] = n
                        sec := stw.Frame.DefaultSect()
-                       el := stw.Frame.AddLineElem(stw.SelectNode, sec, st.NONE)
+                       el := stw.Frame.AddLineElem(-1, stw.SelectNode, sec, st.NONE)
                        stw.addHistory(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, stw.SelectNode[0].Num, n.Num, sec.Num))
                        stw.cdcanv.Foreground(cd.CD_WHITE)
                        stw.cdcanv.WriteMode(cd.CD_REPLACE)
@@ -522,7 +522,7 @@ func addplateelem (stw *Window) {
                                if num >=3 {
                                    en := stw.SelectNode[:num]
                                    sec := stw.Frame.DefaultSect()
-                                   el := stw.Frame.AddPlateElem(en, sec, st.NONE)
+                                   el := stw.Frame.AddPlateElem(-1, en, sec, st.NONE)
                                    var buf bytes.Buffer
                                    buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
                                    for _, n := range en {
@@ -558,7 +558,7 @@ func addplateelembyline (stw *Window) {
                                   ns[2] = els[1].Enod[1]; ns[3] = els[1].Enod[0]
                               }
                               sec := stw.Frame.DefaultSect()
-                              el := stw.Frame.AddPlateElem(ns, sec, st.NONE)
+                              el := stw.Frame.AddPlateElem(-1, ns, sec, st.NONE)
                               var buf bytes.Buffer
                               buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
                               for _, n := range ns {
@@ -1043,12 +1043,12 @@ func mirror (stw *Window) {
                              }
                              if add {
                                  if el.IsLineElem() {
-                                     e := stw.Frame.AddLineElem(newenod, el.Sect, el.Etype)
+                                     e := stw.Frame.AddLineElem(-1, newenod, el.Sect, el.Etype)
                                      for i:=0; i<6*el.Enods; i++ {
                                          e.Bonds[i] = el.Bonds[i]
                                      }
                                  } else {
-                                     stw.Frame.AddPlateElem(newenod, el.Sect, el.Etype)
+                                     stw.Frame.AddPlateElem(-1, newenod, el.Sect, el.Etype)
                                  }
                              }
                          }
@@ -1929,7 +1929,7 @@ func hatchplateelem (stw *Window) {
         en := st.ModifyEnod(ns)
         en = st.Upside(en)
         sec := stw.Frame.DefaultSect()
-        el := stw.Frame.AddPlateElem(en, sec, st.NONE)
+        el := stw.Frame.AddPlateElem(-1, en, sec, st.NONE)
         var buf bytes.Buffer
         buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
         for _, n := range en {

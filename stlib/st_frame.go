@@ -701,7 +701,7 @@ func (frame *Frame) ReadData (filename string) error {
                 ns[i] = frame.Nodes[int(tmp)]
             }
             sect := frame.Sects[int(sec)]
-            frame.AddLineElem(ns, sect, sect.Type-1) // TODO: set etype, cang, ...
+            frame.AddLineElem(enum, ns, sect, sect.Type-1) // TODO: set etype, cang, ...
             // TODO: search parent
         }
     }
@@ -1180,24 +1180,32 @@ func (frame *Frame) CoordNode (x, y, z float64) *Node {
     return frame.AddNode(x, y, z)
 }
 
-func (frame *Frame) AddElem (els... *Elem) {
-    for _, el := range els {
+func (frame *Frame) AddElem (enum int, el *Elem) {
+    if enum < 0 {
         frame.Maxenum++
         el.Frame = frame
         el.Num = frame.Maxenum
         frame.Elems[el.Num] = el
+    } else {
+        if _, exist := frame.Elems[enum]; exist {
+            fmt.Printf("AddElem: Elem %d already exists\n")
+            frame.AddElem(-1, el)
+        } else {
+            el.Num = enum
+            frame.Elems[el.Num] = el
+        }
     }
 }
 
-func (frame *Frame) AddLineElem (ns []*Node, sect *Sect, etype int) (elem *Elem) {
+func (frame *Frame) AddLineElem (enum int, ns []*Node, sect *Sect, etype int) (elem *Elem) {
     elem = NewLineElem(ns, sect, etype)
-    frame.AddElem(elem)
+    frame.AddElem(enum, elem)
     return elem
 }
 
-func (frame *Frame) AddPlateElem (ns []*Node, sect *Sect, etype int) (elem *Elem) {
+func (frame *Frame) AddPlateElem (enum int, ns []*Node, sect *Sect, etype int) (elem *Elem) {
     elem = NewPlateElem(ns, sect, etype)
-    frame.AddElem(elem)
+    frame.AddElem(enum, elem)
     return elem
 }
 // }}}
@@ -1590,7 +1598,9 @@ func (frame *Frame) ExtractArclm () {
         if !el.IsLineElem() {
             brs := el.RectToBrace(2, 1.0)
             if brs != nil {
-                frame.AddElem(brs...)
+                for _, el := range brs {
+                    frame.AddElem(-1, el)
+                }
             }
         }
     }

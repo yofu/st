@@ -79,7 +79,7 @@ func ven14cutter (stw *Window) {
         }
         for i:=0; i<len(sorted)-1; i++ {
             sec := stw.Frame.Sects[502]
-            stw.Frame.AddLineElem([]*st.Node{sorted[i], sorted[i+1]}, sec, st.GIRDER)
+            stw.Frame.AddLineElem(-1, []*st.Node{sorted[i], sorted[i+1]}, sec, st.GIRDER)
         }
         coord += pitch
         if coord > max { break }
@@ -111,7 +111,7 @@ func ven14cutter (stw *Window) {
         }
         for i:=0; i<len(sorted)-1; i++ {
             sec := stw.Frame.Sects[502]
-            stw.Frame.AddLineElem([]*st.Node{sorted[i], sorted[i+1]}, sec, st.GIRDER)
+            stw.Frame.AddLineElem(-1, []*st.Node{sorted[i], sorted[i+1]}, sec, st.GIRDER)
         }
     }
     stw.EscapeAll()

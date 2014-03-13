@@ -561,7 +561,7 @@ func (elem *Elem) Copy (x, y, z float64) *Elem {
         newenod[i] = elem.Frame.CoordNode(elem.Enod[i].Coord[0]+x, elem.Enod[i].Coord[1]+y, elem.Enod[i].Coord[2]+z)
     }
     if elem.IsLineElem() {
-        newelem := elem.Frame.AddLineElem(newenod, elem.Sect, elem.Etype)
+        newelem := elem.Frame.AddLineElem(-1, newenod, elem.Sect, elem.Etype)
         newelem.Cang = elem.Cang
         for i:=0; i<2; i++ {
             for j:=0; j<6; j++ {
@@ -571,7 +571,7 @@ func (elem *Elem) Copy (x, y, z float64) *Elem {
         }
         return newelem
     } else {
-        return elem.Frame.AddPlateElem(newenod, elem.Sect, elem.Etype)
+        return elem.Frame.AddPlateElem(-1, newenod, elem.Sect, elem.Etype)
     }
 }
 
@@ -589,13 +589,13 @@ func (elem *Elem) Mirror(coord, vec []float64, del bool) *Elem {
             return elem
         } else {
             if elem.IsLineElem() {
-                e := elem.Frame.AddLineElem(newenod, elem.Sect, elem.Etype)
+                e := elem.Frame.AddLineElem(-1, newenod, elem.Sect, elem.Etype)
                 for i:=0; i<6*elem.Enods; i++ {
                     e.Bonds[i] = elem.Bonds[i]
                 }
                 return e
             } else {
-                return elem.Frame.AddPlateElem(newenod, elem.Sect, elem.Etype)
+                return elem.Frame.AddPlateElem(-1, newenod, elem.Sect, elem.Etype)
             }
         }
     } else {
@@ -629,7 +629,7 @@ func (elem *Elem) DivideAtCoord (x, y, z float64) (ns []*Node, els []*Elem, err 
     els = make([]*Elem, 2)
     els[0] = elem
     n := elem.Frame.CoordNode(x, y, z)
-    newelem := elem.Frame.AddLineElem([]*Node{n, elem.Enod[1]}, elem.Sect, elem.Etype)
+    newelem := elem.Frame.AddLineElem(-1, []*Node{n, elem.Enod[1]}, elem.Sect, elem.Etype)
     els[1] = newelem
     elem.Enod[1] = n
     ns = []*Node{n}
@@ -664,7 +664,7 @@ func (elem *Elem) DivideAtNode (n *Node, position int, del bool) (rn []*Node, el
             return nil, nil, errors.New("DivideAtNode: Unknown Position")
         case 1, -1:
             els[0] = elem
-            newelem := elem.Frame.AddLineElem([]*Node{n, elem.Enod[1]}, elem.Sect, elem.Etype)
+            newelem := elem.Frame.AddLineElem(-1, []*Node{n, elem.Enod[1]}, elem.Sect, elem.Etype)
             els[1] = newelem
             elem.Enod[1] = n
             for j:=0; j<6; j++ {
@@ -673,12 +673,12 @@ func (elem *Elem) DivideAtNode (n *Node, position int, del bool) (rn []*Node, el
             }
             return []*Node{n}, els, nil
         case 0:
-            newelem := elem.Frame.AddLineElem([]*Node{n, elem.Enod[0]}, elem.Sect, elem.Etype)
+            newelem := elem.Frame.AddLineElem(-1, []*Node{n, elem.Enod[0]}, elem.Sect, elem.Etype)
             els[0] = newelem
             els[1] = elem
             return []*Node{n}, els, nil
         case 2:
-            newelem := elem.Frame.AddLineElem([]*Node{elem.Enod[1], n}, elem.Sect, elem.Etype)
+            newelem := elem.Frame.AddLineElem(-1, []*Node{elem.Enod[1], n}, elem.Sect, elem.Etype)
             els[0] = elem
             els[1] = newelem
             return []*Node{n}, els, nil
