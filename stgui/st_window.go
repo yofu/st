@@ -1031,7 +1031,11 @@ func (stw *Window) OpenDxf() {
 
 func (stw *Window) OpenFile(fn string) error {
     var err error
+    var s *st.Show
     frame := st.NewFrame()
+    if stw.Frame != nil {
+        s = stw.Frame.Show
+    }
     w, h := stw.cdcanv.GetSize()
     stw.CanvasSize = []float64{ float64(w), float64(h) }
     frame.View.Center[0]=stw.CanvasSize[0]*0.5
@@ -1052,6 +1056,9 @@ func (stw *Window) OpenFile(fn string) error {
         stw.ShowCenter()
     }
     stw.Frame = frame
+    if s != nil {
+        stw.Frame.Show = s
+    }
     openstr := fmt.Sprintf("OPEN: %s", fn)
     stw.addHistory(openstr)
     stw.Dlg.SetAttribute("TITLE", stw.Frame.Name)
