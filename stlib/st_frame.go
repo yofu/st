@@ -1543,6 +1543,35 @@ func (frame *Frame) JoinPlateElem (e1, e2 *Elem) error {
                         return nil
                     }
                 }
+                if i == 0 {
+                    n2 = e1.Enod[e1.Enods-1]
+                } else {
+                    n2 = e1.Enod[i-1]
+                }
+                for h, en3 := range e2.Enod {
+                    if n2 == en3 {
+                        switch h - j {
+                        case 1, 1-e2.Enods:
+                            for k:=0; k<2; k++ {
+                                num1 := i-k
+                                if num1 < 0 { num1 += e1.Enods}
+                                num2 := j-k-1
+                                if num2 < 0 { num2 += e2.Enods }
+                                e1.Enod[num1] = e2.Enod[num2]
+                            }
+                        case -1, e2.Enods-1:
+                            for k:=0; k<2; k++ {
+                                num1 := i-k
+                                if num1 < 0 { num1 += e1.Enods}
+                                num2 := j+k+1
+                                if num2 > e2.Enods { num2 -= e2.Enods }
+                                e1.Enod[num1] = e2.Enod[num2]
+                            }
+                        }
+                        delete(frame.Elems, e2.Num)
+                        return nil
+                    }
+                }
                 return errors.New(fmt.Sprintf("JoinPlateElem: Only 1 Common Enod %d", en1.Num))
             }
         }
