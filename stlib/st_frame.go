@@ -1539,6 +1539,7 @@ func (frame *Frame) JoinPlateElem (e1, e2 *Elem) error {
                                 e1.Enod[num1] = e2.Enod[num2]
                             }
                         }
+                        delete(frame.Elems, e2.Num)
                         return nil
                     }
                 }
