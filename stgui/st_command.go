@@ -32,6 +32,7 @@ var (
     SELECTNODE = &Command{"SELECT NODE", "select elem by number", selectnode}
     SELECTELEM = &Command{"SELECT ELEM", "select elem by number", selectelem}
     SELECTSECT = &Command{"SELECT SECT", "select elem by section", selectsect}
+    SELECTCHILDREN = &Command{"SELECT CHILDREN", "select elem.Children", selectchildren}
     ERRORELEM = &Command{"ERROR ELEM", "select elem whose max(rate)>1.0", errorelem}
     FENCE = &Command{"FENCE", "select elem by fence", fence}
     ADDLINEELEM = &Command{"ADD LINE ELEM", "add line elem", addlineelem}
@@ -88,6 +89,7 @@ func init() {
     Commands["SELECTNODE"]=SELECTNODE
     Commands["SELECTELEM"]=SELECTELEM
     Commands["SELECTSECT"]=SELECTSECT
+    Commands["SELECTCHILDREN"]=SELECTCHILDREN
     Commands["ERRORELEM"]=ERRORELEM
     Commands["FENCE"]=FENCE
     Commands["ADDLINEELEM"]=ADDLINEELEM
@@ -1561,7 +1563,40 @@ func selectsect (stw *Window) {
                                   stw.EscapeAll()
                               }
                           })
-}// }}}
+}
+// }}}
+
+
+// SELECTCHILDREN// {{{
+func selectchildren (stw *Window) {
+    getnelems(stw, 10, func (size int) {
+                           els := make([]*st.Elem, 2)
+                           num := 0
+                           for _, el := range stw.SelectElem {
+                               if el != nil && !el.IsLineElem() {
+                                   els[num] = el
+                                   num++
+                               }
+                           }
+                           if num > 0 {
+                               tmpels := make([]*st.Elem, num*2)
+                               nc := 0
+                               for _, el := range stw.SelectElem {
+                                   if el.Children != nil {
+                                       for _, c := range el.Children {
+                                           if c != nil {
+                                               tmpels[nc] = c
+                                               nc++
+                                           }
+                                       }
+                                   }
+                               }
+                               stw.SelectElem = tmpels[:nc]
+                               stw.EscapeCB()
+                           }
+                       })
+}
+// }}}
 
 
 // NODENOREFERENCE
