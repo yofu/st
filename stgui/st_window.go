@@ -3691,8 +3691,6 @@ func init() {
         aliases["F"] = FENCE
         aliases["AD"] = ADDLINEELEM
     }
-    brk := make(chan bool)
-    go UpdateInps("C:/D/CDOCS/Hogan", brk)
 }
 
 

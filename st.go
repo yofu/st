@@ -7,7 +7,7 @@ import (
 
 const (
     version = "0.1.0"
-    modified = "LAST CHANGE:05-Mar-2014."
+    modified = "LAST CHANGE:14-Mar-2014."
     HOME = "C:/D/CDOCS/Hogan"
 )
 
@@ -18,5 +18,7 @@ func main() {
     sw.Version = version
     sw.Modified = modified
     sw.Dlg.Show()
+    brk := make(chan bool)
+    go stgui.UpdateInps("C:/D/CDOCS/Hogan", brk)
     iup.MainLoop()
 }
