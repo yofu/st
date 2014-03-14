@@ -65,6 +65,9 @@ type Elem struct {
     Strong []float64
     Weak []float64
 
+    Children []*Elem
+    Parent *Elem
+
     Hide bool
     Lock bool
 }
@@ -99,6 +102,7 @@ func NewPlateElem (ns []*Node, sect *Sect, etype int) *Elem {
     el.Enod = ns[:el.Enods]
     el.Sect = sect
     el.Etype = etype
+    el.Children = make([]*Elem, 2)
     el.Wrect = make([]float64, 2)
     return el
 }
@@ -469,6 +473,20 @@ func (elem *Elem) RectToBrace (nbrace int, rfact float64) []*Elem {
     } else {
         return nil
     }
+}
+
+func (elem *Elem) Adopt (child *Elem) int {
+    if elem.Children == nil {
+        elem.Children = make([]*Elem, 2)
+    }
+    for i:=0; i<2; i++ {
+        if elem.Children[i] == nil {
+            elem.Children[i] = child
+            child.Parent = elem
+            return i
+        }
+    }
+    return -1
 }
 
 // func (elem *Elem) StiffMatrix() []float64 {

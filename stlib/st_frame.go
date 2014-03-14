@@ -701,8 +701,13 @@ func (frame *Frame) ReadData (filename string) error {
                 ns[i] = frame.Nodes[int(tmp)]
             }
             sect := frame.Sects[int(sec)]
-            frame.AddLineElem(enum, ns, sect, sect.Type-1) // TODO: set etype, cang, ...
+            newel := frame.AddLineElem(enum, ns, sect, sect.Type-1) // TODO: set etype, cang, ...
             // TODO: search parent
+            for _, el := range frame.SearchElem(ns...) {
+                if el.Etype == sect.Type+1 {
+                    el.Adopt(newel)
+                }
+            }
         }
     }
     // Node2
@@ -1670,8 +1675,9 @@ func (frame *Frame) ExtractArclm () {
         if !el.IsLineElem() {
             brs := el.RectToBrace(2, 1.0)
             if brs != nil {
-                for _, el := range brs {
-                    frame.AddElem(-1, el)
+                for _, br := range brs {
+                    frame.AddElem(-1, br)
+                    el.Adopt(br)
                 }
             }
         }
