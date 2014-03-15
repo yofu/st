@@ -9,7 +9,7 @@ import (
     "os"
 )
 
-const (
+var (
     bondstyle = "fill:none; stroke:black"
     dfstyle = "stroke:black; stroke-dasharray:2,2"
 )
@@ -19,8 +19,12 @@ func Print (frame *st.Frame, inp, otp string) error {
     if err != nil {
         return err
     }
+    v := frame.View
+    s := frame.Show
     cvs := svg.New(w)
     cvs.Start(1000, 1000)
+    frame.View.Center[0] = 500
+    frame.View.Center[1] = 500
     frame.View.Set(1)
     // if frame.Show.GlobalAxis {
         // DrawGlobalAxis(cvs)
@@ -41,17 +45,6 @@ func Print (frame *st.Frame, inp, otp string) error {
         frame.View.ProjectNode(n)
         if frame.Show.Deformation { frame.View.ProjectDeformation(n, frame.Show) }
         if n.Hide { continue }
-        // if n.Lock {
-        //     canv.Foreground(LOCKED_NODE_COLOR)
-        // } else {
-        //     canv.Foreground(canvasFontColor)
-        // }
-        // switch n.ConfState() {
-        // case st.CONF_PIN:
-        //     canv.Foreground(cd.CD_GREEN)
-        // case st.CONF_FIX:
-        //     canv.Foreground(cd.CD_DARK_GREEN)
-        // }
         // DrawNode(n, canv, frame.Show)
     }
     // canv.LineStyle(cd.CD_CONTINUOUS)
@@ -63,27 +56,11 @@ func Print (frame *st.Frame, inp, otp string) error {
         if b, ok := frame.Show.Sect[el.Sect.Num]; ok {
             if !b { el.Hide = true; continue }
         }
-        // canv.LineStyle(cd.CD_CONTINUOUS)
-        // canv.Hatch(cd.CD_FDIAGONAL)
-        // if el.Lock {
-        //     canv.Foreground(LOCKED_ELEM_COLOR)
-        // } else {
-        //     switch color {
-        //     case st.ECOLOR_WHITE:
-        //         canv.Foreground(cd.CD_WHITE)
-        //     case st.ECOLOR_BLACK:
-        //         canv.Foreground(cd.CD_BLACK)
-        //     case st.ECOLOR_SECT:
-        //         canv.Foreground(el.Sect.Color)
-        //     case st.ECOLOR_RATE:
-        //         canv.Foreground(st.Rainbow(el.RateMax(frame.Show), st.RateBoundary))
-        //     case st.ECOLOR_HEIGHT:
-        //         canv.Foreground(st.Rainbow(el.MidPoint()[2], st.HeightBoundary))
-        //     }
-        // }
         DrawElem(el, cvs, frame.Show)
     }
     cvs.End()
+    frame.View = v
+    frame.Show = s
     return nil
 }
 
@@ -127,9 +104,17 @@ func DrawElem (elem *st.Elem, cvs *svg.SVG, show *st.Show) {
         cvs.Text(int(textpos[0]), int(textpos[1]), ecap.String())
     }
     if elem.IsLineElem() {
-        cvs.Line(int(elem.Enod[0].Pcoord[0]), int(elem.Enod[0].Pcoord[1]), int(elem.Enod[1].Pcoord[0]), int(elem.Enod[1].Pcoord[1]), "stroke:black")
+        var lc string
+        switch show.ColorMode {
+        default:
+            lc = "stroke:black"
+        case st.ECOLOR_SECT:
+            lc = fmt.Sprintf("stroke:%s", st.IntHexColor(elem.Sect.Color))
+        case st.ECOLOR_RATE:
+            lc = fmt.Sprintf("stroke:%s",(st.Rainbow(elem.RateMax(show), st.RateBoundary)))
+        }
+        cvs.Line(int(elem.Enod[0].Pcoord[0]), int(elem.Enod[0].Pcoord[1]), int(elem.Enod[1].Pcoord[0]), int(elem.Enod[1].Pcoord[1]), lc)
         if show.Bond {
-            // cvs.Foreground(BondColor)
             switch elem.BondState() {
             case st.PIN_RIGID:
                 d := elem.PDirection(true)
@@ -148,9 +133,7 @@ func DrawElem (elem *st.Elem, cvs *svg.SVG, show *st.Show) {
         // }
         // Deformation
         if show.Deformation {
-            // cvs.LineStyle(cd.CD_DOTTED)
             cvs.Line(int(elem.Enod[0].Dcoord[0]), int(elem.Enod[0].Dcoord[1]), int(elem.Enod[1].Dcoord[0]), int(elem.Enod[1].Dcoord[1]), dfstyle)
-            // cvs.LineStyle(cd.CD_CONTINUOUS)
         }
         // Stress
         var flag uint
@@ -184,7 +167,6 @@ func DrawElem (elem *st.Elem, cvs *svg.SVG, show *st.Show) {
                     }
                 }
             }
-            // cvs.Foreground(StressTextColor)
             for j:=0; j<2; j++ {
                 if tex := sttext[j].String(); tex != "" {
                     coord := make([]float64, 3)
