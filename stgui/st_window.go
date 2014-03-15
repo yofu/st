@@ -17,6 +17,7 @@ import (
     "github.com/visualfc/go-iup/iup"
     "github.com/visualfc/go-iup/cd"
     "github.com/yofu/st/stlib"
+    "github.com/yofu/st/stpdf"
 )
 
 
@@ -337,12 +338,12 @@ func NewWindow(homedir string) *Window {// {{{
                         stw.Print()
                     },
                 ),
-                // iup.Item(
-                //     iup.Attr("TITLE","Print PDF"),
-                //     func (arg *iup.ItemAction) {
-                //         stw.PrintPDF()
-                //     },
-                // ),
+                iup.Item(
+                    iup.Attr("TITLE","Print SVG"),
+                    func (arg *iup.ItemAction) {
+                        stw.PrintSVG()
+                    },
+                ),
                 iup.Separator(),
                 iup.Item(
                     iup.Attr("TITLE","Quit"),
@@ -1215,6 +1216,15 @@ func (stw *Window) Print() {
 //     pcanv.Kill()
 // }
 
+func (stw *Window) PrintSVG () {
+    if inp,ok := iup.GetOpenFile("", "*.fig2"); ok {
+        err := stpdf.Print(stw.Frame, inp, st.Ce(inp, ".svg"))
+        if err != nil {
+            fmt.Println(err)
+        }
+        stw.Redraw()
+    }
+}
 
 func (stw *Window) EditInp() {
     if stw.Frame != nil {
@@ -2836,12 +2846,12 @@ func (stw *Window) CMenu () {
                                        stw.Print()
                                    },
                                ),
-                               // iup.Item(
-                               //     iup.Attr("TITLE","Print PDF"),
-                               //     func (arg *iup.ItemAction) {
-                               //         stw.PrintPDF()
-                               //     },
-                               // ),
+                               iup.Item(
+                                   iup.Attr("TITLE","Print SVG"),
+                                   func (arg *iup.ItemAction) {
+                                       stw.PrintSVG()
+                                   },
+                               ),
                                iup.Separator(),
                                iup.Item(
                                    iup.Attr("TITLE","Quit"),
