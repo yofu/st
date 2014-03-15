@@ -162,19 +162,20 @@ func ColorInt(str string) (rtn int) {
 }
 
 func IntColor(col int) string {
-    var rtn []string
+    rtn := make([]string, 3)
+    val := 65536
     for i:=0; i<3; i++ {
-        val := int(math.Pow(16, float64(4-2*i)))
         tmp := 0
         for {
             if col>=val {
                 col -= val
                 tmp += 1
             } else {
-                rtn = append(rtn, fmt.Sprintf("%3d", tmp))
+                rtn[i] = fmt.Sprintf("%3d", tmp)
                 break
             }
         }
+        val >>= 8
     }
     return strings.Join(rtn, " ")
 }
