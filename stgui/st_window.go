@@ -1218,7 +1218,7 @@ func (stw *Window) Print() {
 
 func (stw *Window) PrintSVG () {
     if inp,ok := iup.GetOpenFile("", "*.fig2"); ok {
-        err := stpdf.Print(stw.Frame, inp, st.Ce(inp, ".svg"))
+        err := stpdf.Print(stw.Frame, st.Ce(inp, ".svg"))
         if err != nil {
             fmt.Println(err)
         }
