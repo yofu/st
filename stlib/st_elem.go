@@ -992,6 +992,113 @@ func (elem *Elem) BondState () (rtn int) {
 }
 // }}}
 
+func (elem *Elem) MomentCoord (show *Show, index int) [][]float64 {
+    var axis []float64
+    if index == 4 {
+        axis = elem.Weak
+    } else if index == 5 {
+        axis = make([]float64, 3)
+        for i:=0; i<3; i++ {
+            axis[i] = -elem.Strong[i]
+        }
+    } else {
+        return nil
+    }
+    ms := make([]float64, 2)
+    qs := make([]float64, 2)
+    for i:=0; i<2; i++ {
+        ms[i] = elem.ReturnStress(show.Period, i, index)
+        qs[i] = elem.ReturnStress(show.Period, i, 6-index)
+    }
+    l := elem.Length()
+    rtn := make([][]float64, 3)
+    rtn[0] = make([]float64, 3)
+    for i:=0; i<3; i++ {
+        rtn[0][i] = -show.Mfact * axis[i] * ms[0] + elem.Enod[0].Coord[i]
+    }
+    rtn[2] = make([]float64, 3)
+    for i:=0; i<3; i++ {
+        rtn[2][i] = show.Mfact * axis[i] * ms[1] + elem.Enod[1].Coord[i]
+    }
+    if math.Abs(qs[0]+qs[1]) > 1.0 {
+        tmp := make([]float64, 3)
+        d := elem.Direction(true)
+        val := (qs[1]*l - (ms[0]+ms[1])) / (qs[0]+qs[1])
+        for i:=0; i<3; i++ {
+            tmp[i] = elem.Enod[0].Coord[i] + d[i]*val
+        }
+        ll := 0.0
+        for i:=0; i<3; i++ {
+            ll += math.Pow(elem.Enod[1].Coord[i] - tmp[i], 2.0)
+        }
+        ll = math.Sqrt(ll)
+        if 0.0 < ll && ll < l {
+            rtn[1] = make([]float64, 3)
+            val := (qs[0]*ms[1] - qs[1]*ms[0] - qs[0]*qs[1]*l) / (qs[0]+qs[1])
+            for i:=0; i<3; i++ {
+                rtn[1][i] = tmp[i] + show.Mfact * axis[i] * val
+            }
+        } else {
+            return [][]float64{rtn[0], rtn[2]}
+        }
+        return rtn
+    } else {
+        return [][]float64{rtn[0], rtn[2]}
+    }
+}
+
+
+func (elem *Elem) RateMax(show *Show) float64 {
+    returnratemax := func (e *Elem) float64 {
+                         if e.Rate == nil { return 0.0 }
+                         if len(e.Rate)%3 != 0 || (show.ElemCaption & EC_RATE_L == 0 && show.ElemCaption & EC_RATE_S == 0) {
+                             val := 0.0
+                             for _, tmp := range e.Rate {
+                                 if tmp > val { val = tmp }
+                             }
+                             return val
+                         } else {
+                             vall := 0.0
+                             vals := 0.0
+                             for i, tmp := range e.Rate {
+                                 switch i%3 {
+                                 default:
+                                     continue
+                                 case 0:
+                                     if tmp > vall { vall = tmp }
+                                 case 1:
+                                     if tmp > vals { vals = tmp }
+                                 }
+                             }
+                             if show.ElemCaption & EC_RATE_L == 0 { vall = 0.0 }
+                             if show.ElemCaption & EC_RATE_S == 0 { vals = 0.0 }
+                             if vall >= vals {
+                                 return vall
+                             } else {
+                                 return vals
+                             }
+                         }}
+    if elem.IsLineElem() {
+        return returnratemax(elem)
+    } else {
+        rtn := 0.0
+        num := 0
+        if elem.Children != nil {
+            for _, el := range elem.Children {
+                if el != nil {
+                    rtn += returnratemax(el)
+                    num++
+                }
+            }
+        }
+        if num > 0 {
+            return rtn/float64(num)
+        } else {
+            return 0.0
+        }
+    }
+}
+
 
 func (elem *Elem) DistFromProjection () float64 {
     v := elem.Frame.View

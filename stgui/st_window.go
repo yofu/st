@@ -1492,7 +1492,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
                         case st.ECOLOR_SECT:
                             canv.Foreground(el.Sect.Color)
                         case st.ECOLOR_RATE:
-                            canv.Foreground(st.Rainbow(RateMax(el, stw.Frame.Show), st.RateBoundary))
+                            canv.Foreground(st.Rainbow(el.RateMax(stw.Frame.Show), st.RateBoundary))
                         case st.ECOLOR_HEIGHT:
                             canv.Foreground(st.Rainbow(el.MidPoint()[2], st.HeightBoundary))
                         }
@@ -1520,7 +1520,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
                 case st.ECOLOR_SECT:
                     canv.Foreground(el.Sect.Color)
                 case st.ECOLOR_RATE:
-                    canv.Foreground(st.Rainbow(RateMax(el, stw.Frame.Show), st.RateBoundary))
+                    canv.Foreground(st.Rainbow(el.RateMax(stw.Frame.Show), st.RateBoundary))
                 case st.ECOLOR_HEIGHT:
                     canv.Foreground(st.Rainbow(el.MidPoint()[2], st.HeightBoundary))
                 }
