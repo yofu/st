@@ -1493,7 +1493,7 @@ func (frame *Frame) ReplaceNode(nmap map[*Node]*Node) {
 }
 
 func (frame *Frame) Cat (e1, e2 *Elem, n *Node) error {
-    if !e1.IsLineElem() || !e2.IsLineElem() { return errors.New("Cat: Not LineElem") }
+    if !e1.IsLineElem() || !e2.IsLineElem() { return NotLineElem("Cat") }
     var ind1, ind2 int
     for i, en := range e1.Enod {
         if en == n {
@@ -1517,8 +1517,8 @@ func (frame *Frame) Cat (e1, e2 *Elem, n *Node) error {
 }
 
 func (frame *Frame) JoinLineElem (e1, e2 *Elem, parallel bool) error {
-    if !e1.IsLineElem() || !e2.IsLineElem() { return errors.New("JoinLineElem: Not LineElem") }
-    if parallel && !IsParallel(e1.Direction(true), e2.Direction(true), 1e-4) { return errors.New("JoinLineElem: Not Parallel") }
+    if !e1.IsLineElem() || !e2.IsLineElem() { return NotLineElem("JoinLineElem") }
+    if parallel && !IsParallel(e1.Direction(true), e2.Direction(true), 1e-4) { return NotParallel("JoinLineElem") }
     for i, en1 := range e1.Enod {
         for _, en2 := range e2.Enod {
             if en1 == en2 {
@@ -1534,7 +1534,7 @@ func (frame *Frame) JoinLineElem (e1, e2 *Elem, parallel bool) error {
 }
 
 func (frame *Frame) JoinPlateElem (e1, e2 *Elem) error {
-    if e1.IsLineElem() || e2.IsLineElem() { return errors.New("JoinPlateElem: Not PlateElem") }
+    if e1.IsLineElem() || e2.IsLineElem() { return NotPlateElem("JoinPlateElem") }
     var n2 *Node
     for i, en1 := range e1.Enod {
         for j, en2 := range e2.Enod {
@@ -1617,7 +1617,7 @@ func (frame *Frame) CatByNode (n *Node, parallel bool) error {
             tmpd := el.Direction(false)
             if d != nil {
                 if parallel && !IsParallel(d, tmpd, 1e-4) {
-                    return errors.New("CatByNode: Not Parallel")
+                    return NotParallel("CatByNode")
                 }
             }
             cat[num-1] = el
@@ -1629,7 +1629,7 @@ func (frame *Frame) CatByNode (n *Node, parallel bool) error {
 }
 
 func (frame *Frame) Intersect (e1, e2 *Elem, cross bool, sign1, sign2 int, del1, del2 bool) ([]*Node, []*Elem, error) {
-    if !e1.IsLineElem() || !e2.IsLineElem() { return nil, nil, errors.New("Intersect: PlateElem") }
+    if !e1.IsLineElem() || !e2.IsLineElem() { return nil, nil, NotLineElem("Intersect") }
     k1, k2, d, err := DistLineLine(e1.Enod[0].Coord, e1.Direction(false), e2.Enod[0].Coord, e2.Direction(false))
     if err == nil {
         if d > 1e-4 {

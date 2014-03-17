@@ -2273,7 +2273,7 @@ func joinlineelem (stw *Window) {
                           els := make([]*st.Elem, 2)
                           num := 0
                           for _, el := range stw.SelectElem {
-                              if el != nil {
+                              if el != nil && el.IsLineElem() {
                                   els[num] = el
                                   num++
                                   if num >= 2 { break }
@@ -2282,10 +2282,19 @@ func joinlineelem (stw *Window) {
                           if num == 2 {
                               err := stw.Frame.JoinLineElem(els[0], els[1], true)
                               if err != nil {
-                                  stw.addHistory(err.Error())
-                              } else {
-                                  stw.EscapeAll()
+                                  switch err.(type) {
+                                  default:
+                                      stw.addHistory(err.Error())
+                                  case st.ParallelError:
+                                      if stw.Yn("JOIN LINE ELEM", "平行でない部材を結合しますか") {
+                                          err := stw.Frame.JoinLineElem(els[0], els[1], false)
+                                          if err != nil {
+                                              stw.addHistory(err.Error())
+                                          }
+                                      }
+                                  }
                               }
+                              stw.EscapeAll()
                           }
                       })
 }

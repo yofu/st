@@ -633,7 +633,7 @@ func (elem *Elem) DividingPoint (ratio float64) []float64 {
 }
 
 func (elem *Elem) AxisCoord (axis int, coord float64) (rtn []float64, err error) {
-    if !elem.IsLineElem() { return rtn, errors.New("AxisCoord: PlateElem") }
+    if !elem.IsLineElem() { return rtn, NotLineElem("AxisCoord") }
     den := elem.Direction(false)[axis]
     if den == 0.0 {
         return rtn, errors.New("AxisCoord: Cannot Divide")
@@ -643,7 +643,7 @@ func (elem *Elem) AxisCoord (axis int, coord float64) (rtn []float64, err error)
 }
 
 func (elem *Elem) DivideAtCoord (x, y, z float64) (ns []*Node, els []*Elem, err error) {
-    if !elem.IsLineElem() { return nil, nil, errors.New("DivideAtCoord: PlateElem")}
+    if !elem.IsLineElem() { return nil, nil, NotLineElem("DivideAtCoord") }
     els = make([]*Elem, 2)
     els[0] = elem
     n := elem.Frame.CoordNode(x, y, z)
@@ -659,7 +659,7 @@ func (elem *Elem) DivideAtCoord (x, y, z float64) (ns []*Node, els []*Elem, err 
 }
 
 func (elem *Elem) DivideAtNode (n *Node, position int, del bool) (rn []*Node, els []*Elem, err error) {
-    if !elem.IsLineElem() { return nil, nil, errors.New("DivideAtNode: PlateElem")}
+    if !elem.IsLineElem() { return nil, nil, NotLineElem("DivideAtNode") }
     els = make([]*Elem,2)
     if del {
         switch position {
@@ -754,7 +754,7 @@ func (elem *Elem) OnNode (num int) []*Node {
 }
 
 func (elem *Elem) DivideAtOns () (n []*Node, els []*Elem, err error) {
-    if !elem.IsLineElem() { return nil, nil, errors.New("DivideAtCoord: PlateElem")}
+    if !elem.IsLineElem() { return nil, nil, NotLineElem("DivideAtCoord") }
     ns := elem.OnNode(0)
     l := len(ns)
     if l==0 { return nil, nil, nil }
@@ -955,7 +955,8 @@ func (elem *Elem) MY (period string, nnum int) float64 {
 
 // Bond// {{{
 func (elem *Elem) ChangeBond (bond []bool, side... int) error {
-    if !elem.IsLineElem() || len(bond) < 6*len(side) { return errors.New("ChangeBond: Failed") }
+    if !elem.IsLineElem() { return NotLineElem("ChangeBond") }
+    if len(bond) < 6*len(side) { return errors.New("ChangeBond: Failed") }
     for _, i := range side {
         for j:=0; j<6; j++ {
             elem.Bonds[6*i+j] = bond[6*i+j]
@@ -965,7 +966,7 @@ func (elem *Elem) ChangeBond (bond []bool, side... int) error {
 }
 
 func (elem *Elem) ToggleBond (side int) error {
-    if !elem.IsLineElem() { return errors.New("ToggleBond: PlateElem") }
+    if !elem.IsLineElem() { return NotLineElem("ToggleBond") }
     if ind, err := elem.EnodIndex(side); err == nil {
         if elem.Bonds[6*ind+4] || elem.Bonds[6*ind+5] {
             for i:=4; i<6; i++ {
