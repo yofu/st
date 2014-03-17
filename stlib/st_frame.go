@@ -1518,7 +1518,7 @@ func (frame *Frame) Cat (e1, e2 *Elem, n *Node) error {
 
 func (frame *Frame) JoinLineElem (e1, e2 *Elem, parallel bool) error {
     if !e1.IsLineElem() || !e2.IsLineElem() { return errors.New("JoinLineElem: Not LineElem") }
-    if parallel && !IsParallel(e1.Direction(false), e2.Direction(false)) { return errors.New("JoinLineElem: Not Parallel") }
+    if parallel && !IsParallel(e1.Direction(true), e2.Direction(true), 1e-4) { return errors.New("JoinLineElem: Not Parallel") }
     for i, en1 := range e1.Enod {
         for _, en2 := range e2.Enod {
             if en1 == en2 {
@@ -1616,7 +1616,7 @@ func (frame *Frame) CatByNode (n *Node, parallel bool) error {
             if !el.IsLineElem() { return errors.New(fmt.Sprintf("CatByNode: NODE %d has WALL/SLAB", n.Num)) }
             tmpd := el.Direction(false)
             if d != nil {
-                if parallel && !IsParallel(d, tmpd) {
+                if parallel && !IsParallel(d, tmpd, 1e-4) {
                     return errors.New("CatByNode: Not Parallel")
                 }
             }

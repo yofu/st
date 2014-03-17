@@ -291,7 +291,7 @@ func ProjectName (fn string) string {
     return pat.FindString(filepath.Base(fn))
 }
 
-func IsParallel (v1, v2 []float64) bool {
+func IsParallel (v1, v2 []float64, eps float64) bool {
     var dot, l1, l2 float64
     for i:=0; i<3; i++ {
         dot += v1[i] * v2[i]
@@ -300,7 +300,7 @@ func IsParallel (v1, v2 []float64) bool {
     }
     if l1 == 0 || l2 == 0 { return false }
     sub := (dot*dot / (l1*l2)) - 1.0
-    if math.Abs(sub) < 1e-6 {
+    if math.Abs(sub) < eps {
         return true
     } else {
         return false

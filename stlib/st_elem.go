@@ -738,7 +738,7 @@ func (elem *Elem) OnNode (num int) []*Node {
         if n.Num == elem.Enod[num].Num || n.Num == elem.Enod[num2].Num { continue }
         d := elem.Frame.Direction(elem.Enod[num], n, false)
         _, _, _, l := elem.Frame.Distance(elem.Enod[num], n)
-        if IsParallel(direction, d) {
+        if IsParallel(direction, d, 1e-4) {
             nodes[l] = n
             keys = append(keys, l)
             ons[i] = n
