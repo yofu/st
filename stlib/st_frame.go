@@ -392,17 +392,24 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (int
     var num int64
     var err error
     n := NewNode()
+    llis := len(lis)
     for i, word := range(lis) {
         switch word {
         case "NODE":
             num, err = strconv.ParseInt(lis[i+1],10,64)
             n.Num = int(num)
         case "CORD":
+            if llis<i+4 {
+                return 0, 0, errors.New(fmt.Sprintf("ParseNode: CORD IndexError NODE %d", n.Num))
+            }
             for j:=0; j<3; j++ {
                 n.Coord[j], err = strconv.ParseFloat(lis[i+1+j],64)
                 n.Coord[j] += coord[j]
             }
         case "ICON":
+            if llis<i+7 {
+                return 0, 0, errors.New(fmt.Sprintf("ParseNode: ICON IndexError NODE %d", n.Num))
+            }
             for j:=0; j<6; j++ {
                 if lis[i+1+j]=="0" {
                     n.Conf[j]=false
@@ -411,6 +418,9 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (int
                 }
             }
         case "VCON":
+            if llis<i+7 {
+                return 0, 0, errors.New(fmt.Sprintf("ParseNode: VCON IndexError NODE %d", n.Num))
+            }
             for j:=0; j<6; j++ {
                 n.Load[j], err = strconv.ParseFloat(lis[i+1+j],64)
             }
@@ -445,6 +455,7 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) error {
     var num int64
     var err error
     e := new(Elem)
+    llis := len(lis)
     for i, word := range(lis) {
         switch word {
         case "ELEM":
@@ -465,6 +476,9 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) error {
             num, err = strconv.ParseInt(lis[i+1],10,64)
             e.Enods = int(num)
         case "ENOD":
+            if llis<i+1+e.Enods {
+                return errors.New(fmt.Sprintf("ParseElem: ENOD IndexError ELEM %d", e.Num))
+            }
             en := make([]*Node,int(e.Enods))
             for j:=0;j<e.Enods;j++ {
                 tmp, err := strconv.ParseInt(lis[i+1+j],10,64)
@@ -479,6 +493,9 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) error {
             }
             e.Enod = en
         case "BONDS":
+            if llis<i+1+e.Enods*6 {
+                return errors.New(fmt.Sprintf("ParseElem: BONDS IndexError ELEM %d", e.Num))
+            }
             bon := make([]bool, int(e.Enods)*6)
             for j:=0;j<int(e.Enods)*6;j++ {
                 if lis[i+1+j]=="0" {
@@ -489,6 +506,9 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) error {
             }
             e.Bonds = bon
         case "CMQ":
+            if llis<i+1+e.Enods*6 {
+                return errors.New(fmt.Sprintf("ParseElem: CMQ IndexError ELEM %d", e.Num))
+            }
             cmq := make([]float64, int(e.Enods)*6)
             for j:=0;j<int(e.Enods)*6;j++ {
                 cmq[j], err = strconv.ParseFloat(lis[i+1+j],64)
