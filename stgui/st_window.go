@@ -134,6 +134,7 @@ var (
 
 type Window struct {// {{{
     Home   string
+    Cwd    string
 
     Frame  *st.Frame
     Dlg    *iup.Handle
@@ -171,6 +172,8 @@ type Window struct {// {{{
     Property bool
     Selected []*iup.Handle
     Props []*iup.Handle
+
+    Changed bool // TODO: Set stw.Changed to true when stw.Frame is changed
 }
 // }}}
 
@@ -178,6 +181,7 @@ type Window struct {// {{{
 func NewWindow(homedir string) *Window {// {{{
     stw := new(Window)
     stw.Home = homedir
+    stw.Cwd  = homedir
     stw.SelectNode = make([]*st.Node, 0)
     stw.SelectElem = make([]*st.Elem, 0)
     stw.Labels = make(map[string]*iup.Handle)
@@ -348,6 +352,11 @@ func NewWindow(homedir string) *Window {// {{{
                     iup.Attr("TITLE","Quit"),
                     iup.Attr("TIP","Exit Application"),
                     func (arg *iup.ItemAction) {
+                        if stw.Changed {
+                            if stw.Yn("CHANGED", "変更を保存しますか") {
+                                stw.SaveAS()
+                            }
+                        }
                         arg.Return = iup.CLOSE
                     },
                 ),
@@ -816,6 +825,11 @@ func NewWindow(homedir string) *Window {// {{{
                       iup.Hbox(stw.cname, stw.cline,),
                   ),
                   func (arg *iup.DialogClose) {
+                      if stw.Changed {
+                          if stw.Yn("CHANGED", "変更を保存しますか") {
+                              stw.SaveAS()
+                          }
+                      }
                       arg.Return = iup.CLOSE
                   },
                   func (arg *iup.CommonGetFocus) {
@@ -830,6 +844,7 @@ func NewWindow(homedir string) *Window {// {{{
     stw.dbuff.TextAlignment(DefaultTextAlignment)
     iup.SetHandle("mainwindow", stw.Dlg)
     stw.EscapeAll()
+    stw.Changed = false
     return stw
 }
 // }}}
@@ -839,8 +854,7 @@ func (stw *Window) Chdir(dir string) error {
     if _, err := os.Stat(dir); err != nil {
         return err
     } else {
-        stw.Home = dir
-        stw.Frame.Home = dir
+        stw.Cwd = dir
         return nil
     }
 }
@@ -848,7 +862,7 @@ func (stw *Window) Chdir(dir string) error {
 
 // Open// {{{
 func (stw *Window) Open() {
-    if name,ok := iup.GetOpenFile(stw.Home, "*.inp"); ok {
+    if name,ok := iup.GetOpenFile(stw.Cwd, "*.inp"); ok {
         err := stw.OpenFile(name)
         if err != nil {
             fmt.Println(err)
@@ -1029,7 +1043,7 @@ func (stw *Window) Reload() {
 }
 
 func (stw *Window) OpenDxf() {
-    if name,ok := iup.GetOpenFile(stw.Home, "*.dxf"); ok {
+    if name,ok := iup.GetOpenFile(stw.Cwd, "*.dxf"); ok {
         err := stw.OpenFile(name)
         if err != nil {
             fmt.Println(err)
@@ -1073,6 +1087,8 @@ func (stw *Window) OpenFile(fn string) error {
     stw.Dlg.SetAttribute("TITLE", stw.Frame.Name)
     stw.Frame.Home = stw.Home
     stw.LinkTextValue()
+    stw.Changed = false
+    stw.Cwd = filepath.Dir(fn)
     return nil
 }
 // }}}
@@ -1101,18 +1117,22 @@ func (stw *Window) SaveAS() {
                     }
                 }
             }
-            stw.Frame.Name = filepath.Base(fn)
-            stw.Frame.Project = st.ProjectName(fn)
-            path, err := filepath.Abs(fn)
-            if err != nil {
-                stw.Frame.Path = fn
-            } else {
-                stw.Frame.Path = path
-            }
-            stw.Dlg.SetAttribute("TITLE", stw.Frame.Name)
-            stw.Frame.Home = stw.Home
+            stw.Rebase(fn)
         }
     }
+}
+
+func (stw *Window) Rebase (fn string) {
+    stw.Frame.Name = filepath.Base(fn)
+    stw.Frame.Project = st.ProjectName(fn)
+    path, err := filepath.Abs(fn)
+    if err != nil {
+        stw.Frame.Path = fn
+    } else {
+        stw.Frame.Path = path
+    }
+    stw.Dlg.SetAttribute("TITLE", stw.Frame.Name)
+    stw.Frame.Home = stw.Home
 }
 
 func (stw *Window) SaveFile(fn string) error {
@@ -1122,9 +1142,20 @@ func (stw *Window) SaveFile(fn string) error {
     }
     savestr := fmt.Sprintf("SAVE: %s", fn)
     stw.addHistory(savestr)
+    stw.Changed = false
     return nil
 }
 // }}}
+
+
+func (stw *Window) Close (force bool) {
+    if stw.Changed {
+        if stw.Yn("CHANGED", "変更を保存しますか") {
+            stw.SaveAS()
+        }
+    }
+    stw.Dlg.Destroy()
+}
 
 
 // Read// {{{
@@ -1330,20 +1361,22 @@ func (stw *Window) execAliasCommand(al string) {
         stw.Open()
         return
     }
-    al = strings.ToUpper(al)
-    if value,ok := aliases[al]; ok {
+    alu := strings.ToUpper(al)
+    if value,ok := aliases[alu]; ok {
         stw.ExecCommand(value)
         return
-    } else if value,ok := Commands[al]; ok{
+    } else if value,ok := Commands[alu]; ok{
         stw.ExecCommand(value)
         return
     } else {
         switch {
         default:
             stw.addHistory(fmt.Sprintf("command doesn't exist: %s", al))
-        case axrn_minmax.MatchString(al):
+        case strings.HasPrefix(al, ":"):
+            stw.exmode(al)
+        case axrn_minmax.MatchString(alu):
             var axis int
-            fs := axrn_minmax.FindStringSubmatch(al)
+            fs := axrn_minmax.FindStringSubmatch(alu)
             min, _ := strconv.ParseFloat(fs[1], 64)
             max, _ := strconv.ParseFloat(fs[3], 64)
             tmp := strings.ToUpper(fs[2])
@@ -1352,9 +1385,9 @@ func (stw *Window) execAliasCommand(al string) {
             }
             axisrange(stw, axis, min, max, false)
             stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s <= %.3f", min, tmp, max))
-        case axrn_min.MatchString(al):
+        case axrn_min.MatchString(alu):
             var axis int
-            fs := axrn_min.FindStringSubmatch(al)
+            fs := axrn_min.FindStringSubmatch(alu)
             min, _ := strconv.ParseFloat(fs[1], 64)
             tmp := strings.ToUpper(fs[2])
             for i, val := range []string{"X", "Y", "Z"} {
@@ -1362,9 +1395,9 @@ func (stw *Window) execAliasCommand(al string) {
             }
             axisrange(stw, axis, min, 1000.0, false)
             stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s", min, tmp))
-        case axrn_max.MatchString(al):
+        case axrn_max.MatchString(alu):
             var axis int
-            fs := axrn_max.FindStringSubmatch(al)
+            fs := axrn_max.FindStringSubmatch(alu)
             max, _ := strconv.ParseFloat(fs[2], 64)
             tmp := strings.ToUpper(fs[1])
             for i, val := range []string{"X", "Y", "Z"} {
@@ -1372,9 +1405,9 @@ func (stw *Window) execAliasCommand(al string) {
             }
             axisrange(stw, axis, -100.0, max, false)
             stw.addHistory(fmt.Sprintf("AxisRange: %s <= %.3f", tmp, max))
-        case axrn_eq.MatchString(al):
+        case axrn_eq.MatchString(alu):
             var axis int
-            fs := axrn_eq.FindStringSubmatch(al)
+            fs := axrn_eq.FindStringSubmatch(alu)
             val, _ := strconv.ParseFloat(fs[2], 64)
             tmp := strings.ToUpper(fs[1])
             for i, val := range []string{"X", "Y", "Z"} {
@@ -1384,6 +1417,66 @@ func (stw *Window) execAliasCommand(al string) {
             stw.addHistory(fmt.Sprintf("AxisRange: %s = %.3f", tmp, val))
         }
         return
+    }
+}
+
+func (stw *Window) exmode (command string) {
+    if len(command) == 1 { return }
+    args := strings.Split(command, " ")
+    var fn string
+    if len(args) < 2 {
+        fn = ""
+    } else {
+        fn = filepath.Join(stw.Cwd, args[1])
+    }
+    switch args[0] {
+    case ":w", ":sav":
+        if fn == "" {
+            stw.SaveFile(stw.Frame.Path)
+        } else {
+            if !st.FileExists(fn) || stw.Yn("Save", "上書きしますか") {
+                stw.SaveFile(fn)
+                if args[0] == ":sav" {
+                    stw.Rebase(fn)
+                }
+            }
+        }
+    case ":w!", ":sav!":
+        if len(args) < 2 {
+            stw.SaveFile(stw.Frame.Path)
+        } else {
+            stw.SaveFile(fn)
+            if args[0] == ":sav!" {
+                stw.Rebase(fn)
+            }
+        }
+    case ":e":
+        if stw.Changed {
+            if stw.Yn("CHANGED", "変更を保存しますか") {
+                stw.SaveAS()
+            }
+        }
+        if len(args) >= 2 {
+            if !st.FileExists(fn) {
+                stw.addHistory(fmt.Sprintf("File doesn't exist: %s", fn))
+            } else {
+                stw.OpenFile(fn)
+                stw.Redraw()
+            }
+        }
+    case ":e!":
+        if len(args) >= 2 {
+            if !st.FileExists(fn) {
+                stw.addHistory(fmt.Sprintf("File doesn't exist: %s", fn))
+            } else {
+                stw.OpenFile(fn)
+                stw.Redraw()
+            }
+        }
+    case ":q":
+        stw.Close(false)
+    case ":q!":
+        stw.Close(true)
     }
 }
 
@@ -2525,15 +2618,19 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
         stw.cline.SetAttribute("INSERT", string(key.Key()))
     case '/':
         stw.SearchInp()
-    case ';':
+    case '"':
         if stw.Frame != nil {
             switch stw.Frame.Project {
             default:
-                stw.cline.SetAttribute("INSERT", ";")
+                stw.cline.SetAttribute("INSERT", "\"")
             case "venhira":
                 stw.cline.SetAttribute("INSERT", "V4")
             }
         }
+    case ':':
+        stw.cline.SetAttribute("INSERT", ";")
+    case ';':
+        stw.cline.SetAttribute("INSERT", ":")
     case KEY_BS:
         val := stw.cline.GetAttribute("VALUE")
         if val != "" {
@@ -2856,6 +2953,11 @@ func (stw *Window) CMenu () {
                                    iup.Attr("TITLE","Quit"),
                                    iup.Attr("TIP","Exit Application"),
                                    func (arg *iup.ItemAction) {
+                                       if stw.Changed {
+                                           if stw.Yn("CHANGED", "変更を保存しますか") {
+                                               stw.SaveAS()
+                                           }
+                                       }
                                        arg.Return = iup.CLOSE
                                    },
                                ),
