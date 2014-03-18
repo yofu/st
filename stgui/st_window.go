@@ -1256,6 +1256,11 @@ func (stw *Window) Print() {
 // }
 
 
+func (stw *Window) Edit(fn string) {
+    cmd := exec.Command("cmd", "/C", "start", fn)
+    cmd.Start()
+}
+
 func (stw *Window) EditInp() {
     if stw.Frame != nil {
         cmd := exec.Command("cmd", "/C", "start", stw.Frame.Path)
@@ -1424,6 +1429,13 @@ func (stw *Window) execAliasCommand(al string) {
     }
 }
 
+func (stw *Window) Interpolate (str string) string {
+    str = strings.Replace(str, "%:h", stw.Cwd, 1)
+    str = strings.Replace(str, "%<", st.PruneExt(stw.Frame.Path), 1)
+    str = strings.Replace(str, "%", stw.Frame.Path, 1)
+    return str
+}
+
 func (stw *Window) exmode (command string) {
     if len(command) == 1 { return }
     args := strings.Split(command, " ")
@@ -1431,7 +1443,15 @@ func (stw *Window) exmode (command string) {
     if len(args) < 2 {
         fn = ""
     } else {
-        fn = filepath.Join(stw.Cwd, args[1])
+        if strings.Contains(args[1], "%") {
+            fn = stw.Interpolate(args[1])
+        } else {
+            if filepath.Dir(args[1]) == "." {
+                fn = filepath.Join(stw.Cwd, args[1])
+            } else {
+                fn = args[1]
+            }
+        }
     }
     if stw.Frame != nil {
         switch args[0] {
@@ -1486,6 +1506,8 @@ func (stw *Window) exmode (command string) {
             stw.Close(false)
         case ":q!":
             stw.Close(true)
+        case ":vim":
+            stw.Edit(fn)
         }
     } else {
         switch args[0] {
@@ -1500,6 +1522,8 @@ func (stw *Window) exmode (command string) {
             } else {
                 stw.Open()
             }
+        case ":vim":
+            stw.Edit(fn)
         }
     }
 }
@@ -2656,9 +2680,19 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
             }
         }
     case ':':
-        stw.cline.SetAttribute("APPEND", ";")
+        val := stw.cline.GetAttribute("VALUE")
+        if val == "" {
+            stw.cline.SetAttribute("APPEND", ";")
+        } else {
+            stw.cline.SetAttribute("APPEND", ":")
+        }
     case ';':
-        stw.cline.SetAttribute("APPEND", ":")
+        val := stw.cline.GetAttribute("VALUE")
+        if val == "" {
+            stw.cline.SetAttribute("APPEND", ":")
+        } else {
+            stw.cline.SetAttribute("APPEND", ";")
+        }
     case KEY_BS:
         val := stw.cline.GetAttribute("VALUE")
         if val != "" {
@@ -2670,6 +2704,12 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
         stw.feedCommand()
     case KEY_ESCAPE:
         stw.EscapeAll()
+    case KEY_TAB:
+        tmp := stw.cline.GetAttribute("VALUE")
+        if strings.Contains(tmp, "%") {
+            stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
+            stw.cline.SetAttribute("CARETPOS", "100")
+        }
     case 'O':
         if key.IsCtrl() {
             stw.Open()

@@ -263,6 +263,11 @@ func Ce (fn, ext string) string {
     }
 }
 
+func PruneExt (fn string) string {
+    ext := filepath.Ext(fn)
+    return strings.Replace(fn, ext, "", 1)
+}
+
 func FileExists (fn string) bool {
     if _, err := os.Stat(fn); err == nil {
         return true
