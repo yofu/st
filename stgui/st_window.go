@@ -1358,7 +1358,11 @@ func (stw *Window) ExecCommand(com *Command) {
 
 func (stw *Window) execAliasCommand(al string) {
     if stw.Frame == nil {
-        stw.Open()
+        if strings.HasPrefix(al, ":") {
+            stw.exmode(al)
+        } else {
+            stw.Open()
+        }
         return
     }
     alu := strings.ToUpper(al)
@@ -1429,54 +1433,74 @@ func (stw *Window) exmode (command string) {
     } else {
         fn = filepath.Join(stw.Cwd, args[1])
     }
-    switch args[0] {
-    case ":w", ":sav":
-        if fn == "" {
-            stw.SaveFile(stw.Frame.Path)
-        } else {
-            if !st.FileExists(fn) || stw.Yn("Save", "上書きしますか") {
+    if stw.Frame != nil {
+        switch args[0] {
+        case ":w", ":sav":
+            if fn == "" {
+                stw.SaveFile(stw.Frame.Path)
+            } else {
+                if !st.FileExists(fn) || stw.Yn("Save", "上書きしますか") {
+                    stw.SaveFile(fn)
+                    if args[0] == ":sav" {
+                        stw.Rebase(fn)
+                    }
+                }
+            }
+        case ":w!", ":sav!":
+            if fn == "" {
+                stw.SaveFile(stw.Frame.Path)
+            } else {
                 stw.SaveFile(fn)
-                if args[0] == ":sav" {
+                if args[0] == ":sav!" {
                     stw.Rebase(fn)
                 }
             }
-        }
-    case ":w!", ":sav!":
-        if len(args) < 2 {
-            stw.SaveFile(stw.Frame.Path)
-        } else {
-            stw.SaveFile(fn)
-            if args[0] == ":sav!" {
-                stw.Rebase(fn)
+        case ":e":
+            if stw.Changed {
+                if stw.Yn("CHANGED", "変更を保存しますか") {
+                    stw.SaveAS()
+                }
             }
-        }
-    case ":e":
-        if stw.Changed {
-            if stw.Yn("CHANGED", "変更を保存しますか") {
-                stw.SaveAS()
-            }
-        }
-        if len(args) >= 2 {
-            if !st.FileExists(fn) {
-                stw.addHistory(fmt.Sprintf("File doesn't exist: %s", fn))
+            if fn != "" {
+                if !st.FileExists(fn) {
+                    stw.addHistory(fmt.Sprintf("File doesn't exist: %s", fn))
+                } else {
+                    stw.OpenFile(fn)
+                    stw.Redraw()
+                }
             } else {
-                stw.OpenFile(fn)
-                stw.Redraw()
+                stw.Reload()
             }
-        }
-    case ":e!":
-        if len(args) >= 2 {
-            if !st.FileExists(fn) {
-                stw.addHistory(fmt.Sprintf("File doesn't exist: %s", fn))
+        case ":e!":
+            if fn != "" {
+                if !st.FileExists(fn) {
+                    stw.addHistory(fmt.Sprintf("File doesn't exist: %s", fn))
+                } else {
+                    stw.OpenFile(fn)
+                    stw.Redraw()
+                }
             } else {
-                stw.OpenFile(fn)
-                stw.Redraw()
+                stw.Reload()
+            }
+        case ":q":
+            stw.Close(false)
+        case ":q!":
+            stw.Close(true)
+        }
+    } else {
+        switch args[0] {
+        case ":e":
+            if fn != "" {
+                if !st.FileExists(fn) {
+                    stw.addHistory(fmt.Sprintf("File doesn't exist: %s", fn))
+                } else {
+                    stw.OpenFile(fn)
+                    stw.Redraw()
+                }
+            } else {
+                stw.Open()
             }
         }
-    case ":q":
-        stw.Close(false)
-    case ":q!":
-        stw.Close(true)
     }
 }
 
