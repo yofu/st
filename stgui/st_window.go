@@ -2639,22 +2639,26 @@ func (stw *Window) CB_CanvasWheel() {
 func (stw *Window) DefaultKeyAny(key iup.KeyState) {
     switch key.Key() {
     default:
-        stw.cline.SetAttribute("INSERT", string(key.Key()))
+        stw.cline.SetAttribute("APPEND", string(key.Key()))
     case '/':
-        stw.SearchInp()
+        if stw.cline.GetAttribute("VALUE") != "" {
+            stw.cline.SetAttribute("APPEND", "/")
+        } else {
+            stw.SearchInp()
+        }
     case '"':
         if stw.Frame != nil {
             switch stw.Frame.Project {
             default:
-                stw.cline.SetAttribute("INSERT", "\"")
+                stw.cline.SetAttribute("APPEND", "\"")
             case "venhira":
-                stw.cline.SetAttribute("INSERT", "V4")
+                stw.cline.SetAttribute("APPEND", "V4")
             }
         }
     case ':':
-        stw.cline.SetAttribute("INSERT", ";")
+        stw.cline.SetAttribute("APPEND", ";")
     case ';':
-        stw.cline.SetAttribute("INSERT", ":")
+        stw.cline.SetAttribute("APPEND", ":")
     case KEY_BS:
         val := stw.cline.GetAttribute("VALUE")
         if val != "" {
