@@ -1105,19 +1105,23 @@ func (stw *Window) SaveAS() {
         fn := st.Ce(name, ".inp")
         err = stw.SaveFile(fn)
         if err == nil && fn != stw.Frame.Path {
-            if stw.Yn("SAVE AS", ".lst, .fig2, .kjnファイルがあればコピーしますか?") {
-                for _, ext := range []string{".lst", ".fig2", ".kjn"} {
-                    src := st.Ce(stw.Frame.Path, ext)
-                    dst := st.Ce(name, ext)
-                    if st.FileExists(src) {
-                        err = st.CopyFile(src, dst)
-                        if err == nil {
-                            stw.addHistory(fmt.Sprintf("COPY: %s", dst))
-                        }
-                    }
+            stw.Copylsts(name)
+            stw.Rebase(fn)
+        }
+    }
+}
+
+func (stw *Window) Copylsts (name string) {
+    if stw.Yn("SAVE AS", ".lst, .fig2, .kjnファイルがあればコピーしますか?") {
+        for _, ext := range []string{".lst", ".fig2", ".kjn"} {
+            src := st.Ce(stw.Frame.Path, ext)
+            dst := st.Ce(name, ext)
+            if st.FileExists(src) {
+                err := st.CopyFile(src, dst)
+                if err == nil {
+                    stw.addHistory(fmt.Sprintf("COPY: %s", dst))
                 }
             }
-            stw.Rebase(fn)
         }
     }
 }
@@ -1460,7 +1464,10 @@ func (stw *Window) exmode (command string) {
                 stw.SaveFile(stw.Frame.Path)
             } else {
                 if !st.FileExists(fn) || stw.Yn("Save", "上書きしますか") {
-                    stw.SaveFile(fn)
+                    err := stw.SaveFile(fn)
+                    if err == nil && fn != stw.Frame.Path {
+                        stw.Copylsts(fn)
+                    }
                     if args[0] == ":sav" {
                         stw.Rebase(fn)
                     }
@@ -1470,7 +1477,10 @@ func (stw *Window) exmode (command string) {
             if fn == "" {
                 stw.SaveFile(stw.Frame.Path)
             } else {
-                stw.SaveFile(fn)
+                err := stw.SaveFile(fn)
+                if err == nil && fn != stw.Frame.Path {
+                    stw.Copylsts(fn)
+                }
                 if args[0] == ":sav!" {
                     stw.Rebase(fn)
                 }

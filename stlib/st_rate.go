@@ -29,6 +29,7 @@ type Reinforce struct {
 
 type Wood struct {
     name float64
+    Fc   float64
     Ft   float64
     Fb   float64
     Fs   float64
@@ -49,12 +50,12 @@ var (
 
 // Section
 type SectionRate interface {
-    Na()  float64
-    Qxa() float64
-    Qya() float64
-    Mxa() float64
-    Mya() float64
-    Mza() float64
+    Na(*Condition)  float64
+    Qxa(*Condition) float64
+    Qya(*Condition) float64
+    Mxa(*Condition) float64
+    Mya(*Condition) float64
+    Mza(*Condition) float64
 }
 
 type Shape interface {
@@ -98,4 +99,10 @@ type RCGirder struct {
 
 type RCWall struct {
     Concrete
+}
+
+
+// Condition
+type Condition struct {
+    Period string
 }
