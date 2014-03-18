@@ -959,16 +959,25 @@ func (stw *Window) SearchInp() {
                              if key.IsCtrl() {
                                  tmp := result.GetAttribute("VALUE")
                                  val, _ := strconv.ParseInt(tmp, 10, 64)
+                                 tmp = result.GetAttribute("COUNT")
+                                 size, _ := strconv.ParseInt(tmp, 10, 64)
                                  next := val+1
+                                 if next > size { next -= size }
                                  result.SetAttribute("VALUE", fmt.Sprintf("%d", next))
                              }
                          case 'K':
                              if key.IsCtrl() {
                                  tmp := result.GetAttribute("VALUE")
                                  val, _ := strconv.ParseInt(tmp, 10, 64)
-                                 next := val-1
-                                 if next < 0 { next = 0 }
-                                 result.SetAttribute("VALUE", fmt.Sprintf("%d", next))
+                                 tmp = result.GetAttribute("COUNT")
+                                 size, _ := strconv.ParseInt(tmp, 10, 64)
+                                 if val == 0 {
+                                     result.SetAttribute("VALUE", fmt.Sprintf("%d", size))
+                                 } else {
+                                     next := val-1
+                                     if next <= 0 { next += size }
+                                     result.SetAttribute("VALUE", fmt.Sprintf("%d", next))
+                                 }
                              }
                          case 'R':
                              if key.IsCtrl() {
