@@ -6,6 +6,10 @@ import (
     "math"
 )
 
+const (
+    E_LAMBDA_B = 1.29099444874 // 1.0/math.Sqrt(6)
+    P_LAMBDA_B = 0.3
+)
 // Material
 type Material interface {
 }
@@ -44,14 +48,14 @@ type Wood struct {
 }
 
 var (
-    SN400B = &Steel{"SN400B", 2.4, 4.0, 2100.0, 0.3}
-    SN490B = &Steel{"SN490B", 3.3, 5.0, 2100.0, 0.3}
+    SN400 = Steel{"SN400", 2.4, 4.0, 2100.0, 0.3}
+    SN490 = Steel{"SN490", 3.3, 5.0, 2100.0, 0.3}
 
-    FC24 = &Concrete{"Fc24", 0.240, 210.0, 0.166666}
-    FC36 = &Concrete{"Fc36", 0.360, 210.0, 0.166666}
+    FC24 = Concrete{"Fc24", 0.240, 210.0, 0.166666}
+    FC36 = Concrete{"Fc36", 0.360, 210.0, 0.166666}
 
-    SD295 = &Reinforce{"SD295", 2.0, 3.0, 2100.0, 0.3}
-    SD345 = &Reinforce{"SD345", 2.2, 3.5, 2100.0, 0.3}
+    SD295 = Reinforce{"SD295", 2.0, 3.0, 2100.0, 0.3}
+    SD345 = Reinforce{"SD345", 2.2, 3.5, 2100.0, 0.3}
 )
 
 // Section
@@ -74,18 +78,21 @@ type Shape interface {
     Ix() float64
     Iy() float64
     J()  float64
+    Iw() float64
     Torsion() float64
     Zx() float64
     Zy() float64
 }
 
+
+// S COLUMN
 type SColumn struct {
     Steel
     Shape
-    BBLength float64
-    BTLength float64
-    BBFactor float64
-    BTFactor float64
+    BBLength []float64
+    BTLength []float64
+    BBFactor []float64
+    BTFactor []float64
 }
 func (sc *SColumn) String() string {
     return fmt.Sprintf("S COLUMN\n%s %s %s", sc.Shape.String(), sc.Steel.Name, sc.Shape.Description())
@@ -114,32 +121,49 @@ func (sc *SColumn) Qa(cond *Condition) float64 {
         return sc.F/math.Sqrt(3)*sc.Asy()/sc.Factor(cond.Period)
     }
 }
-func (sc *SColumn) Lk (length float64) float64 {
-    if sc.BBLength > 0.0 {
-        return sc.BBLength
-    } else if sc.BBFactor > 0.0 {
-        return length * sc.BBFactor
+func (sc *SColumn) Lk (length float64, strong bool) float64 {
+    var ind int
+    if strong { ind = 0 } else { ind = 1 }
+    if sc.BBLength[ind] > 0.0 {
+        return sc.BBLength[ind]
+    } else if sc.BBFactor[ind] > 0.0 {
+        return length * sc.BBFactor[ind]
     } else {
         return length
     }
 }
-func (sc *SColumn) Lb (length float64) float64 {
-    if sc.BTLength > 0.0 {
-        return sc.BTLength
-    } else if sc.BTFactor > 0.0 {
-        return length * sc.BTFactor
+func (sc *SColumn) Lb (length float64, strong bool) float64 {
+    var ind int
+    if strong { ind = 0 } else { ind = 1 }
+    if sc.BTLength[ind] > 0.0 {
+        return sc.BTLength[ind]
+    } else if sc.BTFactor[ind] > 0.0 {
+        return length * sc.BTFactor[ind]
     } else {
         return length
     }
 }
 func (sc *SColumn) Fb (cond *Condition) float64 {
-    l := sc.Lb(cond.Length)
+    l := sc.Lb(cond.Length, cond.Strong)
+    fbnew := func () float64 {
+                 me := sc.Me(l, 1.0, cond)
+                 my := sc.My(cond)
+                 lambda_b := math.Sqrt(my/me)
+                 nu := 1.5 + math.Pow(lambda_b/E_LAMBDA_B, 2.0)/1.5
+                 if lambda_b <= P_LAMBDA_B {
+                     return sc.F/nu/sc.Factor(cond.Period)
+                 } else if lambda_b <= E_LAMBDA_B {
+                     return (1.0-0.4*(lambda_b-P_LAMBDA_B)/(E_LAMBDA_B-P_LAMBDA_B))*sc.F/nu/sc.Factor(cond.Period)
+                 } else {
+                     return sc.F/math.Pow(lambda_b, 2.0)/2.17/sc.Factor(cond.Period)
+                 }
+             }
     if cond.Strong {
         if hk, ok := sc.Shape.(HKYOU); ok {
             if cond.FbOld {
                 return 900.0/(l*hk.H/(hk.B*hk.Tf))
             } else {
-                return 0.0
+                return fbnew()
             }
         } else {
             return sc.F
@@ -149,11 +173,25 @@ func (sc *SColumn) Fb (cond *Condition) float64 {
             if cond.FbOld {
                 return 900.0/(l*hw.H/(hw.B*hw.Tf))
             } else {
-                return 0.0
+                return fbnew()
             }
         } else {
             return sc.F
         }
+    }
+}
+func (sc *SColumn) Me(length, Cb float64, cond *Condition) float64 {
+    g := sc.E/(2.0*(1+sc.Poi))
+    var I float64
+    Ix := sc.Ix(); Iy := sc.Iy()
+    if Ix >= Iy { I = Iy } else { I = Ix }
+    return Cb*math.Sqrt(math.Pow(math.Pi,4.0)*sc.E*I*sc.E*sc.Iw()/math.Pow(length, 4.0) + math.Pow(math.Pi, 2.0)*sc.E*I*g*sc.J()/math.Pow(length, 2.0))*0.01 // [tfm]
+}
+func (sc *SColumn) My(cond *Condition) float64 {
+    if cond.Strong {
+        return sc.F*sc.Zx()/sc.Factor(cond.Period)*0.01 // [tfm]
+    } else {
+        return sc.F*sc.Zy()/sc.Factor(cond.Period)*0.01 // [tfm]
     }
 }
 func (sc *SColumn) Ma(cond *Condition) float64 {
@@ -171,22 +209,24 @@ func (sc *SColumn) Rate(stress []float64, cond *Condition) ([]float64, error) {
     rate := make([]float64, 6)
     cond.Rate = rate
     na := sc.Na(cond)
-    if na != 0.0 { rate[0] = stress[0]/na }
+    if na != 0.0 { rate[0] = stress[0]/na } else { rate[0] = -1.0 }
     cond.Strong = true
     qax := sc.Qa(cond)
-    if qax != 0.0 { rate[1] = stress[1]/qax }
+    if qax != 0.0 { rate[1] = stress[1]/qax } else { rate[1] = -1.0 }
     max := sc.Ma(cond)
-    if max != 0.0 { rate[4] = stress[4]/max }
+    if max != 0.0 { rate[4] = stress[4]/max } else { rate[4] = -1.0 }
     cond.Strong = false
     qay := sc.Qa(cond)
-    if qay != 0.0 { rate[2] = stress[2]/qay }
+    if qay != 0.0 { rate[2] = stress[2]/qay } else { rate[2] = -1.0 }
     may := sc.Ma(cond)
-    if may != 0.0 { rate[5] = stress[5]/may }
+    if may != 0.0 { rate[5] = stress[5]/may } else { rate[5] = -1.0 }
     maz := sc.Mza(cond)
-    if maz != 0.0 { rate[3] = stress[3]/maz }
+    if maz != 0.0 { rate[3] = stress[3]/maz } else { rate[3] = -1.0 }
     return rate, nil
 }
 
+
+// HKYOU// {{{
 type HKYOU struct {
     H, B, Tw, Tf float64
 }
@@ -214,6 +254,9 @@ func (hk HKYOU) Iy() float64 {
 func (hk HKYOU) J() float64 {
     return 2.0*hk.B*math.Pow(hk.Tf, 3.0)/3.0 + (hk.H-2*hk.Tf)*math.Pow(hk.Tw, 3.0)/3.0
 }
+func (hk HKYOU) Iw() float64 {
+    return 0.0
+}
 func (hk HKYOU) Torsion() float64 {
     if hk.Tf >= hk.Tw {
         return hk.J()/hk.Tf
@@ -227,7 +270,10 @@ func (hk HKYOU) Zx() float64 {
 func (hk HKYOU) Zy() float64 {
     return hk.Iy()/hk.B*2.0
 }
+// }}}
 
+
+// HWEAK// {{{
 type HWEAK struct {
     H, B, Tw, Tf float64
 }
@@ -255,6 +301,9 @@ func (hw HWEAK) Iy() float64 {
 func (hw HWEAK) J() float64 {
     return 2.0*hw.B*math.Pow(hw.Tf, 3.0)/3.0 + (hw.H-2*hw.Tf)*math.Pow(hw.Tw, 3.0)/3.0
 }
+func (hk HWEAK) Iw() float64 {
+    return 0.0
+}
 func (hw HWEAK) Torsion() float64 {
     if hw.Tf >= hw.Tw {
         return hw.J()/hw.Tf
@@ -268,19 +317,25 @@ func (hw HWEAK) Zx() float64 {
 func (hw HWEAK) Zy() float64 {
     return hw.Iy()/hw.H*2.0
 }
+// }}}
 
+
+// RPIPE
 type RPIPE struct {
     H, B, Tw, Tf float64
 }
 
+
+// CPIPE
 type CPIPE struct {
     D, T float64
 }
 
+
 type SGirder struct {
-    Steel
-    Shape
+    SColumn
 }
+
 
 type RCColumn struct {
     Concrete

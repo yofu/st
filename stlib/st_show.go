@@ -160,6 +160,60 @@ func NewShow(frame *Frame) *Show {
     return s
 }
 
+func (show *Show) Copy () *Show {
+    s := NewShow(show.Frame)
+    for i:=0; i<2; i++ {
+        s.Unit[i] = show.Unit[i]
+        s.UnitName[i] = show.UnitName[i]
+        s.Xrange[i] = show.Xrange[i]
+        s.Yrange[i] = show.Yrange[i]
+        s.Zrange[i] = show.Zrange[i]
+    }
+    s.ColorMode = show.ColorMode
+    s.NodeCaption = show.NodeCaption
+    s.ElemCaption = show.ElemCaption
+    s.GlobalAxis = show.GlobalAxis
+    s.GlobalAxisSize = show.GlobalAxisSize
+    s.ElementAxis = show.ElementAxis
+    s.ElementAxisSize = show.ElementAxisSize
+    s.NodeNormal = show.NodeNormal
+    s.NodeNormalSize = show.NodeNormalSize
+    s.ElemNormal = show.ElemNormal
+    s.ElemNormalSize = show.ElemNormalSize
+    s.Bond = show.Bond
+    s.BondSize = show.BondSize
+    s.Conf = show.Conf
+    s.ConfSize = show.ConfSize
+    s.Period = show.Period
+    s.Deformation = false
+    s.Dfact = 100.0
+    for _, et := range []int{COLUMN, GIRDER, BRACE, WBRACE, SBRACE} {
+        s.Stress[et] = show.Stress[et]
+    }
+    s.Mfact = show.Mfact
+
+    s.Kijun = show.Kijun
+    s.KijunSize = show.KijunSize
+
+    s.Select = show.Select
+
+    s.Sect  = make(map[int]bool)
+    s.Etype = make(map[int]bool)
+    for i, _ := range ETYPES {
+        s.Etype[i] = show.Etype[i]
+    }
+    for k, v := range show.Sect {
+        s.Sect[k] = v
+    }
+
+    s.Formats["STRESS"]   = show.Formats["STRESS"]
+    s.Formats["RATE"]     = show.Formats["RATE"]
+    s.Formats["DISP"]     = show.Formats["DISP"]
+    s.Formats["REACTION"] = show.Formats["REACTION"]
+
+    return s
+}
+
 func (show *Show) All () {
     for i, _ := range ETYPES {
         show.Etype[i] = true

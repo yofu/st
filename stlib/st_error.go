@@ -32,3 +32,11 @@ func NotLineElem(fn string) EtypeError {
 func NotPlateElem(fn string) EtypeError {
     return EtypeError{"Plate", fn}
 }
+
+type ZeroAllowableError struct {
+    name string
+}
+
+func (z ZeroAllowableError) Error () string {
+    return fmt.Sprintf("Rate: %s == 0.0", z.name)
+}
