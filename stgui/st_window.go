@@ -1069,16 +1069,17 @@ func (stw *Window) OpenFile(fn string) error {
         if err != nil {
             return err
         }
+        stw.Frame = frame
     case ".dxf":
         err = frame.ReadDxf(fn, []float64{0.0,0.0,0.0})
         if err != nil {
             return err
         }
+        stw.Frame = frame
         frame.SetFocus()
         stw.DrawFrameNode()
         stw.ShowCenter()
     }
-    stw.Frame = frame
     if s != nil {
         stw.Frame.Show = s
     }
