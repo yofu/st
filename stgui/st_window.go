@@ -405,12 +405,15 @@ func NewWindow(homedir string) *Window {// {{{
                 iup.Item(
                     iup.Attr("TITLE","Read Pgp"),
                     func (arg *iup.ItemAction) {
-                        al := make(map[string]*Command,0)
-                        err := ReadPgp(pgpfile, al)
-                        if err != nil {
-                            stw.addHistory("ReadPgp: Cannot Read st.pgp")
-                        } else {
-                            aliases = al
+                        if name,ok := iup.GetOpenFile(stw.Cwd, "*.pgp"); ok {
+                            al := make(map[string]*Command,0)
+                            err := ReadPgp(name, al)
+                            if err != nil {
+                                stw.addHistory("ReadPgp: Cannot Read st.pgp")
+                            } else {
+                                aliases = al
+                                stw.addHistory(fmt.Sprintf("ReadPgp: Read %s", name))
+                            }
                         }
                     },
                 ),
