@@ -623,6 +623,12 @@ func NewWindow(homedir string) *Window {// {{{
                         stw.feedCommand()
                     case KEY_ESCAPE:
                         stw.cline.SetAttribute("VALUE", "")
+                    case KEY_TAB:
+                        tmp := stw.cline.GetAttribute("VALUE")
+                        if strings.Contains(tmp, "%") {
+                            stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
+                            stw.cline.SetAttribute("CARETPOS", "100")
+                        }
                     case '[':
                         if key.IsCtrl() {
                             stw.cline.SetAttribute("VALUE", "")
@@ -1436,6 +1442,7 @@ func (stw *Window) execAliasCommand(al string) {
 
 func (stw *Window) Interpolate (str string) string {
     str = strings.Replace(str, "%:h", stw.Cwd, 1)
+    if stw.Frame == nil { return str }
     str = strings.Replace(str, "%<", st.PruneExt(stw.Frame.Path), 1)
     str = strings.Replace(str, "%", stw.Frame.Path, 1)
     return str
