@@ -1,17 +1,19 @@
 package main
 
 import (
+    "runtime"
     "github.com/visualfc/go-iup/iup"
     "github.com/yofu/st/stgui"
 )
 
 const (
     version = "0.1.0"
-    modified = "LAST CHANGE:20-Mar-2014."
+    modified = "LAST CHANGE:31-Mar-2014."
     HOME = "C:/D/CDOCS/Hogan"
 )
 
 func main() {
+    runtime.GOMAXPROCS(4)
     iup.Open()
     defer iup.Close()
     sw := stgui.NewWindow(HOME)
