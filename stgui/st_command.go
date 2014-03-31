@@ -1338,6 +1338,17 @@ func bondrigid (stw *Window) {
 
 
 // CONF// {{{
+func setconf (stw *Window, lis []bool) {
+    if stw.SelectNode == nil { stw.EscapeAll(); return }
+    for _, n := range stw.SelectNode {
+        if n == nil || n.Lock { continue }
+        for i:=0; i<6; i++ {
+            n.Conf[i] = lis[i]
+        }
+    }
+    stw.EscapeAll()
+}
+
 // CONFFIX
 func conffix (stw *Window) {
     if stw.SelectNode == nil { stw.EscapeAll(); return }

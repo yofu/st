@@ -1519,6 +1519,23 @@ func (stw *Window) exmode (command string) {
             stw.Close(true)
         case ":vim":
             stw.Edit(fn)
+        case ":conf":
+            lis := make([]bool, 6)
+            if len(args[1]) >= 6 {
+                for i:=0; i<6; i++ {
+                    switch args[1][i] {
+                    default:
+                        lis[i] = false
+                    case '0':
+                        lis[i] = false
+                    case '1':
+                        lis[i] = true
+                    }
+                }
+                setconf(stw, lis)
+            } else {
+                stw.addHistory("Not enough arguments")
+            }
         }
     } else {
         switch args[0] {

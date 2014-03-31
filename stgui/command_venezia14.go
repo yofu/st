@@ -16,6 +16,7 @@ var (
     VEN14SURFACE = &Command{"VENEZIA14 SURFACE", "output coord data to create surface", ven14surface}
     VEN14NORMAL = &Command{"VENEZIA14 NORMAL", "show normal vector of plate elems", ven14normal}
     VEN14SETCANG = &Command{"VENEZIA14 SETCANG", "set cang of girders", ven14setcang}
+    VEN14ERRORELEM = &Command{"ERROR ELEM", "select elem whose max(rate)>1.15", ven14errorelem}
 )
 
 func init() {
@@ -24,6 +25,7 @@ func init() {
     Commands["VEN14SURFACE"]=VEN14SURFACE
     Commands["VEN14NORMAL"]=VEN14NORMAL
     Commands["VEN14SETCANG"]=VEN14SETCANG
+    Commands["VEN14ERRORELEM"]=VEN14ERRORELEM
 }
 
 func ven14rotatezero (stw *Window) {
@@ -176,4 +178,28 @@ func ven14setcang (stw *Window) {
         }
     }
     stw.EscapeAll()
+}
+
+func ven14errorelem (stw *Window) {
+    iup.SetFocus(stw.canv)
+    stw.Deselect()
+    stw.SetColorMode(st.ECOLOR_RATE)
+    stw.Frame.Show.ElemCaption |= st.EC_RATE_L
+    stw.Frame.Show.ElemCaption |= st.EC_RATE_S
+    stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelFGColor)
+    stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelFGColor)
+    stw.Redraw()
+    tmpels := make([]*st.Elem, len(stw.Frame.Elems))
+    i:=0
+    for _, el := range(stw.Frame.Elems) {
+        if el.Rate != nil {
+            for _, val := range(el.Rate) {
+                if val > 1.15 { tmpels[i] = el; i++; break }
+            }
+        }
+    }
+    stw.SelectElem = make([]*st.Elem, i)
+    for j:=0; j<i; j++ {
+        stw.SelectElem[j] = tmpels[j]
+    }
 }

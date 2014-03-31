@@ -263,6 +263,31 @@ func Ce (fn, ext string) string {
     }
 }
 
+func Increment (fn, div string, pos, times int) (string, error) {
+    ext := filepath.Ext(fn)
+    ls := strings.Split(strings.Replace(fn, ext, "", 1), div)
+    if len(ls) < pos+1 {
+        return fn, errors.New("Increment: IndexError")
+    }
+    if pos == 0 {
+        pat := regexp.MustCompile("^([^0-9]+)([0-9]+)$")
+        tmp := pat.FindStringSubmatch(ls[0])
+        if len(tmp) < 3 {
+            return fn, errors.New("Increment: ValueError")
+        }
+        val, _ := strconv.ParseInt(tmp[2], 10, 64)
+        ls[0] = fmt.Sprintf("%s%d", tmp[1], val+1)
+    } else {
+        num := ls[pos]
+        val, err := strconv.ParseInt(num, 10, 64)
+        if err != nil {
+            return fn, err
+        }
+        ls[pos] = fmt.Sprintf("%d", val+1)
+    }
+    return strings.Join(ls, "_") + ext, nil
+}
+
 func PruneExt (fn string) string {
     ext := filepath.Ext(fn)
     return strings.Replace(fn, ext, "", 1)
