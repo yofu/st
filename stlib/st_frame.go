@@ -58,6 +58,7 @@ type Frame struct {
     Elems map[int]*Elem
     Props map[int]*Prop
     Sects map[int]*Sect
+    Allows map[int]SectionRate
 
     Kijuns map[string]*Kijun
 
@@ -80,6 +81,7 @@ func NewFrame() *Frame {
     f.Nodes = make(map[int]*Node)
     f.Elems = make(map[int]*Elem)
     f.Sects = make(map[int]*Sect)
+    f.Allows = make(map[int]SectionRate)
     f.Props = make(map[int]*Prop)
     f.Kijuns = make(map[string]*Kijun)
     f.View  = NewView()
@@ -920,6 +922,157 @@ func (frame *Frame) ReadResult (filename string) error {
 
 // func (frame *Frame) ReadBuckling (filename string) error {
 // }
+
+
+// ReadLst// {{{
+func (frame *Frame) ReadLst (filename string) error {
+    tmp := make([][]string, 0)
+    err := ParseFile(filename, func(words []string) error {
+                                   var err error
+                                   first := strings.ToUpper(words[0])
+                                   if strings.HasPrefix(first, "#") {
+                                       return nil
+                                   }
+                                   switch first {
+                                   default:
+                                       tmp=append(tmp,words)
+                                   case "CODE":
+                                       err = frame.ParseLst(tmp)
+                                       tmp=[][]string{words}
+                                   }
+                                   if err != nil {
+                                       return err
+                                   }
+                                   return nil
+                               })
+    err = frame.ParseLst(tmp)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
+func (frame *Frame) ParseLst (lis [][]string) error {
+    var err error
+    if len(lis)==0 || len(lis[0])<=2 {
+        return nil
+    }
+    first := strings.ToUpper(lis[0][0])
+    switch first {
+    case "CODE":
+        mat := strings.ToUpper(lis[0][2])
+        switch mat {
+        case "S":
+            err = frame.ParseLstSteel(lis)
+        case "RC":
+            err = frame.ParseLstRC(lis)
+        }
+    }
+    return err
+}
+
+func (frame *Frame) ParseLstSteel (lis [][]string) error {
+    var num int
+    var sr SectionRate
+    var shape Shape
+    var material Steel
+    var err error
+    tmp, err := strconv.ParseInt(lis[0][1], 10, 64)
+    num = int(tmp)
+    var size int
+    switch lis[1][0] {
+    case "HKYOU":
+        size = 4
+        shape, err = NewHKYOU(lis[1][1:1+size])
+    case "HWEAK":
+        size = 4
+        shape, err = NewHWEAK(lis[1][1:1+size])
+    case "RPIPE":
+        size = 4
+        shape, err = NewRPIPE(lis[1][1:1+size])
+    case "CPIPE":
+        size = 2
+        shape, err = NewCPIPE(lis[1][1:1+size])
+    }
+    if err != nil { return err }
+    switch lis[1][1+size] {
+    default:
+        material = SN400
+    case "SN400":
+        material = SN400
+    case "SN490":
+        material = SN490
+    }
+    switch lis[0][3] {
+    case "COLUMN":
+        sr = NewSColumn(num, shape, material)
+    case "GIRDER":
+        sr = NewSGirder(num, shape, material)
+    }
+    for _, words := range(lis[2:]) {
+        first := strings.ToUpper(words[0])
+        switch first {
+        case "XFACE", "YFACE", "BBLEN", "BTLEN", "BBFAC", "BTFAC":
+            vals := make([]float64, 2)
+            for i:=0; i<2; i++ {
+                val, err := strconv.ParseFloat(words[1+i], 64)
+                if err == nil { vals[i] = val }
+            }
+            sr.SetValue(first, vals)
+        }
+        if err != nil {
+            return err
+        }
+    }
+    if err != nil {
+        return err
+    }
+    sr.SetName(lis[0][4])
+    frame.Allows[num] = sr
+    return nil
+}
+
+func (frame *Frame) ParseLstRC (lis [][]string) error {
+    var num int
+    var sr SectionRate
+    var err error
+    tmp, err := strconv.ParseInt(lis[0][1], 10, 64)
+    num = int(tmp)
+    switch lis[0][3] {
+    case "COLUMN":
+        sr = NewRCColumn(num)
+    case "GIRDER":
+        sr = NewRCGirder(num)
+    }
+    for _, words := range(lis[2:]) {
+        first := strings.ToUpper(words[0])
+        switch first {
+        case "REINS":
+            err = sr.(*RCColumn).AddReins(words[1:])
+        case "HOOPS":
+            err = sr.(*RCColumn).SetHoops(words[1:])
+        case "CRECT":
+            err = sr.(*RCColumn).SetConcrete(words)
+        case "XFACE", "YFACE", "BBLEN", "BTLEN", "BBFAC", "BTFAC":
+            vals := make([]float64, 2)
+            for i:=0; i<2; i++ {
+                val, err := strconv.ParseFloat(words[1+i], 64)
+                if err == nil { vals[i] = val }
+            }
+            sr.SetValue(first, vals)
+        }
+        if err != nil {
+            return err
+        }
+    }
+    if err != nil {
+        return err
+    }
+    sr.SetName(lis[0][4])
+    frame.Allows[num] = sr
+    return nil
+}
+// }}}
 
 
 // ReadRat// {{{

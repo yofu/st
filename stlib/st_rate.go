@@ -4,6 +4,8 @@ import (
     "errors"
     "fmt"
     "math"
+    "strconv"
+    "strings"
 )
 
 const (
@@ -29,12 +31,18 @@ type Concrete struct {
     Poi  float64
 }
 
-type Reinforce struct {
+type SD struct {
     Name string
     Fy   float64
     Fu   float64
     E    float64
     Poi  float64
+}
+
+type Reinforce struct {
+    Area float64
+    Position []float64
+    Material SD
 }
 
 type Wood struct {
@@ -54,19 +62,21 @@ var (
     FC24 = Concrete{"Fc24", 0.240, 210.0, 0.166666}
     FC36 = Concrete{"Fc36", 0.360, 210.0, 0.166666}
 
-    SD295 = Reinforce{"SD295", 2.0, 3.0, 2100.0, 0.3}
-    SD345 = Reinforce{"SD345", 2.2, 3.5, 2100.0, 0.3}
+    SD295 = SD{"SD295", 2.0, 3.0, 2100.0, 0.3}
+    SD345 = SD{"SD345", 2.2, 3.5, 2100.0, 0.3}
 )
 
 // Section
 type SectionRate interface {
     String() string
-    Factor() float64
+    SetName(string)
+    SetValue(string, []float64)
+    Factor(string) float64
     Na(*Condition)  float64
     Qa(*Condition) float64
     Ma(*Condition) float64
     Mza(*Condition) float64
-    Rate([]float64, *Condition) []float64
+    Rate([]float64, *Condition) ([]float64, error)
 }
 
 type Shape interface {
@@ -85,14 +95,41 @@ type Shape interface {
 }
 
 
-// S COLUMN
+// S COLUMN// {{{
 type SColumn struct {
     Steel
     Shape
+    Num int
+    Name string
+    XFace []float64
+    YFace []float64
     BBLength []float64
     BTLength []float64
     BBFactor []float64
     BTFactor []float64
+}
+func NewSColumn (num int, shape Shape, material Steel) *SColumn {
+    sc := &SColumn{material, shape, num, "", nil, nil, nil, nil, nil, nil}
+    return sc
+}
+func (sc *SColumn) SetName (name string) {
+    sc.Name = name
+}
+func (sc *SColumn) SetValue (name string, vals []float64) {
+    switch name {
+    case "XFACE":
+        sc.XFace = vals
+    case "YFACE":
+        sc.YFace = vals
+    case "BBLEN":
+        sc.BBLength = vals
+    case "BTLEN":
+        sc.BTLength = vals
+    case "BBFAC":
+        sc.BBFactor = vals
+    case "BTFAC":
+        sc.BTFactor = vals
+    }
 }
 func (sc *SColumn) String() string {
     return fmt.Sprintf("S COLUMN\n%s %s %s", sc.Shape.String(), sc.Steel.Name, sc.Shape.Description())
@@ -224,11 +261,30 @@ func (sc *SColumn) Rate(stress []float64, cond *Condition) ([]float64, error) {
     if maz != 0.0 { rate[3] = stress[3]/maz } else { rate[3] = -1.0 }
     return rate, nil
 }
+// }}}
 
 
 // HKYOU// {{{
 type HKYOU struct {
     H, B, Tw, Tf float64
+}
+func NewHKYOU (lis []string) (HKYOU, error) {
+    hk := HKYOU{0.0, 0.0, 0.0, 0.0}
+    var val float64
+    var err error
+    val, err = strconv.ParseFloat(lis[0], 64)
+    if err != nil { return hk, err }
+    hk.H = val
+    val, err = strconv.ParseFloat(lis[1], 64)
+    if err != nil { return hk, err }
+    hk.B = val
+    val, err = strconv.ParseFloat(lis[2], 64)
+    if err != nil { return hk, err }
+    hk.Tw = val
+    val, err = strconv.ParseFloat(lis[3], 64)
+    if err != nil { return hk, err }
+    hk.Tf = val
+    return hk, nil
 }
 func (hk HKYOU) String() string {
     return fmt.Sprintf("HKYOU %.1f %.1f %.1f %.1f", hk.H, hk.B, hk.Tw, hk.Tf)
@@ -277,6 +333,24 @@ func (hk HKYOU) Zy() float64 {
 type HWEAK struct {
     H, B, Tw, Tf float64
 }
+func NewHWEAK (lis []string) (HWEAK, error) {
+    hw := HWEAK{0.0, 0.0, 0.0, 0.0}
+    var val float64
+    var err error
+    val, err = strconv.ParseFloat(lis[0], 64)
+    if err != nil { return hw, err }
+    hw.H = val
+    val, err = strconv.ParseFloat(lis[1], 64)
+    if err != nil { return hw, err }
+    hw.B = val
+    val, err = strconv.ParseFloat(lis[2], 64)
+    if err != nil { return hw, err }
+    hw.Tw = val
+    val, err = strconv.ParseFloat(lis[3], 64)
+    if err != nil { return hw, err }
+    hw.Tf = val
+    return hw, nil
+}
 func (hw HWEAK) String() string {
     return fmt.Sprintf("HWEAK %.1f %.1f %.1f %.1f", hw.H, hw.B, hw.Tw, hw.Tf)
 }
@@ -301,7 +375,7 @@ func (hw HWEAK) Iy() float64 {
 func (hw HWEAK) J() float64 {
     return 2.0*hw.B*math.Pow(hw.Tf, 3.0)/3.0 + (hw.H-2*hw.Tf)*math.Pow(hw.Tw, 3.0)/3.0
 }
-func (hk HWEAK) Iw() float64 {
+func (hw HWEAK) Iw() float64 {
     return 0.0
 }
 func (hw HWEAK) Torsion() float64 {
@@ -320,33 +394,281 @@ func (hw HWEAK) Zy() float64 {
 // }}}
 
 
-// RPIPE
+// RPIPE// {{{
 type RPIPE struct {
     H, B, Tw, Tf float64
 }
+func NewRPIPE (lis []string) (RPIPE, error) {
+    rp := RPIPE{0.0, 0.0, 0.0, 0.0}
+    var val float64
+    var err error
+    val, err = strconv.ParseFloat(lis[0], 64)
+    if err != nil { return rp, err }
+    rp.H = val
+    val, err = strconv.ParseFloat(lis[1], 64)
+    if err != nil { return rp, err }
+    rp.B = val
+    val, err = strconv.ParseFloat(lis[2], 64)
+    if err != nil { return rp, err }
+    rp.Tw = val
+    val, err = strconv.ParseFloat(lis[3], 64)
+    if err != nil { return rp, err }
+    rp.Tf = val
+    return rp, nil
+}
+func (rp RPIPE) String() string {
+    return fmt.Sprintf("RPIPE %.1f %.1f %.1f %.1f", rp.H, rp.B, rp.Tw, rp.Tf)
+}
+func (rp RPIPE) Description() string {
+    return fmt.Sprintf("□-%dx%dx%dx%d[mm]", int(rp.H*10), int(rp.B*10), int(rp.Tw*10), int(rp.Tf*10))
+}
+func (rp RPIPE) A() float64 {
+    return rp.H*rp.B - (rp.H-2*rp.Tf)*(rp.B-2*rp.Tw)
+}
+func (rp RPIPE) Asx() float64 {
+    return 2.0*(rp.B-2*rp.Tw)*rp.Tf
+}
+func (rp RPIPE) Asy() float64 {
+    return 2.0*(rp.H-2*rp.Tf)*rp.Tw
+}
+func (rp RPIPE) Ix() float64 {
+    return (rp.B*math.Pow(rp.H, 3.0) - (rp.B-2*rp.Tw)*math.Pow(rp.H-2*rp.Tf, 3.0))/12.0
+}
+func (rp RPIPE) Iy() float64 {
+    return (rp.H*math.Pow(rp.B, 3.0) - (rp.H-2*rp.Tf)*math.Pow(rp.B-2*rp.Tw, 3.0))/12.0
+}
+func (rp RPIPE) J() float64 {
+    return 4.0*math.Pow((rp.H-rp.Tf)*(rp.B-rp.Tw), 2.0)/(2.0*((rp.B-rp.Tw)/rp.Tf+(rp.H-rp.Tf)/rp.Tw))
+}
+func (rp RPIPE) Iw() float64 {
+    return 0.0
+}
+func (rp RPIPE) Torsion() float64 {
+    if rp.Tf >= rp.Tw {
+        return 2.0*(rp.B-rp.Tw)*(rp.H-rp.Tf)*rp.Tw
+    } else {
+        return 2.0*(rp.B-rp.Tw)*(rp.H-rp.Tf)*rp.Tf
+    }
+}
+func (rp RPIPE) Zx() float64 {
+    return rp.Ix()/rp.H*2.0
+}
+func (rp RPIPE) Zy() float64 {
+    return rp.Iy()/rp.B*2.0
+}
+// }}}
 
 
-// CPIPE
+// CPIPE// {{{
 type CPIPE struct {
     D, T float64
 }
+func NewCPIPE (lis []string) (CPIPE, error) {
+    cp := CPIPE{0.0, 0.0}
+    var val float64
+    var err error
+    val, err = strconv.ParseFloat(lis[0], 64)
+    if err != nil { return cp, err }
+    cp.D = val
+    val, err = strconv.ParseFloat(lis[1], 64)
+    if err != nil { return cp, err }
+    cp.T = val
+    return cp, nil
+}
+func (cp CPIPE) String() string {
+    return fmt.Sprintf("CPIPE %.1f %.1f", cp.D, cp.T)
+}
+func (cp CPIPE) Description() string {
+    return fmt.Sprintf("PIPE-%dx%d[mm]", int(cp.D*10), int(cp.T*10))
+}
+func (cp CPIPE) A() float64 {
+    return 0.25 * math.Pi * (math.Pow(cp.D, 2.0) - math.Pow(cp.D-2*cp.T, 2.0))
+}
+func (cp CPIPE) Asx() float64 {
+    return 0.5 * cp.A()
+}
+func (cp CPIPE) Asy() float64 {
+    return 0.5 * cp.A()
+}
+func (cp CPIPE) Ix() float64 {
+    return 0.015625 * math.Pi * (math.Pow(cp.D, 4.0) - math.Pow(cp.D-2*cp.T, 4.0))
+}
+func (cp CPIPE) Iy() float64 {
+    return 0.015625 * math.Pi * (math.Pow(cp.D, 4.0) - math.Pow(cp.D-2*cp.T, 4.0))
+}
+func (cp CPIPE) J() float64 {
+    return 4.0*math.Pow(0.25*math.Pi*math.Pow(cp.D-cp.T, 2.0), 2.0)*cp.T/(math.Pi*(cp.D-cp.T))
+}
+func (cp CPIPE) Iw() float64 {
+    return 0.0
+}
+func (cp CPIPE) Torsion() float64 {
+    return 2.0*0.25*math.Pi*math.Pow(cp.D-cp.T, 2.0)*cp.T
+}
+func (cp CPIPE) Zx() float64 {
+    return cp.Ix()/cp.D*2.0
+}
+func (cp CPIPE) Zy() float64 {
+    return cp.Iy()/cp.D*2.0
+}
+// }}}
 
 
+// S GIRDER// {{{
 type SGirder struct {
     SColumn
 }
+func NewSGirder (num int, shape Shape, material Steel) *SGirder {
+    sc := NewSColumn(num, shape, material)
+    return &SGirder{*sc}
+}
+// }}}
 
 
+type CShape interface {
+    String() string
+}
+// TODO: implement CCircle
+
+
+// CRect// {{{
+type CRect struct {
+    Lower, Left, Upper, Right float64
+}
+func NewCRect (b []float64) CRect {
+    return CRect{b[0], b[1], b[2], b[3]}
+}
+func (cr CRect) String () string {
+    return fmt.Sprintf("CRECT %6.1f %6.1f %6.1f %6.1f", cr.Lower, cr.Left, cr.Upper, cr.Right)
+}
+// }}}
+
+
+// RCColumn
 type RCColumn struct {
     Concrete
+    CShape
+    Num int
+    Name string
+    Nreins int
+    Reins []Reinforce
+    Hoops Hoop
+    XFace []float64
+    YFace []float64
+}
+type Hoop struct {
+    Ps []float64
+    Name string
+    Material SD
+}
+func NewRCColumn (num int) *RCColumn {
+    rc := new(RCColumn)
+    rc.Num = num
+    return rc
+}
+func (rc *RCColumn) AddReins(lis []string) error {
+    var rf Reinforce
+    val, err := strconv.ParseFloat(lis[0], 64)
+    if err != nil { return err }
+    rf.Area = val
+    for i:=0; i<2; i++ {
+        val, err = strconv.ParseFloat(lis[1+i], 64)
+        if err != nil { return err }
+        rf.Position[i] = val
+    }
+    rf.Material = SetSD(lis[3])
+    return nil
+}
+func (rc *RCColumn) SetHoops (lis []string) error {
+    ps := make([]float64, 2)
+    for i:=0; i<2; i++ {
+        val, err := strconv.ParseFloat(lis[i], 64)
+        if err != nil { return err }
+        ps[i] = val
+    }
+    rc.Hoops = Hoop{ps, strings.Join(lis[3:], " "), SetSD(lis[2])}
+    return nil
+}
+func (rc *RCColumn) SetConcrete (lis []string) error {
+    switch lis[0] {
+    case "CRECT":
+        vals := make([]float64, 4)
+        for i:=0; i<4; i++ {
+            val, err := strconv.ParseFloat(lis[1+i], 64)
+            if err != nil { return err }
+            vals[i] = val
+        }
+        rc.CShape = NewCRect(vals)
+    }
+    switch lis[4] {
+    case "FC24":
+        rc.Concrete = FC24
+    case "FC36":
+        rc.Concrete = FC36
+    }
+    return nil
+}
+func (rc *RCColumn) String() string {
+    return ""
+}
+func (rc *RCColumn) SetName(name string) {
+}
+func (rc *RCColumn) SetValue(name string, vals []float64) {
+    switch name {
+    case "XFACE":
+        rc.XFace = vals
+    case "YFACE":
+        rc.YFace = vals
+    }
+}
+func (rc *RCColumn) Factor(p string) float64 {
+    switch p {
+    default:
+        return 1e16
+    case "L":
+        return 3.0
+    case "X", "Y", "S":
+        return 1.5
+    }
+}
+func (rc *RCColumn) Na(*Condition)  float64 {
+    return 0.0
+}
+func (rc *RCColumn) Qa(*Condition) float64 {
+    return 0.0
+}
+func (rc *RCColumn) Ma(*Condition) float64 {
+    return 0.0
+}
+func (rc *RCColumn) Mza(*Condition) float64 {
+    return 0.0
+}
+func (rc *RCColumn) Rate([]float64, *Condition) ([]float64, error) {
+    return nil, nil
 }
 
+
 type RCGirder struct {
-    Concrete
+    RCColumn
+}
+func NewRCGirder (num int) *RCGirder {
+    rc := NewRCColumn(num)
+    return &RCGirder{*rc}
 }
 
 type RCWall struct {
     Concrete
+}
+
+func SetSD (name string) SD {
+    switch name {
+    default:
+        return SD295
+    case "SD295":
+        return SD295
+    case "SD345":
+        return SD345
+    }
 }
 
 
