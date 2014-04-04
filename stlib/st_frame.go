@@ -1027,7 +1027,7 @@ func (frame *Frame) ParseLstSteel (lis [][]string) error {
     if err != nil {
         return err
     }
-    sr.SetName(lis[0][4])
+    sr.SetName(strings.Trim(lis[0][4], "\""))
     frame.Allows[num] = sr
     return nil
 }
@@ -1048,11 +1048,26 @@ func (frame *Frame) ParseLstRC (lis [][]string) error {
         first := strings.ToUpper(words[0])
         switch first {
         case "REINS":
-            err = sr.(*RCColumn).AddReins(words[1:])
+            switch sr.(type) {
+            case *RCColumn:
+                err = sr.(*RCColumn).AddReins(words[1:])
+            case *RCGirder:
+                err = sr.(*RCGirder).AddReins(words[1:])
+            }
         case "HOOPS":
-            err = sr.(*RCColumn).SetHoops(words[1:])
+            switch sr.(type) {
+            case *RCColumn:
+                err = sr.(*RCColumn).SetHoops(words[1:])
+            case *RCGirder:
+                err = sr.(*RCGirder).SetHoops(words[1:])
+            }
         case "CRECT":
-            err = sr.(*RCColumn).SetConcrete(words)
+            switch sr.(type) {
+            case *RCColumn:
+                err = sr.(*RCColumn).SetConcrete(words)
+            case *RCGirder:
+                err = sr.(*RCGirder).SetConcrete(words)
+            }
         case "XFACE", "YFACE", "BBLEN", "BTLEN", "BBFAC", "BTFAC":
             vals := make([]float64, 2)
             for i:=0; i<2; i++ {

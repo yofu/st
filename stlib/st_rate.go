@@ -1,6 +1,7 @@
 package st
 
 import (
+    "bytes"
     "errors"
     "fmt"
     "math"
@@ -23,18 +24,21 @@ type Steel struct {
     E    float64
     Poi  float64
 }
+func (st Steel) Lambda() float64 {
+    return math.Pi * math.Sqrt(st.E/(0.6*st.F))
+}
 
 type Concrete struct {
     Name string
-    Fc   float64
+    fc   float64
     E    float64
     Poi  float64
 }
 
 type SD struct {
     Name string
-    Fy   float64
-    Fu   float64
+    Fl   float64
+    Fs   float64
     E    float64
     Poi  float64
 }
@@ -43,6 +47,34 @@ type Reinforce struct {
     Area float64
     Position []float64
     Material SD
+}
+func NewReinforce (sd SD) Reinforce {
+    return Reinforce{ 0.0, []float64{0.0, 0.0}, sd }
+}
+func (rf Reinforce) Ft (p string) float64 {
+    switch p {
+    default:
+        return 0.0
+    case "L":
+        f := rf.Material.Fl
+        if rf.Area > 6.158 { // D>=29
+            if f > 2.0 { return 2.0 } else { return f }
+        } else {
+            return f
+        }
+    case "X", "Y", "S":
+        return rf.Material.Fs
+    }
+}
+func (rf Reinforce) Ftw (p string) float64 {
+    switch p {
+    default:
+        return 0.0
+    case "L":
+        return 2.0
+    case "X", "Y", "S":
+        return rf.Material.Fs
+    }
 }
 
 type Wood struct {
@@ -58,6 +90,8 @@ type Wood struct {
 var (
     SN400 = Steel{"SN400", 2.4, 4.0, 2100.0, 0.3}
     SN490 = Steel{"SN490", 3.3, 5.0, 2100.0, 0.3}
+    SN400T40 = Steel{"SN400T40", 2.2, 4.0, 2100.0, 0.3}
+    SN490T40 = Steel{"SN490T40", 3.0, 5.0, 2100.0, 0.3}
 
     FC24 = Concrete{"Fc24", 0.240, 210.0, 0.166666}
     FC36 = Concrete{"Fc36", 0.360, 210.0, 0.166666}
@@ -100,6 +134,7 @@ type SColumn struct {
     Steel
     Shape
     Num int
+    Etype string
     Name string
     XFace []float64
     YFace []float64
@@ -109,7 +144,7 @@ type SColumn struct {
     BTFactor []float64
 }
 func NewSColumn (num int, shape Shape, material Steel) *SColumn {
-    sc := &SColumn{material, shape, num, "", nil, nil, nil, nil, nil, nil}
+    sc := &SColumn{material, shape, num, "COLUMN", "", nil, nil, nil, nil, nil, nil}
     return sc
 }
 func (sc *SColumn) SetName (name string) {
@@ -132,38 +167,48 @@ func (sc *SColumn) SetValue (name string, vals []float64) {
     }
 }
 func (sc *SColumn) String() string {
-    return fmt.Sprintf("S COLUMN\n%s %s %s", sc.Shape.String(), sc.Steel.Name, sc.Shape.Description())
+    var rtn bytes.Buffer
+    rtn.WriteString(fmt.Sprintf("CODE %3d S %s %57s\n", sc.Num, sc.Etype, fmt.Sprintf("\"%s\"",sc.Name)))
+    line2 := fmt.Sprintf("         %%-29s %%s %%%ds\n", 35-len(sc.Steel.Name))
+    rtn.WriteString(fmt.Sprintf(line2, sc.Shape.String(), sc.Steel.Name, fmt.Sprintf("\"%s\"", sc.Shape.Description())))
+    if sc.XFace != nil {
+        rtn.WriteString(fmt.Sprintf("         XFACE %5.1f %5.1f %48s\n", sc.XFace[0], sc.XFace[1], fmt.Sprintf("\"FACE LENGTH Mx:HEAD= %.0f,TAIL= %.0f[cm]\"", sc.XFace[0], sc.XFace[1])))
+    } else {
+        rtn.WriteString("         XFACE   0.0   0.0             \"FACE LENGTH Mx:HEAD= 0,TAIL= 0[cm]\"\n")
+    }
+    if sc.YFace != nil {
+        rtn.WriteString(fmt.Sprintf("         YFACE %5.1f %5.1f %48s\n", sc.YFace[0], sc.YFace[1], fmt.Sprintf("\"FACE LENGTH My:HEAD= %.0f,TAIL= %.0f[cm]\"", sc.XFace[0], sc.XFace[1])))
+    } else {
+        rtn.WriteString("         YFACE   0.0   0.0             \"FACE LENGTH My:HEAD= 0,TAIL= 0[cm]\"\n")
+    }
+    if sc.BBLength != nil {
+        rtn.WriteString(fmt.Sprintf("         BBLEN %5.1f %5.1f\n", sc.BBLength[0], sc.BBLength[1]))
+    } else if sc.BBFactor != nil {
+        rtn.WriteString(fmt.Sprintf("         BBFAC %5.1f %5.1f\n", sc.BBFactor[0], sc.BBFactor[1]))
+    }
+    if sc.BTLength != nil {
+        rtn.WriteString(fmt.Sprintf("         BTLEN %5.1f %5.1f\n", sc.BTLength[0], sc.BTLength[1]))
+    } else if sc.BTFactor != nil {
+        rtn.WriteString(fmt.Sprintf("         BTFAC %5.1f %5.1f\n", sc.BTFactor[0], sc.BTFactor[1]))
+    }
+    return rtn.String()
 }
 func (sc *SColumn) Factor(p string) float64 {
     switch p {
     default:
-        return 1e16
-    case "L":
-        return 1.5
-    case "X", "Y", "S":
-        return 1.0
-    }
-}
-func (sc *SColumn) Na(cond *Condition) float64 {
-    if cond.Compression {
         return 0.0
-    } else {
-        return sc.F*sc.A()/sc.Factor(cond.Period)
-    }
-}
-func (sc *SColumn) Qa(cond *Condition) float64 {
-    if cond.Strong {
-        return sc.F/math.Sqrt(3)*sc.Asx()/sc.Factor(cond.Period)
-    } else {
-        return sc.F/math.Sqrt(3)*sc.Asy()/sc.Factor(cond.Period)
+    case "L":
+        return 1.0
+    case "X", "Y", "S":
+        return 1.5
     }
 }
 func (sc *SColumn) Lk (length float64, strong bool) float64 {
     var ind int
     if strong { ind = 0 } else { ind = 1 }
-    if sc.BBLength[ind] > 0.0 {
+    if sc.BBLength != nil && sc.BBLength[ind] > 0.0 {
         return sc.BBLength[ind]
-    } else if sc.BBFactor[ind] > 0.0 {
+    } else if sc.BBFactor != nil && sc.BBFactor[ind] > 0.0 {
         return length * sc.BBFactor[ind]
     } else {
         return length
@@ -172,53 +217,97 @@ func (sc *SColumn) Lk (length float64, strong bool) float64 {
 func (sc *SColumn) Lb (length float64, strong bool) float64 {
     var ind int
     if strong { ind = 0 } else { ind = 1 }
-    if sc.BTLength[ind] > 0.0 {
+    if sc.BTLength != nil && sc.BTLength[ind] > 0.0 {
         return sc.BTLength[ind]
-    } else if sc.BTFactor[ind] > 0.0 {
+    } else if sc.BTFactor != nil && sc.BTFactor[ind] > 0.0 {
         return length * sc.BTFactor[ind]
     } else {
         return length
     }
 }
+func (sc *SColumn) Fc (cond *Condition) float64 {
+    var rtn float64
+    var lambda float64
+    lx := sc.Lk(cond.Length, true)
+    ly := sc.Lk(cond.Length, false)
+    lambda_x := lx / math.Sqrt(sc.Ix()/sc.A())
+    lambda_y := ly / math.Sqrt(sc.Iy()/sc.A())
+    if lambda_x >= lambda_y {
+        lambda = lambda_x
+    } else {
+        lambda = lambda_y
+    }
+    val := lambda / sc.Lambda()
+    if val <= 1.0 {
+        nu := 1.5 + 2.0*val*val/3.0
+        rtn = (1.0 - 0.4*val*val) * sc.F / nu
+    } else {
+        rtn = 0.277 * sc.F / (val*val)
+    }
+    return rtn * sc.Factor(cond.Period)
+}
+func (sc *SColumn) Ft (cond *Condition) float64 {
+    return sc.F /1.5 * sc.Factor(cond.Period)
+}
+func (sc *SColumn) Fs (cond *Condition) float64 {
+    return sc.F / (1.5 * math.Sqrt(3)) * sc.Factor(cond.Period)
+}
 func (sc *SColumn) Fb (cond *Condition) float64 {
     l := sc.Lb(cond.Length, cond.Strong)
+    var rtn float64
     fbnew := func () float64 {
-                 me := sc.Me(l, 1.0, cond)
+                 me := sc.Me(l, 1.0)
                  my := sc.My(cond)
                  lambda_b := math.Sqrt(my/me)
                  nu := 1.5 + math.Pow(lambda_b/E_LAMBDA_B, 2.0)/1.5
                  if lambda_b <= P_LAMBDA_B {
-                     return sc.F/nu/sc.Factor(cond.Period)
+                     return sc.F / nu
                  } else if lambda_b <= E_LAMBDA_B {
-                     return (1.0-0.4*(lambda_b-P_LAMBDA_B)/(E_LAMBDA_B-P_LAMBDA_B))*sc.F/nu/sc.Factor(cond.Period)
+                     return (1.0-0.4*(lambda_b-P_LAMBDA_B)/(E_LAMBDA_B-P_LAMBDA_B))*sc.F/nu
                  } else {
-                     return sc.F/math.Pow(lambda_b, 2.0)/2.17/sc.Factor(cond.Period)
+                     return sc.F/math.Pow(lambda_b, 2.0)/2.17
                  }
              }
     if cond.Strong {
         if hk, ok := sc.Shape.(HKYOU); ok {
             if cond.FbOld {
-                return 900.0/(l*hk.H/(hk.B*hk.Tf))
+                rtn = 900.0/(l*hk.H/(hk.B*hk.Tf))
             } else {
-                return fbnew()
+                rtn = fbnew()
             }
         } else {
-            return sc.F
+            rtn = sc.F / 1.5
         }
     } else {
         if hw, ok := sc.Shape.(HWEAK); ok {
             if cond.FbOld {
-                return 900.0/(l*hw.H/(hw.B*hw.Tf))
+                rtn = 900.0/(l*hw.H/(hw.B*hw.Tf))
             } else {
-                return fbnew()
+                rtn = fbnew()
             }
         } else {
-            return sc.F
+            rtn = sc.F / 1.5
         }
     }
+    return rtn*sc.Factor(cond.Period)
 }
-func (sc *SColumn) Me(length, Cb float64, cond *Condition) float64 {
-    g := sc.E/(2.0*(1+sc.Poi))
+func (sc *SColumn) Na(cond *Condition) float64 {
+    if cond.Compression {
+        return sc.Fc(cond)*sc.A()
+    } else {
+        return sc.Ft(cond)*sc.A()
+    }
+}
+func (sc *SColumn) Qa(cond *Condition) float64 {
+    f := sc.Fs(cond)
+    if cond.Strong {
+        return f*sc.Asx()
+    } else {
+        return f*sc.Asy()
+    }
+}
+func (sc *SColumn) Me(length, Cb float64) float64 {
+    g := sc.E/(2.0*(1.0+sc.Poi))
     var I float64
     Ix := sc.Ix(); Iy := sc.Iy()
     if Ix >= Iy { I = Iy } else { I = Ix }
@@ -226,39 +315,39 @@ func (sc *SColumn) Me(length, Cb float64, cond *Condition) float64 {
 }
 func (sc *SColumn) My(cond *Condition) float64 {
     if cond.Strong {
-        return sc.F*sc.Zx()/sc.Factor(cond.Period)*0.01 // [tfm]
+        return sc.F*sc.Zx()*0.01 // [tfm]
     } else {
-        return sc.F*sc.Zy()/sc.Factor(cond.Period)*0.01 // [tfm]
+        return sc.F*sc.Zy()*0.01 // [tfm]
     }
 }
 func (sc *SColumn) Ma(cond *Condition) float64 {
+    f := sc.Fb(cond)
     if cond.Strong {
-        return sc.Fb(cond)*sc.Zx()/sc.Factor(cond.Period)*0.01 // [tfm]
+        return f*sc.Zx()*0.01 // [tfm]
     } else {
-        return sc.Fb(cond)*sc.Zy()/sc.Factor(cond.Period)*0.01 // [tfm]
+        return f*sc.Zy()*0.01 // [tfm]
     }
 }
 func (sc *SColumn) Mza(cond *Condition) float64 {
-    return sc.F/math.Sqrt(3)*sc.Torsion()/sc.Factor(cond.Period)*0.01 // [tfm]
+    return sc.Fs(cond)*sc.Torsion()*0.01 // [tfm]
 }
 func (sc *SColumn) Rate(stress []float64, cond *Condition) ([]float64, error) {
     if len(stress) < 6 { return nil, errors.New("Rate: Not enough number of Stress") }
     rate := make([]float64, 6)
-    cond.Rate = rate
     na := sc.Na(cond)
-    if na != 0.0 { rate[0] = stress[0]/na } else { rate[0] = -1.0 }
+    if na != 0.0 { rate[0] = stress[0]/na } else { return rate, ZeroAllowableError{"Na"} }
     cond.Strong = true
     qax := sc.Qa(cond)
-    if qax != 0.0 { rate[1] = stress[1]/qax } else { rate[1] = -1.0 }
+    if qax != 0.0 { rate[1] = stress[1]/qax } else { return rate, ZeroAllowableError{"Qax"} }
     max := sc.Ma(cond)
-    if max != 0.0 { rate[4] = stress[4]/max } else { rate[4] = -1.0 }
+    if max != 0.0 { rate[4] = stress[4]/max } else { return rate, ZeroAllowableError{"MaX"} }
     cond.Strong = false
     qay := sc.Qa(cond)
-    if qay != 0.0 { rate[2] = stress[2]/qay } else { rate[2] = -1.0 }
+    if qay != 0.0 { rate[2] = stress[2]/qay } else { return rate, ZeroAllowableError{"Qay"} }
     may := sc.Ma(cond)
-    if may != 0.0 { rate[5] = stress[5]/may } else { rate[5] = -1.0 }
+    if may != 0.0 { rate[5] = stress[5]/may } else { return rate, ZeroAllowableError{"May"} }
     maz := sc.Mza(cond)
-    if maz != 0.0 { rate[3] = stress[3]/maz } else { rate[3] = -1.0 }
+    if maz != 0.0 { rate[3] = stress[3]/maz } else { return rate, ZeroAllowableError{"Maz"} }
     return rate, nil
 }
 // }}}
@@ -287,16 +376,16 @@ func NewHKYOU (lis []string) (HKYOU, error) {
     return hk, nil
 }
 func (hk HKYOU) String() string {
-    return fmt.Sprintf("HKYOU %.1f %.1f %.1f %.1f", hk.H, hk.B, hk.Tw, hk.Tf)
+    return fmt.Sprintf("HKYOU %5.1f %5.1f %4.1f %4.1f", hk.H, hk.B, hk.Tw, hk.Tf)
 }
 func (hk HKYOU) Description() string {
-    return fmt.Sprintf("H-%dx%dx%dx%d[mm]", int(hk.H*10), int(hk.B*10), int(hk.Tw*10), int(hk.Tf*10))
+    return fmt.Sprintf("H-%dx%dx%dx%d(KYOU)[mm]", int(hk.H*10), int(hk.B*10), int(hk.Tw*10), int(hk.Tf*10))
 }
 func (hk HKYOU) A() float64 {
     return hk.H*hk.B - (hk.H-2*hk.Tf)*(hk.B-hk.Tw)
 }
 func (hk HKYOU) Asx() float64 {
-    return 2.0*hk.B*hk.Tf
+    return 2.0*hk.B*hk.Tf/1.5
 }
 func (hk HKYOU) Asy() float64 {
     return (hk.H-2*hk.Tf)*hk.Tw
@@ -311,7 +400,7 @@ func (hk HKYOU) J() float64 {
     return 2.0*hk.B*math.Pow(hk.Tf, 3.0)/3.0 + (hk.H-2*hk.Tf)*math.Pow(hk.Tw, 3.0)/3.0
 }
 func (hk HKYOU) Iw() float64 {
-    return 0.0
+    return math.Pow(hk.H, 2.0)*math.Pow(hk.B, 3.0)*hk.Tf/24.0
 }
 func (hk HKYOU) Torsion() float64 {
     if hk.Tf >= hk.Tw {
@@ -352,10 +441,10 @@ func NewHWEAK (lis []string) (HWEAK, error) {
     return hw, nil
 }
 func (hw HWEAK) String() string {
-    return fmt.Sprintf("HWEAK %.1f %.1f %.1f %.1f", hw.H, hw.B, hw.Tw, hw.Tf)
+    return fmt.Sprintf("HWEAK %5.1f %5.1f %4.1f %4.1f", hw.H, hw.B, hw.Tw, hw.Tf)
 }
 func (hw HWEAK) Description() string {
-    return fmt.Sprintf("H-%dx%dx%dx%d[mm]", int(hw.H*10), int(hw.B*10), int(hw.Tw*10), int(hw.Tf*10))
+    return fmt.Sprintf("H-%dx%dx%dx%d(WEAK)[mm]", int(hw.H*10), int(hw.B*10), int(hw.Tw*10), int(hw.Tf*10))
 }
 func (hw HWEAK) A() float64 {
     return hw.H*hw.B - (hw.H-2*hw.Tf)*(hw.B-hw.Tw)
@@ -364,7 +453,7 @@ func (hw HWEAK) Asx() float64 {
     return (hw.H-2*hw.Tf)*hw.Tw
 }
 func (hw HWEAK) Asy() float64 {
-    return 2.0*hw.B*hw.Tf
+    return 2.0*hw.B*hw.Tf/1.5
 }
 func (hw HWEAK) Ix() float64 {
     return 2.0*hw.Tf*math.Pow(hw.B, 3.0)/12.0 + (hw.H-2*hw.Tf)*math.Pow(hw.Tw, 3.0)/12.0
@@ -417,10 +506,10 @@ func NewRPIPE (lis []string) (RPIPE, error) {
     return rp, nil
 }
 func (rp RPIPE) String() string {
-    return fmt.Sprintf("RPIPE %.1f %.1f %.1f %.1f", rp.H, rp.B, rp.Tw, rp.Tf)
+    return fmt.Sprintf("RPIPE %5.1f %5.1f %4.1f %4.1f", rp.H, rp.B, rp.Tw, rp.Tf)
 }
 func (rp RPIPE) Description() string {
-    return fmt.Sprintf("□-%dx%dx%dx%d[mm]", int(rp.H*10), int(rp.B*10), int(rp.Tw*10), int(rp.Tf*10))
+    return fmt.Sprintf("BOX-%dx%dx%dx%d[mm]", int(rp.H*10), int(rp.B*10), int(rp.Tw*10), int(rp.Tf*10))
 }
 func (rp RPIPE) A() float64 {
     return rp.H*rp.B - (rp.H-2*rp.Tf)*(rp.B-2*rp.Tw)
@@ -476,7 +565,7 @@ func NewCPIPE (lis []string) (CPIPE, error) {
     return cp, nil
 }
 func (cp CPIPE) String() string {
-    return fmt.Sprintf("CPIPE %.1f %.1f", cp.D, cp.T)
+    return fmt.Sprintf("CPIPE %5.1f %5.1f", cp.D, cp.T)
 }
 func (cp CPIPE) Description() string {
     return fmt.Sprintf("PIPE-%dx%d[mm]", int(cp.D*10), int(cp.T*10))
@@ -520,6 +609,7 @@ type SGirder struct {
 }
 func NewSGirder (num int, shape Shape, material Steel) *SGirder {
     sc := NewSColumn(num, shape, material)
+    sc.Etype = "GIRDER"
     return &SGirder{*sc}
 }
 // }}}
@@ -527,19 +617,33 @@ func NewSGirder (num int, shape Shape, material Steel) *SGirder {
 
 type CShape interface {
     String() string
+    Bound(int) float64
 }
 // TODO: implement CCircle
 
 
 // CRect// {{{
 type CRect struct {
-    Lower, Left, Upper, Right float64
+    Left, Lower, Right, Upper float64
 }
 func NewCRect (b []float64) CRect {
     return CRect{b[0], b[1], b[2], b[3]}
 }
 func (cr CRect) String () string {
-    return fmt.Sprintf("CRECT %6.1f %6.1f %6.1f %6.1f", cr.Lower, cr.Left, cr.Upper, cr.Right)
+    return fmt.Sprintf("CRECT %6.1f %6.1f %6.1f %6.1f", cr.Left, cr.Lower, cr.Right, cr.Upper)
+}
+func (cr CRect) Bound (side int) float64 {
+    switch side {
+    case 0:
+        return cr.Lower
+    case 1:
+        return cr.Left
+    case 2:
+        return cr.Upper
+    case 3:
+        return cr.Right
+    }
+    return 0.0
 }
 // }}}
 
@@ -564,10 +668,14 @@ type Hoop struct {
 func NewRCColumn (num int) *RCColumn {
     rc := new(RCColumn)
     rc.Num = num
+    rc.Nreins = 0
+    rc.Reins = make([]Reinforce, 0)
+    rc.XFace = make([]float64, 2)
+    rc.YFace = make([]float64, 2)
     return rc
 }
 func (rc *RCColumn) AddReins(lis []string) error {
-    var rf Reinforce
+    rf := NewReinforce(SetSD(lis[3]))
     val, err := strconv.ParseFloat(lis[0], 64)
     if err != nil { return err }
     rf.Area = val
@@ -576,7 +684,8 @@ func (rc *RCColumn) AddReins(lis []string) error {
         if err != nil { return err }
         rf.Position[i] = val
     }
-    rf.Material = SetSD(lis[3])
+    rc.Nreins++
+    rc.Reins = append(rc.Reins, rf)
     return nil
 }
 func (rc *RCColumn) SetHoops (lis []string) error {
@@ -624,26 +733,96 @@ func (rc *RCColumn) SetValue(name string, vals []float64) {
 func (rc *RCColumn) Factor(p string) float64 {
     switch p {
     default:
-        return 1e16
+        return 0.0
     case "L":
-        return 3.0
+        return 1.0
     case "X", "Y", "S":
-        return 1.5
+        return 2.0
     }
 }
-func (rc *RCColumn) Na(*Condition)  float64 {
+func (rc *RCColumn) Fs (cond *Condition) float64 {
+    var rtn float64
+    f1 := rc.fc/30.0
+    f2 := 0.5 + rc.fc/100.0
+    if f1 <= f2 {
+        rtn = f1
+    } else {
+        rtn = f2
+    }
+    switch cond.Period {
+    default:
+        rtn = 0.0
+    case "L":
+        rtn *= 1.0
+    case "X", "Y", "S":
+        rtn *= 1.5
+    }
+    return rtn
+}
+func (rc *RCColumn) Fc (cond *Condition) float64 {
+    return rc.fc / 3.0 * rc.Factor(cond.Period)
+}
+func (rc *RCColumn) Ai () float64 {
+    if rc.Reins == nil { return 0.0 }
+    rtn := 0.0
+    for _, r := range rc.Reins {
+        rtn += r.Area
+    }
+    return rtn
+}
+func (rc *RCColumn) LiAi (cond *Condition) float64 {
+    if rc.Reins == nil { return 0.0 }
+    rtn := 0.0
+    for _, r := range rc.Reins {
+        if cond.Strong {
+            if cond.Positive {
+                rtn += r.Area * (rc.Bound(3) - r.Position[1])
+            } else {
+                rtn += r.Area * (r.Position[1] - rc.Bound(1))
+            }
+        } else {
+            if cond.Positive {
+                rtn += r.Area * (rc.Bound(2) - r.Position[0])
+            } else {
+                rtn += r.Area * (r.Position[0] - rc.Bound(0))
+            }
+        }
+    }
+    return rtn
+}
+func (rc *RCColumn) Li2Ai (cond *Condition) float64 {
+    if rc.Reins == nil { return 0.0 }
+    rtn := 0.0
+    for _, r := range rc.Reins {
+        if cond.Strong {
+            if cond.Positive {
+                rtn += r.Area * math.Pow(rc.Bound(3) - r.Position[1], 2.0)
+            } else {
+                rtn += r.Area * math.Pow(r.Position[1] - rc.Bound(1), 2.0)
+            }
+        } else {
+            if cond.Positive {
+                rtn += r.Area * math.Pow(rc.Bound(2) - r.Position[0], 2.0)
+            } else {
+                rtn += r.Area * math.Pow(r.Position[0] - rc.Bound(0), 2.0)
+            }
+        }
+    }
+    return rtn
+}
+func (rc *RCColumn) Na (cond *Condition)  float64 {
     return 0.0
 }
-func (rc *RCColumn) Qa(*Condition) float64 {
+func (rc *RCColumn) Qa (cond *Condition) float64 {
     return 0.0
 }
-func (rc *RCColumn) Ma(*Condition) float64 {
+func (rc *RCColumn) Ma (cond *Condition) float64 {
     return 0.0
 }
-func (rc *RCColumn) Mza(*Condition) float64 {
+func (rc *RCColumn) Mza (cond *Condition) float64 {
     return 0.0
 }
-func (rc *RCColumn) Rate([]float64, *Condition) ([]float64, error) {
+func (rc *RCColumn) Rate (stress []float64, cond *Condition) ([]float64, error) {
     return nil, nil
 }
 
@@ -678,6 +857,16 @@ type Condition struct {
     Length float64
     Compression bool
     Strong bool
+    Positive bool
     FbOld bool
-    Rate []float64
+}
+func NewCondition() *Condition {
+    c := new(Condition)
+    c.Period = "L"
+    c.Length = 0.0
+    c.Compression = false
+    c.Strong = true
+    c.Positive = true
+    c.FbOld = false
+    return c
 }

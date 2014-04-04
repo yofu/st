@@ -34,9 +34,9 @@ func NotPlateElem(fn string) EtypeError {
 }
 
 type ZeroAllowableError struct {
-    name string
+    Name string
 }
 
 func (z ZeroAllowableError) Error () string {
-    return fmt.Sprintf("Rate: %s == 0.0", z.name)
+    return fmt.Sprintf("Rate: %s == 0.0", z.Name)
 }
