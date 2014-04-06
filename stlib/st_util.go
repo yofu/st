@@ -276,14 +276,14 @@ func Increment (fn, div string, pos, times int) (string, error) {
             return fn, errors.New("Increment: ValueError")
         }
         val, _ := strconv.ParseInt(tmp[2], 10, 64)
-        ls[0] = fmt.Sprintf("%s%d", tmp[1], val+1)
+        ls[0] = fmt.Sprintf("%s%02d", tmp[1], val+1)
     } else {
         num := ls[pos]
         val, err := strconv.ParseInt(num, 10, 64)
         if err != nil {
             return fn, err
         }
-        ls[pos] = fmt.Sprintf("%d", val+1)
+        ls[pos] = fmt.Sprintf("%02d", val+1)
     }
     return strings.Join(ls, "_") + ext, nil
 }
