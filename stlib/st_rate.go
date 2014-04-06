@@ -12,6 +12,7 @@ import (
 const (
     E_LAMBDA_B = 1.29099444874 // 1.0/math.Sqrt(6)
     P_LAMBDA_B = 0.3
+    NCS = 15.0
 )
 // Material
 type Material interface {
@@ -51,8 +52,8 @@ type Reinforce struct {
 func NewReinforce (sd SD) Reinforce {
     return Reinforce{ 0.0, []float64{0.0, 0.0}, sd }
 }
-func (rf Reinforce) Ft (p string) float64 {
-    switch p {
+func (rf Reinforce) Ft (cond *Condition) float64 {
+    switch cond.Period {
     default:
         return 0.0
     case "L":
@@ -66,8 +67,8 @@ func (rf Reinforce) Ft (p string) float64 {
         return rf.Material.Fs
     }
 }
-func (rf Reinforce) Ftw (p string) float64 {
-    switch p {
+func (rf Reinforce) Ftw (cond *Condition) float64 {
+    switch cond.Period {
     default:
         return 0.0
     case "L":
@@ -618,6 +619,8 @@ func NewSGirder (num int, shape Shape, material Steel) *SGirder {
 type CShape interface {
     String() string
     Bound(int) float64
+    Breadth(bool) float64
+    Height(bool) float64
 }
 // TODO: implement CCircle
 
@@ -644,6 +647,20 @@ func (cr CRect) Bound (side int) float64 {
         return cr.Right
     }
     return 0.0
+}
+func (cr CRect) Breadth (strong bool) float64 {
+    if strong {
+        return cr.Right - cr.Left
+    } else {
+        return cr.Upper - cr.Lower
+    }
+}
+func (cr CRect) Height (strong bool) float64 {
+    if strong {
+        return cr.Upper - cr.Lower
+    } else {
+        return cr.Right - cr.Left
+    }
 }
 // }}}
 
@@ -810,6 +827,95 @@ func (rc *RCColumn) Li2Ai (cond *Condition) float64 {
     }
     return rtn
 }
+func (rc *RCColumn) FarSideReins (cond *Condition) float64 {
+    if rc.Reins == nil { return 0.0 }
+    rtn := 0.0
+    var tmp float64
+    for _, r := range rc.Reins {
+        if cond.Strong {
+            if cond.Positive {
+                tmp = rc.Bound(3) - r.Position[1]
+            } else {
+                tmp = r.Position[1] - rc.Bound(1)
+            }
+        } else {
+            if cond.Positive {
+                tmp = rc.Bound(2) - r.Position[0]
+            } else {
+                tmp = r.Position[0] - rc.Bound(0)
+            }
+        }
+        if tmp > rtn { rtn = tmp }
+    }
+    return rtn
+}
+func (rc *RCColumn) NearSideReins (cond *Condition) float64 {
+    if rc.Reins == nil { return 0.0 }
+    rtn := 0.0
+    var tmp float64
+    for _, r := range rc.Reins {
+        if cond.Strong {
+            if cond.Positive {
+                tmp = rc.Bound(3) - r.Position[1]
+            } else {
+                tmp = r.Position[1] - rc.Bound(1)
+            }
+        } else {
+            if cond.Positive {
+                tmp = rc.Bound(2) - r.Position[0]
+            } else {
+                tmp = r.Position[0] - rc.Bound(0)
+            }
+        }
+        if tmp < rtn { rtn = tmp }
+    }
+    return rtn
+}
+func (rc *RCColumn) NeutralAxis (cond *Condition) (float64, float64, error) {
+    if rc.Nreins == 0 {
+        return 0.0, 0.0, errors.New("NeutralAxis: No Reinforce")
+    }
+    fc := rc.Fc(cond)
+    ft := rc.Reins[0].Ft(cond)
+    if cond.N < -ft * rc.Ai() {
+        return 0.0, 0.0, errors.New("NeutralAxis: Tension is too much")
+    }
+    b := rc.Breadth(cond.Strong)
+    h := rc.Height(cond.Strong)
+    nmax := fc*b*h + NCS*fc*rc.Ai()
+    if cond.N > nmax {
+        return 0.0, 0.0, errors.New("NeutralAxis: Compression is too much")
+    }
+    num := 0.5*fc*b*math.Pow(h, 2.0) + NCS*fc*rc.LiAi(cond)
+    den := nmax - cond.N
+    xn := num / den
+    if xn > h {
+        ryc := rc.NearSideReins(cond)
+        if (xn-ryc)/xn*fc*NCS <= ft { // NeutralAxis is outside of section, Ma is determined by concrete
+            return xn, fc, nil
+        } else { // NeutralAxis is outside of section, Ma is determined by reinforcement
+            num := 0.5*ft*b*math.Pow(h, 2.0) + NCS*ft*rc.LiAi(cond) - NCS*ryc*cond.N
+            den := ft*b*h - NCS*cond.N + NCS*ft*rc.Ai()
+            xn = num / den
+            return xn, xn/(NCS*(xn-ryc))*ft, nil
+        }
+    } else {
+        k1 := 0.5*fc*b
+        k2 := NCS*fc*rc.Ai() - cond.N
+        k3 := -NCS*fc*rc.LiAi(cond)
+        xn := (-k2 + math.Sqrt(math.Pow(k2, 2.0) - 4*k1*k3))/(2.0*k1)
+        ryt := rc.FarSideReins(cond)
+        if (ryt-xn)/xn*fc*NCS <= ft { // NeutralAxis is inside of section, Ma is determined by concrete
+            return xn, ft, nil
+        } else { // NeutralAxis is inside of section, Ma is determined by reinforcement
+            k1 := 0.5*ft*b
+            k2 := NCS*ft*rc.Ai() + NCS*cond.N
+            k3 := -NCS*ft*rc.LiAi(cond) - NCS*ryt*cond.N
+            xn := (-k2 + math.Sqrt(math.Pow(k2, 2.0) - 4*k1*k3))/(2.0*k1)
+            return xn, xn/(NCS*(ryt-xn))*ft, nil
+        }
+    }
+}
 func (rc *RCColumn) Na (cond *Condition)  float64 {
     return 0.0
 }
@@ -817,7 +923,17 @@ func (rc *RCColumn) Qa (cond *Condition) float64 {
     return 0.0
 }
 func (rc *RCColumn) Ma (cond *Condition) float64 {
-    return 0.0
+    b := rc.Breadth(cond.Strong)
+    h := rc.Height(cond.Strong)
+    xn, sigma, err := rc.NeutralAxis(cond)
+    if err != nil {
+        return 0.0
+    }
+    if xn >= h {
+        return (sigma/xn*(b*h*(3.0*math.Pow(xn, 2.0)-3.0*xn*h+math.Pow(h, 2.0))/3.0 + NCS*(math.Pow(xn, 2.0)*rc.Ai()-2.0*xn*rc.LiAi(cond)+rc.Li2Ai(cond))) - cond.N*(xn-h/2.0))*0.01 // [tfm]
+    } else {
+        return (sigma*(b*math.Pow(xn, 2.0)/3.0 + NCS*(xn*rc.Ai()-2.0*rc.LiAi(cond)+rc.Li2Ai(cond)/xn)) - cond.N*(xn-h/2.0))*0.01 // [tfm]
+    }
 }
 func (rc *RCColumn) Mza (cond *Condition) float64 {
     return 0.0
@@ -859,6 +975,7 @@ type Condition struct {
     Strong bool
     Positive bool
     FbOld bool
+    N float64
 }
 func NewCondition() *Condition {
     c := new(Condition)
@@ -868,5 +985,6 @@ func NewCondition() *Condition {
     c.Strong = true
     c.Positive = true
     c.FbOld = false
+    c.N = 0.0
     return c
 }
