@@ -1284,6 +1284,52 @@ func (frame *Frame) WriteInp(fn string) error {
 // }}}
 
 
+// WriteOutput// {{{
+func (frame *Frame) WriteOutput (fn string, p string) error {
+    var otp bytes.Buffer
+    var nkeys, ekeys []int
+    // Elem
+    otp.WriteString("\n\n** FORCES OF MEMBER\n\n")
+    otp.WriteString("  NO   KT NODE         N        Q1        Q2        MT        M1        M2\n\n")
+    for k := range(frame.Elems) {
+        ekeys = append(ekeys, k)
+    }
+    sort.Ints(ekeys)
+    for _, k := range(ekeys) {
+        if !frame.Elems[k].IsLineElem() { continue }
+        otp.WriteString(frame.Elems[k].OutputStress(p))
+    }
+    // Node
+    otp.WriteString("\n\n** DISPLACEMENT OF NODE\n\n")
+    otp.WriteString("  NO          U          V          W         KSI         ETA       OMEGA\n\n")
+    for k := range(frame.Nodes) {
+        nkeys = append(nkeys, k)
+    }
+    sort.Ints(nkeys)
+    for _, k := range(nkeys) {
+        otp.WriteString(frame.Nodes[k].OutputDisp(p))
+    }
+    otp.WriteString("\n\n** REACTION\n\n")
+    otp.WriteString("  NO  DIRECTION              R    NC\n\n")
+    for _, k := range(nkeys) {
+        for i:=0; i<6; i++ {
+            if frame.Nodes[k].Conf[i] {
+                otp.WriteString(frame.Nodes[k].OutputReaction(p, i))
+            }
+        }
+    }
+    // Write
+    w, err := os.Create(fn)
+    if err != nil {
+        return err
+    }
+    otp.WriteTo(w)
+    w.Close()
+    return nil
+}
+// }}}
+
+
 func (frame *Frame) Distance (n1, n2 *Node) (dx, dy, dz, d float64) {
     dx = n2.Coord[0] - n1.Coord[0]
     dy = n2.Coord[1] - n1.Coord[1]

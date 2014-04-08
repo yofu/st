@@ -117,6 +117,23 @@ func (node *Node) InlConditionString (period int) string {
     return rtn.String()
 }
 
+func (node *Node) OutputDisp (p string) string {
+    var rtn bytes.Buffer
+    rtn.WriteString(fmt.Sprintf("%4d ", node.Num))
+    for i:=0; i<3; i++ {
+        rtn.WriteString(fmt.Sprintf("% 10.6f ", node.Disp[p][i]))
+    }
+    for i:=3; i<5; i++ {
+        rtn.WriteString(fmt.Sprintf("% 11.7f ", node.Disp[p][i]))
+    }
+    rtn.WriteString(fmt.Sprintf("% 11.7f\n", node.Disp[p][5]))
+    return rtn.String()
+}
+
+func (node *Node) OutputReaction (p string, ind int) string {
+    return fmt.Sprintf(" %4d %10d %14.6f     1\n", node.Num, ind+1, node.Reaction[p][ind])
+}
+
 func (node *Node) Move (x, y, z float64) {
     node.Coord[0]+=x
     node.Coord[1]+=y
