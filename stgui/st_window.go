@@ -1529,6 +1529,8 @@ func (stw *Window) exmode (command string) {
             stw.Close(true)
         case ":vim":
             stw.Edit(fn)
+        case ":read":
+            stw.ReadFile(fn)
         case ":conf":
             lis := make([]bool, 6)
             if len(args[1]) >= 6 {
