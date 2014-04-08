@@ -33,6 +33,12 @@ const (
     MAXCOORD = 1000.0
 )
 
+const (
+    UPDATE_RESULT = iota
+    ADD_RESULT
+    ADDSEARCH_RESULT
+)
+
 var (
     XAXIS = []float64{1.0, 0.0, 0.0}
     YAXIS = []float64{0.0, 1.0, 0.0}
@@ -758,7 +764,7 @@ func (frame *Frame) ReadData (filename string) error {
 
 
 // ReadResult// {{{
-func (frame *Frame) ReadResult (filename string) error {
+func (frame *Frame) ReadResult (filename string, mode uint) error {
     f, err := ioutil.ReadFile(filename)
     if err != nil {
         return err
@@ -798,7 +804,7 @@ func (frame *Frame) ReadResult (filename string) error {
         }
         break
     }
-    for {
+    for { // Reading Elem Stress
         j := strings.Join([]string{lis[tmpline], lis[tmpline+1]}, " ")
         tmpline+=2
         var words []string
@@ -818,14 +824,19 @@ func (frame *Frame) ReadResult (filename string) error {
             return err
         }
         enum := int(num)
+        enod := make([]int, 2)
+        stress := make([][]float64, 2)
         if elem, ok := frame.Elems[enum]; ok {
-            elem.Stress[period] = make(map[int][]float64)
+            if !elem.IsLineElem() { continue }
+            if mode == UPDATE_RESULT { elem.Stress[period] = make(map[int][]float64) }
+            var tmp []float64
             for i:=0; i<2; i++ {
                 num, err := strconv.ParseInt(words[2+7*i], 10, 64)
                 if err != nil {
                     return err
                 }
-                tmp := make([]float64, 6)
+                enod[i] = int(num)
+                tmp = make([]float64, 6)
                 for k:=0; k<6; k++ {
                     val, err := strconv.ParseFloat(words[3+7*i+k], 64)
                     if err != nil {
@@ -833,10 +844,37 @@ func (frame *Frame) ReadResult (filename string) error {
                     }
                     tmp[k] = val
                 }
-                elem.Stress[period][int(num)]=tmp
+                switch mode {
+                case UPDATE_RESULT:
+                    elem.Stress[period][int(num)]=tmp
+                case ADD_RESULT, ADDSEARCH_RESULT:
+                    if elem.Stress[period][int(num)] != nil {
+                        for ind:=0; ind<6; ind++ {
+                            elem.Stress[period][int(num)][ind] += tmp[ind]
+                        }
+                    }
+                }
+                stress[i] = tmp
             }
         } else {
-            fmt.Printf("ELEM %d not found\n", enum)
+            if mode == ADDSEARCH_RESULT {
+                if _, ok := frame.Nodes[enod[0]]; ok {
+                    if _, ok2 := frame.Nodes[enod[1]]; ok2 {
+                        for _, el := range frame.SearchElem(frame.Nodes[0], frame.Nodes[1]) {
+                            if !el.IsLineElem() { continue }
+                            fmt.Println("ReadResult: ELEM %d -> ELEM %d", enum, el.Num)
+                            for i:=0; i<2; i++ {
+                                for j:=0; j<6; j++ {
+                                    el.Stress[period][enod[i]][j] += stress[i][j]
+                                }
+                            }
+                            break
+                        }
+                    }
+                }
+            } else {
+                fmt.Printf("ELEM %d not found\n", enum)
+            }
         }
     }
     for _, j := range lis[tmpline:] {
@@ -874,7 +912,14 @@ func (frame *Frame) ReadResult (filename string) error {
                 }
                 tmp[k] = val
             }
-            node.Disp[period]=tmp
+            switch mode {
+            case UPDATE_RESULT:
+                node.Disp[period] = tmp
+            case ADD_RESULT, ADDSEARCH_RESULT:
+                for ind:=0; ind<6; ind++ {
+                    node.Disp[period][ind] += tmp[ind]
+                }
+            }
         } else {
             fmt.Printf("NODE %d not found\n", nnum)
         }
@@ -910,7 +955,12 @@ func (frame *Frame) ReadResult (filename string) error {
             if err != nil {
                 return err
             }
-            node.Reaction[period][ind-1]=val
+            switch mode {
+            case UPDATE_RESULT:
+                node.Reaction[period][ind-1] = val
+            case ADD_RESULT, ADDSEARCH_RESULT:
+                node.Reaction[period][ind-1] += val
+            }
         } else {
             fmt.Printf("NODE %d not found\n", nnum)
         }

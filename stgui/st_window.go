@@ -1217,13 +1217,28 @@ func (stw *Window) ReadFile(filename string) error {
     case ".inl", ".ihx", ".ihy":
         err = stw.Frame.ReadData(filename)
     case ".otl", ".ohx", ".ohy":
-        err = stw.Frame.ReadResult(filename)
+        err = stw.Frame.ReadResult(filename, st.UPDATE_RESULT)
     case ".rat", ".rat2":
         err = stw.Frame.ReadRat(filename)
     case ".wgt":
         err = stw.Frame.ReadWgt(filename)
     case ".kjn":
         err = stw.Frame.ReadKjn(filename)
+    }
+    if err != nil {
+        stw.addHistory(fmt.Sprintf("NOT READ: %s", filename))
+        return err
+    }
+    stw.addHistory(fmt.Sprintf("READ: %s", filename))
+    return nil
+}
+
+func (stw *Window) AddResult (filename string, search bool) error {
+    var err error
+    if search {
+        err = stw.Frame.ReadResult(filename, st.ADDSEARCH_RESULT)
+    } else {
+        err = stw.Frame.ReadResult(filename, st.ADD_RESULT)
     }
     if err != nil {
         stw.addHistory(fmt.Sprintf("NOT READ: %s", filename))
@@ -1531,6 +1546,10 @@ func (stw *Window) exmode (command string) {
             stw.Edit(fn)
         case ":read":
             stw.ReadFile(fn)
+        case ":add":
+            stw.AddResult(fn, false)
+        case ":adds":
+            stw.AddResult(fn, true)
         case ":conf":
             lis := make([]bool, 6)
             if len(args[1]) >= 6 {
