@@ -1550,6 +1550,12 @@ func (stw *Window) exmode (command string) {
             stw.AddResult(fn, false)
         case ":adds":
             stw.AddResult(fn, true)
+        case ":wo":
+            if len(args) < 3 {
+                stw.addHistory("Not enough arguments")
+            } else {
+                stw.Frame.WriteOutput(fn, args[2])
+            }
         case ":conf":
             lis := make([]bool, 6)
             if len(args[1]) >= 6 {
