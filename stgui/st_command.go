@@ -2381,5 +2381,13 @@ func mergenode (stw *Window) {
 // ERASE// {{{
 func erase (stw *Window) {
     stw.DeleteSelected()
+    stw.Deselect()
+    ns := stw.Frame.NodeNoReference()
+    if len(ns) != 0 {
+        for _, n := range ns {
+            delete(stw.Frame.Nodes, n.Num)
+        }
+    }
+    stw.EscapeAll()
 }
 // }}}
