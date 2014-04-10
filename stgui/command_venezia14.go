@@ -17,6 +17,7 @@ var (
     VEN14NORMAL = &Command{"VENEZIA14 NORMAL", "show normal vector of plate elems", ven14normal}
     VEN14SETCANG = &Command{"VENEZIA14 SETCANG", "set cang of girders", ven14setcang}
     VEN14ERRORELEM = &Command{"ERROR ELEM", "select elem whose max(rate)>1.15", ven14errorelem}
+    VEN14DEPTH = &Command{"VENEZIA14 DEPTH", "measure depth of surface", ven14depth}
 )
 
 func init() {
@@ -26,6 +27,7 @@ func init() {
     Commands["VEN14NORMAL"]=VEN14NORMAL
     Commands["VEN14SETCANG"]=VEN14SETCANG
     Commands["VEN14ERRORELEM"]=VEN14ERRORELEM
+    Commands["VEN14DEPTH"]=VEN14DEPTH
 }
 
 func ven14rotatezero (stw *Window) {
@@ -202,4 +204,54 @@ func ven14errorelem (stw *Window) {
     for j:=0; j<i; j++ {
         stw.SelectElem[j] = tmpels[j]
     }
+}
+
+func ven14depth (stw *Window) {
+    ns := make([]*st.Node, 0)
+    num := 0
+    if stw.SelectNode != nil {
+        for _, n := range stw.SelectNode {
+            if n != nil { ns = append(ns, n); num++ }
+        }
+    }
+    if num==0 { stw.EscapeAll(); return }
+    ns = ns[:num]
+    maxnum := 4
+    getnnodes(stw, maxnum, func (num int) {
+                               switch num {
+                               default:
+                                   stw.EscapeAll()
+                               case 4:
+                                   v1 := make([]float64, 3)
+                                   v2 := make([]float64, 3)
+                                   for i:=0; i<3; i++ {
+                                       v1[i] = stw.SelectNode[1].Coord[i] - stw.SelectNode[0].Coord[i]
+                                       v2[i] = stw.SelectNode[3].Coord[i] - stw.SelectNode[2].Coord[i]
+                                   }
+                                   vec := st.Cross(v1, v2)
+                                   l := 0.0
+                                   for i:=0; i<3; i++ {
+                                       l += vec[i]*vec[i]
+                                   }
+                                   l = math.Sqrt(l)
+                                   for i:=0; i<3; i++ {
+                                       vec[i] /= l
+                                   }
+                                   dmax := -1e10
+                                   dmin :=  1e10
+                                   for _, n := range ns {
+                                       dtmp := 0.0
+                                       for i:=0; i<3; i++ {
+                                           dtmp += vec[i]*n.Coord[i]
+                                       }
+                                       if dtmp > dmax {
+                                           dmax = dtmp
+                                       } else if dtmp < dmin {
+                                           dmin = dtmp
+                                       }
+                                   }
+                                   stw.addHistory(fmt.Sprintf("Depth = %.3f [mm]", (dmax-dmin)*1000))
+                                   stw.EscapeAll()
+                               }
+                           })
 }
