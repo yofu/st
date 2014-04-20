@@ -35,6 +35,7 @@ func NewFact (n int, abs bool, factor float64) *Fact {
     f := new(Fact)
     f.Floor = n
     f.Abs   = abs
+    f.IgnoreConf = true
     f.Factor = factor
     f.Input  = make([]string, 3)
     f.Output = make([]string, 3)
@@ -203,7 +204,7 @@ func (f *Fact) CalcFact (nodes [][]*Node, elems [][]*Elem) error {
             num++
             av_level += n.Coord[2]
             for j, d := range []string{"X", "Y"} {
-                if f.IgnoreConf && n.Conf[j] { conf[j]--; continue }
+                if f.IgnoreConf && n.Conf[j] { conf[j]++; continue }
                 if n.Disp[d][j] > tmpdisp[j] {
                     tmpdisp[j] = n.Disp[d][j]
                 }
