@@ -69,6 +69,7 @@ var (
     EXTEND = &Command{"EXTEND", "extend elements to selected elem", extend}
     MERGENODE = &Command{"MERGE NODE", "merge nodes", mergenode}
     ERASE = &Command{"ERASE", "erase selected elems", erase}
+    FACTS = &Command{"FACTS", "calculate eccentricity ratio and modulus of rigidity", facts}
     REACTION = &Command{"REACTION", "show sum of reaction", reaction}
     NOTICE1459 = &Command{"NOTICE1459", "shishou", notice1459}
 )
@@ -126,6 +127,7 @@ func init() {
     Commands["EXTEND"]=EXTEND
     Commands["MERGENODE"]=MERGENODE
     Commands["ERASE"]=ERASE
+    Commands["FACTS"]=FACTS
     Commands["REACTION"]=REACTION
     Commands["NOTICE1459"]=NOTICE1459
 }
@@ -2391,3 +2393,13 @@ func erase (stw *Window) {
     stw.EscapeAll()
 }
 // }}}
+
+
+// FACTS
+func facts (stw *Window) {
+    err := stw.Frame.Facts(st.Ce(stw.Frame.Name, ".fes"), []int{st.COLUMN, st.GIRDER, st.BRACE, st.WBRACE, st.SBRACE})
+    if err != nil {
+        stw.addHistory(err.Error())
+    }
+    stw.EscapeAll()
+}

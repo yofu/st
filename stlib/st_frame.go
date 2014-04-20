@@ -16,7 +16,7 @@ import (
 
 // Constants & Variables// {{{
 var (
-    PeriodExt = map[string]string{".otl": "L", ".ohx": "X", ".ohy": "Y"}
+    PeriodExt = map[string]string{".inl": "L", ".otl": "L", ".ihx": "X", ".ohx": "X", ".ihy": "Y", ".ohy": "Y"}
 )
 
 var (
@@ -75,6 +75,10 @@ type Frame struct {
     Level []float64
 
     Show *Show
+
+    DataFileName map[string]string
+    ResultFileName map[string]string
+    LstFileName string
 }
 
 func NewFrame() *Frame {
@@ -96,6 +100,8 @@ func NewFrame() *Frame {
     f.Maxsnum = 900
     f.Level = make([]float64, 0)
     f.Show = NewShow(f)
+    f.DataFileName = make(map[string]string)
+    f.ResultFileName = make(map[string]string)
     return f
 }
 // }}}
@@ -245,7 +251,7 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64) err
             fmt.Println(err)
         }
     } else if FileExists(prjconf) {
-        err = frame.ReadConfigure(conffn)
+        err = frame.ReadConfigure(prjconf)
         if err != nil {
             fmt.Println(err)
         }
@@ -632,6 +638,13 @@ func (frame *Frame) ReadData (filename string) error {
     if err != nil {
         return err
     }
+    ext := filepath.Ext(filename)
+    var period string
+    if p, ok := PeriodExt[ext]; ok {
+        period = p
+    } else {
+        period = strings.ToUpper(ext[1:])
+    }
     var lis []string
     if ok := strings.HasSuffix(string(f),"\r\n"); ok {
         lis = strings.Split(string(f),"\r\n")
@@ -754,10 +767,19 @@ func (frame *Frame) ReadData (filename string) error {
             return err
         }
         nnum := int(num)
-        if _, ok := frame.Nodes[nnum]; !ok {
-            fmt.Printf("Append Node %d\n", nnum)
+        if node, ok := frame.Nodes[nnum]; ok {
+            force := make([]float64, 6)
+            for i:=0; i<6; i++ {
+                val, err := strconv.ParseFloat(words[7+i], 64)
+                if err != nil {
+                    return err
+                }
+                force[i] = val
+            }
+            node.Force[period] = force
         }
     }
+    frame.DataFileName[period] = filename
     return nil
 }
 // }}}
@@ -965,6 +987,7 @@ func (frame *Frame) ReadResult (filename string, mode uint) error {
             fmt.Printf("NODE %d not found\n", nnum)
         }
     }
+    frame.ResultFileName[period] = filename
     return nil
 }
 // }}}
@@ -999,6 +1022,7 @@ func (frame *Frame) ReadLst (filename string) error {
     if err != nil {
         return err
     }
+    frame.LstFileName = filename
     return nil
 }
 
@@ -1323,12 +1347,12 @@ func (frame *Frame) WriteInp(fn string) error {
     nums.WriteString(fmt.Sprintf("NSECT %d\n\n", snum))
     // Write
     w, err := os.Create(fn)
+    defer w.Close()
     if err != nil {
         return err
     }
     nums.WriteTo(w)
     otp.WriteTo(w)
-    w.Close()
     return nil
 }
 // }}}
@@ -1370,11 +1394,11 @@ func (frame *Frame) WriteOutput (fn string, p string) error {
     }
     // Write
     w, err := os.Create(fn)
+    defer w.Close()
     if err != nil {
         return err
     }
     otp.WriteTo(w)
-    w.Close()
     return nil
 }
 // }}}
@@ -2034,11 +2058,11 @@ func (frame *Frame) WeightDistribution () {
     }
     otp.WriteString(frame.Ai())
     w, err := os.Create(filepath.Join(frame.Home, DEFAULT_WGT))
+    defer w.Close()
     if err != nil {
         return
     }
     otp.WriteTo(w)
-    w.Close()
 }
 
 func (frame *Frame) Ai () string {
@@ -2226,16 +2250,69 @@ func (frame *Frame) SaveAsArclm (name string) error {
     for i, ext := range InputExt {
         fn := Ce(name, ext)
         w, err := os.Create(fn)
+        defer w.Close()
         if err != nil {
             return err
         }
         w.WriteString(numstr)
         otp[i].WriteTo(w)
-        w.Close()
     }
     return nil
 }
 // }}}
+
+
+func (frame *Frame) Facts (fn string, etypes []int) error {
+    var err error
+    l := len(frame.Level)+1
+    nodes := make([][]*Node, l)
+    elems := make([][]*Elem, l-1)
+    for i:=0; i<l; i++ {
+        nodes[i] = make([]*Node, 0)
+        if i<l-1 {
+            elems[i] = make([]*Elem, 0)
+        }
+    }
+    fact_node:
+        for _, n := range frame.Nodes {
+            for i:=0; i<l-1; i++ {
+                if n.Coord[2] < frame.Level[i] {
+                    nodes[i] = append(nodes[i], n)
+                    continue fact_node
+                }
+            }
+            nodes[l-1] = append(nodes[l-1], n)
+        }
+    for _, el := range frame.Elems {
+        contained := false
+        for _, et := range etypes {
+            if el.Etype == et {
+                contained = true
+                break
+            }
+        }
+        if !contained { continue }
+        for i:=0; i<l-1; i++ {
+            if (el.Enod[0].Coord[2] - frame.Level[i])*(el.Enod[1].Coord[2] - frame.Level[i]) < 0 {
+                elems[i] = append(elems[i], el)
+                break
+            }
+        }
+    }
+    f := NewFact(l, true, frame.Base/0.2)
+    f.SetFileName([]string{frame.DataFileName["L"], frame.DataFileName["X"], frame.DataFileName["Y"]},
+                  []string{frame.ResultFileName["L"], frame.ResultFileName["X"], frame.ResultFileName["Y"]})
+    err = f.CalcFact(nodes, elems)
+    if err != nil {
+        return err
+    }
+    fmt.Println(f)
+    err = f.WriteTo(fn)
+    if err != nil {
+        return err
+    }
+    return nil
+}
 
 
 // Modify View// {{{

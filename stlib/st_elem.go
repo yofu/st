@@ -964,8 +964,76 @@ func (elem *Elem) MX (period string, nnum int) float64 {
 func (elem *Elem) MY (period string, nnum int) float64 {
     return elem.ReturnStress(period, nnum, 5)
 }
+
+func (elem *Elem) VectorStress (period string, nnum int, vec []float64) float64 {
+    var sign int
+    var ind int
+    var err error
+    if nnum == 0 || nnum == 1 {
+        sign = 1 - nnum*2
+        nnum = elem.Enod[nnum].Num
+    } else {
+        ind, err = elem.RefNnum(nnum)
+        if err != nil { return 0.0 }
+        sign = 1 - ind*2
+    }
+    ezaxis := elem.Direction(true)
+    exaxis := elem.Strong
+    eyaxis := elem.Weak
+    rtn := 0.0
+    for i, j := range [][]float64{ezaxis, exaxis, eyaxis} {
+        rtn += Dot(j, vec, 3) * elem.ReturnStress(period, nnum, i)
+    }
+    return float64(sign)*rtn
+}
 // }}}
 
+
+func (elem *Elem) LateralStiffness (period string, abs bool) float64 {
+    if elem.IsLineElem() {
+        var index int
+        var axis []float64
+        switch period {
+        default:
+            return 0.0
+        case "X":
+            index = 0
+            axis = XAXIS
+        case "Y":
+            index = 1
+            axis = YAXIS
+        }
+        shear := elem.VectorStress(period, 0, axis)
+        delta := elem.Enod[1].ReturnDisp(period, index) - elem.Enod[0].ReturnDisp(period, index)
+        if delta == 0.0 { fmt.Sprintf("LateralStiffness: Delta = 0(ELEM: %d)\n", elem.Num); return 1e16 }
+        if abs {
+            return math.Abs(shear/delta)
+        } else {
+            return shear/delta
+        }
+    } else {
+        return 0.0
+    }
+}
+
+func (elem *Elem) StoryDrift (period string) float64 {
+    if elem.IsLineElem() {
+        var index int
+        switch period {
+        default:
+            return 0.0
+        case "X":
+            index = 0
+        case "Y":
+            index = 1
+        }
+        height := elem.Direction(false)[2]
+        delta := elem.Enod[1].ReturnDisp(period, index) - elem.Enod[0].ReturnDisp(period, index)
+        return delta/height
+    } else {
+        return 0.0
+    }
+}
 
 // Bond// {{{
 func (elem *Elem) ChangeBond (bond []bool, side... int) error {

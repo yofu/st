@@ -23,6 +23,7 @@ type Node struct {
     Coord []float64
     Conf  []bool
     Load  []float64
+    Force map[string][]float64
 
     Weight []float64
     Factor float64
@@ -66,6 +67,7 @@ func NewNode() *Node {
                  Load: make([]float64, 6),
                  Weight: make([]float64, 3),
                  Disp: make(map[string][]float64),
+                 Force: make(map[string][]float64),
                  Reaction: make(map[string][]float64)}
 }
 
