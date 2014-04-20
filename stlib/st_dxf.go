@@ -57,15 +57,19 @@ func (frame *Frame) ReadDxf (filename string, coord []float64) (err error) {
             }
         }
         if parse {
-            switch {
-            default:
+            if ind%2 == 1 {
                 tmp=append(tmp,words...)
-            case entstart.MatchString(first):
-                vertices, err = frame.ParseDxf(tmp, coord, vertices)
-                tmp = words
-            }
-            if err != nil {
-                return err
+            } else {
+                switch {
+                default:
+                    tmp=append(tmp,words...)
+                case entstart.MatchString(first):
+                    vertices, err = frame.ParseDxf(tmp, coord, vertices)
+                    if err != nil {
+                        return err
+                    }
+                    tmp = words
+                }
             }
         }
     }
