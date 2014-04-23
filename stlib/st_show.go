@@ -68,6 +68,7 @@ type Show struct {// {{{
     Bond bool
     BondSize float64
     BondColor int
+    Phinge bool
 
     Period string
 
@@ -119,6 +120,7 @@ func NewShow(frame *Frame) *Show {
     s.ElemNormalSize = 0.2
 
     s.Bond = true
+    s.Phinge = true
     s.BondSize = 3.0
     s.Conf = true
     s.ConfSize = 9.0

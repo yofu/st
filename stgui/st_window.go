@@ -1226,6 +1226,8 @@ func (stw *Window) ReadFile(filename string) error {
         err = stw.Frame.ReadKjn(filename)
     case ".otp":
         err = stw.Frame.ReadBuckling(filename)
+    case ".otx", ".oty", ".inc":
+        err = stw.Frame.ReadZoubun(filename)
     }
     if err != nil {
         stw.addHistory(fmt.Sprintf("NOT READ: %s", filename))

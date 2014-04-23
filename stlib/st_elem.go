@@ -62,6 +62,8 @@ type Elem struct {
     Rate []float64
     Stress map[string]map[int][]float64
 
+    Phinge map[string]map[int]bool
+
     Strong []float64
     Weak []float64
 
@@ -82,6 +84,7 @@ func NewLineElem (ns []*Node, sect *Sect, etype int) *Elem {
     el.Bonds = make([]bool, 12)
     el.Cmq   = make([]float64, 12)
     el.Stress = make(map[string]map[int][]float64)
+    el.Phinge = make(map[string]map[int]bool)
     el.Strong = make([]float64, 3)
     el.Weak = make([]float64, 3)
     el.SetPrincipalAxis()

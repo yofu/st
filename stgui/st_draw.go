@@ -174,6 +174,24 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
                 cvs.FCircle(elem.Enod[1].Pcoord[0]-d[0]*show.BondSize, elem.Enod[1].Pcoord[1]-d[1]*show.BondSize, show.BondSize*2)
             }
         }
+        if show.Phinge {
+            cvs.InteriorStyle(cd.CD_SOLID)
+            cvs.Foreground(BondColor)
+            ph1 := elem.Phinge[show.Period][elem.Enod[0].Num]
+            ph2 := elem.Phinge[show.Period][elem.Enod[1].Num]
+            switch {
+            case ph1 && !ph2:
+                d := elem.PDirection(true)
+                cvs.FFilledCircle(elem.Enod[0].Pcoord[0]+d[0]*show.BondSize, elem.Enod[0].Pcoord[1]+d[1]*show.BondSize, show.BondSize*2)
+            case !ph1 && ph2:
+                d := elem.PDirection(true)
+                cvs.FFilledCircle(elem.Enod[1].Pcoord[0]-d[0]*show.BondSize, elem.Enod[1].Pcoord[1]-d[1]*show.BondSize, show.BondSize*2)
+            case ph1 && ph2:
+                d := elem.PDirection(true)
+                cvs.FFilledCircle(elem.Enod[0].Pcoord[0]+d[0]*show.BondSize, elem.Enod[0].Pcoord[1]+d[1]*show.BondSize, show.BondSize*2)
+                cvs.FFilledCircle(elem.Enod[1].Pcoord[0]-d[0]*show.BondSize, elem.Enod[1].Pcoord[1]-d[1]*show.BondSize, show.BondSize*2)
+            }
+        }
         if show.ElementAxis {
             DrawElementAxis(elem, cvs, show)
         }

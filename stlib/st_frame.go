@@ -19,6 +19,15 @@ var (
     PeriodExt = map[string]string{".inl": "L", ".otl": "L", ".ihx": "X", ".ohx": "X", ".ihy": "Y", ".ohy": "Y"}
 )
 
+const (
+    RADIUS = 0.95
+    EXPONENT = 1.5
+)
+
+var (
+    PlasticThreshold = math.Pow(RADIUS, EXPONENT)
+)
+
 var (
     InputExt  = []string{".inl", ".ihx", ".ihy"}
     OutputExt = []string{".otl", ".ohx", ".ohy"}
@@ -1055,6 +1064,142 @@ func (frame *Frame) ParseEigen(lis [][]string) (err error) {
     return nil
 }
 // }}}
+
+
+// ReadZoubun
+func (frame *Frame) ReadZoubun (filename string) error {
+    tmp := make([][]string, 0)
+    var period string
+    ext := strings.ToUpper(filepath.Ext(filename)[1:])
+    err := ParseFile(filename, func(words []string) error {
+                                   var err error
+                                   first := strings.ToUpper(words[0])
+                                   if strings.HasPrefix(first, "#") {
+                                       return nil
+                                   } else if strings.HasPrefix(first, "LAP") {
+                                       period = fmt.Sprintf("%s@%s", ext, strings.Split(strings.Split(first, ":")[1], "/")[0])
+                                   }
+                                   switch first {
+                                   default:
+                                       tmp=append(tmp,words)
+                                   case "\"DISPLACEMENT\"", "\"STRESS\"", "\"REACTION\"", "\"CURRENT":
+                                       err = frame.ParseZoubun(tmp, period)
+                                       tmp=[][]string{words}
+                                   }
+                                   if err != nil {
+                                       return err
+                                   }
+                                   return nil
+                               })
+    err = frame.ParseZoubun(tmp, period)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
+func (frame *Frame) ParseZoubun (lis [][]string, period string) error {
+    var err error
+    if len(lis)==0 {
+        return nil
+    }
+    first := strings.ToUpper(lis[0][0])
+    switch first {
+    case "\"STRESS\"":
+        err = frame.ParseZoubunStress(lis, period)
+    case "\"REACTION\"":
+        err = frame.ParseZoubunReaction(lis, period)
+    case "\"CURRENT":
+        err = frame.ParseZoubunForm(lis, period)
+    }
+    return err
+}
+
+func (frame *Frame) ParseZoubunStress (lis [][]string, period string) error {
+    for _, l := range lis {
+        if strings.ToUpper(l[0]) == "ELEM" {
+            enum, err := strconv.ParseInt(l[1], 10, 64)
+            if err != nil {
+                return err
+            }
+            if el, ok := frame.Elems[int(enum)]; ok {
+                nnum, err := strconv.ParseInt(strings.Trim(l[5], ":"), 10, 64)
+                if err != nil {
+                    return err
+                }
+                stress := make([]float64, 6)
+                for i:=0; i<6; i++ {
+                    val, err := strconv.ParseFloat(l[7+2*i], 64)
+                    if err != nil {
+                        return err
+                    }
+                    stress[i] = val
+                }
+                val, err := strconv.ParseFloat(l[19], 64)
+                if err != nil {
+                    return err
+                }
+                ph := val > PlasticThreshold
+                if el.Stress[period] == nil { el.Stress[period] = make(map[int][]float64) }
+                if el.Phinge[period] == nil { el.Phinge[period] = make(map[int]bool) }
+                el.Stress[period][int(nnum)] = stress
+                el.Phinge[period][int(nnum)] = ph
+            }
+        }
+    }
+    return nil
+}
+
+func (frame *Frame) ParseZoubunReaction (lis [][]string, period string) error {
+    for _, l := range lis {
+        if strings.ToUpper(l[0]) == "NODE:" {
+            nnum, err := strconv.ParseInt(l[1], 10, 64)
+            if err != nil {
+                return err
+            }
+            if n, ok := frame.Nodes[int(nnum)]; ok {
+                if n.Reaction[period] == nil { n.Reaction[period] = make([]float64, 6) }
+                ind, err := strconv.ParseInt(l[2], 10, 64)
+                if err != nil {
+                    return err
+                }
+                val, err := strconv.ParseFloat(l[5], 64)
+                if err != nil {
+                    return err
+                }
+                n.Reaction[period][ind-1] = val
+            }
+        }
+    }
+    return nil
+}
+
+func (frame *Frame) ParseZoubunForm (lis [][]string, period string) error {
+    for _, l := range lis {
+        if strings.ToUpper(l[0]) == "NODE:" {
+            nnum, err := strconv.ParseInt(l[1], 10, 64)
+            if err != nil {
+                return err
+            }
+            if n, ok := frame.Nodes[int(nnum)]; ok {
+                disp := make([]float64, 6)
+                for i:=0; i<6; i++ {
+                    val, err := strconv.ParseFloat(l[3+i], 64)
+                    if err != nil {
+                        return err
+                    }
+                    if i < 3 {
+                        disp[i] = val - n.Coord[i]
+                    } else {
+                        disp[i] = val
+                    }
+                }
+                n.Disp[period] = disp
+            }
+        }
+    }
+    return nil
+}
 
 
 // ReadLst// {{{
