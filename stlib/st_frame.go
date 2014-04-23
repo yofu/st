@@ -66,6 +66,8 @@ type Frame struct {
     Sects map[int]*Sect
     Allows map[int]SectionRate
 
+    Eigenvalue map[int]float64
+
     Kijuns map[string]*Kijun
 
     Maxenum int
@@ -93,6 +95,7 @@ func NewFrame() *Frame {
     f.Sects = make(map[int]*Sect)
     f.Allows = make(map[int]SectionRate)
     f.Props = make(map[int]*Prop)
+    f.Eigenvalue = make(map[int]float64)
     f.Kijuns = make(map[string]*Kijun)
     f.View  = NewView()
     f.Maxnnum = 100
@@ -993,8 +996,65 @@ func (frame *Frame) ReadResult (filename string, mode uint) error {
 // }}}
 
 
-// func (frame *Frame) ReadBuckling (filename string) error {
-// }
+// ReadBuckling// {{{
+func (frame *Frame) ReadBuckling (filename string) error {
+    tmp := make([][]string, 0)
+    err := ParseFile(filename, func(words []string) error {
+                                   var err error
+                                   first := strings.ToUpper(words[0])
+                                   if strings.HasPrefix(first, "#") {
+                                       return nil
+                                   }
+                                   switch first {
+                                   default:
+                                       tmp=append(tmp,words)
+                                   case "EIGEN":
+                                       err = frame.ParseEigen(tmp)
+                                       tmp=[][]string{words}
+                                   }
+                                   if err != nil {
+                                       return err
+                                   }
+                                   return nil
+                               })
+    err = frame.ParseEigen(tmp)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
+func (frame *Frame) ParseEigen(lis [][]string) (err error) {
+    if strings.ToUpper(lis[0][0]) == "EIGEN" {
+        eig := strings.Split(lis[0][2], "=")
+        eigmode, err := strconv.ParseInt(eig[0], 10, 64)
+        if err != nil {
+            return err
+        }
+        eigval, err := strconv.ParseFloat(eig[1], 64)
+        frame.Eigenvalue[int(eigmode-1)] = eigval
+        period := fmt.Sprintf("B%d", eigmode)
+        for _, l := range lis[1:] {
+            if strings.ToUpper(l[0]) == "NODE:" {
+                nnum, err := strconv.ParseInt(l[1], 10, 64)
+                if err != nil {
+                    return err
+                }
+                disp := make([]float64, 6)
+                for i:=0; i<6; i++ {
+                    val, err := strconv.ParseFloat(l[3+i], 64)
+                    if err != nil {
+                        return err
+                    }
+                    disp[i] = val
+                }
+                frame.Nodes[int(nnum)].Disp[period] = disp
+            }
+        }
+    }
+    return nil
+}
+// }}}
 
 
 // ReadLst// {{{
