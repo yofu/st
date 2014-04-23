@@ -1719,7 +1719,6 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
                     DrawElem(el, canv, stw.Frame.Show)
                 }
         }
-        canv.InteriorStyle(cd.CD_HATCH)
         canv.Hatch(cd.CD_DIAGCROSS)
         for _, el := range(stw.SelectElem) {
             canv.LineStyle(cd.CD_DOTTED)

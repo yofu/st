@@ -252,6 +252,7 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
             }
         }
     } else {
+        cvs.InteriorStyle(cd.CD_HATCH)
         cvs.Begin(cd.CD_FILL)
         cvs.FVertex(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1])
         for i:=1; i<elem.Enods; i++ {
