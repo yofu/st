@@ -2397,9 +2397,12 @@ func erase (stw *Window) {
 
 // FACTS
 func facts (stw *Window) {
-    err := stw.Frame.Facts(st.Ce(stw.Frame.Name, ".fes"), []int{st.COLUMN, st.GIRDER, st.BRACE, st.WBRACE, st.SBRACE})
+    fn := st.Ce(stw.Frame.Path, ".fes")
+    err := stw.Frame.Facts(fn, []int{st.COLUMN, st.GIRDER, st.BRACE, st.WBRACE, st.SBRACE})
     if err != nil {
         stw.addHistory(err.Error())
+    } else {
+        stw.addHistory(fmt.Sprintf("Output: %s", fn))
     }
     stw.EscapeAll()
 }

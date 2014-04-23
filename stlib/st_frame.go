@@ -2470,6 +2470,9 @@ func (frame *Frame) SaveAsArclm (name string) error {
 func (frame *Frame) Facts (fn string, etypes []int) error {
     var err error
     l := len(frame.Level)+1
+    if l == 1 {
+        return errors.New("Facts: Level = []")
+    }
     nodes := make([][]*Node, l)
     elems := make([][]*Elem, l-1)
     for i:=0; i<l; i++ {
