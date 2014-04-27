@@ -795,8 +795,14 @@ func NewWindow(homedir string) *Window {// {{{
                            stw.Labels["EC_SECT"],
                            iup.Hbox(stw.Labels["EC_RATE_L"],stw.Labels["EC_RATE_S"]),)
     tgcolmode:= iup.Vbox(datasectionlabel("COLOR MODE"),stw.Labels["COLORMODE"])
+    dlperiod := datalabel("PERIOD")
+    dlperiod.SetCallback(func (arg *iup.MouseButton) {
+                             if arg.Button == BUTTON_LEFT && arg.Pressed == 0 {
+                                 stw.PeriodDialog(stw.Labels["PERIOD"].GetAttribute("VALUE"))
+                             }
+                         })
     tgparam := iup.Vbox(datasectionlabel("PARAMETER"),
-                           iup.Hbox(datalabel("PERIOD"), stw.Labels["PERIOD"],),
+                           iup.Hbox(dlperiod, stw.Labels["PERIOD"],),
                            iup.Hbox(datalabel("GAXIS"), stw.Labels["GAXISSIZE"],),
                            iup.Hbox(datalabel("EAXIS"), stw.Labels["EAXISSIZE"],),
                            iup.Hbox(datalabel("BOND"), stw.Labels["BONDSIZE"],),
@@ -3216,6 +3222,51 @@ func (stw *Window) CMenu () {
     )
 }
 
+func (stw *Window) PeriodDialog (defval string) {
+    if stw.Frame == nil { return }
+    lis := strings.Split(defval, "@")
+    var defpname, deflap string
+    if len(lis) >= 2 {
+        defpname = strings.ToUpper(lis[0])
+        deflap   = lis[1]
+    } else {
+        defpname = strings.ToUpper(lis[0])
+        deflap   = "1"
+    }
+    per := iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
+                    fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+                    fmt.Sprintf("BGCOLOR=\"%s\"", commandBGColor),
+                    fmt.Sprintf("VALUE=\"%s\"", defpname),
+                    "BORDER=NO",
+                    "ALIGNMENT=ARIGHT",
+                    fmt.Sprintf("SIZE=%dx%d",datatextwidth, dataheight),)
+    per.SetCallback(func (arg *iup.CommonGetFocus) {
+                        per.SetAttribute("SELECTION", "1:100")
+                    })
+    var max int
+    if n,ok := stw.Frame.Nlap[defpname]; ok {
+        max = n
+    } else {
+        max = 100
+    }
+    if max <= 1 { max = 2 }
+    lap := iup.Val("MIN=1",
+                   fmt.Sprintf("MAX=%d", max),
+                   fmt.Sprintf("STEP=%.2f", 1/(float64(max)-1)),
+                   fmt.Sprintf("VALUE=%s", deflap),)
+    lap.SetCallback(func (arg *iup.ValueChanged) {
+                        pname := fmt.Sprintf("%s@%s", strings.ToUpper(per.GetAttribute("VALUE")), strings.Split(lap.GetAttribute("VALUE"), ".")[0])
+                        stw.Labels["PERIOD"].SetAttribute("VALUE", pname)
+                        stw.Frame.Show.Period = pname
+                        stw.Redraw()
+                    })
+    dlg := iup.Dialog(iup.Hbox(per,lap,))
+    dlg.SetAttribute("TITLE", "Period")
+    dlg.SetAttribute("PARENTDIALOG", "mainwindow")
+    dlg.Map()
+    dlg.ShowXY(iup.MOUSEPOS, iup.MOUSEPOS)
+}
+
 func (stw *Window) SectionDialog () {
     if stw.Frame == nil { return }
     labels := make([]*iup.Handle, len(stw.Frame.Sects))
@@ -3844,6 +3895,7 @@ func (stw *Window) CB_Period (h *iup.Handle, valptr *string) {
                        }
                    })
 }
+
 
 // DataLabel
 func (stw *Window) LinkTextValue() {

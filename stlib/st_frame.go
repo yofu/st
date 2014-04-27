@@ -83,6 +83,7 @@ type Frame struct {
     Maxnnum int
     Maxsnum int
 
+    Nlap map[string]int
     Level []float64
 
     Show *Show
@@ -111,6 +112,7 @@ func NewFrame() *Frame {
     f.Maxenum = 1000
     f.Maxsnum = 900
     f.Level = make([]float64, 0)
+    f.Nlap = make(map[string]int)
     f.Show = NewShow(f)
     f.DataFileName = make(map[string]string)
     f.ResultFileName = make(map[string]string)
@@ -1071,17 +1073,23 @@ func (frame *Frame) ReadZoubun (filename string) error {
     tmp := make([][]string, 0)
     var period string
     ext := strings.ToUpper(filepath.Ext(filename)[1:])
+    nlap := 0
     err := ParseFile(filename, func(words []string) error {
                                    var err error
                                    first := strings.ToUpper(words[0])
                                    if strings.HasPrefix(first, "#") {
                                        return nil
-                                   } else if strings.HasPrefix(first, "LAP") {
-                                       period = fmt.Sprintf("%s@%s", ext, strings.Split(strings.Split(first, ":")[1], "/")[0])
                                    }
                                    switch first {
                                    default:
-                                       tmp=append(tmp,words)
+                                       if strings.HasPrefix(first, "LAP") {
+                                           nlap++
+                                           err = frame.ParseZoubun(tmp, period)
+                                           tmp=[][]string{words}
+                                           period = fmt.Sprintf("%s@%s", ext, strings.Split(strings.Split(first, ":")[1], "/")[0])
+                                       } else {
+                                           tmp=append(tmp,words)
+                                       }
                                    case "\"DISPLACEMENT\"", "\"STRESS\"", "\"REACTION\"", "\"CURRENT":
                                        err = frame.ParseZoubun(tmp, period)
                                        tmp=[][]string{words}
@@ -1095,6 +1103,7 @@ func (frame *Frame) ReadZoubun (filename string) error {
     if err != nil {
         return err
     }
+    frame.Nlap[ext] = nlap
     return nil
 }
 
