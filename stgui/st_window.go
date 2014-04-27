@@ -189,6 +189,7 @@ func NewWindow(homedir string) *Window {// {{{
     stw.Labels["EAXIS"]       = stw.displayLabel("EAXIS", false)
     stw.Labels["BOND"]        = stw.displayLabel("BOND", true)
     stw.Labels["CONF"]        = stw.displayLabel("CONF", true)
+    stw.Labels["PHINGE"]        = stw.displayLabel("PHINGE", true)
     stw.Labels["KIJUN"]       = stw.displayLabel("KIJUN", false)
     stw.Labels["DEFORMATION"] = stw.displayLabel("DEFORMATION", false)
     stw.Labels["GFACT"]       = datatext("0.0")
@@ -807,6 +808,7 @@ func NewWindow(homedir string) *Window {// {{{
                            stw.Labels["EAXIS"],
                            stw.Labels["BOND"],
                            stw.Labels["CONF"],
+                           stw.Labels["PHINGE"],
                            stw.Labels["KIJUN"],
                            stw.Labels["DEFORMATION"])
     tgrang := iup.Vbox(datasectionlabel("RANGE"),
@@ -3541,6 +3543,8 @@ func (stw *Window) displayLabel (name string, defval bool) *iup.Handle {
                                         stw.Frame.Show.Bond = !stw.Frame.Show.Bond
                                     case "CONF":
                                         stw.Frame.Show.Conf = !stw.Frame.Show.Conf
+                                    case "PHINGE":
+                                        stw.Frame.Show.Phinge = !stw.Frame.Show.Phinge
                                     case "KIJUN":
                                         stw.Frame.Show.Kijun = !stw.Frame.Show.Kijun
                                     case "DEFORMATION":
