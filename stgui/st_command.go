@@ -1767,6 +1767,7 @@ func errorelem (stw *Window) {
     for j:=0; j<i; j++ {
         stw.SelectElem[j] = tmpels[j]
     }
+    stw.EscapeCB()
 }
 // }}}
 
