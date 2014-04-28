@@ -351,6 +351,10 @@ func (frame *Frame) ParseSect(lis []string) error {
             for j:=0; j<3; j++ {
                 s.Lload[j], err = strconv.ParseFloat(lis[i+1+j], 64)
             }
+        case "EXP":
+            s.Exp, err = strconv.ParseFloat(lis[i+1], 64)
+        case "EXQ":
+            s.Exq, err = strconv.ParseFloat(lis[i+1], 64)
         case "NZMAX":
             for j:=0; j<12; j++ {
                 s.Yield[j], err = strconv.ParseFloat(lis[i+1+2*j], 64)

@@ -13,6 +13,8 @@ type Sect struct {
     Num  int
     Name string
     Figs []*Fig
+    Exp float64
+    Exq float64
     Lload []float64
     Yield []float64
     Type int
@@ -28,6 +30,8 @@ type Fig struct {
 func NewSect() *Sect {
     s := new(Sect)
     s.Figs = make([]*Fig, 0)
+    s.Exp = EXPONENT
+    s.Exq = EXPONENT
     s.Lload = make([]float64, 3)
     s.Yield = make([]float64, 12)
     s.Color = 16777215
@@ -55,7 +59,10 @@ func (sect *Sect) InpString () string {
         rtn.WriteString(f.InpString())
     }
     if _, ok := sect.Figs[0].Value["AREA"]; ok {
-        rtn.WriteString("         EXP 1.500\n")
+        rtn.WriteString(fmt.Sprintf("         EXP %5.3f\n", sect.Exp))
+        if sect.Exq != sect.Exp {
+            rtn.WriteString(fmt.Sprintf("         EXQ %5.3f\n", sect.Exq))
+        }
         rtn.WriteString(fmt.Sprintf("         NZMAX %9.3f NZMIN %9.3f\n", sect.Yield[0], sect.Yield[1]))
         rtn.WriteString(fmt.Sprintf("         QXMAX %9.3f QXMIN %9.3f\n", sect.Yield[2], sect.Yield[3]))
         rtn.WriteString(fmt.Sprintf("         QYMAX %9.3f QYMIN %9.3f\n", sect.Yield[4], sect.Yield[5]))
