@@ -25,7 +25,8 @@ const (
 )
 
 var (
-    PlasticThreshold = math.Pow(RADIUS, EXPONENT)
+    // PlasticThreshold = math.Pow(RADIUS, EXPONENT)
+    PlasticThreshold = RADIUS
 )
 
 var (
