@@ -12,6 +12,8 @@ import (
     "github.com/visualfc/go-iup/iup"
     "github.com/visualfc/go-iup/cd"
     "github.com/yofu/st/stlib"
+    "os"
+    "path/filepath"
 )
 
 var (
@@ -72,6 +74,7 @@ var (
     FACTS = &Command{"FACTS", "calculate eccentricity ratio and modulus of rigidity", facts}
     REACTION = &Command{"REACTION", "show sum of reaction", reaction}
     NOTICE1459 = &Command{"NOTICE1459", "shishou", notice1459}
+    ZOUBUNDISP = &Command{"ZOUBUNDISP", "output displacement", zoubundisp}
 )
 
 func init() {
@@ -130,6 +133,7 @@ func init() {
     Commands["FACTS"]=FACTS
     Commands["REACTION"]=REACTION
     Commands["NOTICE1459"]=NOTICE1459
+    Commands["ZOUBUNDISP"]=ZOUBUNDISP
 }
 
 type Command struct {
@@ -2406,4 +2410,54 @@ func facts (stw *Window) {
         stw.addHistory(fmt.Sprintf("Output: %s", fn))
     }
     stw.EscapeAll()
+}
+
+
+// ZOUBUNDISP
+func zoubundisp (stw *Window) {
+    if stw.SelectNode == nil || len(stw.SelectNode) == 0 { stw.EscapeAll(); return }
+    per, err := stw.Query("PERIODを指定")
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeCB()
+    }
+    tmp, err := stw.Query("方向を指定[0～5]")
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeCB()
+    }
+    val, err := strconv.ParseInt(tmp, 10, 64)
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeCB()
+    }
+    per = strings.ToUpper(per)
+    d := int(val)
+    var otp bytes.Buffer
+    if nlap, ok := stw.Frame.Nlap[per]; ok {
+        otp.WriteString(fmt.Sprintf("PERIOD: %s, DIRECTION: %d\n", per, d))
+        otp.WriteString("LAP     ")
+        for _, n := range stw.SelectNode {
+            otp.WriteString(fmt.Sprintf(" %8d", n.Num))
+        }
+        otp.WriteString("\n")
+        for i:=0; i<nlap; i++ {
+            nper := fmt.Sprintf("%s@%d", per, i+1)
+            otp.WriteString(fmt.Sprintf("%8s", nper))
+            for _, n := range stw.SelectNode {
+                otp.WriteString(fmt.Sprintf(" %8.5f", n.Disp[nper][d]))
+            }
+            otp.WriteString("\n")
+        }
+    }
+    fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
+    w, err := os.Create(fn)
+    defer w.Close()
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeCB()
+    }
+    otp.WriteTo(w)
+    stw.addHistory(fmt.Sprintf("OUTPUT: %s", fn))
+    stw.EscapeCB()
 }
