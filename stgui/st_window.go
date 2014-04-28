@@ -1245,6 +1245,28 @@ func (stw *Window) ReadFile(filename string) error {
     return nil
 }
 
+func (stw *Window) ReadBucklingFile(filename string) error {
+    var err error
+    err = stw.Frame.ReadBuckling(filename)
+    if err != nil {
+        stw.addHistory(fmt.Sprintf("NOT READ: %s", filename))
+        return err
+    }
+    stw.addHistory(fmt.Sprintf("READ: %s", filename))
+    return nil
+}
+
+func (stw *Window) ReadZoubunFile(filename string) error {
+    var err error
+    err = stw.Frame.ReadZoubun(filename)
+    if err != nil {
+        stw.addHistory(fmt.Sprintf("NOT READ: %s", filename))
+        return err
+    }
+    stw.addHistory(fmt.Sprintf("READ: %s", filename))
+    return nil
+}
+
 func (stw *Window) AddResult (filename string, search bool) error {
     var err error
     if search {
@@ -1558,6 +1580,10 @@ func (stw *Window) exmode (command string) {
             stw.Edit(fn)
         case ":read":
             stw.ReadFile(fn)
+        case ":rb":
+            stw.ReadBucklingFile(fn)
+        case ":rz":
+            stw.ReadZoubunFile(fn)
         case ":add":
             stw.AddResult(fn, false)
         case ":adds":
