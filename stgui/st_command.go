@@ -14,6 +14,7 @@ import (
     "github.com/yofu/st/stlib"
     "os"
     "path/filepath"
+    "sort"
 )
 
 var (
@@ -75,6 +76,7 @@ var (
     REACTION = &Command{"REACTION", "show sum of reaction", reaction}
     NOTICE1459 = &Command{"NOTICE1459", "shishou", notice1459}
     ZOUBUNDISP = &Command{"ZOUBUNDISP", "output displacement", zoubundisp}
+    ZOUBUNYIELD = &Command{"ZOUBUNYIELD", "output Fmax & Fmin", zoubunyield}
 )
 
 func init() {
@@ -134,6 +136,7 @@ func init() {
     Commands["REACTION"]=REACTION
     Commands["NOTICE1459"]=NOTICE1459
     Commands["ZOUBUNDISP"]=ZOUBUNDISP
+    Commands["ZOUBUNYIELD"]=ZOUBUNYIELD
 }
 
 type Command struct {
@@ -2460,4 +2463,46 @@ func zoubundisp (stw *Window) {
     otp.WriteTo(w)
     stw.addHistory(fmt.Sprintf("OUTPUT: %s", fn))
     stw.EscapeCB()
+}
+
+func zoubunyield (stw *Window) {
+    var otp bytes.Buffer
+    var skeys []int
+    for k := range(stw.Frame.Sects) {
+        skeys = append(skeys, k)
+    }
+    sort.Ints(skeys)
+    otp.WriteString("種別　断面番号　  　　　 Ｎ[tf]　Ｑx[tf]　 Ｑy[tf]　Ｍz[tfm]　Ｍx[tfm]　Ｍy[tfm]\n")
+    for _, k := range(skeys) {
+        sec := stw.Frame.Sects[k]
+        if sec.Num < 700 {
+            otp.WriteString(fmt.Sprintf("         %4d     最大   ", sec.Num))
+            for i:=0; i<6; i++ {
+                otp.WriteString(fmt.Sprintf(" %8.1f", sec.Yield[2*i]))
+            }
+            otp.WriteString("\n")
+            otp.WriteString("                  最小   ")
+            for i:=0; i<6; i++ {
+                otp.WriteString(fmt.Sprintf(" %8.1f", sec.Yield[2*i+1]))
+            }
+            otp.WriteString("\n")
+        } else if sec.Num > 900 {
+            otp.WriteString(fmt.Sprintf("         %4d     最大   ", sec.Num))
+            otp.WriteString(fmt.Sprintf(" %8.1f", sec.Yield[0]))
+            otp.WriteString("\n")
+            otp.WriteString(fmt.Sprintf("                  最小   ", sec.Num))
+            otp.WriteString(fmt.Sprintf(" %8.1f", sec.Yield[1]))
+            otp.WriteString("\n")
+        }
+    }
+    fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunyield.txt")
+    w, err := os.Create(fn)
+    defer w.Close()
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeCB()
+    }
+    otp.WriteTo(w)
+    stw.addHistory(fmt.Sprintf("OUTPUT: %s", fn))
+    stw.EscapeAll()
 }

@@ -702,6 +702,13 @@ func (frame *Frame) ReadData (filename string) error {
         snum := int(num)
         if _, ok := frame.Sects[snum]; !ok {
             sect := frame.AddSect(snum) // TODO: set E, poi, ...
+            for i:=0; i<12; i++ {
+                val, err := strconv.ParseFloat(words[7+i], 64)
+                if err != nil {
+                    return err
+                }
+                sect.Yield[i] = val
+            }
             if len(words)>=20 {
                 tp, err := strconv.ParseInt(words[19], 10 ,64)
                 if err != nil {
