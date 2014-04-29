@@ -1073,7 +1073,7 @@ func (frame *Frame) ParseEigen(lis [][]string) (err error) {
 // }}}
 
 
-// ReadZoubun
+// ReadZoubun// {{{
 func (frame *Frame) ReadZoubun (filename string) error {
     tmp := make([][]string, 0)
     var period string
@@ -1104,6 +1104,9 @@ func (frame *Frame) ReadZoubun (filename string) error {
                                    }
                                    return nil
                                })
+    if err != nil {
+        return err
+    }
     err = frame.ParseZoubun(tmp, period)
     if err != nil {
         return err
@@ -1214,6 +1217,7 @@ func (frame *Frame) ParseZoubunForm (lis [][]string, period string) error {
     }
     return nil
 }
+// }}}
 
 
 // ReadLst// {{{
@@ -1237,6 +1241,9 @@ func (frame *Frame) ReadLst (filename string) error {
                                    }
                                    return nil
                                })
+    if err != nil {
+        return err
+    }
     err = frame.ParseLst(tmp)
     if err != nil {
         return err
