@@ -77,6 +77,8 @@ type Show struct {// {{{
 
     Stress   map[int]uint
 
+    YieldFunction bool
+
     Mfact float64
     MomentColor int
     StressTextColor int

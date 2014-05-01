@@ -251,6 +251,34 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
                 }
             }
         }
+        if show.YieldFunction {
+            f, err := elem.YieldFunction(show.Period)
+            for j:=0; j<2; j++ {
+                switch err[j].(type) {
+                default:
+                    cvs.Foreground(StressTextColor)
+                case st.YieldedError:
+                    cvs.Foreground(YieldedTextColor)
+                case st.BrittleFailureError:
+                    cvs.Foreground(BrittleTextColor)
+                }
+                coord := make([]float64, 3)
+                for i, en := range elem.Enod {
+                    for k:=0; k<3; k++ {
+                        coord[k] += (-0.5*math.Abs(float64(i-j))+0.75)*en.Coord[k]
+                    }
+                }
+                stpos := elem.Frame.View.ProjectCoord(coord)
+                // TODO: rotate text
+                if j == 0 {
+                    cvs.TextAlignment(cd.CD_SOUTH)
+                } else {
+                    cvs.TextAlignment(cd.CD_NORTH)
+                }
+                cvs.FText(stpos[0], stpos[1], fmt.Sprintf("%.3f", f[j]))
+                cvs.TextAlignment(DefaultTextAlignment)
+            }
+        }
     } else {
         cvs.InteriorStyle(cd.CD_HATCH)
         cvs.Begin(cd.CD_FILL)

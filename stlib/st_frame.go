@@ -22,6 +22,7 @@ var (
 const (
     RADIUS = 0.95
     EXPONENT = 1.5
+    QUFACT = 1.25
 )
 
 var (

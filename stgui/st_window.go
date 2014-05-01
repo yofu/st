@@ -67,6 +67,8 @@ var (
     ConfColor = cd.CD_GRAY
     MomentColor = cd.CD_DARK_MAGENTA
     StressTextColor = cd.CD_GRAY
+    YieldedTextColor = cd.CD_YELLOW
+    BrittleTextColor = cd.CD_RED
 )
 
 var (
@@ -264,6 +266,7 @@ func NewWindow(homedir string) *Window {// {{{
     stw.Labels["SLAB_MZ"]     = stw.stressLabel(st.SBRACE, 3)
     stw.Labels["SLAB_MX"]     = stw.stressLabel(st.SBRACE, 4)
     stw.Labels["SLAB_MY"]     = stw.stressLabel(st.SBRACE, 5)
+    stw.Labels["YIELD"]       = stw.displayLabel("YIELD", false)
 
     iup.Menu(
         iup.Attrs("BGCOLOR", labelBGColor,),
@@ -815,6 +818,7 @@ func NewWindow(homedir string) *Window {// {{{
                            stw.Labels["BOND"],
                            stw.Labels["CONF"],
                            stw.Labels["PHINGE"],
+                           stw.Labels["YIELD"],
                            stw.Labels["KIJUN"],
                            stw.Labels["DEFORMATION"])
     tgrang := iup.Vbox(datasectionlabel("RANGE"),
@@ -3626,6 +3630,8 @@ func (stw *Window) displayLabel (name string, defval bool) *iup.Handle {
                                         stw.Frame.Show.Kijun = !stw.Frame.Show.Kijun
                                     case "DEFORMATION":
                                         stw.Frame.Show.Deformation = !stw.Frame.Show.Deformation
+                                    case "YIELD":
+                                        stw.Frame.Show.YieldFunction = !stw.Frame.Show.YieldFunction
                                     }
                                     if rtn.GetAttribute("FGCOLOR") == labelFGColor {
                                         rtn.SetAttribute("FGCOLOR", labelOFFColor)

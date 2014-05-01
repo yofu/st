@@ -40,3 +40,29 @@ type ZeroAllowableError struct {
 func (z ZeroAllowableError) Error () string {
     return fmt.Sprintf("Rate: %s == 0.0", z.Name)
 }
+
+type BrittleFailureError struct {
+    elem *Elem
+    index int
+}
+
+func BrittleFailure (elem *Elem, index int) BrittleFailureError {
+    return BrittleFailureError{elem, index}
+}
+
+func (b BrittleFailureError) Error () string {
+    return fmt.Sprintf("BRITTLE FAILURE: ELEM %d NODE %d", b.elem.Num, b.elem.Enod[b.index].Num)
+}
+
+type YieldedError struct {
+    elem *Elem
+    index int
+}
+
+func Yielded (elem *Elem, index int) YieldedError {
+    return YieldedError{elem, index}
+}
+
+func (b YieldedError) Error () string {
+    return fmt.Sprintf("YIELDED: ELEM %d NODE %d", b.elem.Num, b.elem.Enod[b.index].Num)
+}
