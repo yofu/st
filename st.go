@@ -8,7 +8,7 @@ import (
 
 const (
     version = "0.1.0"
-    modified = "LAST CHANGE:31-Mar-2014."
+    modified = "LAST CHANGE:05-May-2014."
     HOME = "C:/D/CDOCS/Hogan"
 )
 

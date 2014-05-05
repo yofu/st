@@ -332,12 +332,12 @@ func ModifyEnod (ns []*Node) []*Node {
     rtn[0] = ns[0]
     num := 1
     for i:=0; i<l-1; i++ {
-        if !IsParallel(vecs[i], vecs[i+1], 1e-4) {
+        if !IsParallel(vecs[i], vecs[i+1], 5e-3) {
             rtn[num] = ns[i+1]
             num++
         }
     }
-    if !IsParallel(vecs[l-1], vecs[0], 1e-4) {
+    if !IsParallel(vecs[l-1], vecs[0], 5e-3) {
         return rtn[:num]
     } else {
         return rtn[1:num]

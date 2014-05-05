@@ -1946,11 +1946,9 @@ func (stw *Window) Chain (x, y float64, el *st.Elem, maxdepth int) ([]*st.Node, 
     for {
         minangle := 10000.0
         var addelem *st.Elem
-        fmt.Printf("NODE: %d\n",next.Num)
         for _, cand := range stw.Frame.SearchElem(next) {
             if cand == nil { continue }
             if cand.Hide || !cand.IsLineElem() || cand == tmpel { continue }
-            fmt.Printf("ELEM: %d\n",cand.Num)
             var otherside *st.Node
             for _, en := range cand.Enod {
                 if en != next { otherside = en; break }
@@ -1979,6 +1977,34 @@ func (stw *Window) Chain (x, y float64, el *st.Elem, maxdepth int) ([]*st.Node, 
 }
 // }}}
 
+func divideenods (ns []*st.Node, maxlen int) [][]*st.Node {
+    if len(ns) <= maxlen { return [][]*st.Node{ns} }
+    rtn := make([][]*st.Node, 0)
+    num := 0
+    seek := 0
+    tmp := make([]*st.Node, maxlen)
+    for {
+        var ind int
+        for i, n := range ns[seek:] {
+            ind = i%maxlen
+            tmp[ind] = n
+            if ind+1 == maxlen {
+                rtn = append(rtn, tmp)
+                tmp = make([]*st.Node, maxlen)
+                num++
+                seek = ind
+                break
+            }
+        }
+        if ind+1 < maxlen {
+            tmp[ind+1] = ns[0]
+            rtn = append(rtn, tmp[:ind+2])
+            num++
+            break
+        }
+    }
+    return rtn[:num]
+}
 
 // HATCHPLATEELEM// {{{
 func hatchplateelem (stw *Window) {
@@ -1987,14 +2013,49 @@ func hatchplateelem (stw *Window) {
         en := st.ModifyEnod(ns)
         en = st.Upside(en)
         sec := stw.Frame.DefaultSect()
-        el := stw.Frame.AddPlateElem(-1, en, sec, st.NONE)
-        var buf bytes.Buffer
-        buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
-        for _, n := range en {
-            buf.WriteString(fmt.Sprintf("%d ", n.Num))
+        switch len(en) {
+        case 0,1,2:
+            return
+        case 3, 4:
+            if len(stw.Frame.SearchElem(en...)) == 0 {
+                el := stw.Frame.AddPlateElem(-1, en, sec, st.NONE)
+                var buf bytes.Buffer
+                buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
+                for _, n := range en {
+                    buf.WriteString(fmt.Sprintf("%d ", n.Num))
+                }
+                buf.WriteString(fmt.Sprintf(", SECT: %d)", sec.Num))
+                stw.addHistory(buf.String())
+            } else {
+                var buf bytes.Buffer
+                buf.WriteString("ELEM already exists: ")
+                for _, n := range en {
+                    buf.WriteString(fmt.Sprintf("%d ", n.Num))
+                }
+                stw.addHistory(buf.String())
+            }
+        default:
+            ens := divideenods(en, 4)
+            for _, eni := range ens {
+                if len(stw.Frame.SearchElem(eni...)) == 0 {
+                    el := stw.Frame.AddPlateElem(-1, eni, sec, st.NONE)
+                    var buf bytes.Buffer
+                    buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
+                    for _, n := range eni {
+                        buf.WriteString(fmt.Sprintf("%d ", n.Num))
+                    }
+                    buf.WriteString(fmt.Sprintf(", SECT: %d)", sec.Num))
+                    stw.addHistory(buf.String())
+                } else {
+                    var buf bytes.Buffer
+                    buf.WriteString("ELEM already exists: ")
+                    for _, n := range en {
+                        buf.WriteString(fmt.Sprintf("%d ", n.Num))
+                    }
+                    stw.addHistory(buf.String())
+                }
+            }
         }
-        buf.WriteString(fmt.Sprintf(", SECT: %d)", sec.Num))
-        stw.addHistory(buf.String())
     }
     stw.canv.SetCallback( func (arg *iup.MouseButton) {
                               if stw.Frame != nil {
