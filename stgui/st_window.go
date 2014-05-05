@@ -321,7 +321,7 @@ func NewWindow(homedir string) *Window {// {{{
                     iup.Attr("TITLE","Save As\tCtrl+A"),
                     iup.Attr("TIP","Save file As"),
                     func (arg *iup.ItemAction) {
-                        stw.SaveAS()
+                        stw.Save()
                     },
                 ),
                 iup.Item(
@@ -356,11 +356,11 @@ func NewWindow(homedir string) *Window {// {{{
                     iup.Attr("TITLE","Quit"),
                     iup.Attr("TIP","Exit Application"),
                     func (arg *iup.ItemAction) {
-                        if stw.Changed {
-                            if stw.Yn("CHANGED", "変更を保存しますか") {
-                                stw.SaveAS()
-                            }
-                        }
+                        // if stw.Changed {
+                        //     if stw.Yn("CHANGED", "変更を保存しますか") {
+                        //         stw.SaveAS()
+                        //     }
+                        // }
                         arg.Return = iup.CLOSE
                     },
                 ),
@@ -658,7 +658,7 @@ func NewWindow(homedir string) *Window {// {{{
                         }
                     case 'A':
                         if key.IsCtrl() {
-                            stw.SaveAS()
+                            stw.ShowAll()
                         }
                     case 'R':
                         if key.IsCtrl() {
@@ -1175,11 +1175,11 @@ func (stw *Window) SaveFile(fn string) error {
 
 
 func (stw *Window) Close (force bool) {
-    if stw.Changed {
-        if stw.Yn("CHANGED", "変更を保存しますか") {
-            stw.SaveAS()
-        }
-    }
+    // if stw.Changed {
+    //     if stw.Yn("CHANGED", "変更を保存しますか") {
+    //         stw.SaveAS()
+    //     }
+    // }
     stw.Dlg.Destroy()
 }
 
@@ -1550,11 +1550,11 @@ func (stw *Window) exmode (command string) {
                 }
             }
         case ":e":
-            if stw.Changed {
-                if stw.Yn("CHANGED", "変更を保存しますか") {
-                    stw.SaveAS()
-                }
-            }
+            // if stw.Changed {
+            //     if stw.Yn("CHANGED", "変更を保存しますか") {
+            //         stw.SaveAS()
+            //     }
+            // }
             if fn != "" {
                 if !st.FileExists(fn) {
                     stw.addHistory(fmt.Sprintf("File doesn't exist: %s", fn))
@@ -2848,7 +2848,7 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
         }
     case 'S':
         if key.IsCtrl() {
-            stw.ShowAll()
+            stw.Save()
         }
     case 'L':
         if key.IsCtrl() {
@@ -2860,7 +2860,7 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
         }
     case 'A':
         if key.IsCtrl() {
-            stw.SaveAS()
+            stw.ShowAll()
         }
     case 'R':
         if key.IsCtrl() {
@@ -3093,7 +3093,7 @@ func (stw *Window) CMenu () {
                                    iup.Attr("TITLE","Save As\tCtrl+A"),
                                    iup.Attr("TIP","Save file As"),
                                    func (arg *iup.ItemAction) {
-                                       stw.SaveAS()
+                                       stw.Save()
                                    },
                                ),
                                iup.Item(
@@ -3127,11 +3127,11 @@ func (stw *Window) CMenu () {
                                    iup.Attr("TITLE","Quit"),
                                    iup.Attr("TIP","Exit Application"),
                                    func (arg *iup.ItemAction) {
-                                       if stw.Changed {
-                                           if stw.Yn("CHANGED", "変更を保存しますか") {
-                                               stw.SaveAS()
-                                           }
-                                       }
+                                       // if stw.Changed {
+                                       //     if stw.Yn("CHANGED", "変更を保存しますか") {
+                                       //         stw.SaveAS()
+                                       //     }
+                                       // }
                                        arg.Return = iup.CLOSE
                                    },
                                ),

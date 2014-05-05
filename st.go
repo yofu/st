@@ -20,7 +20,7 @@ func main() {
     sw.Version = version
     sw.Modified = modified
     sw.Dlg.Show()
-    brk := make(chan bool)
-    go stgui.UpdateInps("C:/D/CDOCS/Hogan", brk)
+    // brk := make(chan bool)
+    // go stgui.UpdateInps("C:/D/CDOCS/Hogan", brk)
     iup.MainLoop()
 }
