@@ -20,63 +20,63 @@ import (
 var (
     Commands = make(map[string]*Command,0)
 
-    DISTS = &Command{"DISTS", "measure distance", dists}
-    TOGGLEBOND = &Command{"TOGGLE BOND", "toggle bond of selected elem", togglebond}
-    COPYBOND = &Command{"COPY BOND", "copy bond of selected elem", copybond}
-    BONDPIN = &Command{"BOND PIN", "set bond of selected elem to pin-pin", bondpin}
-    BONDRIGID = &Command{"BOND RIGID", "set bond of selected elem to rigid-rigid", bondrigid}
-    CONFFIX = &Command{"CONF FIX", "set conf of selected node to fix", conffix}
-    CONFPIN = &Command{"CONF PIN", "set conf of selected node to pin", confpin}
-    CONFXYROLLER = &Command{"CONF XYROLLER", "set conf of selected node to xy-roller", confxyroller}
-    CONFFREE = &Command{"CONF FREE", "set conf of selected node to free", conffree}
-    OPEN  = &Command{"OEPN INPUT", "open inp file", openinput}
-    INSERT = &Command{"INSERT", "insert new frame", insert}
-    SETFOCUS = &Command{"SET FOCUS", "set focus to the center", setfocus}
-    SELECTNODE = &Command{"SELECT NODE", "select elem by number", selectnode}
-    SELECTELEM = &Command{"SELECT ELEM", "select elem by number", selectelem}
-    SELECTSECT = &Command{"SELECT SECT", "select elem by section", selectsect}
-    SELECTCHILDREN = &Command{"SELECT CHILDREN", "select elem.Children", selectchildren}
-    ERRORELEM = &Command{"ERROR ELEM", "select elem whose max(rate)>1.0", errorelem}
-    FENCE = &Command{"FENCE", "select elem by fence", fence}
-    ADDLINEELEM = &Command{"ADD LINE ELEM", "add line elem", addlineelem}
-    ADDPLATEELEM = &Command{"ADD PLATE ELEM", "add plate elem", addplateelem}
-    ADDPLATEELEMBYLINE = &Command{"ADD PLATE ELEM BY LINE", "add plate elem by line", addplateelembyline}
-    HATCHPLATEELEM = &Command{"HATCH PLATE ELEM", "add plate elem by hatching", hatchplateelem}
-    EDITPLATEELEM = &Command{"EDIT PLATE ELEM", "edit plate elem", editplateelem}
-    MATCHPROP = &Command{"MATCH PROPERTY", "match property", matchproperty}
-    AXISTOCANG = &Command{"AXISTOCANG", "set cang by axis", axistocang}
-    COPYELEM = &Command{"COPY ELEM", "copy selected elems", copyelem}
-    MOVEELEM = &Command{"MOVE ELEM", "move selected elems", moveelem}
-    MOVENODE = &Command{"MOVE NODE", "move selected nodes", movenode}
-    PINCHNODE = &Command{"PINCH NODE", "pinch nodes", pinchnode}
-    ROTATE = &Command{"ROTATE", "rotate selected nodes", rotate}
-    MIRROR = &Command{"MIRROR", "mirror selected elems", mirror}
-    SCALE = &Command{"SCALE", "scale selected nodes", scale}
-    SEARCHELEM = &Command{"SEARCH ELEM", "search elems using node", searchelem}
-    NODETOELEM = &Command{"NODE TO ELEM", "select elems using selected node", nodetoelemall}
-    ELEMTONODE = &Command{"ELEM TO NODE", "select nodes used by selected elem", elemtonode}
-    CONNECTED = &Command{"CONNECTED", "select nodes connected to selected node", connected}
-    ONNODE = &Command{"ON NODE", "select nodes which is on selected elems", onnode}
-    NODENOREFERENCE = &Command{"NODE NO REFERENCE", "delete nodes which are not refered by any elem", nodenoreference}
-    ELEMSAMENODE = &Command{"ELEM SAME NODE", "delete elems which has duplicated enod", elemsamenode}
-    NODEDUPLICATION = &Command{"NODE DUPLICATION", "delete duplicated nodes", nodeduplication}
-    CATBYNODE = &Command{"CAT BY NODE", "join 2 elems using selected node", catbynode}
-    JOINLINEELEM = &Command{"JOIN LINE ELEM", "join selected 2 elems", joinlineelem}
-    JOINPLATEELEM = &Command{"JOIN PLATE ELEM", "join selected 2 elems", joinplateelem}
-    EXTRACTARCLM = &Command{"EXTRACT ARCLM", "extract arclm", extractarclm}
-    DIVIDEATONS = &Command{"DIVIDE AT ONS", "divide selected elems at onnode", divideatons}
-    DIVIDEATMID = &Command{"DIVIDE AT MID", "divide selected elems at midpoint", divideatmid}
-    INTERSECT = &Command{"INTERSECT", "divide selected elems at intersection", intersect}
-    INTERSECTALL = &Command{"INTERSECT ALL", "divide selected elems at all intersection", intersectall}
-    TRIM = &Command{"TRIM", "trim elements with selected elem", trim}
-    EXTEND = &Command{"EXTEND", "extend elements to selected elem", extend}
-    MERGENODE = &Command{"MERGE NODE", "merge nodes", mergenode}
-    ERASE = &Command{"ERASE", "erase selected elems", erase}
-    FACTS = &Command{"FACTS", "calculate eccentricity ratio and modulus of rigidity", facts}
-    REACTION = &Command{"REACTION", "show sum of reaction", reaction}
-    NOTICE1459 = &Command{"NOTICE1459", "shishou", notice1459}
-    ZOUBUNDISP = &Command{"ZOUBUNDISP", "output displacement", zoubundisp}
-    ZOUBUNYIELD = &Command{"ZOUBUNYIELD", "output Fmax & Fmin", zoubunyield}
+    DISTS              = &Command{"DISTANCE", "DISTS", "measure distance", dists}
+    TOGGLEBOND         = &Command{"TOGGLE", "TOGGLE BOND", "toggle bond of selected elem", togglebond}
+    COPYBOND           = &Command{"COPY", "COPY BOND", "copy bond of selected elem", copybond}
+    BONDPIN            = &Command{"PIN", "BOND PIN", "set bond of selected elem to pin-pin", bondpin}
+    BONDRIGID          = &Command{"RIGID", "BOND RIGID", "set bond of selected elem to rigid-rigid", bondrigid}
+    CONFFIX            = &Command{"FIX", "CONF FIX", "set conf of selected node to fix", conffix}
+    CONFPIN            = &Command{"PIN", "CONF PIN", "set conf of selected node to pin", confpin}
+    CONFXYROLLER       = &Command{"XY ROLLER", "CONF XYROLLER", "set conf of selected node to xy-roller", confxyroller}
+    CONFFREE           = &Command{"FREE", "CONF FREE", "set conf of selected node to free", conffree}
+    OPEN               = &Command{"OPEN", "OEPN INPUT", "open inp file", openinput}
+    INSERT             = &Command{"INST", "INSERT", "insert new frame", insert}
+    SETFOCUS           = &Command{"STFO", "SET FOCUS", "set focus to the center", setfocus}
+    SELECTNODE         = &Command{"_NOD", "SELECT NODE", "select elem by number", selectnode}
+    SELECTELEM         = &Command{"_ELM", "SELECT ELEM", "select elem by number", selectelem}
+    SELECTSECT         = &Command{"_SEC", "SELECT SECT", "select elem by section", selectsect}
+    SELECTCHILDREN     = &Command{"_CLD", "SELECT CHILDREN", "select elem.Children", selectchildren}
+    ERRORELEM          = &Command{"ERRO", "ERROR ELEM", "select elem whose max(rate)>1.0", errorelem}
+    FENCE              = &Command{"FNCE", "FENCE", "select elem by fence", fence}
+    ADDLINEELEM        = &Command{"LINE", "ADD LINE ELEM", "add line elem", addlineelem}
+    ADDPLATEELEM       = &Command{"PLATE(4pts)", "ADD PLATE ELEM", "add plate elem", addplateelem}
+    ADDPLATEELEMBYLINE = &Command{"PLATE(2lines)", "ADD PLATE ELEM BY LINE", "add plate elem by line", addplateelembyline}
+    HATCHPLATEELEM     = &Command{"HATCHING", "HATCH PLATE ELEM", "add plate elem by hatching", hatchplateelem}
+    EDITPLATEELEM      = &Command{"EDPL", "EDIT PLATE ELEM", "edit plate elem", editplateelem}
+    MATCHPROP          = &Command{"COPY PROPERTY", "MATCH PROPERTY", "match property", matchproperty}
+    AXISTOCANG         = &Command{"CANG", "AXISTOCANG", "set cang by axis", axistocang}
+    COPYELEM           = &Command{"COPY", "COPY ELEM", "copy selected elems", copyelem}
+    MOVEELEM           = &Command{"MOVE", "MOVE ELEM", "move selected elems", moveelem}
+    MOVENODE           = &Command{"MOVE", "MOVE NODE", "move selected nodes", movenode}
+    PINCHNODE          = &Command{"NDPC", "PINCH NODE", "pinch nodes", pinchnode}
+    ROTATE             = &Command{"ROTE", "ROTATE", "rotate selected nodes", rotate}
+    MIRROR             = &Command{"MIRR", "MIRROR", "mirror selected elems", mirror}
+    SCALE              = &Command{"SCLE", "SCALE", "scale selected nodes", scale}
+    SEARCHELEM         = &Command{"ELSR", "SEARCH ELEM", "search elems using node", searchelem}
+    NODETOELEM         = &Command{"N->E", "NODE TO ELEM", "select elems using selected node", nodetoelemall}
+    ELEMTONODE         = &Command{"E->N", "ELEM TO NODE", "select nodes used by selected elem", elemtonode}
+    CONNECTED          = &Command{"N->N", "CONNECTED", "select nodes connected to selected node", connected}
+    ONNODE             = &Command{"ONND", "ON NODE", "select nodes which is on selected elems", onnode}
+    NODENOREFERENCE    = &Command{"NODE NO REF.", "NODE NO REFERENCE", "delete nodes which are not refered by any elem", nodenoreference}
+    ELEMSAMENODE       = &Command{"ELEM SAME NODE", "ELEM SAME NODE", "delete elems which has duplicated enod", elemsamenode}
+    NODEDUPLICATION    = &Command{"DUPLICATIVE NODE", "NODE DUPLICATION", "delete duplicated nodes", nodeduplication}
+    CATBYNODE          = &Command{"CATN", "CAT BY NODE", "join 2 elems using selected node", catbynode}
+    JOINLINEELEM       = &Command{"JOIN LINE", "JOIN LINE ELEM", "join selected 2 elems", joinlineelem}
+    JOINPLATEELEM      = &Command{"JOIN PLATE", "JOIN PLATE ELEM", "join selected 2 elems", joinplateelem}
+    EXTRACTARCLM       = &Command{"EXAR", "EXTRACT ARCLM", "extract arclm", extractarclm}
+    DIVIDEATONS        = &Command{"ON NODES", "DIVIDE AT ONS", "divide selected elems at onnode", divideatons}
+    DIVIDEATMID        = &Command{"MID POINT", "DIVIDE AT MID", "divide selected elems at midpoint", divideatmid}
+    INTERSECT          = &Command{"INTS", "INTERSECT", "divide selected elems at intersection", intersect}
+    INTERSECTALL       = &Command{"INTA", "INTERSECT ALL", "divide selected elems at all intersection", intersectall}
+    TRIM               = &Command{"TRIM", "TRIM", "trim elements with selected elem", trim}
+    EXTEND             = &Command{"EXTEND", "EXTEND", "extend elements to selected elem", extend}
+    MERGENODE          = &Command{"MERGE", "MERGE NODE", "merge nodes", mergenode}
+    ERASE              = &Command{"ERASE", "ERASE", "erase selected elems", erase}
+    FACTS              = &Command{"FACT", "FACTS", "calculate eccentricity ratio and modulus of rigidity", facts}
+    REACTION           = &Command{"RCTN", "REACTION", "show sum of reaction", reaction}
+    NOTICE1459         = &Command{"1459", "NOTICE1459", "shishou", notice1459}
+    ZOUBUNDISP         = &Command{"ZBDP", "ZOUBUNDISP", "output displacement", zoubundisp}
+    ZOUBUNYIELD        = &Command{"ZBYD", "ZOUBUNYIELD", "output Fmax & Fmin", zoubunyield}
 )
 
 func init() {
@@ -140,6 +140,7 @@ func init() {
 }
 
 type Command struct {
+    Display string
     Name    string
     command string
     call    func(*Window)

@@ -11,10 +11,10 @@ import (
 )
 
 var (
-    GRAVITY = &Command{"GRAVITY", "move nodes like gravitational potential", gravity}
-    SMOOTH = &Command{"SMOOTH", "move nodes towards flatten", smooth}
-    HANGING = &Command{"HANGING", "hang nodes", hanging}
-    RING = &Command{"RING", "ring", ring}
+    GRAVITY = &Command{"#GRV", "GRAVITY", "move nodes like gravitational potential", gravity}
+    SMOOTH  = &Command{"#SMT", "SMOOTH", "move nodes towards flatten", smooth}
+    HANGING = &Command{"#HNG", "HANGING", "hang nodes", hanging}
+    RING    = &Command{"#RNG", "RING", "ring", ring}
 )
 
 func init() {

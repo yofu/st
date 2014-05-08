@@ -381,20 +381,6 @@ func NewWindow(homedir string) *Window {// {{{
                     },
                 ),
                 iup.Item(
-                    iup.Attr("TITLE","Property\tCtrl+Q"),
-                    func (arg *iup.ItemAction) {
-                        if !stw.Property {
-                            stw.PropertyDialog()
-                        }
-                    },
-                ),
-                iup.Item(
-                    iup.Attr("TITLE","Section\tCtrl+Q"),
-                    func (arg *iup.ItemAction) {
-                        stw.SectionDialog()
-                    },
-                ),
-                iup.Item(
                     iup.Attr("TITLE","Edit Inp\tCtrl+E"),
                     func (arg *iup.ItemAction) {
                         stw.EditInp()
@@ -475,6 +461,49 @@ func NewWindow(homedir string) *Window {// {{{
                     iup.Attr("TITLE","Show Selected Elems\tCtrl+D"),
                     func (arg *iup.ItemAction) {
                         stw.HideNotSelected()
+                    },
+                ),
+            ),
+        ),
+        iup.SubMenu("TITLE=Dialog",
+            iup.Menu(
+                iup.Item(
+                    iup.Attr("TITLE","Property\tCtrl+Q"),
+                    func (arg *iup.ItemAction) {
+                        if !stw.Property {
+                            stw.PropertyDialog()
+                        }
+                    },
+                ),
+                iup.Item(
+                    iup.Attr("TITLE","Section"),
+                    func (arg *iup.ItemAction) {
+                        stw.SectionDialog()
+                    },
+                ),
+                iup.Separator(),
+                iup.Item(
+                    iup.Attr("TITLE","Utility"),
+                    func (arg *iup.ItemAction) {
+                        stw.CommandDialogUtility()
+                    },
+                ),
+                iup.Item(
+                    iup.Attr("TITLE","Node"),
+                    func (arg *iup.ItemAction) {
+                        stw.CommandDialogNode()
+                    },
+                ),
+                iup.Item(
+                    iup.Attr("TITLE","Elem"),
+                    func (arg *iup.ItemAction) {
+                        stw.CommandDialogElem()
+                    },
+                ),
+                iup.Item(
+                    iup.Attr("TITLE","Conf/Bond"),
+                    func (arg *iup.ItemAction) {
+                        stw.CommandDialogConfBond()
                     },
                 ),
             ),
@@ -3316,6 +3345,108 @@ func (stw *Window) SectionDialog () {
     }
     dlg := iup.Dialog(sects)
     dlg.SetAttribute("TITLE", "Section")
+    dlg.SetAttribute("PARENTDIALOG", "mainwindow")
+    dlg.Map()
+    dlg.Show()
+}
+
+func (stw *Window) commandButton (name string, command *Command, size string) *iup.Handle {
+    rtn := iup.Button()
+    rtn.SetAttribute("TITLE", name)
+    rtn.SetAttribute("RASTERSIZE", size)
+    rtn.SetCallback(func (arg *iup.ButtonAction) {
+                        stw.ExecCommand(command)
+                        iup.SetFocus(stw.canv)
+    })
+    return rtn
+}
+
+func (stw *Window) CommandDialogConfBond () {
+    coms1 := iup.Vbox()
+    var l *iup.Handle
+    l = datasectionlabel("CONF")
+    l.SetAttribute("SIZE", "40x10")
+    coms1.Append(l)
+    for _, k := range []string{"CONFFREE", "CONFPIN", "CONFFIX", "CONFXYROLLER"} {
+        com := Commands[k]
+        coms1.Append(stw.commandButton(com.Display, com, "80x30"))
+    }
+    coms2 := iup.Vbox()
+    l = datasectionlabel("BOND")
+    l.SetAttribute("SIZE", "40x10")
+    coms2.Append(l)
+    for _, k := range []string{"BONDPIN", "BONDRIGID", "TOGGLEBOND", "COPYBOND"} {
+        com := Commands[k]
+        coms2.Append(stw.commandButton(com.Display, com, "80x30"))
+    }
+    dlg := iup.Dialog(iup.Hbox(coms1, coms2,),)
+    dlg.SetAttribute("TITLE", "Conf/Bond")
+    dlg.SetAttribute("DIALOGFRAME", "YES")
+    dlg.SetAttribute("BGCOLOR", labelBGColor)
+    dlg.SetAttribute("PARENTDIALOG", "mainwindow")
+    dlg.Map()
+    dlg.Show()
+}
+
+func (stw *Window) CommandDialogUtility () {
+    coms1 := iup.Vbox()
+    var l *iup.Handle
+    l = datasectionlabel("UTILITY")
+    l.SetAttribute("SIZE", "40x10")
+    coms1.Append(l)
+    for _, k := range []string{"DISTS", "MATCHPROP", "NODEDUPLICATION", "NODENOREFERENCE", "ELEMSAMENODE"} {
+        com := Commands[k]
+        coms1.Append(stw.commandButton(com.Display, com, "120x30"))
+    }
+    dlg := iup.Dialog(iup.Hbox(coms1,),)
+    dlg.SetAttribute("TITLE", "Utility")
+    dlg.SetAttribute("DIALOGFRAME", "YES")
+    dlg.SetAttribute("BGCOLOR", labelBGColor)
+    dlg.SetAttribute("PARENTDIALOG", "mainwindow")
+    dlg.Map()
+    dlg.Show()
+}
+
+func (stw *Window) CommandDialogNode () {
+    coms1 := iup.Vbox()
+    var l *iup.Handle
+    l = datasectionlabel("NODE")
+    l.SetAttribute("SIZE", "40x10")
+    coms1.Append(l)
+    for _, k := range []string{"MOVENODE", "MERGENODE"} {
+        com := Commands[k]
+        coms1.Append(stw.commandButton(com.Display, com, "100x30"))
+    }
+    dlg := iup.Dialog(iup.Hbox(coms1,),)
+    dlg.SetAttribute("TITLE", "Node")
+    dlg.SetAttribute("DIALOGFRAME", "YES")
+    dlg.SetAttribute("BGCOLOR", labelBGColor)
+    dlg.SetAttribute("PARENTDIALOG", "mainwindow")
+    dlg.Map()
+    dlg.Show()
+}
+
+func (stw *Window) CommandDialogElem () {
+    coms1 := iup.Vbox()
+    var l *iup.Handle
+    l = datasectionlabel("ELEM")
+    l.SetAttribute("SIZE", "40x10")
+    coms1.Append(l)
+    for _, k := range []string{"COPYELEM", "MOVEELEM", "JOINLINEELEM", "JOINPLATEELEM"} {
+        com := Commands[k]
+        coms1.Append(stw.commandButton(com.Display, com, "100x30"))
+    }
+    l = datasectionlabel("ADD")
+    l.SetAttribute("SIZE", "40x10")
+    coms1.Append(l)
+    for _, k := range []string{"ADDLINEELEM", "ADDPLATEELEM", "ADDPLATEELEMBYLINE", "HATCHPLATEELEM"} {
+        com := Commands[k]
+        coms1.Append(stw.commandButton(com.Display, com, "100x30"))
+    }
+    dlg := iup.Dialog(iup.Hbox(coms1,),)
+    dlg.SetAttribute("TITLE", "Elem")
+    dlg.SetAttribute("DIALOGFRAME", "YES")
+    dlg.SetAttribute("BGCOLOR", labelBGColor)
     dlg.SetAttribute("PARENTDIALOG", "mainwindow")
     dlg.Map()
     dlg.Show()

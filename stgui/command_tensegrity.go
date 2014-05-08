@@ -11,9 +11,9 @@ import (
 )
 
 var (
-    TENSEGRITYADD = &Command{"TENSEGRITYADD", "add tensegrity elem", tensegrityadd}
-    TENSEGRITYDELETE = &Command{"TENSEGRITYDELETE", "delete tensegrity elem", tensegritydelete}
-    TENSEGRITYCONNECTED = &Command{"TENSEGRITYCONNECTED", "select tensegrity elem", tensegrityconnected}
+    TENSEGRITYADD       = &Command{"#ADD", "TENSEGRITYADD", "add tensegrity elem", tensegrityadd}
+    TENSEGRITYDELETE    = &Command{"#DEL", "TENSEGRITYDELETE", "delete tensegrity elem", tensegritydelete}
+    TENSEGRITYCONNECTED = &Command{"#CON", "TENSEGRITYCONNECTED", "select tensegrity elem", tensegrityconnected}
 )
 
 func init() {

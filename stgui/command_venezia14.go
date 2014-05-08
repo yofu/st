@@ -11,13 +11,13 @@ import (
 )
 
 var (
-    VEN14ROTATEZERO = &Command{"VENEZIA14 ROTATE ZERO", "rotate model to zero point", ven14rotatezero}
-    VEN14CUTTER = &Command{"VENEZIA14 CUTTER", "cut model at regular intervals", ven14cutter}
-    VEN14SURFACE = &Command{"VENEZIA14 SURFACE", "output coord data to create surface", ven14surface}
-    VEN14NORMAL = &Command{"VENEZIA14 NORMAL", "show normal vector of plate elems", ven14normal}
-    VEN14SETCANG = &Command{"VENEZIA14 SETCANG", "set cang of girders", ven14setcang}
-    VEN14ERRORELEM = &Command{"ERROR ELEM", "select elem whose max(rate)>1.15", ven14errorelem}
-    VEN14DEPTH = &Command{"VENEZIA14 DEPTH", "measure depth of surface", ven14depth}
+    VEN14ROTATEZERO = &Command{"#ROT", "VENEZIA14 ROTATE ZERO", "rotate model to zero point", ven14rotatezero}
+    VEN14CUTTER     = &Command{"#CUT", "VENEZIA14 CUTTER", "cut model at regular intervals", ven14cutter}
+    VEN14SURFACE    = &Command{"#SUR", "VENEZIA14 SURFACE", "output coord data to create surface", ven14surface}
+    VEN14NORMAL     = &Command{"#NML", "VENEZIA14 NORMAL", "show normal vector of plate elems", ven14normal}
+    VEN14SETCANG    = &Command{"#CAN", "VENEZIA14 SETCANG", "set cang of girders", ven14setcang}
+    VEN14ERRORELEM  = &Command{"#ERR", "ERROR ELEM", "select elem whose max(rate)>1.15", ven14errorelem}
+    VEN14DEPTH      = &Command{"#DEP", "VENEZIA14 DEPTH", "measure depth of surface", ven14depth}
 )
 
 func init() {
