@@ -317,9 +317,11 @@ func (frame *Frame) ParseProp(lis []string) error {
             p.Poi, err = strconv.ParseFloat(lis[i+1],64)
         case "PCOLOR":
             var tmpcol int64
+            val := 65536
             for j:=0; j<3; j++ {
                 tmpcol, err = strconv.ParseInt(lis[i+1+j],10,64)
-                p.Color += int(tmpcol)*int(math.Pow(16,float64(4-2*j)))
+                p.Color += int(tmpcol)*val
+                val >>= 8
             }
         }
         if err != nil {
@@ -364,9 +366,11 @@ func (frame *Frame) ParseSect(lis []string) error {
         case "COLOR":
             var tmpcol int64
             s.Color = 0
+            val := 65536
             for j:=0; j<3; j++ {
                 tmpcol, err = strconv.ParseInt(lis[i+1+j],10,64)
-                s.Color += int(tmpcol)*int(math.Pow(16,float64(4-2*j)))
+                s.Color += int(tmpcol)*val
+                val >>= 8
             }
         }
         if err != nil {

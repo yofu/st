@@ -151,12 +151,14 @@ func SearchInp(dirname string) (chan string) {
 func ColorInt(str string) (rtn int) {
     sep, _ := regexp.Compile(" +")
     lis := sep.Split(str,-1)
+    val := 65536
     for j:=0; j<3; j++ {
         tmpcol, err := strconv.ParseInt(lis[j],10,64)
         if err != nil {
             return 0
         }
-        rtn += int(tmpcol)*int(math.Pow(16,float64(4-2*j)))
+        rtn += int(tmpcol)*val
+        val >>= 8
     }
     return
 }
