@@ -15,6 +15,7 @@ import (
     "sort"
     "time"
     "github.com/visualfc/go-iup/iup"
+    // "github.com/visualfc/go-iup/iupim"
     "github.com/visualfc/go-iup/cd"
     "github.com/yofu/st/stlib"
 )
@@ -3353,6 +3354,9 @@ func (stw *Window) SectionDialog () {
 func (stw *Window) commandButton (name string, command *Command, size string) *iup.Handle {
     rtn := iup.Button()
     rtn.SetAttribute("TITLE", name)
+    // img := iupim.LoadImage(filepath.Join(gopath,"src/github.com/yofu/st/dist.png"))
+    // iup.SetHandle("image", img)
+    // rtn.SetAttribute("IMAGE", "image")
     rtn.SetAttribute("RASTERSIZE", size)
     rtn.SetCallback(func (arg *iup.ButtonAction) {
                         stw.ExecCommand(command)
