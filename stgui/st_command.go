@@ -60,6 +60,7 @@ var (
     NODENOREFERENCE    = &Command{"NODE NO REF.", "NODE NO REFERENCE", "delete nodes which are not refered by any elem", nodenoreference}
     ELEMSAMENODE       = &Command{"ELEM SAME NODE", "ELEM SAME NODE", "delete elems which has duplicated enod", elemsamenode}
     NODEDUPLICATION    = &Command{"DUPLICATIVE NODE", "NODE DUPLICATION", "delete duplicated nodes", nodeduplication}
+    ELEMDUPLICATION    = &Command{"DUPLICATIVE ELEM", "ELEM DUPLICATION", "delete duplicated elems", elemduplication}
     CATBYNODE          = &Command{"CATN", "CAT BY NODE", "join 2 elems using selected node", catbynode}
     JOINLINEELEM       = &Command{"JOIN LINE", "JOIN LINE ELEM", "join selected 2 elems", joinlineelem}
     JOINPLATEELEM      = &Command{"JOIN PLATE", "JOIN PLATE ELEM", "join selected 2 elems", joinplateelem}
@@ -120,6 +121,7 @@ func init() {
     Commands["NODENOREFERENCE"]=NODENOREFERENCE
     Commands["ELEMSAMENODE"]=ELEMSAMENODE
     Commands["NODEDUPLICATION"]=NODEDUPLICATION
+    Commands["ELEMDUPLICATION"]=ELEMDUPLICATION
     Commands["CATBYNODE"]=CATBYNODE
     Commands["JOINLINEELEM"]=JOINLINEELEM
     Commands["JOINPLATEELEM"]=JOINPLATEELEM
@@ -1666,6 +1668,26 @@ func nodeduplication (stw *Window) {
         stw.Redraw()
         if stw.Yn("NODE DUPLICATION", "重なった節点を削除しますか?") {
             stw.Frame.ReplaceNode(nm)
+        }
+    }
+    stw.EscapeAll()
+}
+
+
+// ELEMDUPLICATION
+func elemduplication (stw *Window) {
+    stw.Deselect()
+    els := stw.Frame.ElemDuplication()
+    if len(els) != 0 {
+        for k := range els {
+            stw.SelectElem = append(stw.SelectElem, k)
+        }
+        stw.Redraw()
+        if stw.Yn("ELEM DUPLICATION", "重なった部材を削除しますか?") {
+            for el := range els {
+                if el.Lock { continue }
+                delete(stw.Frame.Elems, el.Num)
+            }
         }
     }
     stw.EscapeAll()

@@ -4,6 +4,7 @@ import (
     "bytes"
     "fmt"
     "math"
+    "sort"
     "strings"
 )
 
@@ -429,5 +430,22 @@ func Upside (ns []*Node) []*Node {
         }
     }
     return rtn
+}
+
+func CompareNodes (ns1, ns2 []*Node) bool {
+    if len(ns1) != len(ns2) { return false }
+    n1 := make([]*Node, len(ns1))
+    n2 := make([]*Node, len(ns2))
+    for i:=0; i<len(n1); i++ {
+        n1[i] = ns1[i]; n2[i] = ns2[i]
+    }
+    sort.Sort(NodeByNum{n1})
+    sort.Sort(NodeByNum{n2})
+    for i:=0; i<len(n1); i++ {
+        if n1[i] != n2[i] {
+            return false
+        }
+    }
+    return true
 }
 // }}}

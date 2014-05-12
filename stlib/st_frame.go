@@ -2019,6 +2019,36 @@ func (frame *Frame) ReplaceNode(nmap map[*Node]*Node) {
     }
 }
 
+func (frame *Frame) ElemDuplication () map[*Elem]*Elem {
+    dups := make(map[*Elem]*Elem, 0)
+    elems := make([]*Elem, len(frame.Elems))
+    enum := 0
+    for _, el := range frame.Elems {
+        if el.Etype == WBRACE || el.Etype == SBRACE { continue }
+        elems[enum] = el
+        enum++
+    }
+    elems = elems[:enum]
+    sort.Sort(ElemBySumEnod{elems})
+    for i, el := range elems {
+        if _, ok := dups[el]; ok { continue }
+        sum1 := 0
+        for _, en := range el.Enod { sum1 += en.Num }
+        for _, el2 := range elems[i+1:] {
+            sum2 := 0
+            for _, en := range el2.Enod { sum2 += en.Num }
+            if sum1 == sum2 {
+                if CompareNodes(el.Enod, el2.Enod) {
+                    dups[el2] = el
+                }
+            } else {
+                break
+            }
+        }
+    }
+    return dups
+}
+
 func (frame *Frame) Cat (e1, e2 *Elem, n *Node) error {
     if !e1.IsLineElem() || !e2.IsLineElem() { return NotLineElem("Cat") }
     var ind1, ind2 int
