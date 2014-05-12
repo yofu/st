@@ -14,6 +14,20 @@ type Prop struct {
     Color int
 }
 
+// Sort// {{{
+type Props []*Prop
+func (p Props) Len() int { return len(p) }
+func (p Props) Swap(i, j int) {
+    p[i], p[j] = p[j], p[i]
+}
+
+type PropByNum struct { Props }
+func (p PropByNum) Less(i, j int) bool {
+    return p.Props[i].Num < p.Props[j].Num
+}
+// }}}
+
+
 func (prop *Prop) InpString () string {
     var rtn bytes.Buffer
     rtn.WriteString(fmt.Sprintf("PROP %d PNAME %s\n", prop.Num, prop.Name))

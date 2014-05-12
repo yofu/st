@@ -39,24 +39,18 @@ type Node struct {
 }
 
 
-// Sort
-// type Nodes map[int]*Node
-// func (n Nodes) Len() int { return len(n) }
-// func (n Nodes) Swap(i, j int) {
-//     tmp := n[i]
-//     n[i] = n[j]
-//     n[j] = tmp
-// }
+// Sort// {{{
+type Nodes []*Node
+func (n Nodes) Len() int { return len(n) }
+func (n Nodes) Swap(i, j int) {
+    n[i], n[j] = n[j], n[i]
+}
 
-// type NodeByNum struct { Nodes }
-// func (n NodeByNum) Less(i, j int) bool {
-//     fmt.Println(n.Nodes)
-//     fmt.Println(i,j)
-//     fmt.Println(n.Nodes[i].Num)
-//     fmt.Println(n.Nodes[j].Num)
-//     return n.Nodes[i].Num < n.Nodes[j].Num
-// }
-
+type NodeByNum struct { Nodes }
+func (n NodeByNum) Less(i, j int) bool {
+    return n.Nodes[i].Num < n.Nodes[j].Num
+}
+// }}}
 
 // New
 func NewNode() *Node {

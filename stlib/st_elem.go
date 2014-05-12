@@ -197,17 +197,24 @@ func (elem *Elem) AxisToCang (vector []float64, strong bool) float64 {
 
 
 // Sort// {{{
-// type Elems []*Elem
-// func (e Elems) Len() int { return len(e) }
-// func (e Elems) Swap(i, j int) {
-//     tmp := e[i]
-//     e[i] = e[j]
-//     e[j] = tmp
-// }
+type Elems []*Elem
+func (e Elems) Len() int { return len(e) }
+func (e Elems) Swap(i, j int) {
+    e[i], e[j] = e[j], e[i]
+}
 
-// type ElemByNum struct { Elems }
-// func (e ElemByNum) Less(i, j int) bool { return e.Elems[i].Num < e.Elems[j].Num }
+type ElemByNum struct { Elems }
+func (e ElemByNum) Less(i, j int) bool { return e.Elems[i].Num < e.Elems[j].Num }
+
+type ElemBySumEnod struct { Elems }
+func (e ElemBySumEnod) Less(i, j int) bool {
+    var sum1, sum2 int
+    for _, en1 := range e.Elems[i].Enod { sum1 += en1.Num }
+    for _, en2 := range e.Elems[j].Enod { sum2 += en2.Num }
+    return sum1 < sum2
+}
 // }}}
+
 func SortedElem (els map[int]*Elem, compare func (*Elem) float64) []*Elem {
     l := len(els)
     elems := make(map[float64][]*Elem, l)

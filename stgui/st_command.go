@@ -1658,7 +1658,7 @@ func elemsamenode (stw *Window) {
 // NODEDUPLICATION
 func nodeduplication (stw *Window) {
     stw.Deselect()
-    nm := stw.Frame.NodeDuplication(1e-4)
+    nm := stw.Frame.NodeDuplication(5e-3)
     if len(nm) != 0 {
         for k := range nm {
             stw.SelectNode = append(stw.SelectNode, k)

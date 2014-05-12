@@ -27,6 +27,19 @@ type Fig struct {
     Value map[string]float64
 }
 
+// Sort// {{{
+type Sects []*Sect
+func (s Sects) Len() int { return len(s) }
+func (s Sects) Swap(i, j int) {
+    s[i], s[j] = s[j], s[i]
+}
+
+type SectByNum struct { Sects }
+func (s SectByNum) Less(i, j int) bool {
+    return s.Sects[i].Num < s.Sects[j].Num
+}
+// }}}
+
 func NewSect() *Sect {
     s := new(Sect)
     s.Figs = make([]*Fig, 0)

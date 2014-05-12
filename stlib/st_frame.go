@@ -1521,7 +1521,6 @@ func (frame *Frame) ParseKjn (lis []string) error {
 // WriteInp// {{{
 func (frame *Frame) WriteInp(fn string) error {
     var nums, otp bytes.Buffer
-    var pkeys, skeys, nkeys, ekeys []int
     var pnum, snum, nnum, enum int
     fmt.Printf("Save: %s\n",fn)
     // Frame
@@ -1534,49 +1533,51 @@ func (frame *Frame) WriteInp(fn string) error {
     otp.WriteString(fmt.Sprintf("ANGLE %.1f %.1f\n", frame.View.Angle[0], frame.View.Angle[1]))
     otp.WriteString(fmt.Sprintf("DISTS %.1f %.1f\n\n", frame.View.Dists[0], frame.View.Dists[1]))
     // Prop
-    for k := range(frame.Props) {
-        pkeys = append(pkeys, k)
-    }
-    sort.Ints(pkeys)
-    for _, k := range(pkeys) {
-        otp.WriteString(frame.Props[k].InpString())
+    props := make([]*Prop, len(frame.Props))
+    for _, p := range frame.Props {
+        props[pnum] = p
         pnum++
+    }
+    sort.Sort(PropByNum{props})
+    for _, p := range(props) {
+        otp.WriteString(p.InpString())
     }
     otp.WriteString("\n")
     // Sect
-    for k := range(frame.Sects) {
-        skeys = append(skeys, k)
-    }
-    sort.Ints(skeys)
-    for _, k := range(skeys) {
-        if k > 900 { break }
-        otp.WriteString(frame.Sects[k].InpString())
+    sects := make([]*Sect, len(frame.Sects))
+    for _, sec := range frame.Sects {
+        if sec.Num > 900 { continue }
+        sects[snum] = sec
         snum++
+    }
+    sects = sects[:snum]
+    sort.Sort(SectByNum{sects})
+    for _, sec := range(sects) {
+        otp.WriteString(sec.InpString())
     }
     otp.WriteString("\n")
     // Node
-    for k := range(frame.Nodes) {
-        nkeys = append(nkeys, k)
-    }
-    sort.Ints(nkeys)
-    for _, k := range(nkeys) {
-        otp.WriteString(frame.Nodes[k].InpString())
+    nodes := make([]*Node, len(frame.Nodes))
+    for _, n := range frame.Nodes {
+        nodes[nnum] = n
         nnum++
     }
-    // sort.Sort(NodeByNum{frame.Nodes})
-    // for _, n := range(frame.Nodes) {
-    //     otp.WriteString(n.InpString())
-    // }
+    sort.Sort(NodeByNum{nodes})
+    for _, n := range(nodes) {
+        otp.WriteString(n.InpString())
+    }
     otp.WriteString("\n")
     // Elem
-    for k := range(frame.Elems) {
-        ekeys = append(ekeys, k)
-    }
-    sort.Ints(ekeys)
-    for _, k := range(ekeys) {
-        if frame.Elems[k].Etype == WBRACE || frame.Elems[k].Etype == SBRACE { continue }
-        otp.WriteString(frame.Elems[k].InpString())
+    elems := make([]*Elem, len(frame.Elems))
+    for _, el := range frame.Elems {
+        if el.Etype == WBRACE || el.Etype == SBRACE { continue }
+        elems[enum] = el
         enum++
+    }
+    elems = elems[:enum]
+    sort.Sort(ElemByNum{elems})
+    for _, el := range(elems) {
+        otp.WriteString(el.InpString())
     }
     nums.WriteString(fmt.Sprintf("%s\n", frame.Title))
     nums.WriteString(fmt.Sprintf("NNODE %d\n", nnum))
