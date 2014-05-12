@@ -44,7 +44,8 @@ var (
     commandFontFace = "IPA明朝"
     commandFontSize = "11"
     labelFGColor = "0 0 0"
-    labelBGColor = "255 255 255"
+    // labelBGColor = "255 255 255"
+    labelBGColor = "212 208 200"
     commandFGColor = "0 127 31"
     commandBGColor = "191 191 191"
     historyBGColor = "220 220 220"
@@ -79,8 +80,8 @@ var (
 
 // DataLabel
 const (
-    datalabelwidth = 35
-    datatextwidth  = 30
+    datalabelwidth = 40
+    datatextwidth  = 40
     dataheight  = 10
 )
 
@@ -469,14 +470,6 @@ func NewWindow(homedir string) *Window {// {{{
         iup.SubMenu("TITLE=Dialog",
             iup.Menu(
                 iup.Item(
-                    iup.Attr("TITLE","Property\tCtrl+Q"),
-                    func (arg *iup.ItemAction) {
-                        if !stw.Property {
-                            stw.PropertyDialog()
-                        }
-                    },
-                ),
-                iup.Item(
                     iup.Attr("TITLE","Section"),
                     func (arg *iup.ItemAction) {
                         stw.SectionDialog()
@@ -591,6 +584,49 @@ func NewWindow(homedir string) *Window {// {{{
             ),
         ),
     ).SetName("main_menu")
+    coms1 := iup.Hbox()
+    coms1.SetAttribute("TABTITLE", "File")
+    for _, k := range []string{"OPEN", "SAVE", "READPGP"} {
+        com := Commands[k]
+        coms1.Append(stw.commandButton(com.Display, com, "120x30"))
+    }
+    coms2 := iup.Hbox()
+    coms2.SetAttribute("TABTITLE", "Utility")
+    for _, k := range []string{"DISTS", "MATCHPROP", "NODEDUPLICATION", "NODENOREFERENCE", "ELEMDUPLICATION", "ELEMSAMENODE"} {
+        com := Commands[k]
+        coms2.Append(stw.commandButton(com.Display, com, "120x30"))
+    }
+    coms3 := iup.Hbox()
+    coms3.SetAttribute("TABTITLE", "Conf")
+    for _, k := range []string{"CONFFREE", "CONFPIN", "CONFFIX", "CONFXYROLLER"} {
+        com := Commands[k]
+        coms3.Append(stw.commandButton(com.Display, com, "80x30"))
+    }
+    coms4 := iup.Hbox()
+    coms4.SetAttribute("TABTITLE", "Bond")
+    for _, k := range []string{"BONDPIN", "BONDRIGID", "TOGGLEBOND", "COPYBOND"} {
+        com := Commands[k]
+        coms4.Append(stw.commandButton(com.Display, com, "80x30"))
+    }
+    coms5 := iup.Hbox()
+    coms5.SetAttribute("TABTITLE", "Node")
+    for _, k := range []string{"MOVENODE", "MERGENODE"} {
+        com := Commands[k]
+        coms5.Append(stw.commandButton(com.Display, com, "100x30"))
+    }
+    coms6 := iup.Hbox()
+    coms6.SetAttribute("TABTITLE", "Elem")
+    for _, k := range []string{"COPYELEM", "MOVEELEM", "JOINLINEELEM", "JOINPLATEELEM"} {
+        com := Commands[k]
+        coms6.Append(stw.commandButton(com.Display, com, "100x30"))
+    }
+    coms7 := iup.Hbox()
+    coms7.SetAttribute("TABTITLE", "Add Elem")
+    for _, k := range []string{"ADDLINEELEM", "ADDPLATEELEM", "ADDPLATEELEMBYLINE", "HATCHPLATEELEM"} {
+        com := Commands[k]
+        coms7.Append(stw.commandButton(com.Display, com, "100x30"))
+    }
+    buttons := iup.Tabs(coms1, coms2, coms3, coms4, coms5, coms6, coms7,)
     stw.canv = iup.Canvas(
                 "CANFOCUS=YES",
                 "BGCOLOR=\"0 0 0\"",
@@ -860,6 +896,7 @@ func NewWindow(homedir string) *Window {// {{{
                            iup.Hbox(datalabel("Ymin"), stw.Labels["YMIN"]),
                            iup.Hbox(datalabel("Zmax"), stw.Labels["ZMAX"]),
                            iup.Hbox(datalabel("Zmin"), stw.Labels["ZMIN"]),)
+    stw.PropertyDialog()
     stw.Dlg = iup.Dialog(
                   iup.Attrs(
                       "MENU", "main_menu",
@@ -870,8 +907,22 @@ func NewWindow(homedir string) *Window {// {{{
                       "BGCOLOR", labelBGColor,
                   ),
                   iup.Vbox(
-                      iup.Hbox(iup.Vbox(vlabels,tgrang,tgelem,),
-                               iup.Vbox(tgcolmode, tgparam, tgshow, tgncap, tgecap,),
+                      buttons,
+                      iup.Hbox(iup.Tabs(
+                                   iup.Vbox(vlabels,tgrang,"TABTITLE=View",),
+                                   iup.Vbox(tgcolmode, tgparam, tgshow, tgncap, tgecap, tgelem, "TABTITLE=Show",),
+                                   iup.Vbox(iup.Hbox(propertylabel("LINE"), stw.Selected[0]),
+                                            iup.Hbox(propertylabel(" (LENGTH)"), stw.Selected[1]),
+                                            iup.Hbox(propertylabel("PLATE"), stw.Selected[2]),
+                                            iup.Hbox(propertylabel(" (AREA)"), stw.Selected[3]),
+                                            iup.Hbox(propertylabel("CODE"), stw.Props[0]),
+                                            iup.Hbox(propertylabel("SECTION"), stw.Props[1]),
+                                            iup.Hbox(propertylabel("ETYPE"), stw.Props[2]),
+                                            iup.Hbox(propertylabel("ENODS"), stw.Props[3]),
+                                            iup.Hbox(propertylabel("ENOD"), stw.Props[4]),
+                                            iup.Hbox(propertylabel(""), stw.Props[5]),
+                                            iup.Hbox(propertylabel(""), stw.Props[6]),
+                                            iup.Hbox(propertylabel(""), stw.Props[7]),"TABTITLE=Property",),),
                                stw.canv,
                                ),
                       iup.Hbox(stw.hist,),
@@ -2868,12 +2919,6 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
         if key.IsCtrl() {
             stw.HideSelected()
         }
-    case 'Q':
-        if key.IsCtrl() {
-            if !stw.Property {
-                stw.PropertyDialog()
-            }
-        }
     case 'D':
         if key.IsCtrl() {
             stw.HideNotSelected()
@@ -2937,22 +2982,8 @@ func (stw *Window) LinkProperty (index int, eval func ()) {
 }
 
 func (stw *Window) PropertyDialog () {
-    selected := make([]*iup.Handle, 4)
     stw.Selected = make([]*iup.Handle, 4)
-    selected[0] = datasectionlabel("LINE")
-    selected[1] = datasectionlabel(" (TOTAL LENGTH)")
-    selected[2] = datasectionlabel("PLATE")
-    selected[3] = datasectionlabel(" (TOTAL AREA)")
-    labels := make([]*iup.Handle, 8)
     stw.Props = make([]*iup.Handle, 8)
-    labels[0] = datasectionlabel("CODE")
-    labels[1] = datasectionlabel("SECTION")
-    labels[2] = datasectionlabel("ETYPE")
-    labels[3] = datasectionlabel("ENODS")
-    labels[4] = datasectionlabel("ENOD")
-    labels[5] = datasectionlabel("")
-    labels[6] = datasectionlabel("")
-    labels[7] = datasectionlabel("")
     for i:=0; i<4; i++ {
         stw.Selected[i] = datatext("-")
     }
@@ -3002,27 +3033,6 @@ func (stw *Window) PropertyDialog () {
                             }
                             stw.Redraw()
                         })
-    dlg := iup.Dialog(
-               iup.Vbox(iup.Hbox(selected[0], stw.Selected[0]),
-                        iup.Hbox(selected[1], stw.Selected[1]),
-                        iup.Hbox(selected[2], stw.Selected[2]),
-                        iup.Hbox(selected[3], stw.Selected[3]),
-                        iup.Hbox(labels[0], stw.Props[0]),
-                        iup.Hbox(labels[1], stw.Props[1]),
-                        iup.Hbox(labels[2], stw.Props[2]),
-                        iup.Hbox(labels[3], stw.Props[3]),
-                        iup.Hbox(labels[4], stw.Props[4]),
-                        iup.Hbox(labels[5], stw.Props[5]),
-                        iup.Hbox(labels[6], stw.Props[6]),
-                        iup.Hbox(labels[7], stw.Props[7]),),
-           )
-    dlg.SetAttribute("TITLE", "Property")
-    dlg.SetAttribute("PARENTDIALOG", "mainwindow")
-    dlg.SetCallback(func (arg *iup.DialogClose) {
-                        stw.Property = false
-                    })
-    dlg.Map()
-    dlg.Show()
     stw.Property = true
 }
 
@@ -3181,14 +3191,6 @@ func (stw *Window) CMenu () {
                                    iup.Attr("TITLE","Canvas Font"),
                                    func (arg *iup.ItemAction) {
                                        stw.SetFont(FONT_CANVAS)
-                                   },
-                               ),
-                               iup.Item(
-                                   iup.Attr("TITLE","Property\tCtrl+Q"),
-                                   func (arg *iup.ItemAction) {
-                                       if !stw.Property {
-                                           stw.PropertyDialog()
-                                       }
                                    },
                                ),
                            ),
@@ -3517,6 +3519,18 @@ func datasectionlabel (val string) *iup.Handle {
                     "READONLY=YES",
                     "BORDER=NO",
                     fmt.Sprintf("SIZE=%dx%d",datalabelwidth+datatextwidth, dataheight),
+                    )
+}
+
+func propertylabel (val string) *iup.Handle {
+    return iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
+                    fmt.Sprintf("FGCOLOR=\"%s\"", sectionLabelColor),
+                    fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+                    fmt.Sprintf("VALUE=\"%s\"", val),
+                    "CANFOCUS=NO",
+                    "READONLY=YES",
+                    "BORDER=NO",
+                    fmt.Sprintf("SIZE=%dx%d",datalabelwidth, dataheight),
                     )
 }
 

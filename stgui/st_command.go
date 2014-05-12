@@ -30,6 +30,8 @@ var (
     CONFXYROLLER       = &Command{"XY ROLLER", "CONF XYROLLER", "set conf of selected node to xy-roller", confxyroller}
     CONFFREE           = &Command{"FREE", "CONF FREE", "set conf of selected node to free", conffree}
     OPEN               = &Command{"OPEN", "OEPN INPUT", "open inp file", openinput}
+    SAVE               = &Command{"SAVE", "SAVE", "save inp file", saveinput}
+    READPGP            = &Command{"READ PGP", "READ PGP", "read pgp file", readpgp}
     INSERT             = &Command{"INST", "INSERT", "insert new frame", insert}
     SETFOCUS           = &Command{"STFO", "SET FOCUS", "set focus to the center", setfocus}
     SELECTNODE         = &Command{"_NOD", "SELECT NODE", "select elem by number", selectnode}
@@ -91,6 +93,8 @@ func init() {
     Commands["CONFXYROLLER"]=CONFXYROLLER
     Commands["CONFFREE"]=CONFFREE
     Commands["OPEN"]=OPEN
+    Commands["SAVE"]=SAVE
+    Commands["READPGP"]=READPGP
     Commands["INSERT"]=INSERT
     Commands["SETFOCUS"]=SETFOCUS
     Commands["SELECTNODE"]=SELECTNODE
@@ -1143,6 +1147,26 @@ func openinput(stw *Window) {
     stw.EscapeAll()
 }
 
+// SAVE
+func saveinput(stw *Window) {
+    stw.SaveFile(stw.Frame.Path)
+    stw.EscapeAll()
+}
+
+func readpgp (stw *Window) {
+    if name,ok := iup.GetOpenFile(stw.Cwd, "*.pgp"); ok {
+        al := make(map[string]*Command,0)
+        err := ReadPgp(name, al)
+        if err != nil {
+            stw.addHistory("ReadPgp: Cannot Read st.pgp")
+        } else {
+            aliases = al
+            stw.addHistory(fmt.Sprintf("ReadPgp: Read %s", name))
+        }
+    }
+    stw.EscapeAll()
+}
+
 func insert(stw *Window) {
     if name,ok := iup.GetOpenFile("",""); ok {
         get1node(stw, func (n *st.Node) {
@@ -1358,7 +1382,7 @@ func setconf (stw *Window, lis []bool) {
             n.Conf[i] = lis[i]
         }
     }
-    stw.EscapeAll()
+    stw.EscapeCB()
 }
 
 // CONFFIX
@@ -1371,7 +1395,7 @@ func conffix (stw *Window) {
             n.Conf[i+3] = true
         }
     }
-    stw.EscapeAll()
+    stw.EscapeCB()
 }
 
 // CONFPIN
@@ -1384,7 +1408,7 @@ func confpin (stw *Window) {
             n.Conf[i+3] = false
         }
     }
-    stw.EscapeAll()
+    stw.EscapeCB()
 }
 
 // CONFXYROLLER
@@ -1398,7 +1422,7 @@ func confxyroller (stw *Window) {
         }
         n.Conf[2] = true
     }
-    stw.EscapeAll()
+    stw.EscapeCB()
 }
 
 // CONFFREE
@@ -1411,7 +1435,7 @@ func conffree (stw *Window) {
             n.Conf[i+3] = false
         }
     }
-    stw.EscapeAll()
+    stw.EscapeCB()
 }
 // }}}
 
