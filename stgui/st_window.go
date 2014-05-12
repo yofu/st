@@ -319,10 +319,10 @@ func NewWindow(homedir string) *Window {// {{{
                     },
                 ),
                 iup.Item(
-                    iup.Attr("TITLE","Save As\tCtrl+A"),
+                    iup.Attr("TITLE","Save As"),
                     iup.Attr("TIP","Save file As"),
                     func (arg *iup.ItemAction) {
-                        stw.Save()
+                        stw.SaveAS()
                     },
                 ),
                 iup.Item(
@@ -878,11 +878,11 @@ func NewWindow(homedir string) *Window {// {{{
                       iup.Hbox(stw.cname, stw.cline,),
                   ),
                   func (arg *iup.DialogClose) {
-                      if stw.Changed {
-                          if stw.Yn("CHANGED", "変更を保存しますか") {
-                              stw.SaveAS()
-                          }
-                      }
+                      // if stw.Changed {
+                      //     if stw.Yn("CHANGED", "変更を保存しますか") {
+                      //         stw.SaveAS()
+                      //     }
+                      // }
                       arg.Return = iup.CLOSE
                   },
                   func (arg *iup.CommonGetFocus) {
@@ -3122,10 +3122,10 @@ func (stw *Window) CMenu () {
                                    },
                                ),
                                iup.Item(
-                                   iup.Attr("TITLE","Save As\tCtrl+A"),
+                                   iup.Attr("TITLE","Save As"),
                                    iup.Attr("TIP","Save file As"),
                                    func (arg *iup.ItemAction) {
-                                       stw.Save()
+                                       stw.SaveAS()
                                    },
                                ),
                                iup.Item(
