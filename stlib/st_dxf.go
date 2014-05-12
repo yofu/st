@@ -117,6 +117,7 @@ func (frame *Frame) ParseDxfLine(lis []string, coord []float64) error {
         switch int(index) {
         case 8:
             etype = Etype(layeretype.FindString(lis[i+1]))
+            if etype == 0 { return nil }
             tmp, err := strconv.ParseInt(layersect.FindString(lis[i+1]), 10, 64)
             if err != nil {
                 return err
@@ -252,6 +253,7 @@ func (frame *Frame) ParseDxfVertex(lis []string, coord []float64, vertices []*No
         switch int(index) {
         case 8:
             etype = Etype(layeretype.FindString(lis[i+1]))
+            if etype == 0 { return vertices, nil }
             tmp, err := strconv.ParseInt(layersect.FindString(lis[i+1]), 10, 64)
             if err != nil {
                 return nil, err
