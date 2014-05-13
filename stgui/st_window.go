@@ -635,8 +635,6 @@ func NewWindow(homedir string) *Window {// {{{
                 "EXPAND=YES",
                 "NAME=canvas",
                 func (arg *iup.CommonMap) {
-                    cd.InitContextPlus()
-                    cd.UseContextPlus(1)
                     stw.cdcanv = cd.CreateCanvas(cd.CD_IUP, stw.canv)
                     stw.dbuff  = cd.CreateCanvas(cd.CD_DBUFFER, stw.cdcanv)
                     stw.cdcanv.Foreground(cd.CD_WHITE)
