@@ -141,6 +141,9 @@ func NewShow(frame *Frame) *Show {
     s.Select = false
 
     s.Sect  = make(map[int]bool)
+    for snum := range frame.Sects {
+        s.Sect[snum] = true
+    }
     s.Etype = make(map[int]bool)
     for i, _ := range ETYPES {
         if i == WBRACE || i == SBRACE {

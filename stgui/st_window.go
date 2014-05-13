@@ -1811,11 +1811,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
             els := st.SortedElem(stw.Frame.Elems, func (e *st.Elem) float64 { return -e.DistFromProjection() })
             loop:
                 for _, el := range(els) {
-                    if el.Hide { continue }
-                    if !stw.Frame.Show.Etype[el.Etype] { el.Hide = true; continue }
-                    if b, ok := stw.Frame.Show.Sect[el.Sect.Num]; ok {
-                        if !b { el.Hide = true; continue }
-                    }
+                    if el.IsHide(stw.Frame.Show) { continue }
                     canv.LineStyle(cd.CD_CONTINUOUS)
                     canv.Hatch(cd.CD_FDIAGONAL)
                     for _, j := range(stw.SelectElem) {
@@ -1843,11 +1839,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
         canv.Hatch(cd.CD_DIAGCROSS)
         for _, el := range(stw.SelectElem) {
             canv.LineStyle(cd.CD_DOTTED)
-            if el == nil || el.Hide { continue }
-            if !stw.Frame.Show.Etype[el.Etype] { el.Hide = true; continue }
-            if b, ok := stw.Frame.Show.Sect[el.Sect.Num]; ok {
-                if !b { el.Hide = true; continue }
-            }
+            if el == nil || el.IsHide(stw.Frame.Show) { continue }
             if el.Lock {
                 canv.Foreground(LOCKED_ELEM_COLOR)
             } else {
@@ -1901,7 +1893,7 @@ func (stw *Window) DrawFrameNode() {
             stw.dbuff.Hatch(cd.CD_DIAGCROSS)
             for _, el := range(stw.SelectElem) {
                 stw.dbuff.LineStyle(cd.CD_DOTTED)
-                if el == nil || el.Hide { continue }
+                if el == nil || el.IsHide(stw.Frame.Show) { continue }
                 if el.Lock {
                     stw.dbuff.Foreground(LOCKED_ELEM_COLOR)
                 } else {
@@ -2111,15 +2103,17 @@ func (stw *Window) ShowAll() {
     for _, k := range stw.Frame.Kijuns {
         k.Hide = false
     }
-    for _, et := range st.ETYPES {
+    for i, et := range st.ETYPES {
         if lb, ok := stw.Labels[et]; ok {
             lb.SetAttribute("FGCOLOR", labelFGColor)
         }
+        stw.Frame.Show.Etype[i] = true
     }
     for i, _ := range stw.Frame.Show.Sect {
         if lb, ok := stw.Labels[fmt.Sprintf("%d", i)]; ok {
             lb.SetAttribute("FGCOLOR", labelFGColor)
         }
+        stw.Frame.Show.Sect[i] = true
     }
     stw.Frame.Show.All()
     stw.Redraw()
@@ -2236,7 +2230,7 @@ func (stw *Window) PickElem (x, y int) (rtn *st.Elem) {
 func (stw *Window) PickLineElem(x, y int) (rtn *st.Elem) {
     mindist := float64(dotSelectPixel)
     for _, v := range(stw.Frame.Elems) {
-        if v.Hide { continue }
+        if v.IsHide(stw.Frame.Show) { continue }
         if v.IsLineElem() && (math.Min(v.Enod[0].Pcoord[0], v.Enod[1].Pcoord[0]) <= float64(x+dotSelectPixel) && math.Max(v.Enod[0].Pcoord[0], v.Enod[1].Pcoord[0]) >= float64(x-dotSelectPixel)) && (math.Min(v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[1]) <= float64(y+dotSelectPixel) && math.Max(v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[1]) >= float64(y-dotSelectPixel)) {
             dist := math.Abs(FDotLine(v.Enod[0].Pcoord[0], v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[0], v.Enod[1].Pcoord[1], float64(x), float64(y)))
             if plen := math.Hypot(v.Enod[0].Pcoord[0]-v.Enod[1].Pcoord[0], v.Enod[0].Pcoord[1]-v.Enod[1].Pcoord[1]); plen > 1E-12 {
@@ -2261,7 +2255,7 @@ func abs (val int) int {
 func (stw *Window) PickPlateElem(x, y int) []*st.Elem {
     rtn := make(map[int]*st.Elem)
     for _, el := range(stw.Frame.Elems) {
-        if el.Hide { continue }
+        if el.IsHide(stw.Frame.Show) { continue }
         if !el.IsLineElem() {
             add := true
             sign := 0
@@ -2311,7 +2305,7 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
             switch selectDirection {
             case SD_FROMLEFT:
                 for _, el := range(stw.Frame.Elems) {
-                    if el.Hide { continue }
+                    if el.IsHide(stw.Frame.Show) { continue }
                     add := true
                     for _, en := range(el.Enod) {
                         var j int
@@ -2324,7 +2318,7 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
                 }
             case SD_FROMRIGHT:
                 for _, el := range(stw.Frame.Elems) {
-                    if el.Hide { continue }
+                    if el.IsHide(stw.Frame.Show) { continue }
                     add := false
                     for _, en := range(el.Enod) {
                         found := false
@@ -2356,7 +2350,7 @@ func (stw *Window) SelectElemFenceStart(arg *iup.MouseButton) {
         tmpselectelem := make([]*st.Elem, len(stw.Frame.Elems))
         k := 0
         for _, el := range(stw.Frame.Elems) {
-            if el.Hide { continue }
+            if el.IsHide(stw.Frame.Show) { continue }
             add := false
             sign := 0
             for i, en := range(el.Enod) {
@@ -3326,6 +3320,7 @@ func (stw *Window) PeriodDialog (defval string) {
                     })
     dlg := iup.Dialog(iup.Hbox(per,lap,))
     dlg.SetAttribute("TITLE", "Period")
+    dlg.SetAttribute("DIALOGFRAME", "YES")
     dlg.SetAttribute("PARENTDIALOG", "mainwindow")
     dlg.Map()
     dlg.ShowXY(iup.MOUSEPOS, iup.MOUSEPOS)
@@ -3333,27 +3328,324 @@ func (stw *Window) PeriodDialog (defval string) {
 
 func (stw *Window) SectionDialog () {
     if stw.Frame == nil { return }
-    labels := make([]*iup.Handle, len(stw.Frame.Sects))
-    var skeys []int
-    var snum int
-    for k := range(stw.Frame.Sects) {
-        if k > 900 { continue }
-        skeys = append(skeys, k)
-    }
-    sort.Ints(skeys)
-    sects := iup.Vbox()
-    for _, k := range(skeys) {
-        labels[snum] = stw.sectionLabel(k)
-        stw.Labels[fmt.Sprintf("%d",k)] = labels[snum]
-        sects.Append(labels[snum])
+    var list *iup.Handle
+    var sbt, hbt *iup.Handle
+    var data, linedata, platedata *iup.Handle
+    var addfig *iup.Handle
+    var rcolor, gcolor, bcolor, color *iup.Handle
+    sects := make([]*st.Sect, len(stw.Frame.Sects))
+    snum := 0
+    for _, sec := range stw.Frame.Sects {
+        if sec.Num == 900 { continue }
+        sects[snum] = sec
         snum++
     }
-    dlg := iup.Dialog(sects)
+    sects = sects[:snum]
+    sort.Sort(st.SectByNum{sects})
+    sbt = iup.Button("TITLE=\"Show\"", "SIZE=60x")
+    hbt = iup.Button("TITLE=\"Hide\"", "SIZE=60x")
+    sbt.SetCallback(func (arg *iup.ButtonAction) {
+                        onoff := list.GetAttribute("VALUE")
+                        for i:=0; i<len(sects); i++ {
+                            switch onoff[i] {
+                            case '+':
+                                stw.Frame.Show.Sect[sects[i].Num] = true
+                                list.SetAttribute(fmt.Sprintf("%d",i+1), fmt.Sprintf(" %d", sects[i].Num))
+                            }
+                        }
+                        stw.Redraw()
+                    })
+    hbt.SetCallback(func (arg *iup.ButtonAction) {
+                        onoff := list.GetAttribute("VALUE")
+                        for i:=0; i<len(sects); i++ {
+                            switch onoff[i] {
+                            case '+':
+                                stw.Frame.Show.Sect[sects[i].Num] = false
+                                list.SetAttribute(fmt.Sprintf("%d",i+1), fmt.Sprintf("(%d)", sects[i].Num))
+                            }
+                        }
+                        stw.Redraw()
+                    })
+    dataset := make(map[string]*iup.Handle, 0)
+    dataset["CODE"]    = datatext("-")
+    dataset["PROP"]    = datatext("-")
+    dataset["AREA"]    = datatext("-")
+    dataset["IXX"]     = datatext("-")
+    dataset["IYY"]     = datatext("-")
+    dataset["VEN"]     = datatext("-")
+    dataset["THICK"]   = datatext("-")
+    dataset["LLOAD0"]  = datatext("-")
+    dataset["LLOAD1"]  = datatext("-")
+    dataset["LLOAD2"]  = datatext("-")
+    proplist := iup.List("SIZE=\"68x\"",
+                         "DROPDOWN=YES")
+    linedata  = iup.Vbox(iup.Hbox(propertylabel("AREA"), dataset["AREA"],),
+                         iup.Hbox(propertylabel("IXX"), dataset["IXX"],),
+                         iup.Hbox(propertylabel("IYY"), dataset["IYY"],),
+                         iup.Hbox(propertylabel("VEN"), dataset["VEN"],),)
+    platedata = iup.Vbox(iup.Hbox(propertylabel("THICK"), dataset["THICK"],),
+                         iup.Hbox(propertylabel("LLOAD"), dataset["LLOAD0"],),
+                         iup.Hbox(propertylabel(""), dataset["LLOAD1"],),
+                         iup.Hbox(propertylabel(""), dataset["LLOAD2"],),)
+    iup.SetHandle("linedata", linedata)
+    iup.SetHandle("platedata", platedata)
+    data = iup.Zbox(linedata, platedata,)
+    list = iup.List("SIZE=60x200",
+                    "MULTIPLE=YES")
+    updatedata := func (sec *st.Sect, ind int) {
+                      dataset["PROP"].SetAttribute("VALUE", fmt.Sprintf("%d", sec.Figs[ind].Prop.Num))
+                      if sec.Num > 700 && sec.Num < 900 {
+                          addfig.SetAttribute("ACTIVE", "YES")
+                          if len(sec.Figs) > ind {
+                              dataset["THICK"].SetAttribute("VALUE", fmt.Sprintf("%.4f", sec.Figs[ind].Value["THICK"]))
+                              dataset["LLOAD0"].SetAttribute("VALUE", fmt.Sprintf("%.3f", sec.Lload[0]))
+                              dataset["LLOAD1"].SetAttribute("VALUE", fmt.Sprintf("%.3f", sec.Lload[1]))
+                              dataset["LLOAD2"].SetAttribute("VALUE", fmt.Sprintf("%.3f", sec.Lload[2]))
+                          }
+                          data.SetAttribute("VALUE", "platedata")
+                      } else {
+                          addfig.SetAttribute("ACTIVE", "NO")
+                          if len(sec.Figs) > ind {
+                              dataset["AREA"].SetAttribute("VALUE", fmt.Sprintf("%.4f", sec.Figs[ind].Value["AREA"]))
+                              dataset["IXX"].SetAttribute("VALUE", fmt.Sprintf("%.8f", sec.Figs[ind].Value["IXX"]))
+                              dataset["IYY"].SetAttribute("VALUE", fmt.Sprintf("%.8f", sec.Figs[ind].Value["IYY"]))
+                              dataset["VEN"].SetAttribute("VALUE", fmt.Sprintf("%.8f", sec.Figs[ind].Value["VEN"]))
+                          }
+                          data.SetAttribute("VALUE", "linedata")
+                      }
+                      col := st.IntColorList(sec.Color)
+                      rcolor.SetAttribute("VALUE", col[0])
+                      gcolor.SetAttribute("VALUE", col[1])
+                      bcolor.SetAttribute("VALUE", col[2])
+                      dataset["RED"].SetAttribute("VALUE", col[0])
+                      dataset["GREEN"].SetAttribute("VALUE", col[1])
+                      dataset["BLUE"].SetAttribute("VALUE", col[2])
+                      color.SetAttribute("BGCOLOR", strings.Join(col, " "))
+                  }
+    updateproplist := func (sec *st.Sect) {
+                          proplist.SetAttribute("REMOVEITEM", "ALL")
+                          for _, f := range sec.Figs {
+                              proplist.SetAttribute("APPENDITEM", fmt.Sprintf("%d: %d", f.Num, f.Prop.Num))
+                          }
+                          proplist.SetAttribute("VALUE", "1")
+                      }
+    list.SetCallback(func (arg *iup.ValueChanged) {
+                         onoff := list.GetAttribute("VALUE")
+                         for i, val := range onoff {
+                             if val == '+' {
+                                 sec := sects[i]
+                                 dataset["CODE"].SetAttribute("VALUE", fmt.Sprintf("%d", sec.Num))
+                                 updateproplist(sec)
+                                 updatedata(sec, 0)
+                                 break
+                             }
+                         }
+                     })
+    proplist.SetCallback(func (arg *iup.ValueChanged) {
+                             var sec *st.Sect
+                             onoff := list.GetAttribute("VALUE")
+                             for i, val := range onoff {
+                                 if val == '+' {
+                                     sec = sects[i]
+                                     break
+                                 }
+                             }
+                             var ind int
+                             fmt.Sscanf(proplist.GetAttribute("VALUE"), "%d", &ind)
+                             ind--
+                             updatedata(sec, ind)
+                         })
+    addfig = iup.Button("TITLE=\"Add Figure\"", "ACTIVE=NO", "SIZE=\"60x\"")
+    addfig.SetCallback(func (arg *iup.ButtonAction) {
+                           var sec *st.Sect
+                           onoff := list.GetAttribute("VALUE")
+                           for i, val := range onoff {
+                               if val == '+' {
+                                   sec = sects[i]
+                                   break
+                               }
+                           }
+                           f := st.NewFig()
+                           f.Prop = stw.Frame.DefaultProp()
+                           f.Num = len(sec.Figs)+1
+                           sec.Figs = append(sec.Figs, f)
+                           updateproplist(sec)
+                           proplist.SetAttribute("VALUE", fmt.Sprintf("%d", f.Num))
+                           updatedata(sec, f.Num-1)
+                       })
+    rcolor = iup.Val("MIN=0",
+                     "MAX=255",
+                     fmt.Sprintf("STEP=%.2f", 1.0/255),
+                     "VALUE=255",
+                     "CANFOCUS=NO",)
+    dataset["RED"] = datatext("255")
+    gcolor = iup.Val("MIN=0",
+                     "MAX=255",
+                     fmt.Sprintf("STEP=%.2f", 1.0/255),
+                     "VALUE=255",
+                     "CANFOCUS=NO",)
+    dataset["GREEN"] = datatext("255")
+    bcolor = iup.Val("MIN=0",
+                     "MAX=255",
+                     fmt.Sprintf("STEP=%.2f", 1.0/255),
+                     "VALUE=255",
+                     "CANFOCUS=NO",)
+    dataset["BLUE"] = datatext("255")
+    color = iup.Canvas("SIZE=\"50x50\"",
+                       "BGCOLOR=\"255 255 255\"",
+                       "EXPAND=NO")
+    bt := iup.Button()
+    bt.SetAttribute("TITLE", "Set")
+    changecolor := func () {
+                       color.SetAttribute("BGCOLOR", strings.Join([]string{strings.Split(rcolor.GetAttribute("VALUE"), ".")[0],
+                                                                           strings.Split(gcolor.GetAttribute("VALUE"), ".")[0],
+                                                                           strings.Split(bcolor.GetAttribute("VALUE"), ".")[0]}, " "))
+                                                                      }
+    rcolor.SetCallback(func (arg *iup.ValueChanged) {
+                           dataset["RED"].SetAttribute("VALUE", strings.Split(rcolor.GetAttribute("VALUE"), ".")[0])
+                           changecolor()
+                       })
+    gcolor.SetCallback(func (arg *iup.ValueChanged) {
+                           dataset["GREEN"].SetAttribute("VALUE", strings.Split(gcolor.GetAttribute("VALUE"), ".")[0])
+                           changecolor()
+                       })
+    bcolor.SetCallback(func (arg *iup.ValueChanged) {
+                           dataset["BLUE"].SetAttribute("VALUE", strings.Split(bcolor.GetAttribute("VALUE"), ".")[0])
+                           changecolor()
+                       })
+    dataset["RED"].SetCallback(func (arg *iup.CommonKillFocus) {
+                                   val, err := strconv.ParseInt(dataset["RED"].GetAttribute("VALUE"), 10, 64)
+                                   if err != nil {
+                                       dataset["RED"].SetAttribute("VALUE", strings.Split(rcolor.GetAttribute("VALUE"), ".")[0])
+                                   }
+                                   rcolor.SetAttribute("VALUE", fmt.Sprintf("%d", int(val)))
+                                   changecolor()
+                               })
+    dataset["RED"].SetCallback(func (arg *iup.CommonKeyAny) {
+                                   key := iup.KeyState(arg.Key)
+                                   switch key.Key() {
+                                   case KEY_ENTER:
+                                       tmp, err := strconv.ParseInt(dataset["RED"].GetAttribute("VALUE"), 10, 64)
+                                       if err != nil {
+                                           dataset["RED"].SetAttribute("VALUE", strings.Split(rcolor.GetAttribute("VALUE"), ".")[0])
+                                       }
+                                       rcolor.SetAttribute("VALUE", fmt.Sprintf("%d", int(tmp)))
+                                       changecolor()
+                                   case KEY_ESCAPE:
+                                       dataset["RED"].SetAttribute("VALUE", strings.Split(rcolor.GetAttribute("VALUE"), ".")[0])
+                                   }
+                               })
+    dataset["GREEN"].SetCallback(func (arg *iup.CommonKillFocus) {
+                                   val, err := strconv.ParseInt(dataset["GREEN"].GetAttribute("VALUE"), 10, 64)
+                                   if err != nil {
+                                       dataset["GREEN"].SetAttribute("VALUE", strings.Split(gcolor.GetAttribute("VALUE"), ".")[0])
+                                   }
+                                   gcolor.SetAttribute("VALUE", fmt.Sprintf("%d", int(val)))
+                                   changecolor()
+                               })
+    dataset["GREEN"].SetCallback(func (arg *iup.CommonKeyAny) {
+                                   key := iup.KeyState(arg.Key)
+                                   switch key.Key() {
+                                   case KEY_ENTER:
+                                       tmp, err := strconv.ParseInt(dataset["GREEN"].GetAttribute("VALUE"), 10, 64)
+                                       if err != nil {
+                                           dataset["GREEN"].SetAttribute("VALUE", strings.Split(gcolor.GetAttribute("VALUE"), ".")[0])
+                                       }
+                                       gcolor.SetAttribute("VALUE", fmt.Sprintf("%d", int(tmp)))
+                                       changecolor()
+                                   case KEY_ESCAPE:
+                                       dataset["GREEN"].SetAttribute("VALUE", strings.Split(gcolor.GetAttribute("VALUE"), ".")[0])
+                                   }
+                               })
+    dataset["BLUE"].SetCallback(func (arg *iup.CommonKillFocus) {
+                                   val, err := strconv.ParseInt(dataset["BLUE"].GetAttribute("VALUE"), 10, 64)
+                                   if err != nil {
+                                       dataset["BLUE"].SetAttribute("VALUE", strings.Split(bcolor.GetAttribute("VALUE"), ".")[0])
+                                   }
+                                   bcolor.SetAttribute("VALUE", fmt.Sprintf("%d", int(val)))
+                                   changecolor()
+                               })
+    dataset["BLUE"].SetCallback(func (arg *iup.CommonKeyAny) {
+                                   key := iup.KeyState(arg.Key)
+                                   switch key.Key() {
+                                   case KEY_ENTER:
+                                       tmp, err := strconv.ParseInt(dataset["BLUE"].GetAttribute("VALUE"), 10, 64)
+                                       if err != nil {
+                                           dataset["BLUE"].SetAttribute("VALUE", strings.Split(bcolor.GetAttribute("VALUE"), ".")[0])
+                                       }
+                                       bcolor.SetAttribute("VALUE", fmt.Sprintf("%d", int(tmp)))
+                                       changecolor()
+                                   case KEY_ESCAPE:
+                                       dataset["BLUE"].SetAttribute("VALUE", strings.Split(bcolor.GetAttribute("VALUE"), ".")[0])
+                                   }
+                               })
+    dlg := iup.Dialog(iup.Hbox(iup.Vbox(list, sbt, hbt,),
+                               iup.Vbox(iup.Hbox(propertylabel("CODE"),dataset["CODE"],),
+                                        iup.Hbox(proplist, addfig,),
+                                        iup.Hbox(propertylabel("PROP"),dataset["PROP"],),
+                                        data,
+                                        iup.Hbox(color, iup.Vbox(iup.Hbox(rcolor, dataset["RED"],),
+                                                                 iup.Hbox(gcolor, dataset["GREEN"],),
+                                                                 iup.Hbox(bcolor, dataset["BLUE"],),),),
+                                        bt,),))
     dlg.SetAttribute("TITLE", "Section")
+    dlg.SetAttribute("DIALOGFRAME", "YES")
     dlg.SetAttribute("PARENTDIALOG", "mainwindow")
     dlg.Map()
+    for _, sec := range sects {
+        if stw.Frame.Show.Sect[sec.Num] {
+            list.SetAttribute("APPENDITEM", fmt.Sprintf(" %d", sec.Num))
+        } else {
+            list.SetAttribute("APPENDITEM", fmt.Sprintf("(%d)", sec.Num))
+        }
+    }
     dlg.Show()
 }
+
+// func ColorSet (cvs *iup.Handle) (val, text []*iup.Handle) {
+//     val  = make([]*iup.Handle, 3)
+//     text = make([]*iup.Handle, 3)
+//     changecolor := func () {
+//                        cvs.SetAttribute("BGCOLOR", strings.Join([]string{strings.Split(val[0].GetAttribute("VALUE"), ".")[0],
+//                                                                          strings.Split(val[1].GetAttribute("VALUE"), ".")[0],
+//                                                                          strings.Split(val[2].GetAttribute("VALUE"), ".")[0]}, " "))
+//                                                                       }
+//     for i:=0; i<3; i++ {
+//         val[i] = iup.Val("MIN=0",
+//                          "MAX=255",
+//                          fmt.Sprintf("STEP=%.2f", 1.0/255),
+//                          "VALUE=255",
+//                          "CANFOCUS=NO",)
+//         val[i].SetCallback(func (arg *iup.ValueChanged) {
+//                                text[i].SetAttribute("VALUE", strings.Split(val[i].GetAttribute("VALUE"), ".")[0])
+//                                changecolor()
+//                            })
+//         text[i] = datatext("255")
+//         text[i].SetCallback(func (arg *iup.CommonKillFocus) {
+//                                 tmp, err := strconv.ParseInt(text[i].GetAttribute("VALUE"), 10, 64)
+//                                 if err != nil {
+//                                     text[i].SetAttribute("VALUE", strings.Split(val[i].GetAttribute("VALUE"), ".")[0])
+//                                 }
+//                                 val[i].SetAttribute("VALUE", fmt.Sprintf("%d", int(tmp)))
+//                                 changecolor()
+//                             })
+//         text[i].SetCallback(func (arg *iup.CommonKeyAny) {
+//                                 key := iup.KeyState(arg.Key)
+//                                 switch key.Key() {
+//                                 case KEY_ENTER:
+//                                     tmp, err := strconv.ParseInt(text[i].GetAttribute("VALUE"), 10, 64)
+//                                     if err != nil {
+//                                         text[i].SetAttribute("VALUE", strings.Split(val[i].GetAttribute("VALUE"), ".")[0])
+//                                     }
+//                                     val[i].SetAttribute("VALUE", fmt.Sprintf("%d", int(tmp)))
+//                                     changecolor()
+//                                 case KEY_ESCAPE:
+//                                     text[i].SetAttribute("VALUE", strings.Split(val[i].GetAttribute("VALUE"), ".")[0])
+//                                 }
+//                             })
+//     }
+//     return
+// }
 
 func (stw *Window) commandButton (name string, command *Command, size string) *iup.Handle {
     rtn := iup.Button()
@@ -3460,56 +3752,6 @@ func (stw *Window) CommandDialogElem () {
     dlg.Show()
 }
 
-func (stw *Window) sectionLabel (val int) *iup.Handle {
-    var col string
-    if b, ok := stw.Frame.Show.Sect[val]; ok {
-        if b {
-            col = labelFGColor
-        } else {
-            col = labelOFFColor
-        }
-    } else {
-        stw.Frame.Show.Sect[val] = true
-        col = labelFGColor
-    }
-    rtn := iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
-                    fmt.Sprintf("FGCOLOR=\"%s\"", col),
-                    fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
-                    fmt.Sprintf("VALUE=\"  %d\"", val),
-                    "CANFOCUS=NO",
-                    "READONLY=YES",
-                    "BORDER=NO",
-                    fmt.Sprintf("SIZE=%dx%d",datalabelwidth, dataheight),
-                    )
-    rtn.SetCallback(func (arg *iup.MouseButton) {
-                        if stw.Frame != nil {
-                            switch arg.Button {
-                            case BUTTON_LEFT:
-                                if arg.Pressed == 0 { // Released
-                                    if stw.Frame.Show.Sect[val] {
-                                        stw.Frame.Show.Sect[val] = false
-                                        for _, el := range(stw.Frame.Elems) {
-                                            if el.Sect.Num == val { el.Hide = true }
-                                        }
-                                        rtn.SetAttribute("FGCOLOR", labelOFFColor)
-                                    } else {
-                                        stw.Frame.Show.Sect[val] = true
-                                        for _, el := range(stw.Frame.Elems) {
-                                            if el.Sect.Num == val { el.Hide = false }
-                                        }
-                                        rtn.SetAttribute("FGCOLOR", labelFGColor)
-                                    }
-                                    // stw.UpdateShowRange()
-                                    stw.HideNodes()
-                                    stw.Redraw()
-                                    // iup.SetFocus(stw.canv)
-                                }
-                            }
-                        }
-                    })
-    return rtn
-}
-
 func datasectionlabel (val string) *iup.Handle {
     return iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
                     fmt.Sprintf("FGCOLOR=\"%s\"", sectionLabelColor),
@@ -3562,9 +3804,6 @@ func datatext (defval string) *iup.Handle {
 
 func (stw *Window) HideEtype (etype int) {
     stw.Frame.Show.Etype[etype] = false
-    for _, el := range(stw.Frame.Elems) {
-        if el.Etype == etype { el.Hide = true }
-    }
     stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelOFFColor)
     stw.Redraw()
     iup.SetFocus(stw.canv)
@@ -3572,9 +3811,6 @@ func (stw *Window) HideEtype (etype int) {
 
 func (stw *Window) ShowEtype (etype int) {
     stw.Frame.Show.Etype[etype] = true
-    for _, el := range(stw.Frame.Elems) {
-        if el.Etype == etype { el.Hide = false }
-    }
     stw.UpdateShowRange() // TODO: ShowRange
     stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelFGColor)
     stw.Redraw()
@@ -3610,24 +3846,6 @@ func (stw *Window) etypeLabel (name string, width int, etype int, defval bool) *
                             case BUTTON_LEFT:
                                 if arg.Pressed == 0 { // Released
                                     stw.ToggleEtype(etype)
-                                    // if stw.Frame.Show.Etype[etype] {
-                                    //     stw.Frame.Show.Etype[etype] = false
-                                    //     for _, el := range(stw.Frame.Elems) {
-                                    //         if el.Etype == etype { el.Hide = true }
-                                    //     }
-                                    //     rtn.SetAttribute("FGCOLOR", labelOFFColor)
-                                    // } else {
-                                    //     stw.Frame.Show.Etype[etype] = true
-                                    //     for _, el := range(stw.Frame.Elems) {
-                                    //         if el.Etype == etype { el.Hide = false }
-                                    //     }
-                                    //     stw.UpdateShowRange() // TODO: ShowRange
-                                    //     rtn.SetAttribute("FGCOLOR", labelFGColor)
-                                    // }
-                                    // // stw.UpdateShowRange() // TODO: ShowRange
-                                    // // stw.HideNodes()
-                                    // stw.Redraw()
-                                    // iup.SetFocus(stw.canv)
                                 }
                             }
                         }

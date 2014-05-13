@@ -379,6 +379,7 @@ func (frame *Frame) ParseSect(lis []string) error {
     }
     err = s.ParseFig(frame,tmp)
     frame.Sects[s.Num] = s
+    frame.Show.Sect[s.Num] = true
     return nil
 }
 
@@ -1683,6 +1684,18 @@ func (frame *Frame) Rotate (center, vector []float64, angle float64) {
     }
 }
 
+func (frame *Frame) DefaultProp () *Prop {
+    pnums := make([]int, len(frame.Props))
+    i := 0
+    for k, _ := range(frame.Props) {
+        pnums[i] = int(k)
+        i++
+    }
+    sort.Ints(pnums)
+    return frame.Props[pnums[0]]
+}
+
+
 func (frame *Frame) DefaultSect () *Sect {
     snums := make([]int, len(frame.Sects))
     i := 0
@@ -1700,6 +1713,7 @@ func (frame *Frame) AddSect (num int) *Sect {
     sec := NewSect()
     sec.Num = num
     frame.Sects[num] = sec
+    frame.Show.Sect[num] = true
     return sec
 }
 

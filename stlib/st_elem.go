@@ -266,6 +266,18 @@ func (elem *Elem) IsLineElem () bool {
 // }}}
 
 
+func (elem *Elem) IsHide (show *Show) bool {
+    if elem.Hide { return true }
+    if show != nil {
+        if !show.Etype[elem.Etype] { return true }
+        if b, ok := show.Sect[elem.Sect.Num]; ok {
+            if !b { return true }
+        }
+    }
+    return false
+}
+
+
 // Write// {{{
 func (elem *Elem) InpString () string {
     var rtn bytes.Buffer
