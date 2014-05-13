@@ -3367,6 +3367,8 @@ func (stw *Window) SectionDialog () {
                         stw.Redraw()
                     })
     dataset := make(map[string]*iup.Handle, 0)
+    dataset["NAME"]    = datatext("-")
+    dataset["NAME"].SetAttribute("EXPAND", "HORIZONTAL")
     dataset["CODE"]    = datatext("-")
     dataset["PROP"]    = datatext("-")
     dataset["AREA"]    = datatext("-")
@@ -3435,6 +3437,7 @@ func (stw *Window) SectionDialog () {
                              if val == '+' {
                                  sec := sects[i]
                                  dataset["CODE"].SetAttribute("VALUE", fmt.Sprintf("%d", sec.Num))
+                                 dataset["NAME"].SetAttribute("VALUE", fmt.Sprintf("%s", sec.Name))
                                  updateproplist(sec)
                                  updatedata(sec, 0)
                                  break
@@ -3491,11 +3494,60 @@ func (stw *Window) SectionDialog () {
                      "VALUE=255",
                      "CANFOCUS=NO",)
     dataset["BLUE"] = datatext("255")
-    color = iup.Canvas("SIZE=\"50x50\"",
+    dataset["RED"].SetAttribute("SIZE", "30x10")
+    dataset["GREEN"].SetAttribute("SIZE", "30x10")
+    dataset["BLUE"].SetAttribute("SIZE", "30x10")
+    color = iup.Canvas("SIZE=\"120x20\"",
                        "BGCOLOR=\"255 255 255\"",
-                       "EXPAND=NO")
-    bt := iup.Button()
-    bt.SetAttribute("TITLE", "Set")
+                       "EXPAND=HORIZONTAL")
+    ctlg := iup.Button("TITLE=\"Catalog\"",
+                       "SIZE=\"100x20\"",
+                       "EXPAND=HORIZONTAL") // TODO: Section Catalog
+    bt := iup.Button("TITLE=\"Set\"",
+                     "SIZE=\"100x20\"",
+                     "EXPAND=HORIZONTAL")
+    bt.SetCallback(func (arg *iup.ButtonAction) {
+                       var sec *st.Sect
+                       onoff := list.GetAttribute("VALUE")
+                       for i, val := range onoff {
+                           if val == '+' {
+                               sec = sects[i]
+                               break
+                           }
+                       }
+                       var ind int
+                       fmt.Sscanf(proplist.GetAttribute("VALUE"), "%d", &ind)
+                       ind--
+                       if sec.Num > 700 && sec.Num < 900 {
+                           if len(sec.Figs) > ind {
+                               var tmp float64
+                               var err error
+                               tmp, err = strconv.ParseFloat(dataset["THICK"].GetAttribute("VALUE"), 64)
+                               if err == nil { sec.Figs[ind].Value["THICK"] = tmp }
+                               tmp, err = strconv.ParseFloat(dataset["LLOAD0"].GetAttribute("VALUE"), 64)
+                               if err == nil { sec.Lload[0] = tmp }
+                               tmp, err = strconv.ParseFloat(dataset["LLOAD1"].GetAttribute("VALUE"), 64)
+                               if err == nil { sec.Lload[1] = tmp }
+                               tmp, err = strconv.ParseFloat(dataset["LLOAD2"].GetAttribute("VALUE"), 64)
+                               if err == nil { sec.Lload[2] = tmp }
+                           }
+                       } else {
+                           if len(sec.Figs) > ind {
+                               var tmp float64
+                               var err error
+                               tmp, err = strconv.ParseFloat(dataset["AREA"].GetAttribute("VALUE"), 64)
+                               if err == nil { sec.Figs[ind].Value["AREA"] = tmp }
+                               tmp, err = strconv.ParseFloat(dataset["IXX"].GetAttribute("VALUE"), 64)
+                               if err == nil { sec.Figs[ind].Value["IXX"] = tmp }
+                               tmp, err = strconv.ParseFloat(dataset["IYY"].GetAttribute("VALUE"), 64)
+                               if err == nil { sec.Figs[ind].Value["IYY"] = tmp }
+                               tmp, err = strconv.ParseFloat(dataset["VEN"].GetAttribute("VALUE"), 64)
+                               if err == nil { sec.Figs[ind].Value["VEN"] = tmp }
+                           }
+                       }
+                       sec.Color = st.ColorInt(fmt.Sprintf("%s %s %s", dataset["RED"].GetAttribute("VALUE"), dataset["GREEN"].GetAttribute("VALUE"), dataset["BLUE"].GetAttribute("VALUE")))
+                       updatedata(sec, ind)
+                   })
     changecolor := func () {
                        color.SetAttribute("BGCOLOR", strings.Join([]string{strings.Split(rcolor.GetAttribute("VALUE"), ".")[0],
                                                                            strings.Split(gcolor.GetAttribute("VALUE"), ".")[0],
@@ -3580,14 +3632,16 @@ func (stw *Window) SectionDialog () {
                                    }
                                })
     dlg := iup.Dialog(iup.Hbox(iup.Vbox(list, sbt, hbt,),
-                               iup.Vbox(iup.Hbox(propertylabel("CODE"),dataset["CODE"],),
+                               iup.Vbox(dataset["NAME"],
+                                        iup.Hbox(propertylabel("CODE"),dataset["CODE"],),
                                         iup.Hbox(proplist, addfig,),
                                         iup.Hbox(propertylabel("PROP"),dataset["PROP"],),
                                         data,
-                                        iup.Hbox(color, iup.Vbox(iup.Hbox(rcolor, dataset["RED"],),
-                                                                 iup.Hbox(gcolor, dataset["GREEN"],),
-                                                                 iup.Hbox(bcolor, dataset["BLUE"],),),),
-                                        bt,),))
+                                        color,
+                                        iup.Vbox(iup.Hbox(rcolor, dataset["RED"],),
+                                                 iup.Hbox(gcolor, dataset["GREEN"],),
+                                                 iup.Hbox(bcolor, dataset["BLUE"],),),
+                                        ctlg, bt,),))
     dlg.SetAttribute("TITLE", "Section")
     dlg.SetAttribute("DIALOGFRAME", "YES")
     dlg.SetAttribute("PARENTDIALOG", "mainwindow")
