@@ -3520,8 +3520,15 @@ func (stw *Window) SectionDialog () {
                        ind--
                        if sec.Num > 700 && sec.Num < 900 {
                            if len(sec.Figs) > ind {
+                               var num int64
                                var tmp float64
                                var err error
+                               num, err = strconv.ParseInt(dataset["PROP"].GetAttribute("VALUE"), 10, 64)
+                               if err == nil {
+                                   if p, ok := stw.Frame.Props[int(num)]; ok {
+                                       sec.Figs[ind].Prop = p
+                                   }
+                               }
                                tmp, err = strconv.ParseFloat(dataset["THICK"].GetAttribute("VALUE"), 64)
                                if err == nil { sec.Figs[ind].Value["THICK"] = tmp }
                                tmp, err = strconv.ParseFloat(dataset["LLOAD0"].GetAttribute("VALUE"), 64)
@@ -3533,8 +3540,15 @@ func (stw *Window) SectionDialog () {
                            }
                        } else {
                            if len(sec.Figs) > ind {
+                               var num int64
                                var tmp float64
                                var err error
+                               num, err = strconv.ParseInt(dataset["PROP"].GetAttribute("VALUE"), 10, 64)
+                               if err == nil {
+                                   if p, ok := stw.Frame.Props[int(num)]; ok {
+                                       sec.Figs[ind].Prop = p
+                                   }
+                               }
                                tmp, err = strconv.ParseFloat(dataset["AREA"].GetAttribute("VALUE"), 64)
                                if err == nil { sec.Figs[ind].Value["AREA"] = tmp }
                                tmp, err = strconv.ParseFloat(dataset["IXX"].GetAttribute("VALUE"), 64)
