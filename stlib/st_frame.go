@@ -8,6 +8,7 @@ import (
     "math"
     "os"
     "path/filepath"
+    "regexp"
     "sort"
     "strconv"
     "strings"
@@ -837,8 +838,10 @@ func (frame *Frame) ReadResult (filename string, mode uint) error {
         lis = strings.Split(string(f),"\n")
     }
     tmpline := 0
+    pat1 := regexp.MustCompile("^ *\\*\\* *FORCES")
     for _, j := range lis {
-        if strings.HasPrefix(strings.Trim(j, " "), "**") {
+        // if strings.HasPrefix(strings.Trim(j, " "), "**") {
+        if pat1.MatchString(j) {
             tmpline++
             break
         }
@@ -931,6 +934,15 @@ func (frame *Frame) ReadResult (filename string, mode uint) error {
             }
         }
     }
+    tmpline -= 2
+    pat2 := regexp.MustCompile("^ *\\*\\* *DISPLACEMENT")
+    for _, j := range lis[tmpline:] {
+        if pat2.MatchString(j) {
+            tmpline++
+            break
+        }
+        tmpline++
+    }
     for _, j := range lis[tmpline:] {
         if strings.HasPrefix(strings.Trim(j, " "), "NO") {
             tmpline++
@@ -977,6 +989,15 @@ func (frame *Frame) ReadResult (filename string, mode uint) error {
         } else {
             fmt.Printf("NODE %d not found\n", nnum)
         }
+    }
+    tmpline -= 2
+    pat3 := regexp.MustCompile("^ *\\*\\* *REACTION")
+    for _, j := range lis[tmpline:] {
+        if pat3.MatchString(j) {
+            tmpline++
+            break
+        }
+        tmpline++
     }
     for _, j := range lis[tmpline:] {
         if strings.HasPrefix(strings.Trim(j, " "), "NO") {

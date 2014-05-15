@@ -3559,6 +3559,7 @@ func (stw *Window) SectionDialog () {
                        }
                        sec.Color = st.ColorInt(fmt.Sprintf("%s %s %s", dataset["RED"].GetAttribute("VALUE"), dataset["GREEN"].GetAttribute("VALUE"), dataset["BLUE"].GetAttribute("VALUE")))
                        updatedata(sec, ind)
+                       stw.Redraw()
                    })
     changecolor := func () {
                        color.SetAttribute("BGCOLOR", strings.Join([]string{strings.Split(rcolor.GetAttribute("VALUE"), ".")[0],
