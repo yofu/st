@@ -693,7 +693,10 @@ func (elem *Elem) Mirror(coord, vec []float64, del bool) *Elem {
         return nil
     }
 }
+// }}}
 
+
+// Check// {{{
 func (elem *Elem) HasSameNode () bool {
     for i, en := range elem.Enod[:elem.Enods-1] {
         for _, em := range elem.Enod[i+1:] {
@@ -701,6 +704,32 @@ func (elem *Elem) HasSameNode () bool {
         }
     }
     return false
+}
+
+func (elem *Elem) IsValidPlate () (bool, error) {
+    switch elem.Enods {
+    case 0, 1, 2:
+        return false, errors.New(fmt.Sprintf("IsValidPlate: too few Enods %d", elem.Enods))
+    case 3:
+        if OnTheSameLine(elem.Enod[0].Coord, elem.Enod[1].Coord, elem.Enod[2].Coord, 5e-3) {
+            return false, errors.New("IsValidPlate: 3 nodes are on the same line")
+        }
+    case 4:
+        if elem.Area() == 0.0 {
+            return false, errors.New("IsValidPlate: Area = 0.0")
+        }
+        if OnTheSameLine(elem.Enod[0].Coord, elem.Enod[1].Coord, elem.Enod[2].Coord, 5e-3) ||
+           OnTheSameLine(elem.Enod[0].Coord, elem.Enod[1].Coord, elem.Enod[3].Coord, 5e-3) ||
+           OnTheSameLine(elem.Enod[0].Coord, elem.Enod[2].Coord, elem.Enod[3].Coord, 5e-3) ||
+           OnTheSameLine(elem.Enod[1].Coord, elem.Enod[2].Coord, elem.Enod[3].Coord, 5e-3) {
+            return false, errors.New("IsValidPlate: 3 nodes are on the same line")
+        }
+        if !OnTheSamePlane(elem.Enod[0].Coord, elem.Enod[1].Coord, elem.Enod[2].Coord, elem.Enod[3].Coord, 5e-3) {
+            return false, errors.New("IsValidPlate: 4 nodes are not on the same plate")
+        }
+        return true, nil
+    }
+    return false, errors.New(fmt.Sprintf("IsValidPlate: too many Enods %d", elem.Enods))
 }
 // }}}
 

@@ -429,3 +429,51 @@ func ParseFile (filename string, do func([]string) error) error {
     return nil
 }
 
+func OnTheSameLine (n1, n2, n3 []float64, eps float64) bool {
+    v1 := make([]float64, 3)
+    v2 := make([]float64, 3)
+    sum1 :=0.0; sum2 := 0.0
+    for i:=0; i<3; i++ {
+        v1[i] = n2[i] - n1[i]
+        v2[i] = n3[i] - n1[i]
+        sum1 += v1[i] * v1[i]
+        sum2 += v2[i] * v2[i]
+    }
+    sum1 = math.Sqrt(sum1)
+    sum2 = math.Sqrt(sum2)
+    if sum1 < eps || sum2 < eps {
+        return true
+    }
+    for i:=0; i<3; i++ {
+        v1[i] /= sum1
+        v2[i] /= sum2
+    }
+    return math.Abs(v1[1]*v2[2] - v2[1]*v1[2]) < eps && math.Abs(v1[2]*v2[0] - v2[2]*v1[0]) < eps && math.Abs(v1[0]*v2[1] - v2[0]*v1[1]) < eps
+}
+
+func OnTheSamePlane (n1, n2, n3, n4 []float64, eps float64) bool {
+    v1 := make([]float64, 3)
+    v2 := make([]float64, 3)
+    v3 := make([]float64, 3)
+    sum1 :=0.0; sum2 := 0.0; sum3 := 0.0
+    for i:=0; i<3; i++ {
+        v1[i] = n2[i] - n1[i]
+        v2[i] = n3[i] - n1[i]
+        v3[i] = n4[i] - n1[i]
+        sum1 += v1[i] * v1[i]
+        sum2 += v2[i] * v2[i]
+        sum3 += v3[i] * v3[i]
+    }
+    sum1 = math.Sqrt(sum1)
+    sum2 = math.Sqrt(sum2)
+    sum3 = math.Sqrt(sum3)
+    if sum1 < eps || sum2 < eps || sum3 < eps {
+        return true
+    }
+    for i:=0; i<3; i++ {
+        v1[i] /= sum1
+        v2[i] /= sum2
+        v3[i] /= sum3
+    }
+    return math.Abs(v1[0]*(v2[1]*v3[2] - v3[1]*v2[2]) + v1[1]*(v2[2]*v3[0] - v3[2]*v2[0]) + v1[2]*(v2[0]*v3[1] - v3[0]*v2[1])) < eps
+}
