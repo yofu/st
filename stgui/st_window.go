@@ -2969,6 +2969,9 @@ func (stw *Window) LinkProperty (index int, eval func ()) {
                                          if stw.Frame != nil && stw.SelectElem != nil {
                                              eval()
                                          }
+                                     case KEY_ESCAPE:
+                                         stw.UpdatePropertyDialog()
+                                         iup.SetFocus(stw.canv)
                                      }
                                  })
 }
