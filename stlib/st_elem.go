@@ -693,6 +693,15 @@ func (elem *Elem) Mirror(coord, vec []float64, del bool) *Elem {
         return nil
     }
 }
+
+func (elem *Elem) HasSameNode () bool {
+    for i, en := range elem.Enod[:elem.Enods-1] {
+        for _, em := range elem.Enod[i+1:] {
+            if en == em { return true }
+        }
+    }
+    return false
+}
 // }}}
 
 

@@ -2004,12 +2004,9 @@ func (frame *Frame) NodeNoReference() []*Node {
 func (frame *Frame) ElemSameNode() []*Elem {
     rtn := make([]*Elem, 0)
     for _, el := range frame.Elems {
-        loop:
-            for i, en := range el.Enod[:el.Enods-1] {
-                for _, em := range el.Enod[i+1:] {
-                    if en == em { rtn = append(rtn, el); break loop }
-                }
-            }
+        if el.HasSameNode() {
+            rtn = append(rtn, el)
+        }
     }
     return rtn
 }
