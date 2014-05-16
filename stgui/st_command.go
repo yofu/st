@@ -834,7 +834,7 @@ func copyelem (stw *Window) {
     getcoord(stw, func (x, y, z float64) {
                       if !(x==0.0 && y==0.0 && z==0.0) {
                           for _, el := range stw.SelectElem {
-                              if el == nil || el.Hide || el.Lock { continue }
+                              if el == nil || el.IsHide(stw.Frame.Show) || el.Lock { continue }
                               el.Copy(x, y, z)
                           }
                           stw.Redraw()
@@ -850,7 +850,7 @@ func moveelem (stw *Window) {
     stw.addHistory("移動距離を指定[ダイアログ(D)]")
     getcoord(stw, func (x, y, z float64) {
                       for _, el := range stw.SelectElem {
-                          if el == nil || el.Hide || el.Lock { continue }
+                          if el == nil || el.IsHide(stw.Frame.Show) || el.Lock { continue }
                           el.Move(x, y, z)
                       }
                       stw.Redraw()
@@ -1295,7 +1295,7 @@ func axistocang (stw *Window) {
     axisfunc :=   func (x, y, z float64) {
                       if !(x==0.0 && y==0.0 && z==0.0) {
                           for _, el := range stw.SelectElem {
-                              if el == nil || el.Hide || el.Lock { continue }
+                              if el == nil || el.IsHide(stw.Frame.Show) || el.Lock { continue }
                               el.AxisToCang([]float64{x, y, z}, strong)
                           }
                           stw.EscapeAll()
@@ -1581,7 +1581,7 @@ func selectsect (stw *Window) {
                 stw.addHistory(fmt.Sprintf("SECT %d Selected", snum))
                 stw.SelectElem = make([]*st.Elem, 0)
                 for _, el := range stw.Frame.Elems {
-                    if el.Hide { continue }
+                    if el.IsHide(stw.Frame.Show) { continue }
                     if el.Sect.Num == snum {
                         stw.SelectElem = append(stw.SelectElem, el)
                     }
@@ -1939,7 +1939,7 @@ func (stw *Window) BoundedArea (arg *iup.MouseButton, f func(ns []*st.Node, els 
         var cand *st.Elem
         xmin := 100000.0
         for _, el := range(stw.Frame.Elems) {
-            if el.Hide || !el.IsLineElem() { continue }
+            if el.IsHide(stw.Frame.Show) || !el.IsLineElem() { continue }
             if el.Enod[0].Pcoord[1] == el.Enod[1].Pcoord[1] { continue }
             if (el.Enod[0].Pcoord[1] - float64(arg.Y)) * (el.Enod[1].Pcoord[1] - float64(arg.Y)) < 0 {
                 xval := el.Enod[0].Pcoord[0] + (el.Enod[1].Pcoord[0]-el.Enod[0].Pcoord[0])*((float64(arg.Y)-el.Enod[0].Pcoord[1])/(el.Enod[1].Pcoord[1]-el.Enod[0].Pcoord[1])) - float64(arg.X)
@@ -1995,7 +1995,7 @@ func (stw *Window) Chain (x, y float64, el *st.Elem, maxdepth int) ([]*st.Node, 
         var addelem *st.Elem
         for _, cand := range stw.Frame.SearchElem(next) {
             if cand == nil { continue }
-            if cand.Hide || !cand.IsLineElem() || cand == tmpel { continue }
+            if cand.IsHide(stw.Frame.Show) || !cand.IsLineElem() || cand == tmpel { continue }
             var otherside *st.Node
             for _, en := range cand.Enod {
                 if en != next { otherside = en; break }
