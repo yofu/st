@@ -2990,7 +2990,7 @@ func (stw *Window) PropertyDialog () {
                             if err == nil {
                                 if sec, ok := stw.Frame.Sects[int(val)]; ok {
                                     for _, el := range stw.SelectElem {
-                                        if el != nil {
+                                        if el != nil && !el.Lock {
                                             el.Sect = sec
                                         }
                                     }
@@ -3021,7 +3021,7 @@ func (stw *Window) PropertyDialog () {
                             stw.Props[2].SetAttribute("VALUE", st.ETYPES[val])
                             if val != 0 {
                                 for _, el := range stw.SelectElem {
-                                    if el != nil {
+                                    if el != nil && !el.Lock {
                                         el.Etype = val
                                     }
                                 }
