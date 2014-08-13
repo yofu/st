@@ -2,6 +2,7 @@ package st
 
 import (
     "bytes"
+    "errors"
     "fmt"
     "math"
     "sort"
@@ -50,6 +51,18 @@ func (n Nodes) Swap(i, j int) {
 type NodeByNum struct { Nodes }
 func (n NodeByNum) Less(i, j int) bool {
     return n.Nodes[i].Num < n.Nodes[j].Num
+}
+type NodeByXCoord struct { Nodes }
+type NodeByYCoord struct { Nodes }
+type NodeByZCoord struct { Nodes }
+func (n NodeByXCoord) Less(i, j int) bool {
+    return n.Nodes[i].Coord[0] < n.Nodes[j].Coord[0]
+}
+func (n NodeByYCoord) Less(i, j int) bool {
+    return n.Nodes[i].Coord[1] < n.Nodes[j].Coord[1]
+}
+func (n NodeByZCoord) Less(i, j int) bool {
+    return n.Nodes[i].Coord[2] < n.Nodes[j].Coord[2]
 }
 // }}}
 
@@ -142,6 +155,22 @@ func (node *Node) MoveTo (x, y, z float64) {
     node.Coord[1]=y
     node.Coord[2]=z
 }
+
+func (node *Node) MoveToLine (n1, n2 *Node, fixed int) error {
+    if fixed < 0 || fixed > 3 {
+        return errors.New("MoveToLine: Index out of range")
+    }
+    d := Direction(n1, n2, false)
+    if d[fixed] == 0.0 {
+        return errors.New("MoveToLine: Zero Division")
+    }
+    k := (node.Coord[fixed] - n1.Coord[fixed])/d[fixed]
+    for i:=0; i<3; i++ {
+        node.Coord[i] = n1.Coord[i] + k*d[i]
+    }
+    return nil
+}
+
 
 func (node *Node) Rotate (center, vector []float64, angle float64) {
     c := RotateVector(node.Coord, center, vector, angle)

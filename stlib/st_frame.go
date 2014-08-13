@@ -27,8 +27,8 @@ const (
 )
 
 var (
-    // PlasticThreshold = math.Pow(RADIUS, EXPONENT)
-    PlasticThreshold = RADIUS
+    PlasticThreshold = math.Pow(RADIUS, EXPONENT)
+    // PlasticThreshold = RADIUS
 )
 
 var (
@@ -67,10 +67,6 @@ type Frame struct {
     Path    string
     Home    string
 
-    Base  float64
-    Locate float64
-    Tfact float64
-    Gperiod float64
     View *View
     Nodes map[int]*Node
     Elems map[int]*Elem
@@ -87,7 +83,8 @@ type Frame struct {
     Maxsnum int
 
     Nlap map[string]int
-    Level []float64
+
+    Ai *Aiparameter
 
     Show *Show
 
@@ -99,10 +96,6 @@ type Frame struct {
 func NewFrame() *Frame {
     f := new(Frame)
     f.Title = "\"CREATED ORGAN FRAME.\""
-    f.Base = 0.2
-    f.Locate = 1.0
-    f.Tfact = 0.02
-    f.Gperiod = 0.6
     f.Nodes = make(map[int]*Node)
     f.Elems = make(map[int]*Elem)
     f.Sects = make(map[int]*Sect)
@@ -114,14 +107,52 @@ func NewFrame() *Frame {
     f.Maxnnum = 100
     f.Maxenum = 1000
     f.Maxsnum = 900
-    f.Level = make([]float64, 0)
     f.Nlap = make(map[string]int)
+    f.Ai = NewAiparameter()
     f.Show = NewShow(f)
     f.DataFileName = make(map[string]string)
     f.ResultFileName = make(map[string]string)
     return f
 }
 // }}}
+
+type Aiparameter struct {
+    Base     float64
+    Locate   float64
+    Tfact    float64
+    Gperiod  float64
+    T        float64
+    Rt       float64
+    Nfloor   int
+    Boundary []float64
+    Level    []float64
+    wi       []float64
+    W        []float64
+    Ai       []float64
+    Ci       []float64
+    Qi       []float64
+    Hi       []float64
+}
+
+func NewAiparameter() *Aiparameter {
+    a := new(Aiparameter)
+    a.Base = 0.2
+    a.Locate = 1.0
+    a.Tfact = 0.02
+    a.Gperiod = 0.6
+    a.T = 0.0
+    a.Rt = 1.0
+    a.Nfloor = 0
+    a.Boundary = make([]float64, 0)
+    a.Level = make([]float64, 0)
+    a.wi = make([]float64, 0)
+    a.W = make([]float64, 0)
+    a.Ai = make([]float64, 0)
+    a.Ci = make([]float64, 0)
+    a.Qi = make([]float64, 0)
+    a.Hi = make([]float64, 0)
+    return a
+}
 
 
 // type View// {{{
@@ -218,13 +249,41 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64) err
                                        nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap)
                                        tmp = words
                                    case "BASE":
-                                       frame.Base, err =strconv.ParseFloat(words[1],64)
+                                       val, err := strconv.ParseFloat(words[1],64)
+                                       if err == nil {
+                                           frame.Ai.Base = val
+                                       }
                                    case "LOCATE":
-                                       frame.Locate, err =strconv.ParseFloat(words[1],64)
+                                       val, err := strconv.ParseFloat(words[1],64)
+                                       if err == nil {
+                                           frame.Ai.Locate = val
+                                       }
                                    case "TFACT":
-                                       frame.Tfact, err =strconv.ParseFloat(words[1],64)
+                                       val, err := strconv.ParseFloat(words[1],64)
+                                       if err == nil {
+                                           frame.Ai.Tfact = val
+                                       }
                                    case "GPERIOD":
-                                       frame.Gperiod, err =strconv.ParseFloat(words[1],64)
+                                       val, err := strconv.ParseFloat(words[1],64)
+                                       if err == nil {
+                                           frame.Ai.Gperiod = val
+                                       }
+                                   case "NFLOOR":
+                                       val, err := strconv.ParseInt(words[1],10,64)
+                                       if err == nil {
+                                           frame.Ai.Nfloor = int(val)
+                                       }
+                                       frame.Ai.Boundary = make([]float64, frame.Ai.Nfloor+1)
+                                   case "HEIGHT":
+                                       if frame.Ai.Nfloor == 0 {
+                                           frame.Ai.Nfloor = len(words)-2
+                                           frame.Ai.Boundary = make([]float64, len(words)-1)
+                                       }
+                                       for i:=0; i<frame.Ai.Nfloor+1; i++ {
+                                           val, err := strconv.ParseFloat(words[1+i], 64)
+                                           if err != nil { break }
+                                           frame.Ai.Boundary[i] = val
+                                       }
                                    case "GFACT":
                                        frame.View.Gfact, err =strconv.ParseFloat(words[1],64)
                                    case "FOCUS":
@@ -273,7 +332,7 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64) err
             fmt.Println(err)
         }
     } else {
-        fmt.Printf("No Configure File: %s\n", conffn)
+        // fmt.Printf("No Configure File: %s\n", conffn)
     }
     return nil
 }
@@ -584,7 +643,9 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) error {
     } else {
         el = NewPlateElem(e.Enod, e.Sect, e.Etype)
         el.Num = e.Num
-        el.Wrect = e.Wrect
+        if e.Wrect != nil {
+            el.Wrect = e.Wrect
+        }
     }
     el.Frame = frame
     if _, exist := frame.Elems[el.Num]; !exist {
@@ -644,15 +705,18 @@ func (frame *Frame) ParseConfigure(lis []string) (err error) {
 
 func (frame *Frame) ParseLevel(lis []string) (err error) {
     size := len(lis)
-    val := make([]float64, size)
+    val := make([]float64, size+2)
+    val[0] = MINCOORD
     for i:=0; i<size; i++ {
         tmp, err := strconv.ParseFloat(lis[i], 64)
         if err != nil {
             return err
         }
-        val[i] = tmp
+        val[1+i] = tmp
     }
-    frame.Level = val
+    val[size+1] = MAXCOORD
+    frame.Ai.Nfloor = size + 1
+    frame.Ai.Boundary = val
     return nil
 }
 // }}}
@@ -1125,7 +1189,8 @@ func (frame *Frame) ReadZoubun (filename string) error {
                                            nlap++
                                            err = frame.ParseZoubun(tmp, period)
                                            tmp=[][]string{words}
-                                           period = fmt.Sprintf("%s@%s", ext, strings.Split(strings.Split(first, ":")[1], "/")[0])
+                                           // period = fmt.Sprintf("%s@%s", ext, strings.Split(strings.Split(first, ":")[1], "/")[0])
+                                           period = fmt.Sprintf("%s@%d", ext, nlap)
                                        } else {
                                            tmp=append(tmp,words)
                                        }
@@ -1134,7 +1199,7 @@ func (frame *Frame) ReadZoubun (filename string) error {
                                        tmp=[][]string{words}
                                    }
                                    if err != nil {
-                                       return err
+                                       return errors.New(fmt.Sprintf("%s, LAP:%d", err.Error(), nlap))
                                    }
                                    return nil
                                })
@@ -1143,7 +1208,7 @@ func (frame *Frame) ReadZoubun (filename string) error {
     }
     err = frame.ParseZoubun(tmp, period)
     if err != nil {
-        return err
+        return errors.New(fmt.Sprintf("%s, LAP:%d", err.Error(), nlap))
     }
     frame.Nlap[ext] = nlap
     return nil
@@ -1171,26 +1236,36 @@ func (frame *Frame) ParseZoubunStress (lis [][]string, period string) error {
         if strings.ToUpper(l[0]) == "ELEM" {
             enum, err := strconv.ParseInt(l[1], 10, 64)
             if err != nil {
-                return err
+                return errors.New(fmt.Sprintf("ParseZoubunStress: %s enum %s", err, l[1]))
             }
             if el, ok := frame.Elems[int(enum)]; ok {
+                var val float64
+                var err error
                 nnum, err := strconv.ParseInt(strings.Trim(l[5], ":"), 10, 64)
                 if err != nil {
-                    return err
+                    return errors.New(fmt.Sprintf("ParseZoubunStress: %s ELEM: %d nnum", err, el.Num))
                 }
                 stress := make([]float64, 6)
                 for i:=0; i<6; i++ {
                     val, err := strconv.ParseFloat(l[7+2*i], 64)
                     if err != nil {
-                        return err
+                        return errors.New(fmt.Sprintf("ParseZoubunStress: %s ELEM: %d stress", err, el.Num))
                     }
                     stress[i] = val
                 }
-                val, err := strconv.ParseFloat(l[19], 64)
-                if err != nil {
-                    return err
+                if len(l)<20 {
+                    if strings.HasPrefix(l[len(l)-1], "f=") {
+                        val, err = strconv.ParseFloat(strings.Trim(l[len(l)-1], "f="), 64)
+                    } else {
+                        return errors.New(fmt.Sprintf("ParseZoubunStress: Index Error ELEM: %d function1", el.Num))
+                    }
+                } else {
+                    val, err = strconv.ParseFloat(l[19], 64)
                 }
-                ph := val > PlasticThreshold
+                if err != nil {
+                    return errors.New(fmt.Sprintf("ParseZoubunStress: %s ELEM: %d function2", err, el.Num))
+                }
+                ph := val >= PlasticThreshold
                 if el.Stress[period] == nil { el.Stress[period] = make(map[int][]float64) }
                 if el.Phinge[period] == nil { el.Phinge[period] = make(map[int]bool) }
                 el.Stress[period][int(nnum)] = stress
@@ -1214,7 +1289,7 @@ func (frame *Frame) ParseZoubunReaction (lis [][]string, period string) error {
                 if err != nil {
                     return err
                 }
-                val, err := strconv.ParseFloat(l[5], 64)
+                val, err := strconv.ParseFloat(strings.Trim(l[5], "\r"), 64)
                 if err != nil {
                     return err
                 }
@@ -1235,7 +1310,7 @@ func (frame *Frame) ParseZoubunForm (lis [][]string, period string) error {
             if n, ok := frame.Nodes[int(nnum)]; ok {
                 disp := make([]float64, 6)
                 for i:=0; i<6; i++ {
-                    val, err := strconv.ParseFloat(l[3+i], 64)
+                    val, err := strconv.ParseFloat(strings.Trim(l[3+i], "\r"), 64)
                     if err != nil {
                         return err
                     }
@@ -1546,10 +1621,19 @@ func (frame *Frame) WriteInp(fn string) error {
     var pnum, snum, nnum, enum int
     fmt.Printf("Save: %s\n",fn)
     // Frame
-    otp.WriteString(fmt.Sprintf("BASE    %5.3f\n", frame.Base))
-    otp.WriteString(fmt.Sprintf("LOCATE  %5.3f\n", frame.Locate))
-    otp.WriteString(fmt.Sprintf("TFACT   %5.3f\n", frame.Tfact))
-    otp.WriteString(fmt.Sprintf("GPERIOD %5.3f\n\n", frame.Gperiod))
+    otp.WriteString(fmt.Sprintf("BASE    %5.3f\n", frame.Ai.Base))
+    otp.WriteString(fmt.Sprintf("LOCATE  %5.3f\n", frame.Ai.Locate))
+    otp.WriteString(fmt.Sprintf("TFACT   %5.3f\n", frame.Ai.Tfact))
+    otp.WriteString(fmt.Sprintf("GPERIOD %5.3f\n", frame.Ai.Gperiod))
+    if frame.Ai.Nfloor > 0 {
+        otp.WriteString(fmt.Sprintf("NFLOOR %d\n", frame.Ai.Nfloor))
+        otp.WriteString("HEIGHT")
+        for i:=0; i<frame.Ai.Nfloor+1; i++ {
+            otp.WriteString(fmt.Sprintf(" %.1f", frame.Ai.Boundary[i]))
+        }
+        otp.WriteString("\n")
+    }
+    otp.WriteString("\n")
     otp.WriteString(fmt.Sprintf("GFACT %.1f\n", frame.View.Gfact))
     otp.WriteString(fmt.Sprintf("FOCUS %.1f %.1f %.1f\n", frame.View.Focus[0], frame.View.Focus[1], frame.View.Focus[2]))
     otp.WriteString(fmt.Sprintf("ANGLE %.1f %.1f\n", frame.View.Angle[0], frame.View.Angle[1]))
@@ -1718,7 +1802,12 @@ func (frame *Frame) DefaultProp () *Prop {
 
 
 func (frame *Frame) DefaultSect () *Sect {
-    snums := make([]int, len(frame.Sects))
+    l := len(frame.Sects)
+    if l == 0 {
+        s := frame.AddSect(101)
+        return s
+    }
+    snums := make([]int, l)
     i := 0
     for k, _ := range(frame.Sects) {
         snums[i] = int(k)
@@ -1800,7 +1889,7 @@ func (frame *Frame) AddPlateElem (enum int, ns []*Node, sect *Sect, etype int) (
 
 
 // Search// {{{
-func (frame *Frame) NodeInBox (n1, n2 *Node) []*Node {
+func (frame *Frame) NodeInBox (n1, n2 *Node, eps float64) []*Node {
     var minx, miny, minz float64
     var maxx, maxy, maxz float64
     if n1.Coord[0] < n2.Coord[0] {
@@ -1821,7 +1910,7 @@ func (frame *Frame) NodeInBox (n1, n2 *Node) []*Node {
     rtn := make([]*Node, 0)
     var i int
     for _, n := range frame.Nodes {
-        if minx <= n.Coord[0] && n.Coord[0] <= maxx && miny <= n.Coord[1] && n.Coord[1] <= maxy && minz <= n.Coord[2] && n.Coord[2] <= maxz {
+        if minx-eps <= n.Coord[0] && n.Coord[0] <= maxx+eps && miny-eps <= n.Coord[1] && n.Coord[1] <= maxy+eps && minz-eps <= n.Coord[2] && n.Coord[2] <= maxz+eps {
             rtn = append(rtn, n)
             i++
         }
@@ -2081,6 +2170,44 @@ func (frame *Frame) ElemDuplication () map[*Elem]*Elem {
     return dups
 }
 
+func (frame *Frame) BandWidth () int {
+    rtn := 0
+    for _, el := range frame.Elems {
+        if el.IsLineElem() {
+            val := abs(el.Enod[1].Num - el.Enod[0].Num)
+            if val > rtn { rtn = val }
+        }
+    }
+    return rtn
+}
+
+func (frame *Frame) NodeSort (d int) (int, error) {
+    nnum := 0
+    nodes := make([]*Node, len(frame.Nodes))
+    for _, n := range frame.Nodes {
+        nodes[nnum] = n
+        nnum++
+    }
+    switch d {
+    case 0:
+        sort.Stable(NodeByXCoord{nodes})
+    case 1:
+        sort.Stable(NodeByYCoord{nodes})
+    case 2:
+        sort.Stable(NodeByZCoord{nodes})
+    default:
+        return 0, errors.New("NodeSort: Unknown Direction")
+    }
+    newnodes := make(map[int]*Node)
+    num := 101
+    for _, n := range nodes {
+        newnodes[num] = n
+        n.Num = num
+        num++
+    }
+    return frame.BandWidth(), nil
+}
+
 func (frame *Frame) Cat (e1, e2 *Elem, n *Node) error {
     if !e1.IsLineElem() || !e2.IsLineElem() { return NotLineElem("Cat") }
     var ind1, ind2 int
@@ -2220,44 +2347,80 @@ func (frame *Frame) CatByNode (n *Node, parallel bool) error {
 func (frame *Frame) Intersect (e1, e2 *Elem, cross bool, sign1, sign2 int, del1, del2 bool) ([]*Node, []*Elem, error) {
     if !e1.IsLineElem() || !e2.IsLineElem() { return nil, nil, NotLineElem("Intersect") }
     k1, k2, d, err := DistLineLine(e1.Enod[0].Coord, e1.Direction(false), e2.Enod[0].Coord, e2.Direction(false))
-    if err == nil {
-        if d > 1e-4 {
-            return nil, nil, errors.New(fmt.Sprintf("Intersect: Distance= %.3f", d))
-        }
-        if !cross || (( 0.0 < k1 && k1 < 1.0) && (0.0 < k2 && k2 < 1.0)) {
-            var ns []*Node
-            var els []*Elem
-            var err error
-            d1 := e1.Direction(false)
-            n := frame.CoordNode(e1.Enod[0].Coord[0]+k1*d1[0], e1.Enod[0].Coord[1]+k1*d1[1], e1.Enod[0].Coord[2]+k1*d1[2])
-            switch {
-            default:
-            case k1 < 0.0:
-                ns, els, err = e1.DivideAtNode(n, 0, del1)
-            case 0.0 < k1 && k1 < 1.0:
-                ns, els, err = e1.DivideAtNode(n, 1*sign1, del1)
-            case 1.0 < k1:
-                ns, els, err = e1.DivideAtNode(n, 2, del1)
-            }
-            switch {
-            default:
-            case k2 < 0.0:
-                ns, els, err = e2.DivideAtNode(n, 0, del2)
-            case 0.0 < k2 && k2 < 1.0:
-                ns, els, err = e2.DivideAtNode(n, 1*sign2, del2)
-            case 1.0 < k2:
-                ns, els, err = e2.DivideAtNode(n, 2, del2)
-            }
-            if err != nil {
-                return nil, nil, err
-            } else {
-                return ns, els, nil
-            }
-        } else {
-            return nil, nil, errors.New(fmt.Sprintf("Intersect: Not Cross k1= %.3f, k2= %.3f", k1, k2))
-        }
-    } else {
+    if err != nil {
         return nil, nil, err
+    }
+    if d > 1e-4 {
+        return nil, nil, errors.New(fmt.Sprintf("Intersect: Distance= %.3f", d))
+    }
+    if !cross || (( 0.0 < k1 && k1 < 1.0) && (0.0 < k2 && k2 < 1.0)) {
+        var ns []*Node
+        var els []*Elem
+        var tmpels []*Elem
+        var err error
+        d1 := e1.Direction(false)
+        n := frame.CoordNode(e1.Enod[0].Coord[0]+k1*d1[0], e1.Enod[0].Coord[1]+k1*d1[1], e1.Enod[0].Coord[2]+k1*d1[2])
+        switch {
+        default:
+        case k1 < 0.0:
+            ns, els, err = e1.DivideAtNode(n, 0, del1)
+        case 0.0 < k1 && k1 < 1.0:
+            ns, els, err = e1.DivideAtNode(n, 1*sign1, del1)
+        case 1.0 < k1:
+            ns, els, err = e1.DivideAtNode(n, 2, del1)
+        }
+        if err != nil {
+            return nil, nil, err
+        }
+        switch {
+        default:
+        case k2 < 0.0:
+            ns, tmpels, err = e2.DivideAtNode(n, 0, del2)
+        case 0.0 < k2 && k2 < 1.0:
+            ns, tmpels, err = e2.DivideAtNode(n, 1*sign2, del2)
+        case 1.0 < k2:
+            ns, tmpels, err = e2.DivideAtNode(n, 2, del2)
+        }
+        if err != nil {
+            return nil, nil, err
+        }
+        els = append(els, tmpels...)
+        return ns, els, nil
+    } else {
+        return nil, nil, errors.New(fmt.Sprintf("Intersect: Not Cross k1= %.3f, k2= %.3f", k1, k2))
+    }
+}
+
+func (frame *Frame) CutByElem (cutter, cuttee *Elem, cross bool, sign int, del bool) ([]*Node, []*Elem, error) {
+    if !cutter.IsLineElem() || !cuttee.IsLineElem() { return nil, nil, NotLineElem("CutByElem") }
+    k1, k2, d, err := DistLineLine(cutter.Enod[0].Coord, cutter.Direction(false), cuttee.Enod[0].Coord, cuttee.Direction(false))
+    if err != nil {
+        return nil, nil, err
+    }
+    if d > 1e-4 {
+        return nil, nil, errors.New(fmt.Sprintf("CutByElem: Distance= %.3f", d))
+    }
+    if !cross || (( 0.0 < k1 && k1 < 1.0) && (0.0 < k2 && k2 < 1.0)) {
+        var ns []*Node
+        var els []*Elem
+        var err error
+        d1 := cutter.Direction(false)
+        n := frame.CoordNode(cutter.Enod[0].Coord[0]+k1*d1[0], cutter.Enod[0].Coord[1]+k1*d1[1], cutter.Enod[0].Coord[2]+k1*d1[2])
+        switch {
+        default:
+        case k2 < 0.0:
+            ns, els, err = cuttee.DivideAtNode(n, 0, del)
+        case 0.0 < k2 && k2 < 1.0:
+            ns, els, err = cuttee.DivideAtNode(n, 1*sign, del)
+        case 1.0 < k2:
+            ns, els, err = cuttee.DivideAtNode(n, 2, del)
+        }
+        if err != nil {
+            return nil, nil, err
+        }
+        return ns, els, nil
+    } else {
+        return nil, nil, errors.New(fmt.Sprintf("CutByElem: Not Cross k1= %.3f, k2= %.3f", k1, k2))
     }
 }
 
@@ -2267,6 +2430,10 @@ func (frame *Frame) Trim (e1, e2 *Elem, sign int) ([]*Node, []*Elem, error) {
 
 func (frame *Frame) Extend (e1, e2 *Elem) ([]*Node, []*Elem, error) {
     return frame.Intersect(e1, e2, false, 1, 1, false, true)
+}
+
+func (frame *Frame) Fillet (e1, e2 *Elem, sign1, sign2 int) ([]*Node, []*Elem, error) {
+    return frame.Intersect(e1, e2, false, sign1, sign2, true, true)
 }
 
 func (frame *Frame) Upside () {
@@ -2357,7 +2524,7 @@ func (frame *Frame) WeightDistribution () {
     case "kN":
         otp.WriteString(fmt.Sprintf("Unit Factor  =%7.5f \"SI Units [%s]\"\n\n", frame.Show.Unit[0], frame.Show.UnitName[0]))
     }
-    otp.WriteString(frame.Ai())
+    otp.WriteString(frame.AiDistribution())
     w, err := os.Create(filepath.Join(frame.Home, DEFAULT_WGT))
     defer w.Close()
     if err != nil {
@@ -2366,127 +2533,149 @@ func (frame *Frame) WeightDistribution () {
     otp.WriteTo(w)
 }
 
-func (frame *Frame) Ai () string {
-    size := len(frame.Level) + 1
-    weight := make([]float64, size)
-    level  := make([]float64, size)
+func (frame *Frame) AiDistribution () string {
+    // size := len(frame.Ai.Boundary) + 1
+    size := frame.Ai.Nfloor
+    frame.Ai.wi = make([]float64, size)
+    frame.Ai.Level = make([]float64, size)
     nnum   := make([]int, size)
     maxheight := MINCOORD
     for _, n := range frame.Nodes {
         height := n.Coord[2]
-        if height < frame.Level[0] {
-            weight[0] += n.Weight[2]
-            level[0] += n.Coord[2]
-            nnum[0]++
-        } else if height >= frame.Level[size-2] {
-            weight[size-1] += n.Weight[2]
-            level[size-1] += n.Coord[2]
-            nnum[size-1]++
-        } else {
-            for i:=1; i<size-1; i++ {
-                if height < frame.Level[i] {
-                    weight[i] += n.Weight[2]
-                    level[i] += n.Coord[2]
-                    nnum[i]++
-                    break
-                }
+        if height < frame.Ai.Boundary[0] { continue }
+        for i:=0; i<size; i++ {
+            if height < frame.Ai.Boundary[i+1] {
+                frame.Ai.wi[i] += n.Weight[2]
+                frame.Ai.Level[i] += n.Coord[2]
+                nnum[i]++
+                break
             }
         }
+        // if height < frame.Ai.Boundary[1] {
+        //     weight[0] += n.Weight[2]
+        //     level[0] += n.Coord[2]
+        //     nnum[0]++
+        // } else if height >= frame.Ai.Boundary[size-3] {
+        //     weight[size-1] += n.Weight[2]
+        //     level[size-1] += n.Coord[2]
+        //     nnum[size-1]++
+        // } else {
+        //     for i:=2; i<size-2; i++ {
+        //         if height < frame.Ai.Boundary[i] {
+        //             weight[i] += n.Weight[2]
+        //             level[i] += n.Coord[2]
+        //             nnum[i]++
+        //             break
+        //         }
+        //     }
+        // }
     }
-    W := make([]float64, size)
+    frame.Ai.W = make([]float64, size)
     for i:=0; i<size; i++ {
-        level[i] /= float64(nnum[i])
-        if level[i] > maxheight { maxheight = level[i] }
+        frame.Ai.Level[i] /= float64(nnum[i])
+        if frame.Ai.Level[i] > maxheight { maxheight = frame.Ai.Level[i] }
         for j:=size-1; j>=i; j-- {
-            W[i] += weight[j]
+            frame.Ai.W[i] += frame.Ai.wi[j]
         }
     }
-    Ai := make([]float64, size-1)
-    T := maxheight*frame.Tfact
-    var Rt float64
-    if T < frame.Gperiod {
-        Rt = 1.0
-    } else if T < 2.0 * frame.Gperiod {
-        Rt = 1.0 - 0.2 * math.Pow((T/frame.Gperiod - 1.0), 2.0)
+    frame.Ai.Ai = make([]float64, size-1)
+    frame.Ai.T = maxheight*frame.Ai.Tfact
+    if frame.Ai.T < frame.Ai.Gperiod {
+        frame.Ai.Rt = 1.0
+    } else if frame.Ai.T < 2.0 * frame.Ai.Gperiod {
+        frame.Ai.Rt = 1.0 - 0.2 * math.Pow((frame.Ai.T/frame.Ai.Gperiod - 1.0), 2.0)
     } else {
-        Rt = 1.6 * frame.Gperiod / T
+        frame.Ai.Rt = 1.6 * frame.Ai.Gperiod / frame.Ai.T
     }
-    tt := 2.0 * T / (1.0 + 3.0 * T)
+    tt := 2.0 * frame.Ai.T / (1.0 + 3.0 * frame.Ai.T)
     for i:=0; i<size-1; i++ {
-        alpha := W[i+1]/W[1]
-        Ai[i] = 1.0 + (1.0/math.Sqrt(alpha) - alpha) *tt
+        alpha := frame.Ai.W[i+1]/frame.Ai.W[1]
+        frame.Ai.Ai[i] = 1.0 + (1.0/math.Sqrt(alpha) - alpha) *tt
     }
-    Ci := make([]float64, size)
-    Qi := make([]float64, size)
-    Hi := make([]float64, size)
+    frame.Ai.Ci = make([]float64, size)
+    frame.Ai.Qi = make([]float64, size)
+    frame.Ai.Hi = make([]float64, size)
     facts := make([]float64, size)
     for i:=0; i<size; i++ {
         if i==0 {
-            Ci[0] = 0.5 * frame.Locate * Rt * frame.Base
-            Qi[0] = Ci[0] * W[0]
-            facts[0] = Ci[0]
+            frame.Ai.Ci[0] = 0.5 * frame.Ai.Locate * frame.Ai.Rt * frame.Ai.Base
+            frame.Ai.Qi[0] = frame.Ai.Ci[0] * frame.Ai.W[0]
+            facts[0] = frame.Ai.Ci[0]
         } else {
-            Ci[i] = frame.Locate * Rt * Ai[i-1] * frame.Base
-            Qi[i] = Ci[i] * W[i]
-            Hi[i-1] = Qi[i-1] - Qi[i]
-            if i > 1 { facts[i-1] = Hi[i-1] / weight[i-1] }
+            frame.Ai.Ci[i] = frame.Ai.Locate * frame.Ai.Rt * frame.Ai.Ai[i-1] * frame.Ai.Base
+            frame.Ai.Qi[i] = frame.Ai.Ci[i] * frame.Ai.W[i]
+            frame.Ai.Hi[i-1] = frame.Ai.Qi[i-1] - frame.Ai.Qi[i]
+            if i > 1 { facts[i-1] = frame.Ai.Hi[i-1] / frame.Ai.wi[i-1] }
         }
     }
-    Hi[size-1] = Qi[size-1]
-    facts[size-1] = Hi[size-1] / weight[size-1]
+    frame.Ai.Hi[size-1] = frame.Ai.Qi[size-1]
+    facts[size-1] = frame.Ai.Hi[size-1] / frame.Ai.wi[size-1]
     for _, n := range frame.Nodes {
         height := n.Coord[2]
-        if height < frame.Level[0] {
+        if height < frame.Ai.Boundary[0] {
             n.Factor = facts[0]
-        } else if height >= frame.Level[size-2] {
+            continue
+        } else if height >= frame.Ai.Boundary[size] {
             n.Factor = facts[size-1]
-        } else {
-            for i:=1; i<size-1; i++ {
-                if height < frame.Level[i] {
-                    n.Factor = facts[i]
-                    break
-                }
+            continue
+        }
+        for i:=0; i<size-1; i++ {
+            if height < frame.Ai.Boundary[i+1] {
+                n.Factor = facts[i]
+                break
             }
         }
+        // if height < frame.Level[0] {
+        //     n.Factor = facts[0]
+        // } else if height >= frame.Level[size-2] {
+        //     n.Factor = facts[size-1]
+        // } else {
+        //     for i:=1; i<size-1; i++ {
+        //         if height < frame.Level[i] {
+        //             n.Factor = facts[i]
+        //             break
+        //         }
+        //     }
+        // }
     }
     var rtn bytes.Buffer
     rtn.WriteString("3.3 : Ai分布型地震荷重\n\n")
     rtn.WriteString("水平荷重は建築基準法施行令第88条および建設省告示1793号に従い、Ａi分布型の地震力とする。\n\n")
     rtn.WriteString(fmt.Sprintf("階数       　　　    n =%d\n", size))
     rtn.WriteString(fmt.Sprintf("高さ         　　　  H =%.3f\n", maxheight))
-    rtn.WriteString(fmt.Sprintf("１次固有周期         T1=%5.3fH=%5.3f\n", frame.Tfact, T))
-    rtn.WriteString(fmt.Sprintf("地盤周期             Tc=%5.3f\n", frame.Gperiod))
-    rtn.WriteString(fmt.Sprintf("振動特性係数         Rt=%5.3f\n", Rt))
-    rtn.WriteString(fmt.Sprintf("地域係数             Z =%5.3f\n", frame.Locate))
-    rtn.WriteString(fmt.Sprintf("標準層せん断力係数   Co=%5.3f\n", frame.Base))
+    rtn.WriteString(fmt.Sprintf("１次固有周期         T1=%5.3fH=%5.3f\n", frame.Ai.Tfact, frame.Ai.T))
+    rtn.WriteString(fmt.Sprintf("地盤周期             Tc=%5.3f\n", frame.Ai.Gperiod))
+    rtn.WriteString(fmt.Sprintf("振動特性係数         Rt=%5.3f\n", frame.Ai.Rt))
+    rtn.WriteString(fmt.Sprintf("地域係数             Z =%5.3f\n", frame.Ai.Locate))
+    rtn.WriteString(fmt.Sprintf("標準層せん断力係数   Co=%5.3f\n", frame.Ai.Base))
     rtn.WriteString(fmt.Sprintf("基礎部分の震度       Cf=%5.3f\n\n", facts[0]))
     rtn.WriteString("各階平均高さ      :")
     for i:=0; i<size; i++ {
-        rtn.WriteString(fmt.Sprintf(" %10.3f", level[i]))
+        rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Level[i]))
     }
     rtn.WriteString("\n各階重量       wi :")
     for i:=0; i<size; i++ {
-        rtn.WriteString(fmt.Sprintf(" %10.3f", weight[i]))
+        rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.wi[i]))
     }
     rtn.WriteString("\n        Wi = Σwi :")
     for i:=0; i<size; i++ {
-        rtn.WriteString(fmt.Sprintf(" %10.3f", W[i]))
+        rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.W[i]))
     }
     rtn.WriteString("\n               Ai :           ")
     for i:=0; i<size-1; i++ {
-        rtn.WriteString(fmt.Sprintf(" %10.3f", Ai[i]))
+        rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Ai[i]))
     }
     rtn.WriteString("\n層せん断力係数 Ci :           ")
     for i:=1; i<size; i++ {
-        rtn.WriteString(fmt.Sprintf(" %10.3f", Ci[i]))
+        rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Ci[i]))
     }
     rtn.WriteString("\n層せん断力     Qi :           ")
     for i:=1; i<size; i++ {
-        rtn.WriteString(fmt.Sprintf(" %10.3f", Qi[i]))
+        rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Qi[i]))
     }
     rtn.WriteString("\n各階外力       Hi :           ")
     for i:=1; i<size; i++ {
-        rtn.WriteString(fmt.Sprintf(" %10.3f", Hi[i]))
+        rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Hi[i]))
     }
     rtn.WriteString("\n外力係数    Hi/wi :")
     for i:=0; i<size; i++ {
@@ -2565,9 +2754,9 @@ func (frame *Frame) SaveAsArclm (name string) error {
 
 func (frame *Frame) Facts (fn string, etypes []int) error {
     var err error
-    l := len(frame.Level)+1
-    if l == 1 {
-        return errors.New("Facts: Level = []")
+    l := frame.Ai.Nfloor
+    if l < 2 {
+        return errors.New("Facts: Nfloor < 2")
     }
     nodes := make([][]*Node, l)
     elems := make([][]*Elem, l-1)
@@ -2579,13 +2768,13 @@ func (frame *Frame) Facts (fn string, etypes []int) error {
     }
     fact_node:
         for _, n := range frame.Nodes {
-            for i:=0; i<l-1; i++ {
-                if n.Coord[2] < frame.Level[i] {
+            if n.Coord[2] < frame.Ai.Boundary[0] { continue }
+            for i:=0; i<l; i++ {
+                if n.Coord[2] < frame.Ai.Boundary[i+1] {
                     nodes[i] = append(nodes[i], n)
                     continue fact_node
                 }
             }
-            nodes[l-1] = append(nodes[l-1], n)
         }
     for _, el := range frame.Elems {
         contained := false
@@ -2597,13 +2786,13 @@ func (frame *Frame) Facts (fn string, etypes []int) error {
         }
         if !contained { continue }
         for i:=0; i<l-1; i++ {
-            if (el.Enod[0].Coord[2] - frame.Level[i])*(el.Enod[1].Coord[2] - frame.Level[i]) < 0 {
+            if (el.Enod[0].Coord[2] - frame.Ai.Boundary[i+1])*(el.Enod[1].Coord[2] - frame.Ai.Boundary[i+1]) < 0 {
                 elems[i] = append(elems[i], el)
                 break
             }
         }
     }
-    f := NewFact(l, true, frame.Base/0.2)
+    f := NewFact(l, true, frame.Ai.Base/0.2)
     f.SetFileName([]string{frame.DataFileName["L"], frame.DataFileName["X"], frame.DataFileName["Y"]},
                   []string{frame.ResultFileName["L"], frame.ResultFileName["X"], frame.ResultFileName["Y"]})
     err = f.CalcFact(nodes, elems)

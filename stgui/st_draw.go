@@ -19,15 +19,19 @@ func DrawNode (node *st.Node, cvs *cd.Canvas, show *st.Show) {
         ncap.WriteString(fmt.Sprintf("%d\n", node.Num))
         oncap = true
     }
-    for i, j := range []uint{st.NC_DX, st.NC_DY, st.NC_DZ} {
+    for i, j := range []uint{st.NC_DX, st.NC_DY, st.NC_DZ, st.NC_TX, st.NC_TY, st.NC_TZ} {
         if show.NodeCaption & j != 0 {
             if !node.Conf[i] {
-                ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["DISP"]), node.ReturnDisp(show.Period, i)*100.0))
+                if i < 3 {
+                    ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["DISP"]), node.ReturnDisp(show.Period, i)*100.0))
+                } else {
+                    ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["THETA"]), node.ReturnDisp(show.Period, i)))
+                }
                 oncap = true
             }
         }
     }
-    for i, j := range []uint{st.NC_RX, st.NC_RY, st.NC_RZ} {
+    for i, j := range []uint{st.NC_RX, st.NC_RY, st.NC_RZ, st.NC_MX, st.NC_MY, st.NC_MZ} {
         if show.NodeCaption & j != 0 {
             if node.Conf[i] {
                 ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), node.ReturnReaction(show.Period, i)))

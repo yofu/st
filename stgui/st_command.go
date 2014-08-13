@@ -20,66 +20,76 @@ import (
 var (
     Commands = make(map[string]*Command,0)
 
-    DISTS              = &Command{"DISTANCE", "DISTS", "measure distance", dists}
-    TOGGLEBOND         = &Command{"TOGGLE", "TOGGLE BOND", "toggle bond of selected elem", togglebond}
-    COPYBOND           = &Command{"COPY", "COPY BOND", "copy bond of selected elem", copybond}
-    BONDPIN            = &Command{"PIN", "BOND PIN", "set bond of selected elem to pin-pin", bondpin}
-    BONDRIGID          = &Command{"RIGID", "BOND RIGID", "set bond of selected elem to rigid-rigid", bondrigid}
-    CONFFIX            = &Command{"FIX", "CONF FIX", "set conf of selected node to fix", conffix}
-    CONFPIN            = &Command{"PIN", "CONF PIN", "set conf of selected node to pin", confpin}
-    CONFXYROLLER       = &Command{"XY ROLLER", "CONF XYROLLER", "set conf of selected node to xy-roller", confxyroller}
-    CONFFREE           = &Command{"FREE", "CONF FREE", "set conf of selected node to free", conffree}
-    OPEN               = &Command{"OPEN", "OEPN INPUT", "open inp file", openinput}
-    SAVE               = &Command{"SAVE", "SAVE", "save inp file", saveinput}
-    READPGP            = &Command{"READ PGP", "READ PGP", "read pgp file", readpgp}
-    INSERT             = &Command{"INST", "INSERT", "insert new frame", insert}
-    SETFOCUS           = &Command{"STFO", "SET FOCUS", "set focus to the center", setfocus}
-    SELECTNODE         = &Command{"_NOD", "SELECT NODE", "select elem by number", selectnode}
-    SELECTELEM         = &Command{"_ELM", "SELECT ELEM", "select elem by number", selectelem}
-    SELECTSECT         = &Command{"_SEC", "SELECT SECT", "select elem by section", selectsect}
-    SELECTCHILDREN     = &Command{"_CLD", "SELECT CHILDREN", "select elem.Children", selectchildren}
-    ERRORELEM          = &Command{"ERRO", "ERROR ELEM", "select elem whose max(rate)>1.0", errorelem}
-    FENCE              = &Command{"FNCE", "FENCE", "select elem by fence", fence}
-    ADDLINEELEM        = &Command{"LINE", "ADD LINE ELEM", "add line elem", addlineelem}
-    ADDPLATEELEM       = &Command{"PLATE(4pts)", "ADD PLATE ELEM", "add plate elem", addplateelem}
-    ADDPLATEELEMBYLINE = &Command{"PLATE(2lines)", "ADD PLATE ELEM BY LINE", "add plate elem by line", addplateelembyline}
-    HATCHPLATEELEM     = &Command{"HATCHING", "HATCH PLATE ELEM", "add plate elem by hatching", hatchplateelem}
-    EDITPLATEELEM      = &Command{"EDPL", "EDIT PLATE ELEM", "edit plate elem", editplateelem}
-    MATCHPROP          = &Command{"COPY PROPERTY", "MATCH PROPERTY", "match property", matchproperty}
-    AXISTOCANG         = &Command{"CANG", "AXISTOCANG", "set cang by axis", axistocang}
-    COPYELEM           = &Command{"COPY", "COPY ELEM", "copy selected elems", copyelem}
-    MOVEELEM           = &Command{"MOVE", "MOVE ELEM", "move selected elems", moveelem}
-    MOVENODE           = &Command{"MOVE", "MOVE NODE", "move selected nodes", movenode}
-    PINCHNODE          = &Command{"NDPC", "PINCH NODE", "pinch nodes", pinchnode}
-    ROTATE             = &Command{"ROTE", "ROTATE", "rotate selected nodes", rotate}
-    MIRROR             = &Command{"MIRR", "MIRROR", "mirror selected elems", mirror}
-    SCALE              = &Command{"SCLE", "SCALE", "scale selected nodes", scale}
-    SEARCHELEM         = &Command{"ELSR", "SEARCH ELEM", "search elems using node", searchelem}
-    NODETOELEM         = &Command{"N->E", "NODE TO ELEM", "select elems using selected node", nodetoelemall}
-    ELEMTONODE         = &Command{"E->N", "ELEM TO NODE", "select nodes used by selected elem", elemtonode}
-    CONNECTED          = &Command{"N->N", "CONNECTED", "select nodes connected to selected node", connected}
-    ONNODE             = &Command{"ONND", "ON NODE", "select nodes which is on selected elems", onnode}
-    NODENOREFERENCE    = &Command{"NODE NO REF.", "NODE NO REFERENCE", "delete nodes which are not refered by any elem", nodenoreference}
-    ELEMSAMENODE       = &Command{"ELEM SAME NODE", "ELEM SAME NODE", "delete elems which has duplicated enod", elemsamenode}
-    NODEDUPLICATION    = &Command{"DUPLICATIVE NODE", "NODE DUPLICATION", "delete duplicated nodes", nodeduplication}
-    ELEMDUPLICATION    = &Command{"DUPLICATIVE ELEM", "ELEM DUPLICATION", "delete duplicated elems", elemduplication}
-    CATBYNODE          = &Command{"CATN", "CAT BY NODE", "join 2 elems using selected node", catbynode}
-    JOINLINEELEM       = &Command{"JOIN LINE", "JOIN LINE ELEM", "join selected 2 elems", joinlineelem}
-    JOINPLATEELEM      = &Command{"JOIN PLATE", "JOIN PLATE ELEM", "join selected 2 elems", joinplateelem}
-    EXTRACTARCLM       = &Command{"EXAR", "EXTRACT ARCLM", "extract arclm", extractarclm}
-    DIVIDEATONS        = &Command{"ON NODES", "DIVIDE AT ONS", "divide selected elems at onnode", divideatons}
-    DIVIDEATMID        = &Command{"MID POINT", "DIVIDE AT MID", "divide selected elems at midpoint", divideatmid}
-    INTERSECT          = &Command{"INTS", "INTERSECT", "divide selected elems at intersection", intersect}
-    INTERSECTALL       = &Command{"INTA", "INTERSECT ALL", "divide selected elems at all intersection", intersectall}
-    TRIM               = &Command{"TRIM", "TRIM", "trim elements with selected elem", trim}
-    EXTEND             = &Command{"EXTEND", "EXTEND", "extend elements to selected elem", extend}
-    MERGENODE          = &Command{"MERGE", "MERGE NODE", "merge nodes", mergenode}
-    ERASE              = &Command{"ERASE", "ERASE", "erase selected elems", erase}
-    FACTS              = &Command{"FACT", "FACTS", "calculate eccentricity ratio and modulus of rigidity", facts}
-    REACTION           = &Command{"RCTN", "REACTION", "show sum of reaction", reaction}
-    NOTICE1459         = &Command{"1459", "NOTICE1459", "shishou", notice1459}
-    ZOUBUNDISP         = &Command{"ZBDP", "ZOUBUNDISP", "output displacement", zoubundisp}
-    ZOUBUNYIELD        = &Command{"ZBYD", "ZOUBUNYIELD", "output Fmax & Fmin", zoubunyield}
+    DISTS               = &Command{"DISTANCE", "DISTS", "measure distance", dists}
+    TOGGLEBOND          = &Command{"TOGGLE", "TOGGLE BOND", "toggle bond of selected elem", togglebond}
+    COPYBOND            = &Command{"COPY", "COPY BOND", "copy bond of selected elem", copybond}
+    BONDPIN             = &Command{"PIN", "BOND PIN", "set bond of selected elem to pin-pin", bondpin}
+    BONDRIGID           = &Command{"RIGID", "BOND RIGID", "set bond of selected elem to rigid-rigid", bondrigid}
+    CONFFIX             = &Command{"FIX", "CONF FIX", "set conf of selected node to fix", conffix}
+    CONFPIN             = &Command{"PIN", "CONF PIN", "set conf of selected node to pin", confpin}
+    CONFXYROLLER        = &Command{"XY ROLLER", "CONF XYROLLER", "set conf of selected node to xy-roller", confxyroller}
+    CONFFREE            = &Command{"FREE", "CONF FREE", "set conf of selected node to free", conffree}
+    OPEN                = &Command{"OPEN", "OEPN INPUT", "open inp file", openinput}
+    SAVE                = &Command{"SAVE", "SAVE", "save inp file", saveinput}
+    WEIGHTCOPY          = &Command{"WGCP", "WEIGHTCOPY", "copy wgt file", weightcopy}
+    READPGP             = &Command{"READ PGP", "READ PGP", "read pgp file", readpgp}
+    INSERT              = &Command{"INST", "INSERT", "insert new frame", insert}
+    SETFOCUS            = &Command{"STFO", "SET FOCUS", "set focus to the center", setfocus}
+    SELECTNODE          = &Command{"_NOD", "SELECT NODE", "select node by number", selectnode}
+    SELECTCONFED        = &Command{"_CON", "SELECT CONFED", "select confed nodes", selectconfed}
+    SELECTELEM          = &Command{"_ELM", "SELECT ELEM", "select elem by number", selectelem}
+    SELECTSECT          = &Command{"_SEC", "SELECT SECT", "select elem by section", selectsect}
+    HIDESECTION         = &Command{"HDSC", "HIDE SECTION", "hide section", hidesection}
+    SELECTCHILDREN      = &Command{"_CLD", "SELECT CHILDREN", "select elem.Children", selectchildren}
+    ERRORELEM           = &Command{"ERRO", "ERROR ELEM", "select elem whose max(rate)>1.0", errorelem}
+    FENCE               = &Command{"FNCE", "FENCE", "select elem by fence", fence}
+    ADDLINEELEM         = &Command{"LINE", "ADD LINE ELEM", "add line elem", addlineelem}
+    ADDPLATEELEM        = &Command{"PLATE(4pts)", "ADD PLATE ELEM", "add plate elem", addplateelem}
+    ADDPLATEELEMBYLINE  = &Command{"PLATE(2lines)", "ADD PLATE ELEM BY LINE", "add plate elem by line", addplateelembyline}
+    HATCHPLATEELEM      = &Command{"HATCHING", "HATCH PLATE ELEM", "add plate elem by hatching", hatchplateelem}
+    ADDPLATEALL         = &Command{"PLATE(all)", "ADD PLATE ALL", "add all plate elem using selected nodes", addplateall}
+    EDITPLATEELEM       = &Command{"EDPL", "EDIT PLATE ELEM", "edit plate elem", editplateelem}
+    MATCHPROP           = &Command{"COPY PROPERTY", "MATCH PROPERTY", "match property", matchproperty}
+    AXISTOCANG          = &Command{"CANG", "AXISTOCANG", "set cang by axis", axistocang}
+    COPYELEM            = &Command{"COPY", "COPY ELEM", "copy selected elems", copyelem}
+    MOVEELEM            = &Command{"MOVE", "MOVE ELEM", "move selected elems", moveelem}
+    MOVENODE            = &Command{"MOVE", "MOVE NODE", "move selected nodes", movenode}
+    MOVETOLINE          = &Command{"MOVETOLINE", "MOVE NODE ONTO LINE", "move selected nodes onto the line", movetoline}
+    PINCHNODE           = &Command{"NDPC", "PINCH NODE", "pinch nodes", pinchnode}
+    ROTATE              = &Command{"ROTE", "ROTATE", "rotate selected nodes", rotate}
+    MIRROR              = &Command{"MIRR", "MIRROR", "mirror selected elems", mirror}
+    SCALE               = &Command{"SCLE", "SCALE", "scale selected nodes", scale}
+    SEARCHELEM          = &Command{"ELSR", "SEARCH ELEM", "search elems using node", searchelem}
+    NODETOELEM          = &Command{"N->E", "NODE TO ELEM", "select elems using selected node", nodetoelemall}
+    ELEMTONODE          = &Command{"E->N", "ELEM TO NODE", "select nodes used by selected elem", elemtonode}
+    CONNECTED           = &Command{"N->N", "CONNECTED", "select nodes connected to selected node", connected}
+    ONNODE              = &Command{"ONND", "ON NODE", "select nodes which is on selected elems", onnode}
+    NODENOREFERENCE     = &Command{"NODE NO REF.", "NODE NO REFERENCE", "delete nodes which are not refered by any elem", nodenoreference}
+    ELEMSAMENODE        = &Command{"ELEM SAME NODE", "ELEM SAME NODE", "delete elems which has duplicated enod", elemsamenode}
+    NODEDUPLICATION     = &Command{"DUPLICATIVE NODE", "NODE DUPLICATION", "delete duplicated nodes", nodeduplication}
+    ELEMDUPLICATION     = &Command{"DUPLICATIVE ELEM", "ELEM DUPLICATION", "delete duplicated elems", elemduplication}
+    NODESORT            = &Command{"NODE SORT", "NODE SORT", "node sort", nodesort}
+    CATBYNODE           = &Command{"CATN", "CAT BY NODE", "join 2 elems using selected node", catbynode}
+    CATINTERMEDIATENODE = &Command{"CATI", "CAT INTERMEDIATE NODE", "concatenate at intermediate node", catintermediatenode}
+    JOINLINEELEM        = &Command{"JOIN LINE", "JOIN LINE ELEM", "join selected 2 elems", joinlineelem}
+    JOINPLATEELEM       = &Command{"JOIN PLATE", "JOIN PLATE ELEM", "join selected 2 elems", joinplateelem}
+    EXTRACTARCLM        = &Command{"EXAR", "EXTRACT ARCLM", "extract arclm", extractarclm}
+    DIVIDEATONS         = &Command{"ON NODES", "DIVIDE AT ONS", "divide selected elems at onnode", divideatons}
+    DIVIDEATMID         = &Command{"MID POINT", "DIVIDE AT MID", "divide selected elems at midpoint", divideatmid}
+    INTERSECT           = &Command{"INTS", "INTERSECT", "divide selected elems at intersection", intersect}
+    INTERSECTALL        = &Command{"INTA", "INTERSECT ALL", "divide selected elems at all intersection", intersectall}
+    TRIM                = &Command{"TRIM", "TRIM", "trim elements with selected elem", trim}
+    EXTEND              = &Command{"EXTEND", "EXTEND", "extend elements to selected elem", extend}
+    FILLET              = &Command{"FILLET", "FILLET", "fillet 2 elements", fillet}
+    MERGENODE           = &Command{"MERGE", "MERGE NODE", "merge nodes", mergenode}
+    ERASE               = &Command{"ERASE", "ERASE", "erase selected elems", erase}
+    FACTS               = &Command{"FACT", "FACTS", "calculate eccentricity ratio and modulus of rigidity", facts}
+    REACTION            = &Command{"RCTN", "REACTION", "show sum of reaction", reaction}
+    UPLIFT              = &Command{"LIFT", "UPLIFT", "select uplifting nodes", uplift}
+    NOTICE1459          = &Command{"1459", "NOTICE1459", "shishou", notice1459}
+    ZOUBUNDISP          = &Command{"ZBDP", "ZOUBUNDISP", "output displacement", zoubundisp}
+    ZOUBUNYIELD         = &Command{"ZBYD", "ZOUBUNYIELD", "output Fmax & Fmin", zoubunyield}
+    ZOUBUNREACTION      = &Command{"ZBRC", "ZOUBUNREACTION", "output reaction", zoubunreaction}
 )
 
 func init() {
@@ -94,12 +104,15 @@ func init() {
     Commands["CONFFREE"]=CONFFREE
     Commands["OPEN"]=OPEN
     Commands["SAVE"]=SAVE
+    Commands["WEIGHTCOPY"]=WEIGHTCOPY
     Commands["READPGP"]=READPGP
     Commands["INSERT"]=INSERT
     Commands["SETFOCUS"]=SETFOCUS
     Commands["SELECTNODE"]=SELECTNODE
+    Commands["SELECTCONFED"]=SELECTCONFED
     Commands["SELECTELEM"]=SELECTELEM
     Commands["SELECTSECT"]=SELECTSECT
+    Commands["HIDESECTION"]=HIDESECTION
     Commands["SELECTCHILDREN"]=SELECTCHILDREN
     Commands["ERRORELEM"]=ERRORELEM
     Commands["FENCE"]=FENCE
@@ -107,12 +120,14 @@ func init() {
     Commands["ADDPLATEELEM"]=ADDPLATEELEM
     Commands["ADDPLATEELEMBYLINE"]=ADDPLATEELEMBYLINE
     Commands["HATCHPLATEELEM"]=HATCHPLATEELEM
+    Commands["ADDPLATEALL"]=ADDPLATEALL
     Commands["EDITPLATEELEM"]=EDITPLATEELEM
     Commands["MATCHPROP"]=MATCHPROP
     Commands["AXISTOCANG"]=AXISTOCANG
     Commands["COPYELEM"]=COPYELEM
     Commands["MOVEELEM"]=MOVEELEM
     Commands["MOVENODE"]=MOVENODE
+    Commands["MOVETOLINE"]=MOVETOLINE
     Commands["PINCHNODE"]=PINCHNODE
     Commands["ROTATE"]=ROTATE
     Commands["MIRROR"]=MIRROR
@@ -126,7 +141,9 @@ func init() {
     Commands["ELEMSAMENODE"]=ELEMSAMENODE
     Commands["NODEDUPLICATION"]=NODEDUPLICATION
     Commands["ELEMDUPLICATION"]=ELEMDUPLICATION
+    Commands["NODESORT"]=NODESORT
     Commands["CATBYNODE"]=CATBYNODE
+    Commands["CATINTERMEDIATENODE"]=CATINTERMEDIATENODE
     Commands["JOINLINEELEM"]=JOINLINEELEM
     Commands["JOINPLATEELEM"]=JOINPLATEELEM
     Commands["EXTRACTARCLM"]=EXTRACTARCLM
@@ -136,13 +153,16 @@ func init() {
     Commands["INTERSECTALL"]=INTERSECTALL
     Commands["TRIM"]=TRIM
     Commands["EXTEND"]=EXTEND
+    Commands["FILLET"]=FILLET
     Commands["MERGENODE"]=MERGENODE
     Commands["ERASE"]=ERASE
     Commands["FACTS"]=FACTS
     Commands["REACTION"]=REACTION
+    Commands["UPLIFT"]=UPLIFT
     Commands["NOTICE1459"]=NOTICE1459
     Commands["ZOUBUNDISP"]=ZOUBUNDISP
     Commands["ZOUBUNYIELD"]=ZOUBUNYIELD
+    Commands["ZOUBUNREACTION"]=ZOUBUNREACTION
 }
 
 type Command struct {
@@ -160,6 +180,9 @@ func (cmd *Command) Exec(stw *Window) {
 // GET1NODE // {{{
 func get1node (stw *Window, f func(n *st.Node)) {
     stw.canv.SetAttribute("CURSOR", "CROSS")
+    var snap *st.Node // for Snapping
+    stw.cdcanv.Foreground(cd.CD_YELLOW)
+    stw.cdcanv.WriteMode(cd.CD_XOR)
     stw.SelectNode = make([]*st.Node, 1)
     setnnum := func () {
         nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"),10,64)
@@ -234,6 +257,17 @@ func get1node (stw *Window, f func(n *st.Node)) {
     stw.canv.SetCallback( func (arg *iup.MouseMotion) {
                               if stw.Frame != nil {
                                   stw.dbuff.UpdateYAxis(&arg.Y)
+                                  // Snapping
+                                  stw.cdcanv.Foreground(cd.CD_YELLOW)
+                                  if snap != nil {
+                                      stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
+                                  }
+                                  n := stw.PickNode(arg.X, arg.Y)
+                                  if n != nil {
+                                      stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1],  nodeSelectPixel)
+                                  }
+                                  snap = n
+                                  ///
                                   switch statusKey(arg.Status) {
                                   case STATUS_CENTER:
                                       if isShift(arg.Status) {
@@ -268,8 +302,12 @@ func togglebond (stw *Window) {
 // GET2NODES // {{{
 // DISTS: TODO: When button is released, tail line remains. When 2nd node is selected in command line, tail line remains.
 func get2nodes (stw *Window, f func(n *st.Node), fdel func()) {
+    var snap *st.Node // for Snapping
     stw.canv.SetAttribute("CURSOR", "CROSS")
+    stw.cdcanv.Foreground(cd.CD_YELLOW)
+    stw.cdcanv.WriteMode(cd.CD_XOR)
     stw.SelectNode = make([]*st.Node, 2)
+    stw.addHistory("始端を指定[ダイアログ(D)]")
     setnnum := func () {
         nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"),10,64)
         if err == nil {
@@ -281,6 +319,7 @@ func get2nodes (stw *Window, f func(n *st.Node), fdel func()) {
                     stw.cdcanv.Foreground(cd.CD_DARK_RED)
                     stw.cdcanv.WriteMode(cd.CD_XOR)
                     first = 1
+                    stw.addHistory("終端を指定[ダイアログ(D)]")
                 }
             }
         }
@@ -303,6 +342,7 @@ func get2nodes (stw *Window, f func(n *st.Node), fdel func()) {
                                                   stw.cdcanv.Foreground(cd.CD_DARK_RED)
                                                   stw.cdcanv.WriteMode(cd.CD_XOR)
                                                   first = 1
+                                                  stw.addHistory("終端を指定[ダイアログ(D)]")
                                               }
                                           }
                                           stw.Redraw()
@@ -337,6 +377,17 @@ func get2nodes (stw *Window, f func(n *st.Node), fdel func()) {
     stw.canv.SetCallback( func (arg *iup.MouseMotion) {
                               if stw.Frame != nil {
                                   stw.dbuff.UpdateYAxis(&arg.Y)
+                                  // Snapping
+                                  stw.cdcanv.Foreground(cd.CD_YELLOW)
+                                  if snap != nil {
+                                      stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
+                                  }
+                                  n := stw.PickNode(arg.X, arg.Y)
+                                  if n != nil {
+                                      stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1],  nodeSelectPixel)
+                                  }
+                                  snap = n
+                                  ///
                                   switch statusKey(arg.Status) {
                                   case STATUS_CENTER:
                                       if isShift(arg.Status) {
@@ -349,6 +400,7 @@ func get2nodes (stw *Window, f func(n *st.Node), fdel func()) {
                                       stw.DrawFrameNode()
                                   }
                                   if stw.SelectNode[0] != nil {
+                                      stw.cdcanv.Foreground(cd.CD_DARK_RED)
                                       stw.TailLine(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), arg)
                                   }
                               }
@@ -358,7 +410,6 @@ func get2nodes (stw *Window, f func(n *st.Node), fdel func()) {
                               switch key.Key() {
                               default:
                                   stw.DefaultKeyAny(key)
-                                  // stw.cline.SetAttribute("INSERT", string(key.Key()))
                               case KEY_BS:
                                   val := stw.cline.GetAttribute("VALUE")
                                   if val != "" {
@@ -370,6 +421,21 @@ func get2nodes (stw *Window, f func(n *st.Node), fdel func()) {
                                   setnnum()
                               case KEY_ESCAPE:
                                   stw.EscapeAll()
+                              case 'D','d':
+                                  x, y, z, err := stw.QueryCoord("GET COORD")
+                                  if err == nil {
+                                      n := stw.Frame.CoordNode(x, y, z)
+                                      stw.Redraw()
+                                      if stw.SelectNode[0] != nil {
+                                          f(n)
+                                      } else {
+                                          stw.SelectNode[0] = n
+                                          stw.cdcanv.Foreground(cd.CD_DARK_RED)
+                                          stw.cdcanv.WriteMode(cd.CD_XOR)
+                                          first = 1
+                                          stw.addHistory("終端を指定[ダイアログ(D)]")
+                                      }
+                                  }
                               }
                           })
 }
@@ -383,8 +449,8 @@ func dists (stw *Window) {
                        dx, dy, dz, d := stw.Frame.Distance(stw.SelectNode[0], n)
                        stw.addHistory(fmt.Sprintf("NODE: %d - %d", stw.SelectNode[0].Num, n.Num))
                        stw.addHistory(fmt.Sprintf("DX: %.3f DY: %.3f DZ: %.3f D: %.3f", dx, dy, dz, d))
-                       stw.cdcanv.Foreground(cd.CD_WHITE)
-                       stw.cdcanv.WriteMode(cd.CD_REPLACE)
+                       // stw.cdcanv.Foreground(cd.CD_WHITE)
+                       // stw.cdcanv.WriteMode(cd.CD_REPLACE)
                        stw.EscapeAll()
                    },
                    func () {
@@ -402,8 +468,8 @@ func addlineelem (stw *Window) {
                        sec := stw.Frame.DefaultSect()
                        el := stw.Frame.AddLineElem(-1, stw.SelectNode, sec, st.NONE)
                        stw.addHistory(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, stw.SelectNode[0].Num, n.Num, sec.Num))
-                       stw.cdcanv.Foreground(cd.CD_WHITE)
-                       stw.cdcanv.WriteMode(cd.CD_REPLACE)
+                       // stw.cdcanv.Foreground(cd.CD_WHITE)
+                       // stw.cdcanv.WriteMode(cd.CD_REPLACE)
                        stw.EscapeAll()
                    },
                    func () {
@@ -418,6 +484,9 @@ func addlineelem (stw *Window) {
 // DISTS: TODO: When button is released, tail line remains. When 2nd node is selected in command line, tail line remains.
 func getnnodes (stw *Window, maxnum int, f func(int)) {
     stw.canv.SetAttribute("CURSOR", "CROSS")
+    var snap *st.Node // for Snapping
+    stw.cdcanv.Foreground(cd.CD_YELLOW)
+    stw.cdcanv.WriteMode(cd.CD_XOR)
     stw.SelectNode = make([]*st.Node, maxnum)
     selected := 0
     setnnum := func () {
@@ -492,6 +561,17 @@ func getnnodes (stw *Window, maxnum int, f func(int)) {
     stw.canv.SetCallback( func (arg *iup.MouseMotion) {
                               if stw.Frame != nil {
                                   stw.dbuff.UpdateYAxis(&arg.Y)
+                                  // Snapping
+                                  stw.cdcanv.Foreground(cd.CD_YELLOW)
+                                  if snap != nil {
+                                      stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
+                                  }
+                                  n := stw.PickNode(arg.X, arg.Y)
+                                  if n != nil {
+                                      stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1],  nodeSelectPixel)
+                                  }
+                                  snap = n
+                                  ///
                                   switch statusKey(arg.Status) {
                                   case STATUS_CENTER:
                                       if isShift(arg.Status) {
@@ -593,8 +673,6 @@ func addplateelembyline (stw *Window) {
 // }}}
 
 
-
-
 // SEARCHELEM// {{{
 func searchelem (stw *Window) {
     if stw.SelectNode != nil && len(stw.SelectNode)>=1 {
@@ -675,6 +753,7 @@ func searchelem (stw *Window) {
 }// }}}
 
 
+// NODE <-> ELEM// {{{
 func nodetoelemany (stw *Window) {
     stw.SelectElem = stw.Frame.NodeToElemAny(stw.SelectNode...)
     stw.EscapeCB()
@@ -693,22 +772,25 @@ func connected (stw *Window) {
     }
     stw.EscapeCB()
 }
-
 func onnode (stw *Window) {
     stw.SelectNode = make([]*st.Node, 0)
     if stw.SelectElem != nil {
         for _, el := range stw.SelectElem {
-            ns := el.OnNode(0)
+            ns := el.OnNode(0, 1e-4)
             stw.SelectNode = append(stw.SelectNode, ns...)
         }
     }
     stw.EscapeCB()
 }
+// }}}
 
 
 // GETCOORD// {{{
 func getcoord (stw *Window, f func(x,y,z float64)) {
+    var snap *st.Node // for Snapping
     stw.canv.SetAttribute("CURSOR", "CROSS")
+    stw.cdcanv.Foreground(cd.CD_YELLOW)
+    stw.cdcanv.WriteMode(cd.CD_XOR)
     var startpoint *st.Node
     funcbynode := func (n *st.Node) {
         c := make([]float64, 3)
@@ -783,6 +865,17 @@ func getcoord (stw *Window, f func(x,y,z float64)) {
     stw.canv.SetCallback( func (arg *iup.MouseMotion) {
                               if stw.Frame != nil {
                                   stw.dbuff.UpdateYAxis(&arg.Y)
+                                  // Snapping
+                                  stw.cdcanv.Foreground(cd.CD_YELLOW)
+                                  if snap != nil {
+                                      stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
+                                  }
+                                  n := stw.PickNode(arg.X, arg.Y)
+                                  if n != nil {
+                                      stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1],  nodeSelectPixel)
+                                  }
+                                  snap = n
+                                  ///
                                   switch statusKey(arg.Status) {
                                   case STATUS_CENTER:
                                       if isShift(arg.Status) {
@@ -795,6 +888,7 @@ func getcoord (stw *Window, f func(x,y,z float64)) {
                                       stw.DrawFrameNode()
                                   }
                                   if startpoint != nil {
+                                      stw.cdcanv.Foreground(cd.CD_DARK_RED)
                                       stw.TailLine(int(startpoint.Pcoord[0]), int(startpoint.Pcoord[1]), arg)
                                   }
                               }
@@ -891,7 +985,65 @@ func movenode (stw *Window) {
 // }}}
 
 
-// PINCHNODE
+// MOVETOLINE// {{{
+func movetoline (stw *Window) {
+    fixed := 0
+    ns := make([]*st.Node, 0)
+    if stw.SelectNode != nil {
+        for _, n := range stw.SelectNode {
+            if n != nil { ns = append(ns, n) }
+        }
+    }
+    if len(ns)==0 {
+        stw.addHistory("移動する節点がありません")
+        stw.EscapeAll()
+        return
+    }
+    stw.addHistory("直線を指定[Xを固定]")
+    get2nodes(stw, func (n *st.Node) {
+                       stw.SelectNode[1] = n
+                       for _, n := range ns {
+                           n.MoveToLine(stw.SelectNode[0], stw.SelectNode[1], fixed)
+                       }
+                       stw.cdcanv.Foreground(cd.CD_WHITE)
+                       stw.cdcanv.WriteMode(cd.CD_REPLACE)
+                       stw.EscapeAll()
+                   },
+                   func () {
+                       stw.SelectNode = make([]*st.Node, 2)
+                       stw.Redraw()
+                   })
+    stw.canv.SetCallback( func (arg *iup.CommonKeyAny) {
+                              key := iup.KeyState(arg.Key)
+                              switch key.Key() {
+                              default:
+                                  stw.DefaultKeyAny(key)
+                              case KEY_BS:
+                                  val := stw.cline.GetAttribute("VALUE")
+                                  if val != "" {
+                                      stw.cline.SetAttribute("VALUE", val[:len(val)-1])
+                                  }
+                              case KEY_DELETE:
+                                  stw.SelectNode = make([]*st.Node, 2)
+                                  stw.Redraw()
+                              case KEY_ESCAPE:
+                                  stw.EscapeAll()
+                              case 'X','x':
+                                  fixed = 0
+                                  stw.addHistory("直線を指定[Xを固定]")
+                              case 'Y','y':
+                                  fixed = 1
+                                  stw.addHistory("直線を指定[Yを固定]")
+                              case 'Z','z':
+                                  fixed = 2
+                                  stw.addHistory("直線を指定[Zを固定]")
+                              }
+                          })
+}
+// }}}
+
+
+// PINCHNODE TODO: UNDER CONSTRUCTION// {{{
 func pinchnode (stw *Window) {
     var target *st.Node
     movefunc := func (node *st.Node, dx, dy float64, arg *iup.MouseButton) {
@@ -946,6 +1098,7 @@ func pinchnode (stw *Window) {
                              }
                          })
 }
+// }}}
 
 
 // ROTATE// {{{
@@ -1141,55 +1294,85 @@ func scale (stw *Window) {
 // }}}
 
 
-// OPEN
+// OPEN// {{{
 func openinput(stw *Window) {
     stw.Open()
     stw.EscapeAll()
 }
+// }}}
 
-// SAVE
+
+// SAVE// {{{
 func saveinput(stw *Window) {
     stw.SaveFile(stw.Frame.Path)
     stw.EscapeAll()
 }
+// }}}
 
-func readpgp (stw *Window) {
-    if name,ok := iup.GetOpenFile(stw.Cwd, "*.pgp"); ok {
-        al := make(map[string]*Command,0)
-        err := ReadPgp(name, al)
+
+// WEIGHTCOPY// {{{
+func weightcopy(stw *Window) {
+    wgt := filepath.Join(stw.Home, "hogtxt.wgt")
+    fn := st.Ce(stw.Frame.Path, ".wgt")
+    if (!st.FileExists(fn) || stw.Yn("Copy Wgt", "上書きしますか")) {
+        st.CopyFile(wgt, fn)
+        stw.addHistory(fmt.Sprintf("COPY: %s", fn))
+        err := stw.Frame.ReadWgt(fn)
         if err != nil {
-            stw.addHistory("ReadPgp: Cannot Read st.pgp")
-        } else {
-            aliases = al
-            stw.addHistory(fmt.Sprintf("ReadPgp: Read %s", name))
+            stw.addHistory(err.Error())
         }
     }
     stw.EscapeAll()
 }
+// }}}
 
-func insert(stw *Window) {
-    if name,ok := iup.GetOpenFile("",""); ok {
-        get1node(stw, func (n *st.Node) {
-                          // TODO: 角度を指定
-                          err := stw.Frame.ReadInp(name, n.Coord, 0.0)
-                          if err != nil {
-                              stw.addHistory(err.Error())
-                          }
-                          stw.EscapeAll()
-                      })
-    } else {
-        stw.EscapeAll()
-    }
+
+// READPGP// {{{
+func readpgp (stw *Window) {
+    stw.addHistory("NOT WORKING")
+    // if name,ok := iup.GetOpenFile(stw.Cwd, "*.pgp"); ok {
+    //     al := make(map[string]*Command,0)
+    //     err := ReadPgp(name, al)
+    //     if err != nil {
+    //         stw.addHistory("ReadPgp: Cannot Read st.pgp")
+    //     } else {
+    //         aliases = al
+    //         stw.addHistory(fmt.Sprintf("ReadPgp: Read %s", name))
+    //     }
+    // }
+    stw.EscapeAll()
 }
+// }}}
 
 
-// SETFOCUS
+// INSERT// {{{
+func insert(stw *Window) {
+    stw.addHistory("NOT WORKING")
+    // if name,ok := iup.GetOpenFile("",""); ok {
+    //     get1node(stw, func (n *st.Node) {
+    //                       // TODO: 角度を指定
+    //                       err := stw.Frame.ReadInp(name, n.Coord, 0.0)
+    //                       if err != nil {
+    //                           stw.addHistory(err.Error())
+    //                       }
+    //                       stw.EscapeAll()
+    //                   })
+    // } else {
+    //     stw.EscapeAll()
+    // }
+    stw.EscapeAll()
+}
+// }}}
+
+
+// SETFOCUS// {{{
 func setfocus(stw *Window) {
     stw.Frame.SetFocus()
     stw.Redraw()
     stw.addHistory(fmt.Sprintf("FOCUS: %.1f %.1f %.1f", stw.Frame.View.Focus[0], stw.Frame.View.Focus[1], stw.Frame.View.Focus[2]))
     stw.EscapeAll()
 }
+// }}}
 
 
 // GET1ELEM// {{{
@@ -1490,6 +1673,29 @@ func extend (stw *Window) {
 // }}}
 
 
+// FILLET TODO: UNDER CONSTRUCTION // {{{
+func fillet (stw *Window) {
+    // get1elem(stw, func (el *st.Elem, x, y int) {
+    //                   if el.IsLineElem() {
+    //                       var err error
+    //                       _, _, err = stw.Frame.Extend(stw.SelectElem[0], el)
+    //                       if err != nil {
+    //                           stw.addHistory(err.Error())
+    //                       } else {
+    //                           stw.Deselect()
+    //                           stw.Redraw()
+    //                       }
+    //                       stw.EscapeAll()
+    //                   }
+    //                   stw.Redraw()
+    //               },
+    //               func (el *st.Elem) bool {
+    //                   return el.IsLineElem()
+    //               })
+}
+// }}}
+
+
 // SELECTNODE// {{{
 func selectnode (stw *Window) {
     stw.Deselect()
@@ -1526,6 +1732,26 @@ func selectnode (stw *Window) {
                               }
                           })
 }// }}}
+
+
+// SELECTCONFED// {{{
+func selectconfed (stw *Window) {
+    stw.Deselect()
+    num := 0
+    for _, n := range stw.Frame.Nodes {
+        if n.Hide { continue }
+        for i:=0; i<6; i++ {
+            if n.Conf[i] {
+                stw.SelectNode = append(stw.SelectNode, n)
+                num++
+                break
+            }
+        }
+    }
+    stw.SelectNode = stw.SelectNode[:num]
+    stw.EscapeCB()
+}
+// }}}
 
 
 // SELECTELEM// {{{
@@ -1614,6 +1840,37 @@ func selectsect (stw *Window) {
 // }}}
 
 
+// HIDESECTION// {{{
+func hidesection (stw *Window) {
+    hide := func () {
+        tmp, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"),10,64)
+        if err == nil {
+            snum := int(tmp)
+            stw.Frame.Show.Sect[snum] = false
+            stw.Redraw()
+        }
+        stw.cline.SetAttribute("VALUE", "")
+    }
+    stw.canv.SetCallback( func (arg *iup.CommonKeyAny) {
+                              key := iup.KeyState(arg.Key)
+                              switch key.Key() {
+                              default:
+                                  stw.DefaultKeyAny(key)
+                              case KEY_BS:
+                                  val := stw.cline.GetAttribute("VALUE")
+                                  if val != "" {
+                                      stw.cline.SetAttribute("VALUE", val[:len(val)-1])
+                                  }
+                              case KEY_ENTER:
+                                  hide()
+                              case KEY_ESCAPE:
+                                  stw.EscapeAll()
+                              }
+                          })
+}
+// }}}
+
+
 // SELECTCHILDREN// {{{
 func selectchildren (stw *Window) {
     getnelems(stw, 10, func (size int) {
@@ -1646,7 +1903,7 @@ func selectchildren (stw *Window) {
 // }}}
 
 
-// NODENOREFERENCE
+// NODENOREFERENCE// {{{
 func nodenoreference (stw *Window) {
     stw.Deselect()
     ns := stw.Frame.NodeNoReference()
@@ -1661,9 +1918,10 @@ func nodenoreference (stw *Window) {
     }
     stw.EscapeAll()
 }
+// }}}
 
 
-// ELEMSAMENODE
+// ELEMSAMENODE// {{{
 func elemsamenode (stw *Window) {
     stw.Deselect()
     els := stw.Frame.ElemSameNode()
@@ -1679,9 +1937,10 @@ func elemsamenode (stw *Window) {
     }
     stw.EscapeAll()
 }
+// }}}
 
 
-// NODEDUPLICATION
+// NODEDUPLICATION// {{{
 func nodeduplication (stw *Window) {
     stw.Deselect()
     nm := stw.Frame.NodeDuplication(5e-3)
@@ -1696,9 +1955,10 @@ func nodeduplication (stw *Window) {
     }
     stw.EscapeAll()
 }
+// }}}
 
 
-// ELEMDUPLICATION
+// ELEMDUPLICATION// {{{
 func elemduplication (stw *Window) {
     stw.Deselect()
     els := stw.Frame.ElemDuplication()
@@ -1712,13 +1972,51 @@ func elemduplication (stw *Window) {
                 if el.Lock { continue }
                 delete(stw.Frame.Elems, el.Num)
             }
+            stw.EscapeAll()
+        } else {
+            stw.EscapeCB()
         }
+    } else {
+        stw.EscapeAll()
     }
-    stw.EscapeAll()
 }
+// }}}
 
 
-// EXTRACTARCLM
+// NODESORT// {{{
+func nodesort (stw *Window) {
+    bw := stw.Frame.BandWidth()
+    stw.addHistory(fmt.Sprintf("並び替え前: %d", bw))
+    ns := func (d int) {
+        bw, err := stw.Frame.NodeSort(d)
+        if err != nil {
+            stw.addHistory("並び替えエラー")
+            stw.EscapeAll()
+        }
+        stw.addHistory(fmt.Sprintf("並び替え後: %d (%s方向)", bw, []string{"X", "Y", "Z"}[d]))
+        stw.Redraw()
+    }
+    stw.canv.SetCallback( func (arg *iup.CommonKeyAny) {
+                              key := iup.KeyState(arg.Key)
+                              switch key.Key() {
+                              default:
+                                  stw.DefaultKeyAny(key)
+                                  // stw.cline.SetAttribute("INSERT", string(key.Key()))
+                              case '0', 'X', 'x':
+                                  ns(0)
+                              case '1', 'Y', 'y':
+                                  ns(1)
+                              case '2', 'Z', 'z':
+                                  ns(2)
+                              case KEY_ESCAPE:
+                                  stw.EscapeAll()
+                              }
+                          })
+}
+// }}}
+
+
+// EXTRACTARCLM// {{{
 func extractarclm (stw *Window) {
     var err error
     var name string
@@ -1750,6 +2048,7 @@ func extractarclm (stw *Window) {
     }
     stw.EscapeAll()
 }
+// }}}
 
 
 // FENCE// {{{
@@ -1826,6 +2125,7 @@ func errorelem (stw *Window) {
 // }}}
 
 
+// CUTTER TODO: UNDER CONSTRUCTION // {{{
 func cutter (stw *Window) {
     var ans string
     var axis int
@@ -1851,6 +2151,7 @@ func cutter (stw *Window) {
     stw.Frame.Cutter(axis, coord)
     stw.EscapeAll()
 }
+// }}}
 
 
 // DIVIDE// {{{
@@ -1859,7 +2160,7 @@ func divide (stw *Window, divfunc func(*st.Elem)([]*st.Node, []*st.Elem, error))
         tmpels := make([]*st.Elem, 0)
         for _, el := range stw.SelectElem {
             _, els, err := divfunc(el)
-            if err ==  nil && len(els) > 0 {
+            if err ==  nil && len(els) > 1 {
                 tmpels = append(tmpels, els...)
             }
         }
@@ -1869,7 +2170,7 @@ func divide (stw *Window, divfunc func(*st.Elem)([]*st.Node, []*st.Elem, error))
 }
 func divideatons (stw *Window) {
     divide(stw, func (el *st.Elem) ([]*st.Node, []*st.Elem, error) {
-                    return el.DivideAtOns()
+                    return el.DivideAtOns(1e-4)
                 })
 }
 func divideatmid (stw *Window) {
@@ -1893,43 +2194,63 @@ func intersect (stw *Window) {
                               }
                           }
                           if num == 2 {
-                              _, _, err := stw.Frame.Intersect(els[0], els[1], true, 1, 1, false, false)
-                              fmt.Println(err)
+                              _, els, err := stw.Frame.Intersect(els[0], els[1], true, 1, 1, false, false)
                               if err != nil {
                                   stw.addHistory(err.Error())
+                                  stw.Deselect()
                               } else {
                                   stw.Deselect()
+                                  switch len(els) {
+                                  case 4:
+                                      stw.SelectElem = []*st.Elem{els[1], els[3]}
+                                  }
                                   stw.Redraw()
                               }
-                              stw.EscapeAll()
+                              stw.EscapeCB()
                           }
                       })
 }
 // }}}
 
 
-// INTERSECTALL
+// INTERSECTALL // {{{
 func intersectall (stw *Window) {
-    if stw.SelectElem == nil || len(stw.SelectElem) <= 1 { return }
+    l := len(stw.SelectElem)
+    if stw.SelectElem == nil || l <= 1 { stw.EscapeAll(); return }
+    checked := make([]*st.Elem, 1)
+    sort.Sort(st.ElemByNum{stw.SelectElem})
+    ind := 0
     for {
-        var next bool
-        var tmpels []*st.Elem
-        for i, el := range stw.SelectElem[:len(stw.SelectElem)-1] {
-            if el == nil { continue }
-            for _, el2 := range stw.SelectElem[i+1:] {
-                if el2 == nil { continue }
-                ns, els, _ := stw.Frame.Intersect(el, el2, true, 1, 1, false, false)
-                if ns != nil {
-                    next = true
-                    tmpels = append(tmpels, els...)
-                }
+        if stw.SelectElem[ind].IsLineElem() {
+            _, els, err := stw.SelectElem[ind].DivideAtOns(1e-4)
+            if err != nil {
+                stw.EscapeAll()
+                return
             }
+            checked = els
+            break
         }
-        stw.MergeSelectElem(tmpels, false)
-        if !next { break }
+        ind++
+        if ind >= l-1 { stw.EscapeAll(); return }
     }
-    stw.EscapeCB()
+    for _, el := range stw.SelectElem[ind+1:] {
+        if !el.IsLineElem() { continue }
+        for _, ce := range checked {
+            _, els, err := stw.Frame.CutByElem(el, ce, true, 1, false)
+            if err != nil {
+                continue
+            }
+            checked = append(checked, els[1])
+        }
+        _, els, err := el.DivideAtOns(1e-4)
+        if err != nil {
+            continue
+        }
+        checked = append(checked, els...)
+    }
+    stw.EscapeAll()
 }
+// }}}
 
 
 // Bounded Area// {{{
@@ -2024,6 +2345,8 @@ func (stw *Window) Chain (x, y float64, el *st.Elem, maxdepth int) ([]*st.Node, 
 }
 // }}}
 
+
+// divideenods// {{{
 func divideenods (ns []*st.Node, maxlen int) [][]*st.Node {
     if len(ns) <= maxlen { return [][]*st.Node{ns} }
     rtn := make([][]*st.Node, 0)
@@ -2052,6 +2375,8 @@ func divideenods (ns []*st.Node, maxlen int) [][]*st.Node {
     }
     return rtn[:num]
 }
+// }}}
+
 
 // HATCHPLATEELEM// {{{
 func hatchplateelem (stw *Window) {
@@ -2148,6 +2473,18 @@ func hatchplateelem (stw *Window) {
 }
 // }}}
 
+
+// ADDPLATEALL
+func addplateall (stw *Window) {
+    if stw.SelectElem == nil {
+        ns := stw.Frame.ElemToNode(stw.SelectElem)
+        stw.SelectNode = append(stw.SelectNode, ns...)
+    }
+    if stw.SelectNode == nil || len(stw.SelectNode) < 3 {
+        stw.EscapeAll()
+        return
+    }
+}
 
 // EDITPLATEELEM// {{{
 func editplateelem (stw *Window) {
@@ -2275,8 +2612,66 @@ func reaction (stw *Window) {
 // }}}
 
 
+// UPLIFT// {{{
+func uplift (stw *Window) {
+    stw.Deselect()
+    selectuplift := func (lis []string) {
+                        periods := make([]string, 0)
+                        for _, p := range lis {
+                            p = strings.ToUpper(p)
+                            switch p {
+                            case "L":
+                                periods = append(periods, "L")
+                            case "X", "Y":
+                                periods = append(periods, fmt.Sprintf("L+%s", p))
+                            case "-X", "-Y":
+                                periods = append(periods, fmt.Sprintf("L%s", p))
+                            }
+                        }
+                        fmt.Println(periods)
+                        num := 0
+                        for _, n := range stw.Frame.Nodes {
+                            if !n.Conf[2] { continue }
+                            for _, p := range periods {
+                                val := n.Weight[1] + n.ReturnReaction(p, 2)
+                                fmt.Printf("NODE %d VAL %.3f\n", n.Num, val)
+                                if val < 0.0 {
+                                    stw.SelectNode = append(stw.SelectNode, n)
+                                    num++
+                                }
+                            }
+                        }
+                        if num == 0 {
+                            stw.addHistory("NO UPLIFTS")
+                        } else {
+                            stw.addHistory(fmt.Sprintf("%d UPLIFTS", num))
+                            stw.SelectNode = stw.SelectNode[:num]
+                        }
+                        stw.EscapeCB()
+                    }
+    stw.canv.SetCallback( func (arg *iup.CommonKeyAny) {
+                              key := iup.KeyState(arg.Key)
+                              switch key.Key() {
+                              default:
+                                  stw.DefaultKeyAny(key)
+                              case KEY_BS:
+                                  val := stw.cline.GetAttribute("VALUE")
+                                  if val != "" {
+                                      stw.cline.SetAttribute("VALUE", val[:len(val)-1])
+                                  }
+                              case KEY_ENTER:
+                                  val := stw.cline.GetAttribute("VALUE")
+                                  selectuplift(strings.Split(val, " "))
+                                  stw.cline.SetAttribute("VALUE", "")
+                              case KEY_ESCAPE:
+                                  stw.EscapeAll()
+                              }
+                          })
+}
+// }}}
 
-// NOTICE1459
+
+// NOTICE1459// {{{
 func notice1459 (stw *Window) {
     getnnodes(stw, 3, func (num int) {
                           var delta float64
@@ -2307,7 +2702,7 @@ func notice1459 (stw *Window) {
                           stw.EscapeAll()
                       })
 }
-
+// }}}
 
 
 // CATBYNODE// {{{
@@ -2320,6 +2715,28 @@ func catbynode (stw *Window) {
                           stw.Redraw()
                       }
                   })
+}
+// }}}
+
+
+// CATINTERMEDIATENODE TODO: UNDER CONSTRUCTION// {{{
+func catintermediatenode (stw *Window) {
+    // stw.Deselect()
+    // for _, n := range stw.Frame.Nodes {
+    //     for _, el := range stw.Frame.SearchElem(n)
+
+    // if len(ns) != 0 {
+    //     for k := range ns {
+    //         stw.SelectNode = append(stw.SelectNode, k)
+    //     }
+    //     stw.Redraw()
+    //     if stw.Yn("CAT INTERMEDIATE NODE", "中間節点を除去しますか？") {
+    //         for _, n := range ns {
+    //             stw.Frame.CatByNode(n, true)
+    //         }
+    //     }
+    // }
+    stw.EscapeAll()
 }
 // }}}
 
@@ -2455,7 +2872,7 @@ func joinplateelem (stw *Window) {
 // }}}
 
 
-// MERGENODE
+// MERGENODE// {{{
 func mergenode (stw *Window) {
     merge := func (ns []*st.Node) {
                  c := make([]float64, 3)
@@ -2494,6 +2911,7 @@ func mergenode (stw *Window) {
     }
     getnnodes(stw, len(stw.Frame.Nodes), func (num int) { merge(stw.SelectNode); stw.EscapeAll() })
 }
+// }}}
 
 
 // ERASE// {{{
@@ -2511,7 +2929,7 @@ func erase (stw *Window) {
 // }}}
 
 
-// FACTS
+// FACTS// {{{
 func facts (stw *Window) {
     fn := st.Ce(stw.Frame.Path, ".fes")
     err := stw.Frame.Facts(fn, []int{st.COLUMN, st.GIRDER, st.BRACE, st.WBRACE, st.SBRACE})
@@ -2522,9 +2940,10 @@ func facts (stw *Window) {
     }
     stw.EscapeAll()
 }
+// }}}
 
 
-// ZOUBUNDISP
+// ZOUBUNDISP// {{{
 func zoubundisp (stw *Window) {
     if stw.SelectNode == nil || len(stw.SelectNode) == 0 { stw.EscapeAll(); return }
     per, err := stw.Query("PERIODを指定")
@@ -2545,7 +2964,9 @@ func zoubundisp (stw *Window) {
     per = strings.ToUpper(per)
     d := int(val)
     var otp bytes.Buffer
+    sort.Sort(st.NodeByZCoord{stw.SelectNode})
     if nlap, ok := stw.Frame.Nlap[per]; ok {
+        otp.WriteString(fmt.Sprintf("ZOUBUN DISP: %s\n", stw.Frame.Name))
         otp.WriteString(fmt.Sprintf("PERIOD: %s, DIRECTION: %d\n", per, d))
         otp.WriteString("LAP     ")
         for _, n := range stw.SelectNode {
@@ -2572,7 +2993,10 @@ func zoubundisp (stw *Window) {
     stw.addHistory(fmt.Sprintf("OUTPUT: %s", fn))
     stw.EscapeCB()
 }
+// }}}
 
+
+// ZOUBUNYIELD// {{{
 func zoubunyield (stw *Window) {
     var otp bytes.Buffer
     var skeys []int
@@ -2614,3 +3038,57 @@ func zoubunyield (stw *Window) {
     stw.addHistory(fmt.Sprintf("OUTPUT: %s", fn))
     stw.EscapeAll()
 }
+// }}}
+
+
+// ZOUBUNREACTION// {{{
+func zoubunreaction (stw *Window) {
+    if stw.SelectNode == nil || len(stw.SelectNode) == 0 { stw.EscapeAll(); return }
+    per, err := stw.Query("PERIODを指定")
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeCB()
+    }
+    tmp, err := stw.Query("方向を指定[0～5]")
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeCB()
+    }
+    val, err := strconv.ParseInt(tmp, 10, 64)
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeCB()
+    }
+    per = strings.ToUpper(per)
+    d := int(val)
+    var otp bytes.Buffer
+    sort.Sort(st.NodeByNum{stw.SelectNode})
+    if nlap, ok := stw.Frame.Nlap[per]; ok {
+        otp.WriteString(fmt.Sprintf("ZOUBUN REACTION: %s\n", stw.Frame.Name))
+        otp.WriteString(fmt.Sprintf("PERIOD: %s, DIRECTION: %d\n", per, d))
+        otp.WriteString("LAP     ")
+        for _, n := range stw.SelectNode {
+            otp.WriteString(fmt.Sprintf(" %8d", n.Num))
+        }
+        otp.WriteString("\n")
+        for i:=0; i<nlap; i++ {
+            nper := fmt.Sprintf("%s@%d", per, i+1)
+            otp.WriteString(fmt.Sprintf("%8s", nper))
+            for _, n := range stw.SelectNode {
+                otp.WriteString(fmt.Sprintf(" %8.3f", n.Reaction[nper][d]))
+            }
+            otp.WriteString("\n")
+        }
+    }
+    fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
+    w, err := os.Create(fn)
+    defer w.Close()
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeCB()
+    }
+    otp.WriteTo(w)
+    stw.addHistory(fmt.Sprintf("OUTPUT: %s", fn))
+    stw.EscapeCB()
+}
+// }}}

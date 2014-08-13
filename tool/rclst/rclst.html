@@ -27,16 +27,21 @@
             createlst = function(code, type, sname, width, height, kaburi, m, n, diameter, sd, stp_sd, nstpx, stpx_diameter, stpx_pitch, nstpy, stpy_diameter,stpy_pitch) {
                 var rtn =  sprintf('CODE %s RC %s %-56s\n', code, type, sprintf("\"%s\"",sname));
                 // var rtn =  sprintf('CODE %s RC %s                                                   \"=%s\"\n', code, type, sname);
-                var nreins = Number(m)*Number(n);
-                var reins = new Array(2*nreins);
+                if (type == "COLUMN") {
+                    var nreins = 2*(Number(m)-2) + 2*Number(n);
+                    var reins = new Array(nreins);
+                } else {
+                    var nreins = 2*Number(m)*Number(n);
+                    var reins = new Array(nreins);
+                }
                 var d = diameters[diameter];
                 var stpxd = diameters[stpx_diameter];
                 var stpyd = diameters[stpy_diameter];
                 var tmpy = (0.5*Number(height) - Number(kaburi) - stpxd - 0.5*d)*0.1;
                 var min_p = min_pitch(diameter)*0.1;
-                var at = nreins*areas[diameter];
+                var at = 0.5*nreins*areas[diameter];
                 if (type == "COLUMN") {
-                    var valy = (Number(height) - 2*Number(kaburi) - 2*stpxd - d)*0.1 / (2*m-1);
+                    var valy = (Number(height) - 2*Number(kaburi) - 2*stpxd - d)*0.1 / (m-1);
                 } else {
                     var valy = min_p + 0.5;
                 }
@@ -45,50 +50,49 @@
                 } else {
                     var valx = 0.0;
                 }
+                nr = 0;
                 for (i=0; i<Number(m); i++) {
                     var tmpx = (-0.5*Number(width) + Number(kaburi) + stpyd + 0.5*d)*0.1;
                     for (j=0; j<Number(n); j++) {
-                        if (type == "GIRDER" || (type == "COLUMN" && (i == 0 || j == 0 || j == Number(n)-1))) {
+                        if (type == "GIRDER" || (type == "COLUMN" && (i == 0 || j == 0 || i == Number(m)-1 || j == Number(n)-1))) {
                             if (i == 0 && j == 0) {
                                 if (type == "GIRDER") {
-                                    rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s %-30s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd, sprintf('"%d-%s"', Number(m)*Number(n), diameter));
+                                    rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s %-30s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd, sprintf('"%d-%s"', 0.5*nreins, diameter));
                                 } else {
-                                    rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s %-30s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd, sprintf('"%d-%s"', 2*Number(n)+4*(Number(m)-1), diameter));
+                                    rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s %-30s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd, sprintf('"%d-%s"', nreins, diameter));
                                 }
-                                reins[0] = [Number(diameter.slice(1)), tmpx, tmpy];
+                                reins[nr] = [Number(diameter.slice(1)), tmpx, tmpy];
                             } else {
                                 rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd);
-                                reins[Number(n)*i+j] = [Number(diameter.slice(1)), tmpx, tmpy];
+                                reins[nr] = [Number(diameter.slice(1)), tmpx, tmpy];
                             }
-                        } else {
-                            reins[Number(n)*i+j] = [0,0,0];
+                            nr++;
                         }
                         tmpx += valx;
                     }
                     tmpy -= valy;
                 }
-                var tmpy = -(0.5*Number(height) - Number(kaburi) - stpxd - 0.5*d)*0.1;
-                for (i=0; i<Number(m); i++) {
-                    var tmpx = (-0.5*Number(width) + Number(kaburi) + stpyd + 0.5*d)*0.1;
-                    for (j=0; j<Number(n); j++) {
-                        if (type == "GIRDER" || (type == "COLUMN" && (i == 0 || j == 0 || j == Number(n)-1))) {
+                if (type == "GIRDER") {
+                    var tmpy = -(0.5*Number(height) - Number(kaburi) - stpxd - 0.5*d)*0.1;
+                    for (i=0; i<Number(m); i++) {
+                        var tmpx = (-0.5*Number(width) + Number(kaburi) + stpyd + 0.5*d)*0.1;
+                        for (j=0; j<Number(n); j++) {
                             if (i == 0 && j == 0) {
                                 if (type == "GIRDER") {
                                     rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s %-30s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd, sprintf('"%d-%s"', Number(m)*Number(n), diameter));
                                 } else {
                                     rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd, Number(m)*Number(n), diameter);
                                 }
-                                reins[nreins] = [Number(diameter.slice(1)), tmpx, tmpy];
+                                reins[nr] = [Number(diameter.slice(1)), tmpx, tmpy];
                             } else {
                                 rtn += sprintf('         REINS %6.3f %6.1f  %6.1f   %s\n', areas[diameter], round_zero(tmpx,1), round_zero(tmpy,1), sd);
-                                reins[nreins+Number(n)*i+j] = [Number(diameter.slice(1)), tmpx, tmpy];
+                                reins[nr] = [Number(diameter.slice(1)), tmpx, tmpy];
                             }
-                        } else {
-                            reins[nreins+Number(n)*i+j] = [0,0,0];
+                            nr++;
+                            tmpx += valx;
                         }
-                        tmpx += valx;
+                        tmpy += valy;
                     }
-                    tmpy += valy;
                 }
                 if ((Number(stpx_pitch) != 0) && (Number(width) != 0)) {
                     var psx = Number(nstpx) * areas[stpx_diameter] / Number(stpx_pitch) / Number(height) * 100.0;
@@ -141,7 +145,7 @@
                 var scale = Number($("#figscale").val())*0.01;
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.strokeRect(cx-0.5*scale*Number(width), cy-0.5*scale*Number(height), scale*width, scale*height);
-                for (i=0; i<2*nreins; i++) {
+                for (i=0; i<nreins; i++) {
                     ctx.beginPath();
                     ctx.arc(cx+scale*10*reins[i][1], cy+scale*10*reins[i][2], scale*reins[i][0]/2, 0, Math.PI*2, false);
                     ctx.stroke();

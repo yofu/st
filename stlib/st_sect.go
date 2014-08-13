@@ -106,7 +106,7 @@ func (fig *Fig) InpString () string {
             case "SREIN":
                 rtn.WriteString(fmt.Sprintf("                 SREIN %8.6f\n", val))
             case "XFACE", "YFACE":
-                rtn.WriteString(fmt.Sprintf("                 %s %.2f %.2f\n", k, val, fig.Value[fmt.Sprintf("%s_H",k)]))
+                rtn.WriteString(fmt.Sprintf("                 %s %.3f %.3f\n", k, val, fig.Value[fmt.Sprintf("%s_H",k)]))
             }
         }
     }

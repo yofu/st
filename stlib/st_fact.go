@@ -191,6 +191,7 @@ func (f *Fact) SetFileName (inp []string, otp []string) {
 
 func (f *Fact) CalcFact (nodes [][]*Node, elems [][]*Elem) error {
     if len(nodes) < f.Floor || len(elems) < f.Floor-1 { return errors.New("CalcFact: Not Enough Data") }
+    var otp bytes.Buffer
     for i:=0; i<f.Floor; i++ {
         av_level := 0.0
         tmpdisp := make([]float64, 2)
@@ -205,6 +206,7 @@ func (f *Fact) CalcFact (nodes [][]*Node, elems [][]*Elem) error {
             av_level += n.Coord[2]
             for j, d := range []string{"X", "Y"} {
                 if f.IgnoreConf && n.Conf[j] { conf[j]++; continue }
+                if len(n.Disp[d])<2 { return errors.New(fmt.Sprintf("CalcFact: No Disp. Data: NODE %d", n.Num)) }
                 if n.Disp[d][j] > tmpdisp[j] {
                     tmpdisp[j] = n.Disp[d][j]
                 }
@@ -216,7 +218,7 @@ func (f *Fact) CalcFact (nodes [][]*Node, elems [][]*Elem) error {
         f.MaxDisp[i] = tmpdisp
         f.AverageLevel[i] = av_level/float64(num)
         for j:=0; j<2; j++ {
-            disp[j] /= float64(num-conf[j])
+            if num-conf[j] > 0 { disp[j] /= float64(num-conf[j]) }
             if i>0 { drift[j] = (disp[j]-f.AverageDisp[i-1][j]) / (f.AverageLevel[i]-f.AverageLevel[i-1]) }
         }
         f.AverageDisp[i] = disp
@@ -239,13 +241,16 @@ func (f *Fact) CalcFact (nodes [][]*Node, elems [][]*Elem) error {
     TotalStiffness := make([][]float64, f.Floor-1)
     TotalStiffCoord := make([][]float64, f.Floor-1)
     TotalStiffCoord2 := make([][]float64, f.Floor-1)
+    otp.WriteString("CODE Y RX X RY\n")
     for i:=0; i<f.Floor-1; i++ {
+        otp.WriteString(fmt.Sprintf("%dFL\n", i+1))
         tk := make([]float64, 2)
         tkx := make([]float64, 2)
         tkxx := make([]float64, 2)
         tmpmaxdrift := make([]float64, 2)
         maxdriftelem := make([]int, 2)
         for _, el := range elems[i] {
+            otp.WriteString(fmt.Sprintf("%d", el.Num))
             for j, per := range []string{"X", "Y"} {
                 drift := el.StoryDrift(per)
                 if drift > tmpmaxdrift[j] {
@@ -257,8 +262,11 @@ func (f *Fact) CalcFact (nodes [][]*Node, elems [][]*Elem) error {
                 tk[j] += stiff
                 tkx[j] += stiff*coord
                 tkxx[j] += stiff*coord*coord
+                otp.WriteString(fmt.Sprintf(" %.3f %.3f", coord, stiff))
             }
+            otp.WriteString("\n")
         }
+        otp.WriteString("\n")
         f.MaxDrift[i] = tmpmaxdrift
         f.MaxDriftElem[i] = maxdriftelem
         TotalStiffness[i] = tk
@@ -294,5 +302,11 @@ func (f *Fact) CalcFact (nodes [][]*Node, elems [][]*Elem) error {
         }
     }
     f.Calced = true
+    w, err := os.Create("facts.dat")
+    defer w.Close()
+    if err != nil {
+        return err
+    }
+    otp.WriteTo(w)
     return nil
 }

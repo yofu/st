@@ -1,7 +1,7 @@
 package st
 
 var (
-    NODECAPTIONS = []string{"NC_NUM", "NC_ZCOORD", "NC_DX", "NC_DY", "NC_DZ", "NC_RX", "NC_RY", "NC_RZ"}
+    NODECAPTIONS = []string{"NC_NUM", "NC_ZCOORD", "NC_DX", "NC_DY", "NC_DZ", "NC_TX", "NC_TY", "NC_TZ", "NC_RX", "NC_RY", "NC_RZ", "NC_MX", "NC_MY", "NC_MZ"}
     ELEMCAPTIONS = []string{"NC_NUM", "EC_SECT", "EC_RATE_L", "EC_RATE_S"}
 )
 const ( // NodeCaption
@@ -10,15 +10,28 @@ const ( // NodeCaption
     NC_DX
     NC_DY
     NC_DZ
+    NC_TX
+    NC_TY
+    NC_TZ
     NC_RX
     NC_RY
     NC_RZ
+    NC_MX
+    NC_MY
+    NC_MZ
 )
 const ( // ElemCaption
     EC_NUM = 1 << iota
     EC_SECT
     EC_RATE_L
     EC_RATE_S
+)
+
+const ( // Rate
+    RATE_L = 1 << iota
+    RATE_S
+    RATE_Q
+    RATE_M
 )
 
 // Line Color
@@ -162,6 +175,7 @@ func NewShow(frame *Frame) *Show {
     s.Formats["STRESS"]   = "%.3f"
     s.Formats["RATE"]     = "%.3f"
     s.Formats["DISP"]     = "%.3f"
+    s.Formats["THETA"]     = "%.3e"
     s.Formats["REACTION"] = "%.3f"
 
     return s
@@ -223,6 +237,7 @@ func (show *Show) Copy () *Show {
 
 func (show *Show) All () {
     for i, _ := range ETYPES {
+        if i == WBRACE || i == SBRACE { continue }
         show.Etype[i] = true
     }
     for i, _ := range show.Sect {

@@ -34,6 +34,8 @@ var (
     gopath = os.Getenv("GOPATH")
     releasenote = filepath.Join(gopath, "src/github.com/yofu/st/help/releasenote.html")
     pgpfile = filepath.Join(gopath, "src/github.com/yofu/st/st.pgp")
+    recentfn = filepath.Join(gopath, "src/github.com/yofu/st/recent.dat")
+    analysiscommand = "C:/an/an.exe"
 )
 const (
     windowSize = "FULLxFULL"
@@ -87,6 +89,7 @@ const (
 
 // Select
 var selectDirection = 0
+const nodeSelectPixel = 15
 const dotSelectPixel = 5
 const (
     SD_FROMLEFT = iota
@@ -214,12 +217,18 @@ func NewWindow(homedir string) *Window {// {{{
     stw.Labels["WBRACE"]      = stw.etypeLabel("WBRACE", datatextwidth, st.WBRACE, false)
     stw.Labels["SBRACE"]      = stw.etypeLabel("SBRACE", datatextwidth, st.SBRACE, false)
     stw.Labels["NC_NUM"]      = stw.captionLabel("NODE", "  CODE", datalabelwidth+datatextwidth, st.NC_NUM, true)
-    stw.Labels["NC_DX"]       = stw.captionLabel("NODE", "  dX", (datalabelwidth+datatextwidth)/3, st.NC_DX, false)
-    stw.Labels["NC_DY"]       = stw.captionLabel("NODE", "  dY", (datalabelwidth+datatextwidth)/3, st.NC_DY, false)
-    stw.Labels["NC_DZ"]       = stw.captionLabel("NODE", "  dZ", (datalabelwidth+datatextwidth)/3, st.NC_DZ, false)
-    stw.Labels["NC_RX"]       = stw.captionLabel("NODE", "  Rx", (datalabelwidth+datatextwidth)/3, st.NC_RX, false)
-    stw.Labels["NC_RY"]       = stw.captionLabel("NODE", "  Ry", (datalabelwidth+datatextwidth)/3, st.NC_RY, false)
-    stw.Labels["NC_RZ"]       = stw.captionLabel("NODE", "  Rz", (datalabelwidth+datatextwidth)/3, st.NC_RZ, false)
+    stw.Labels["NC_DX"]       = stw.captionLabel("NODE", " dX", (datalabelwidth+datatextwidth)/6, st.NC_DX, false)
+    stw.Labels["NC_DY"]       = stw.captionLabel("NODE", " dY", (datalabelwidth+datatextwidth)/6, st.NC_DY, false)
+    stw.Labels["NC_DZ"]       = stw.captionLabel("NODE", " dZ", (datalabelwidth+datatextwidth)/6, st.NC_DZ, false)
+    stw.Labels["NC_TX"]       = stw.captionLabel("NODE", " tX", (datalabelwidth+datatextwidth)/6, st.NC_TX, false)
+    stw.Labels["NC_TY"]       = stw.captionLabel("NODE", " tY", (datalabelwidth+datatextwidth)/6, st.NC_TY, false)
+    stw.Labels["NC_TZ"]       = stw.captionLabel("NODE", " tZ", (datalabelwidth+datatextwidth)/6, st.NC_TZ, false)
+    stw.Labels["NC_RX"]       = stw.captionLabel("NODE", " Rx", (datalabelwidth+datatextwidth)/6, st.NC_RX, false)
+    stw.Labels["NC_RY"]       = stw.captionLabel("NODE", " Ry", (datalabelwidth+datatextwidth)/6, st.NC_RY, false)
+    stw.Labels["NC_RZ"]       = stw.captionLabel("NODE", " Rz", (datalabelwidth+datatextwidth)/6, st.NC_RZ, false)
+    stw.Labels["NC_MX"]       = stw.captionLabel("NODE", " Mx", (datalabelwidth+datatextwidth)/6, st.NC_MX, false)
+    stw.Labels["NC_MY"]       = stw.captionLabel("NODE", " My", (datalabelwidth+datatextwidth)/6, st.NC_MY, false)
+    stw.Labels["NC_MZ"]       = stw.captionLabel("NODE", " Mz", (datalabelwidth+datatextwidth)/6, st.NC_MZ, false)
     stw.Labels["EC_NUM"]      = stw.captionLabel("ELEM", "  CODE", datalabelwidth+datatextwidth, st.EC_NUM, false)
     stw.Labels["EC_SECT"]     = stw.captionLabel("ELEM", "  SECT", datalabelwidth+datatextwidth, st.EC_SECT, false)
     stw.Labels["EC_RATE_L"]   = stw.captionLabel("ELEM", "  RATE_L", datalabelwidth, st.EC_RATE_L, false)
@@ -274,6 +283,13 @@ func NewWindow(homedir string) *Window {// {{{
         iup.Attrs("BGCOLOR", labelBGColor,),
         iup.SubMenu("TITLE=File",
             iup.Menu(
+                iup.Item(
+                    iup.Attr("TITLE","New\tCtrl+N"),
+                    iup.Attr("TIP","Create New file"),
+                    func (arg *iup.ItemAction) {
+                        stw.New()
+                    },
+                ),
                 iup.Item(
                     iup.Attr("TITLE","Open\tCtrl+O"),
                     iup.Attr("TIP","Open file"),
@@ -397,16 +413,17 @@ func NewWindow(homedir string) *Window {// {{{
                 iup.Item(
                     iup.Attr("TITLE","Read Pgp"),
                     func (arg *iup.ItemAction) {
-                        if name,ok := iup.GetOpenFile(stw.Cwd, "*.pgp"); ok {
-                            al := make(map[string]*Command,0)
-                            err := ReadPgp(name, al)
-                            if err != nil {
-                                stw.addHistory("ReadPgp: Cannot Read st.pgp")
-                            } else {
-                                aliases = al
-                                stw.addHistory(fmt.Sprintf("ReadPgp: Read %s", name))
-                            }
-                        }
+                        stw.addHistory("NOT WORKING")
+                        // if name,ok := iup.GetOpenFile(stw.Cwd, "*.pgp"); ok {
+                        //     al := make(map[string]*Command,0)
+                        //     err := ReadPgp(name, al)
+                        //     if err != nil {
+                        //         stw.addHistory("ReadPgp: Cannot Read st.pgp")
+                        //     } else {
+                        //         aliases = al
+                        //         stw.addHistory(fmt.Sprintf("ReadPgp: Read %s", name))
+                        //     }
+                        // }
                     },
                 ),
             ),
@@ -584,49 +601,49 @@ func NewWindow(homedir string) *Window {// {{{
             ),
         ),
     ).SetName("main_menu")
-    coms1 := iup.Hbox()
-    coms1.SetAttribute("TABTITLE", "File")
-    for _, k := range []string{"OPEN", "SAVE", "READPGP"} {
-        com := Commands[k]
-        coms1.Append(stw.commandButton(com.Display, com, "120x30"))
-    }
-    coms2 := iup.Hbox()
-    coms2.SetAttribute("TABTITLE", "Utility")
-    for _, k := range []string{"DISTS", "MATCHPROP", "NODEDUPLICATION", "NODENOREFERENCE", "ELEMDUPLICATION", "ELEMSAMENODE"} {
-        com := Commands[k]
-        coms2.Append(stw.commandButton(com.Display, com, "120x30"))
-    }
-    coms3 := iup.Hbox()
-    coms3.SetAttribute("TABTITLE", "Conf")
-    for _, k := range []string{"CONFFREE", "CONFPIN", "CONFFIX", "CONFXYROLLER"} {
-        com := Commands[k]
-        coms3.Append(stw.commandButton(com.Display, com, "80x30"))
-    }
-    coms4 := iup.Hbox()
-    coms4.SetAttribute("TABTITLE", "Bond")
-    for _, k := range []string{"BONDPIN", "BONDRIGID", "TOGGLEBOND", "COPYBOND"} {
-        com := Commands[k]
-        coms4.Append(stw.commandButton(com.Display, com, "80x30"))
-    }
-    coms5 := iup.Hbox()
-    coms5.SetAttribute("TABTITLE", "Node")
-    for _, k := range []string{"MOVENODE", "MERGENODE"} {
-        com := Commands[k]
-        coms5.Append(stw.commandButton(com.Display, com, "100x30"))
-    }
-    coms6 := iup.Hbox()
-    coms6.SetAttribute("TABTITLE", "Elem")
-    for _, k := range []string{"COPYELEM", "MOVEELEM", "JOINLINEELEM", "JOINPLATEELEM"} {
-        com := Commands[k]
-        coms6.Append(stw.commandButton(com.Display, com, "100x30"))
-    }
-    coms7 := iup.Hbox()
-    coms7.SetAttribute("TABTITLE", "Add Elem")
-    for _, k := range []string{"ADDLINEELEM", "ADDPLATEELEM", "ADDPLATEELEMBYLINE", "HATCHPLATEELEM"} {
-        com := Commands[k]
-        coms7.Append(stw.commandButton(com.Display, com, "100x30"))
-    }
-    buttons := iup.Tabs(coms1, coms2, coms3, coms4, coms5, coms6, coms7,)
+    // coms1 := iup.Hbox()
+    // coms1.SetAttribute("TABTITLE", "File")
+    // for _, k := range []string{"OPEN", "SAVE", "READPGP"} {
+    //     com := Commands[k]
+    //     coms1.Append(stw.commandButton(com.Display, com, "120x30"))
+    // }
+    // coms2 := iup.Hbox()
+    // coms2.SetAttribute("TABTITLE", "Utility")
+    // for _, k := range []string{"DISTS", "MATCHPROP", "NODEDUPLICATION", "NODENOREFERENCE", "ELEMDUPLICATION", "ELEMSAMENODE"} {
+    //     com := Commands[k]
+    //     coms2.Append(stw.commandButton(com.Display, com, "120x30"))
+    // }
+    // coms3 := iup.Hbox()
+    // coms3.SetAttribute("TABTITLE", "Conf")
+    // for _, k := range []string{"CONFFREE", "CONFPIN", "CONFFIX", "CONFXYROLLER"} {
+    //     com := Commands[k]
+    //     coms3.Append(stw.commandButton(com.Display, com, "80x30"))
+    // }
+    // coms4 := iup.Hbox()
+    // coms4.SetAttribute("TABTITLE", "Bond")
+    // for _, k := range []string{"BONDPIN", "BONDRIGID", "TOGGLEBOND", "COPYBOND"} {
+    //     com := Commands[k]
+    //     coms4.Append(stw.commandButton(com.Display, com, "80x30"))
+    // }
+    // coms5 := iup.Hbox()
+    // coms5.SetAttribute("TABTITLE", "Node")
+    // for _, k := range []string{"MOVENODE", "MERGENODE"} {
+    //     com := Commands[k]
+    //     coms5.Append(stw.commandButton(com.Display, com, "100x30"))
+    // }
+    // coms6 := iup.Hbox()
+    // coms6.SetAttribute("TABTITLE", "Elem")
+    // for _, k := range []string{"COPYELEM", "MOVEELEM", "JOINLINEELEM", "JOINPLATEELEM"} {
+    //     com := Commands[k]
+    //     coms6.Append(stw.commandButton(com.Display, com, "100x30"))
+    // }
+    // coms7 := iup.Hbox()
+    // coms7.SetAttribute("TABTITLE", "Add Elem")
+    // for _, k := range []string{"ADDLINEELEM", "ADDPLATEELEM", "ADDPLATEELEMBYLINE", "HATCHPLATEELEM"} {
+    //     com := Commands[k]
+    //     coms7.Append(stw.commandButton(com.Display, com, "100x30"))
+    // }
+    // buttons := iup.Tabs(coms1, coms2, coms3, coms4, coms5, coms6, coms7,)
     stw.canv = iup.Canvas(
                 "CANFOCUS=YES",
                 "BGCOLOR=\"0 0 0\"",
@@ -705,6 +722,10 @@ func NewWindow(homedir string) *Window {// {{{
                     case '[':
                         if key.IsCtrl() {
                             stw.cline.SetAttribute("VALUE", "")
+                        }
+                    case 'N':
+                        if key.IsCtrl() {
+                            stw.New()
                         }
                     case 'O':
                         if key.IsCtrl() {
@@ -855,14 +876,58 @@ func NewWindow(homedir string) *Window {// {{{
                            stw.Labels["NC_NUM"],
                            iup.Hbox(stw.Labels["NC_DX"],
                                     stw.Labels["NC_DY"],
-                                    stw.Labels["NC_DZ"],),
+                                    stw.Labels["NC_DZ"],
+                                    stw.Labels["NC_TX"],
+                                    stw.Labels["NC_TY"],
+                                    stw.Labels["NC_TZ"],),
                            iup.Hbox(stw.Labels["NC_RX"],
                                     stw.Labels["NC_RY"],
-                                    stw.Labels["NC_RZ"],),)
+                                    stw.Labels["NC_RZ"],
+                                    stw.Labels["NC_MX"],
+                                    stw.Labels["NC_MY"],
+                                    stw.Labels["NC_MZ"],),)
+    // ratel := iup.Toggle(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
+    //                  fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+    //                  fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+    //                  "TITLE=\"L\"",
+    //                  "VALUE=ON",
+    //                  "CANFOCUS=NO",
+    //                  fmt.Sprintf("SIZE=x%d",dataheight),)
+    // ratel.SetCallback(func (arg *iup.ToggleAction) {
+    //                       if stw.Frame != nil {
+    //                           if arg.State == 1 {
+    //                               stw.Frame.Show.Rate += 1
+    //                           } else {
+    //                               stw.Frame.Show.Rate -= 1
+    //                           }
+    //                       }
+    //                   })
+    // rates := iup.Toggle(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
+    //                  fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+    //                  fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+    //                  "TITLE=\"S\"",
+    //                  "VALUE=ON",
+    //                  "CANFOCUS=NO",
+    //                  fmt.Sprintf("SIZE=x%d",dataheight),)
+    // rateq := iup.Toggle(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
+    //                  fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+    //                  fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+    //                  "TITLE=\"Q\"",
+    //                  "VALUE=ON",
+    //                  "CANFOCUS=NO",
+    //                  fmt.Sprintf("SIZE=x%d",dataheight),)
+    // ratem := iup.Toggle(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
+    //                  fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+    //                  fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+    //                  "TITLE=\"M\"",
+    //                  "VALUE=ON",
+    //                  "CANFOCUS=NO",
+    //                  fmt.Sprintf("SIZE=x%d",dataheight),)
     tgecap := iup.Vbox(datasectionlabel("ELEM CAPTION"),
                            stw.Labels["EC_NUM"],
                            stw.Labels["EC_SECT"],
                            iup.Hbox(stw.Labels["EC_RATE_L"],stw.Labels["EC_RATE_S"]),)
+                           // iup.Hbox(ratel, rates, rateq, ratem,),)
     tgcolmode:= iup.Vbox(datasectionlabel("COLOR MODE"),stw.Labels["COLORMODE"])
     dlperiod := datalabel("PERIOD")
     dlperiod.SetCallback(func (arg *iup.MouseButton) {
@@ -903,9 +968,10 @@ func NewWindow(homedir string) *Window {// {{{
                       "SIZE", windowSize,
                       "FGCOLOR", labelFGColor,
                       "BGCOLOR", labelBGColor,
+                      "ICON", "STICON",
                   ),
                   iup.Vbox(
-                      buttons,
+                      // buttons,
                       iup.Hbox(iup.Tabs(
                                    iup.Vbox(vlabels,tgrang,"TABTITLE=View",),
                                    iup.Vbox(tgcolmode, tgparam, tgshow, tgncap, tgecap, tgelem, "TABTITLE=Show",),
@@ -962,14 +1028,44 @@ func (stw *Window) Chdir(dir string) error {
 }
 
 
+// New// {{{
+func (stw *Window) New() {
+    var s *st.Show
+    frame := st.NewFrame()
+    if stw.Frame != nil {
+        s = stw.Frame.Show
+    }
+    w, h := stw.cdcanv.GetSize()
+    stw.CanvasSize = []float64{ float64(w), float64(h) }
+    frame.View.Center[0]=stw.CanvasSize[0]*0.5
+    frame.View.Center[1]=stw.CanvasSize[1]*0.5
+    if s != nil {
+        stw.Frame.Show = s
+    }
+    stw.Frame = frame
+    stw.Dlg.SetAttribute("TITLE", "***")
+    stw.Frame.Home = stw.Home
+    stw.LinkTextValue()
+    stw.Changed = false
+    stw.Redraw()
+}
+
 // Open// {{{
 func (stw *Window) Open() {
-    if name,ok := iup.GetOpenFile(stw.Cwd, "*.inp"); ok {
-        err := stw.OpenFile(name)
-        if err != nil {
-            fmt.Println(err)
-        }
-        stw.Redraw()
+    stw.addHistory("NOT WORKING")
+    // if name,ok := iup.GetOpenFile(stw.Cwd, "*.inp"); ok {
+    //     err := stw.OpenFile(name)
+    //     if err != nil {
+    //         fmt.Println(err)
+    //     }
+    //     stw.Redraw()
+    // }
+}
+
+func (stw *Window) OpenRecently () {
+    if st.FileExists(recentfn) {
+    } else {
+        stw.Open()
     }
 }
 
@@ -1145,13 +1241,14 @@ func (stw *Window) Reload() {
 }
 
 func (stw *Window) OpenDxf() {
-    if name,ok := iup.GetOpenFile(stw.Cwd, "*.dxf"); ok {
-        err := stw.OpenFile(name)
-        if err != nil {
-            fmt.Println(err)
-        }
-        stw.Redraw()
-    }
+    stw.addHistory("NOT WORKING")
+    // if name,ok := iup.GetOpenFile(stw.Cwd, "*.dxf"); ok {
+    //     err := stw.OpenFile(name)
+    //     if err != nil {
+    //         fmt.Println(err)
+    //     }
+    //     stw.Redraw()
+    // }
 }
 
 func (stw *Window) OpenFile(fn string) error {
@@ -1203,15 +1300,16 @@ func (stw *Window) Save() {
 }
 
 func (stw *Window) SaveAS() {
-    var err error
-    if name,ok := iup.GetSaveFile(filepath.Dir(stw.Frame.Path),"*.inp"); ok {
-        fn := st.Ce(name, ".inp")
-        err = stw.SaveFile(fn)
-        if err == nil && fn != stw.Frame.Path {
-            stw.Copylsts(name)
-            stw.Rebase(fn)
-        }
-    }
+    // var err error
+    stw.addHistory("NOT WORKING")
+    // if name,ok := iup.GetSaveFile(filepath.Dir(stw.Frame.Path),"*.inp"); ok {
+    //     fn := st.Ce(name, ".inp")
+    //     err = stw.SaveFile(fn)
+    //     if err == nil && fn != stw.Frame.Path {
+    //         stw.Copylsts(name)
+    //         stw.Rebase(fn)
+    //     }
+    // }
 }
 
 func (stw *Window) Copylsts (name string) {
@@ -1268,18 +1366,27 @@ func (stw *Window) Close (force bool) {
 // Read// {{{
 func (stw *Window) Read() {
     if stw.Frame != nil {
-        if name,ok := iup.GetOpenFile("",""); ok {
-            err := stw.ReadFile(name)
-            if err != nil {
-                fmt.Println(err)
-            }
-        }
+        stw.addHistory("NOT WORKING")
+        // if name,ok := iup.GetOpenFile("",""); ok {
+        //     err := stw.ReadFile(name)
+        //     if err != nil {
+        //         fmt.Println(err)
+        //     }
+        // }
     }
 }
 
 func (stw *Window) ReadAll() {
     if stw.Frame != nil {
         var err error
+        for _, el := range stw.Frame.Elems {
+            switch el.Etype {
+            case st.WBRACE, st.SBRACE:
+                delete(stw.Frame.Elems, el.Num)
+            case st.WALL, st.SLAB:
+                el.Children = make([]*st.Elem, 2)
+            }
+        }
         exts := []string{".inl", ".ihx", ".ihy", ".otl", ".ohx", ".ohy", ".rat2", ".wgt", ".kjn"}
         for _, ext := range exts {
             name := st.Ce(stw.Frame.Path, ext)
@@ -1324,6 +1431,7 @@ func (stw *Window) ReadFile(filename string) error {
     }
     if err != nil {
         stw.addHistory(fmt.Sprintf("NOT READ: %s", filename))
+        stw.addHistory(fmt.Sprintf(">>>> %s", err.Error()))
         return err
     }
     stw.addHistory(fmt.Sprintf("READ: %s", filename))
@@ -1335,6 +1443,7 @@ func (stw *Window) ReadBucklingFile(filename string) error {
     err = stw.Frame.ReadBuckling(filename)
     if err != nil {
         stw.addHistory(fmt.Sprintf("NOT READ: %s", filename))
+        stw.addHistory(fmt.Sprintf(">>>> %s", err.Error()))
         return err
     }
     stw.addHistory(fmt.Sprintf("READ: %s", filename))
@@ -1346,6 +1455,7 @@ func (stw *Window) ReadZoubunFile(filename string) error {
     err = stw.Frame.ReadZoubun(filename)
     if err != nil {
         stw.addHistory(fmt.Sprintf("NOT READ: %s", filename))
+        stw.addHistory(fmt.Sprintf(">>>> %s", err.Error()))
         return err
     }
     stw.addHistory(fmt.Sprintf("READ: %s", filename))
@@ -1361,6 +1471,7 @@ func (stw *Window) AddResult (filename string, search bool) error {
     }
     if err != nil {
         stw.addHistory(fmt.Sprintf("NOT READ: %s", filename))
+        stw.addHistory(fmt.Sprintf(">>>> %s", err.Error()))
         return err
     }
     stw.addHistory(fmt.Sprintf("READ: %s", filename))
@@ -1587,7 +1698,16 @@ func (stw *Window) Interpolate (str string) string {
 
 func (stw *Window) exmode (command string) {
     if len(command) == 1 { return }
-    args := strings.Split(command, " ")
+    tmpargs := strings.Split(command, " ")
+    args := make([]string, len(tmpargs))
+    narg := 0
+    for i:=0; i<len(tmpargs); i++ {
+        if tmpargs[i] != "" {
+            args[narg] = tmpargs[i]
+            narg++
+        }
+    }
+    args = args[:narg]
     var fn string
     if len(args) < 2 {
         fn = ""
@@ -1602,36 +1722,50 @@ func (stw *Window) exmode (command string) {
             }
         }
     }
+    bang  := strings.HasSuffix(args[0], "!")
+    cname := strings.TrimSuffix(strings.TrimPrefix(args[0], ":"), "!")
     if stw.Frame != nil {
-        switch args[0] {
-        case ":w", ":sav":
+        switch cname {
+        case "w", "sav":
             if fn == "" {
                 stw.SaveFile(stw.Frame.Path)
             } else {
-                if !st.FileExists(fn) || stw.Yn("Save", "上書きしますか") {
+                if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
                     err := stw.SaveFile(fn)
                     if err == nil && fn != stw.Frame.Path {
                         stw.Copylsts(fn)
                     }
-                    if args[0] == ":sav" {
+                    if cname == "sav" {
                         stw.Rebase(fn)
                     }
                 }
             }
-        case ":w!", ":sav!":
-            if fn == "" {
-                stw.SaveFile(stw.Frame.Path)
+        case "inc":
+            var times int
+            if len(args) >= 2 {
+                val, err := strconv.ParseInt(args[1], 10, 64)
+                if err != nil {
+                    stw.addHistory(err.Error())
+                    break
+                }
+                times = int(val)
             } else {
+                times = 1
+            }
+            fn, err := st.Increment(stw.Frame.Path, "_", 1, times)
+            if err != nil {
+                stw.addHistory(err.Error())
+                break
+            }
+            if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
                 err := stw.SaveFile(fn)
                 if err == nil && fn != stw.Frame.Path {
                     stw.Copylsts(fn)
                 }
-                if args[0] == ":sav!" {
-                    stw.Rebase(fn)
-                }
+                stw.Rebase(fn)
             }
-        case ":e":
-            // if stw.Changed {
+        case "e":
+            // if !bang && stw.Changed {
             //     if stw.Yn("CHANGED", "変更を保存しますか") {
             //         stw.SaveAS()
             //     }
@@ -1646,40 +1780,39 @@ func (stw *Window) exmode (command string) {
             } else {
                 stw.Reload()
             }
-        case ":e!":
-            if fn != "" {
-                if !st.FileExists(fn) {
-                    stw.addHistory(fmt.Sprintf("File doesn't exist: %s", fn))
-                } else {
-                    stw.OpenFile(fn)
-                    stw.Redraw()
-                }
-            } else {
-                stw.Reload()
-            }
-        case ":q":
-            stw.Close(false)
-        case ":q!":
-            stw.Close(true)
-        case ":vim":
+        case "q":
+            stw.Close(bang)
+        case "vim":
             stw.Edit(fn)
-        case ":read":
+        case "read":
             stw.ReadFile(fn)
-        case ":rb":
+        case "insert":
+            if len(args) > 2 && len(stw.SelectNode) >= 1 {
+                angle, err := strconv.ParseFloat(args[2], 64)
+                if err != nil {
+                    stw.addHistory(err.Error())
+                }
+                err = stw.Frame.ReadInp(fn, stw.SelectNode[0].Coord, angle*math.Pi/180.0)
+                if err != nil {
+                    stw.addHistory(err.Error())
+                }
+                stw.EscapeAll()
+            }
+        case "rb":
             stw.ReadBucklingFile(fn)
-        case ":rz":
+        case "rz":
             stw.ReadZoubunFile(fn)
-        case ":add":
+        case "add":
             stw.AddResult(fn, false)
-        case ":adds":
+        case "adds":
             stw.AddResult(fn, true)
-        case ":wo":
+        case "wo":
             if len(args) < 3 {
                 stw.addHistory("Not enough arguments")
             } else {
                 stw.Frame.WriteOutput(fn, args[2])
             }
-        case ":conf":
+        case "conf":
             lis := make([]bool, 6)
             if len(args[1]) >= 6 {
                 for i:=0; i<6; i++ {
@@ -1690,16 +1823,45 @@ func (stw *Window) exmode (command string) {
                         lis[i] = false
                     case '1':
                         lis[i] = true
+                    case '_':
+                        continue
+                    case 't':
+                        lis[i] = !lis[i]
                     }
                 }
                 setconf(stw, lis)
             } else {
                 stw.addHistory("Not enough arguments")
             }
+        case "an":
+            stw.SaveFile(stw.Frame.Path)
+            var anarg string
+            if len(args)>=3 {
+                anarg = args[2]
+            } else {
+                anarg = "-a"
+            }
+            err := stw.Analysis(filepath.ToSlash(stw.Frame.Path), anarg)
+            if err != nil {
+                stw.addHistory("Analysis Failed")
+            } else {
+                stw.Reload()
+                stw.ReadAll()
+                stw.Redraw()
+            }
+        // default:
+        //     floor := regexp.MustCompile("([0-9]+)f")
+        //     if floor.MatchString(cname) {
+        //         lis := floor.FindStringSubmatch(cname)
+        //         if len(lis)>=1 {
+        //             val, err := strconv.ParseInt(lis[0], 10, 64)
+        //             stw.Frame.ShowFloor(int(val))
+        //         }
+        //     }
         }
     } else {
-        switch args[0] {
-        case ":e":
+        switch cname {
+        case "e":
             if fn != "" {
                 if !st.FileExists(fn) {
                     stw.addHistory(fmt.Sprintf("File doesn't exist: %s", fn))
@@ -1710,7 +1872,7 @@ func (stw *Window) exmode (command string) {
             } else {
                 stw.Open()
             }
-        case ":vim":
+        case "vim":
             stw.Edit(fn)
         }
     }
@@ -1790,13 +1952,16 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
             if n.Lock {
                 canv.Foreground(LOCKED_NODE_COLOR)
             } else {
-                canv.Foreground(canvasFontColor)
-            }
-            switch n.ConfState() {
-            case st.CONF_PIN:
-                canv.Foreground(cd.CD_GREEN)
-            case st.CONF_FIX:
-                canv.Foreground(cd.CD_DARK_GREEN)
+                switch n.ConfState() {
+                case st.CONF_FREE:
+                    canv.Foreground(canvasFontColor)
+                case st.CONF_PIN:
+                    canv.Foreground(cd.CD_GREEN)
+                case st.CONF_FIX:
+                    canv.Foreground(cd.CD_DARK_GREEN)
+                default:
+                    canv.Foreground(cd.CD_CYAN)
+                }
             }
             for _, j := range(stw.SelectNode) {
                 if j==n {canv.Foreground(cd.CD_RED); break}
@@ -2102,6 +2267,7 @@ func (stw *Window) ShowAll() {
         k.Hide = false
     }
     for i, et := range st.ETYPES {
+        if i == st.WBRACE || i == st.SBRACE { continue }
         if lb, ok := stw.Labels[et]; ok {
             lb.SetAttribute("FGCOLOR", labelFGColor)
         }
@@ -2160,7 +2326,7 @@ func (stw *Window) SetAngle (phi, theta float64) {
 
 // Select// {{{
 func (stw *Window) PickNode(x, y int) (rtn *st.Node) {
-    mindist := float64(dotSelectPixel)
+    mindist := float64(nodeSelectPixel)
     for _, v := range(stw.Frame.Nodes) {
         if v.Hide { continue }
         dist := math.Hypot(float64(x)-v.Pcoord[0], float64(y)-v.Pcoord[1])
@@ -2177,7 +2343,7 @@ func (stw *Window) SelectNodeStart(arg *iup.MouseButton) {
     if arg.Pressed == 0 { // Released
         left := min(stw.startX, stw.endX); right := max(stw.startX, stw.endX)
         bottom := min(stw.startY, stw.endY); top := max(stw.startY, stw.endY)
-        if (right - left < dotSelectPixel) && (top - bottom < dotSelectPixel) {
+        if (right - left < nodeSelectPixel) && (top - bottom < nodeSelectPixel) {
             n := stw.PickNode(left, bottom)
             stw.MergeSelectNode([]*st.Node{n}, isShift(arg.Status))
         } else {
@@ -2786,6 +2952,8 @@ func (stw *Window) CB_MouseButton() {
                                   switch arg.Button {
                                   case BUTTON_LEFT:
                                       if isDouble(arg.Status) { stw.Open() }
+                                  case BUTTON_CENTER:
+                                      stw.OpenRecently()
                                   }
                               }
                           })
@@ -2890,6 +3058,10 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
         if strings.Contains(tmp, "%") {
             stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
             stw.cline.SetAttribute("CARETPOS", "100")
+        }
+    case 'N':
+        if key.IsCtrl() {
+            stw.New()
         }
     case 'O':
         if key.IsCtrl() {
@@ -4399,6 +4571,8 @@ func (stw *Window) EscapeCB () {
     stw.cline.SetAttribute("VALUE", "")
     stw.cname.SetAttribute("VALUE", "SELECT")
     stw.canv.SetAttribute("CURSOR", "ARROW")
+    stw.cdcanv.Foreground(cd.CD_WHITE)
+    stw.cdcanv.WriteMode(cd.CD_REPLACE)
     stw.CMenu()
     stw.CB_MouseButton()
     stw.CB_MouseMotion()
@@ -4421,6 +4595,16 @@ func EditPgp() {
     cmd.Start()
 }
 
+func (stw *Window) Analysis (fn string, arg string) error {
+    var err error
+    cmd := exec.Command(analysiscommand, arg, fn)
+    err = cmd.Start()
+    if err != nil {
+        return err
+    }
+    err = cmd.Wait()
+    return err
+}
 
 func ReadPgp(filename string, aliases map[string]*Command) error {
     f, err := ioutil.ReadFile(filename)

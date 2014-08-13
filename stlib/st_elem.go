@@ -803,8 +803,8 @@ func (elem *Elem) DivideAtNode (n *Node, position int, del bool) (rn []*Node, el
             return []*Node{n}, els, nil
         case 0:
             newelem := elem.Frame.AddLineElem(-1, []*Node{n, elem.Enod[0]}, elem.Sect, elem.Etype)
-            els[0] = newelem
-            els[1] = elem
+            els[0] = elem
+            els[1] = newelem
             return []*Node{n}, els, nil
         case 2:
             newelem := elem.Frame.AddLineElem(-1, []*Node{elem.Enod[1], n}, elem.Sect, elem.Etype)
@@ -830,7 +830,7 @@ func (elem *Elem) DivideAtAxis (axis int, coord float64) (n []*Node, els []*Elem
     return elem.DivideAtCoord(c[0], c[1], c[2])
 }
 
-func (elem *Elem) OnNode (num int) []*Node {
+func (elem *Elem) OnNode (num int, eps float64) []*Node {
     var num2 int
     if num>=elem.Enods {
         return nil
@@ -839,7 +839,7 @@ func (elem *Elem) OnNode (num int) []*Node {
     } else {
         num2 = num+1
     }
-    candidate := elem.Frame.NodeInBox(elem.Enod[num], elem.Enod[num2])
+    candidate := elem.Frame.NodeInBox(elem.Enod[num], elem.Enod[num2], eps)
     direction := elem.Frame.Direction(elem.Enod[num], elem.Enod[num2], false)
     ons := make([]*Node, len(candidate))
     i := 0
@@ -849,7 +849,7 @@ func (elem *Elem) OnNode (num int) []*Node {
         if n.Num == elem.Enod[num].Num || n.Num == elem.Enod[num2].Num { continue }
         d := elem.Frame.Direction(elem.Enod[num], n, false)
         _, _, _, l := elem.Frame.Distance(elem.Enod[num], n)
-        if IsParallel(direction, d, 1e-4) {
+        if IsParallel(direction, d, eps) {
             nodes[l] = n
             keys = append(keys, l)
             ons[i] = n
@@ -864,11 +864,11 @@ func (elem *Elem) OnNode (num int) []*Node {
     return sortednodes
 }
 
-func (elem *Elem) DivideAtOns () (n []*Node, els []*Elem, err error) {
+func (elem *Elem) DivideAtOns (eps float64) (n []*Node, els []*Elem, err error) {
     if !elem.IsLineElem() { return nil, nil, NotLineElem("DivideAtCoord") }
-    ns := elem.OnNode(0)
+    ns := elem.OnNode(0, eps)
     l := len(ns)
-    if l==0 { return nil, nil, nil }
+    if l==0 { return nil, []*Elem{elem}, nil }
     els = make([]*Elem, l+1)
     els[0] = elem
     for i:=l-1; i>=0; i-- {
@@ -1102,7 +1102,8 @@ func (elem *Elem) LateralStiffness (period string, abs bool) float64 {
         }
         shear := elem.VectorStress(period, 0, axis)
         delta := elem.Enod[1].ReturnDisp(period, index) - elem.Enod[0].ReturnDisp(period, index)
-        if delta == 0.0 { fmt.Sprintf("LateralStiffness: Delta = 0(ELEM: %d)\n", elem.Num); return 1e16 }
+        if shear == 0.0 { return 0.0 }
+        if delta == 0.0 { fmt.Printf("LateralStiffness: Delta = 0(ELEM: %d)\n", elem.Num); return 1e16 }
         if abs {
             return math.Abs(shear/delta)
         } else {

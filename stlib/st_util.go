@@ -287,7 +287,9 @@ func Ce (fn, ext string) string {
 func Increment (fn, div string, pos, times int) (string, error) {
     ext := filepath.Ext(fn)
     ls := strings.Split(strings.Replace(fn, ext, "", 1), div)
-    if len(ls) < pos+1 {
+    if len(ls) == pos {
+        return fmt.Sprintf("%s%s%02d%s", strings.Replace(fn, ext, "", 1), div, 1, ext), nil
+    } else if len(ls) < pos+1 {
         return fn, errors.New("Increment: IndexError")
     }
     if pos == 0 {
@@ -297,14 +299,14 @@ func Increment (fn, div string, pos, times int) (string, error) {
             return fn, errors.New("Increment: ValueError")
         }
         val, _ := strconv.ParseInt(tmp[2], 10, 64)
-        ls[0] = fmt.Sprintf("%s%02d", tmp[1], val+1)
+        ls[0] = fmt.Sprintf("%s%02d", tmp[1], int(val)+times)
     } else {
         num := ls[pos]
         val, err := strconv.ParseInt(num, 10, 64)
         if err != nil {
             return fn, err
         }
-        ls[pos] = fmt.Sprintf("%02d", val+1)
+        ls[pos] = fmt.Sprintf("%02d", int(val)+times)
     }
     return strings.Join(ls, "_") + ext, nil
 }
