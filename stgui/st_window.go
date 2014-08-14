@@ -29,12 +29,16 @@ var (
     SearchingInps bool
     SearchingInpsDone chan bool
     DoubleClickCommand = []string{"TOGGLEBOND", "EDITPLATEELEM"}
+    comhistpos int
 )
 var (
     gopath = os.Getenv("GOPATH")
-    releasenote = filepath.Join(gopath, "src/github.com/yofu/st/help/releasenote.html")
-    pgpfile = filepath.Join(gopath, "src/github.com/yofu/st/st.pgp")
-    recentfn = filepath.Join(gopath, "src/github.com/yofu/st/recent.dat")
+    home   = os.Getenv("HOME")
+    releasenote = filepath.Join(home, ".st/help/releasenote.html")
+    tooldir = filepath.Join(home, ".st/tool")
+    pgpfile = filepath.Join(home, ".st/st.pgp")
+    recentfn = filepath.Join(home, ".st/recent.dat")
+    historyfn = filepath.Join(home, ".st/history.dat")
     analysiscommand = "C:/an/an.exe"
 )
 const (
@@ -103,6 +107,10 @@ const (
     KEY_ENTER  = 13
     KEY_DELETE = 139
     KEY_ESCAPE = 141
+    KEY_UPARROW = 130
+    KEY_LEFTARROW = 132
+    KEY_RIGHTARROW = 134
+    KEY_DOWNARROW = 136
 
     BUTTON_LEFT   = 49
     BUTTON_CENTER = 50
@@ -125,6 +133,7 @@ const (
 // Command
 const (
     repeatcommand = 0.2 // sec
+    CommandHistorySize = 100
 )
 var (
     pressed time.Time
@@ -181,6 +190,8 @@ type Window struct {// {{{
     Props []*iup.Handle
 
     Changed bool // TODO: Set stw.Changed to true when stw.Frame is changed
+
+    comhist []string
 }
 // }}}
 
@@ -413,17 +424,16 @@ func NewWindow(homedir string) *Window {// {{{
                 iup.Item(
                     iup.Attr("TITLE","Read Pgp"),
                     func (arg *iup.ItemAction) {
-                        stw.addHistory("NOT WORKING")
-                        // if name,ok := iup.GetOpenFile(stw.Cwd, "*.pgp"); ok {
-                        //     al := make(map[string]*Command,0)
-                        //     err := ReadPgp(name, al)
-                        //     if err != nil {
-                        //         stw.addHistory("ReadPgp: Cannot Read st.pgp")
-                        //     } else {
-                        //         aliases = al
-                        //         stw.addHistory(fmt.Sprintf("ReadPgp: Read %s", name))
-                        //     }
-                        // }
+                        if name,ok := iup.GetOpenFile(stw.Cwd, "*.pgp"); ok {
+                            al := make(map[string]*Command,0)
+                            err := ReadPgp(name, al)
+                            if err != nil {
+                                stw.addHistory("ReadPgp: Cannot Read st.pgp")
+                            } else {
+                                aliases = al
+                                stw.addHistory(fmt.Sprintf("ReadPgp: Read %s", name))
+                            }
+                        }
                     },
                 ),
             ),
@@ -573,13 +583,13 @@ func NewWindow(homedir string) *Window {// {{{
                 iup.Item(
                     iup.Attr("TITLE","RC lst"),
                     func (arg *iup.ItemAction) {
-                        StartTool("tool/rclst/rclst.html")
+                        StartTool(filepath.Join(tooldir, "rclst/rclst.html"))
                     },
                 ),
                 iup.Item(
                     iup.Attr("TITLE","Fig2 Keyword"),
                     func (arg *iup.ItemAction) {
-                        StartTool("tool/fig2/fig2.html")
+                        StartTool(filepath.Join(tooldir, "fig2/fig2.html"))
                     },
                 ),
             ),
@@ -1013,6 +1023,8 @@ func NewWindow(homedir string) *Window {// {{{
     iup.SetHandle("mainwindow", stw.Dlg)
     stw.EscapeAll()
     stw.Changed = false
+    stw.comhist = make([]string, CommandHistorySize)
+    comhistpos = -1
     return stw
 }
 // }}}
@@ -1052,14 +1064,13 @@ func (stw *Window) New() {
 
 // Open// {{{
 func (stw *Window) Open() {
-    stw.addHistory("NOT WORKING")
-    // if name,ok := iup.GetOpenFile(stw.Cwd, "*.inp"); ok {
-    //     err := stw.OpenFile(name)
-    //     if err != nil {
-    //         fmt.Println(err)
-    //     }
-    //     stw.Redraw()
-    // }
+    if name,ok := iup.GetOpenFile(stw.Cwd, "*.inp"); ok {
+        err := stw.OpenFile(name)
+        if err != nil {
+            fmt.Println(err)
+        }
+        stw.Redraw()
+    }
 }
 
 func (stw *Window) OpenRecently () {
@@ -1241,14 +1252,13 @@ func (stw *Window) Reload() {
 }
 
 func (stw *Window) OpenDxf() {
-    stw.addHistory("NOT WORKING")
-    // if name,ok := iup.GetOpenFile(stw.Cwd, "*.dxf"); ok {
-    //     err := stw.OpenFile(name)
-    //     if err != nil {
-    //         fmt.Println(err)
-    //     }
-    //     stw.Redraw()
-    // }
+    if name,ok := iup.GetOpenFile(stw.Cwd, "*.dxf"); ok {
+        err := stw.OpenFile(name)
+        if err != nil {
+            fmt.Println(err)
+        }
+        stw.Redraw()
+    }
 }
 
 func (stw *Window) OpenFile(fn string) error {
@@ -1300,16 +1310,15 @@ func (stw *Window) Save() {
 }
 
 func (stw *Window) SaveAS() {
-    // var err error
-    stw.addHistory("NOT WORKING")
-    // if name,ok := iup.GetSaveFile(filepath.Dir(stw.Frame.Path),"*.inp"); ok {
-    //     fn := st.Ce(name, ".inp")
-    //     err = stw.SaveFile(fn)
-    //     if err == nil && fn != stw.Frame.Path {
-    //         stw.Copylsts(name)
-    //         stw.Rebase(fn)
-    //     }
-    // }
+    var err error
+    if name,ok := iup.GetSaveFile(filepath.Dir(stw.Frame.Path),"*.inp"); ok {
+        fn := st.Ce(name, ".inp")
+        err = stw.SaveFile(fn)
+        if err == nil && fn != stw.Frame.Path {
+            stw.Copylsts(name)
+            stw.Rebase(fn)
+        }
+    }
 }
 
 func (stw *Window) Copylsts (name string) {
@@ -1366,13 +1375,12 @@ func (stw *Window) Close (force bool) {
 // Read// {{{
 func (stw *Window) Read() {
     if stw.Frame != nil {
-        stw.addHistory("NOT WORKING")
-        // if name,ok := iup.GetOpenFile("",""); ok {
-        //     err := stw.ReadFile(name)
-        //     if err != nil {
-        //         fmt.Println(err)
-        //     }
-        // }
+        if name,ok := iup.GetOpenFile("",""); ok {
+            err := stw.ReadFile(name)
+            if err != nil {
+                fmt.Println(err)
+            }
+        }
     }
 }
 
@@ -1476,6 +1484,15 @@ func (stw *Window) AddResult (filename string, search bool) error {
     }
     stw.addHistory(fmt.Sprintf("READ: %s", filename))
     return nil
+}
+
+func (stw *Window) AddPropAndSect (filename string) error {
+    if stw.Frame != nil {
+        err := stw.Frame.AddPropAndSect(filename)
+        return err
+    } else {
+        return errors.New("NO FRAME")
+    }
 }
 // }}}
 
@@ -1597,8 +1614,33 @@ func (stw *Window) SetFont(mode int) {
 func (stw *Window) feedCommand() {
     command := stw.cline.GetAttribute("VALUE")
     if command != "" {
+        stw.addCommandHistory(stw.cline.GetAttribute("VALUE"))
+        comhistpos = -1
         stw.cline.SetAttribute("VALUE", "")
         stw.execAliasCommand(command)
+    }
+}
+
+func (stw *Window) addCommandHistory (str string) {
+    tmp := make([]string, CommandHistorySize)
+    tmp[0] = str
+    for i:=0; i<CommandHistorySize-1; i++ {
+        tmp[i+1] = stw.comhist[i]
+    }
+    stw.comhist = tmp
+}
+
+func (stw *Window) PrevCommand () {
+    if comhistpos < CommandHistorySize {
+        comhistpos++
+        stw.cline.SetAttribute("VALUE", stw.comhist[comhistpos])
+    }
+}
+
+func (stw *Window) NextCommand () {
+    if comhistpos > 0 {
+        comhistpos--
+        stw.cline.SetAttribute("VALUE", stw.comhist[comhistpos])
     }
 }
 
@@ -1798,6 +1840,8 @@ func (stw *Window) exmode (command string) {
                 }
                 stw.EscapeAll()
             }
+        case "ps":
+            stw.AddPropAndSect(fn)
         case "rb":
             stw.ReadBucklingFile(fn)
         case "rz":
@@ -1923,7 +1967,6 @@ func axisrange(stw *Window, axis int, min, max float64, any bool) {
 
 
 // Draw// {{{
-// TODO: drawing selected elem with dot line is not working
 func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
     if stw.Frame != nil {
         // stw.UpdateShowRange() // TODO: ShowRange
@@ -3012,6 +3055,7 @@ func (stw *Window) CB_CanvasWheel() {
 func (stw *Window) DefaultKeyAny(key iup.KeyState) {
     switch key.Key() {
     default:
+        // fmt.Println(key.Key())
         stw.cline.SetAttribute("APPEND", string(key.Key()))
     case '/':
         if stw.cline.GetAttribute("VALUE") != "" {
@@ -3059,6 +3103,10 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
             stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
             stw.cline.SetAttribute("CARETPOS", "100")
         }
+    case KEY_UPARROW:
+        stw.PrevCommand()
+    case KEY_DOWNARROW:
+        stw.NextCommand()
     case 'N':
         if key.IsCtrl() {
             stw.New()
@@ -3423,13 +3471,13 @@ func (stw *Window) CMenu () {
                               iup.Item(
                                   iup.Attr("TITLE","RC lst"),
                                   func (arg *iup.ItemAction) {
-                                      StartTool("tool/rclst/rclst.html")
+                                      StartTool(filepath.Join(tooldir, "rclst/rclst.html"))
                                   },
                               ),
                               iup.Item(
                                   iup.Attr("TITLE","Fig2 Keyword"),
                                   func (arg *iup.ItemAction) {
-                                      StartTool("tool/fig2/fig2.html")
+                                      StartTool(filepath.Join(tooldir, "fig2/fig2.html"))
                                   },
                               ),
                           ),

@@ -111,15 +111,27 @@ func NewPlateElem (ns []*Node, sect *Sect, etype int) *Elem {
 }
 // }}}
 
-func (elem *Elem) PrincipalAxis (cang float64) ([]float64, []float64) {
+func (elem *Elem) PrincipalAxis (cang float64) ([]float64, []float64, error) {
     d := elem.Direction(true)
     c := math.Cos(cang)
     s := math.Sin(cang)
     strong := make([]float64, 3)
     weak := make([]float64, 3)
-    if d[0] == 0.0 && d[1] == 0.0 {
-        strong = []float64{ -s*d[2],  c, 0.0 }
-        weak   = []float64{ -c*d[2], -s, 0.0 }
+    dl1 := 0.0; dl2 := 0.0
+    for i:=0; i<3; i++ {
+        dl1 += d[i]*d[i]
+        if i==2 { break }
+        dl2 += d[i]*d[i]
+    }
+    dl1 = math.Sqrt(dl1); dl2 = math.Sqrt(dl2)
+    if dl1 == 0 {
+        return strong, weak, errors.New("PrincipalAxis: Length = 0")
+    } else if dl2 == 0 {
+        strong = []float64{ -s,  c, 0.0 }
+        weak   = []float64{ -c, -s, 0.0 }
+    } else if dl2/dl1 < 0.1 {
+        strong = Cross(d, []float64{ c, s, 0.0})
+        weak   = Cross(d, []float64{-s, c, 0.0})
     } else {
         x := Normalize([]float64{ -d[1], d[0], 0.0 })
         y := Cross(d, x)
@@ -128,30 +140,37 @@ func (elem *Elem) PrincipalAxis (cang float64) ([]float64, []float64) {
             weak[i]   = -s*x[i] + c*y[i]
         }
     }
-    return Normalize(strong), Normalize(weak)
+    return Normalize(strong), Normalize(weak), nil
 }
 
-func (elem *Elem) SetPrincipalAxis () {
-    s, w := elem.PrincipalAxis(elem.Cang)
+func (elem *Elem) SetPrincipalAxis () error {
+    s, w, err := elem.PrincipalAxis(elem.Cang)
+    if err != nil {
+        return err
+    }
     elem.Strong = s
     elem.Weak = w
+    return nil
 }
 
-func (elem *Elem) AxisToCang (vector []float64, strong bool) float64 {
+func (elem *Elem) AxisToCang (vector []float64, strong bool) (float64, error) {
     vector = Normalize(vector)
     d := elem.Direction(true)
     uv := Dot(d, vector, 3)
     if uv == 1.0 {
         elem.Cang = 0.0
         elem.SetPrincipalAxis()
-        return elem.Cang
+        return elem.Cang, nil
     }
     newvec := make([]float64, 3)
     for i:=0; i<3; i++ {
         newvec[i] = vector[i] - uv*d[i]
     }
     newvec = Normalize(newvec)
-    d1, d2 := elem.PrincipalAxis(0.0)
+    d1, d2, err := elem.PrincipalAxis(0.0)
+    if err != nil {
+        return 0.0, err
+    }
     c1 := Dot(d1, newvec, 3)
     c2 := Dot(d2, newvec, 3)
     if strong {
@@ -192,7 +211,7 @@ func (elem *Elem) AxisToCang (vector []float64, strong bool) float64 {
         }
     }
     elem.SetPrincipalAxis()
-    return elem.Cang
+    return elem.Cang, nil
 }
 
 

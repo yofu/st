@@ -142,6 +142,16 @@ func (sect *Sect) HasArea () bool {
     return false
 }
 
+// func (sect *Sect) TotalAmount () float64 {
+//     sum := 0.0
+//     for _, el := range sect.Frame.Elems {
+//         if el.Sect == sect {
+//             sum += el.Amount
+//         }
+//     }
+//     return sum
+// }
+
 func (sect *Sect) Weight () []float64 {
     if len(sect.Figs)==0 { return []float64{0.0, 0.0, 0.0} }
     rtn := make([]float64, 3)

@@ -1827,6 +1827,54 @@ func (frame *Frame) AddSect (num int) *Sect {
     return sec
 }
 
+func (frame *Frame) AddPropAndSect (filename string) error {
+    tmp := make([]string, 0)
+    err := ParseFile(filename, func (words []string) error {
+                                   var err error
+                                   first := words[0]
+                                   if strings.HasPrefix(first, "\"") {
+                                       frame.Title = strings.Join(words, " ")
+                                       return nil
+                                   } else if strings.HasPrefix(first, "#") {
+                                       return nil
+                                   }
+                                   switch first {
+                                   default:
+                                       tmp=append(tmp,words...)
+                                   case "PROP", "SECT":
+                                       err = frame.ParsePropAndSect(tmp)
+                                       tmp = words
+                                   }
+                                   if err != nil {
+                                       return err
+                                   }
+                                   return nil
+                               })
+    if err != nil {
+        return err
+    }
+    err = frame.ParsePropAndSect(tmp)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
+func (frame *Frame) ParsePropAndSect (lis []string) error {
+    var err error
+    if len(lis)==0 {
+        return nil
+    }
+    first := lis[0]
+    switch first {
+    case "SECT":
+        err = frame.ParseSect(lis)
+    case "PROP":
+        err = frame.ParseProp(lis)
+    }
+    return err
+}
+
 func (frame *Frame) AddNode (x, y, z float64) *Node {
     node := NewNode()
     node.Coord[0] = x

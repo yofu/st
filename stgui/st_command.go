@@ -1329,17 +1329,16 @@ func weightcopy(stw *Window) {
 
 // READPGP// {{{
 func readpgp (stw *Window) {
-    stw.addHistory("NOT WORKING")
-    // if name,ok := iup.GetOpenFile(stw.Cwd, "*.pgp"); ok {
-    //     al := make(map[string]*Command,0)
-    //     err := ReadPgp(name, al)
-    //     if err != nil {
-    //         stw.addHistory("ReadPgp: Cannot Read st.pgp")
-    //     } else {
-    //         aliases = al
-    //         stw.addHistory(fmt.Sprintf("ReadPgp: Read %s", name))
-    //     }
-    // }
+    if name,ok := iup.GetOpenFile(stw.Cwd, "*.pgp"); ok {
+        al := make(map[string]*Command,0)
+        err := ReadPgp(name, al)
+        if err != nil {
+            stw.addHistory("ReadPgp: Cannot Read st.pgp")
+        } else {
+            aliases = al
+            stw.addHistory(fmt.Sprintf("ReadPgp: Read %s", name))
+        }
+    }
     stw.EscapeAll()
 }
 // }}}
@@ -1347,19 +1346,18 @@ func readpgp (stw *Window) {
 
 // INSERT// {{{
 func insert(stw *Window) {
-    stw.addHistory("NOT WORKING")
-    // if name,ok := iup.GetOpenFile("",""); ok {
-    //     get1node(stw, func (n *st.Node) {
-    //                       // TODO: 角度を指定
-    //                       err := stw.Frame.ReadInp(name, n.Coord, 0.0)
-    //                       if err != nil {
-    //                           stw.addHistory(err.Error())
-    //                       }
-    //                       stw.EscapeAll()
-    //                   })
-    // } else {
-    //     stw.EscapeAll()
-    // }
+    if name,ok := iup.GetOpenFile("",""); ok {
+        get1node(stw, func (n *st.Node) {
+                          // TODO: 角度を指定
+                          err := stw.Frame.ReadInp(name, n.Coord, 0.0)
+                          if err != nil {
+                              stw.addHistory(err.Error())
+                          }
+                          stw.EscapeAll()
+                      })
+    } else {
+        stw.EscapeAll()
+    }
     stw.EscapeAll()
 }
 // }}}
@@ -1479,7 +1477,10 @@ func axistocang (stw *Window) {
                       if !(x==0.0 && y==0.0 && z==0.0) {
                           for _, el := range stw.SelectElem {
                               if el == nil || el.IsHide(stw.Frame.Show) || el.Lock { continue }
-                              el.AxisToCang([]float64{x, y, z}, strong)
+                              _, err := el.AxisToCang([]float64{x, y, z}, strong)
+                              if err != nil {
+                                  stw.addHistory(fmt.Sprintf("部材軸を設定できません: ELEM %d", el.Num))
+                              }
                           }
                           stw.EscapeAll()
                       }
@@ -2477,7 +2478,7 @@ func hatchplateelem (stw *Window) {
 // ADDPLATEALL
 func addplateall (stw *Window) {
     if stw.SelectElem == nil {
-        ns := stw.Frame.ElemToNode(stw.SelectElem)
+        ns := stw.Frame.ElemToNode(stw.SelectElem...)
         stw.SelectNode = append(stw.SelectNode, ns...)
     }
     if stw.SelectNode == nil || len(stw.SelectNode) < 3 {
@@ -3092,3 +3093,29 @@ func zoubunreaction (stw *Window) {
     stw.EscapeCB()
 }
 // }}}
+
+// // AMOUNTPROP
+// func amountprop (stw *Window) {
+//     props, err := QueryList("PROP")
+//     if err != nil {
+//         stw.EscapeAll()
+//         return
+//     }
+//     total := 0.0
+//     sects := make([]*Sect, len(stw.Frame.Sects))
+//     for _, sec := range stw.Frame.Sects {
+//         if sec.Num > 900 { continue }
+//         sects[snum] = sec
+//         snum++
+//     }
+//     sects = sects[:snum]
+//     sort.Sort(SectByNum{sects})
+//     for _, sec := range sects {
+//         size := sec.Size(props)
+//         amount := sec.TotalAmount()
+//         weight := sec.Weight(props)
+//         totalweight := length * weight
+//         otp.WriteString(fmt.Sprintf("%4d %40s %8.3f %8.4f %8.4f %8.3f\n", sec.Num, sec.Name, amount, size, weight, totalweight))
+//         total += totalweight
+//     }
+// }

@@ -6,6 +6,7 @@ import (
     "fmt"
     "math"
     "os"
+    "sort"
 )
 
 type Fact struct {
@@ -22,6 +23,7 @@ type Fact struct {
     MaxDisp        [][]float64
     MaxDrift       [][]float64
     MaxDriftElem   [][]int
+    Shear          []map[int][]float64
     TotalShear     [][]float64
     TotalMoment    [][]float64
     CentreOfWeight [][]float64
@@ -45,6 +47,7 @@ func NewFact (n int, abs bool, factor float64) *Fact {
     f.MaxDisp        = make([][]float64, n)
     f.MaxDrift       = make([][]float64, n-1)
     f.MaxDriftElem   = make([][]int, n-1)
+    f.Shear          = make([]map[int][]float64, n-1)
     f.TotalShear     = make([][]float64, n)
     f.TotalMoment    = make([][]float64, n)
     f.CentreOfWeight = make([][]float64, n)
@@ -173,6 +176,34 @@ func (f *Fact) WriteTo (fn string) error {
     for i:=0; i<f.Floor-1; i++ {
         otp.WriteString(fmt.Sprintf("%2dF： %sRex=%8.5f %sRey=%8.5f\n", i+1, m[i][0], f.Eccentricity[i][0], m[i][1], f.Eccentricity[i][1]))
     }
+    otp.WriteString("\n部材タイプ毎の水平力分担率\n")
+    for i:=0; i<f.Floor-1; i++ {
+        otp.WriteString(fmt.Sprintf("%2dF       X                Y\n", i+1))
+        for _, et := range []int{COLUMN, GIRDER, BRACE, WBRACE, SBRACE} {
+            if val, ok := f.Shear[i][et]; ok {
+                otp.WriteString(fmt.Sprintf("  %6s: %8.3f (%5.1f%%) %8.3f (%5.1f%%)\n", ETYPES[et], val[0], val[0]/f.TotalShear[i+1][0]*100, val[1], val[1]/f.TotalShear[i+1][1]*100))
+            }
+        }
+    }
+    otp.WriteString("\n断面番号毎の水平力分担率\n")
+    for i:=0; i<f.Floor-1; i++ {
+        otp.WriteString(fmt.Sprintf("%2dF       X                Y\n", i+1))
+        snum := 0
+        sects := make([]int, 0)
+        for k := range f.Shear[i] {
+            if k > 100 {
+                sects = append(sects, k)
+                snum++
+            }
+        }
+        sects = sects[:snum]
+        sort.Ints(sects)
+        for _, sec := range sects {
+            if val, ok := f.Shear[i][sec]; ok {
+                otp.WriteString(fmt.Sprintf("  %6d: %8.3f (%5.1f%%) %8.3f (%5.1f%%)\n", sec, val[0], val[0]/f.TotalShear[i+1][0]*100, val[1], val[1]/f.TotalShear[i+1][1]*100))
+            }
+        }
+    }
     w, err := os.Create(fn)
     defer w.Close()
     if err != nil {
@@ -241,9 +272,10 @@ func (f *Fact) CalcFact (nodes [][]*Node, elems [][]*Elem) error {
     TotalStiffness := make([][]float64, f.Floor-1)
     TotalStiffCoord := make([][]float64, f.Floor-1)
     TotalStiffCoord2 := make([][]float64, f.Floor-1)
-    otp.WriteString("CODE Y RX X RY\n")
+    otp.WriteString("CODE Y QX RX X QY RY\n")
     for i:=0; i<f.Floor-1; i++ {
         otp.WriteString(fmt.Sprintf("%dFL\n", i+1))
+        f.Shear[i] = make(map[int][]float64)
         tk := make([]float64, 2)
         tkx := make([]float64, 2)
         tkxx := make([]float64, 2)
@@ -258,11 +290,29 @@ func (f *Fact) CalcFact (nodes [][]*Node, elems [][]*Elem) error {
                     maxdriftelem[j] = el.Num
                 }
                 coord := el.MidPoint()[1-j]
+                var shear float64
+                if j == 0 {
+                    shear = -el.VectorStress(per, 0, XAXIS)
+                } else {
+                    shear = -el.VectorStress(per, 0, YAXIS)
+                }
                 stiff := el.LateralStiffness(per, f.Abs)
+                if _, ok := f.Shear[i][el.Sect.Num]; ok {
+                    f.Shear[i][el.Sect.Num][j] += shear
+                } else {
+                    f.Shear[i][el.Sect.Num] = make([]float64, 2)
+                    f.Shear[i][el.Sect.Num][j] = shear
+                }
+                if _, ok := f.Shear[i][el.Etype]; ok {
+                    f.Shear[i][el.Etype][j] += shear
+                } else {
+                    f.Shear[i][el.Etype] = make([]float64, 2)
+                    f.Shear[i][el.Etype][j] = shear
+                }
                 tk[j] += stiff
                 tkx[j] += stiff*coord
                 tkxx[j] += stiff*coord*coord
-                otp.WriteString(fmt.Sprintf(" %.3f %.3f", coord, stiff))
+                otp.WriteString(fmt.Sprintf(" %.3f %.3f %.3f", coord, shear, stiff))
             }
             otp.WriteString("\n")
         }
