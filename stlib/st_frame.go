@@ -438,6 +438,7 @@ func (frame *Frame) ParseSect(lis []string) error {
         }
     }
     err = s.ParseFig(frame,tmp)
+    s.Frame = frame
     frame.Sects[s.Num] = s
     frame.Show.Sect[s.Num] = true
     return nil
@@ -1749,6 +1750,24 @@ func (frame *Frame) WriteOutput (fn string, p string) error {
 // }}}
 
 
+func (frame *Frame) Check () ([]*Node, []*Elem, bool) {
+    ok := true
+    ns  := make([]*Node, len(frame.Nodes))
+    els := make([]*Elem, len(frame.Elems))
+    nnum := 0
+    enum := 0
+    for _, el := range frame.Elems {
+        if v, err := el.IsValidElem(); !v {
+            ok = false
+            fmt.Println(err.Error())
+            els[enum] = el
+            enum++
+        }
+    }
+    return ns[:nnum], els[:enum], ok
+}
+
+
 func (frame *Frame) Distance (n1, n2 *Node) (dx, dy, dz, d float64) {
     dx = n2.Coord[0] - n1.Coord[0]
     dy = n2.Coord[1] - n1.Coord[1]
@@ -2482,6 +2501,15 @@ func (frame *Frame) Extend (e1, e2 *Elem) ([]*Node, []*Elem, error) {
 
 func (frame *Frame) Fillet (e1, e2 *Elem, sign1, sign2 int) ([]*Node, []*Elem, error) {
     return frame.Intersect(e1, e2, false, sign1, sign2, true, true)
+}
+
+func (frame *Frame) IsUpside () bool {
+    for _, el := range frame.Elems {
+        if !IsUpside(el.Enod) {
+            return false
+        }
+    }
+    return true
 }
 
 func (frame *Frame) Upside () {

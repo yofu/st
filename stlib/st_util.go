@@ -288,7 +288,7 @@ func Increment (fn, div string, pos, times int) (string, error) {
     ext := filepath.Ext(fn)
     ls := strings.Split(strings.Replace(fn, ext, "", 1), div)
     if len(ls) == pos {
-        return fmt.Sprintf("%s%s%02d%s", strings.Replace(fn, ext, "", 1), div, 1, ext), nil
+        return fmt.Sprintf("%s%s%02d%s", strings.Replace(fn, ext, "", 1), div, times, ext), nil
     } else if len(ls) < pos+1 {
         return fn, errors.New("Increment: IndexError")
     }
@@ -353,6 +353,22 @@ func IsParallel (v1, v2 []float64, eps float64) bool {
     }
     if l1 == 0 || l2 == 0 { return false }
     sub := (dot*dot / (l1*l2)) - 1.0
+    if math.Abs(sub) < eps {
+        return true
+    } else {
+        return false
+    }
+}
+
+func IsOrthogonal (v1, v2 []float64, eps float64) bool {
+    var dot, l1, l2 float64
+    for i:=0; i<3; i++ {
+        dot += v1[i] * v2[i]
+        l1  += v1[i] * v1[i]
+        l2  += v2[i] * v2[i]
+    }
+    if l1 == 0 || l2 == 0 { return false }
+    sub := (dot*dot / (l1*l2))
     if math.Abs(sub) < eps {
         return true
     } else {

@@ -368,6 +368,25 @@ func ModifyEnod (ns []*Node) []*Node {
     }
 }
 
+func IsUpside(ns []*Node) bool {
+    l := len(ns)
+    if l<=1 { return true }
+    rtn := false
+    for i:=2; i>=0; i-- {
+        tmp := ns[0].Coord[i]
+        for _, n := range ns[1:] {
+            if n.Coord[i] < tmp {
+                return false
+            } else if n.Coord[i] > tmp {
+                tmp = n.Coord[i]
+                rtn = true
+            }
+        }
+        if rtn { return true }
+    }
+    return true
+}
+
 func Upside (ns []*Node) []*Node {
     l := len(ns)
     if l<=1 { return ns }

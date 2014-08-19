@@ -40,6 +40,7 @@ var (
     SELECTELEM          = &Command{"_ELM", "SELECT ELEM", "select elem by number", selectelem}
     SELECTSECT          = &Command{"_SEC", "SELECT SECT", "select elem by section", selectsect}
     HIDESECTION         = &Command{"HDSC", "HIDE SECTION", "hide section", hidesection}
+    HIDECURTAINWALL     = &Command{"HDCW", "HIDE CURTAIN WALL", "hide curtain wall", hidecurtainwall}
     SELECTCHILDREN      = &Command{"_CLD", "SELECT CHILDREN", "select elem.Children", selectchildren}
     ERRORELEM           = &Command{"ERRO", "ERROR ELEM", "select elem whose max(rate)>1.0", errorelem}
     FENCE               = &Command{"FNCE", "FENCE", "select elem by fence", fence}
@@ -80,16 +81,17 @@ var (
     INTERSECTALL        = &Command{"INTA", "INTERSECT ALL", "divide selected elems at all intersection", intersectall}
     TRIM                = &Command{"TRIM", "TRIM", "trim elements with selected elem", trim}
     EXTEND              = &Command{"EXTEND", "EXTEND", "extend elements to selected elem", extend}
-    FILLET              = &Command{"FILLET", "FILLET", "fillet 2 elements", fillet}
     MERGENODE           = &Command{"MERGE", "MERGE NODE", "merge nodes", mergenode}
     ERASE               = &Command{"ERASE", "ERASE", "erase selected elems", erase}
     FACTS               = &Command{"FACT", "FACTS", "calculate eccentricity ratio and modulus of rigidity", facts}
-    REACTION            = &Command{"RCTN", "REACTION", "show sum of reaction", reaction}
+    REACTION            = &Command{"RCTN", "REACTION", "output reaction", reaction}
+    SUMREACTION         = &Command{"SRTN", "SUMREACTION", "show sum of reaction", sumreaction}
     UPLIFT              = &Command{"LIFT", "UPLIFT", "select uplifting nodes", uplift}
     NOTICE1459          = &Command{"1459", "NOTICE1459", "shishou", notice1459}
     ZOUBUNDISP          = &Command{"ZBDP", "ZOUBUNDISP", "output displacement", zoubundisp}
     ZOUBUNYIELD         = &Command{"ZBYD", "ZOUBUNYIELD", "output Fmax & Fmin", zoubunyield}
     ZOUBUNREACTION      = &Command{"ZBRC", "ZOUBUNREACTION", "output reaction", zoubunreaction}
+    AMOUNTPROP          = &Command{"AMTP", "AMOUNTPROP", "total amount of PROP", amountprop}
 )
 
 func init() {
@@ -113,6 +115,7 @@ func init() {
     Commands["SELECTELEM"]=SELECTELEM
     Commands["SELECTSECT"]=SELECTSECT
     Commands["HIDESECTION"]=HIDESECTION
+    Commands["HIDECURTAINWALL"]=HIDECURTAINWALL
     Commands["SELECTCHILDREN"]=SELECTCHILDREN
     Commands["ERRORELEM"]=ERRORELEM
     Commands["FENCE"]=FENCE
@@ -153,16 +156,17 @@ func init() {
     Commands["INTERSECTALL"]=INTERSECTALL
     Commands["TRIM"]=TRIM
     Commands["EXTEND"]=EXTEND
-    Commands["FILLET"]=FILLET
     Commands["MERGENODE"]=MERGENODE
     Commands["ERASE"]=ERASE
     Commands["FACTS"]=FACTS
     Commands["REACTION"]=REACTION
+    Commands["SUMREACTION"]=SUMREACTION
     Commands["UPLIFT"]=UPLIFT
     Commands["NOTICE1459"]=NOTICE1459
     Commands["ZOUBUNDISP"]=ZOUBUNDISP
     Commands["ZOUBUNYIELD"]=ZOUBUNYIELD
     Commands["ZOUBUNREACTION"]=ZOUBUNREACTION
+    Commands["AMOUNTPROP"]=AMOUNTPROP
 }
 
 type Command struct {
@@ -606,7 +610,11 @@ func getnnodes (stw *Window, maxnum int, f func(int)) {
                                   stw.SelectNode = make([]*st.Node, maxnum)
                                   selected++
                               case KEY_ENTER:
-                                  setnnum()
+                                  if v := stw.cline.GetAttribute("VALUE"); v!="" {
+                                      setnnum()
+                                  } else {
+                                      f(selected)
+                                  }
                               case KEY_ESCAPE:
                                   stw.EscapeAll()
                               }
@@ -947,6 +955,9 @@ func moveelem (stw *Window) {
                           if el == nil || el.IsHide(stw.Frame.Show) || el.Lock { continue }
                           el.Move(x, y, z)
                       }
+                      for _, n := range stw.Frame.NodeNoReference() {
+                          delete(stw.Frame.Nodes, n.Num)
+                      }
                       stw.Redraw()
                   })
 }
@@ -1196,7 +1207,7 @@ func rotate (stw *Window) {
 func mirror (stw *Window) {
     if stw.SelectElem == nil || len(stw.SelectElem) == 0 { return }
     ns := stw.Frame.ElemToNode(stw.SelectElem...)
-    stw.addHistory("対称面を指定")
+    stw.addHistory("対称面を指定[1点又は3点]")
     maxnum := 3
     createmirrors := func (coord, vec []float64) {
                          nmap := make(map[int]*st.Node, len(ns))
@@ -1231,7 +1242,7 @@ func mirror (stw *Window) {
                                default:
                                    stw.EscapeAll()
                                case 1:
-                                   stw.addHistory("法線方向を選択")
+                                   stw.addHistory("法線方向を選択[ダイアログ(D)]")
                                    getcoord(stw, func (x, y, z float64) {
                                                      createmirrors(stw.SelectNode[0].Coord, []float64{x, y, z})
                                                      stw.EscapeAll()
@@ -1674,29 +1685,6 @@ func extend (stw *Window) {
 // }}}
 
 
-// FILLET TODO: UNDER CONSTRUCTION // {{{
-func fillet (stw *Window) {
-    // get1elem(stw, func (el *st.Elem, x, y int) {
-    //                   if el.IsLineElem() {
-    //                       var err error
-    //                       _, _, err = stw.Frame.Extend(stw.SelectElem[0], el)
-    //                       if err != nil {
-    //                           stw.addHistory(err.Error())
-    //                       } else {
-    //                           stw.Deselect()
-    //                           stw.Redraw()
-    //                       }
-    //                       stw.EscapeAll()
-    //                   }
-    //                   stw.Redraw()
-    //               },
-    //               func (el *st.Elem) bool {
-    //                   return el.IsLineElem()
-    //               })
-}
-// }}}
-
-
 // SELECTNODE// {{{
 func selectnode (stw *Window) {
     stw.Deselect()
@@ -1872,6 +1860,20 @@ func hidesection (stw *Window) {
 // }}}
 
 
+// HIDECURTAINWALL// {{{
+func hidecurtainwall (stw *Window) {
+    for _, sec := range stw.Frame.Sects {
+        if sec.Num > 900 { continue }
+        if sec.HasArea() { continue }
+        if !sec.HasBrace() {
+            stw.Frame.Show.Sect[sec.Num] = false
+        }
+    }
+    stw.EscapeAll()
+}
+// }}}
+
+
 // SELECTCHILDREN// {{{
 func selectchildren (stw *Window) {
     getnelems(stw, 10, func (size int) {
@@ -1979,6 +1981,46 @@ func elemduplication (stw *Window) {
         }
     } else {
         stw.EscapeAll()
+    }
+}
+// }}}
+
+
+// CHECKFRAME// {{{
+func checkframe (stw *Window) {
+    stw.Deselect()
+    nodenoreference(stw)
+    nodeduplication(stw)
+    elemsamenode(stw)
+    elemduplication(stw)
+    eall := true
+    ns, els, ok := stw.Frame.Check()
+    if !ok {
+        stw.SelectNode = ns
+        stw.SelectElem = els
+        stw.Redraw()
+        if stw.Yn("CHECK FRAME", "無効な節点と部材を削除しますか？") {
+            for _, n := range els {
+                if n.Lock { continue }
+                delete(stw.Frame.Nodes, n.Num)
+            }
+            for _, el := range els {
+                if el.Lock { continue }
+                delete(stw.Frame.Elems, el.Num)
+            }
+        } else {
+            eall = false
+        }
+    }
+    if !stw.Frame.IsUpside() {
+        if stw.Yn("CHECK FRAME", "部材の向きを修正しますか？") {
+            stw.Frame.Upside()
+        }
+    }
+    if eall {
+        stw.EscapeAll()
+    } else {
+        stw.EscapeCB()
     }
 }
 // }}}
@@ -2475,7 +2517,7 @@ func hatchplateelem (stw *Window) {
 // }}}
 
 
-// ADDPLATEALL
+// ADDPLATEALL TODO: UNDER CONSTRUCTION// {{{
 func addplateall (stw *Window) {
     if stw.SelectElem == nil {
         ns := stw.Frame.ElemToNode(stw.SelectElem...)
@@ -2486,6 +2528,8 @@ func addplateall (stw *Window) {
         return
     }
 }
+// }}}
+
 
 // EDITPLATEELEM// {{{
 func editplateelem (stw *Window) {
@@ -2530,8 +2574,53 @@ func editplateelem (stw *Window) {
 // }}}
 
 
-// Reaction// {{{
+// REACTION// {{{
 func reaction (stw *Window) {
+    tmp, err := stw.Query("方向を指定[0～5]")
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeCB()
+    }
+    val, err := strconv.ParseInt(tmp, 10, 64)
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeCB()
+    }
+    d := int(val)
+    var otp bytes.Buffer
+    selectconfed(stw)
+    sort.Sort(st.NodeByNum{stw.SelectNode})
+    r := make([]float64, 3)
+    otp.WriteString("NODE   XCOORD   YCOORD   ZCOORD     WEIGHT       LONG      XSEIS      YSEIS        W+L      W+L+X      W+L-X      W+L+Y      W+L-Y\n")
+    for _, n := range stw.SelectNode {
+        if n == nil { continue }
+        otp.WriteString(fmt.Sprintf("%4d %8.3f %8.3f %8.3f", n.Num, n.Coord[0], n.Coord[1], n.Coord[2]))
+        wgt := n.Weight[1]
+        for i, per := range []string{"L", "X", "Y"} {
+            if rea, ok := n.Reaction[per]; ok {
+                r[i] = rea[d]
+            } else {
+                r[i] = 0.0
+            }
+        }
+        otp.WriteString(fmt.Sprintf(" %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f\n", wgt, r[0], r[1], r[2], wgt+r[0], wgt+r[0]+r[1], wgt+r[0]-r[1], wgt+r[0]+r[2], wgt+r[0]-r[2]))
+    }
+    fn := st.Ce(stw.Frame.Path, ".rct")
+    w, err := os.Create(fn)
+    defer w.Close()
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeCB()
+    }
+    otp.WriteTo(w)
+    stw.addHistory(fmt.Sprintf("OUTPUT: %s", fn))
+    stw.EscapeCB()
+}
+// }}}
+
+
+// SUMREACTION// {{{
+func sumreaction (stw *Window) {
     if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
         stw.EscapeAll()
     }
@@ -2720,23 +2809,50 @@ func catbynode (stw *Window) {
 // }}}
 
 
-// CATINTERMEDIATENODE TODO: UNDER CONSTRUCTION// {{{
+// CATINTERMEDIATENODE TODO: TEST // {{{
 func catintermediatenode (stw *Window) {
-    // stw.Deselect()
-    // for _, n := range stw.Frame.Nodes {
-    //     for _, el := range stw.Frame.SearchElem(n)
-
-    // if len(ns) != 0 {
-    //     for k := range ns {
-    //         stw.SelectNode = append(stw.SelectNode, k)
-    //     }
-    //     stw.Redraw()
-    //     if stw.Yn("CAT INTERMEDIATE NODE", "中間節点を除去しますか？") {
-    //         for _, n := range ns {
-    //             stw.Frame.CatByNode(n, true)
-    //         }
-    //     }
-    // }
+    stw.Deselect()
+    ns := make([]*st.Node, 0)
+    nnum := 0
+    for _, n := range stw.Frame.Nodes {
+        els := stw.Frame.SearchElem(n)
+        l := len(els)
+        if l < 2 { continue }
+        ind := 0
+        lels := make([]*st.Elem, l)
+        for _, el := range els {
+            if el.IsLineElem() {
+                lels[ind] = el
+                ind++
+            }
+        }
+        d := lels[0].Direction(false)
+        sec := lels[0].Sect
+        ci := true
+        for _, el := range lels[1:] {
+            if el.Sect != sec {
+                ci = false
+                break
+            }
+            if !el.IsParallel(d, 1e-4) {
+                ci = false
+                break
+            }
+        }
+        if ci {
+            ns = append(ns, n)
+            nnum++
+        }
+    }
+    if nnum > 0 {
+        stw.SelectNode = ns[:nnum]
+        stw.Redraw()
+        if stw.Yn("CAT INTERMEDIATE NODE", "中間節点を除去しますか？") {
+            for _, n := range stw.SelectNode {
+                stw.Frame.CatByNode(n, true)
+            }
+        }
+    }
     stw.EscapeAll()
 }
 // }}}
@@ -2947,7 +3063,7 @@ func facts (stw *Window) {
 // ZOUBUNDISP// {{{
 func zoubundisp (stw *Window) {
     if stw.SelectNode == nil || len(stw.SelectNode) == 0 { stw.EscapeAll(); return }
-    per, err := stw.Query("PERIODを指定")
+    pers, err := stw.QueryList("PERIODを指定")
     if err != nil {
         stw.addHistory(err.Error())
         stw.EscapeCB()
@@ -2962,23 +3078,26 @@ func zoubundisp (stw *Window) {
         stw.addHistory(err.Error())
         stw.EscapeCB()
     }
-    per = strings.ToUpper(per)
     d := int(val)
     var otp bytes.Buffer
     sort.Sort(st.NodeByZCoord{stw.SelectNode})
-    if nlap, ok := stw.Frame.Nlap[per]; ok {
-        otp.WriteString(fmt.Sprintf("ZOUBUN DISP: %s\n", stw.Frame.Name))
-        otp.WriteString(fmt.Sprintf("PERIOD: %s, DIRECTION: %d\n", per, d))
-        otp.WriteString("LAP     ")
-        for _, n := range stw.SelectNode {
-            otp.WriteString(fmt.Sprintf(" %8d", n.Num))
-        }
-        otp.WriteString("\n")
-        for i:=0; i<nlap; i++ {
-            nper := fmt.Sprintf("%s@%d", per, i+1)
-            otp.WriteString(fmt.Sprintf("%8s", nper))
+    for _, per := range pers {
+        per = strings.ToUpper(per)
+        if nlap, ok := stw.Frame.Nlap[per]; ok {
+            otp.WriteString(fmt.Sprintf("ZOUBUN DISP: %s\n", stw.Frame.Name))
+            otp.WriteString(fmt.Sprintf("PERIOD: %s, DIRECTION: %d\n", per, d))
+            otp.WriteString("LAP     ")
             for _, n := range stw.SelectNode {
-                otp.WriteString(fmt.Sprintf(" %8.5f", n.Disp[nper][d]))
+                otp.WriteString(fmt.Sprintf(" %8d", n.Num))
+            }
+            otp.WriteString("\n")
+            for i:=0; i<nlap; i++ {
+                nper := fmt.Sprintf("%s@%d", per, i+1)
+                otp.WriteString(fmt.Sprintf("%8s", nper))
+                for _, n := range stw.SelectNode {
+                    otp.WriteString(fmt.Sprintf(" %8.5f", n.Disp[nper][d]))
+                }
+                otp.WriteString("\n")
             }
             otp.WriteString("\n")
         }
@@ -3045,7 +3164,7 @@ func zoubunyield (stw *Window) {
 // ZOUBUNREACTION// {{{
 func zoubunreaction (stw *Window) {
     if stw.SelectNode == nil || len(stw.SelectNode) == 0 { stw.EscapeAll(); return }
-    per, err := stw.Query("PERIODを指定")
+    pers, err := stw.QueryList("PERIODを指定")
     if err != nil {
         stw.addHistory(err.Error())
         stw.EscapeCB()
@@ -3060,23 +3179,26 @@ func zoubunreaction (stw *Window) {
         stw.addHistory(err.Error())
         stw.EscapeCB()
     }
-    per = strings.ToUpper(per)
     d := int(val)
     var otp bytes.Buffer
     sort.Sort(st.NodeByNum{stw.SelectNode})
-    if nlap, ok := stw.Frame.Nlap[per]; ok {
-        otp.WriteString(fmt.Sprintf("ZOUBUN REACTION: %s\n", stw.Frame.Name))
-        otp.WriteString(fmt.Sprintf("PERIOD: %s, DIRECTION: %d\n", per, d))
-        otp.WriteString("LAP     ")
-        for _, n := range stw.SelectNode {
-            otp.WriteString(fmt.Sprintf(" %8d", n.Num))
-        }
-        otp.WriteString("\n")
-        for i:=0; i<nlap; i++ {
-            nper := fmt.Sprintf("%s@%d", per, i+1)
-            otp.WriteString(fmt.Sprintf("%8s", nper))
+    for _, per := range pers {
+        per = strings.ToUpper(per)
+        if nlap, ok := stw.Frame.Nlap[per]; ok {
+            otp.WriteString(fmt.Sprintf("ZOUBUN REACTION: %s\n", stw.Frame.Name))
+            otp.WriteString(fmt.Sprintf("PERIOD: %s, DIRECTION: %d\n", per, d))
+            otp.WriteString("LAP     ")
             for _, n := range stw.SelectNode {
-                otp.WriteString(fmt.Sprintf(" %8.3f", n.Reaction[nper][d]))
+                otp.WriteString(fmt.Sprintf(" %8d", n.Num))
+            }
+            otp.WriteString("\n")
+            for i:=0; i<nlap; i++ {
+                nper := fmt.Sprintf("%s@%d", per, i+1)
+                otp.WriteString(fmt.Sprintf("%8s", nper))
+                for _, n := range stw.SelectNode {
+                    otp.WriteString(fmt.Sprintf(" %8.3f", n.Reaction[nper][d]))
+                }
+                otp.WriteString("\n")
             }
             otp.WriteString("\n")
         }
@@ -3094,28 +3216,56 @@ func zoubunreaction (stw *Window) {
 }
 // }}}
 
-// // AMOUNTPROP
-// func amountprop (stw *Window) {
-//     props, err := QueryList("PROP")
-//     if err != nil {
-//         stw.EscapeAll()
-//         return
-//     }
-//     total := 0.0
-//     sects := make([]*Sect, len(stw.Frame.Sects))
-//     for _, sec := range stw.Frame.Sects {
-//         if sec.Num > 900 { continue }
-//         sects[snum] = sec
-//         snum++
-//     }
-//     sects = sects[:snum]
-//     sort.Sort(SectByNum{sects})
-//     for _, sec := range sects {
-//         size := sec.Size(props)
-//         amount := sec.TotalAmount()
-//         weight := sec.Weight(props)
-//         totalweight := length * weight
-//         otp.WriteString(fmt.Sprintf("%4d %40s %8.3f %8.4f %8.4f %8.3f\n", sec.Num, sec.Name, amount, size, weight, totalweight))
-//         total += totalweight
-//     }
-// }
+
+// AMOUNTPROP// {{{
+func amountprop (stw *Window) {
+    tmp, err := stw.QueryList("PROP")
+    if err != nil {
+        stw.EscapeAll()
+        return
+    }
+    l := len(tmp)
+    props := make([]int, l)
+    for i:=0; i<l; i++ {
+        val, err := strconv.ParseInt(tmp[i], 10, 64)
+        if err != nil {
+            stw.EscapeAll()
+            return
+        }
+        props[i] = int(val)
+    }
+    total := 0.0
+    sects := make([]*st.Sect, len(stw.Frame.Sects))
+    snum := 0
+    for _, sec := range stw.Frame.Sects {
+        if sec.Num > 900 { continue }
+        sects[snum] = sec
+        snum++
+    }
+    sects = sects[:snum]
+    sort.Sort(st.SectByNum{sects})
+    var otp bytes.Buffer
+    otp.WriteString("断面 名前                                     長さ     断面積   単位重量 重量\n")
+    otp.WriteString("                                              面積     板厚\n")
+    for _, sec := range sects {
+        size := sec.PropSize(props)
+        if size == 0.0 { continue }
+        amount := sec.TotalAmount()
+        weight := sec.PropWeight(props)
+        totalweight := amount * weight
+        otp.WriteString(fmt.Sprintf("%4d %-40s %8.3f %8.4f %8.4f %8.3f\n", sec.Num, sec.Name, amount, size, weight, totalweight))
+        total += totalweight
+    }
+    otp.WriteString(fmt.Sprintf("%79s\n", fmt.Sprintf("合計: %8.3f", total)))
+    fn := filepath.Join(filepath.Dir(stw.Frame.Path), "amount.txt")
+    w, err := os.Create(fn)
+    defer w.Close()
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeCB()
+    }
+    otp.WriteTo(w)
+    stw.addHistory(fmt.Sprintf("OUTPUT: %s", fn))
+    stw.EscapeAll()
+}
+// }}}

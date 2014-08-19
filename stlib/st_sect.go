@@ -10,6 +10,7 @@ var (
 )
 
 type Sect struct {
+    Frame *Frame
     Num  int
     Name string
     Figs []*Fig
@@ -132,6 +133,19 @@ func (sect *Sect) InlString () string {
     return rtn.String()
 }
 
+func (sect *Sect) HasBrace () bool {
+    if len(sect.Figs) < 1 { return false }
+    if _, ok := sect.Figs[0].Value["THICK"]; ok {
+        if sect.Figs[0].Prop.E != 0.0 {
+            return true
+        } else {
+            return false
+        }
+    } else {
+        return false
+    }
+}
+
 func (sect *Sect) HasArea () bool {
     if len(sect.Figs)==0 { return false }
     for _, fig := range sect.Figs {
@@ -142,15 +156,51 @@ func (sect *Sect) HasArea () bool {
     return false
 }
 
-// func (sect *Sect) TotalAmount () float64 {
-//     sum := 0.0
-//     for _, el := range sect.Frame.Elems {
-//         if el.Sect == sect {
-//             sum += el.Amount
-//         }
-//     }
-//     return sum
-// }
+func (sect *Sect) PropSize (props []int) float64 {
+    if len(sect.Figs)==0 { return 0.0 }
+    sum := 0.0
+    for _, fig := range sect.Figs {
+        for _, num := range props{
+            if fig.Prop.Num == num {
+                if aval, ok := fig.Value["AREA"]; ok {
+                    sum += aval
+                } else if tval, ok := fig.Value["THICK"]; ok {
+                    sum += tval
+                }
+                break
+            }
+        }
+    }
+    return sum
+}
+
+func (sect *Sect) PropWeight (props []int) float64 {
+    if len(sect.Figs)==0 { return 0.0 }
+    sum := 0.0
+    for _, fig := range sect.Figs {
+        for _, num := range props{
+            if fig.Prop.Num == num {
+                if aval, ok := fig.Value["AREA"]; ok {
+                    sum += aval * fig.Prop.Hiju
+                } else if tval, ok := fig.Value["THICK"]; ok {
+                    sum += tval * fig.Prop.Hiju
+                }
+                break
+            }
+        }
+    }
+    return sum
+}
+
+func (sect *Sect) TotalAmount () float64 {
+    sum := 0.0
+    for _, el := range sect.Frame.Elems {
+        if el.Sect == sect {
+            sum += el.Amount()
+        }
+    }
+    return sum
+}
 
 func (sect *Sect) Weight () []float64 {
     if len(sect.Figs)==0 { return []float64{0.0, 0.0, 0.0} }
@@ -158,9 +208,9 @@ func (sect *Sect) Weight () []float64 {
     sum := 0.0
     for _, fig := range sect.Figs {
         if aval, ok := fig.Value["AREA"]; ok {
-            sum += aval*fig.Prop.Hiju
+            sum += aval * fig.Prop.Hiju
         } else if tval, ok := fig.Value["THICK"]; ok {
-            sum += tval*fig.Prop.Hiju
+            sum += tval * fig.Prop.Hiju
         }
     }
     for i:=0; i<3; i++ {

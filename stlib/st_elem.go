@@ -632,6 +632,16 @@ func (elem *Elem) MidPoint() []float64 {
     return rtn
 }
 
+func (elem *Elem) IsParallel (v []float64, eps float64) bool {
+    if !elem.IsLineElem() { return false }
+    return IsParallel(elem.Direction(false), v, eps)
+}
+
+func (elem *Elem) IsOrthogonal (v []float64, eps float64) bool {
+    if !elem.IsLineElem() { return false }
+    return IsOrthogonal(elem.Direction(false), v, eps)
+}
+
 func (elem *Elem) PLength() float64 {
     sum := 0.0
     for i:=0; i<2; i++ {
@@ -661,6 +671,9 @@ func (elem *Elem) Move (x, y, z float64) {
     newenod := make([]*Node, elem.Enods)
     for i:=0; i<elem.Enods; i++ {
         newenod[i] = elem.Frame.CoordNode(elem.Enod[i].Coord[0]+x, elem.Enod[i].Coord[1]+y, elem.Enod[i].Coord[2]+z)
+        if newenod[i].Num == elem.Frame.Maxnnum {
+            newenod[i].Conf = elem.Enod[i].Conf
+        }
     }
     elem.Enod = newenod
 }
@@ -669,6 +682,9 @@ func (elem *Elem) Copy (x, y, z float64) *Elem {
     newenod := make([]*Node, elem.Enods)
     for i:=0; i<elem.Enods; i++ {
         newenod[i] = elem.Frame.CoordNode(elem.Enod[i].Coord[0]+x, elem.Enod[i].Coord[1]+y, elem.Enod[i].Coord[2]+z)
+        if newenod[i].Num == elem.Frame.Maxnnum {
+            newenod[i].Conf = elem.Enod[i].Conf
+        }
     }
     if elem.IsLineElem() {
         newelem := elem.Frame.AddLineElem(-1, newenod, elem.Sect, elem.Etype)
@@ -716,6 +732,32 @@ func (elem *Elem) Mirror(coord, vec []float64, del bool) *Elem {
 
 
 // Check// {{{
+func (elem *Elem) IsValidElem () (bool, error) {
+    valid := true
+    var otp bytes.Buffer
+    otp.WriteString(fmt.Sprintf("ELEM: %d", elem.Num))
+    if elem.Etype == NONE {
+        valid = false
+        otp.WriteString(", NONE Etype")
+    }
+    if elem.HasSameNode() {
+        valid = false
+        otp.WriteString(", Same Node\n")
+    }
+    if !elem.IsLineElem() {
+        ok, _ := elem.IsValidPlate()
+        if !ok {
+            valid = false
+            otp.WriteString(", Invalid")
+        }
+    }
+    if valid {
+        return true, nil
+    } else {
+        return false, errors.New(otp.String())
+    }
+}
+
 func (elem *Elem) HasSameNode () bool {
     for i, en := range elem.Enod[:elem.Enods-1] {
         for _, em := range elem.Enod[i+1:] {

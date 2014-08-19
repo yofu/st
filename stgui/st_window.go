@@ -140,9 +140,11 @@ var (
 )
 
 var (
-    axrn_minmax = regexp.MustCompile("([+-]?[-0-9.]+)<=([XYZxyz]{1})<=([+-]?[-0-9.]+)")
-    axrn_min = regexp.MustCompile("([+-]?[-0-9.]+)<=([XYZxyz]{1})")
-    axrn_max = regexp.MustCompile("([XYZxyz]{1})<=([+-]?[-0-9.]+)")
+    axrn_minmax = regexp.MustCompile("([+-]?[-0-9.]+)<=?([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
+    axrn_min1 = regexp.MustCompile("([+-]?[-0-9.]+)<=?([XYZxyz]{1})")
+    axrn_min2 = regexp.MustCompile("([XYZxyz]{1})>=?([+-]?[-0-9.]+)")
+    axrn_max1 = regexp.MustCompile("([+-]?[-0-9.]+)>=?([XYZxyz]{1})")
+    axrn_max2 = regexp.MustCompile("([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
     axrn_eq = regexp.MustCompile("([XYZxyz]{1})=([+-]?[-0-9.]+)")
 )
 // }}}
@@ -1061,6 +1063,7 @@ func (stw *Window) New() {
     stw.Changed = false
     stw.Redraw()
 }
+// }}}
 
 // Open// {{{
 func (stw *Window) Open() {
@@ -1072,6 +1075,19 @@ func (stw *Window) Open() {
         stw.Redraw()
     }
 }
+
+// func (stw *Window) ShowRecently () {
+//     label := iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
+//                 fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+//                 fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+//                 fmt.Sprintf("VALUE=\"%s\"", question),
+//                 "CANFOCUS=NO",
+//                 "READONLY=YES",
+//                 "BORDER=NO",
+//                 fmt.Sprintf("SIZE=%dx%d",datalabelwidth+datatextwidth, dataheight),
+//                 )
+//     dlg := iup.Dialog(iup.Vbox(basedir, result, text,))
+// }
 
 func (stw *Window) OpenRecently () {
     if st.FileExists(recentfn) {
@@ -1674,10 +1690,8 @@ func (stw *Window) execAliasCommand(al string) {
     alu := strings.ToUpper(al)
     if value,ok := aliases[alu]; ok {
         stw.ExecCommand(value)
-        return
     } else if value,ok := Commands[alu]; ok{
         stw.ExecCommand(value)
-        return
     } else {
         switch {
         default:
@@ -1695,9 +1709,9 @@ func (stw *Window) execAliasCommand(al string) {
             }
             axisrange(stw, axis, min, max, false)
             stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s <= %.3f", min, tmp, max))
-        case axrn_min.MatchString(alu):
+        case axrn_min1.MatchString(alu):
             var axis int
-            fs := axrn_min.FindStringSubmatch(alu)
+            fs := axrn_min1.FindStringSubmatch(alu)
             min, _ := strconv.ParseFloat(fs[1], 64)
             tmp := strings.ToUpper(fs[2])
             for i, val := range []string{"X", "Y", "Z"} {
@@ -1705,9 +1719,29 @@ func (stw *Window) execAliasCommand(al string) {
             }
             axisrange(stw, axis, min, 1000.0, false)
             stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s", min, tmp))
-        case axrn_max.MatchString(alu):
+        case axrn_min2.MatchString(alu):
             var axis int
-            fs := axrn_max.FindStringSubmatch(alu)
+            fs := axrn_min2.FindStringSubmatch(alu)
+            min, _ := strconv.ParseFloat(fs[2], 64)
+            tmp := strings.ToUpper(fs[1])
+            for i, val := range []string{"X", "Y", "Z"} {
+                if tmp == val { axis = i; break }
+            }
+            axisrange(stw, axis, min, 1000.0, false)
+            stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s", min, tmp))
+        case axrn_max1.MatchString(alu):
+            var axis int
+            fs := axrn_max1.FindStringSubmatch(alu)
+            max, _ := strconv.ParseFloat(fs[1], 64)
+            tmp := strings.ToUpper(fs[2])
+            for i, val := range []string{"X", "Y", "Z"} {
+                if tmp == val { axis = i; break }
+            }
+            axisrange(stw, axis, -100.0, max, false)
+            stw.addHistory(fmt.Sprintf("AxisRange: %s <= %.3f", tmp, max))
+        case axrn_max2.MatchString(alu):
+            var axis int
+            fs := axrn_max2.FindStringSubmatch(alu)
             max, _ := strconv.ParseFloat(fs[2], 64)
             tmp := strings.ToUpper(fs[1])
             for i, val := range []string{"X", "Y", "Z"} {
@@ -1726,8 +1760,9 @@ func (stw *Window) execAliasCommand(al string) {
             axisrange(stw, axis, val, val, false)
             stw.addHistory(fmt.Sprintf("AxisRange: %s = %.3f", tmp, val))
         }
-        return
     }
+    iup.SetFocus(stw.canv)
+    return
 }
 
 func (stw *Window) Interpolate (str string) string {
@@ -1824,6 +1859,8 @@ func (stw *Window) exmode (command string) {
             }
         case "q":
             stw.Close(bang)
+        case "c":
+            checkframe(stw)
         case "vim":
             stw.Edit(fn)
         case "read":
@@ -1893,15 +1930,36 @@ func (stw *Window) exmode (command string) {
                 stw.ReadAll()
                 stw.Redraw()
             }
-        // default:
-        //     floor := regexp.MustCompile("([0-9]+)f")
-        //     if floor.MatchString(cname) {
-        //         lis := floor.FindStringSubmatch(cname)
-        //         if len(lis)>=1 {
-        //             val, err := strconv.ParseInt(lis[0], 10, 64)
-        //             stw.Frame.ShowFloor(int(val))
-        //         }
-        //     }
+        case "f":
+            stw.FilterSelectedElem(strings.Join(args[1:], " "))
+        case "ht":
+            if len(args) < 3 { return }
+            tmp, err := strconv.ParseInt(args[1], 10, 64)
+            if err != nil { return }
+            min := int(tmp)
+            tmp, err = strconv.ParseInt(args[2], 10, 64)
+            if err != nil { return }
+            max := int(tmp)
+            l := len(stw.Frame.Ai.Boundary)
+            if min < 0 || min > l || max < 0 || max > l { return }
+            axisrange(stw, 2, stw.Frame.Ai.Boundary[min], stw.Frame.Ai.Boundary[max], false)
+        case "ht+":
+            stw.NextFloor()
+        case "ht-":
+            stw.PrevFloor()
+        case "view":
+            switch strings.ToUpper(args[1]) {
+            case "TOP":
+                stw.SetAngle(90.0, -90.0)
+            case "FRONT":
+                stw.SetAngle(0.0, -90.0)
+            case "BACK":
+                stw.SetAngle(0.0, 90.0)
+            case "RIGHT":
+                stw.SetAngle(0.0, 0.0)
+            case "LEFT":
+                stw.SetAngle(0.0, 180.0)
+            }
         }
     } else {
         switch cname {
@@ -1920,6 +1978,49 @@ func (stw *Window) exmode (command string) {
             stw.Edit(fn)
         }
     }
+}
+
+func (stw *Window) NextFloor () {
+    for i, z := range []string{"ZMIN", "ZMAX"} {
+        tmpval := stw.Frame.Show.Zrange[i]
+        ind := 0
+        for _, ht := range stw.Frame.Ai.Boundary {
+            if ht > tmpval { break }
+            ind++
+        }
+        var val float64
+        l := len(stw.Frame.Ai.Boundary)
+        if ind >= l-1 {
+            val = stw.Frame.Ai.Boundary[l-2+i]
+        } else {
+            val = stw.Frame.Ai.Boundary[ind]
+        }
+        stw.Frame.Show.Zrange[i] = val
+        stw.Labels[z].SetAttribute("VALUE", fmt.Sprintf("%.3f", val))
+    }
+    stw.UpdateShowRange()
+    stw.Redraw()
+}
+
+func (stw *Window) PrevFloor () {
+    for i, z := range []string{"ZMIN", "ZMAX"} {
+        tmpval := stw.Frame.Show.Zrange[i]
+        ind := 0
+        for _, ht := range stw.Frame.Ai.Boundary {
+            if ht > tmpval { break }
+            ind++
+        }
+        var val float64
+        if ind <= 2 {
+            val = stw.Frame.Ai.Boundary[i]
+        } else {
+            val = stw.Frame.Ai.Boundary[ind-2]
+        }
+        stw.Frame.Show.Zrange[i] = val
+        stw.Labels[z].SetAttribute("VALUE", fmt.Sprintf("%.3f", val))
+    }
+    stw.UpdateShowRange()
+    stw.Redraw()
 }
 
 func axisrange(stw *Window, axis int, min, max float64, any bool) {
@@ -2297,6 +2398,68 @@ func (stw *Window) DeleteSelected() {
     }
     stw.Deselect()
     stw.Redraw()
+}
+
+func (stw *Window) FilterSelectedElem (str string) {
+    l := len(stw.SelectElem)
+    if stw.SelectElem == nil || l == 0 { return }
+    parallel := regexp.MustCompile("(?i)^ *// *([xyz]{1})")
+    ortho    := regexp.MustCompile("^ *TT *([xyzXYZ]{1})")
+    sectnum  := regexp.MustCompile("^ *sect? *={1,2} *([0-9]+)")
+    var filterfunc func(el *st.Elem) bool
+    var hstr string
+    switch {
+    case parallel.MatchString(str):
+        var axis []float64
+        fs := parallel.FindStringSubmatch(str)
+        if len(fs) < 2 { break }
+        tmp := strings.ToUpper(fs[1])
+        axes := [][]float64{st.XAXIS, st.YAXIS, st.ZAXIS}
+        for i, val := range []string{"X", "Y", "Z"} {
+            if tmp == val { axis = axes[i]; break }
+        }
+        filterfunc = func (el *st.Elem) bool {
+                         return el.IsParallel(axis, 1e-4)
+                     }
+        hstr = fmt.Sprintf("Parallel to %sAXIS", tmp)
+    case ortho.MatchString(str):
+        var axis []float64
+        fs := ortho.FindStringSubmatch(str)
+        if len(fs) < 2 { break }
+        tmp := strings.ToUpper(fs[1])
+        axes := [][]float64{st.XAXIS, st.YAXIS, st.ZAXIS}
+        for i, val := range []string{"X", "Y", "Z"} {
+            if tmp == val { axis = axes[i]; break }
+        }
+        filterfunc = func (el *st.Elem) bool {
+                         return el.IsOrthogonal(axis, 1e-4)
+                     }
+        hstr = fmt.Sprintf("Orthogonal to %sAXIS", tmp)
+    case sectnum.MatchString(str):
+        fs := sectnum.FindStringSubmatch(str)
+        if len(fs) < 2 { break }
+        tmp, err := strconv.ParseInt(fs[1], 10, 64)
+        if err != nil { break }
+        snum := int(tmp)
+        filterfunc = func (el *st.Elem) bool {
+                         return el.Sect.Num == snum
+                     }
+        hstr = fmt.Sprintf("Sect == %d", snum)
+    }
+    if filterfunc != nil {
+        tmpels := make([]*st.Elem, l)
+        enum := 0
+        for _, el := range stw.SelectElem {
+            if el == nil { continue }
+            if filterfunc(el) {
+                tmpels[enum] = el
+                enum++
+            }
+        }
+        stw.SelectElem = tmpels[:enum]
+        stw.addHistory(fmt.Sprintf("FILTER: %s", hstr))
+        stw.Redraw()
+    }
 }
 
 func (stw *Window) ShowAll() {
@@ -2887,6 +3050,20 @@ func (stw *Window) Query (question string) (rtn string, err error) {
     return ans, er
 }
 
+func (stw *Window) QueryList (question string) (rtn []string, err error) {
+    ans, err := stw.Query(question)
+    if err != nil {
+        return nil, err
+    }
+    tmp := strings.Split(ans, ",")
+    l := len(tmp)
+    rtn = make([]string, l)
+    for i:=0; i<l; i++ {
+        rtn[i] = strings.TrimLeft(tmp[i], " ")
+    }
+    return rtn, err
+}
+
 func (stw *Window) QueryCoord (title string) (x, y, z float64, err error) {
     var xx, yy, zz float64
     var er error
@@ -3104,9 +3281,17 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
             stw.cline.SetAttribute("CARETPOS", "100")
         }
     case KEY_UPARROW:
-        stw.PrevCommand()
+        if key.IsCtrl() {
+            stw.NextFloor()
+        } else {
+            stw.PrevCommand()
+        }
     case KEY_DOWNARROW:
-        stw.NextCommand()
+        if key.IsCtrl() {
+            stw.PrevFloor()
+        } else {
+            stw.NextCommand()
+        }
     case 'N':
         if key.IsCtrl() {
             stw.New()
@@ -3616,23 +3801,36 @@ func (stw *Window) SectionDialog () {
     list = iup.List("SIZE=60x200",
                     "MULTIPLE=YES")
     updatedata := func (sec *st.Sect, ind int) {
-                      dataset["PROP"].SetAttribute("VALUE", fmt.Sprintf("%d", sec.Figs[ind].Prop.Num))
                       if sec.Num > 700 && sec.Num < 900 {
                           addfig.SetAttribute("ACTIVE", "YES")
                           if len(sec.Figs) > ind {
+                              dataset["PROP"].SetAttribute("VALUE", fmt.Sprintf("%d", sec.Figs[ind].Prop.Num))
                               dataset["THICK"].SetAttribute("VALUE", fmt.Sprintf("%.4f", sec.Figs[ind].Value["THICK"]))
                               dataset["LLOAD0"].SetAttribute("VALUE", fmt.Sprintf("%.3f", sec.Lload[0]))
                               dataset["LLOAD1"].SetAttribute("VALUE", fmt.Sprintf("%.3f", sec.Lload[1]))
                               dataset["LLOAD2"].SetAttribute("VALUE", fmt.Sprintf("%.3f", sec.Lload[2]))
+                          } else {
+                              dataset["PROP"].SetAttribute("VALUE", "-")
+                              dataset["AREA"].SetAttribute("VALUE", "-")
+                              dataset["IXX"].SetAttribute("VALUE", "-")
+                              dataset["IYY"].SetAttribute("VALUE", "-")
+                              dataset["VEN"].SetAttribute("VALUE", "-")
                           }
                           data.SetAttribute("VALUE", "platedata")
                       } else {
                           addfig.SetAttribute("ACTIVE", "NO")
                           if len(sec.Figs) > ind {
+                              dataset["PROP"].SetAttribute("VALUE", fmt.Sprintf("%d", sec.Figs[ind].Prop.Num))
                               dataset["AREA"].SetAttribute("VALUE", fmt.Sprintf("%.4f", sec.Figs[ind].Value["AREA"]))
                               dataset["IXX"].SetAttribute("VALUE", fmt.Sprintf("%.8f", sec.Figs[ind].Value["IXX"]))
                               dataset["IYY"].SetAttribute("VALUE", fmt.Sprintf("%.8f", sec.Figs[ind].Value["IYY"]))
                               dataset["VEN"].SetAttribute("VALUE", fmt.Sprintf("%.8f", sec.Figs[ind].Value["VEN"]))
+                          } else {
+                              dataset["PROP"].SetAttribute("VALUE", "-")
+                              dataset["AREA"].SetAttribute("VALUE", "-")
+                              dataset["IXX"].SetAttribute("VALUE", "-")
+                              dataset["IYY"].SetAttribute("VALUE", "-")
+                              dataset["VEN"].SetAttribute("VALUE", "-")
                           }
                           data.SetAttribute("VALUE", "linedata")
                       }
