@@ -1292,7 +1292,37 @@ func (elem *Elem) MomentCoord (show *Show, index int) [][]float64 {
 }
 
 
-func (elem *Elem) RateMax(show *Show) float64 {
+// func (elem *Elem) IsError (show *Show, val float64) bool {
+//     if elem.IsLineElem() {
+//         if e.Rate == nil { return false }
+//         if len(e.Rate)%3 != 0 || (show.ElemCaption & EC_RATE_L == 0 && show.ElemCaption & EC_RATE_S == 0) {
+//             for _, tmp := range e.Rate {
+//                 if tmp > val { return true }
+//             }
+//             return false
+//         } else {
+//             rtnl := false
+//             rtns := false
+//             for i, tmp := range e.Rate {
+//                 switch i%3 {
+//                 default:
+//                     continue
+//                 case 0:
+//                     if tmp > vall { rtnl = true }
+//                 case 1:
+//                     if tmp > vals { rtns = true }
+//                 }
+//             }
+//             if show.ElemCaption & EC_RATE_L == 0 { rtnl = false }
+//             if show.ElemCaption & EC_RATE_S == 0 { rtns = false }
+//             return rtnl || rtns
+//         }
+//     } else {
+//         if elem.Children != nil {
+//     }
+// }
+
+func (elem *Elem) RateMax (show *Show) float64 {
     returnratemax := func (e *Elem) float64 {
                          if e.Rate == nil { return 0.0 }
                          if len(e.Rate)%3 != 0 || (show.ElemCaption & EC_RATE_L == 0 && show.ElemCaption & EC_RATE_S == 0) {

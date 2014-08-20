@@ -2183,16 +2183,13 @@ func errorelem (stw *Window) {
     tmpels := make([]*st.Elem, len(stw.Frame.Elems))
     i:=0
     for _, el := range(stw.Frame.Elems) {
-        if el.Rate != nil {
-            for _, val := range(el.Rate) {
-                if val > 1.0 { tmpels[i] = el; i++; break }
-            }
+        switch el.Etype {
+        case st.COLUMN, st.GIRDER, st.BRACE, st.WALL, st.SLAB:
+            val := el.RateMax(stw.Frame.Show)
+            if val > 1.0 { tmpels[i] = el; i++; }
         }
     }
-    stw.SelectElem = make([]*st.Elem, i)
-    for j:=0; j<i; j++ {
-        stw.SelectElem[j] = tmpels[j]
-    }
+    stw.SelectElem = tmpels[:i]
     stw.EscapeCB()
 }
 // }}}
