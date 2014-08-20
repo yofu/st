@@ -36,6 +36,7 @@ var (
     INSERT              = &Command{"INST", "INSERT", "insert new frame", insert}
     SETFOCUS            = &Command{"STFO", "SET FOCUS", "set focus to the center", setfocus}
     SELECTNODE          = &Command{"_NOD", "SELECT NODE", "select node by number", selectnode}
+    SELECTCOLUMNBASE    = &Command{"_CLB", "SELECT COLUMNBASE", "select column base nodes", selectcolumnbase}
     SELECTCONFED        = &Command{"_CON", "SELECT CONFED", "select confed nodes", selectconfed}
     SELECTELEM          = &Command{"_ELM", "SELECT ELEM", "select elem by number", selectelem}
     SELECTSECT          = &Command{"_SEC", "SELECT SECT", "select elem by section", selectsect}
@@ -111,6 +112,7 @@ func init() {
     Commands["INSERT"]=INSERT
     Commands["SETFOCUS"]=SETFOCUS
     Commands["SELECTNODE"]=SELECTNODE
+    Commands["SELECTCOLUMNBASE"]=SELECTCOLUMNBASE
     Commands["SELECTCONFED"]=SELECTCONFED
     Commands["SELECTELEM"]=SELECTELEM
     Commands["SELECTSECT"]=SELECTSECT
@@ -1721,6 +1723,34 @@ func selectnode (stw *Window) {
                               }
                           })
 }// }}}
+
+
+// SELECTCOLUMNBASE// {{{
+func selectcolumnbase (stw *Window) {
+    stw.Deselect()
+    var min, max float64
+    nnum := 0
+    ns := make([]*st.Node, len(stw.Frame.Nodes))
+    if len(stw.Frame.Ai.Boundary) >= 2 {
+        min = stw.Frame.Ai.Boundary[0]
+        max = stw.Frame.Ai.Boundary[1]
+    } else {
+        min = 0.0
+        max = 0.0
+    }
+    for _, el := range stw.Frame.Elems {
+        if el.Etype != st.COLUMN || el.IsHide(stw.Frame.Show) { continue }
+        for _, n := range el.Enod {
+            if min<=n.Coord[2] && n.Coord[2]<=max {
+                ns[nnum] = n
+                nnum++
+            }
+        }
+    }
+    stw.SelectNode = ns[:nnum]
+    stw.EscapeCB()
+}
+// }}}
 
 
 // SELECTCONFED// {{{
