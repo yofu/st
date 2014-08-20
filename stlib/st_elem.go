@@ -672,7 +672,9 @@ func (elem *Elem) Move (x, y, z float64) {
     for i:=0; i<elem.Enods; i++ {
         newenod[i] = elem.Frame.CoordNode(elem.Enod[i].Coord[0]+x, elem.Enod[i].Coord[1]+y, elem.Enod[i].Coord[2]+z)
         if newenod[i].Num == elem.Frame.Maxnnum {
-            newenod[i].Conf = elem.Enod[i].Conf
+            for j:=0; j<6; j++ {
+                newenod[i].Conf[j] = elem.Enod[i].Conf[j]
+            }
         }
     }
     elem.Enod = newenod
