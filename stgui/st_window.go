@@ -43,6 +43,7 @@ var (
 )
 const (
     windowSize = "FULLxFULL"
+    nRecentFiles = 3
 )
 
 // Font
@@ -194,6 +195,7 @@ type Window struct {// {{{
     Changed bool // TODO: Set stw.Changed to true when stw.Frame is changed
 
     comhist []string
+    recentfiles []string
 }
 // }}}
 
@@ -1027,9 +1029,16 @@ func NewWindow(homedir string) *Window {// {{{
     stw.Changed = false
     stw.comhist = make([]string, CommandHistorySize)
     comhistpos = -1
+    stw.recentfiles = make([]string, nRecentFiles)
+    stw.ShowRecently()
     return stw
 }
 // }}}
+
+
+func (stw *Window) FocusCanv () {
+    iup.SetFocus(stw.canv)
+}
 
 
 func (stw *Window) Chdir(dir string) error {
@@ -1076,23 +1085,29 @@ func (stw *Window) Open() {
     }
 }
 
-// func (stw *Window) ShowRecently () {
-//     label := iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
-//                 fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
-//                 fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
-//                 fmt.Sprintf("VALUE=\"%s\"", question),
-//                 "CANFOCUS=NO",
-//                 "READONLY=YES",
-//                 "BORDER=NO",
-//                 fmt.Sprintf("SIZE=%dx%d",datalabelwidth+datatextwidth, dataheight),
-//                 )
-//     dlg := iup.Dialog(iup.Vbox(basedir, result, text,))
-// }
-
-func (stw *Window) OpenRecently () {
+func (stw *Window) ShowRecently () error {
     if st.FileExists(recentfn) {
+        f, err := ioutil.ReadFile(recentfn)
+        if err != nil {
+            return err
+        }
+        var lis []string
+        if ok := strings.HasSuffix(string(f),"\r\n"); ok {
+            lis = strings.Split(string(f),"\r\n")
+        } else {
+            lis = strings.Split(string(f),"\n")
+        }
+        num := 0
+        for i, fn := range lis {
+            if fn != "" {
+                stw.addHistory(fmt.Sprintf("%d: %s", i, fn))
+                stw.recentfiles[num] = fn
+                num++
+            }
+        }
+        return nil
     } else {
-        stw.Open()
+        return errors.New(fmt.Sprintf("OpenRecently: %s doesn't exist", recentfn))
     }
 }
 
@@ -1315,6 +1330,42 @@ func (stw *Window) OpenFile(fn string) error {
     stw.LinkTextValue()
     stw.Changed = false
     stw.Cwd = filepath.Dir(fn)
+    if st.FileExists(recentfn) {
+        f, err := ioutil.ReadFile(recentfn)
+        if err != nil {
+            return err
+        }
+        var lis []string
+        if ok := strings.HasSuffix(string(f),"\r\n"); ok {
+            lis = strings.Split(string(f),"\r\n")
+        } else {
+            lis = strings.Split(string(f),"\n")
+        }
+        w, err := os.Create(recentfn)
+        if err != nil {
+            return err
+        }
+        defer w.Close()
+        w.WriteString(fmt.Sprintf("%s\n", fn))
+        stw.recentfiles[0] = fn
+        num := 0
+        for _, rfn := range lis {
+            if rfn != fn {
+                w.WriteString(fmt.Sprintf("%s\n", rfn))
+                stw.recentfiles[num+1] = rfn
+                num++
+            }
+            if num >= nRecentFiles-1 { break }
+        }
+    } else {
+        w, err := os.Create(recentfn)
+        if err != nil {
+            return err
+        }
+        defer w.Close()
+        w.WriteString(fmt.Sprintf("%s\n", fn))
+        stw.recentfiles[0] = fn
+    }
     return nil
 }
 // }}}
@@ -1789,7 +1840,14 @@ func (stw *Window) exmode (command string) {
     if len(args) < 2 {
         fn = ""
     } else {
-        if strings.Contains(args[1], "%") {
+        if ok, _ := regexp.MatchString("^#[0-9]+$", args[1]); ok {
+            val, _ := strconv.ParseInt(strings.TrimPrefix(args[1], "#"), 10, 64)
+            if int(val) < nRecentFiles {
+                fn = stw.recentfiles[int(val)]
+            } else {
+                fn = ""
+            }
+        } else if strings.Contains(args[1], "%") {
             fn = stw.Interpolate(args[1])
         } else {
             if filepath.Dir(args[1]) == "." {
@@ -3176,7 +3234,7 @@ func (stw *Window) CB_MouseButton() {
                                   case BUTTON_LEFT:
                                       if isDouble(arg.Status) { stw.Open() }
                                   case BUTTON_CENTER:
-                                      stw.OpenRecently()
+                                      stw.ShowRecently()
                                   }
                               }
                           })
