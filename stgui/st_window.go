@@ -1963,6 +1963,8 @@ func (stw *Window) exmode (command string) {
         }
     } else {
         switch cname {
+        case "q":
+            stw.Close(bang)
         case "e":
             if fn != "" {
                 if !st.FileExists(fn) {
