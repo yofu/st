@@ -77,6 +77,7 @@ var (
     JOINLINEELEM        = &Command{"JOIN LINE", "JOIN LINE ELEM", "join selected 2 elems", joinlineelem}
     JOINPLATEELEM       = &Command{"JOIN PLATE", "JOIN PLATE ELEM", "join selected 2 elems", joinplateelem}
     EXTRACTARCLM        = &Command{"EXAR", "EXTRACT ARCLM", "extract arclm", extractarclm}
+    ARCLM001            = &Command{"A001", "ARCLM001", "arclm001", arclm001}
     DIVIDEATONS         = &Command{"ON NODES", "DIVIDE AT ONS", "divide selected elems at onnode", divideatons}
     DIVIDEATMID         = &Command{"MID POINT", "DIVIDE AT MID", "divide selected elems at midpoint", divideatmid}
     INTERSECT           = &Command{"INTS", "INTERSECT", "divide selected elems at intersection", intersect}
@@ -154,6 +155,7 @@ func init() {
     Commands["JOINLINEELEM"]=JOINLINEELEM
     Commands["JOINPLATEELEM"]=JOINPLATEELEM
     Commands["EXTRACTARCLM"]=EXTRACTARCLM
+    Commands["ARCLM001"]=ARCLM001
     Commands["DIVIDEATONS"]=DIVIDEATONS
     Commands["DIVIDEATMID"]=DIVIDEATMID
     Commands["INTERSECT"]=INTERSECT
@@ -2149,6 +2151,14 @@ func extractarclm (stw *Window) {
             stw.addHistory(fmt.Sprintf("保存しました: %s", fn))
         }
     }
+    stw.EscapeAll()
+}
+// }}}
+
+
+// ARCLM001 TODO: UNDER CONSTRUCTION // {{{
+func arclm001 (stw *Window) {
+    stw.Frame.AssemGlobalMatrix()
     stw.EscapeAll()
 }
 // }}}

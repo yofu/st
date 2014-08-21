@@ -1,4 +1,4 @@
-package main
+package matrix
 
 import (
     "bytes"
@@ -527,6 +527,15 @@ func NewLLSNode(row, col int, val float64) *LLSNode {
     return rtn
 }
 
+func (ln *LLSNode) Before (n *LLSNode) { // TODO: Check
+    ln.down   = n
+    if n.up != nil {
+        ln.up   = n.up
+        n.up.down = ln
+    }
+    n.up      = ln
+}
+
 func (ln *LLSNode) After (n *LLSNode) {
     ln.up     = n
     if n.down != nil {
@@ -625,8 +634,8 @@ func (ll *LLSMatrix) LDLT () *LLSMatrix { // TODO: Test
             n = n.down
             if n == nil { break }
             v := ll.diag[row].value * n.value
-            ni = n
-            nj = ll.diag[n.column]
+            ni := n
+            nj := ll.diag[n.column]
             for { // ni: (row, i) down to (row, size)
                 ci := ni.column
                 cj := nj.column
@@ -639,7 +648,7 @@ func (ll *LLSMatrix) LDLT () *LLSMatrix { // TODO: Test
                 } else if ci > cj {
                     for {
                         if nj.down == nil {
-                            newnode = NewLLSNode(row, ci, val)
+                            newnode := NewLLSNode(row, ci, val)
                             newnode.After(nj)
                         }
                         cj = nj.down.column
@@ -656,7 +665,7 @@ func (ll *LLSMatrix) LDLT () *LLSMatrix { // TODO: Test
                         }
                     }
                 } else {
-                    newnode = NewLLSNode(row, ci, val)
+                    newnode := NewLLSNode(row, ci, val)
                     newnode.Before(nj)
                 }
             }
@@ -674,63 +683,63 @@ func Dot (x, y []float64, size int) float64 {
 }
 
 
-func main() {
-    // test, err := ReadMtx("LFAT5.mtx")
-    // if err != nil {
-    //     return
-    // }
+// func main() {
+//     // test, err := ReadMtx("LFAT5.mtx")
+//     // if err != nil {
+//     //     return
+//     // }
 
-    // vec := make([]float64, test.size)
-    // rand.Seed(int64(time.Now().Nanosecond()))
-    // for i:=0; i<test.size; i++ {
-    //     vec[i] = rand.Float64()
-    // }
-    // fmt.Println(test)
-    // fmt.Println(test.Query(5,1))
-    // ans := test.CG(vec)
-    // fmt.Println(ans)
-    // fmt.Println(vec)
-    // fmt.Println(test.Mul(ans))
-    test := NewLLSMatrix(4)
-    test.Add(0, 0, 1.0)
-    test.Add(1, 1, 7.0)
-    test.Add(2, 2, 8.0)
-    test.Add(3, 3, 9.0)
-    test.Add(0, 1, 2.0)
-    // test.Add(1, 0, 2.0)
-    test.Add(0, 2, 3.0)
-    // test.Add(2, 0, 3.0)
-    test.Add(1, 3, 4.0)
-    // test.Add(3, 1, 4.0)
-    test.Add(2, 3, 6.0)
-    // test.Add(3, 2, 6.0)
-    fmt.Println(test.Query(3 ,1))
-    fmt.Println(test)
-    // crs := test.ToCRS()
-    // crs.Add(3, 0, 2.0)
+//     // vec := make([]float64, test.size)
+//     // rand.Seed(int64(time.Now().Nanosecond()))
+//     // for i:=0; i<test.size; i++ {
+//     //     vec[i] = rand.Float64()
+//     // }
+//     // fmt.Println(test)
+//     // fmt.Println(test.Query(5,1))
+//     // ans := test.CG(vec)
+//     // fmt.Println(ans)
+//     // fmt.Println(vec)
+//     // fmt.Println(test.Mul(ans))
+//     test := NewLLSMatrix(4)
+//     test.Add(0, 0, 1.0)
+//     test.Add(1, 1, 7.0)
+//     test.Add(2, 2, 8.0)
+//     test.Add(3, 3, 9.0)
+//     test.Add(0, 1, 2.0)
+//     // test.Add(1, 0, 2.0)
+//     test.Add(0, 2, 3.0)
+//     // test.Add(2, 0, 3.0)
+//     test.Add(1, 3, 4.0)
+//     // test.Add(3, 1, 4.0)
+//     test.Add(2, 3, 6.0)
+//     // test.Add(3, 2, 6.0)
+//     fmt.Println(test.Query(3 ,1))
+//     fmt.Println(test)
+//     // crs := test.ToCRS()
+//     // crs.Add(3, 0, 2.0)
 
-    // vec1 := make([]float64, test.size)
-    // vec2 := make([]float64, test.size)
-    // vec3 := make([]float64, test.size)
-    // vecs := [][]float64{vec1, vec2, vec3}
-    // for i:=0; i<test.size; i++ {
-    //     vecs[i%3][i] = float64(i)
-    // }
-    // ans := test.Solve(vec1, vec2, vec3)
-    // for i:=0; i<3; i++ {
-    //     fmt.Println(vecs[i])
-    //     fmt.Println(test.MulV(ans[i]))
-    // }
+//     // vec1 := make([]float64, test.size)
+//     // vec2 := make([]float64, test.size)
+//     // vec3 := make([]float64, test.size)
+//     // vecs := [][]float64{vec1, vec2, vec3}
+//     // for i:=0; i<test.size; i++ {
+//     //     vecs[i%3][i] = float64(i)
+//     // }
+//     // ans := test.Solve(vec1, vec2, vec3)
+//     // for i:=0; i<3; i++ {
+//     //     fmt.Println(vecs[i])
+//     //     fmt.Println(test.MulV(ans[i]))
+//     // }
 
-    // fmt.Println(test.Chol())
-    // fmt.Println(crs.row)
-    // fmt.Println(crs.column)
-    // fmt.Println(crs.value)
-    // vec := []float64{ 0.0, 1.0, 0.0, 1.0 }
-    // vec2 := []float64{ 0.0, 0.5, 0.0, 0.1 }
-    // ans := crs.CG(vec2)
-    // fmt.Println(ans)
-    // fmt.Println(crs.Mul(ans))
-    // fmt.Println(crs.Mul(vec))
-    // fmt.Println(crs.Mul(vec2))
-}
+//     // fmt.Println(test.Chol())
+//     // fmt.Println(crs.row)
+//     // fmt.Println(crs.column)
+//     // fmt.Println(crs.value)
+//     // vec := []float64{ 0.0, 1.0, 0.0, 1.0 }
+//     // vec2 := []float64{ 0.0, 0.5, 0.0, 0.1 }
+//     // ans := crs.CG(vec2)
+//     // fmt.Println(ans)
+//     // fmt.Println(crs.Mul(ans))
+//     // fmt.Println(crs.Mul(vec))
+//     // fmt.Println(crs.Mul(vec2))
+// }
