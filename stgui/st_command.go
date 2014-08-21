@@ -68,6 +68,7 @@ var (
     ONNODE              = &Command{"ONND", "ON NODE", "select nodes which is on selected elems", onnode}
     NODENOREFERENCE     = &Command{"NODE NO REF.", "NODE NO REFERENCE", "delete nodes which are not refered by any elem", nodenoreference}
     ELEMSAMENODE        = &Command{"ELEM SAME NODE", "ELEM SAME NODE", "delete elems which has duplicated enod", elemsamenode}
+    PRUNEENOD           = &Command{"PRUNE ENOD", "PRUNE ENOD", "prune duplicated enod", pruneenod}
     NODEDUPLICATION     = &Command{"DUPLICATIVE NODE", "NODE DUPLICATION", "delete duplicated nodes", nodeduplication}
     ELEMDUPLICATION     = &Command{"DUPLICATIVE ELEM", "ELEM DUPLICATION", "delete duplicated elems", elemduplication}
     NODESORT            = &Command{"NODE SORT", "NODE SORT", "node sort", nodesort}
@@ -144,6 +145,7 @@ func init() {
     Commands["ONNODE"]=ONNODE
     Commands["NODENOREFERENCE"]=NODENOREFERENCE
     Commands["ELEMSAMENODE"]=ELEMSAMENODE
+    Commands["PRUNEENOD"]=PRUNEENOD
     Commands["NODEDUPLICATION"]=NODEDUPLICATION
     Commands["ELEMDUPLICATION"]=ELEMDUPLICATION
     Commands["NODESORT"]=NODESORT
@@ -1965,6 +1967,34 @@ func elemsamenode (stw *Window) {
             for _, el := range els {
                 if el.Lock { continue }
                 delete(stw.Frame.Elems, el.Num)
+            }
+        }
+    }
+    stw.EscapeAll()
+}
+// }}}
+
+
+// PRUNEENOD// {{{
+func pruneenod (stw *Window) {
+    stw.Deselect()
+    tmpels := stw.Frame.ElemSameNode()
+    l := len(tmpels)
+    if l !=0 {
+        els := make([]*st.Elem, l)
+        enum := 0
+        for _, el := range tmpels {
+            if !el.IsLineElem() {
+                els[enum] = el
+                enum++
+            }
+        }
+        stw.SelectElem = els[:enum]
+        stw.Redraw()
+        if stw.Yn("ELEM SAME NODE", "部材の不要なENODを削除しますか?") {
+            for _, el := range els[:enum] {
+                if el.Lock { continue }
+                el.PruneEnod()
             }
         }
     }

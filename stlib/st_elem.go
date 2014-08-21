@@ -1073,6 +1073,28 @@ func (elem *Elem) RefEnod (nnum int) (*Node, error) {
     }
     return nil, errors.New("RefEnod: Not Found")
 }
+
+func (elem *Elem) PruneEnod () bool {
+    ns := make([]*Node, elem.Enods)
+    nnum := 0
+    pruneenod:
+        for _, n := range elem.Enod {
+            for j:=0; j<nnum; j++ {
+                if n == ns[j] {
+                    continue pruneenod
+                }
+            }
+            ns[nnum] = n
+            nnum++
+        }
+    if elem.Enods == nnum {
+        return false
+    } else {
+        elem.Enod = ns[:nnum]
+        elem.Enods = nnum
+        return true
+    }
+}
 // }}}
 
 
