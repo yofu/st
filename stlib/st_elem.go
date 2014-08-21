@@ -747,10 +747,10 @@ func (elem *Elem) IsValidElem () (bool, error) {
         otp.WriteString(", Same Node\n")
     }
     if !elem.IsLineElem() {
-        ok, _ := elem.IsValidPlate()
+        ok, err := elem.IsValidPlate()
         if !ok {
             valid = false
-            otp.WriteString(", Invalid")
+            otp.WriteString(fmt.Sprintf(", Invalid(%s)", err.Error()))
         }
     }
     if valid {
@@ -777,6 +777,7 @@ func (elem *Elem) IsValidPlate () (bool, error) {
         if OnTheSameLine(elem.Enod[0].Coord, elem.Enod[1].Coord, elem.Enod[2].Coord, 5e-3) {
             return false, errors.New("IsValidPlate: 3 nodes are on the same line")
         }
+        return true, nil
     case 4:
         if elem.Area() == 0.0 {
             return false, errors.New("IsValidPlate: Area = 0.0")
@@ -791,8 +792,9 @@ func (elem *Elem) IsValidPlate () (bool, error) {
             return false, errors.New("IsValidPlate: 4 nodes are not on the same plate")
         }
         return true, nil
+    default:
+        return false, errors.New(fmt.Sprintf("IsValidPlate: too many Enods %d", elem.Enods))
     }
-    return false, errors.New(fmt.Sprintf("IsValidPlate: too many Enods %d", elem.Enods))
 }
 // }}}
 
