@@ -1861,6 +1861,7 @@ func (stw *Window) exmode (command string) {
             stw.Close(bang)
         case "c":
             checkframe(stw)
+            stw.addHistory("CHECKED")
         case "vim":
             stw.Edit(fn)
         case "read":
