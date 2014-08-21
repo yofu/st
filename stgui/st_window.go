@@ -2592,6 +2592,7 @@ func (stw *Window) SetAngle (phi, theta float64) {
     if stw.Frame != nil {
         stw.Frame.View.Angle[0] = phi
         stw.Frame.View.Angle[1] = theta
+        stw.Redraw()
         stw.ShowCenter()
     }
 }
