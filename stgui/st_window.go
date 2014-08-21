@@ -1030,7 +1030,7 @@ func NewWindow(homedir string) *Window {// {{{
     stw.comhist = make([]string, CommandHistorySize)
     comhistpos = -1
     stw.recentfiles = make([]string, nRecentFiles)
-    stw.ShowRecently()
+    stw.SetRecently()
     return stw
 }
 // }}}
@@ -1085,7 +1085,48 @@ func (stw *Window) Open() {
     }
 }
 
-func (stw *Window) ShowRecently () error {
+func (stw *Window) AddRecently (fn string) error {
+    if st.FileExists(recentfn) {
+        f, err := ioutil.ReadFile(recentfn)
+        if err != nil {
+            return err
+        }
+        var lis []string
+        if ok := strings.HasSuffix(string(f),"\r\n"); ok {
+            lis = strings.Split(string(f),"\r\n")
+        } else {
+            lis = strings.Split(string(f),"\n")
+        }
+        w, err := os.Create(recentfn)
+        if err != nil {
+            return err
+        }
+        defer w.Close()
+        w.WriteString(fmt.Sprintf("%s\n", fn))
+        stw.recentfiles[0] = fn
+        num := 0
+        for _, rfn := range lis {
+            if rfn != fn {
+                w.WriteString(fmt.Sprintf("%s\n", rfn))
+                stw.recentfiles[num+1] = rfn
+                num++
+            }
+            if num >= nRecentFiles-1 { break }
+        }
+        return nil
+    } else {
+        w, err := os.Create(recentfn)
+        if err != nil {
+            return err
+        }
+        defer w.Close()
+        w.WriteString(fmt.Sprintf("%s\n", fn))
+        stw.recentfiles[0] = fn
+        return nil
+    }
+}
+
+func (stw *Window) SetRecently () error {
     if st.FileExists(recentfn) {
         f, err := ioutil.ReadFile(recentfn)
         if err != nil {
@@ -1330,42 +1371,7 @@ func (stw *Window) OpenFile(fn string) error {
     stw.LinkTextValue()
     stw.Changed = false
     stw.Cwd = filepath.Dir(fn)
-    if st.FileExists(recentfn) {
-        f, err := ioutil.ReadFile(recentfn)
-        if err != nil {
-            return err
-        }
-        var lis []string
-        if ok := strings.HasSuffix(string(f),"\r\n"); ok {
-            lis = strings.Split(string(f),"\r\n")
-        } else {
-            lis = strings.Split(string(f),"\n")
-        }
-        w, err := os.Create(recentfn)
-        if err != nil {
-            return err
-        }
-        defer w.Close()
-        w.WriteString(fmt.Sprintf("%s\n", fn))
-        stw.recentfiles[0] = fn
-        num := 0
-        for _, rfn := range lis {
-            if rfn != fn {
-                w.WriteString(fmt.Sprintf("%s\n", rfn))
-                stw.recentfiles[num+1] = rfn
-                num++
-            }
-            if num >= nRecentFiles-1 { break }
-        }
-    } else {
-        w, err := os.Create(recentfn)
-        if err != nil {
-            return err
-        }
-        defer w.Close()
-        w.WriteString(fmt.Sprintf("%s\n", fn))
-        stw.recentfiles[0] = fn
-    }
+    stw.AddRecently(fn)
     return nil
 }
 // }}}
@@ -1414,6 +1420,7 @@ func (stw *Window) Rebase (fn string) {
     }
     stw.Dlg.SetAttribute("TITLE", stw.Frame.Name)
     stw.Frame.Home = stw.Home
+    stw.AddRecently(fn)
 }
 
 func (stw *Window) SaveFile(fn string) error {
@@ -3234,7 +3241,7 @@ func (stw *Window) CB_MouseButton() {
                                   case BUTTON_LEFT:
                                       if isDouble(arg.Status) { stw.Open() }
                                   case BUTTON_CENTER:
-                                      stw.ShowRecently()
+                                      stw.SetRecently()
                                   }
                               }
                           })
