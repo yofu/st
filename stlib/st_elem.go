@@ -820,6 +820,24 @@ func (elem *Elem) Mirror(coord, vec []float64, del bool) *Elem {
         return nil
     }
 }
+
+func (elem *Elem) Upside () {
+    if len(elem.Enod) == 0 { return }
+    newenod := Upside(elem.Enod)
+    if elem.IsLineElem() && newenod[0] != elem.Enod[0] {
+        newbonds := make([]bool, 12)
+        newcmq   := make([]float64, 12)
+        for i:=0; i<6; i++ {
+            newbonds[i]   = elem.Bonds[6+i]
+            newbonds[6+i] = elem.Bonds[i]
+            newcmq[i]   = elem.Cmq[6+i]
+            newcmq[6+i] = elem.Cmq[i]
+        }
+        elem.Bonds = newbonds
+        elem.Cmq   = newcmq
+    }
+    elem.Enod = newenod
+}
 // }}}
 
 

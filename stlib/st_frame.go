@@ -2516,7 +2516,7 @@ func (frame *Frame) IsUpside () bool {
 
 func (frame *Frame) Upside () {
     for _, el := range frame.Elems {
-        el.Enod = Upside(el.Enod)
+        el.Upside()
     }
 }
 // }}}
