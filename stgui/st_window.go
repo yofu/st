@@ -1,6 +1,7 @@
 package stgui
 
 import (
+    "bufio"
     "errors"
     "fmt"
     "os"
@@ -9,7 +10,6 @@ import (
     "path/filepath"
     "strconv"
     "runtime"
-    "io/ioutil"
     "math"
     "regexp"
     "sort"
@@ -1087,15 +1087,9 @@ func (stw *Window) Open() {
 
 func (stw *Window) AddRecently (fn string) error {
     if st.FileExists(recentfn) {
-        f, err := ioutil.ReadFile(recentfn)
+        f, err := os.Open(recentfn)
         if err != nil {
             return err
-        }
-        var lis []string
-        if ok := strings.HasSuffix(string(f),"\r\n"); ok {
-            lis = strings.Split(string(f),"\r\n")
-        } else {
-            lis = strings.Split(string(f),"\n")
         }
         w, err := os.Create(recentfn)
         if err != nil {
@@ -1104,14 +1098,19 @@ func (stw *Window) AddRecently (fn string) error {
         defer w.Close()
         w.WriteString(fmt.Sprintf("%s\n", fn))
         stw.recentfiles[0] = fn
+        s := bufio.NewScanner(f)
         num := 0
-        for _, rfn := range lis {
+        for s.Scan() {
+            rfn := s.Text()
             if rfn != fn {
                 w.WriteString(fmt.Sprintf("%s\n", rfn))
                 stw.recentfiles[num+1] = rfn
                 num++
             }
             if num >= nRecentFiles-1 { break }
+        }
+        if err := s.Err(); err != nil {
+            return err
         }
         return nil
     } else {
@@ -1136,23 +1135,22 @@ func (stw *Window) ShowRecently () {
 
 func (stw *Window) SetRecently () error {
     if st.FileExists(recentfn) {
-        f, err := ioutil.ReadFile(recentfn)
+        f, err := os.Open(recentfn)
         if err != nil {
             return err
         }
-        var lis []string
-        if ok := strings.HasSuffix(string(f),"\r\n"); ok {
-            lis = strings.Split(string(f),"\r\n")
-        } else {
-            lis = strings.Split(string(f),"\n")
-        }
+        s := bufio.NewScanner(f)
         num := 0
-        for i, fn := range lis {
+        for s.Scan() {
+            fn := s.Text()
             if fn != "" {
-                stw.addHistory(fmt.Sprintf("%d: %s", i, fn))
+                stw.addHistory(fmt.Sprintf("%d: %s", num, fn))
                 stw.recentfiles[num] = fn
                 num++
             }
+        }
+        if err := s.Err(); err != nil {
+            return err
         }
         return nil
     } else {
@@ -4932,20 +4930,16 @@ func (stw *Window) Analysis (fn string, arg string) error {
 }
 
 func ReadPgp(filename string, aliases map[string]*Command) error {
-    f, err := ioutil.ReadFile(filename)
+    f, err := os.Open(filename)
     if err != nil {
         return err
     }
-    var lis []string
-    if ok := strings.HasSuffix(string(f),"\r\n"); ok {
-        lis = strings.Split(string(f),"\r\n")
-    } else {
-        lis = strings.Split(string(f),"\n")
-    }
-    for _, j := range lis {
-        if strings.HasPrefix(j, "#") { continue }
+    s := bufio.NewScanner(f)
+    for s.Scan() {
+        txt := s.Text()
+        if strings.HasPrefix(txt, "#") { continue }
         var words []string
-        for _, k := range strings.Split(j," ") {
+        for _, k := range strings.Split(txt," ") {
             if k!="" {
                 words=append(words,k)
             }
@@ -4956,6 +4950,9 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
         if value, ok := Commands[strings.ToUpper(words[1])]; ok {
             aliases[strings.ToUpper(words[0])] = value
         }
+    }
+    if err := s.Err(); err != nil {
+        return err
     }
     return nil
 }
