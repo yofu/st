@@ -1126,6 +1126,14 @@ func (stw *Window) AddRecently (fn string) error {
     }
 }
 
+func (stw *Window) ShowRecently () {
+    for i, fn := range stw.recentfiles {
+        if fn != "" {
+            stw.addHistory(fmt.Sprintf("%d: %s", i, fn))
+        }
+    }
+}
+
 func (stw *Window) SetRecently () error {
     if st.FileExists(recentfn) {
         f, err := ioutil.ReadFile(recentfn)
@@ -1927,6 +1935,8 @@ func (stw *Window) exmode (command string) {
         case "c":
             checkframe(stw)
             stw.addHistory("CHECKED")
+        case "#":
+            stw.ShowRecently()
         case "vim":
             stw.Edit(fn)
         case "read":
