@@ -928,9 +928,14 @@ func (elem *Elem) AxisCoord (axis int, coord float64) (rtn []float64, err error)
 
 func (elem *Elem) DivideAtCoord (x, y, z float64) (ns []*Node, els []*Elem, err error) {
     if !elem.IsLineElem() { return nil, nil, NotLineElem("DivideAtCoord") }
+    n := elem.Frame.CoordNode(x, y, z)
+    for i:=0; i<elem.Enods; i++ {
+        if n == elem.Enod[i] {
+            return nil, nil, errors.New("DivideAtNode: Divide at Enod")
+        }
+    }
     els = make([]*Elem, 2)
     els[0] = elem
-    n := elem.Frame.CoordNode(x, y, z)
     newelem := elem.Frame.AddLineElem(-1, []*Node{n, elem.Enod[1]}, elem.Sect, elem.Etype)
     els[1] = newelem
     elem.Enod[1] = n
@@ -944,6 +949,11 @@ func (elem *Elem) DivideAtCoord (x, y, z float64) (ns []*Node, els []*Elem, err 
 
 func (elem *Elem) DivideAtNode (n *Node, position int, del bool) (rn []*Node, els []*Elem, err error) {
     if !elem.IsLineElem() { return nil, nil, NotLineElem("DivideAtNode") }
+    for i:=0; i<elem.Enods; i++ {
+        if n == elem.Enod[i] {
+            return nil, nil, errors.New("DivideAtNode: Divide at Enod")
+        }
+    }
     els = make([]*Elem,2)
     if del {
         switch position {
