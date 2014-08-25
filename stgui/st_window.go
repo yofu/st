@@ -1101,8 +1101,7 @@ func (stw *Window) AddRecently (fn string) error {
         s := bufio.NewScanner(f)
         num := 0
         for s.Scan() {
-            rfn := s.Text()
-            if rfn != fn {
+            if rfn:= s.Text(); rfn != fn {
                 w.WriteString(fmt.Sprintf("%s\n", rfn))
                 stw.recentfiles[num+1] = rfn
                 num++
@@ -1142,8 +1141,7 @@ func (stw *Window) SetRecently () error {
         s := bufio.NewScanner(f)
         num := 0
         for s.Scan() {
-            fn := s.Text()
-            if fn != "" {
+            if fn := s.Text(); fn != "" {
                 stw.addHistory(fmt.Sprintf("%d: %s", num, fn))
                 stw.recentfiles[num] = fn
                 num++
