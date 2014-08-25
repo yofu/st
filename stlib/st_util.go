@@ -1,10 +1,10 @@
 package st
 
 import (
+    "bufio"
     "errors"
     "fmt"
     "io"
-    "io/ioutil"
     "math"
     "os"
     "path/filepath"
@@ -419,19 +419,14 @@ func DistLineLine (coord1, vec1, coord2, vec2 []float64) (float64, float64, floa
 }
 
 func ParseFile (filename string, do func([]string) error) error {
-    f, err := ioutil.ReadFile(filename)
+    f, err := os.Open(filename)
     if err != nil {
         return err
     }
-    var lis []string
-    if ok := strings.HasSuffix(string(f),"\r\n"); ok {
-        lis = strings.Split(string(f),"\r\n")
-    } else {
-        lis = strings.Split(string(f),"\n")
-    }
-    for _, j := range lis {
+    s := bufio.NewScanner(f)
+    for s.Scan() {
         var words []string
-        for _, k := range strings.Split(j," ") {
+        for _, k := range strings.Split(s.Text()," ") {
             if k!="" {
                 words=append(words,k)
             }
@@ -443,6 +438,9 @@ func ParseFile (filename string, do func([]string) error) error {
         if err != nil {
             return err
         }
+    }
+    if err := s.Err(); err != nil {
+        return err
     }
     return nil
 }
