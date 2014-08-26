@@ -16,6 +16,19 @@ func NotParallel(fn string) ParallelError {
     return ParallelError{fn}
 }
 
+type ElemDivisionError struct {
+    funcname string
+    description string
+}
+
+func (e ElemDivisionError) Error () string {
+    return fmt.Sprintf("%s: %s", e.funcname, e.description)
+}
+
+func DivideAtEnod(fn string) ElemDivisionError {
+    return ElemDivisionError{fn, "Divide At Enod"}
+}
+
 type EtypeError struct {
     shouldbe string
     funcname string

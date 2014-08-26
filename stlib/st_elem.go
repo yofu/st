@@ -931,7 +931,7 @@ func (elem *Elem) DivideAtCoord (x, y, z float64) (ns []*Node, els []*Elem, err 
     n := elem.Frame.CoordNode(x, y, z)
     for i:=0; i<elem.Enods; i++ {
         if n == elem.Enod[i] {
-            return nil, nil, errors.New("DivideAtNode: Divide at Enod")
+            return nil, nil, DivideAtEnod("DivideAtCoord")
         }
     }
     els = make([]*Elem, 2)
@@ -951,7 +951,7 @@ func (elem *Elem) DivideAtNode (n *Node, position int, del bool) (rn []*Node, el
     if !elem.IsLineElem() { return nil, nil, NotLineElem("DivideAtNode") }
     for i:=0; i<elem.Enods; i++ {
         if n == elem.Enod[i] {
-            return nil, nil, errors.New("DivideAtNode: Divide at Enod")
+            return nil, nil, DivideAtEnod("DivideAtNode")
         }
     }
     els = make([]*Elem,2)

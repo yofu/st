@@ -2439,7 +2439,12 @@ func (frame *Frame) Intersect (e1, e2 *Elem, cross bool, sign1, sign2 int, del1,
             ns, els, err = e1.DivideAtNode(n, 2, del1)
         }
         if err != nil {
-            return nil, nil, err
+            switch err.(type) {
+            case ElemDivisionError:
+                return ns, els, nil
+            default:
+                return nil, nil, err
+            }
         }
         switch {
         default:
@@ -2451,7 +2456,13 @@ func (frame *Frame) Intersect (e1, e2 *Elem, cross bool, sign1, sign2 int, del1,
             ns, tmpels, err = e2.DivideAtNode(n, 2, del2)
         }
         if err != nil {
-            return nil, nil, err
+            switch err.(type) {
+            case ElemDivisionError:
+                els = append(els, tmpels...)
+                return ns, els, nil
+            default:
+                return nil, nil, err
+            }
         }
         els = append(els, tmpels...)
         return ns, els, nil
@@ -2485,7 +2496,12 @@ func (frame *Frame) CutByElem (cutter, cuttee *Elem, cross bool, sign int, del b
             ns, els, err = cuttee.DivideAtNode(n, 2, del)
         }
         if err != nil {
-            return nil, nil, err
+            switch err.(type) {
+            case ElemDivisionError:
+                return ns, els, nil
+            default:
+                return nil, nil, err
+            }
         }
         return ns, els, nil
     } else {
