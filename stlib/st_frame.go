@@ -2441,7 +2441,7 @@ func (frame *Frame) Intersect (e1, e2 *Elem, cross bool, sign1, sign2 int, del1,
         if err != nil {
             switch err.(type) {
             case ElemDivisionError:
-                return ns, els, nil
+                break
             default:
                 return nil, nil, err
             }
