@@ -1091,25 +1091,27 @@ func (stw *Window) AddRecently (fn string) error {
         if err != nil {
             return err
         }
-        w, err := os.Create(recentfn)
-        if err != nil {
-            return err
-        }
-        defer w.Close()
-        w.WriteString(fmt.Sprintf("%s\n", fn))
         stw.recentfiles[0] = fn
         s := bufio.NewScanner(f)
         num := 0
         for s.Scan() {
             if rfn:= s.Text(); rfn != fn {
-                w.WriteString(fmt.Sprintf("%s\n", rfn))
                 stw.recentfiles[num+1] = rfn
                 num++
             }
             if num >= nRecentFiles-1 { break }
         }
+        f.Close()
         if err := s.Err(); err != nil {
             return err
+        }
+        w, err := os.Create(recentfn)
+        if err != nil {
+            return err
+        }
+        defer w.Close()
+        for i:=0; i<nRecentFiles; i++ {
+            w.WriteString(fmt.Sprintf("%s\n", stw.recentfiles[i]))
         }
         return nil
     } else {
