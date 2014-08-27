@@ -187,6 +187,112 @@ func (cmd *Command) Exec(stw *Window) {
 }
 
 
+// GETCOORD // {{{
+func getcoord (stw *Window, f func(x, y, z float64)) {
+    stw.canv.SetAttribute("CURSOR", "CROSS")
+    var snap *st.Node // for Snapping
+    stw.cdcanv.Foreground(cd.CD_YELLOW)
+    stw.cdcanv.WriteMode(cd.CD_XOR)
+    stw.SelectNode = make([]*st.Node, 1)
+    setnnum := func () {
+        nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"),10,64)
+        if err == nil {
+            if n, ok := stw.Frame.Nodes[int(nnum)]; ok {
+                f(n.Coord[0], n.Coord[1], n.Coord[2])
+            }
+        }
+        stw.cline.SetAttribute("VALUE", "")
+    }
+    stw.canv.SetCallback( func (arg *iup.MouseButton) {
+                              if stw.Frame != nil {
+                                  stw.dbuff.UpdateYAxis(&arg.Y)
+                                  switch arg.Button {
+                                  case BUTTON_LEFT:
+                                      if arg.Pressed == 0 { // Released
+                                          if n := stw.PickNode(arg.X, arg.Y); n != nil {
+                                              f(n.Coord[0], n.Coord[1], n.Coord[2])
+                                          }
+                                          // stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
+                                          stw.Redraw()
+                                      }
+                                  case BUTTON_CENTER:
+                                      if arg.Pressed == 0 { // Released
+                                          // if stw.SelectNode[0] != nil { // TODO
+                                          //     stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY)
+                                          // }
+                                          stw.Redraw()
+                                      } else { // Pressed
+                                          if isDouble(arg.Status) {
+                                              stw.Frame.SetFocus()
+                                              stw.DrawFrameNode()
+                                              stw.ShowCenter()
+                                          } else {
+                                              stw.startX = arg.X; stw.startY = arg.Y
+                                          }
+                                      }
+                                  case BUTTON_RIGHT:
+                                      if arg.Pressed == 0 {
+                                          if v := stw.cline.GetAttribute("VALUE"); v!="" {
+                                              setnnum()
+                                          } else {
+                                              // fmt.Println("CONTEXT MENU")
+                                              stw.EscapeAll()
+                                          }
+                                      }
+                                  }
+                              }
+                          })
+    stw.canv.SetCallback( func (arg *iup.CommonKeyAny) {
+                              key := iup.KeyState(arg.Key)
+                              switch key.Key() {
+                              default:
+                                  stw.DefaultKeyAny(key)
+                              case KEY_BS:
+                                  val := stw.cline.GetAttribute("VALUE")
+                                  if val != "" {
+                                      stw.cline.SetAttribute("VALUE", val[:len(val)-1])
+                                  }
+                              case KEY_ENTER:
+                                  setnnum()
+                              case KEY_ESCAPE:
+                                  stw.EscapeAll()
+                              case 'D','d':
+                                  x, y, z, err := stw.QueryCoord("GET COORD")
+                                  if err == nil {
+                                      f(x, y, z)
+                                  }
+                              }
+                          })
+    stw.canv.SetCallback( func (arg *iup.MouseMotion) {
+                              if stw.Frame != nil {
+                                  stw.dbuff.UpdateYAxis(&arg.Y)
+                                  // Snapping
+                                  stw.cdcanv.Foreground(cd.CD_YELLOW)
+                                  if snap != nil {
+                                      stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
+                                  }
+                                  n := stw.PickNode(arg.X, arg.Y)
+                                  if n != nil {
+                                      stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1],  nodeSelectPixel)
+                                  }
+                                  snap = n
+                                  ///
+                                  switch statusKey(arg.Status) {
+                                  case STATUS_CENTER:
+                                      if isShift(arg.Status) {
+                                          stw.Frame.View.Center[0] += float64(arg.X - stw.startX) * CanvasMoveSpeedX
+                                          stw.Frame.View.Center[1] += float64(arg.Y - stw.startY) * CanvasMoveSpeedY
+                                      } else {
+                                          stw.Frame.View.Angle[0] -= float64(arg.Y - stw.startY) * CanvasRotateSpeedY
+                                          stw.Frame.View.Angle[1] -= float64(arg.X - stw.startX) * CanvasRotateSpeedX
+                                      }
+                                      stw.DrawFrameNode()
+                                  }
+                              }
+                          })
+}
+// }}}
+
 // GET1NODE // {{{
 func get1node (stw *Window, f func(n *st.Node)) {
     stw.canv.SetAttribute("CURSOR", "CROSS")
@@ -799,8 +905,8 @@ func onnode (stw *Window) {
 // }}}
 
 
-// GETCOORD// {{{
-func getcoord (stw *Window, f func(x,y,z float64)) {
+// GETVECTOR// {{{
+func getvector (stw *Window, f func(x,y,z float64)) {
     var snap *st.Node // for Snapping
     stw.canv.SetAttribute("CURSOR", "CROSS")
     stw.cdcanv.Foreground(cd.CD_YELLOW)
@@ -939,7 +1045,7 @@ func getcoord (stw *Window, f func(x,y,z float64)) {
 func copyelem (stw *Window) {
     if stw.SelectElem == nil || len(stw.SelectElem)==0 { return }
     stw.addHistory("移動距離を指定[ダイアログ(D)]")
-    getcoord(stw, func (x, y, z float64) {
+    getvector(stw, func (x, y, z float64) {
                       if !(x==0.0 && y==0.0 && z==0.0) {
                           for _, el := range stw.SelectElem {
                               if el == nil || el.IsHide(stw.Frame.Show) || el.Lock { continue }
@@ -956,7 +1062,7 @@ func copyelem (stw *Window) {
 func moveelem (stw *Window) {
     if stw.SelectElem == nil || len(stw.SelectElem)==0 { return }
     stw.addHistory("移動距離を指定[ダイアログ(D)]")
-    getcoord(stw, func (x, y, z float64) {
+    getvector(stw, func (x, y, z float64) {
                       for _, el := range stw.SelectElem {
                           if el == nil || el.IsHide(stw.Frame.Show) || el.Lock { continue }
                           el.Move(x, y, z)
@@ -991,7 +1097,7 @@ func movenode (stw *Window) {
     }
     if len(ns)==0 { return }
     stw.addHistory("移動距離を指定[ダイアログ(D)]")
-    getcoord(stw, func (x, y, z float64) {
+    getvector(stw, func (x, y, z float64) {
                       for _, n := range ns {
                           if n == nil || n.Hide || n.Lock { continue }
                           n.Move(x, y, z)
@@ -1142,7 +1248,7 @@ func rotate (stw *Window) {
     get1node(stw, func (n0 *st.Node) {
                       stw.addHistory(fmt.Sprintf("NODE: %d", n0.Num))
                       stw.addHistory("回転軸を選択[ダイアログ(D)]")
-                      getcoord(stw, func (x, y, z float64) {
+                      getvector(stw, func (x, y, z float64) {
                                         stw.addHistory(fmt.Sprintf("X: %.3f, Y: %.3f, Z: %.3f", x, y, z))
                                         if !(x==0.0 && y==0.0 && z==0.0) {
                                             stw.addHistory("回転角を指定[参照(R)]")
@@ -1249,7 +1355,7 @@ func mirror (stw *Window) {
                                    stw.EscapeAll()
                                case 1:
                                    stw.addHistory("法線方向を選択[ダイアログ(D)]")
-                                   getcoord(stw, func (x, y, z float64) {
+                                   getvector(stw, func (x, y, z float64) {
                                                      createmirrors(stw.SelectNode[0].Coord, []float64{x, y, z})
                                                      stw.EscapeAll()
                                                  })
@@ -1502,7 +1608,7 @@ func axistocang (stw *Window) {
                           stw.EscapeAll()
                       }
                   }
-    getcoord(stw, axisfunc)
+    getvector(stw, axisfunc)
     stw.canv.SetCallback( func (arg *iup.CommonKeyAny) {
                               key := iup.KeyState(arg.Key)
                               switch key.Key() {

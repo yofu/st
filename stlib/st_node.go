@@ -92,6 +92,19 @@ func (node *Node) InpString () string {
     return fmt.Sprintf("NODE %4d  CORD %7.3f %7.3f %7.3f  ICON %s  VCON   %s\n", node.Num, node.Coord[0], node.Coord[1], node.Coord[2], strings.Join(ic, " "), strings.Join(vc, " "))
 }
 
+func (node *Node) CopyString (x, y, z float64) string {
+    var ic, vc []string
+    for i:=0; i<6; i++ {
+        if node.Conf[i] {
+            ic = append(ic, "1")
+        } else {
+            ic = append(ic, "0")
+        }
+        vc = append(vc, fmt.Sprintf("%12.8f", node.Load[i]))
+    }
+    return fmt.Sprintf("NODE %4d  CORD %7.3f %7.3f %7.3f  ICON %s  VCON   %s\n", node.Num, node.Coord[0]-x, node.Coord[1]-y, node.Coord[2]-z, strings.Join(ic, " "), strings.Join(vc, " "))
+}
+
 func (node *Node) WgtString () string {
     return fmt.Sprintf("%9d  %10.3f %10.3f %10.3f\n", node.Num, node.Weight[0], node.Weight[1], node.Weight[2])
 }

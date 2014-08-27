@@ -2,6 +2,7 @@ package stgui
 
 import (
     "bufio"
+    "bytes"
     "errors"
     "fmt"
     "os"
@@ -17,6 +18,7 @@ import (
     "github.com/visualfc/go-iup/iup"
     // "github.com/visualfc/go-iup/iupim"
     "github.com/visualfc/go-iup/cd"
+    "github.com/atotto/clipboard"
     "github.com/yofu/st/stlib"
 )
 
@@ -2476,6 +2478,44 @@ func (stw *Window) DeleteSelected() {
     stw.Redraw()
 }
 
+func (stw *Window) CopyClipboard () error {
+    var rtn error
+    if stw.SelectElem == nil { return nil }
+    var otp bytes.Buffer
+    ns := stw.Frame.ElemToNode(stw.SelectElem...)
+    getcoord(stw, func (x, y, z float64) {
+                      for _, n := range(ns) {
+                          otp.WriteString(n.CopyString(x, y, z))
+                      }
+                      for _, el := range(stw.SelectElem) {
+                          if el != nil {
+                              otp.WriteString(el.InpString())
+                          }
+                      }
+                      err := clipboard.WriteAll(otp.String())
+                      if err != nil {
+                          rtn = err
+                      }
+                      stw.addHistory(fmt.Sprintf("%d ELEMs Copied", len(stw.SelectElem)))
+                      stw.EscapeCB()
+                  })
+    if rtn != nil {
+        return rtn
+    }
+    return nil
+}
+
+// TODO: Implement
+func (stw *Window) PasteClipboard () error {
+    text, err := clipboard.ReadAll()
+    if err != nil {
+        return err
+    }
+    stw.addHistory("Pasted")
+    fmt.Println(text)
+    return nil
+}
+
 func (stw *Window) FilterSelectedElem (str string) {
     l := len(stw.SelectElem)
     if stw.SelectElem == nil || l == 0 { return }
@@ -3420,6 +3460,14 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
     case 'E':
         if key.IsCtrl() {
             stw.EditInp()
+        }
+    case 'C':
+        if key.IsCtrl() {
+            stw.CopyClipboard()
+        }
+    case 'V':
+        if key.IsCtrl() {
+            stw.PasteClipboard()
         }
     }
 }
