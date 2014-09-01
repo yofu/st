@@ -1631,6 +1631,10 @@ func (stw *Window) EditInp() {
     }
 }
 
+func (stw *Window) EditReadme (dir string) {
+    fn := filepath.Join(dir, "readme.txt")
+    stw.Vim(fn)
+}
 
 func StartTool(fn string) {
     cmd := exec.Command("cmd", "/C", "start", fn)
@@ -1920,6 +1924,7 @@ func (stw *Window) exmode (command string) {
                     stw.Copylsts(fn)
                 }
                 stw.Rebase(fn)
+                stw.EditReadme(filepath.Dir(fn))
             }
         case "e":
             // if !bang && stw.Changed {
