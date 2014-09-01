@@ -1727,6 +1727,7 @@ func (stw *Window) NextCommand () {
 }
 
 func (stw *Window) addHistory(str string) {
+    if str == "" { return }
     stw.hist.SetAttribute("APPEND", str)
     lnum, err := strconv.ParseInt(stw.hist.GetAttribute("LINECOUNT"),10,64)
     if err != nil {
