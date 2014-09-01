@@ -1619,6 +1619,11 @@ func (stw *Window) Edit(fn string) {
     cmd.Start()
 }
 
+func (stw *Window) Vim(fn string) {
+    cmd := exec.Command("vim", fn)
+    cmd.Start()
+}
+
 func (stw *Window) EditInp() {
     if stw.Frame != nil {
         cmd := exec.Command("cmd", "/C", "start", stw.Frame.Path)
@@ -1940,7 +1945,7 @@ func (stw *Window) exmode (command string) {
         case "#":
             stw.ShowRecently()
         case "vim":
-            stw.Edit(fn)
+            stw.Vim(fn)
         case "read":
             stw.ReadFile(fn)
         case "insert":
@@ -2055,7 +2060,7 @@ func (stw *Window) exmode (command string) {
                 stw.Open()
             }
         case "vim":
-            stw.Edit(fn)
+            stw.Vim(fn)
         }
     }
 }
