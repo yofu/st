@@ -2517,14 +2517,44 @@ func (stw *Window) CopyClipboard () error {
     return nil
 }
 
-// TODO: Implement
+// TODO: Test
 func (stw *Window) PasteClipboard () error {
     text, err := clipboard.ReadAll()
     if err != nil {
         return err
     }
-    stw.addHistory("Pasted")
-    fmt.Println(text)
+    getcoord(stw, func (x, y, z float64) {
+                      s := bufio.NewScanner(strings.NewReader(text))
+                      coord := []float64{ x, y, z }
+                      angle := 0.0
+                      tmp := make([]string, 0)
+                      nodemap := make(map[int]int)
+                      var err error
+                      for s.Scan() {
+                          var words []string
+                          for _, k := range strings.Split(s.Text()," ") {
+                              if k!="" {
+                                  words=append(words,k)
+                              }
+                          }
+                          if len(words)==0 {
+                              continue
+                          }
+                          first := words[0]
+                          switch first {
+                          default:
+                              tmp=append(tmp,words...)
+                          case "NODE", "ELEM":
+                              nodemap, err = stw.Frame.ParseInp(tmp, coord, angle, nodemap)
+                              tmp = words
+                          }
+                          if err != nil {
+                              break
+                          }
+                      }
+                      nodemap, err = stw.Frame.ParseInp(tmp, coord, angle, nodemap)
+                      stw.EscapeCB()
+                  })
     return nil
 }
 
