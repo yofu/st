@@ -1852,7 +1852,7 @@ func (stw *Window) exmode (command string) {
     }
     args = args[:narg]
     var fn string
-    if len(args) < 2 {
+    if narg < 2 {
         fn = ""
     } else {
         if ok, _ := regexp.MatchString("^#[0-9]+$", args[1]); ok {
@@ -1892,13 +1892,14 @@ func (stw *Window) exmode (command string) {
             }
         case "inc":
             var times int
-            if len(args) >= 2 {
+            if narg >= 2 {
                 val, err := strconv.ParseInt(args[1], 10, 64)
                 if err != nil {
                     stw.addHistory(err.Error())
-                    break
+                    times = 1
+                } else {
+                    times = int(val)
                 }
-                times = int(val)
             } else {
                 times = 1
             }
@@ -1942,7 +1943,7 @@ func (stw *Window) exmode (command string) {
         case "read":
             stw.ReadFile(fn)
         case "insert":
-            if len(args) > 2 && len(stw.SelectNode) >= 1 {
+            if narg > 2 && len(stw.SelectNode) >= 1 {
                 angle, err := strconv.ParseFloat(args[2], 64)
                 if err != nil {
                     stw.addHistory(err.Error())
@@ -1964,7 +1965,7 @@ func (stw *Window) exmode (command string) {
         case "adds":
             stw.AddResult(fn, true)
         case "wo":
-            if len(args) < 3 {
+            if narg < 3 {
                 stw.addHistory("Not enough arguments")
             } else {
                 stw.Frame.WriteOutput(fn, args[2])
@@ -1993,7 +1994,7 @@ func (stw *Window) exmode (command string) {
         case "an":
             stw.SaveFile(stw.Frame.Path)
             var anarg string
-            if len(args)>=3 {
+            if narg >= 3 {
                 anarg = args[2]
             } else {
                 anarg = "-a"
@@ -2009,7 +2010,7 @@ func (stw *Window) exmode (command string) {
         case "f":
             stw.FilterSelectedElem(strings.Join(args[1:], " "))
         case "ht":
-            if len(args) < 3 { return }
+            if narg < 3 { return }
             tmp, err := strconv.ParseInt(args[1], 10, 64)
             if err != nil { return }
             min := int(tmp)
