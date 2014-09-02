@@ -104,6 +104,34 @@ func (fig *Fig) InpString () string {
                 rtn.WriteString(fmt.Sprintf("                 %s  %11.8f\n", k, val))
             case "THICK":
                 rtn.WriteString(fmt.Sprintf("                 THICK %7.5f\n", val))
+                if val, ok = fig.Value["FC"]; ok {
+                    rtn.WriteString(fmt.Sprintf("                 SIGMA FC%.0f", val))
+                    if val, ok = fig.Value["SD"]; ok {
+                        rtn.WriteString(fmt.Sprintf(" SD%.0f", val))
+                    } else {
+                        rtn.WriteString(" SD295")
+                    }
+                    if val, ok = fig.Value["RD"]; ok {
+                        rtn.WriteString(fmt.Sprintf(" D%.0f", val))
+                    } else {
+                        rtn.WriteString(" D0")
+                    }
+                    if val, ok = fig.Value["RA"]; ok {
+                        rtn.WriteString(fmt.Sprintf(" %.3f", val))
+                    } else {
+                        rtn.WriteString(" 0.000")
+                    }
+                    if val, ok = fig.Value["PITCH"]; ok {
+                        rtn.WriteString(fmt.Sprintf(" @%.0f", val))
+                    } else {
+                        rtn.WriteString(" @0")
+                    }
+                    if val, ok = fig.Value["SINDOU"]; ok {
+                        rtn.WriteString(fmt.Sprintf(" %.0f\n", val))
+                    } else {
+                        rtn.WriteString(" 1\n")
+                    }
+                }
             case "SREIN":
                 rtn.WriteString(fmt.Sprintf("                 SREIN %8.6f\n", val))
             case "XFACE", "YFACE":

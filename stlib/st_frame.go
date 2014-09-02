@@ -403,6 +403,8 @@ func (frame *Frame) ParseSect(lis []string) error {
         switch word {
         case "FPROP","AREA", "IXX", "IYY", "VEN", "THICK", "SREIN":
             tmp=append(tmp,lis[i:i+2]...)
+        case "SIGMA":
+            tmp=append(tmp,lis[i:i+7]...)
         case "XFACE","YFACE":
             tmp=append(tmp,lis[i:i+3]...)
         case "SECT":
@@ -470,6 +472,55 @@ func (sect *Sect) ParseFig(frame *Frame, lis []string) error {
             if err == nil {
                 f.Value[word] = val
             }
+        case "SIGMA":
+            var val float64
+            var err error
+            if strings.HasPrefix(lis[i+1], "FC") {
+                val, err = strconv.ParseFloat(strings.TrimPrefix(lis[i+1],"FC"),64)
+            } else {
+                val, err = strconv.ParseFloat(lis[i+1],64)
+            }
+            if err != nil {
+                return err
+            }
+            f.Value["FC"] = val
+            if strings.HasPrefix(lis[i+2], "SD") {
+                val, err = strconv.ParseFloat(strings.TrimPrefix(lis[i+2],"SD"),64)
+            } else {
+                val, err = strconv.ParseFloat(lis[i+2],64)
+            }
+            if err != nil {
+                return err
+            }
+            f.Value["SD"] = val
+            if strings.HasPrefix(lis[i+3], "D") {
+                val, err = strconv.ParseFloat(strings.TrimPrefix(lis[i+3],"D"),64)
+            } else {
+                val, err = strconv.ParseFloat(lis[i+3],64)
+            }
+            if err != nil {
+                return err
+            }
+            f.Value["RD"] = val
+            val, err = strconv.ParseFloat(lis[i+4],64)
+            if err != nil {
+                return err
+            }
+            f.Value["RA"] = val
+            if strings.HasPrefix(lis[i+5], "@") {
+                val, err = strconv.ParseFloat(strings.TrimPrefix(lis[i+5],"@"),64)
+            } else {
+                val, err = strconv.ParseFloat(lis[i+5],64)
+            }
+            if err != nil {
+                return err
+            }
+            f.Value["PITCH"] = val
+            val, err = strconv.ParseFloat(lis[i+6],64)
+            if err != nil {
+                return err
+            }
+            f.Value["SINDOU"] = val
         case "XFACE","YFACE":
             tmp := make([]float64, 2)
             for j:=0; j<2; j++ {
