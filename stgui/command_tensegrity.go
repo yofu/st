@@ -105,7 +105,7 @@ func tensegrity (stw *Window, f func(cs, ts, sz int), csect, tsect, size int) {
                                               stw.ShowCenter()
                                           } else {
                                               stw.dbuff.UpdateYAxis(&arg.Y)
-                                              stw.startX = arg.X; stw.startY = arg.Y
+                                              stw.startX = int(arg.X); stw.startY = int(arg.Y)
                                           }
                                       }
                                   case BUTTON_RIGHT:

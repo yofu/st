@@ -76,7 +76,7 @@ func gravity (stw *Window) {
                                   case BUTTON_LEFT:
                                       stw.dbuff.UpdateYAxis(&arg.Y)
                                       if arg.Pressed == 0 {
-                                          n := stw.PickNode(arg.X, arg.Y)
+                                          n := stw.PickNode(int(arg.X), int(arg.Y))
                                           if n != nil {
                                               if mousetime {
                                                   t = math.Min(time.Since(stw.startT).Seconds(), maxrange)
@@ -93,7 +93,7 @@ func gravity (stw *Window) {
                                   case BUTTON_RIGHT:
                                       stw.dbuff.UpdateYAxis(&arg.Y)
                                       if arg.Pressed == 0 {
-                                          n := stw.PickNode(arg.X, arg.Y)
+                                          n := stw.PickNode(int(arg.X), int(arg.Y))
                                           if n != nil {
                                               if mousetime {
                                                   t = math.Min(time.Since(stw.startT).Seconds(), maxrange)
@@ -117,7 +117,7 @@ func gravity (stw *Window) {
                                               stw.ShowCenter()
                                           } else {
                                               stw.dbuff.UpdateYAxis(&arg.Y)
-                                              stw.startX = arg.X; stw.startY = arg.Y
+                                              stw.startX = int(arg.X); stw.startY = int(arg.Y)
                                           }
                                       }
                                   }
@@ -192,7 +192,7 @@ func smooth (stw *Window) {
                                   case BUTTON_LEFT:
                                       stw.dbuff.UpdateYAxis(&arg.Y)
                                       if arg.Pressed == 0 {
-                                          n := stw.PickNode(arg.X, arg.Y)
+                                          n := stw.PickNode(int(arg.X), int(arg.Y))
                                           if n != nil {
                                               flatten(n)
                                               stw.Redraw()
@@ -209,7 +209,7 @@ func smooth (stw *Window) {
                                               stw.ShowCenter()
                                           } else {
                                               stw.dbuff.UpdateYAxis(&arg.Y)
-                                              stw.startX = arg.X; stw.startY = arg.Y
+                                              stw.startX = int(arg.X); stw.startY = int(arg.Y)
                                           }
                                       }
                                   }

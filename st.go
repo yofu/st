@@ -8,8 +8,8 @@ import (
 
 const (
     version = "0.1.0"
-    modified = "LAST CHANGE:21-Aug-2014."
-    HOME = "C:/D/CDOCS/Hogan"
+    modified = "LAST CHANGE:03-Sep-2014."
+    HOME = "C:/D/CDOCS/Hogan_XE4/Debug"
 )
 
 func main() {

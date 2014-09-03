@@ -2729,8 +2729,8 @@ func (stw *Window) SelectNodeStart(arg *iup.MouseButton) {
     } else { // Pressed
         stw.cdcanv.Foreground(cd.CD_RED)
         stw.cdcanv.WriteMode(cd.CD_XOR)
-        stw.startX = arg.X; stw.startY = arg.Y
-        stw.endX = arg.X; stw.endY = arg.Y
+        stw.startX = int(arg.X); stw.startY = int(arg.Y)
+        stw.endX = int(arg.X); stw.endY = int(arg.Y)
         first = 1
     }
 }
@@ -2867,8 +2867,8 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
     } else { // Pressed
         stw.cdcanv.Foreground(cd.CD_WHITE)
         stw.cdcanv.WriteMode(cd.CD_XOR)
-        stw.startX = arg.X; stw.startY = arg.Y
-        stw.endX = arg.X; stw.endY = arg.Y
+        stw.startX = int(arg.X); stw.startY = int(arg.Y)
+        stw.endX = int(arg.X); stw.endY = int(arg.Y)
         first = 1
     }
 }
@@ -2931,8 +2931,8 @@ func (stw *Window) SelectElemFenceStart(arg *iup.MouseButton) {
     } else { // Pressed
         stw.cdcanv.Foreground(cd.CD_WHITE)
         stw.cdcanv.WriteMode(cd.CD_XOR)
-        stw.startX = arg.X; stw.startY = arg.Y
-        stw.endX = arg.X; stw.endY = arg.Y
+        stw.startX = int(arg.X); stw.startY = int(arg.Y)
+        stw.endX = int(arg.X); stw.endY = int(arg.Y)
         first = 1
     }
 }
@@ -2992,15 +2992,15 @@ func (stw *Window) MergeSelectElem (elems []*st.Elem, isshift bool) {
 }
 
 func (stw *Window) SelectNodeMotion(arg *iup.MouseMotion) {
-    if stw.startX <= arg.X {
+    if stw.startX <= int(arg.X) {
         selectDirection = SD_FROMLEFT
         if first == 1 {
             first = 0
         } else {
             stw.cdcanv.Rect(min(stw.endX, stw.startX), max(stw.endX, stw.startX), min(stw.startY, stw.endY), max(stw.startY, stw.endY))
         }
-        stw.cdcanv.Rect(arg.X, stw.startX, min(stw.startY, arg.Y), max(stw.startY, arg.Y))
-        stw.endX = arg.X; stw.endY = arg.Y
+        stw.cdcanv.Rect(int(arg.X), stw.startX, min(stw.startY, int(arg.Y)), max(stw.startY, int(arg.Y)))
+        stw.endX = int(arg.X); stw.endY = int(arg.Y)
     } else {
         stw.cdcanv.LineStyle(cd.CD_DASHED)
         selectDirection = SD_FROMRIGHT
@@ -3009,22 +3009,22 @@ func (stw *Window) SelectNodeMotion(arg *iup.MouseMotion) {
         } else {
             stw.cdcanv.Rect(min(stw.endX, stw.startX), max(stw.endX, stw.startX), min(stw.startY, stw.endY), max(stw.startY, stw.endY))
         }
-        stw.cdcanv.Rect(stw.startX, arg.X, min(stw.startY, arg.Y), max(stw.startY, arg.Y))
-        stw.endX = arg.X; stw.endY = arg.Y
+        stw.cdcanv.Rect(stw.startX, int(arg.X), min(stw.startY, int(arg.Y)), max(stw.startY, int(arg.Y)))
+        stw.endX = int(arg.X); stw.endY = int(arg.Y)
         stw.cdcanv.LineStyle(cd.CD_CONTINUOUS)
     }
 }
 
 func (stw *Window) SelectElemMotion(arg *iup.MouseMotion) {
     selectDirection = SD_FROMLEFT
-    if stw.startX <= arg.X {
+    if stw.startX <= int(arg.X) {
         if first == 1 {
             first = 0
         } else {
             stw.cdcanv.Rect(min(stw.endX, stw.startX), max(stw.endX, stw.startX), min(stw.startY, stw.endY), max(stw.startY, stw.endY))
         }
-        stw.cdcanv.Rect(arg.X, stw.startX, min(stw.startY, arg.Y), max(stw.startY, arg.Y))
-        stw.endX = arg.X; stw.endY = arg.Y
+        stw.cdcanv.Rect(int(arg.X), stw.startX, min(stw.startY, int(arg.Y)), max(stw.startY, int(arg.Y)))
+        stw.endX = int(arg.X); stw.endY = int(arg.Y)
     } else {
         selectDirection = SD_FROMRIGHT
         stw.cdcanv.LineStyle(cd.CD_DASHED)
@@ -3033,8 +3033,8 @@ func (stw *Window) SelectElemMotion(arg *iup.MouseMotion) {
         } else {
             stw.cdcanv.Rect(min(stw.endX, stw.startX), max(stw.endX, stw.startX), min(stw.startY, stw.endY), max(stw.startY, stw.endY))
         }
-        stw.cdcanv.Rect(stw.startX, arg.X, min(stw.startY, arg.Y), max(stw.startY, arg.Y))
-        stw.endX = arg.X; stw.endY = arg.Y
+        stw.cdcanv.Rect(stw.startX, int(arg.X), min(stw.startY, int(arg.Y)), max(stw.startY, int(arg.Y)))
+        stw.endX = int(arg.X); stw.endY = int(arg.Y)
         stw.cdcanv.LineStyle(cd.CD_CONTINUOUS)
     }
 }
@@ -3046,11 +3046,11 @@ func (stw *Window) SelectElemFenceMotion(arg *iup.MouseMotion) {
         stw.cdcanv.Line(stw.startX, stw.startY, stw.endX, stw.endY)
     }
     if isCtrl(arg.Status) {
-        stw.cdcanv.Line(stw.startX, stw.startY, arg.X, stw.startY)
-        stw.endX = arg.X; stw.endY = stw.startY
+        stw.cdcanv.Line(stw.startX, stw.startY, int(arg.X), stw.startY)
+        stw.endX = int(arg.X); stw.endY = stw.startY
     } else {
-        stw.cdcanv.Line(stw.startX, stw.startY, arg.X, arg.Y)
-        stw.endX = arg.X; stw.endY = arg.Y
+        stw.cdcanv.Line(stw.startX, stw.startY, int(arg.X), int(arg.Y))
+        stw.endX = int(arg.X); stw.endY = int(arg.Y)
     }
 }
 
@@ -3103,8 +3103,8 @@ func (stw *Window) TailLine(x, y int, arg *iup.MouseMotion) {
     } else {
         stw.cdcanv.Line(x, y, stw.endX, stw.endY)
     }
-    stw.cdcanv.Line(x, y, arg.X, arg.Y)
-    stw.endX = arg.X; stw.endY = arg.Y
+    stw.cdcanv.Line(x, y, int(arg.X), int(arg.Y))
+    stw.endX = int(arg.X); stw.endY = int(arg.Y)
 }
 
 func (stw *Window) TailPolygon(ns []*st.Node, arg *iup.MouseMotion) {
@@ -3135,7 +3135,7 @@ func (stw *Window) TailPolygon(ns []*st.Node, arg *iup.MouseMotion) {
     }
     coords[num] = []float64{float64(arg.X), float64(arg.Y)}
     stw.cdcanv.Polygon(cd.CD_FILL, coords[:num+1]...)
-    stw.endX = arg.X; stw.endY = arg.Y
+    stw.endX = int(arg.X); stw.endY = int(arg.Y)
 }
 
 func (stw *Window) Deselect() {
@@ -3307,7 +3307,7 @@ func (stw *Window) CB_MouseButton() {
                                               stw.ShowCenter()
                                           } else {
                                               stw.dbuff.UpdateYAxis(&arg.Y)
-                                              stw.startX = arg.X; stw.startY = arg.Y
+                                              stw.startX = int(arg.X); stw.startY = int(arg.Y)
                                           }
                                       }
                                   case BUTTON_RIGHT:
@@ -3351,11 +3351,11 @@ func (stw *Window) CB_MouseMotion() {
                                       }
                                   case STATUS_CENTER:
                                       if isShift(arg.Status) {
-                                          stw.Frame.View.Center[0] += float64(arg.X - stw.startX) * CanvasMoveSpeedX
-                                          stw.Frame.View.Center[1] += float64(arg.Y - stw.startY) * CanvasMoveSpeedY
+                                          stw.Frame.View.Center[0] += float64(int(arg.X) - stw.startX) * CanvasMoveSpeedX
+                                          stw.Frame.View.Center[1] += float64(int(arg.Y) - stw.startY) * CanvasMoveSpeedY
                                       } else {
-                                          stw.Frame.View.Angle[0] -= float64(arg.Y - stw.startY) * CanvasRotateSpeedY
-                                          stw.Frame.View.Angle[1] -= float64(arg.X - stw.startX) * CanvasRotateSpeedX
+                                          stw.Frame.View.Angle[0] -= float64(int(arg.Y) - stw.startY) * CanvasRotateSpeedY
+                                          stw.Frame.View.Angle[1] -= float64(int(arg.X) - stw.startX) * CanvasRotateSpeedX
                                       }
                                       stw.DrawFrameNode()
                                   }
