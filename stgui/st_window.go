@@ -2564,6 +2564,7 @@ func (stw *Window) FilterSelectedElem (str string) {
     parallel := regexp.MustCompile("(?i)^ *// *([xyz]{1})")
     ortho    := regexp.MustCompile("^ *TT *([xyzXYZ]{1})")
     sectnum  := regexp.MustCompile("^ *sect? *={1,2} *([0-9]+)")
+    etypestr := regexp.MustCompile("^ *ety?(yp)?(ype)? *={1,2} *([a-zA-Z]+)")
     var filterfunc func(el *st.Elem) bool
     var hstr string
     switch {
@@ -2603,6 +2604,35 @@ func (stw *Window) FilterSelectedElem (str string) {
                          return el.Sect.Num == snum
                      }
         hstr = fmt.Sprintf("Sect == %d", snum)
+    case etypestr.MatchString(str):
+        fs := etypestr.FindStringSubmatch(str)
+        l := len(fs)
+        if l >= 4 {
+            col := regexp.MustCompile("(?i)co(l(u(m(n){0,1}){0,1}){0,1}){0,1}$")
+            gir := regexp.MustCompile("(?i)gi(r(d(e(r){0,1}){0,1}){0,1}){0,1}$")
+            bra := regexp.MustCompile("(?i)br(a(c(e){0,1}){0,1}){0,1}$")
+            wal := regexp.MustCompile("(?i)wa(l){0,2}$")
+            sla := regexp.MustCompile("(?i)sl(a(b){0,1}){0,1}$")
+            var val int
+            switch {
+            case col.MatchString(fs[l-1]) :
+                val = st.COLUMN
+            case gir.MatchString(fs[l-1]) :
+                val = st.GIRDER
+            case bra.MatchString(fs[l-1]) :
+                val = st.BRACE
+            case wal.MatchString(fs[l-1]) :
+                val = st.WALL
+            case sla.MatchString(fs[l-1]) :
+                val = st.SLAB
+            }
+            filterfunc = func (el *st.Elem) bool {
+                             return el.Etype == val
+                         }
+            hstr = fmt.Sprintf("Etype == %s", st.ETYPES[val])
+        } else {
+            break
+        }
     }
     if filterfunc != nil {
         tmpels := make([]*st.Elem, l)
