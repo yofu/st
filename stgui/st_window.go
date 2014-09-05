@@ -2563,8 +2563,8 @@ func (stw *Window) FilterSelectedElem (str string) {
     if stw.SelectElem == nil || l == 0 { return }
     parallel := regexp.MustCompile("(?i)^ *// *([xyz]{1})")
     ortho    := regexp.MustCompile("^ *TT *([xyzXYZ]{1})")
-    sectnum  := regexp.MustCompile("^ *sect? *={1,2} *([0-9]+)")
-    etypestr := regexp.MustCompile("^ *ety?(yp)?(ype)? *={1,2} *([a-zA-Z]+)")
+    sectnum  := regexp.MustCompile("^ *sect? *==? *([0-9]+)")
+    etypestr := regexp.MustCompile("^ *et(y(p(e?)?)?) *==? *([a-zA-Z]+)")
     var filterfunc func(el *st.Elem) bool
     var hstr string
     switch {
@@ -2608,11 +2608,11 @@ func (stw *Window) FilterSelectedElem (str string) {
         fs := etypestr.FindStringSubmatch(str)
         l := len(fs)
         if l >= 4 {
-            col := regexp.MustCompile("(?i)co(l(u(m(n){0,1}){0,1}){0,1}){0,1}$")
-            gir := regexp.MustCompile("(?i)gi(r(d(e(r){0,1}){0,1}){0,1}){0,1}$")
-            bra := regexp.MustCompile("(?i)br(a(c(e){0,1}){0,1}){0,1}$")
+            col := regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
+            gir := regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
+            bra := regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
             wal := regexp.MustCompile("(?i)wa(l){0,2}$")
-            sla := regexp.MustCompile("(?i)sl(a(b){0,1}){0,1}$")
+            sla := regexp.MustCompile("(?i)sl(a(b)?)?$")
             var val int
             switch {
             case col.MatchString(fs[l-1]) :
@@ -3603,11 +3603,11 @@ func (stw *Window) PropertyDialog () {
     stw.LinkProperty(2, func () {
                             word := stw.Props[2].GetAttribute("VALUE")
                             var val int
-                            col := regexp.MustCompile("(?i)co(l(u(m(n){0,1}){0,1}){0,1}){0,1}$")
-                            gir := regexp.MustCompile("(?i)gi(r(d(e(r){0,1}){0,1}){0,1}){0,1}$")
-                            bra := regexp.MustCompile("(?i)br(a(c(e){0,1}){0,1}){0,1}$")
+                            col := regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
+                            gir := regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
+                            bra := regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
                             wal := regexp.MustCompile("(?i)wa(l){0,2}$")
-                            sla := regexp.MustCompile("(?i)sl(a(b){0,1}){0,1}$")
+                            sla := regexp.MustCompile("(?i)sl(a(b)?)?$")
                             switch {
                             case col.MatchString(word) :
                                 val = st.COLUMN
