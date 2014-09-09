@@ -2329,6 +2329,107 @@ func Arrow (cvs *cd.Canvas, x1, y1, x2, y2, size, theta float64) {
     cvs.FLine(x2, y2, x2 + ((x1-x2)*c + (y1-y2)*s), y2 + (-(x1-x2)*s + (y1-y2)*c))
 }
 
+// TODO: implement
+func (stw *Window) DrawConvexHull () {
+    if stw.Frame == nil { return }
+    var nnum int
+    nodes := make([]*st.Node, len(stw.Frame.Nodes))
+    for _, n := range stw.Frame.Nodes {
+        nodes[nnum] = n
+        nnum++
+    }
+    sort.Sort(st.NodeByPcoordY{nodes})
+    hstart := nodes[0]
+    hend := nodes[nnum-1]
+    fmt.Printf("START: %d, END: %d\n", hstart.Num, hend.Num)
+    cwnodes := make([]*st.Node,1)
+    cwnodes[0] = hstart
+    cworigin := []float64{ -1000.0, cwnodes[0].Pcoord[1]}
+    ccwnodes := make([]*st.Node,1)
+    ccwnodes[0] = hstart
+    ccworigin := []float64{ 1000.0, ccwnodes[0].Pcoord[1]}
+    stopcw := false; stopccw := false
+    ncw := 0; nccw := 0
+    for {
+        cwminangle :=  10000.0
+        ccwminangle := 10000.0
+        var tmpcw *st.Node
+        var tmpccw *st.Node
+        chloop:
+            for _, n := range nodes {
+                for _, cw := range cwnodes {
+                    if n == cw { continue chloop }
+                }
+                for _, ccw := range ccwnodes {
+                    if n == ccw { continue chloop }
+                }
+                var cwangle, ccwangle float64
+                var cw bool
+                if !stopcw {
+                    if ncw == 0 {
+                        cwangle, cw = st.ClockWise(cworigin, cwnodes[ncw].Pcoord, n.Pcoord)
+                    } else {
+                        cwangle, cw = st.ClockWise(cwnodes[ncw-1].Pcoord, cwnodes[ncw].Pcoord, n.Pcoord)
+                    }
+                    cwangle = math.Abs(cwangle)
+                    // if n.Num == 727 {
+                    //     fmt.Printf("CWANGLE = %.3f\n", cwangle)
+                    // }
+                    if cw && cwangle < cwminangle { tmpcw = n; cwminangle = cwangle }
+                }
+                if !stopccw {
+                    if nccw == 0 {
+                        ccwangle, cw = st.ClockWise(ccworigin, ccwnodes[nccw].Pcoord, n.Pcoord)
+                    } else {
+                        ccwangle, cw = st.ClockWise(ccwnodes[nccw-1].Pcoord, ccwnodes[nccw].Pcoord, n.Pcoord)
+                    }
+                    ccwangle = math.Abs(ccwangle)
+                    // if n.Num == 727 {
+                    //     fmt.Printf("CCWANGLE = %.3f\n", ccwangle)
+                    // }
+                    if !cw && ccwangle < ccwminangle { tmpccw = n; ccwminangle = ccwangle }
+                }
+            }
+        fmt.Printf("CW: %d, CCW: %d\n", tmpcw.Num, tmpccw.Num)
+        if !stopcw && tmpcw != nil {
+            fmt.Printf("CW: %d, ", tmpcw.Num)
+            ncw++
+            cwnodes = append(cwnodes, tmpcw)
+            if tmpcw == hend { stopcw = true }
+        } else {
+            fmt.Println("CW: -, ")
+        }
+        if !stopccw && tmpccw != nil {
+            fmt.Printf("CCW: %d, ", tmpccw.Num)
+            nccw++
+            ccwnodes = append(ccwnodes, tmpccw)
+            if tmpccw == hend { stopccw = true }
+        } else {
+            fmt.Println("CCW: -")
+        }
+        fmt.Println(stopcw, stopccw)
+        if stopcw && stopccw { break }
+    }
+    chnodes := make([]*st.Node, ncw+nccw-2)
+    fmt.Println(ncw,len(cwnodes))
+    fmt.Println(nccw,len(ccwnodes))
+    fmt.Println(len(chnodes))
+    for i:=0; i<ncw; i++ {
+        chnodes[i] = cwnodes[i]
+    }
+    for i:=nccw-2; i>0; i-- {
+        chnodes[i+ncw] = ccwnodes[i]
+    }
+    stw.dbuff.Begin(cd.CD_FILL)
+    stw.dbuff.Foreground(PlateEdgeColor)
+    stw.dbuff.Begin(cd.CD_CLOSED_LINES)
+    for i:=0; i<ncw+nccw-2; i++ {
+        stw.dbuff.FVertex(chnodes[i].Pcoord[0], chnodes[i].Pcoord[1])
+    }
+    stw.dbuff.End()
+}
+
+
 func (stw *Window) SetSelectData() {
     if stw.Frame != nil {
         stw.lselect.SetAttribute("VALUE", fmt.Sprintf("ELEM = %5d\nNODE = %5d", len(stw.SelectElem), len(stw.SelectNode)))

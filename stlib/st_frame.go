@@ -2464,13 +2464,14 @@ func (frame *Frame) CatByNode (n *Node, parallel bool) error {
     return nil
 }
 
+const EPS = 1e-3
 func (frame *Frame) Intersect (e1, e2 *Elem, cross bool, sign1, sign2 int, del1, del2 bool) ([]*Node, []*Elem, error) {
     if !e1.IsLineElem() || !e2.IsLineElem() { return nil, nil, NotLineElem("Intersect") }
     k1, k2, d, err := DistLineLine(e1.Enod[0].Coord, e1.Direction(false), e2.Enod[0].Coord, e2.Direction(false))
     if err != nil {
         return nil, nil, err
     }
-    if d > 1e-4 {
+    if d > EPS {
         return nil, nil, errors.New(fmt.Sprintf("Intersect: Distance= %.3f", d))
     }
     if !cross || (( 0.0 < k1 && k1 < 1.0) && (0.0 < k2 && k2 < 1.0)) {
@@ -2528,7 +2529,7 @@ func (frame *Frame) CutByElem (cutter, cuttee *Elem, cross bool, sign int, del b
     if err != nil {
         return nil, nil, err
     }
-    if d > 1e-4 {
+    if d > EPS {
         return nil, nil, errors.New(fmt.Sprintf("CutByElem: Distance= %.3f", d))
     }
     if !cross || (( 0.0 < k1 && k1 < 1.0) && (0.0 < k2 && k2 < 1.0)) {

@@ -51,6 +51,7 @@ var (
     HATCHPLATEELEM      = &Command{"HATCHING", "HATCH PLATE ELEM", "add plate elem by hatching", hatchplateelem}
     ADDPLATEALL         = &Command{"PLATE(all)", "ADD PLATE ALL", "add all plate elem using selected nodes", addplateall}
     EDITPLATEELEM       = &Command{"EDPL", "EDIT PLATE ELEM", "edit plate elem", editplateelem}
+    CONVEXHULL          = &Command{"CVXH", "CONVEX HULL", "draw convex hull", convexhull}
     MATCHPROP           = &Command{"COPY PROPERTY", "MATCH PROPERTY", "match property", matchproperty}
     AXISTOCANG          = &Command{"CANG", "AXISTOCANG", "set cang by axis", axistocang}
     COPYELEM            = &Command{"COPY", "COPY ELEM", "copy selected elems", copyelem}
@@ -129,6 +130,7 @@ func init() {
     Commands["HATCHPLATEELEM"]=HATCHPLATEELEM
     Commands["ADDPLATEALL"]=ADDPLATEALL
     Commands["EDITPLATEELEM"]=EDITPLATEELEM
+    Commands["CONVEXHULL"]=CONVEXHULL
     Commands["MATCHPROP"]=MATCHPROP
     Commands["AXISTOCANG"]=AXISTOCANG
     Commands["COPYELEM"]=COPYELEM
@@ -770,8 +772,8 @@ func addplateelembyline (stw *Window) {
                               ns := make([]*st.Node, 4)
                               ns[0] = els[0].Enod[0]
                               ns[1] = els[0].Enod[1]
-                              _, cw1 := ClockWise(ns[0].Pcoord, ns[1].Pcoord, els[1].Enod[0].Pcoord)
-                              _, cw2 := ClockWise(ns[0].Pcoord, els[1].Enod[0].Pcoord, els[1].Enod[1].Pcoord)
+                              _, cw1 := st.ClockWise(ns[0].Pcoord, ns[1].Pcoord, els[1].Enod[0].Pcoord)
+                              _, cw2 := st.ClockWise(ns[0].Pcoord, els[1].Enod[0].Pcoord, els[1].Enod[1].Pcoord)
                               if cw1 == cw2 {
                                   ns[2] = els[1].Enod[0]; ns[3] = els[1].Enod[1]
                               } else {
@@ -2456,7 +2458,9 @@ func intersectall (stw *Window) {
             if err != nil {
                 continue
             }
-            checked = append(checked, els[1])
+            if len(els) >= 2 {
+                checked = append(checked, els[1])
+            }
         }
         _, els, err := el.DivideAtOns(1e-4)
         if err != nil {
@@ -2498,32 +2502,13 @@ func (stw *Window) BoundedArea (arg *iup.MouseButton, f func(ns []*st.Node, els 
     }
 }
 
-func ClockWise (p1, p2, p3 []float64) (float64, bool) {
-    v1 := []float64{p2[0]-p1[0], p2[1]-p1[1]}
-    v2 := []float64{p3[0]-p1[0], p3[1]-p1[1]}
-    var sum1, sum2 float64
-    for i:=0; i<2; i++ {
-        sum1 += v1[i]*v1[i]; sum2 += v2[i]*v2[i]
-    }
-    if sum1 == 0 || sum2 == 0 { return 0.0, false }
-    sum1 = math.Sqrt(sum1); sum2 = math.Sqrt(sum2)
-    for i:=0; i<2; i++ {
-        v1[i] /= sum1; v2[i] /= sum2
-    }
-    if val := v2[0]*v1[1]-v2[1]*v1[0]; val > 0 {
-        return math.Atan2(val, v1[0]*v2[0]+v1[1]*v2[1]), true
-    } else {
-        return math.Atan2(val, v1[0]*v2[0]+v1[1]*v2[1]), false
-    }
-}
-
 func (stw *Window) Chain (x, y float64, el *st.Elem, maxdepth int) ([]*st.Node, []*st.Elem, error) {
     rtnns := make([]*st.Node, 2)
     rtnels := make([]*st.Elem, 1)
     rtnns[0] = el.Enod[0]; rtnns[1] = el.Enod[1]
     rtnels[0] = el
     origin := []float64{x, y}
-    _, cw := ClockWise(origin, el.Enod[0].Pcoord, el.Enod[1].Pcoord)
+    _, cw := st.ClockWise(origin, el.Enod[0].Pcoord, el.Enod[1].Pcoord)
     tmpel := el
     next := el.Enod[1]
     depth := 1
@@ -2537,7 +2522,7 @@ func (stw *Window) Chain (x, y float64, el *st.Elem, maxdepth int) ([]*st.Node, 
             for _, en := range cand.Enod {
                 if en != next { otherside = en; break }
             }
-            angle, tmpcw := ClockWise(next.Pcoord, origin, otherside.Pcoord)
+            angle, tmpcw := st.ClockWise(next.Pcoord, origin, otherside.Pcoord)
             angle = math.Abs(angle)
             if cw != tmpcw && angle < minangle {
                 addelem = cand
@@ -2745,6 +2730,13 @@ func editplateelem (stw *Window) {
     get2nodes(stw, replaceenod, prune)
 }
 // }}}
+
+
+// CONVEXHULL
+func convexhull (stw *Window) {
+    stw.DrawConvexHull()
+    stw.EscapeAll()
+}
 
 
 // REACTION// {{{

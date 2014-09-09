@@ -64,6 +64,14 @@ func (n NodeByYCoord) Less(i, j int) bool {
 func (n NodeByZCoord) Less(i, j int) bool {
     return n.Nodes[i].Coord[2] < n.Nodes[j].Coord[2]
 }
+type NodeByPcoordX struct { Nodes }
+type NodeByPcoordY struct { Nodes }
+func (n NodeByPcoordX) Less(i, j int) bool {
+    return n.Nodes[i].Pcoord[0] < n.Nodes[j].Pcoord[0]
+}
+func (n NodeByPcoordY) Less(i, j int) bool {
+    return n.Nodes[i].Pcoord[1] < n.Nodes[j].Pcoord[1]
+}
 // }}}
 
 // New
