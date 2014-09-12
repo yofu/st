@@ -1440,9 +1440,14 @@ func weightcopy(stw *Window) {
     wgt := filepath.Join(stw.Home, "hogtxt.wgt")
     fn := st.Ce(stw.Frame.Path, ".wgt")
     if (!st.FileExists(fn) || stw.Yn("Copy Wgt", "上書きしますか")) {
-        st.CopyFile(wgt, fn)
+        err := st.CopyFile(wgt, fn)
+        if err != nil {
+            stw.addHistory(err.Error())
+            stw.EscapeAll()
+            return
+        }
         stw.addHistory(fmt.Sprintf("COPY: %s", fn))
-        err := stw.Frame.ReadWgt(fn)
+        err = stw.Frame.ReadWgt(fn)
         if err != nil {
             stw.addHistory(err.Error())
         }
