@@ -75,6 +75,7 @@ type Frame struct {
     Props map[int]*Prop
     Sects map[int]*Sect
     Allows map[int]SectionRate
+    Piles map[int]*Pile
 
     Eigenvalue map[int]float64
 
@@ -103,6 +104,7 @@ func NewFrame() *Frame {
     f.Sects = make(map[int]*Sect)
     f.Allows = make(map[int]SectionRate)
     f.Props = make(map[int]*Prop)
+    f.Piles = make(map[int]*Pile)
     f.Eigenvalue = make(map[int]float64)
     f.Kijuns = make(map[string]*Kijun)
     f.View  = NewView()
@@ -247,7 +249,7 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64) err
                                    switch first {
                                    default:
                                        tmp=append(tmp,words...)
-                                   case "PROP", "SECT", "NODE", "ELEM":
+                                   case "PROP", "SECT", "PILE", "NODE", "ELEM":
                                        nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap)
                                        tmp = words
                                    case "BASE":
@@ -356,6 +358,8 @@ func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodem
         err = frame.ParseSect(lis)
     case "PROP":
         err = frame.ParseProp(lis)
+    case "PILE":
+        err = frame.ParsePile(lis)
     }
     return nodemap, err
 }
@@ -391,6 +395,28 @@ func (frame *Frame) ParseProp(lis []string) error {
         }
     }
     frame.Props[p.Num] = p
+    return nil
+}
+
+func (frame *Frame) ParsePile(lis []string) error {
+    var num int64
+    var err error
+    p := new(Pile)
+    for i, word := range(lis) {
+        switch word {
+        case "PILE":
+            num, err = strconv.ParseInt(lis[i+1],10,64)
+            p.Num = int(num)
+        case "INAME":
+            p.Name = lis[i+1]
+        case "MOMENT":
+            p.Moment, err = strconv.ParseFloat(lis[i+1],64)
+        }
+        if err != nil {
+            return err
+        }
+    }
+    frame.Piles[p.Num] = p
     return nil
 }
 
@@ -576,6 +602,20 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (int
             }
             for j:=0; j<6; j++ {
                 n.Load[j], err = strconv.ParseFloat(lis[i+1+j],64)
+            }
+        case "PCON":
+            if llis<i+2 {
+                return 0, 0, errors.New(fmt.Sprintf("ParseNode: PCON IndexError NODE %d", n.Num))
+            }
+            var pnum int64
+            pnum, err = strconv.ParseInt(lis[i+1], 10, 64)
+            if err != nil {
+                return 0, 0, err
+            }
+            if p, ok := frame.Piles[int(pnum)]; ok {
+                n.Pile = p
+            } else {
+                return 0, 0, errors.New(fmt.Sprintf("ParseNode: Pile %d doesn't exist NODE %d", pnum, n.Num))
             }
         }
         if err != nil {
@@ -1672,7 +1712,7 @@ func (frame *Frame) ParseKjn (lis []string) error {
 // WriteInp// {{{
 func (frame *Frame) WriteInp(fn string) error {
     var nums, otp bytes.Buffer
-    var pnum, snum, nnum, enum int
+    var pnum, snum, inum, nnum, enum int
     fmt.Printf("Save: %s\n",fn)
     // Frame
     otp.WriteString(fmt.Sprintf("BASE    %5.3f\n", frame.Ai.Base))
@@ -1716,6 +1756,19 @@ func (frame *Frame) WriteInp(fn string) error {
         otp.WriteString(sec.InpString())
     }
     otp.WriteString("\n")
+    // Pile
+    if len(frame.Piles)>=1 {
+        piles := make([]*Pile, len(frame.Piles))
+        for _, i := range frame.Piles {
+            piles[inum] = i
+            inum++
+        }
+        sort.Sort(PileByNum{piles})
+        for _, i := range(piles) {
+            otp.WriteString(i.InpString())
+        }
+        otp.WriteString("\n")
+    }
     // Node
     nodes := make([]*Node, len(frame.Nodes))
     for _, n := range frame.Nodes {
@@ -1743,7 +1796,9 @@ func (frame *Frame) WriteInp(fn string) error {
     nums.WriteString(fmt.Sprintf("NNODE %d\n", nnum))
     nums.WriteString(fmt.Sprintf("NELEM %d\n", enum))
     nums.WriteString(fmt.Sprintf("NPROP %d\n", pnum))
-    nums.WriteString(fmt.Sprintf("NSECT %d\n\n", snum))
+    nums.WriteString(fmt.Sprintf("NSECT %d\n", snum))
+    if inum >= 1 { nums.WriteString(fmt.Sprintf("NPILE %d\n", inum)) }
+    nums.WriteString("\n")
     // Write
     w, err := os.Create(fn)
     defer w.Close()

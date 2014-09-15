@@ -33,6 +33,8 @@ type Node struct {
     Disp map[string][]float64
     Reaction map[string][]float64
 
+    Pile *Pile
+
     Pcoord []float64
     Dcoord []float64
 
@@ -88,29 +90,45 @@ func NewNode() *Node {
 }
 
 func (node *Node) InpString () string {
-    var ic, vc []string
+    var rtn bytes.Buffer
+    rtn.WriteString(fmt.Sprintf("NODE %4d  CORD %7.3f %7.3f %7.3f  ICON ", node.Num, node.Coord[0], node.Coord[1], node.Coord[2]))
     for i:=0; i<6; i++ {
         if node.Conf[i] {
-            ic = append(ic, "1")
+            rtn.WriteString("1 ")
         } else {
-            ic = append(ic, "0")
+            rtn.WriteString("0 ")
         }
-        vc = append(vc, fmt.Sprintf("%12.8f", node.Load[i]))
     }
-    return fmt.Sprintf("NODE %4d  CORD %7.3f %7.3f %7.3f  ICON %s  VCON   %s\n", node.Num, node.Coord[0], node.Coord[1], node.Coord[2], strings.Join(ic, " "), strings.Join(vc, " "))
+    rtn.WriteString(" VCON  ")
+    for i:=0; i<6; i++ {
+        rtn.WriteString(fmt.Sprintf(" %12.8f", node.Load[i]))
+    }
+    if node.Pile != nil {
+        rtn.WriteString(fmt.Sprintf("  PCON %d", node.Pile.Num))
+    }
+    rtn.WriteString("\n")
+    return rtn.String()
 }
 
 func (node *Node) CopyString (x, y, z float64) string {
-    var ic, vc []string
+    var rtn bytes.Buffer
+    rtn.WriteString(fmt.Sprintf("NODE %4d  CORD %7.3f %7.3f %7.3f  ICON ", node.Num, node.Coord[0]-x, node.Coord[1]-y, node.Coord[2]-z))
     for i:=0; i<6; i++ {
         if node.Conf[i] {
-            ic = append(ic, "1")
+            rtn.WriteString("1 ")
         } else {
-            ic = append(ic, "0")
+            rtn.WriteString("0 ")
         }
-        vc = append(vc, fmt.Sprintf("%12.8f", node.Load[i]))
     }
-    return fmt.Sprintf("NODE %4d  CORD %7.3f %7.3f %7.3f  ICON %s  VCON   %s\n", node.Num, node.Coord[0]-x, node.Coord[1]-y, node.Coord[2]-z, strings.Join(ic, " "), strings.Join(vc, " "))
+    rtn.WriteString(" VCON  ")
+    for i:=0; i<6; i++ {
+        rtn.WriteString(fmt.Sprintf(" %12.8f", node.Load[i]))
+    }
+    if node.Pile != nil {
+        rtn.WriteString(fmt.Sprintf("  PCON %d", node.Pile.Num))
+    }
+    rtn.WriteString("\n")
+    return rtn.String()
 }
 
 func (node *Node) WgtString () string {
