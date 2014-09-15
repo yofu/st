@@ -64,6 +64,9 @@ var (
     canvasFontSize = 9
     canvasFontColor = cd.CD_DARK_GRAY
     DefaultTextAlignment = cd.CD_BASE_LEFT
+    printFontColor = cd.CD_BLACK
+    printFontFace = "IPA明朝"
+    printFontSize = 8
 )
 const (
     FONT_COMMAND = iota
@@ -380,12 +383,6 @@ func NewWindow(homedir string) *Window {// {{{
                         stw.Print()
                     },
                 ),
-                // iup.Item(
-                //     iup.Attr("TITLE","Print PDF"),
-                //     func (arg *iup.ItemAction) {
-                //         stw.PrintPDF()
-                //     },
-                // ),
                 iup.Separator(),
                 iup.Item(
                     iup.Attr("TITLE","Quit"),
@@ -1581,10 +1578,18 @@ func (stw *Window) AddPropAndSect (filename string) error {
 
 // Print
 func (stw *Window) Print() {
-    pcanv := cd.CreatePrinter(cd.CD_PRINTER, "test -d")
+    if stw.Frame == nil {
+        return
+    }
+    pcanv := cd.CreatePrinter(cd.CD_PRINTER, fmt.Sprintf("%s -d", stw.Frame.Name))
     if pcanv == nil {
         return
     }
+    pcanv.Background(cd.CD_WHITE)
+    pcanv.Foreground(cd.CD_BLACK)
+    pcanv.LineStyle(cd.CD_CONTINUOUS)
+    pcanv.LineWidth(1)
+    pcanv.Font(printFontFace, cd.CD_PLAIN, printFontSize)
     v := stw.Frame.View.Copy()
     pw, ph := pcanv.GetSize()
     factor := math.Min(float64(pw)/stw.CanvasSize[0],  float64(ph)/stw.CanvasSize[1])
@@ -1593,7 +1598,13 @@ func (stw *Window) Print() {
     stw.Frame.View.Center[1] = 0.5*float64(ph)
     stw.Frame.Show.ConfSize *= factor
     stw.Frame.Show.BondSize *= factor
-    stw.DrawFrame(pcanv, st.ECOLOR_BLACK)
+    switch stw.Frame.Show.ColorMode {
+    default:
+        stw.DrawFrame(pcanv, stw.Frame.Show.ColorMode, true)
+    case st.ECOLOR_WHITE:
+        stw.DrawFrame(pcanv, st.ECOLOR_BLACK, true)
+    }
+    stw.DrawFrame(pcanv, st.ECOLOR_BLACK, false)
     pcanv.Kill()
     stw.Frame.View.Gfact /= factor
     stw.Frame.View.Center[0] = 0.5*stw.CanvasSize[0]
@@ -1603,16 +1614,6 @@ func (stw *Window) Print() {
     stw.Frame.View = v
     stw.Redraw()
 }
-
-// func (stw *Window) PrintPDF() {
-//     pcanv := cd.CreatePrinter(cd.CD_PDF, "test.pdf")
-//     if pcanv == nil {
-//         return
-//     }
-//     stw.DrawFrame(pcanv, ECOLOR_BLACK)
-//     pcanv.Kill()
-// }
-
 
 func (stw *Window) Edit(fn string) {
     cmd := exec.Command("cmd", "/C", "start", fn)
@@ -2158,7 +2159,7 @@ func axisrange(stw *Window, axis int, min, max float64, any bool) {
 
 
 // Draw// {{{
-func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
+func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
     if stw.Frame != nil {
         // stw.UpdateShowRange() // TODO: ShowRange
         canv.Hatch(cd.CD_FDIAGONAL)
@@ -2255,13 +2256,15 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint) {
             }
             DrawElem(el, canv, stw.Frame.Show)
         }
-        canv.Flush()
+        if flush {
+            canv.Flush()
+        }
         stw.SetViewData()
     }
 }
 
 func (stw *Window) Redraw() {
-    stw.DrawFrame(stw.dbuff,stw.Frame.Show.ColorMode)
+    stw.DrawFrame(stw.dbuff,stw.Frame.Show.ColorMode, true)
     if stw.Property {
         stw.UpdatePropertyDialog()
     }
@@ -3856,12 +3859,6 @@ func (stw *Window) CMenu () {
                                        stw.Print()
                                    },
                                ),
-                               // iup.Item(
-                               //     iup.Attr("TITLE","Print PDF"),
-                               //     func (arg *iup.ItemAction) {
-                               //         stw.PrintPDF()
-                               //     },
-                               // ),
                                iup.Separator(),
                                iup.Item(
                                    iup.Attr("TITLE","Quit"),
