@@ -1577,19 +1577,20 @@ func (stw *Window) AddPropAndSect (filename string) error {
 
 
 // Print
-func (stw *Window) Print() {
-    if stw.Frame == nil {
-        return
-    }
-    pcanv := cd.CreatePrinter(cd.CD_PRINTER, fmt.Sprintf("%s -d", stw.Frame.Name))
+func SetPrinter (name string) (*cd.Canvas, error) {
+    pcanv := cd.CreatePrinter(cd.CD_PRINTER, fmt.Sprintf("%s -d", name))
     if pcanv == nil {
-        return
+        return nil, errors.New("SetPrinter: cannot create canvas")
     }
     pcanv.Background(cd.CD_WHITE)
     pcanv.Foreground(cd.CD_BLACK)
     pcanv.LineStyle(cd.CD_CONTINUOUS)
     pcanv.LineWidth(1)
     pcanv.Font(printFontFace, cd.CD_PLAIN, printFontSize)
+    return pcanv, nil
+}
+
+func (stw *Window) FittoPrinter (pcanv *cd.Canvas) (*st.View, float64) {
     v := stw.Frame.View.Copy()
     pw, ph := pcanv.GetSize()
     factor := math.Min(float64(pw)/stw.CanvasSize[0],  float64(ph)/stw.CanvasSize[1])
@@ -1598,22 +1599,78 @@ func (stw *Window) Print() {
     stw.Frame.View.Center[1] = 0.5*float64(ph)
     stw.Frame.Show.ConfSize *= factor
     stw.Frame.Show.BondSize *= factor
+    return v, factor
+}
+
+func (stw *Window) Print() {
+    if stw.Frame == nil { return }
+    pcanv, err := SetPrinter(stw.Frame.Name)
+    if err != nil {
+        stw.addHistory(err.Error())
+        return
+    }
+    v, factor := stw.FittoPrinter(pcanv)
     switch stw.Frame.Show.ColorMode {
     default:
         stw.DrawFrame(pcanv, stw.Frame.Show.ColorMode, true)
     case st.ECOLOR_WHITE:
         stw.DrawFrame(pcanv, st.ECOLOR_BLACK, true)
     }
-    stw.DrawFrame(pcanv, st.ECOLOR_BLACK, false)
     pcanv.Kill()
-    stw.Frame.View.Gfact /= factor
-    stw.Frame.View.Center[0] = 0.5*stw.CanvasSize[0]
-    stw.Frame.View.Center[1] = 0.5*stw.CanvasSize[1]
     stw.Frame.Show.ConfSize /= factor
     stw.Frame.Show.BondSize /= factor
     stw.Frame.View = v
     stw.Redraw()
 }
+
+func (stw *Window) PrintFig2 (filename string) error {
+    if stw.Frame == nil { return errors.New("PrintFig2: no frame opened") }
+    pcanv, err := SetPrinter(stw.Frame.Name)
+    if err != nil { return err }
+    v, factor := stw.FittoPrinter(pcanv)
+    tmp := make([][]string, 0)
+    err = st.ParseFile(filename, func (words []string) error {
+                                     var err error
+                                     first := strings.ToUpper(words[0])
+                                     if strings.HasPrefix(first, "#") { return nil }
+                                     switch first {
+                                     default:
+                                         tmp=append(tmp,words)
+                                     case "PAGE", "FIGURE":
+                                         err = stw.ParseFig2(pcanv, tmp)
+                                         tmp=[][]string{words}
+                                     }
+                                     if err != nil { return err }
+                                     return nil
+                                 })
+    if err != nil { return err }
+    err = stw.ParseFig2(pcanv, tmp)
+    if err != nil { return err }
+    pcanv.Kill()
+    stw.Frame.Show.ConfSize /= factor
+    stw.Frame.Show.BondSize /= factor
+    stw.Frame.View = v
+    stw.Redraw()
+    return nil
+}
+
+func (stw *Window) ParseFig2 (pcanv *cd.Canvas, lis [][]string) error {
+    var err error
+    if len(lis)==0 || len(lis[0])<=2 {
+        return nil
+    }
+    first := strings.ToUpper(lis[0][0])
+    switch first {
+    case "PAGE":
+        err = stw.ParseFig2Page(pcanv, lis)
+    }
+    return err
+}
+
+func (stw *Window) ParseFig2Page (pcanv *cd.Canvas, lis [][]string) error {
+    return nil
+}
+
 
 func (stw *Window) Edit(fn string) {
     cmd := exec.Command("cmd", "/C", "start", fn)
