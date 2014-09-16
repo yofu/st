@@ -27,6 +27,7 @@ import (
 // General
 var (
     aliases  map[string]*Command
+    sectionaliases  map[int]string
     Inps []string
     SearchingInps bool
     SearchingInpsDone chan bool
@@ -1671,6 +1672,144 @@ func (stw *Window) ParseFig2Page (pcanv *cd.Canvas, lis [][]string) error {
     return nil
 }
 
+func (stw *Window) fig2keyword (lis []string, un bool) error {
+    if len(lis) < 1 { return st.NotEnoughArgs("Fig2Keyword") }
+    switch strings.ToUpper(lis[0]) {
+    case "GFACT":
+        val, err := strconv.ParseFloat(lis[1], 64)
+        if err != nil { return err }
+        stw.Frame.View.Gfact = val
+    case "FOCUS":
+        if len(lis) < 2 { return st.NotEnoughArgs("FOCUS") }
+        if strings.ToUpper(lis[1]) == "CENTER" || strings.ToUpper(lis[1]) == "CENTER" {
+            stw.Frame.SetFocus()
+            break
+        }
+        if len(lis) < 4 { return st.NotEnoughArgs("FOCUS") }
+        for i:=0; i<3; i++ {
+            val, err := strconv.ParseFloat(lis[1+i], 64)
+            if err != nil { return err }
+            stw.Frame.View.Focus[i] = val
+        }
+    case "ANGLE":
+        if len(lis) < 3 { return st.NotEnoughArgs("ANGLE") }
+        for i:=0; i<2; i++ {
+            val, err := strconv.ParseFloat(lis[1+i], 64)
+            if err != nil { return err }
+            stw.Frame.View.Angle[i] = val
+        }
+    case "DISTS":
+        if len(lis) < 3 { return st.NotEnoughArgs("DISTS") }
+        for i:=0; i<2; i++ {
+            val, err := strconv.ParseFloat(lis[1+i], 64)
+            if err != nil { return err }
+            stw.Frame.View.Dists[i] = val
+        }
+    case "PERSPECTIVE":
+        stw.Frame.View.Perspective = true
+    case "AXONOMETRIC":
+        stw.Frame.View.Perspective = false
+    case "DFACT":
+        if len(lis) < 2 { return st.NotEnoughArgs("DFACT") }
+        val, err := strconv.ParseFloat(lis[1], 64)
+        if err != nil { return err }
+        stw.Frame.Show.Dfact = val
+    case "MFACT":
+        if len(lis) < 2 { return st.NotEnoughArgs("MFACT") }
+        val, err := strconv.ParseFloat(lis[1], 64)
+        if err != nil { return err }
+        stw.Frame.Show.Mfact = val
+    case "GAXIS":
+        if un {
+            stw.Frame.Show.GlobalAxis = false
+            stw.Labels["GAXIS"].SetAttribute("FGCOLOR", labelOFFColor)
+        } else {
+            stw.Frame.Show.GlobalAxis = true
+            stw.Labels["GAXIS"].SetAttribute("FGCOLOR", labelFGColor)
+            if len(lis) >= 2 {
+                val, err := strconv.ParseFloat(lis[1], 64)
+                if err != nil { return err }
+                stw.Frame.Show.GlobalAxisSize = val
+            }
+        }
+    case "EAXIS":
+        if un {
+            stw.Frame.Show.ElementAxis = false
+            stw.Labels["EAXIS"].SetAttribute("FGCOLOR", labelOFFColor)
+        } else {
+            stw.Frame.Show.ElementAxis = true
+            stw.Labels["EAXIS"].SetAttribute("FGCOLOR", labelFGColor)
+            if len(lis) >= 2 {
+                val, err := strconv.ParseFloat(lis[1], 64)
+                if err != nil { return err }
+                stw.Frame.Show.ElementAxisSize = val
+            }
+        }
+    case "NOAXIS":
+        stw.Frame.Show.GlobalAxis = false
+        stw.Labels["GAXIS"].SetAttribute("FGCOLOR", labelOFFColor)
+        stw.Frame.Show.ElementAxis = false
+        stw.Labels["EAXIS"].SetAttribute("FGCOLOR", labelOFFColor)
+    case "ELEM":
+        for i, _ := range st.ETYPES {
+            stw.HideEtype(i)
+        }
+        for _, val := range lis[1:] {
+            et := strings.ToUpper(val)
+            for i, e := range st.ETYPES {
+                if et == e { stw.ShowEtype(i) }
+            }
+        }
+    case "KIJUN":
+        if un {
+            stw.Frame.Show.Kijun = false
+            stw.Labels["KIJUN"].SetAttribute("FGCOLOR", labelOFFColor)
+        } else {
+            stw.Frame.Show.Kijun = true
+            stw.Labels["KIJUN"].SetAttribute("FGCOLOR", labelFGColor)
+        }
+    case "ALIAS":
+        if un {
+            if len(lis) < 2 {
+                sectionaliases = make(map[int]string, 0)
+            } else {
+                for _, j := range lis {
+                    val, err := strconv.ParseInt(j, 10, 64)
+                    if err != nil { continue }
+                    if _, ok := stw.Frame.Sects[int(val)]; ok {
+                        delete(sectionaliases, int(val))
+                    }
+                }
+            }
+        } else {
+            if len(lis) < 2 { return st.NotEnoughArgs("ALIAS") }
+            val, err := strconv.ParseInt(lis[1], 10, 64)
+            if err != nil { return err }
+            if _, ok := stw.Frame.Sects[int(val)]; ok {
+                if len(lis) < 3 {
+                    sectionaliases[int(val)] = ""
+                } else {
+                    sectionaliases[int(val)] = lis[2]
+                }
+            }
+        }
+    case "CONF":
+        if un {
+            stw.Frame.Show.Conf = false
+            stw.Labels["CONF"].SetAttribute("FGCOLOR", labelOFFColor)
+        } else {
+            stw.Frame.Show.Conf = true
+            stw.Labels["CONF"].SetAttribute("FGCOLOR", labelFGColor)
+            if len(lis) >= 2 {
+                val, err := strconv.ParseFloat(lis[1], 64)
+                if err != nil { return err }
+                stw.Frame.Show.ConfSize = val
+                stw.Labels["CONFSIZE"].SetAttribute("VALUE", fmt.Sprintf("%.1f", val))
+            }
+        }
+    }
+    return nil
+}
 
 func (stw *Window) Edit(fn string) {
     cmd := exec.Command("cmd", "/C", "start", fn)
@@ -1832,6 +1971,28 @@ func (stw *Window) execAliasCommand(al string) {
             stw.addHistory(fmt.Sprintf("command doesn't exist: %s", al))
         case strings.HasPrefix(al, ":"):
             stw.exmode(al)
+        case strings.HasPrefix(al, "'"):
+            if len(al) == 1 { break }
+            al = al[1:]
+            var un bool
+            if strings.HasPrefix(al, "!") {
+                un = true
+                al = al[1:]
+            } else {
+                un = false
+            }
+            tmpargs := strings.Split(al, " ")
+            args := make([]string, len(tmpargs))
+            narg := 0
+            for i:=0; i<len(tmpargs); i++ {
+                if tmpargs[i] != "" {
+                    args[narg] = tmpargs[i]
+                    narg++
+                }
+            }
+            args = args[:narg]
+            stw.fig2keyword(args, un)
+            stw.Redraw()
         case axrn_minmax.MatchString(alu):
             var axis int
             fs := axrn_minmax.FindStringSubmatch(alu)
@@ -4643,18 +4804,16 @@ func datatext (defval string) *iup.Handle {
 }
 
 func (stw *Window) HideEtype (etype int) {
+    if etype == 0 { return }
     stw.Frame.Show.Etype[etype] = false
     stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelOFFColor)
-    stw.Redraw()
-    iup.SetFocus(stw.canv)
 }
 
 func (stw *Window) ShowEtype (etype int) {
+    if etype == 0 { return }
     stw.Frame.Show.Etype[etype] = true
     stw.UpdateShowRange() // TODO: ShowRange
     stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelFGColor)
-    stw.Redraw()
-    iup.SetFocus(stw.canv)
 }
 
 func (stw *Window) ToggleEtype (etype int) {
@@ -4686,6 +4845,8 @@ func (stw *Window) etypeLabel (name string, width int, etype int, defval bool) *
                             case BUTTON_LEFT:
                                 if arg.Pressed == 0 { // Released
                                     stw.ToggleEtype(etype)
+                                    stw.Redraw()
+                                    iup.SetFocus(stw.canv)
                                 }
                             }
                         }
@@ -5236,6 +5397,7 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 // Initialize
 func init() {
     aliases = make(map[string]*Command,0)
+    sectionaliases = make(map[int]string,0)
     err := ReadPgp(pgpfile, aliases)
     if err != nil {
         aliases["D"]    = DISTS

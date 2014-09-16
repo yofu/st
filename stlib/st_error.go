@@ -79,3 +79,16 @@ func Yielded (elem *Elem, index int) YieldedError {
 func (b YieldedError) Error () string {
     return fmt.Sprintf("YIELDED: ELEM %d NODE %d", b.elem.Num, b.elem.Enod[b.index].Num)
 }
+
+type ArgumentError struct {
+    name string
+    desc string
+}
+
+func (ne ArgumentError) Error () string {
+    return fmt.Sprintf("%s: %s", ne.name, ne.desc)
+}
+
+func NotEnoughArgs (name string) ArgumentError {
+    return ArgumentError{name, "not enough argument"}
+}

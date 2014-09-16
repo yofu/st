@@ -130,7 +130,11 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
         oncap = true
     }
     if show.ElemCaption & st.EC_SECT != 0 {
-        ecap.WriteString(fmt.Sprintf("%d\n", elem.Sect.Num))
+        if al, ok := sectionaliases[elem.Sect.Num]; ok {
+            ecap.WriteString(fmt.Sprintf("%s\n", al))
+        } else {
+            ecap.WriteString(fmt.Sprintf("%d\n", elem.Sect.Num))
+        }
         oncap = true
     }
     if show.ElemCaption & st.EC_RATE_L != 0 || show.ElemCaption & st.EC_RATE_S != 0 {
