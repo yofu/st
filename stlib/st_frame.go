@@ -626,18 +626,20 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (int
     n.Coord = c
     newnode := frame.SearchNode(c[0], c[1], c[2])
     if newnode == nil {
-        if n.Num > frame.Maxnnum {
-            frame.Maxnnum = n.Num
-            frame.Nodes[n.Num] = n
-            n.Frame = frame
-            return n.Num, n.Num, nil
-        } else {
+        if _, exist := frame.Nodes[n.Num]; exist {
             frame.Maxnnum++
             old := n.Num
             n.Num = frame.Maxnnum
             frame.Nodes[n.Num] = n
             n.Frame = frame
             return old, n.Num, nil
+        } else {
+            if n.Num > frame.Maxnnum {
+                frame.Maxnnum = n.Num
+            }
+            frame.Nodes[n.Num] = n
+            n.Frame = frame
+            return n.Num, n.Num, nil
         }
     } else {
         return n.Num, newnode.Num, nil
