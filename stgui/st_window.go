@@ -1687,6 +1687,7 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
         }
         if len(lis) < 4 { return st.NotEnoughArgs("FOCUS") }
         for i:=0; i<3; i++ {
+            if lis[1+i] == "_" { continue }
             val, err := strconv.ParseFloat(lis[1+i], 64)
             if err != nil { return err }
             stw.Frame.View.Focus[i] = val
@@ -1694,6 +1695,7 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
     case "ANGLE":
         if len(lis) < 3 { return st.NotEnoughArgs("ANGLE") }
         for i:=0; i<2; i++ {
+            if lis[1+i] == "_" { continue }
             val, err := strconv.ParseFloat(lis[1+i], 64)
             if err != nil { return err }
             stw.Frame.View.Angle[i] = val
@@ -1701,6 +1703,7 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
     case "DISTS":
         if len(lis) < 3 { return st.NotEnoughArgs("DISTS") }
         for i:=0; i<2; i++ {
+            if lis[1+i] == "_" { continue }
             val, err := strconv.ParseFloat(lis[1+i], 64)
             if err != nil { return err }
             stw.Frame.View.Dists[i] = val
@@ -1768,6 +1771,36 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
             stw.Frame.Show.Kijun = true
             stw.Labels["KIJUN"].SetAttribute("FGCOLOR", labelFGColor)
         }
+    case "ELEMCODE":
+        if un {
+            stw.ElemCaptionOff("EC_NUM")
+        } else {
+            stw.ElemCaptionOn("EC_NUM")
+        }
+    case "SECTCODE":
+        if un {
+            stw.ElemCaptionOff("EC_SECT")
+        } else {
+            stw.ElemCaptionOn("EC_SECT")
+        }
+    case "SRCANCOLOR":
+        if un {
+            stw.SetColorMode(st.ECOLOR_WHITE)
+        } else {
+            stw.SetColorMode(st.ECOLOR_RATE)
+        }
+    case "SRCANRATE":
+        if un {
+            stw.ElemCaptionOff("EC_RATE_L")
+            stw.ElemCaptionOff("EC_RATE_S")
+            stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelOFFColor)
+            stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelOFFColor)
+        } else {
+            stw.ElemCaptionOn("EC_RATE_L")
+            stw.ElemCaptionOn("EC_RATE_S")
+            stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelFGColor)
+            stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelFGColor)
+        }
     case "ALIAS":
         if un {
             if len(lis) < 2 {
@@ -1792,6 +1825,12 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
                     sectionaliases[int(val)] = lis[2]
                 }
             }
+        }
+    case "NODECODE":
+        if un {
+            stw.NodeCaptionOff("NC_NUM")
+        } else {
+            stw.NodeCaptionOn("NC_NUM")
         }
     case "CONF":
         if un {
@@ -5015,6 +5054,11 @@ func (stw *Window) displayLabel (name string, defval bool) *iup.Handle {
                         }
                     })
     return rtn
+}
+
+func (stw *Window) SetPeriod (per string) {
+    stw.Labels["PERIOD"].SetAttribute("VALUE", per)
+    stw.Frame.Show.Period = per
 }
 
 func (stw *Window) NodeCaptionOn (name string) {
