@@ -1817,7 +1817,7 @@ func (stw *Window) Edit(fn string) {
 }
 
 func (stw *Window) Vim(fn string) {
-    cmd := exec.Command("vim", fn)
+    cmd := exec.Command("gvim", fn)
     cmd.Start()
 }
 
