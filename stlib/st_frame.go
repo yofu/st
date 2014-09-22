@@ -2365,6 +2365,7 @@ func (frame *Frame) NodeSort (d int) (int, error) {
         nodes[nnum] = n
         nnum++
     }
+    sort.Sort(NodeByNum{nodes})
     switch d {
     case 0:
         sort.Stable(NodeByXCoord{nodes})
