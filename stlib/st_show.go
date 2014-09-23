@@ -2,7 +2,7 @@ package st
 
 var (
     NODECAPTIONS = []string{"NC_NUM", "NC_ZCOORD", "NC_DX", "NC_DY", "NC_DZ", "NC_TX", "NC_TY", "NC_TZ", "NC_RX", "NC_RY", "NC_RZ", "NC_MX", "NC_MY", "NC_MZ"}
-    ELEMCAPTIONS = []string{"NC_NUM", "EC_SECT", "EC_RATE_L", "EC_RATE_S"}
+    ELEMCAPTIONS = []string{"EC_NUM", "EC_SECT", "EC_RATE_L", "EC_RATE_S"}
 )
 const ( // NodeCaption
     NC_NUM = 1 << iota
