@@ -442,6 +442,7 @@ func ParseFile (filename string, do func([]string) error) error {
     if err != nil {
         return err
     }
+    defer f.Close()
     s := bufio.NewScanner(f)
     for s.Scan() {
         var words []string
