@@ -1846,6 +1846,23 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
                 stw.Labels["CONFSIZE"].SetAttribute("VALUE", fmt.Sprintf("%.1f", val))
             }
         }
+    case "FENCE":
+        if len(lis) < 3 { return st.NotEnoughArgs("FENCE") }
+        var axis int
+        switch strings.ToUpper(lis[1]) {
+        default:
+            return errors.New("unknown direction")
+        case "X":
+            axis = 0
+        case "Y":
+            axis = 1
+        case "Z":
+            axis = 2
+        }
+        val, err := strconv.ParseFloat(lis[2], 64)
+        if err != nil { return err }
+        stw.SelectElem = stw.Frame.Fence(axis, val, false)
+        stw.HideNotSelected()
     }
     return nil
 }
