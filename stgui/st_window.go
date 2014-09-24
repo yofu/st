@@ -1674,7 +1674,19 @@ func (stw *Window) ParseFig2Page (pcanv *cd.Canvas, lis [][]string) error {
 
 func (stw *Window) fig2keyword (lis []string, un bool) error {
     if len(lis) < 1 { return st.NotEnoughArgs("Fig2Keyword") }
-    switch strings.ToUpper(lis[0]) {
+    key := strings.ToUpper(lis[0])
+    switch key {
+    default:
+        if k, ok := stw.Frame.Kijuns[key]; ok {
+            d := k.Direction()
+            var axis int
+            if st.IsParallel(d, st.XAXIS, 1e-4) {
+                axis = 1
+            } else if st.IsParallel(d, st.YAXIS, 1e-4) {
+                axis = 0
+            }
+            axisrange(stw, axis, k.Start[axis], k.Start[axis], false)
+        }
     case "GFACT":
         val, err := strconv.ParseFloat(lis[1], 64)
         if err != nil { return err }
