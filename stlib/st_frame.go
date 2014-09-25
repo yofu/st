@@ -2383,6 +2383,7 @@ func (frame *Frame) NodeSort (d int) (int, error) {
         n.Num = num
         num++
     }
+    frame.Nodes = newnodes
     return frame.BandWidth(), nil
 }
 
