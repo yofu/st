@@ -1704,6 +1704,8 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
             if err != nil { return err }
             stw.Frame.View.Focus[i] = val
         }
+    case "FIT":
+        stw.ShowCenter()
     case "ANGLE":
         if len(lis) < 3 { return st.NotEnoughArgs("ANGLE") }
         for i:=0; i<2; i++ {
