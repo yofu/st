@@ -29,7 +29,7 @@ func gravity (stw *Window) {
     iup.SetFocus(stw.canv)
     stw.Frame.Show.NodeCaption |= st.NC_ZCOORD
     stw.Deselect()
-    stw.Frame.Show.ColorMode = st.ECOLOR_HEIGHT
+    // stw.Frame.Show.ColorMode = st.ECOLOR_HEIGHT
     stw.Redraw()
     height := 0.1
     maxrange := 0.5
@@ -167,7 +167,7 @@ func smooth (stw *Window) {
     iup.SetFocus(stw.canv)
     stw.Frame.Show.NodeCaption |= st.NC_ZCOORD
     stw.Deselect()
-    stw.Frame.Show.ColorMode = st.ECOLOR_HEIGHT
+    // stw.Frame.Show.ColorMode = st.ECOLOR_HEIGHT
     stw.Redraw()
     ratio := 0.5
     flatten := func(n *st.Node) {
@@ -239,7 +239,7 @@ func smooth (stw *Window) {
 func hanging (stw *Window) {
     iup.SetFocus(stw.canv)
     stw.Frame.Show.NodeCaption |= st.NC_ZCOORD
-    stw.Frame.Show.ColorMode = st.ECOLOR_HEIGHT
+    // stw.Frame.Show.ColorMode = st.ECOLOR_HEIGHT
     stw.Redraw()
     confed := make([]*st.Node, 0)
     height := 2.9

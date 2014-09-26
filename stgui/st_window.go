@@ -2515,8 +2515,14 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
                             canv.Foreground(el.Sect.Color)
                         case st.ECOLOR_RATE:
                             canv.Foreground(st.Rainbow(el.RateMax(stw.Frame.Show), st.RateBoundary))
-                        case st.ECOLOR_HEIGHT:
-                            canv.Foreground(st.Rainbow(el.MidPoint()[2], st.HeightBoundary))
+                        // case st.ECOLOR_HEIGHT:
+                        //     canv.Foreground(st.Rainbow(el.MidPoint()[2], st.HeightBoundary))
+                        case st.ECOLOR_N:
+                            if el.N(stw.Frame.Show.Period, 0) >= 0.0 {
+                                canv.Foreground(st.RainbowColor[0]) // Compression: Blue
+                            } else {
+                                canv.Foreground(st.RainbowColor[6]) // Tension: Red
+                            }
                         }
                     }
                     DrawElem(el, canv, stw.Frame.Show)
@@ -2538,8 +2544,14 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
                     canv.Foreground(el.Sect.Color)
                 case st.ECOLOR_RATE:
                     canv.Foreground(st.Rainbow(el.RateMax(stw.Frame.Show), st.RateBoundary))
-                case st.ECOLOR_HEIGHT:
-                    canv.Foreground(st.Rainbow(el.MidPoint()[2], st.HeightBoundary))
+                // case st.ECOLOR_HEIGHT:
+                //     canv.Foreground(st.Rainbow(el.MidPoint()[2], st.HeightBoundary))
+                case st.ECOLOR_N:
+                    if el.N(stw.Frame.Show.Period, 0) >= 0.0 {
+                        canv.Foreground(st.RainbowColor[0]) // Compression: Blue
+                    } else {
+                        canv.Foreground(st.RainbowColor[6]) // Tension: Red
+                    }
                 }
             }
             DrawElem(el, canv, stw.Frame.Show)
