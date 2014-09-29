@@ -51,6 +51,7 @@ var (
     HATCHPLATEELEM      = &Command{"HATCHING", "HATCH PLATE ELEM", "add plate elem by hatching", hatchplateelem}
     ADDPLATEALL         = &Command{"PLATE(all)", "ADD PLATE ALL", "add all plate elem using selected nodes", addplateall}
     EDITPLATEELEM       = &Command{"EDPL", "EDIT PLATE ELEM", "edit plate elem", editplateelem}
+    EDITWRECT           = &Command{"EDWR", "EDIT WINDOW RECT", "edit window rectangular", editwrect}
     CONVEXHULL          = &Command{"CVXH", "CONVEX HULL", "draw convex hull", convexhull}
     MATCHPROP           = &Command{"COPY PROPERTY", "MATCH PROPERTY", "match property", matchproperty}
     AXISTOCANG          = &Command{"CANG", "AXISTOCANG", "set cang by axis", axistocang}
@@ -130,6 +131,7 @@ func init() {
     Commands["HATCHPLATEELEM"]=HATCHPLATEELEM
     Commands["ADDPLATEALL"]=ADDPLATEALL
     Commands["EDITPLATEELEM"]=EDITPLATEELEM
+    Commands["EDITWRECT"]=EDITWRECT
     Commands["CONVEXHULL"]=CONVEXHULL
     Commands["MATCHPROP"]=MATCHPROP
     Commands["AXISTOCANG"]=AXISTOCANG
@@ -2736,6 +2738,60 @@ func editplateelem (stw *Window) {
 }
 // }}}
 
+// EDITWRECT// {{{
+func editwrect (stw *Window) {
+    setwrect := func (els... *st.Elem) {
+                    ans, err := stw.Query("開口長さ h[m]")
+                    if err != nil {
+                        stw.addHistory(err.Error())
+                        stw.EscapeCB()
+                    }
+                    w, err := strconv.ParseFloat(ans, 64)
+                    if err != nil {
+                        stw.addHistory(err.Error())
+                        stw.EscapeCB()
+                    }
+                    ans, err = stw.Query("開口高さ l[m]")
+                    if err != nil {
+                        stw.addHistory(err.Error())
+                        stw.EscapeCB()
+                    }
+                    h, err := strconv.ParseFloat(ans, 64)
+                    if err != nil {
+                        stw.addHistory(err.Error())
+                        stw.EscapeCB()
+                    }
+                    for _, el := range els {
+                        if !el.IsLineElem() {
+                            el.Wrect[0] = w; el.Wrect[1] = h
+                        }
+                    }
+                }
+    selected := false
+    if stw.SelectElem != nil {
+        els := make([]*st.Elem, 0)
+        for _, el := range stw.SelectElem {
+            if el == nil { continue }
+            if el.IsLineElem() { continue }
+            els = append(els, el)
+            selected = true
+        }
+        if selected {
+            setwrect(els...)
+            stw.EscapeCB()
+            return
+        }
+    }
+    get1elem(stw, func (el *st.Elem, x, y int) {
+                      setwrect(el)
+                      stw.Redraw()
+                  },
+                  func (el *st.Elem) bool {
+                      return !el.IsLineElem()
+                  })
+}
+// }}}
+
 
 // CONVEXHULL
 func convexhull (stw *Window) {
@@ -2758,7 +2814,9 @@ func reaction (stw *Window) {
     }
     d := int(val)
     var otp bytes.Buffer
-    selectconfed(stw)
+    if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+        selectconfed(stw)
+    }
     sort.Sort(st.NodeByNum{stw.SelectNode})
     r := make([]float64, 3)
     otp.WriteString("NODE   XCOORD   YCOORD   ZCOORD     WEIGHT       LONG      XSEIS      YSEIS        W+L      W+L+X      W+L-X      W+L+Y      W+L-Y\n")

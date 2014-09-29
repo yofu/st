@@ -697,6 +697,55 @@ func (elem *Elem) Direction(normalize bool) []float64 {
     return vec
 }
 
+func (elem *Elem) LowerEnod () []*Node {
+    if elem.IsLineElem() { return nil }
+    cand := elem.Enod[0]
+    ind := 0
+    for i, n := range elem.Enod[1:] {
+        if n.Coord[2] < cand.Coord[2] {
+            ind = i+1
+            cand = n
+        }
+    }
+    switch ind {
+    case 0:
+        if elem.Enod[elem.Enods-1].Coord[2] < elem.Enod[1].Coord[2] {
+            return []*Node{elem.Enod[elem.Enods-1], elem.Enod[0]}
+        } else {
+            return []*Node{elem.Enod[0], elem.Enod[1]}
+        }
+    case elem.Enods-1:
+        if elem.Enod[elem.Enods-2].Coord[2] < elem.Enod[1].Coord[0] {
+            return []*Node{elem.Enod[elem.Enods-2], elem.Enod[elem.Enods-1]}
+        } else {
+            return []*Node{elem.Enod[elem.Enods-1], elem.Enod[0]}
+        }
+    default:
+        if elem.Enod[ind-1].Coord[2] < elem.Enod[ind+1].Coord[0] {
+            return []*Node{elem.Enod[ind-1], elem.Enod[ind]}
+        } else {
+            return []*Node{elem.Enod[ind], elem.Enod[ind+1]}
+        }
+    }
+}
+
+func (elem *Elem) HorizontalDirection(normalize bool) []float64 {
+    if elem.IsLineElem() { return nil }
+    ns := elem.LowerEnod()
+    vec := make([]float64,3)
+    for i:=0; i<2; i++ {
+        vec[i] = (ns[1].Coord[i]-ns[0].Coord[i])
+    }
+    if normalize {
+        l := math.Sqrt(vec[0]*vec[0] + vec[1]*vec[1])
+        if l == 0.0 { return vec }
+        for i:=0; i<2; i++ {
+            vec[i] /= l
+        }
+    }
+    return vec
+}
+
 func (elem *Elem) Normal (normalize bool) []float64 {
     if elem.Enods<3 { return nil }
     v1 := Direction(elem.Enod[0], elem.Enod[1], false)
@@ -717,6 +766,21 @@ func (elem *Elem) MidPoint() []float64 {
         }
         rtn[i] = tmp / float64(elem.Enods)
     }
+    return rtn
+}
+
+func (elem *Elem) WrectCoord () [][]float64 {
+    if elem.Enods != 4 { return nil }
+    if elem.Wrect == nil || (elem.Wrect[0] == 0.0 || elem.Wrect[1] == 0.0) {
+        return nil
+    }
+    coord := elem.MidPoint()
+    rtn := make([][]float64, 4)
+    vec := elem.HorizontalDirection(true)
+    rtn[0] = []float64{ coord[0]+0.5*vec[0]*elem.Wrect[0], coord[1]+0.5*vec[1]*elem.Wrect[0], coord[2]+0.5*elem.Wrect[1] }
+    rtn[1] = []float64{ coord[0]+0.5*vec[0]*elem.Wrect[0], coord[1]+0.5*vec[1]*elem.Wrect[0], coord[2]-0.5*elem.Wrect[1] }
+    rtn[2] = []float64{ coord[0]-0.5*vec[0]*elem.Wrect[0], coord[1]-0.5*vec[1]*elem.Wrect[0], coord[2]-0.5*elem.Wrect[1] }
+    rtn[3] = []float64{ coord[0]-0.5*vec[0]*elem.Wrect[0], coord[1]-0.5*vec[1]*elem.Wrect[0], coord[2]+0.5*elem.Wrect[1] }
     return rtn
 }
 
@@ -1375,6 +1439,25 @@ func (elem *Elem) BondState () (rtn int) {
         }
     }
     return
+}
+
+func (elem *Elem) IsPin (index int) bool {
+    var i int
+    switch index {
+    case 0,1:
+        i = index
+    default:
+        val, err := elem.EnodIndex(index)
+        if err != nil {
+            return false
+        }
+        i = val
+    }
+    return elem.Bonds[6*i+4] || elem.Bonds[6*i+5]
+}
+
+func (elem *Elem) IsRigid (index int) bool {
+    return !elem.IsPin(index)
 }
 // }}}
 

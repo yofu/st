@@ -302,6 +302,19 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
             cvs.FVertex(elem.Enod[i].Pcoord[0], elem.Enod[i].Pcoord[1])
         }
         cvs.End()
+        if elem.Wrect != nil && (elem.Wrect[0] != 0.0 || elem.Wrect[1] != 0.0) {
+            cvs.LineStyle(cd.CD_DOTTED)
+            wrns := make([][]float64, 4)
+            for i, n := range elem.WrectCoord() {
+                wrns[i] = elem.Frame.View.ProjectCoord(n)
+            }
+            cvs.Begin(cd.CD_CLOSED_LINES)
+            for i:=0; i<4; i++ {
+                cvs.FVertex(wrns[i][0], wrns[i][1])
+            }
+            cvs.End()
+            cvs.LineStyle(cd.CD_CONTINUOUS)
+        }
         if show.ElemNormal {
             DrawElemNormal(elem, cvs, show)
         }

@@ -2387,6 +2387,39 @@ func (frame *Frame) NodeSort (d int) (int, error) {
     return frame.BandWidth(), nil
 }
 
+func (frame *Frame) Suspicious () ([]*Node, []*Elem, error) {
+    var otp bytes.Buffer
+    ns := make([]*Node, 0)
+    els := make([]*Elem, 0)
+    for _, n := range frame.Nodes {
+        es := frame.SearchElem(n)
+        err1 := true; err2 := true
+        for _, el := range es {
+            if el.IsLineElem() {
+                err1 = false
+            }
+            if el.IsRigid(n.Num) {
+                err2 = false
+            }
+        }
+        if err1 {
+            ns = append(ns, n)
+            otp.WriteString(fmt.Sprintf("no line elem: %d\n", n.Num))
+        } else if err2 {
+            ns = append(ns, n)
+            otp.WriteString(fmt.Sprintf("all pin: %d\n", n.Num))
+        }
+    }
+    for _, el := range frame.Elems {
+        b, err := el.IsValidElem()
+        if !b {
+            els = append(els, el)
+            otp.WriteString(err.Error())
+        }
+    }
+    return ns, els, errors.New(otp.String())
+}
+
 func (frame *Frame) Cat (e1, e2 *Elem, n *Node) error {
     if !e1.IsLineElem() || !e2.IsLineElem() { return NotLineElem("Cat") }
     var ind1, ind2 int
