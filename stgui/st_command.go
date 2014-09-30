@@ -17,6 +17,8 @@ import (
     "sort"
 )
 
+var EPS = 1e-4
+
 var (
     Commands = make(map[string]*Command,0)
 
@@ -97,6 +99,7 @@ var (
     ZOUBUNYIELD         = &Command{"ZBYD", "ZOUBUNYIELD", "output Fmax & Fmin", zoubunyield}
     ZOUBUNREACTION      = &Command{"ZBRC", "ZOUBUNREACTION", "output reaction", zoubunreaction}
     AMOUNTPROP          = &Command{"AMTP", "AMOUNTPROP", "total amount of PROP", amountprop}
+    SETEPS              = &Command{"SEPS", "SET EPSIRON", "set epsiron", seteps}
 )
 
 func init() {
@@ -177,6 +180,7 @@ func init() {
     Commands["ZOUBUNYIELD"]=ZOUBUNYIELD
     Commands["ZOUBUNREACTION"]=ZOUBUNREACTION
     Commands["AMOUNTPROP"]=AMOUNTPROP
+    Commands["SETEPS"]=SETEPS
 }
 
 type Command struct {
@@ -900,7 +904,7 @@ func onnode (stw *Window) {
     stw.SelectNode = make([]*st.Node, 0)
     if stw.SelectElem != nil {
         for _, el := range stw.SelectElem {
-            ns := el.OnNode(0, 1e-4)
+            ns := el.OnNode(0, EPS)
             stw.SelectNode = append(stw.SelectNode, ns...)
         }
     }
@@ -1762,9 +1766,9 @@ func trim (stw *Window) {
                       if el.IsLineElem() {
                           var err error
                           if FDotLine(stw.SelectElem[0].Enod[0].Pcoord[0], stw.SelectElem[0].Enod[0].Pcoord[1], stw.SelectElem[0].Enod[1].Pcoord[0], stw.SelectElem[0].Enod[1].Pcoord[1], float64(x), float64(y)) * FDotLine(stw.SelectElem[0].Enod[0].Pcoord[0], stw.SelectElem[0].Enod[0].Pcoord[1], stw.SelectElem[0].Enod[1].Pcoord[0], stw.SelectElem[0].Enod[1].Pcoord[1], el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1]) < 0.0 {
-                              _, _, err = stw.Frame.Trim(stw.SelectElem[0], el, 1)
+                              _, _, err = stw.Frame.Trim(stw.SelectElem[0], el, 1, EPS)
                           } else {
-                              _, _, err = stw.Frame.Trim(stw.SelectElem[0], el, -1)
+                              _, _, err = stw.Frame.Trim(stw.SelectElem[0], el, -1, EPS)
                           }
                           if err != nil {
                               stw.addHistory(err.Error())
@@ -1788,7 +1792,7 @@ func extend (stw *Window) {
     get1elem(stw, func (el *st.Elem, x, y int) {
                       if el.IsLineElem() {
                           var err error
-                          _, _, err = stw.Frame.Extend(stw.SelectElem[0], el)
+                          _, _, err = stw.Frame.Extend(stw.SelectElem[0], el, EPS)
                           if err != nil {
                               stw.addHistory(err.Error())
                           } else {
@@ -2395,7 +2399,7 @@ func divide (stw *Window, divfunc func(*st.Elem)([]*st.Node, []*st.Elem, error))
 }
 func divideatons (stw *Window) {
     divide(stw, func (el *st.Elem) ([]*st.Node, []*st.Elem, error) {
-                    return el.DivideAtOns(1e-4)
+                    return el.DivideAtOns(EPS)
                 })
 }
 func divideatmid (stw *Window) {
@@ -2419,7 +2423,7 @@ func intersect (stw *Window) {
                               }
                           }
                           if num == 2 {
-                              _, els, err := stw.Frame.Intersect(els[0], els[1], true, 1, 1, false, false)
+                              _, els, err := stw.Frame.Intersect(els[0], els[1], true, 1, 1, false, false, EPS)
                               if err != nil {
                                   stw.addHistory(err.Error())
                                   stw.Deselect()
@@ -2447,7 +2451,7 @@ func intersectall (stw *Window) {
     ind := 0
     for {
         if stw.SelectElem[ind].IsLineElem() {
-            _, els, err := stw.SelectElem[ind].DivideAtOns(1e-4)
+            _, els, err := stw.SelectElem[ind].DivideAtOns(EPS)
             if err != nil {
                 stw.EscapeAll()
                 return
@@ -2461,7 +2465,7 @@ func intersectall (stw *Window) {
     for _, el := range stw.SelectElem[ind+1:] {
         if !el.IsLineElem() { continue }
         for _, ce := range checked {
-            _, els, err := stw.Frame.CutByElem(el, ce, true, 1, false)
+            _, els, err := stw.Frame.CutByElem(el, ce, true, 1, false, EPS)
             if err != nil {
                 continue
             }
@@ -2469,7 +2473,7 @@ func intersectall (stw *Window) {
                 checked = append(checked, els[1])
             }
         }
-        _, els, err := el.DivideAtOns(1e-4)
+        _, els, err := el.DivideAtOns(EPS)
         if err != nil {
             continue
         }
@@ -3062,7 +3066,7 @@ func catintermediatenode (stw *Window) {
                 ci = false
                 break
             }
-            if !el.IsParallel(d, 1e-4) {
+            if !el.IsParallel(d, EPS) {
                 ci = false
                 break
             }
@@ -3497,3 +3501,22 @@ func amountprop (stw *Window) {
     stw.EscapeAll()
 }
 // }}}
+
+func seteps(stw *Window) {
+    ans, err := stw.Query("許容差[m]")
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
+        stw.EscapeCB()
+        return
+    }
+    val, err := strconv.ParseFloat(ans, 64)
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
+        stw.EscapeCB()
+        return
+    }
+    EPS = val
+    stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
+}

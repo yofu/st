@@ -2556,15 +2556,14 @@ func (frame *Frame) CatByNode (n *Node, parallel bool) error {
     return nil
 }
 
-const EPS = 1e-3
-func (frame *Frame) Intersect (e1, e2 *Elem, cross bool, sign1, sign2 int, del1, del2 bool) ([]*Node, []*Elem, error) {
+func (frame *Frame) Intersect (e1, e2 *Elem, cross bool, sign1, sign2 int, del1, del2 bool, eps float64) ([]*Node, []*Elem, error) {
     if e1 == e2 { return nil, nil, errors.New("Intersect: the same element") }
     if !e1.IsLineElem() || !e2.IsLineElem() { return nil, nil, NotLineElem("Intersect") }
     k1, k2, d, err := DistLineLine(e1.Enod[0].Coord, e1.Direction(false), e2.Enod[0].Coord, e2.Direction(false))
     if err != nil {
         return nil, nil, err
     }
-    if d > EPS {
+    if d > eps {
         return nil, nil, errors.New(fmt.Sprintf("Intersect: Distance= %.3f", d))
     }
     if !cross || (( 0.0 < k1 && k1 < 1.0) && (0.0 < k2 && k2 < 1.0)) {
@@ -2616,13 +2615,13 @@ func (frame *Frame) Intersect (e1, e2 *Elem, cross bool, sign1, sign2 int, del1,
     }
 }
 
-func (frame *Frame) CutByElem (cutter, cuttee *Elem, cross bool, sign int, del bool) ([]*Node, []*Elem, error) {
+func (frame *Frame) CutByElem (cutter, cuttee *Elem, cross bool, sign int, del bool, eps float64) ([]*Node, []*Elem, error) {
     if !cutter.IsLineElem() || !cuttee.IsLineElem() { return nil, nil, NotLineElem("CutByElem") }
     k1, k2, d, err := DistLineLine(cutter.Enod[0].Coord, cutter.Direction(false), cuttee.Enod[0].Coord, cuttee.Direction(false))
     if err != nil {
         return nil, nil, err
     }
-    if d > EPS {
+    if d > eps {
         return nil, nil, errors.New(fmt.Sprintf("CutByElem: Distance= %.3f", d))
     }
     if !cross || (( 0.0 < k1 && k1 < 1.0) && (0.0 < k2 && k2 < 1.0)) {
@@ -2654,16 +2653,16 @@ func (frame *Frame) CutByElem (cutter, cuttee *Elem, cross bool, sign int, del b
     }
 }
 
-func (frame *Frame) Trim (e1, e2 *Elem, sign int) ([]*Node, []*Elem, error) {
-    return frame.Intersect(e1, e2, true, 1, sign, false, true)
+func (frame *Frame) Trim (e1, e2 *Elem, sign int, eps float64) ([]*Node, []*Elem, error) {
+    return frame.Intersect(e1, e2, true, 1, sign, false, true, eps)
 }
 
-func (frame *Frame) Extend (e1, e2 *Elem) ([]*Node, []*Elem, error) {
-    return frame.Intersect(e1, e2, false, 1, 1, false, true)
+func (frame *Frame) Extend (e1, e2 *Elem, eps float64) ([]*Node, []*Elem, error) {
+    return frame.Intersect(e1, e2, false, 1, 1, false, true, eps)
 }
 
-func (frame *Frame) Fillet (e1, e2 *Elem, sign1, sign2 int) ([]*Node, []*Elem, error) {
-    return frame.Intersect(e1, e2, false, sign1, sign2, true, true)
+func (frame *Frame) Fillet (e1, e2 *Elem, sign1, sign2 int, eps float64) ([]*Node, []*Elem, error) {
+    return frame.Intersect(e1, e2, false, sign1, sign2, true, true, eps)
 }
 
 func (frame *Frame) IsUpside () bool {
