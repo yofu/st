@@ -2558,6 +2558,7 @@ func (frame *Frame) CatByNode (n *Node, parallel bool) error {
 
 const EPS = 1e-3
 func (frame *Frame) Intersect (e1, e2 *Elem, cross bool, sign1, sign2 int, del1, del2 bool) ([]*Node, []*Elem, error) {
+    if e1 == e2 { return nil, nil, errors.New("Intersect: the same element") }
     if !e1.IsLineElem() || !e2.IsLineElem() { return nil, nil, NotLineElem("Intersect") }
     k1, k2, d, err := DistLineLine(e1.Enod[0].Coord, e1.Direction(false), e2.Enod[0].Coord, e2.Direction(false))
     if err != nil {
