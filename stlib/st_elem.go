@@ -70,6 +70,7 @@ type Elem struct {
 
     Children []*Elem
     Parent *Elem
+    Eldest bool
 
     Hide bool
     Lock bool
@@ -539,6 +540,11 @@ func (elem *Elem) Adopt (child *Elem) int {
         if elem.Children[i] == nil {
             elem.Children[i] = child
             child.Parent = elem
+            if i == 0 {
+                child.Eldest = true
+            } else {
+                child.Eldest = false
+            }
             return i
         }
     }

@@ -287,6 +287,13 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
                 cvs.TextAlignment(DefaultTextAlignment)
             }
         }
+        if elem.Etype == st.WBRACE || elem.Etype == st.SBRACE {
+            if elem.Eldest {
+                if elem.Parent.Wrect != nil && (elem.Parent.Wrect[0] != 0.0 || elem.Parent.Wrect[1] != 0.0) {
+                    DrawWrect(elem.Parent, cvs, show)
+                }
+            }
+        }
     } else {
         cvs.InteriorStyle(cd.CD_HATCH)
         cvs.Begin(cd.CD_FILL)
@@ -303,22 +310,26 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
         }
         cvs.End()
         if elem.Wrect != nil && (elem.Wrect[0] != 0.0 || elem.Wrect[1] != 0.0) {
-            cvs.LineStyle(cd.CD_DOTTED)
-            wrns := make([][]float64, 4)
-            for i, n := range elem.WrectCoord() {
-                wrns[i] = elem.Frame.View.ProjectCoord(n)
-            }
-            cvs.Begin(cd.CD_CLOSED_LINES)
-            for i:=0; i<4; i++ {
-                cvs.FVertex(wrns[i][0], wrns[i][1])
-            }
-            cvs.End()
-            cvs.LineStyle(cd.CD_CONTINUOUS)
+            DrawWrect(elem, cvs, show)
         }
         if show.ElemNormal {
             DrawElemNormal(elem, cvs, show)
         }
     }
+}
+
+func DrawWrect(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
+    cvs.LineStyle(cd.CD_DOTTED)
+    wrns := make([][]float64, 4)
+    for i, n := range elem.WrectCoord() {
+        wrns[i] = elem.Frame.View.ProjectCoord(n)
+    }
+    cvs.Begin(cd.CD_CLOSED_LINES)
+    for i:=0; i<4; i++ {
+        cvs.FVertex(wrns[i][0], wrns[i][1])
+    }
+    cvs.End()
+    cvs.LineStyle(cd.CD_CONTINUOUS)
 }
 
 func DrawElementAxis (elem *st.Elem, canv *cd.Canvas, show *st.Show) {
