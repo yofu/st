@@ -12,6 +12,7 @@ import (
     "sort"
     "strconv"
     "strings"
+    "sync"
     "time"
     "github.com/yofu/st/stlib/matrix"
 )
@@ -906,6 +907,7 @@ func (frame *Frame) ReadData (filename string) error {
         }
     }
     // Elem
+    wg := new(sync.WaitGroup)
     for _, j := range lis[1+nums[2]+nums[0]:1+nums[2]+nums[0]+nums[1]] {
         var words []string
         for _, k := range strings.Split(j," ") {
@@ -936,14 +938,20 @@ func (frame *Frame) ReadData (filename string) error {
             }
             sect := frame.Sects[int(sec)]
             newel := frame.AddLineElem(enum, ns, sect, sect.Type-1) // TODO: set etype, cang, ...
-            // TODO: search parent
-            for _, el := range frame.SearchElem(ns...) {
-                if el.Etype == sect.Type+1 {
-                    el.Adopt(newel)
-                }
+            if newel.Etype == WBRACE || newel.Etype == SBRACE {
+                wg.Add(1)
+                go func (n []*Node) {
+                    defer wg.Done()
+                    for _, el := range frame.SearchElem(n...) {
+                        if el.Etype == sect.Type+1 {
+                            el.Adopt(newel)
+                        }
+                    }
+                }(ns)
             }
         }
     }
+    wg.Wait()
     // Node2
     for _, j := range lis[1+nums[2]+nums[0]+nums[1]:1+nums[2]+nums[0]+nums[1]+nums[0]] {
         var words []string
