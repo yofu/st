@@ -1691,6 +1691,7 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
         val, err := strconv.ParseFloat(lis[1], 64)
         if err != nil { return err }
         stw.Frame.View.Gfact = val
+        stw.Labels["GFACT"].SetAttribute("VALUE", fmt.Sprintf("%f", stw.Frame.View.Gfact))
     case "FOCUS":
         if len(lis) < 2 { return st.NotEnoughArgs("FOCUS") }
         if strings.ToUpper(lis[1]) == "CENTER" || strings.ToUpper(lis[1]) == "CENTER" {
@@ -1698,29 +1699,32 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
             break
         }
         if len(lis) < 4 { return st.NotEnoughArgs("FOCUS") }
-        for i:=0; i<3; i++ {
+        for i, str := range []string{"FOCUSX", "FOCUSY", "FOCUSZ"} {
             if lis[1+i] == "_" { continue }
             val, err := strconv.ParseFloat(lis[1+i], 64)
             if err != nil { return err }
             stw.Frame.View.Focus[i] = val
+            stw.Labels[str].SetAttribute("VALUE", fmt.Sprintf("%f", stw.Frame.View.Focus[i]))
         }
     case "FIT":
         stw.ShowCenter()
     case "ANGLE":
         if len(lis) < 3 { return st.NotEnoughArgs("ANGLE") }
-        for i:=0; i<2; i++ {
+        for i, str := range []string{"PHI", "THETA"} {
             if lis[1+i] == "_" { continue }
             val, err := strconv.ParseFloat(lis[1+i], 64)
             if err != nil { return err }
             stw.Frame.View.Angle[i] = val
+            stw.Labels[str].SetAttribute("VALUE", fmt.Sprintf("%f", stw.Frame.View.Angle[i]))
         }
     case "DISTS":
         if len(lis) < 3 { return st.NotEnoughArgs("DISTS") }
-        for i:=0; i<2; i++ {
+        for i, str := range []string{"DISTR", "DISTL"} {
             if lis[1+i] == "_" { continue }
             val, err := strconv.ParseFloat(lis[1+i], 64)
             if err != nil { return err }
             stw.Frame.View.Dists[i] = val
+            stw.Labels[str].SetAttribute("VALUE", fmt.Sprintf("%f", stw.Frame.View.Dists[i]))
         }
     case "PERSPECTIVE":
         stw.Frame.View.Perspective = true
@@ -1731,11 +1735,13 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
         val, err := strconv.ParseFloat(lis[1], 64)
         if err != nil { return err }
         stw.Frame.Show.Dfact = val
+        stw.Labels["DFACT"].SetAttribute("VALUE", fmt.Sprintf("%f", val))
     case "MFACT":
         if len(lis) < 2 { return st.NotEnoughArgs("MFACT") }
         val, err := strconv.ParseFloat(lis[1], 64)
         if err != nil { return err }
         stw.Frame.Show.Mfact = val
+        stw.Labels["MFACT"].SetAttribute("VALUE", fmt.Sprintf("%f", val))
     case "GAXIS":
         if un {
             stw.Frame.Show.GlobalAxis = false
@@ -1747,6 +1753,7 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
                 val, err := strconv.ParseFloat(lis[1], 64)
                 if err != nil { return err }
                 stw.Frame.Show.GlobalAxisSize = val
+                stw.Labels["GAXISSIZE"].SetAttribute("VALUE", fmt.Sprintf("%f", val))
             }
         }
     case "EAXIS":
@@ -1760,6 +1767,7 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
                 val, err := strconv.ParseFloat(lis[1], 64)
                 if err != nil { return err }
                 stw.Frame.Show.ElementAxisSize = val
+                stw.Labels["EAXISSIZE"].SetAttribute("VALUE", fmt.Sprintf("%f", val))
             }
         }
     case "NOAXIS":
@@ -1776,6 +1784,33 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
             for i, e := range st.ETYPES {
                 if et == e { stw.ShowEtype(i) }
             }
+        }
+    case "ELEM+":
+        for _, val := range lis[1:] {
+            et := strings.ToUpper(val)
+            for i, e := range st.ETYPES {
+                if et == e { stw.ShowEtype(i) }
+            }
+        }
+    case "ELEM-":
+        for _, val := range lis[1:] {
+            et := strings.ToUpper(val)
+            for i, e := range st.ETYPES {
+                if et == e { stw.HideEtype(i) }
+            }
+        }
+    case "SECTION":
+        stw.HideAllSection()
+        for _, tmp := range lis[1:] {
+            val, err := strconv.ParseInt(tmp, 10, 64)
+            if err != nil { continue }
+            stw.ShowSection(int(val))
+        }
+    case "SECTION-":
+        for _, tmp := range lis[1:] {
+            val, err := strconv.ParseInt(tmp, 10, 64)
+            if err != nil { continue }
+            stw.HideSection(int(val))
         }
     case "KIJUN":
         if un {
@@ -1877,6 +1912,8 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
         if err != nil { return err }
         stw.SelectElem = stw.Frame.Fence(axis, val, false)
         stw.HideNotSelected()
+    case "PERIOD":
+        stw.SetPeriod(lis[1])
     }
     return nil
 }
@@ -3071,12 +3108,7 @@ func (stw *Window) ShowAll() {
         }
         stw.Frame.Show.Etype[i] = true
     }
-    for i, _ := range stw.Frame.Show.Sect {
-        if lb, ok := stw.Labels[fmt.Sprintf("%d", i)]; ok {
-            lb.SetAttribute("FGCOLOR", labelFGColor)
-        }
-        stw.Frame.Show.Sect[i] = true
-    }
+    stw.ShowAllSection()
     stw.Frame.Show.All()
     stw.Redraw()
 }
@@ -4883,6 +4915,38 @@ func datatext (defval string) *iup.Handle {
                         rtn.SetAttribute("SELECTION", "1:100")
                     })
     return rtn
+}
+
+func (stw *Window) HideAllSection () {
+    for i, _ := range stw.Frame.Show.Sect {
+        if lb, ok := stw.Labels[fmt.Sprintf("%d", i)]; ok {
+            lb.SetAttribute("FGCOLOR", labelOFFColor)
+        }
+        stw.Frame.Show.Sect[i] = false
+    }
+}
+
+func (stw *Window) ShowAllSection () {
+    for i, _ := range stw.Frame.Show.Sect {
+        if lb, ok := stw.Labels[fmt.Sprintf("%d", i)]; ok {
+            lb.SetAttribute("FGCOLOR", labelFGColor)
+        }
+        stw.Frame.Show.Sect[i] = true
+    }
+}
+
+func (stw *Window) HideSection (snum int) {
+    if lb, ok := stw.Labels[fmt.Sprintf("%d", snum)]; ok {
+        lb.SetAttribute("FGCOLOR", labelOFFColor)
+    }
+    stw.Frame.Show.Sect[snum] = false
+}
+
+func (stw *Window) ShowSection (snum int) {
+    if lb, ok := stw.Labels[fmt.Sprintf("%d", snum)]; ok {
+        lb.SetAttribute("FGCOLOR", labelFGColor)
+    }
+    stw.Frame.Show.Sect[snum] = true
 }
 
 func (stw *Window) HideEtype (etype int) {
