@@ -2277,7 +2277,13 @@ func extractarclm (stw *Window) {
 
 // ARCLM001 TODO: UNDER CONSTRUCTION // {{{
 func arclm001 (stw *Window) {
-    stw.Frame.AssemGlobalMatrix()
+    ind, mtx, err := stw.Frame.AssemGlobalMatrix()
+    if err != nil {
+        stw.addHistory(err.Error())
+        stw.EscapeAll()
+        return
+    }
+    fmt.Println(ind, mtx)
     stw.EscapeAll()
 }
 // }}}

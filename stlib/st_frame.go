@@ -2727,28 +2727,36 @@ func (frame *Frame) ExtractArclm () {
 
 func (frame *Frame) WeightDistribution () {
     var otp bytes.Buffer
-    var nkeys, ekeys []int
+    var ekeys []int
+    nodes := make([]*Node, len(frame.Nodes))
+    nnum := 0
+    for _, n := range frame.Nodes {
+        nodes[nnum] = n
+        nnum++
+    }
+    sort.Sort(NodeByNum{nodes})
+    for _, n := range nodes {
+        for i:=0; i<3; i++ {
+            n.Weight[i] -= n.Load[2]
+        }
+    }
     amount := make(map[int]float64)
-    total := make([]float64, 3)
-    otp.WriteString("3.2 : 節点重量\n\n")
-    otp.WriteString("節点ごとに重量を集計した結果を記す。\n")
-    otp.WriteString("柱，壁は階高の中央で上下に分配するものとする。\n\n")
-    otp.WriteString(fmt.Sprintf(" 節点番号          積載荷重別の重量 [%s]\n\n", frame.Show.UnitName[0]))
-    otp.WriteString("                 床用     柱梁用     地震用\n")
     for _, el := range frame.Elems {
         el.Distribute()
         if el.Etype != WBRACE || el.Etype != SBRACE {
             amount[el.Sect.Num] += el.Amount()
         }
     }
-    for k := range(frame.Nodes) {
-        nkeys = append(nkeys, k)
-    }
-    sort.Ints(nkeys)
-    for _, k := range(nkeys) {
-        otp.WriteString(frame.Nodes[k].WgtString())
+    total := make([]float64, 3)
+    otp.WriteString("3.2 : 節点重量\n\n")
+    otp.WriteString("節点ごとに重量を集計した結果を記す。\n")
+    otp.WriteString("柱，壁は階高の中央で上下に分配するものとする。\n\n")
+    otp.WriteString(fmt.Sprintf(" 節点番号          積載荷重別の重量 [%s]\n\n", frame.Show.UnitName[0]))
+    otp.WriteString("                 床用     柱梁用     地震用\n")
+    for _, n := range nodes {
+        otp.WriteString(n.WgtString())
         for i:=0; i<3; i++ {
-            total[i] += frame.Nodes[k].Weight[i]
+            total[i] += n.Weight[i]
         }
     }
     otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", total[0], total[1], total[2]))
@@ -2999,7 +3007,7 @@ func (frame *Frame) SaveAsArclm (name string) error {
 
 
 // Analysis
-func (frame *Frame) AssemGlobalMatrix () (*matrix.CRSMatrix, error) { // TODO: UNDER CONSTRUCTION
+func (frame *Frame) AssemGlobalMatrix () (map[int]int, *matrix.CRSMatrix, error) { // TODO: UNDER CONSTRUCTION
     var err error
     var tmatrix, estiff [][]float64
     ind := make(map[int]int)
@@ -3019,11 +3027,11 @@ func (frame *Frame) AssemGlobalMatrix () (*matrix.CRSMatrix, error) { // TODO: U
     for _, el := range frame.Elems {
         if !el.IsLineElem() { continue }
         tmatrix, err = el.TransMatrix()
-        if err != nil { return nil, err }
+        if err != nil { return nil, nil, err }
         estiff, err  = el.StiffMatrix()
-        if err != nil { return nil, err }
+        if err != nil { return nil, nil, err }
         estiff, err  = el.ModifyHinge(estiff)
-        if err != nil { return nil, err }
+        if err != nil { return nil, nil, err }
         estiff = Transformation(estiff, tmatrix)
         for n1:=0; n1<2; n1++ {
             for i:=0; i<6; i++ {
@@ -3050,7 +3058,7 @@ func (frame *Frame) AssemGlobalMatrix () (*matrix.CRSMatrix, error) { // TODO: U
     rtn.LDLT()
     end = time.Now()
     fmt.Printf("LDLT : %fsec\n", (end.Sub(start)).Seconds())
-    return rtn, nil
+    return ind, rtn, nil
 }
 
 
