@@ -2459,6 +2459,7 @@ func (frame *Frame) JoinLineElem (e1, e2 *Elem, parallel bool) error {
         for _, en2 := range e2.Enod {
             if en1 == en2 {
                 for _, el := range frame.SearchElem(e1.Enod[i]) {
+                    if el.Etype == WBRACE || el.Etype == SBRACE { continue }
                     if el == e1 || el == e2 { continue }
                     return errors.New(fmt.Sprintf("JoinLineElem: NODE %d has more than 2 elements", e1.Enod[i].Num))
                 }
