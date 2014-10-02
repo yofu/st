@@ -167,19 +167,17 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
     }
     if elem.IsLineElem() {
         cvs.FLine(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1], elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
+        pd := elem.PDirection(true)
         if show.Bond {
             cvs.Foreground(BondColor)
             switch elem.BondState() {
             case st.PIN_RIGID:
-                d := elem.PDirection(true)
-                cvs.FCircle(elem.Enod[0].Pcoord[0]+d[0]*show.BondSize, elem.Enod[0].Pcoord[1]+d[1]*show.BondSize, show.BondSize*2)
+                cvs.FCircle(elem.Enod[0].Pcoord[0]+pd[0]*show.BondSize, elem.Enod[0].Pcoord[1]+pd[1]*show.BondSize, show.BondSize*2)
             case st.RIGID_PIN:
-                d := elem.PDirection(true)
-                cvs.FCircle(elem.Enod[1].Pcoord[0]-d[0]*show.BondSize, elem.Enod[1].Pcoord[1]-d[1]*show.BondSize, show.BondSize*2)
+                cvs.FCircle(elem.Enod[1].Pcoord[0]-pd[0]*show.BondSize, elem.Enod[1].Pcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
             case st.PIN_PIN:
-                d := elem.PDirection(true)
-                cvs.FCircle(elem.Enod[0].Pcoord[0]+d[0]*show.BondSize, elem.Enod[0].Pcoord[1]+d[1]*show.BondSize, show.BondSize*2)
-                cvs.FCircle(elem.Enod[1].Pcoord[0]-d[0]*show.BondSize, elem.Enod[1].Pcoord[1]-d[1]*show.BondSize, show.BondSize*2)
+                cvs.FCircle(elem.Enod[0].Pcoord[0]+pd[0]*show.BondSize, elem.Enod[0].Pcoord[1]+pd[1]*show.BondSize, show.BondSize*2)
+                cvs.FCircle(elem.Enod[1].Pcoord[0]-pd[0]*show.BondSize, elem.Enod[1].Pcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
             }
         }
         if show.Phinge {
@@ -189,15 +187,12 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
             ph2 := elem.Phinge[show.Period][elem.Enod[1].Num]
             switch {
             case ph1 && !ph2:
-                d := elem.PDirection(true)
-                cvs.FFilledCircle(elem.Enod[0].Pcoord[0]+d[0]*show.BondSize, elem.Enod[0].Pcoord[1]+d[1]*show.BondSize, show.BondSize*2)
+                cvs.FFilledCircle(elem.Enod[0].Pcoord[0]+pd[0]*show.BondSize, elem.Enod[0].Pcoord[1]+pd[1]*show.BondSize, show.BondSize*2)
             case !ph1 && ph2:
-                d := elem.PDirection(true)
-                cvs.FFilledCircle(elem.Enod[1].Pcoord[0]-d[0]*show.BondSize, elem.Enod[1].Pcoord[1]-d[1]*show.BondSize, show.BondSize*2)
+                cvs.FFilledCircle(elem.Enod[1].Pcoord[0]-pd[0]*show.BondSize, elem.Enod[1].Pcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
             case ph1 && ph2:
-                d := elem.PDirection(true)
-                cvs.FFilledCircle(elem.Enod[0].Pcoord[0]+d[0]*show.BondSize, elem.Enod[0].Pcoord[1]+d[1]*show.BondSize, show.BondSize*2)
-                cvs.FFilledCircle(elem.Enod[1].Pcoord[0]-d[0]*show.BondSize, elem.Enod[1].Pcoord[1]-d[1]*show.BondSize, show.BondSize*2)
+                cvs.FFilledCircle(elem.Enod[0].Pcoord[0]+pd[0]*show.BondSize, elem.Enod[0].Pcoord[1]+pd[1]*show.BondSize, show.BondSize*2)
+                cvs.FFilledCircle(elem.Enod[1].Pcoord[0]-pd[0]*show.BondSize, elem.Enod[1].Pcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
             }
         }
         if show.ElementAxis {
@@ -254,14 +249,21 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
                         }
                     }
                     stpos := elem.Frame.View.ProjectCoord(coord)
-                    // TODO: rotate text
                     if j == 0 {
                         cvs.TextAlignment(cd.CD_SOUTH)
                     } else {
                         cvs.TextAlignment(cd.CD_NORTH)
                     }
+                    deg := math.Atan2(pd[1], pd[0])*180.0/math.Pi
+                    if deg > 90.0 {
+                        deg -= 180.0
+                    } else if deg < -90.0 {
+                        deg += 180.0
+                    }
+                    cvs.TextOrientation(deg)
                     cvs.FText(stpos[0], stpos[1], tex[:len(tex)-1])
                     cvs.TextAlignment(DefaultTextAlignment)
+                    cvs.TextOrientation(0.0)
                 }
             }
         }
