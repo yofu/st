@@ -91,6 +91,7 @@ type Show struct {// {{{
     Dfact float64
 
     Stress   map[int]uint
+    NoMomentValue bool
 
     YieldFunction bool
 

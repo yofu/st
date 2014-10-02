@@ -1913,7 +1913,15 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
         stw.SelectElem = stw.Frame.Fence(axis, val, false)
         stw.HideNotSelected()
     case "PERIOD":
-        stw.SetPeriod(lis[1])
+        stw.SetPeriod(strings.ToUpper(lis[1]))
+    case "NOMOMENTVALUE":
+        if un {
+            stw.Frame.Show.NoMomentValue = false
+        } else {
+            stw.Frame.Show.NoMomentValue = true
+        }
+    case "NCOLOR":
+        stw.SetColorMode(st.ECOLOR_N)
     }
     return nil
 }

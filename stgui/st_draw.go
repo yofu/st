@@ -220,21 +220,27 @@ func DrawElem (elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
             sttext := make([]bytes.Buffer, 2)
             for i, st := range []uint{ st.STRESS_NZ, st.STRESS_QX, st.STRESS_QY, st.STRESS_MZ, st.STRESS_MX, st.STRESS_MY } {
                 if flag & st != 0 {
-                    sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)))
-                    if i != 0 { // not showing NZ
+                    switch i {
+                    case 0:
+                        sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)))
+                    case 1, 2, 3:
+                        sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)))
                         sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i)))
-                        if i == 4 || i == 5 {
-                            mcoord := elem.MomentCoord(show, i)
-                            cvs.Foreground(MomentColor)
-                            cvs.Begin(cd.CD_OPEN_LINES)
-                            cvs.FVertex(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1])
-                            for _, c := range mcoord {
-                                tmp := elem.Frame.View.ProjectCoord(c)
-                                cvs.FVertex(tmp[0], tmp[1])
-                            }
-                            cvs.FVertex(elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
-                            cvs.End()
+                    case 4, 5:
+                        if !show.NoMomentValue {
+                            sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)))
+                            sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i)))
                         }
+                        mcoord := elem.MomentCoord(show, i)
+                        cvs.Foreground(MomentColor)
+                        cvs.Begin(cd.CD_OPEN_LINES)
+                        cvs.FVertex(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1])
+                        for _, c := range mcoord {
+                            tmp := elem.Frame.View.ProjectCoord(c)
+                            cvs.FVertex(tmp[0], tmp[1])
+                        }
+                        cvs.FVertex(elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
+                        cvs.End()
                     }
                 }
             }
