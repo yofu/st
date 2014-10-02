@@ -732,6 +732,7 @@ func NewWindow(homedir string) *Window {// {{{
                         stw.feedCommand()
                     case KEY_ESCAPE:
                         stw.cline.SetAttribute("VALUE", "")
+                        iup.SetFocus(stw.canv)
                     case KEY_TAB:
                         tmp := stw.cline.GetAttribute("VALUE")
                         if strings.Contains(tmp, "%") {
