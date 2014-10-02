@@ -3120,12 +3120,18 @@ func (frame *Frame) Facts (fn string, etypes []int) error {
 
 
 // Modify View// {{{
-func (frame *Frame) SetFocus() {
-    xmin, xmax, ymin, ymax, zmin, zmax := frame.Bbox()
-    mins := []float64{ xmin, ymin, zmin }
-    maxs := []float64{ xmax, ymax, zmax }
-    for i:=0; i<3; i++ {
-        frame.View.Focus[i] = 0.5*(mins[i]+maxs[i])
+func (frame *Frame) SetFocus(coord []float64) {
+    if coord == nil {
+        xmin, xmax, ymin, ymax, zmin, zmax := frame.Bbox()
+        mins := []float64{ xmin, ymin, zmin }
+        maxs := []float64{ xmax, ymax, zmax }
+        for i:=0; i<3; i++ {
+            frame.View.Focus[i] = 0.5*(mins[i]+maxs[i])
+        }
+    } else {
+        for i:=0; i<3; i++ {
+            frame.View.Focus[i] = coord[i]
+        }
     }
 }
 // }}}

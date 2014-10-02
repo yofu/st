@@ -231,7 +231,7 @@ func getcoord (stw *Window, f func(x, y, z float64)) {
                                           stw.Redraw()
                                       } else { // Pressed
                                           if isDouble(arg.Status) {
-                                              stw.Frame.SetFocus()
+                                              stw.Frame.SetFocus(nil)
                                               stw.DrawFrameNode()
                                               stw.ShowCenter()
                                           } else {
@@ -337,7 +337,7 @@ func get1node (stw *Window, f func(n *st.Node)) {
                                           stw.Redraw()
                                       } else { // Pressed
                                           if isDouble(arg.Status) {
-                                              stw.Frame.SetFocus()
+                                              stw.Frame.SetFocus(nil)
                                               stw.DrawFrameNode()
                                               stw.ShowCenter()
                                           } else {
@@ -479,7 +479,7 @@ func get2nodes (stw *Window, f func(n *st.Node), fdel func()) {
                                           stw.Redraw()
                                       } else { // Pressed
                                           if isDouble(arg.Status) {
-                                              stw.Frame.SetFocus()
+                                              stw.Frame.SetFocus(nil)
                                               stw.DrawFrameNode()
                                               stw.ShowCenter()
                                           } else {
@@ -663,7 +663,7 @@ func getnnodes (stw *Window, maxnum int, f func(int)) {
                                           stw.Redraw()
                                       } else { // Pressed
                                           if isDouble(arg.Status) {
-                                              stw.Frame.SetFocus()
+                                              stw.Frame.SetFocus(nil)
                                               stw.DrawFrameNode()
                                               stw.ShowCenter()
                                           } else {
@@ -860,7 +860,7 @@ func searchelem (stw *Window) {
                                           stw.Redraw()
                                       } else { // Pressed
                                           if isDouble(arg.Status) {
-                                              stw.Frame.SetFocus()
+                                              stw.Frame.SetFocus(nil)
                                               stw.DrawFrameNode()
                                               stw.ShowCenter()
                                           } else {
@@ -972,7 +972,7 @@ func getvector (stw *Window, f func(x,y,z float64)) {
                                           stw.Redraw()
                                       } else { // Pressed
                                           if isDouble(arg.Status) {
-                                              stw.Frame.SetFocus()
+                                              stw.Frame.SetFocus(nil)
                                               stw.DrawFrameNode()
                                               stw.ShowCenter()
                                           } else {
@@ -1201,7 +1201,7 @@ func pinchnode (stw *Window) {
                                      stw.Redraw()
                                  } else { // Pressed
                                      if isDouble(arg.Status) {
-                                         stw.Frame.SetFocus()
+                                         stw.Frame.SetFocus(nil)
                                          stw.DrawFrameNode()
                                          stw.ShowCenter()
                                      } else {
@@ -1501,7 +1501,7 @@ func insert(stw *Window) {
 
 // SETFOCUS// {{{
 func setfocus(stw *Window) {
-    stw.Frame.SetFocus()
+    stw.Frame.SetFocus(nil)
     stw.Redraw()
     stw.addHistory(fmt.Sprintf("FOCUS: %.1f %.1f %.1f", stw.Frame.View.Focus[0], stw.Frame.View.Focus[1], stw.Frame.View.Focus[2]))
     stw.EscapeAll()
@@ -1539,7 +1539,7 @@ func get1elem (stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem)
                                           stw.Redraw()
                                       } else { // Pressed
                                           if isDouble(arg.Status) {
-                                              stw.Frame.SetFocus()
+                                              stw.Frame.SetFocus(nil)
                                               stw.DrawFrameNode()
                                               stw.ShowCenter()
                                           } else {
@@ -2302,7 +2302,7 @@ func fence (stw *Window) {
                                           stw.Redraw()
                                       } else { // Pressed
                                           if isDouble(arg.Status) {
-                                              stw.Frame.SetFocus()
+                                              stw.Frame.SetFocus(nil)
                                               stw.DrawFrameNode()
                                               stw.ShowCenter()
                                           } else {
@@ -2657,7 +2657,7 @@ func hatchplateelem (stw *Window) {
                                           stw.Redraw()
                                       } else { // Pressed
                                           if isDouble(arg.Status) {
-                                              stw.Frame.SetFocus()
+                                              stw.Frame.SetFocus(nil)
                                               stw.DrawFrameNode()
                                               stw.ShowCenter()
                                           } else {
@@ -2902,7 +2902,7 @@ func sumreaction (stw *Window) {
                                           stw.Redraw()
                                       } else { // Pressed
                                           if isDouble(arg.Status) {
-                                              stw.Frame.SetFocus()
+                                              stw.Frame.SetFocus(nil)
                                               stw.DrawFrameNode()
                                               stw.ShowCenter()
                                           } else {
@@ -3129,7 +3129,7 @@ func getnelems (stw *Window, size int, f func(int)) {
                                           stw.Redraw()
                                       } else { // Pressed
                                           if isDouble(arg.Status) {
-                                              stw.Frame.SetFocus()
+                                              stw.Frame.SetFocus(nil)
                                               stw.DrawFrameNode()
                                               stw.ShowCenter()
                                           } else {

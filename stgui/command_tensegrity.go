@@ -100,7 +100,7 @@ func tensegrity (stw *Window, f func(cs, ts, sz int), csect, tsect, size int) {
                                           stw.Redraw()
                                       } else { // Pressed
                                           if isDouble(arg.Status) {
-                                              stw.Frame.SetFocus()
+                                              stw.Frame.SetFocus(nil)
                                               stw.DrawFrameNode()
                                               stw.ShowCenter()
                                           } else {

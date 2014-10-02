@@ -1363,7 +1363,7 @@ func (stw *Window) OpenFile(fn string) error {
             return err
         }
         stw.Frame = frame
-        frame.SetFocus()
+        frame.SetFocus(nil)
         stw.DrawFrameNode()
         stw.ShowCenter()
     }
@@ -1694,17 +1694,30 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
         stw.Labels["GFACT"].SetAttribute("VALUE", fmt.Sprintf("%f", stw.Frame.View.Gfact))
     case "FOCUS":
         if len(lis) < 2 { return st.NotEnoughArgs("FOCUS") }
-        if strings.ToUpper(lis[1]) == "CENTER" || strings.ToUpper(lis[1]) == "CENTER" {
-            stw.Frame.SetFocus()
-            break
-        }
-        if len(lis) < 4 { return st.NotEnoughArgs("FOCUS") }
-        for i, str := range []string{"FOCUSX", "FOCUSY", "FOCUSZ"} {
-            if lis[1+i] == "_" { continue }
-            val, err := strconv.ParseFloat(lis[1+i], 64)
+        switch strings.ToUpper(lis[1]) {
+        case "CENTER", "CENTRE":
+            stw.Frame.SetFocus(nil)
+        case "NODE":
+            val, err := strconv.ParseInt(lis[2], 10, 64)
             if err != nil { return err }
-            stw.Frame.View.Focus[i] = val
-            stw.Labels[str].SetAttribute("VALUE", fmt.Sprintf("%f", stw.Frame.View.Focus[i]))
+            if n, ok := stw.Frame.Nodes[int(val)]; ok {
+                stw.Frame.SetFocus(n.Coord)
+            }
+        case "ELEM":
+            val, err := strconv.ParseInt(lis[2], 10, 64)
+            if err != nil { return err }
+            if el, ok := stw.Frame.Elems[int(val)]; ok {
+                stw.Frame.SetFocus(el.MidPoint())
+            }
+        default:
+            if len(lis) < 4 { return st.NotEnoughArgs("FOCUS") }
+            for i, str := range []string{"FOCUSX", "FOCUSY", "FOCUSZ"} {
+                if lis[1+i] == "_" { continue }
+                val, err := strconv.ParseFloat(lis[1+i], 64)
+                if err != nil { return err }
+                stw.Frame.View.Focus[i] = val
+                stw.Labels[str].SetAttribute("VALUE", fmt.Sprintf("%f", stw.Frame.View.Focus[i]))
+            }
         }
     case "FIT":
         stw.ShowCenter()
@@ -3808,7 +3821,7 @@ func (stw *Window) CB_MouseButton() {
                                           stw.Redraw()
                                       } else { // Pressed
                                           if isDouble(arg.Status) {
-                                              stw.Frame.SetFocus()
+                                              stw.Frame.SetFocus(nil)
                                               stw.DrawFrameNode()
                                               stw.ShowCenter()
                                           } else {
