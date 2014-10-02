@@ -1850,6 +1850,38 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
             stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelFGColor)
             stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelFGColor)
         }
+    case "STRESS":
+        l := len(lis)
+        if l < 2 { return st.NotEnoughArgs("STRESS") }
+        etype := -1
+        et := strings.ToUpper(lis[1])
+        for i, e := range st.ETYPES {
+            if et == e { etype = i }
+        }
+        if etype == -1 { break }
+        if l < 3 && un {
+            for i:=0; i<6; i++ {
+                stw.StressOff(etype, uint(i))
+            }
+            break
+        }
+        if l < 4 { return st.NotEnoughArgs("STRESS") }
+        period := strings.ToUpper(lis[2])
+        stw.SetPeriod(period)
+        index := -1
+        val := strings.ToUpper(lis[3])
+        for i, str := range []string{"N", "QX", "QY", "MZ", "MX", "MY"} {
+            if val == str {
+                index = i
+                break
+            }
+        }
+        if index == -1 { break }
+        if un {
+            stw.StressOff(etype, uint(index))
+        } else {
+            stw.StressOn(etype, uint(index))
+        }
     case "ALIAS":
         if un {
             if len(lis) < 2 {
@@ -5226,6 +5258,16 @@ func (stw *Window) ElemCaptionOff (name string) {
             }
         }
     }
+}
+
+func (stw *Window) StressOn(etype int, index uint) {
+    stw.Frame.Show.Stress[etype] |= (1 << index)
+    stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))].SetAttribute("FGCOLOR", labelFGColor)
+}
+
+func (stw *Window) StressOff(etype int, index uint) {
+    stw.Frame.Show.Stress[etype] &= ^(1 << index)
+    stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))].SetAttribute("FGCOLOR", labelOFFColor)
 }
 
 func (stw *Window) captionLabel (ne string, name string, width int, val uint, on bool) *iup.Handle {
