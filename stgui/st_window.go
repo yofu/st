@@ -181,6 +181,11 @@ type Window struct {// {{{
     SelectNode []*st.Node
     SelectElem []*st.Elem
 
+    PageTitle *TextBox
+    Title *TextBox
+    Text *TextBox
+    TextBox []*TextBox
+
     Version string
     Modified string
 
@@ -1021,9 +1026,17 @@ func NewWindow(homedir string) *Window {// {{{
                   },
               )
     stw.Dlg.Map()
-    // stw.dbuff.VectorFont("ipam.ttf")
-    // stw.dbuff.VectorFontSize(0.1, 0.1)
+    w, h := stw.cdcanv.GetSize()
+    stw.CanvasSize = []float64{ float64(w), float64(h) }
     stw.dbuff.TextAlignment(DefaultTextAlignment)
+    stw.PageTitle = NewTextBox()
+    stw.PageTitle.Font.Size = 16
+    stw.PageTitle.Position = []float64{30.0, stw.CanvasSize[1]-30.0}
+    stw.Title = NewTextBox()
+    stw.Title.Position = []float64{30.0, stw.CanvasSize[1]-80.0}
+    stw.Text = NewTextBox()
+    stw.Text.Position = []float64{120.0, 65.0}
+    stw.TextBox = make([]*TextBox, 0)
     iup.SetHandle("mainwindow", stw.Dlg)
     stw.EscapeAll()
     stw.Changed = false
@@ -1967,6 +1980,30 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
         }
     case "NCOLOR":
         stw.SetColorMode(st.ECOLOR_N)
+    case "PAGETITLE":
+        if un {
+            stw.PageTitle.Value = make([]string, 0)
+            stw.PageTitle.Hide = true
+        } else {
+            stw.PageTitle.Value = append(stw.PageTitle.Value, strings.Join(lis[1:], " "))
+            stw.PageTitle.Hide = false
+        }
+    case "TITLE":
+        if un {
+            stw.Title.Value = make([]string, 0)
+            stw.Title.Hide = true
+        } else {
+            stw.Title.Value = append(stw.Title.Value, strings.Join(lis[1:], " "))
+            stw.Title.Hide = false
+        }
+    case "TEXT":
+        if un {
+            stw.Text.Value = make([]string, 0)
+            stw.Text.Hide = true
+        } else {
+            stw.Text.Value = append(stw.Text.Value, strings.Join(lis[1:], " "))
+            stw.Text.Hide = false
+        }
     }
     return nil
 }
@@ -2067,6 +2104,7 @@ func (stw *Window) feedCommand() {
         stw.cline.SetAttribute("VALUE", "")
         stw.execAliasCommand(command)
     }
+    iup.SetFocus(stw.canv)
 }
 
 func (stw *Window) addCommandHistory (str string) {
@@ -2653,11 +2691,30 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
     }
 }
 
+func (stw *Window) DrawTexts (canv *cd.Canvas) {
+    if !stw.PageTitle.Hide {
+        DrawText(stw.PageTitle, canv)
+    }
+    if !stw.Title.Hide {
+        DrawText(stw.Title, canv)
+    }
+    if !stw.Text.Hide {
+        DrawText(stw.Text, canv)
+    }
+    for _, t := range stw.TextBox {
+        if !t.Hide {
+            DrawText(t, canv)
+        }
+    }
+}
+
 func (stw *Window) Redraw() {
-    stw.DrawFrame(stw.dbuff,stw.Frame.Show.ColorMode, true)
+    stw.DrawFrame(stw.dbuff,stw.Frame.Show.ColorMode, false)
     if stw.Property {
         stw.UpdatePropertyDialog()
     }
+    stw.DrawTexts(stw.dbuff)
+    stw.dbuff.Flush()
 }
 
 func (stw *Window) DrawFrameNode() {
@@ -3912,6 +3969,7 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
     default:
         // fmt.Println(key.Key())
         stw.cline.SetAttribute("APPEND", string(key.Key()))
+        iup.SetFocus(stw.cline)
     case '/':
         if stw.cline.GetAttribute("VALUE") != "" {
             stw.cline.SetAttribute("APPEND", "/")

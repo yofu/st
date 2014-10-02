@@ -398,3 +398,17 @@ func DrawKijun (k *st.Kijun, cvs *cd.Canvas, show *st.Show) {
         cvs.FText(k.Pstart[0]-d[0]*show.KijunSize, k.Pstart[1]-d[1]*show.KijunSize, k.Name)
     }
 }
+
+
+// TEXT
+func DrawText (t *TextBox, cvs *cd.Canvas) {
+    s := cvs.SaveState()
+    cvs.Font(t.Font.Face, cd.CD_PLAIN, t.Font.Size)
+    cvs.Foreground(t.Font.Color)
+    for i, txt := range t.Value {
+        xpos := t.Position[0]
+        ypos := t.Position[1] - float64(i*t.Font.Size)*1.5 - float64(t.Font.Size)
+        cvs.FText(xpos, ypos, txt)
+    }
+    cvs.RestoreState(s)
+}
