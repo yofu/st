@@ -2049,6 +2049,23 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
             stw.Text.Value = append(stw.Text.Value, strings.Join(lis[1:], " "))
             stw.Text.Hide = false
         }
+    case "POSITION":
+        if len(lis) < 4 { return st.NotEnoughArgs("POSITION") }
+        xpos, err := strconv.ParseFloat(lis[2], 64)
+        if err != nil { return err }
+        ypos, err := strconv.ParseFloat(lis[3], 64)
+        if err != nil { return err }
+        switch strings.ToUpper(lis[1]) {
+        case "PAGETITLE":
+            stw.PageTitle.Position[0] = xpos
+            stw.PageTitle.Position[1] = ypos
+        case "TITLE":
+            stw.Title.Position[0] = xpos
+            stw.Title.Position[1] = ypos
+        case "TEXT":
+            stw.Text.Position[0] = xpos
+            stw.Text.Position[1] = ypos
+        }
     }
     return nil
 }
