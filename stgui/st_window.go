@@ -1669,20 +1669,64 @@ func (stw *Window) PrintFig2 (filename string) error {
     return nil
 }
 
+func (stw *Window) ReadFig2 (filename string) error {
+    if stw.Frame == nil { return errors.New("ReadFig2: no frame opened") }
+    tmp := make([][]string, 0)
+    var err error
+    err = st.ParseFile(filename, func (words []string) error {
+                                     var err error
+                                     first := strings.ToUpper(words[0])
+                                     if strings.HasPrefix(first, "#") { return nil }
+                                     switch first {
+                                     default:
+                                         tmp=append(tmp,words)
+                                     case "PAGE", "FIGURE":
+                                         err = stw.ParseFig2(stw.dbuff, tmp)
+                                         tmp=[][]string{words}
+                                     }
+                                     if err != nil { return err }
+                                     return nil
+                                 })
+    if err != nil { return err }
+    err = stw.ParseFig2(stw.dbuff, tmp)
+    if err != nil { return err }
+    stw.Redraw()
+    return nil
+}
+
 func (stw *Window) ParseFig2 (pcanv *cd.Canvas, lis [][]string) error {
     var err error
-    if len(lis)==0 || len(lis[0])<=2 {
+    if len(lis)==0 || len(lis[0])<1 {
         return nil
     }
     first := strings.ToUpper(lis[0][0])
     switch first {
     case "PAGE":
         err = stw.ParseFig2Page(pcanv, lis)
+    case "FIGURE":
+        err = stw.ParseFig2Page(pcanv, lis)
     }
     return err
 }
 
 func (stw *Window) ParseFig2Page (pcanv *cd.Canvas, lis [][]string) error {
+    for _, txt := range lis {
+        if len(txt) < 1 { continue }
+        var un bool
+        if strings.HasPrefix(txt[0], "!") {
+            un = true
+            txt[0] = txt[0][1:]
+        } else {
+            un = false
+        }
+        err := stw.fig2keyword(txt, un)
+        if err != nil {
+            return err
+        }
+    }
+    stw.DrawFrame(pcanv,stw.Frame.Show.ColorMode, false)
+    stw.DrawTexts(pcanv)
+    pcanv.Flush()
     return nil
 }
 
@@ -2398,6 +2442,11 @@ func (stw *Window) exmode (command string) {
                 stw.addHistory("Not enough arguments")
             } else {
                 stw.Frame.WriteOutput(fn, args[2])
+            }
+        case "fig2":
+            err := stw.ReadFig2(fn)
+            if err != nil {
+                fmt.Println(err)
             }
         case "conf":
             lis := make([]bool, 6)
