@@ -43,6 +43,12 @@ func DrawNode (node *st.Node, cvs *cd.Canvas, show *st.Show) {
         ncap.WriteString(fmt.Sprintf("%.1f\n", node.Coord[2]))
         oncap = true
     }
+    if show.NodeCaption & st.NC_PILE != 0 {
+        if node.Pile != nil {
+            ncap.WriteString(fmt.Sprintf("%d\n", node.Pile.Num))
+            oncap = true
+        }
+    }
     if oncap {
         cvs.FText(node.Pcoord[0], node.Pcoord[1], ncap.String())
     }

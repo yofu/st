@@ -1998,6 +1998,12 @@ func (stw *Window) fig2keyword (lis []string, un bool) error {
                 stw.Labels["CONFSIZE"].SetAttribute("VALUE", fmt.Sprintf("%.1f", val))
             }
         }
+    case "PILE":
+        if un {
+            stw.NodeCaptionOff("NC_PILE")
+        } else {
+            stw.NodeCaptionOn("NC_PILE")
+        }
     case "FENCE":
         if len(lis) < 3 { return st.NotEnoughArgs("FENCE") }
         var axis int
