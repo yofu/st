@@ -2172,6 +2172,7 @@ func (stw *Window) feedCommand() {
         stw.cline.SetAttribute("VALUE", "")
         stw.execAliasCommand(command)
     }
+    stw.Redraw()
     iup.SetFocus(stw.canv)
 }
 
@@ -2491,6 +2492,27 @@ func (stw *Window) exmode (command string) {
                 setconf(stw, lis)
             } else {
                 stw.addHistory("Not enough arguments")
+            }
+        case "pile":
+            if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+                return
+            }
+            if narg < 2 {
+                for _, n := range stw.SelectNode {
+                    n.Pile = nil
+                }
+                return
+            }
+            val, err := strconv.ParseInt(args[1], 10, 64)
+            if err != nil {
+                return
+            }
+            if p, ok := stw.Frame.Piles[int(val)]; ok {
+                for _, n := range stw.SelectNode {
+                    n.Pile = p
+                }
+            } else {
+                stw.addHistory(fmt.Sprintf("PILE %d doesn't exist", val))
             }
         case "an":
             stw.SaveFile(stw.Frame.Path)
