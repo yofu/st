@@ -2,6 +2,7 @@ package st
 
 import (
     "bytes"
+    "errors"
     "fmt"
 )
 
@@ -182,6 +183,36 @@ func (sect *Sect) HasArea () bool {
         }
     }
     return false
+}
+
+func (sect *Sect) Area () (float64, error) {
+    if len(sect.Figs)==0 { return 0.0, errors.New(fmt.Sprintf("Area: SECT %d has no Fig", sect.Num)) }
+    for _, fig := range sect.Figs {
+        if val, ok := fig.Value["AREA"]; ok {
+            return val, nil
+        }
+    }
+    return 0.0, errors.New(fmt.Sprintf("Area: SECT %d doesn't have AREA", sect.Num))
+}
+
+func (sect *Sect) Ix () (float64, error) {
+    if len(sect.Figs)==0 { return 0.0, errors.New(fmt.Sprintf("Ix: SECT %d has no Fig", sect.Num)) }
+    for _, fig := range sect.Figs {
+        if val, ok := fig.Value["IXX"]; ok {
+            return val, nil
+        }
+    }
+    return 0.0, errors.New(fmt.Sprintf("Ix: SECT %d doesn't have IXX", sect.Num))
+}
+
+func (sect *Sect) Iy () (float64, error) {
+    if len(sect.Figs)==0 { return 0.0, errors.New(fmt.Sprintf("Iy: SECT %d has no Fig", sect.Num)) }
+    for _, fig := range sect.Figs {
+        if val, ok := fig.Value["IYY"]; ok {
+            return val, nil
+        }
+    }
+    return 0.0, errors.New(fmt.Sprintf("Iy: SECT %d doesn't have IYY", sect.Num))
 }
 
 func (sect *Sect) PropSize (props []int) float64 {

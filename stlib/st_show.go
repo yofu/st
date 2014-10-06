@@ -42,7 +42,7 @@ var ( // Boundary for Rainbow (length should be <= 6)
 )
 var (
     // ECOLORS = []string{ "WHITE", "BLACK", "BY SECTION", "BY RATE", "BY HEIGHT", "BY N" }
-    ECOLORS = []string{ "WHITE", "BLACK", "BY SECTION", "BY RATE", "BY N" }
+    ECOLORS = []string{ "WHITE", "BLACK", "BY SECTION", "BY RATE", "BY N", "BY STRONG" }
     PERIODS = []string{ "L", "X", "Y" }
 )
 const (
@@ -52,6 +52,7 @@ const (
     ECOLOR_RATE
     // ECOLOR_HEIGHT
     ECOLOR_N
+    ECOLOR_STRONG
 )
 
 type Show struct {// {{{

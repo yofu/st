@@ -2727,6 +2727,22 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
                             } else {
                                 canv.Foreground(st.RainbowColor[6]) // Tension: Red
                             }
+                        case st.ECOLOR_STRONG:
+                            if el.IsLineElem() {
+                                Ix, err := el.Sect.Ix()
+                                if err != nil { canv.Foreground(cd.CD_WHITE) }
+                                Iy, err := el.Sect.Iy()
+                                if err != nil { canv.Foreground(cd.CD_WHITE) }
+                                if Ix > Iy {
+                                    canv.Foreground(st.RainbowColor[0]) // Strong: Blue
+                                } else if Ix == Iy {
+                                    canv.Foreground(st.RainbowColor[4]) // Same: Yellow
+                                } else {
+                                    canv.Foreground(st.RainbowColor[6]) // Weak: Red
+                                }
+                            } else {
+                                canv.Foreground(el.Sect.Color)
+                            }
                         }
                     }
                     DrawElem(el, canv, stw.Frame.Show)
