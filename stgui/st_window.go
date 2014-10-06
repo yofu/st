@@ -2505,6 +2505,9 @@ func (stw *Window) exmode (command string) {
         case "f":
             stw.FilterSelectedElem(strings.Join(args[1:], " "))
         case "ht":
+            if narg == 1 {
+                axisrange(stw, 2, -100.0, 1000.0, false)
+            }
             if narg < 3 { return }
             tmp, err := strconv.ParseInt(args[1], 10, 64)
             if err != nil { return }
