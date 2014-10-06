@@ -72,6 +72,7 @@ var (
     ONNODE              = &Command{"ONND", "ON NODE", "select nodes which is on selected elems", onnode}
     NODENOREFERENCE     = &Command{"NODE NO REF.", "NODE NO REFERENCE", "delete nodes which are not refered by any elem", nodenoreference}
     ELEMSAMENODE        = &Command{"ELEM SAME NODE", "ELEM SAME NODE", "delete elems which has duplicated enod", elemsamenode}
+    SUSPICIOUS          = &Command{"SUSPICIOUS", "SUSPICIOUS", "select suspicious nodes/elems", suspicious}
     PRUNEENOD           = &Command{"PRUNE ENOD", "PRUNE ENOD", "prune duplicated enod", pruneenod}
     NODEDUPLICATION     = &Command{"DUPLICATIVE NODE", "NODE DUPLICATION", "delete duplicated nodes", nodeduplication}
     ELEMDUPLICATION     = &Command{"DUPLICATIVE ELEM", "ELEM DUPLICATION", "delete duplicated elems", elemduplication}
@@ -153,6 +154,7 @@ func init() {
     Commands["ONNODE"]=ONNODE
     Commands["NODENOREFERENCE"]=NODENOREFERENCE
     Commands["ELEMSAMENODE"]=ELEMSAMENODE
+    Commands["SUSPICIOUS"]=SUSPICIOUS
     Commands["PRUNEENOD"]=PRUNEENOD
     Commands["NODEDUPLICATION"]=NODEDUPLICATION
     Commands["ELEMDUPLICATION"]=ELEMDUPLICATION
@@ -2095,6 +2097,17 @@ func elemsamenode (stw *Window) {
 }
 // }}}
 
+
+func suspicious (stw *Window) {
+    stw.Deselect()
+    ns, els, err := stw.Frame.Suspicious()
+    if err != nil {
+        stw.SelectNode = ns
+        stw.SelectElem = els
+        fmt.Println(err.Error())
+    }
+    stw.EscapeCB()
+}
 
 // PRUNEENOD// {{{
 func pruneenod (stw *Window) {

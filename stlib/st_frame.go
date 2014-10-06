@@ -2399,24 +2399,26 @@ func (frame *Frame) Suspicious () ([]*Node, []*Elem, error) {
     var otp bytes.Buffer
     ns := make([]*Node, 0)
     els := make([]*Elem, 0)
-    for _, n := range frame.Nodes {
-        es := frame.SearchElem(n)
-        err1 := true; err2 := true
-        for _, el := range es {
-            if el.IsLineElem() {
-                err1 = false
+    susnode:
+        for _, n := range frame.Nodes {
+            es := frame.SearchElem(n)
+            err1 := true; err2 := true
+            for _, el := range es {
+                if el.IsLineElem() {
+                    err1 = false
+                    if el.IsRigid(n.Num) {
+                        err2 = false
+                    }
+                }
+                if !err1 && !err2 { continue susnode }
             }
-            if el.IsRigid(n.Num) {
-                err2 = false
+            if err1 {
+                ns = append(ns, n)
+                otp.WriteString(fmt.Sprintf("no line elem: %d\n", n.Num))
+            } else if err2 {
+                ns = append(ns, n)
+                otp.WriteString(fmt.Sprintf("all pin: %d\n", n.Num))
             }
-        }
-        if err1 {
-            ns = append(ns, n)
-            otp.WriteString(fmt.Sprintf("no line elem: %d\n", n.Num))
-        } else if err2 {
-            ns = append(ns, n)
-            otp.WriteString(fmt.Sprintf("all pin: %d\n", n.Num))
-        }
     }
     for _, el := range frame.Elems {
         b, err := el.IsValidElem()
@@ -2425,7 +2427,11 @@ func (frame *Frame) Suspicious () ([]*Node, []*Elem, error) {
             otp.WriteString(err.Error())
         }
     }
-    return ns, els, errors.New(otp.String())
+    if len(ns)==0 && len(els)==0 {
+        return ns, els, nil
+    } else {
+        return ns, els, errors.New(otp.String())
+    }
 }
 
 func (frame *Frame) Cat (e1, e2 *Elem, n *Node) error {
