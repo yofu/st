@@ -1632,11 +1632,23 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64) {
 	v := stw.Frame.View.Copy()
 	pw, ph := pcanv.GetSize()
 	factor := math.Min(float64(pw)/stw.CanvasSize[0], float64(ph)/stw.CanvasSize[1])
+	stw.CanvasSize[0] = float64(pw)
+	stw.CanvasSize[1] = float64(ph)
 	stw.Frame.View.Gfact *= factor
 	stw.Frame.View.Center[0] = 0.5 * float64(pw)
 	stw.Frame.View.Center[1] = 0.5 * float64(ph)
 	stw.Frame.Show.ConfSize *= factor
 	stw.Frame.Show.BondSize *= factor
+	for i:=0; i<2; i++ {
+		stw.PageTitle.Position[i] *= factor
+		stw.Title.Position[i] *= factor
+		stw.Text.Position[i] *= factor
+	}
+	for _, t := range stw.TextBox {
+		for i:=0; i<2; i++ {
+			t.Position[i] *= factor
+		}
+	}
 	return v, factor
 }
 
@@ -1656,12 +1668,24 @@ func (stw *Window) Print() {
 	case st.ECOLOR_WHITE:
 		stw.DrawFrame(pcanv, st.ECOLOR_BLACK, false)
 	}
-	stw.DrawTexts(pcanv)
+	stw.DrawTexts(pcanv, true)
 	pcanv.Flush()
 	pcanv.Kill()
+	w, h := stw.cdcanv.GetSize()
+	stw.CanvasSize = []float64{float64(w), float64(h)}
 	stw.Frame.Show.ConfSize /= factor
 	stw.Frame.Show.BondSize /= factor
 	stw.Frame.View = v
+	for i:=0; i<2; i++ {
+		stw.PageTitle.Position[i] /= factor
+		stw.Title.Position[i] /= factor
+		stw.Text.Position[i] /= factor
+	}
+	for _, t := range stw.TextBox {
+		for i:=0; i<2; i++ {
+			t.Position[i] /= factor
+		}
+	}
 	stw.Redraw()
 }
 
@@ -1776,7 +1800,7 @@ func (stw *Window) ParseFig2Page(pcanv *cd.Canvas, lis [][]string) error {
 		}
 	}
 	stw.DrawFrame(pcanv, stw.Frame.Show.ColorMode, false)
-	stw.DrawTexts(pcanv)
+	stw.DrawTexts(pcanv, true)
 	pcanv.Flush()
 	return nil
 }
@@ -3000,19 +3024,47 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 	}
 }
 
-func (stw *Window) DrawTexts(canv *cd.Canvas) {
+func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
 	if !stw.PageTitle.Hide {
-		DrawText(stw.PageTitle, canv)
+		if black {
+			col := stw.PageTitle.Font.Color
+			stw.PageTitle.Font.Color = cd.CD_BLACK
+			DrawText(stw.PageTitle, canv)
+			stw.PageTitle.Font.Color = col
+		} else {
+			DrawText(stw.PageTitle, canv)
+		}
 	}
 	if !stw.Title.Hide {
-		DrawText(stw.Title, canv)
+		if black {
+			col := stw.Title.Font.Color
+			stw.Title.Font.Color = cd.CD_BLACK
+			DrawText(stw.Title, canv)
+			stw.Title.Font.Color = col
+		} else {
+			DrawText(stw.Title, canv)
+		}
 	}
 	if !stw.Text.Hide {
-		DrawText(stw.Text, canv)
+		if black {
+			col := stw.Text.Font.Color
+			stw.Text.Font.Color = cd.CD_BLACK
+			DrawText(stw.Text, canv)
+			stw.Text.Font.Color = col
+		} else {
+			DrawText(stw.Text, canv)
+		}
 	}
 	for _, t := range stw.TextBox {
 		if !t.Hide {
-			DrawText(t, canv)
+			if black {
+				col := t.Font.Color
+				t.Font.Color = cd.CD_BLACK
+				DrawText(t, canv)
+				t.Font.Color = col
+			} else {
+				DrawText(t, canv)
+			}
 		}
 	}
 }
@@ -3022,7 +3074,7 @@ func (stw *Window) Redraw() {
 	if stw.Property {
 		stw.UpdatePropertyDialog()
 	}
-	stw.DrawTexts(stw.dbuff)
+	stw.DrawTexts(stw.dbuff, false)
 	stw.dbuff.Flush()
 }
 
