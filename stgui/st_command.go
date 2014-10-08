@@ -1834,8 +1834,7 @@ func selectnode (stw *Window) {
                               key := iup.KeyState(arg.Key)
                               switch key.Key() {
                               default:
-                                  stw.DefaultKeyAny(key)
-                                  // stw.cline.SetAttribute("INSERT", string(key.Key()))
+                                  stw.cline.SetAttribute("APPEND", string(key.Key()))
                               case KEY_BS:
                                   val := stw.cline.GetAttribute("VALUE")
                                   if val != "" {
@@ -1920,8 +1919,7 @@ func selectelem (stw *Window) {
                               key := iup.KeyState(arg.Key)
                               switch key.Key() {
                               default:
-                                  stw.DefaultKeyAny(key)
-                                  // stw.cline.SetAttribute("INSERT", string(key.Key()))
+                                  stw.cline.SetAttribute("APPEND", string(key.Key()))
                               case KEY_BS:
                                   val := stw.cline.GetAttribute("VALUE")
                                   if val != "" {
@@ -1967,8 +1965,7 @@ func selectsect (stw *Window) {
                               key := iup.KeyState(arg.Key)
                               switch key.Key() {
                               default:
-                                  stw.DefaultKeyAny(key)
-                                  // stw.cline.SetAttribute("INSERT", string(key.Key()))
+                                  stw.cline.SetAttribute("APPEND", string(key.Key()))
                               case KEY_BS:
                                   val := stw.cline.GetAttribute("VALUE")
                                   if val != "" {
@@ -1999,7 +1996,7 @@ func hidesection (stw *Window) {
                               key := iup.KeyState(arg.Key)
                               switch key.Key() {
                               default:
-                                  stw.DefaultKeyAny(key)
+                                  stw.cline.SetAttribute("APPEND", string(key.Key()))
                               case KEY_BS:
                                   val := stw.cline.GetAttribute("VALUE")
                                   if val != "" {
