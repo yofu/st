@@ -1,64 +1,64 @@
 package st
 
 import (
-    "math"
+	"math"
 )
 
 type Kijun struct {
-    Name string
-    Start  []float64
-    End    []float64
-    Pstart []float64
-    Pend   []float64
+	Name   string
+	Start  []float64
+	End    []float64
+	Pstart []float64
+	Pend   []float64
 
-    Hide bool
+	Hide bool
 }
 
-func NewKijun () *Kijun {
-    k := new(Kijun)
-    k.Start  = make([]float64, 3)
-    k.End    = make([]float64, 3)
-    k.Pstart = make([]float64, 2)
-    k.Pend   = make([]float64, 2)
-    return k
+func NewKijun() *Kijun {
+	k := new(Kijun)
+	k.Start = make([]float64, 3)
+	k.End = make([]float64, 3)
+	k.Pstart = make([]float64, 2)
+	k.Pend = make([]float64, 2)
+	return k
 }
 
 func (k *Kijun) Length() float64 {
-    sum := 0.0
-    for i:=0; i<3; i++ {
-        sum += math.Pow((k.End[i]-k.Start[i]),2)
-    }
-    return math.Sqrt(sum)
+	sum := 0.0
+	for i := 0; i < 3; i++ {
+		sum += math.Pow((k.End[i] - k.Start[i]), 2)
+	}
+	return math.Sqrt(sum)
 }
 
 func (k *Kijun) Direction() []float64 {
-    vec := make([]float64,3)
-    var l float64
-    l = k.Length()
-    for i:=0; i<3; i++ {
-        vec[i] = (k.End[i]-k.Start[i])/l
-    }
-    return vec
+	vec := make([]float64, 3)
+	var l float64
+	l = k.Length()
+	for i := 0; i < 3; i++ {
+		vec[i] = (k.End[i] - k.Start[i]) / l
+	}
+	return vec
 }
 
 func (k *Kijun) PLength() float64 {
-    sum := 0.0
-    for i:=0; i<2; i++ {
-        sum += math.Pow((k.Pend[i]-k.Pstart[i]),2)
-    }
-    return math.Sqrt(sum)
+	sum := 0.0
+	for i := 0; i < 2; i++ {
+		sum += math.Pow((k.Pend[i] - k.Pstart[i]), 2)
+	}
+	return math.Sqrt(sum)
 }
 
 func (k *Kijun) PDirection(normalize bool) []float64 {
-    vec := make([]float64,2)
-    var l float64
-    if normalize {
-        l = k.PLength()
-    } else {
-        l = 1.0
-    }
-    for i:=0; i<2; i++ {
-        vec[i] = (k.Pend[i]-k.Pstart[i])/l
-    }
-    return vec
+	vec := make([]float64, 2)
+	var l float64
+	if normalize {
+		l = k.PLength()
+	} else {
+		l = 1.0
+	}
+	for i := 0; i < 2; i++ {
+		vec[i] = (k.Pend[i] - k.Pstart[i]) / l
+	}
+	return vec
 }
