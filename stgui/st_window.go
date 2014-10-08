@@ -1650,10 +1650,12 @@ func (stw *Window) Print() {
 	v, factor := stw.FittoPrinter(pcanv)
 	switch stw.Frame.Show.ColorMode {
 	default:
-		stw.DrawFrame(pcanv, stw.Frame.Show.ColorMode, true)
+		stw.DrawFrame(pcanv, stw.Frame.Show.ColorMode, false)
 	case st.ECOLOR_WHITE:
-		stw.DrawFrame(pcanv, st.ECOLOR_BLACK, true)
+		stw.DrawFrame(pcanv, st.ECOLOR_BLACK, false)
 	}
+	stw.DrawTexts(pcanv)
+	pcanv.Flush()
 	pcanv.Kill()
 	stw.Frame.Show.ConfSize /= factor
 	stw.Frame.Show.BondSize /= factor
