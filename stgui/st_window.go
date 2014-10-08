@@ -166,6 +166,7 @@ type Window struct { // {{{
 
 	Frame                  *st.Frame
 	Dlg                    *iup.Handle
+	SideBar                *iup.Handle
 	canv                   *iup.Handle
 	cdcanv                 *cd.Canvas
 	dbuff                  *cd.Canvas
@@ -983,6 +984,20 @@ func NewWindow(homedir string) *Window { // {{{
 		iup.Hbox(datalabel("Zmax"), stw.Labels["ZMAX"]),
 		iup.Hbox(datalabel("Zmin"), stw.Labels["ZMIN"]))
 	stw.PropertyDialog()
+	stw.SideBar = iup.Tabs(iup.Vbox(vlabels, tgrang, "TABTITLE=View"),
+			iup.Vbox(tgcolmode, tgparam, tgshow, tgncap, tgecap, tgelem, "TABTITLE=Show"),
+			iup.Vbox(iup.Hbox(propertylabel("LINE"), stw.Selected[0]),
+			iup.Hbox(propertylabel(" (LENGTH)"), stw.Selected[1]),
+			iup.Hbox(propertylabel("PLATE"), stw.Selected[2]),
+			iup.Hbox(propertylabel(" (AREA)"), stw.Selected[3]),
+			iup.Hbox(propertylabel("CODE"), stw.Props[0]),
+			iup.Hbox(propertylabel("SECTION"), stw.Props[1]),
+			iup.Hbox(propertylabel("ETYPE"), stw.Props[2]),
+			iup.Hbox(propertylabel("ENODS"), stw.Props[3]),
+			iup.Hbox(propertylabel("ENOD"), stw.Props[4]),
+			iup.Hbox(propertylabel(""), stw.Props[5]),
+			iup.Hbox(propertylabel(""), stw.Props[6]),
+			iup.Hbox(propertylabel(""), stw.Props[7]), "TABTITLE=Property"))
 	stw.Dlg = iup.Dialog(
 		iup.Attrs(
 			"MENU", "main_menu",
@@ -995,21 +1010,8 @@ func NewWindow(homedir string) *Window { // {{{
 		),
 		iup.Vbox(
 			// buttons,
-			iup.Hbox(iup.Tabs(
-				iup.Vbox(vlabels, tgrang, "TABTITLE=View"),
-				iup.Vbox(tgcolmode, tgparam, tgshow, tgncap, tgecap, tgelem, "TABTITLE=Show"),
-				iup.Vbox(iup.Hbox(propertylabel("LINE"), stw.Selected[0]),
-					iup.Hbox(propertylabel(" (LENGTH)"), stw.Selected[1]),
-					iup.Hbox(propertylabel("PLATE"), stw.Selected[2]),
-					iup.Hbox(propertylabel(" (AREA)"), stw.Selected[3]),
-					iup.Hbox(propertylabel("CODE"), stw.Props[0]),
-					iup.Hbox(propertylabel("SECTION"), stw.Props[1]),
-					iup.Hbox(propertylabel("ETYPE"), stw.Props[2]),
-					iup.Hbox(propertylabel("ENODS"), stw.Props[3]),
-					iup.Hbox(propertylabel("ENOD"), stw.Props[4]),
-					iup.Hbox(propertylabel(""), stw.Props[5]),
-					iup.Hbox(propertylabel(""), stw.Props[6]),
-					iup.Hbox(propertylabel(""), stw.Props[7]), "TABTITLE=Property")),
+			iup.Hbox(
+				stw.SideBar,
 				stw.canv,
 			),
 			iup.Hbox(stw.hist),
@@ -2324,6 +2326,16 @@ func (stw *Window) NextCommand() {
 		comhistpos--
 		stw.cline.SetAttribute("VALUE", stw.comhist[comhistpos])
 	}
+}
+
+func (stw *Window) NextSideBarTab () {
+	current := stw.SideBar.GetAttribute("VALUEPOS")
+	pos, _ := strconv.ParseInt(current, 10, 64)
+	size := stw.SideBar.GetAttribute("COUNT")
+	count, _ := strconv.ParseInt(size, 10, 64)
+	pos++
+	if pos >= count { pos -= count }
+	stw.SideBar.SetAttribute("VALUEPOS", fmt.Sprintf("%d", pos))
 }
 
 func (stw *Window) addHistory(str string) {
@@ -4461,10 +4473,14 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
 	case KEY_ESCAPE:
 		stw.EscapeAll()
 	case KEY_TAB:
-		tmp := stw.cline.GetAttribute("VALUE")
-		if strings.Contains(tmp, "%") {
-			stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
-			stw.cline.SetAttribute("CARETPOS", "100")
+		if key.IsCtrl() {
+			stw.NextSideBarTab()
+		} else {
+			tmp := stw.cline.GetAttribute("VALUE")
+			if strings.Contains(tmp, "%") {
+				stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
+				stw.cline.SetAttribute("CARETPOS", "100")
+			}
 		}
 	case KEY_UPARROW:
 		if key.IsCtrl() {
