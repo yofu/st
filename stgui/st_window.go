@@ -2301,7 +2301,6 @@ func (stw *Window) feedCommand() {
 		stw.cline.SetAttribute("VALUE", "")
 		stw.execAliasCommand(command)
 	}
-	stw.Redraw()
 	iup.SetFocus(stw.canv)
 }
 
@@ -2402,7 +2401,6 @@ func (stw *Window) execAliasCommand(al string) {
 			}
 			args = args[:narg]
 			stw.fig2keyword(args, un)
-			stw.Redraw()
 		case axrn_minmax.MatchString(alu):
 			var axis int
 			fs := axrn_minmax.FindStringSubmatch(alu)
@@ -2484,6 +2482,7 @@ func (stw *Window) execAliasCommand(al string) {
 			stw.addHistory(fmt.Sprintf("AxisRange: %s = %.3f", tmp, val))
 		}
 	}
+	stw.Redraw()
 	iup.SetFocus(stw.canv)
 	return
 }
