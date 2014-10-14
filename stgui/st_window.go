@@ -171,6 +171,7 @@ type Window struct { // {{{
 	cdcanv                 *cd.Canvas
 	dbuff                  *cd.Canvas
 	cline                  *iup.Handle
+	coord                  *iup.Handle
 	hist                   *iup.Handle
 	formattag, lsformattag *iup.Handle
 	cname                  *iup.Handle
@@ -782,6 +783,17 @@ func NewWindow(homedir string) *Window { // {{{
 			}
 		},
 	)
+	stw.coord = iup.Text(
+		"CANFOCUS=NO",
+		fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
+		fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+		fmt.Sprintf("BGCOLOR=\"%s\"", historyBGColor),
+		"READONLY=YES",
+		"BORDER=NO",
+		"CARET=NO",
+		"SIZE=150x10",
+		"NAME=coord",
+	)
 	stw.hist = iup.Text(
 		"CANFOCUS=NO",
 		fmt.Sprintf("BGCOLOR=\"%s\"", historyBGColor),
@@ -1015,7 +1027,7 @@ func NewWindow(homedir string) *Window { // {{{
 				stw.canv,
 			),
 			iup.Hbox(stw.hist),
-			iup.Hbox(stw.cname, stw.cline),
+			iup.Hbox(stw.cname, stw.cline, stw.coord),
 		),
 		func(arg *iup.DialogClose) {
 			// if stw.Changed {
@@ -1048,6 +1060,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.Changed = false
 	stw.comhist = make([]string, CommandHistorySize)
 	comhistpos = -1
+	stw.SetCoord(0.0, 0.0, 0.0)
 	stw.recentfiles = make([]string, nRecentFiles)
 	stw.SetRecently()
 	return stw
@@ -2373,6 +2386,10 @@ func (stw *Window) addHistory(str string) {
 	}
 	setpos := fmt.Sprintf("%d:1", int(lnum)+1)
 	stw.hist.SetAttribute("SCROLLTO", setpos)
+}
+
+func (stw *Window) SetCoord (x, y, z float64) {
+	stw.coord.SetAttribute("VALUE", fmt.Sprintf("X: %8.3f Y: %8.3f Z: %8.3f", x, y, z))
 }
 
 func (stw *Window) ExecCommand(com *Command) {

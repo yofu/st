@@ -284,6 +284,7 @@ func getcoord(stw *Window, f func(x, y, z float64)) {
 			n := stw.PickNode(int(arg.X), int(arg.Y))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
+				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
 			}
 			snap = n
 			///
@@ -393,6 +394,7 @@ func get1node(stw *Window, f func(n *st.Node)) {
 			n := stw.PickNode(int(arg.X), int(arg.Y))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
+				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
 			}
 			snap = n
 			///
@@ -518,6 +520,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 			n := stw.PickNode(int(arg.X), int(arg.Y))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
+				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
 			}
 			snap = n
 			///
@@ -706,6 +709,7 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 			n := stw.PickNode(int(arg.X), int(arg.Y))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
+				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
 			}
 			snap = n
 			///
@@ -1019,6 +1023,7 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 			n := stw.PickNode(int(arg.X), int(arg.Y))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
+				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
 			}
 			snap = n
 			///
