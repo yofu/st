@@ -290,14 +290,7 @@ func getcoord(stw *Window, f func(x, y, z float64)) {
 			///
 			switch statusKey(arg.Status) {
 			case STATUS_CENTER:
-				if isShift(arg.Status) {
-					stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
-					stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
-				} else {
-					stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
-					stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
-				}
-				stw.DrawFrameNode()
+				stw.MoveOrRotate(arg)
 			}
 		}
 	})
@@ -400,14 +393,7 @@ func get1node(stw *Window, f func(n *st.Node)) {
 			///
 			switch statusKey(arg.Status) {
 			case STATUS_CENTER:
-				if isShift(arg.Status) {
-					stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
-					stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
-				} else {
-					stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
-					stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
-				}
-				stw.DrawFrameNode()
+				stw.MoveOrRotate(arg)
 			}
 		}
 	})
@@ -526,14 +512,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 			///
 			switch statusKey(arg.Status) {
 			case STATUS_CENTER:
-				if isShift(arg.Status) {
-					stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
-					stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
-				} else {
-					stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
-					stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
-				}
-				stw.DrawFrameNode()
+				stw.MoveOrRotate(arg)
 			}
 			if stw.SelectNode[0] != nil {
 				stw.cdcanv.Foreground(cd.CD_DARK_RED)
@@ -715,14 +694,7 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 			///
 			switch statusKey(arg.Status) {
 			case STATUS_CENTER:
-				if isShift(arg.Status) {
-					stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
-					stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
-				} else {
-					stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
-					stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
-				}
-				stw.DrawFrameNode()
+				stw.MoveOrRotate(arg)
 			}
 			if stw.SelectNode[0] != nil {
 				if selected < 2 {
@@ -1029,14 +1001,7 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 			///
 			switch statusKey(arg.Status) {
 			case STATUS_CENTER:
-				if isShift(arg.Status) {
-					stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
-					stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
-				} else {
-					stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
-					stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
-				}
-				stw.DrawFrameNode()
+				stw.MoveOrRotate(arg)
 			}
 			if startpoint != nil {
 				stw.cdcanv.Foreground(cd.CD_DARK_RED)
@@ -1263,14 +1228,7 @@ func pinchnode(stw *Window) {
 				fmt.Println(target.Num, float64(int(arg.X)-stw.startX), float64(int(arg.Y)-stw.startY))
 			}
 		case STATUS_CENTER:
-			if isShift(arg.Status) {
-				stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
-				stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
-			} else {
-				stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
-				stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
-			}
-			stw.DrawFrameNode()
+			stw.MoveOrRotate(arg)
 		}
 	})
 }
@@ -1630,14 +1588,7 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch statusKey(arg.Status) {
 			case STATUS_CENTER:
-				if isShift(arg.Status) {
-					stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
-					stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
-				} else {
-					stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
-					stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
-				}
-				stw.DrawFrameNode()
+				stw.MoveOrRotate(arg)
 			}
 		}
 	})
@@ -2463,14 +2414,7 @@ func fence(stw *Window) {
 			case STATUS_LEFT:
 				stw.SelectElemFenceMotion(arg)
 			case STATUS_CENTER:
-				if isShift(arg.Status) {
-					stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
-					stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
-				} else {
-					stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
-					stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
-				}
-				stw.DrawFrameNode()
+				stw.MoveOrRotate(arg)
 			}
 		}
 	})
@@ -2857,14 +2801,7 @@ func hatchplateelem(stw *Window) {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch statusKey(arg.Status) {
 			case STATUS_CENTER:
-				if isShift(arg.Status) {
-					stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
-					stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
-				} else {
-					stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
-					stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
-				}
-				stw.DrawFrameNode()
+				stw.MoveOrRotate(arg)
 			}
 		}
 	})

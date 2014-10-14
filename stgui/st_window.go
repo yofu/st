@@ -85,6 +85,8 @@ var (
 	StressTextColor  = cd.CD_GRAY
 	YieldedTextColor = cd.CD_YELLOW
 	BrittleTextColor = cd.CD_RED
+	fixRotate = false
+	fixMove = false
 )
 
 var (
@@ -2799,6 +2801,10 @@ func (stw *Window) exmode(command string) {
 			case "LEFT":
 				stw.SetAngle(0.0, 180.0)
 			}
+		case "fixr":
+			fixRotate = !fixRotate
+		case "fixm":
+			fixMove = !fixMove
 		}
 	} else {
 		switch cname {
@@ -4471,6 +4477,18 @@ func (stw *Window) CB_MouseButton() {
 	})
 }
 
+func (stw *Window) MoveOrRotate (arg *iup.MouseMotion) {
+	if !fixMove && (isShift(arg.Status) || fixRotate) {
+		stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
+		stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
+		stw.DrawFrameNode()
+	} else if !fixRotate {
+		stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
+		stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
+		stw.DrawFrameNode()
+	}
+}
+
 func (stw *Window) CB_MouseMotion() {
 	stw.canv.SetCallback(func(arg *iup.MouseMotion) {
 		if stw.Frame != nil {
@@ -4483,14 +4501,7 @@ func (stw *Window) CB_MouseMotion() {
 					stw.SelectElemMotion(arg)
 				}
 			case STATUS_CENTER:
-				if isShift(arg.Status) {
-					stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
-					stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
-				} else {
-					stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
-					stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
-				}
-				stw.DrawFrameNode()
+				stw.MoveOrRotate(arg)
 			}
 		}
 	})
