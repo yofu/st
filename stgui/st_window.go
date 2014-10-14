@@ -2812,7 +2812,6 @@ func (stw *Window) exmode(command string) {
 						stw.addHistory(err.Error())
 						break
 					}
-					fmt.Println(sfn)
 					stw.OpenFile(sfn)
 					stw.Redraw()
 				} else {
