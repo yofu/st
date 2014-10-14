@@ -2112,7 +2112,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			if len(lis) < 2 {
 				sectionaliases = make(map[int]string, 0)
 			} else {
-				for _, j := range lis {
+				for _, j := range lis[1:] {
 					val, err := strconv.ParseInt(j, 10, 64)
 					if err != nil {
 						continue
@@ -2136,6 +2136,14 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				} else {
 					sectionaliases[int(val)] = lis[2]
 				}
+			}
+		}
+	case "ANONYMOUS":
+		for _, str := range lis[1:] {
+			val, err := strconv.ParseInt(str, 10, 64)
+			if err != nil { continue }
+			if _, ok := stw.Frame.Sects[int(val)]; ok {
+				sectionaliases[int(val)] = ""
 			}
 		}
 	case "NODECODE":
