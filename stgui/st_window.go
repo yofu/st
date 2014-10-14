@@ -746,6 +746,10 @@ func NewWindow(homedir string) *Window { // {{{
 					stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
 					stw.cline.SetAttribute("CARETPOS", "100")
 				}
+			case KEY_UPARROW:
+				stw.PrevCommand()
+			case KEY_DOWNARROW:
+				stw.NextCommand()
 			case '[':
 				if key.IsCtrl() {
 					stw.cline.SetAttribute("VALUE", "")
