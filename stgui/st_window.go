@@ -2269,6 +2269,23 @@ func StartTool(fn string) {
 	cmd.Start()
 }
 
+
+func (stw *Window) SearchFile (fn string) (string, error) {
+	if _, err := os.Stat(fn); err == nil {
+		return fn, nil
+	} else {
+		pos1 := strings.IndexAny(fn, "0123456789.")
+		if pos1 < 0 {
+			return fn, errors.New(fmt.Sprintf("File not fount %s", fn))
+		}
+		pos2 := strings.IndexAny(fn, "_.")
+		if pos2 < 0 {
+			return fn, errors.New(fmt.Sprintf("File not fount %s", fn))
+		}
+		return filepath.Join(stw.Home, fn[:pos1], fn[:pos2], fn), nil
+	}
+}
+
 // Help// {{{
 func ShowReleaseNote() {
 	cmd := exec.Command("cmd", "/C", "start", releasenote)
@@ -2625,7 +2642,13 @@ func (stw *Window) exmode(command string) {
 			// }
 			if fn != "" {
 				if !st.FileExists(fn) {
-					stw.addHistory(fmt.Sprintf("File doesn't exist: %s", fn))
+					sfn, err := stw.SearchFile(args[1])
+					if err != nil {
+						stw.addHistory(err.Error())
+						break
+					}
+					stw.OpenFile(sfn)
+					stw.Redraw()
 				} else {
 					stw.OpenFile(fn)
 					stw.Redraw()
@@ -2784,7 +2807,14 @@ func (stw *Window) exmode(command string) {
 		case "e":
 			if fn != "" {
 				if !st.FileExists(fn) {
-					stw.addHistory(fmt.Sprintf("File doesn't exist: %s", fn))
+					sfn, err := stw.SearchFile(args[1])
+					if err != nil {
+						stw.addHistory(err.Error())
+						break
+					}
+					fmt.Println(sfn)
+					stw.OpenFile(sfn)
+					stw.Redraw()
 				} else {
 					stw.OpenFile(fn)
 					stw.Redraw()
