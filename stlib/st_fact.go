@@ -313,7 +313,7 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
 			otp.WriteString(fmt.Sprintf("%d", el.Num))
 			for j, per := range []string{"X", "Y"} {
 				drift := el.StoryDrift(per)
-				if drift > tmpmaxdrift[j] {
+				if math.Abs(drift) > math.Abs(tmpmaxdrift[j]) {
 					tmpmaxdrift[j] = drift
 					maxdriftelem[j] = el.Num
 				}
