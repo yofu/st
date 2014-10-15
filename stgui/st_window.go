@@ -2150,6 +2150,11 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Frame.Show.Fes = false
 		} else {
 			stw.Frame.Show.Fes = true
+			if len(lis) >= 2 {
+				val, err := strconv.ParseFloat(lis[1], 64)
+				if err != nil { return err }
+				stw.Frame.Show.MassSize = val
+			}
 		}
 	case "ALIAS":
 		if un {
