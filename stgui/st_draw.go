@@ -11,14 +11,19 @@ import (
 // FRAME
 func DrawEccentric(frame *st.Frame, cvs *cd.Canvas, show *st.Show) {
 	if show.Fes {
+		s := cvs.SaveState()
 		cvs.LineStyle(cd.CD_CONTINUOUS)
+		cvs.InteriorStyle(cd.CD_SOLID)
 		wcoord := make([][]float64, frame.Ai.Nfloor-1)
 		rcoord := make([][]float64, frame.Ai.Nfloor-1)
 		for i := 0; i < frame.Ai.Nfloor-1; i++ {
 			wcoord[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfWeight[i+1][0], frame.Fes.CentreOfWeight[i+1][1], frame.Fes.AverageLevel[i+1]})
 			rcoord[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0], frame.Fes.CentreOfRigid[i][1], frame.Fes.AverageLevel[i+1]})
+			cvs.Foreground(cd.CD_WHITE)
 			cvs.FLine(wcoord[i][0], wcoord[i][1], rcoord[i][0], rcoord[i][1])
-			cvs.FCircle(wcoord[i][0], wcoord[i][1], show.MassSize*frame.Fes.TotalWeight[i+1])
+			cvs.Foreground(cd.CD_DARK_RED)
+			cvs.FFilledCircle(wcoord[i][0], wcoord[i][1], show.MassSize*frame.Fes.TotalWeight[i+1])
+			cvs.Foreground(cd.CD_BLUE)
 			if i >= 1 {
 				cvs.FLine(rcoord[i-1][0], rcoord[i-1][1], rcoord[i][0], rcoord[i][1])
 			} else {
@@ -26,6 +31,7 @@ func DrawEccentric(frame *st.Frame, cvs *cd.Canvas, show *st.Show) {
 				cvs.FLine(coord[0], coord[1], rcoord[i][0], rcoord[i][1])
 			}
 		}
+		cvs.RestoreState(s)
 	}
 }
 
