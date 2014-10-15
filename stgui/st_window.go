@@ -2107,6 +2107,50 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		} else {
 			stw.StressOn(etype, uint(index))
 		}
+	case "DEFORMATION":
+		if un {
+			stw.DeformationOff()
+		} else {
+			if len(lis) >= 2 {
+				stw.SetPeriod(strings.ToUpper(lis[1]))
+			}
+			stw.DeformationOn()
+		}
+	case "DISP":
+		if un {
+			if len(lis) < 2 {
+				for i:=0; i<6; i++ {
+					stw.DispOff(i)
+				}
+			} else {
+				stw.SetPeriod(strings.ToUpper(lis[1]))
+				dir := strings.ToUpper(lis[2])
+				for i, str := range []string{"X", "Y", "Z", "TX", "TY", "TZ"} {
+					if dir == str {
+						stw.DispOff(i)
+						break
+					}
+				}
+			}
+		} else {
+			if len(lis) < 3 {
+				return st.NotEnoughArgs("DISP")
+			}
+			stw.SetPeriod(strings.ToUpper(lis[1]))
+			dir := strings.ToUpper(lis[2])
+			for i, str := range []string{"X", "Y", "Z", "TX", "TY", "TZ"} {
+				if dir == str {
+					stw.DispOn(i)
+					break
+				}
+			}
+		}
+	case "ECCENTRIC":
+		if un {
+			stw.Frame.Show.Fes = false
+		} else {
+			stw.Frame.Show.Fes = true
+		}
 	case "ALIAS":
 		if un {
 			if len(lis) < 2 {
@@ -3080,6 +3124,9 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 				}
 			}
 			DrawElem(el, canv, stw.Frame.Show)
+		}
+		if stw.Frame.Fes != nil {
+			DrawEccentric(stw.Frame, canv, stw.Frame.Show)
 		}
 		if flush {
 			canv.Flush()
@@ -5971,6 +6018,38 @@ func (stw *Window) StressOn(etype int, index uint) {
 func (stw *Window) StressOff(etype int, index uint) {
 	stw.Frame.Show.Stress[etype] &= ^(1 << index)
 	stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))].SetAttribute("FGCOLOR", labelOFFColor)
+}
+
+func (stw *Window) DeformationOn () {
+	stw.Frame.Show.Deformation = true
+	stw.Labels["DEFORMATION"].SetAttribute("FGCOLOR", labelFGColor)
+}
+
+func (stw *Window) DeformationOff () {
+	stw.Frame.Show.Deformation = false
+	stw.Labels["DEFORMATION"].SetAttribute("FGCOLOR", labelOFFColor)
+}
+
+func (stw *Window) DispOn (direction int) {
+	name := fmt.Sprintf("NC_%s", st.DispName[direction])
+	for i, str := range st.NODECAPTIONS {
+		if name == str {
+			stw.Frame.Show.NodeCaption |= (1 << uint(i))
+			stw.Labels[name].SetAttribute("FGCOLOR", labelFGColor)
+			return
+		}
+	}
+}
+
+func (stw *Window) DispOff (direction int) {
+	name := fmt.Sprintf("NC_%s", st.DispName[direction])
+	for i, str := range st.NODECAPTIONS {
+		if name == str {
+			stw.Frame.Show.NodeCaption &= ^(1 << uint(i))
+			stw.Labels[name].SetAttribute("FGCOLOR", labelOFFColor)
+			return
+		}
+	}
 }
 
 func (stw *Window) captionLabel(ne string, name string, width int, val uint, on bool) *iup.Handle {

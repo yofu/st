@@ -19,6 +19,8 @@ const (
 	CONF_FIX   = 63
 )
 
+var DispName = [6]string{"DX", "DY", "DZ", "TX", "TY", "TZ"}
+
 type Node struct {
 	Frame *Frame
 	Num   int

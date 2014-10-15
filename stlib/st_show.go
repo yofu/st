@@ -103,6 +103,9 @@ type Show struct { // {{{
 	MomentColor     int
 	StressTextColor int
 
+	Fes bool
+	MassSize float64
+
 	Kijun     bool
 	KijunSize float64
 
@@ -154,6 +157,9 @@ func NewShow(frame *Frame) *Show {
 
 	s.Stress = map[int]uint{COLUMN: 0, GIRDER: 0, BRACE: 0, WBRACE: 0, SBRACE: 0}
 	s.Mfact = 0.5
+
+	s.Fes = false
+	s.MassSize = 0.5
 
 	s.Kijun = false
 	s.KijunSize = 12.0

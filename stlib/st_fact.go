@@ -24,6 +24,7 @@ type Fact struct {
 	MaxDrift       [][]float64
 	MaxDriftElem   [][]int
 	Shear          []map[int][]float64
+	TotalWeight    []float64
 	TotalShear     [][]float64
 	TotalMoment    [][]float64
 	CentreOfWeight [][]float64
@@ -48,6 +49,7 @@ func NewFact(n int, abs bool, factor float64) *Fact {
 	f.MaxDrift = make([][]float64, n-1)
 	f.MaxDriftElem = make([][]int, n-1)
 	f.Shear = make([]map[int][]float64, n-1)
+	f.TotalWeight = make([]float64, n)
 	f.TotalShear = make([][]float64, n)
 	f.TotalMoment = make([][]float64, n)
 	f.CentreOfWeight = make([][]float64, n)
@@ -242,6 +244,7 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
 		moment := make([]float64, 2)
 		num := 0
 		conf := make([]int, 2)
+		weight := 0.0
 		for _, n := range nodes[i] {
 			num++
 			av_level += n.Coord[2]
@@ -259,6 +262,9 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
 				disp[j] += n.Disp[d][j]
 				shear[j] += n.Force[d][j]
 				moment[j] += n.Force[d][j] * n.Coord[1-j]
+				if j == 0 {
+					weight += n.Weight[2]
+				}
 			}
 		}
 		f.MaxDisp[i] = tmpdisp
@@ -272,6 +278,7 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
 			}
 		}
 		f.AverageDisp[i] = disp
+		f.TotalWeight[i] = weight
 		if i > 0 {
 			f.AverageDrift[i-1] = drift
 		}

@@ -88,6 +88,7 @@ type Frame struct {
 	Nlap map[string]int
 
 	Ai *Aiparameter
+	Fes *Fact
 
 	Show *Show
 
@@ -131,7 +132,7 @@ type Aiparameter struct {
 	Nfloor   int
 	Boundary []float64
 	Level    []float64
-	wi       []float64
+	Wi       []float64
 	W        []float64
 	Ai       []float64
 	Ci       []float64
@@ -150,7 +151,7 @@ func NewAiparameter() *Aiparameter {
 	a.Nfloor = 0
 	a.Boundary = make([]float64, 0)
 	a.Level = make([]float64, 0)
-	a.wi = make([]float64, 0)
+	a.Wi = make([]float64, 0)
 	a.W = make([]float64, 0)
 	a.Ai = make([]float64, 0)
 	a.Ci = make([]float64, 0)
@@ -2933,7 +2934,7 @@ func (frame *Frame) WeightDistribution() {
 func (frame *Frame) AiDistribution() string {
 	// size := len(frame.Ai.Boundary) + 1
 	size := frame.Ai.Nfloor
-	frame.Ai.wi = make([]float64, size)
+	frame.Ai.Wi = make([]float64, size)
 	frame.Ai.Level = make([]float64, size)
 	nnum := make([]int, size)
 	maxheight := MINCOORD
@@ -2944,7 +2945,7 @@ func (frame *Frame) AiDistribution() string {
 		}
 		for i := 0; i < size; i++ {
 			if height < frame.Ai.Boundary[i+1] {
-				frame.Ai.wi[i] += n.Weight[2]
+				frame.Ai.Wi[i] += n.Weight[2]
 				frame.Ai.Level[i] += n.Coord[2]
 				nnum[i]++
 				break
@@ -2976,7 +2977,7 @@ func (frame *Frame) AiDistribution() string {
 			maxheight = frame.Ai.Level[i]
 		}
 		for j := size - 1; j >= i; j-- {
-			frame.Ai.W[i] += frame.Ai.wi[j]
+			frame.Ai.W[i] += frame.Ai.Wi[j]
 		}
 	}
 	frame.Ai.Ai = make([]float64, size-1)
@@ -3007,12 +3008,12 @@ func (frame *Frame) AiDistribution() string {
 			frame.Ai.Qi[i] = frame.Ai.Ci[i] * frame.Ai.W[i]
 			frame.Ai.Hi[i-1] = frame.Ai.Qi[i-1] - frame.Ai.Qi[i]
 			if i > 1 {
-				facts[i-1] = frame.Ai.Hi[i-1] / frame.Ai.wi[i-1]
+				facts[i-1] = frame.Ai.Hi[i-1] / frame.Ai.Wi[i-1]
 			}
 		}
 	}
 	frame.Ai.Hi[size-1] = frame.Ai.Qi[size-1]
-	facts[size-1] = frame.Ai.Hi[size-1] / frame.Ai.wi[size-1]
+	facts[size-1] = frame.Ai.Hi[size-1] / frame.Ai.Wi[size-1]
 	for _, n := range frame.Nodes {
 		height := n.Coord[2]
 		if height < frame.Ai.Boundary[0] {
@@ -3058,7 +3059,7 @@ func (frame *Frame) AiDistribution() string {
 	}
 	rtn.WriteString("\n各階重量       wi :")
 	for i := 0; i < size; i++ {
-		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.wi[i]))
+		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Wi[i]))
 	}
 	rtn.WriteString("\n        Wi = Σwi :")
 	for i := 0; i < size; i++ {
@@ -3276,6 +3277,7 @@ fact_node:
 	if err != nil {
 		return err
 	}
+	frame.Fes = f
 	return nil
 }
 

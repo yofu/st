@@ -9,6 +9,25 @@ import (
 )
 
 // FRAME
+func DrawEccentric(frame *st.Frame, cvs *cd.Canvas, show *st.Show) {
+	if show.Fes {
+		cvs.LineStyle(cd.CD_CONTINUOUS)
+		wcoord := make([][]float64, frame.Ai.Nfloor-1)
+		rcoord := make([][]float64, frame.Ai.Nfloor-1)
+		for i := 0; i < frame.Ai.Nfloor-1; i++ {
+			wcoord[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfWeight[i+1][0], frame.Fes.CentreOfWeight[i+1][1], frame.Fes.AverageLevel[i+1]})
+			rcoord[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0], frame.Fes.CentreOfRigid[i][1], frame.Fes.AverageLevel[i+1]})
+			cvs.FLine(wcoord[i][0], wcoord[i][1], rcoord[i][0], rcoord[i][1])
+			cvs.FCircle(wcoord[i][0], wcoord[i][1], show.MassSize*frame.Fes.TotalWeight[i+1])
+			if i >= 1 {
+				cvs.FLine(rcoord[i-1][0], rcoord[i-1][1], rcoord[i][0], rcoord[i][1])
+			} else {
+				coord := frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0], frame.Fes.CentreOfRigid[i][1], frame.Fes.AverageLevel[i]})
+				cvs.FLine(coord[0], coord[1], rcoord[i][0], rcoord[i][1])
+			}
+		}
+	}
+}
 
 // NODE
 func DrawNode(node *st.Node, cvs *cd.Canvas, show *st.Show) {
