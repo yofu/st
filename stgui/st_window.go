@@ -1484,7 +1484,21 @@ func (stw *Window) Rebase(fn string) {
 }
 
 func (stw *Window) SaveFile(fn string) error {
+	var v *st.View
+	if !stw.Frame.View.Perspective {
+		v = stw.Frame.View.Copy()
+		stw.Frame.View.Gfact = 1.0
+		stw.Frame.View.Perspective = true
+		for _, n := range stw.Frame.Nodes {
+			stw.Frame.View.ProjectNode(n)
+		}
+		xmin, xmax, ymin, ymax := stw.Bbox()
+		w, h := stw.cdcanv.GetSize()
+		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * 0.9
+		stw.Frame.View.Dists[1] *= scale
+	}
 	err := stw.Frame.WriteInp(fn)
+	if v != nil { stw.Frame.View = v }
 	if err != nil {
 		return err
 	}
