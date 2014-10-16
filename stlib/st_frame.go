@@ -87,7 +87,7 @@ type Frame struct {
 
 	Nlap map[string]int
 
-	Ai *Aiparameter
+	Ai  *Aiparameter
 	Fes *Fact
 
 	Show *Show

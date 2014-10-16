@@ -1361,7 +1361,7 @@ func (elem *Elem) DivideAtOns(eps float64) (n []*Node, els []*Elem, err error) {
 	return
 }
 
-func (elem *Elem) DivideAtElem (eps float64) ([]*Elem, error) {
+func (elem *Elem) DivideAtElem(eps float64) ([]*Elem, error) {
 	if elem.IsLineElem() {
 		return nil, NotPlateElem("DivideAtElem")
 	}
@@ -1371,19 +1371,25 @@ func (elem *Elem) DivideAtElem (eps float64) ([]*Elem, error) {
 	var cand *Elem
 	var ind1, ind2, ind3, ind4 int
 	var ns1, ns2 []*Node
-	divatelem:
-	for i:=0; i<2; i++ {
+divatelem:
+	for i := 0; i < 2; i++ {
 		ns1 = elem.OnNode(i, eps)
-		if len(ns1) == 2 { continue }
+		if len(ns1) == 2 {
+			continue
+		}
 		ns2 = elem.OnNode(i+2, eps)
-		if len(ns2) == 2 { continue }
-		for p:=0; p<len(ns1); p++ {
-			for q:=0; q<len(ns2); q++ {
+		if len(ns2) == 2 {
+			continue
+		}
+		for p := 0; p < len(ns1); p++ {
+			for q := 0; q < len(ns2); q++ {
 				els := elem.Frame.SearchElem(ns1[p], ns2[q])
 				if len(els) > 0 {
 					cand = els[0]
-					ind1 = p; ind2 = q
-					ind3 = i+1; ind4 = i+2
+					ind1 = p
+					ind2 = q
+					ind3 = i + 1
+					ind4 = i + 2
 					break divatelem
 				}
 			}
