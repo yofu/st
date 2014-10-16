@@ -746,6 +746,7 @@ func NewWindow(homedir string) *Window { // {{{
 					stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
 					stw.cline.SetAttribute("CARETPOS", "100")
 				}
+				arg.Return = int32(iup.IGNORE)
 			case KEY_UPARROW:
 				stw.PrevCommand()
 			case KEY_DOWNARROW:
@@ -4666,6 +4667,25 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
 		} else {
 			stw.NextCommand()
 		}
+	case KEY_LEFTARROW:
+		iup.SetFocus(stw.cline)
+		current := stw.cline.GetAttribute("CARETPOS")
+		val, err := strconv.ParseInt(current, 10, 64)
+		if err != nil { return }
+		var pos int
+		if val == 0 {
+			pos = 0
+		} else {
+			pos = int(val) -1
+		}
+		stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", pos))
+	case KEY_RIGHTARROW:
+		iup.SetFocus(stw.cline)
+		current := stw.cline.GetAttribute("CARETPOS")
+		val, err := strconv.ParseInt(current, 10, 64)
+		if err != nil { return }
+		pos := int(val) +1
+		stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", pos))
 	case 'N':
 		if key.IsCtrl() {
 			stw.New()
