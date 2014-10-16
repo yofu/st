@@ -1029,8 +1029,9 @@ func (elem *Elem) PDirection(normalize bool) []float64 {
 func (elem *Elem) Move(x, y, z float64) {
 	newenod := make([]*Node, elem.Enods)
 	for i := 0; i < elem.Enods; i++ {
-		newenod[i] = elem.Frame.CoordNode(elem.Enod[i].Coord[0]+x, elem.Enod[i].Coord[1]+y, elem.Enod[i].Coord[2]+z)
-		if newenod[i].Num == elem.Frame.Maxnnum {
+		var created bool
+		newenod[i], created = elem.Frame.CoordNode(elem.Enod[i].Coord[0]+x, elem.Enod[i].Coord[1]+y, elem.Enod[i].Coord[2]+z)
+		if created {
 			for j := 0; j < 6; j++ {
 				newenod[i].Conf[j] = elem.Enod[i].Conf[j]
 			}
@@ -1042,8 +1043,9 @@ func (elem *Elem) Move(x, y, z float64) {
 func (elem *Elem) Copy(x, y, z float64) *Elem {
 	newenod := make([]*Node, elem.Enods)
 	for i := 0; i < elem.Enods; i++ {
-		newenod[i] = elem.Frame.CoordNode(elem.Enod[i].Coord[0]+x, elem.Enod[i].Coord[1]+y, elem.Enod[i].Coord[2]+z)
-		if newenod[i].Num == elem.Frame.Maxnnum {
+		var created bool
+		newenod[i], created = elem.Frame.CoordNode(elem.Enod[i].Coord[0]+x, elem.Enod[i].Coord[1]+y, elem.Enod[i].Coord[2]+z)
+		if created {
 			for j := 0; j < 6; j++ {
 				newenod[i].Conf[j] = elem.Enod[i].Conf[j]
 			}
@@ -1069,7 +1071,7 @@ func (elem *Elem) Mirror(coord, vec []float64, del bool) *Elem {
 	var add bool
 	for i := 0; i < elem.Enods; i++ {
 		newcoord := elem.Enod[i].MirrorCoord(coord, vec)
-		newenod[i] = elem.Frame.CoordNode(newcoord[0], newcoord[1], newcoord[2])
+		newenod[i], _ = elem.Frame.CoordNode(newcoord[0], newcoord[1], newcoord[2])
 		if !add && (newenod[i] != elem.Enod[i]) {
 			add = true
 		}
@@ -1209,7 +1211,7 @@ func (elem *Elem) DivideAtCoord(x, y, z float64) (ns []*Node, els []*Elem, err e
 	if !elem.IsLineElem() {
 		return nil, nil, NotLineElem("DivideAtCoord")
 	}
-	n := elem.Frame.CoordNode(x, y, z)
+	n, _ := elem.Frame.CoordNode(x, y, z)
 	for i := 0; i < elem.Enods; i++ {
 		if n == elem.Enod[i] {
 			return nil, nil, DivideAtEnod("DivideAtCoord")

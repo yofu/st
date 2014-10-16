@@ -371,7 +371,7 @@ func get1node(stw *Window, f func(n *st.Node)) {
 		case 'D', 'd':
 			x, y, z, err := stw.QueryCoord("GET COORD")
 			if err == nil {
-				n := stw.Frame.CoordNode(x, y, z)
+				n, _ := stw.Frame.CoordNode(x, y, z)
 				f(n)
 			}
 		}
@@ -539,7 +539,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 		case 'D', 'd':
 			x, y, z, err := stw.QueryCoord("GET COORD")
 			if err == nil {
-				n := stw.Frame.CoordNode(x, y, z)
+				n, _ := stw.Frame.CoordNode(x, y, z)
 				stw.Redraw()
 				if stw.SelectNode[0] != nil {
 					f(n)
@@ -1349,9 +1349,12 @@ func mirror(stw *Window) {
 		nmap := make(map[int]*st.Node, len(ns))
 		for _, n := range ns {
 			c := n.MirrorCoord(coord, vec)
-			nmap[n.Num] = stw.Frame.CoordNode(c[0], c[1], c[2])
-			for i := 0; i < 6; i++ {
-				nmap[n.Num].Conf[i] = n.Conf[i]
+			var created bool
+			nmap[n.Num], created = stw.Frame.CoordNode(c[0], c[1], c[2])
+			if created {
+				for i := 0; i < 6; i++ {
+					nmap[n.Num].Conf[i] = n.Conf[i]
+				}
 			}
 		}
 		for _, el := range stw.SelectElem {
