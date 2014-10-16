@@ -85,6 +85,7 @@ var (
 	ARCLM001            = &Command{"A001", "ARCLM001", "arclm001", arclm001}
 	DIVIDEATONS         = &Command{"ON NODES", "DIVIDE AT ONS", "divide selected elems at onnode", divideatons}
 	DIVIDEATMID         = &Command{"MID POINT", "DIVIDE AT MID", "divide selected elems at midpoint", divideatmid}
+	DIVIDEATELEM        = &Command{"AT ELEM", "DIVIDE AT ELEM", "divide selected elems at elem", divideatelem}
 	INTERSECT           = &Command{"INTS", "INTERSECT", "divide selected elems at intersection", intersect}
 	INTERSECTALL        = &Command{"INTA", "INTERSECT ALL", "divide selected elems at all intersection", intersectall}
 	TRIM                = &Command{"TRIM", "TRIM", "trim elements with selected elem", trim}
@@ -167,6 +168,7 @@ func init() {
 	Commands["ARCLM001"] = ARCLM001
 	Commands["DIVIDEATONS"] = DIVIDEATONS
 	Commands["DIVIDEATMID"] = DIVIDEATMID
+	Commands["DIVIDEATELEM"] = DIVIDEATELEM
 	Commands["INTERSECT"] = INTERSECT
 	Commands["INTERSECTALL"] = INTERSECTALL
 	Commands["TRIM"] = TRIM
@@ -2490,6 +2492,10 @@ func divide(stw *Window, divfunc func(*st.Elem) ([]*st.Node, []*st.Elem, error))
 		tmpels := make([]*st.Elem, 0)
 		for _, el := range stw.SelectElem {
 			_, els, err := divfunc(el)
+			if err != nil {
+				stw.addHistory(err.Error())
+				continue
+			}
 			if err == nil && len(els) > 1 {
 				tmpels = append(tmpels, els...)
 			}
@@ -2506,6 +2512,12 @@ func divideatons(stw *Window) {
 func divideatmid(stw *Window) {
 	divide(stw, func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
 		return el.DivideAtMid()
+	})
+}
+func divideatelem(stw *Window) {
+	divide(stw, func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+		els, err := el.DivideAtElem(EPS)
+		return nil, els, err
 	})
 }
 
