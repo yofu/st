@@ -2864,6 +2864,24 @@ func (stw *Window) exmode(command string) {
 			stw.NextFloor()
 		case "ht-":
 			stw.PrevFloor()
+		case "section+":
+			if narg < 2 {
+				return
+			}
+			tmp, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return
+			}
+			if tmp == 0 {
+				return
+			}
+			val := int(tmp)
+			for _, el := range stw.SelectElem {
+				if el == nil { continue }
+				if sec, ok := stw.Frame.Sects[el.Sect.Num+val]; ok {
+					el.Sect = sec
+				}
+			}
 		case "view":
 			switch strings.ToUpper(args[1]) {
 			case "TOP":
