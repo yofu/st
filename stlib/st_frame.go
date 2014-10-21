@@ -2714,7 +2714,7 @@ func (frame *Frame) Intersect(e1, e2 *Elem, cross bool, sign1, sign2 int, del1, 
 	if d > eps {
 		return nil, nil, errors.New(fmt.Sprintf("Intersect: Distance= %.3f", d))
 	}
-	if !cross || ((0.0 < k1 && k1 < 1.0) && (0.0 < k2 && k2 < 1.0)) {
+	if !cross || ((0.0 <= k1 && k1 <= 1.0) && (0.0 <= k2 && k2 <= 1.0)) {
 		var ns []*Node
 		var els []*Elem
 		var tmpels []*Elem
@@ -2725,7 +2725,7 @@ func (frame *Frame) Intersect(e1, e2 *Elem, cross bool, sign1, sign2 int, del1, 
 		default:
 		case k1 < 0.0:
 			ns, els, err = e1.DivideAtNode(n, 0, del1)
-		case 0.0 < k1 && k1 < 1.0:
+		case 0.0 <= k1 && k1 <= 1.0:
 			ns, els, err = e1.DivideAtNode(n, 1*sign1, del1)
 		case 1.0 < k1:
 			ns, els, err = e1.DivideAtNode(n, 2, del1)
@@ -2742,7 +2742,7 @@ func (frame *Frame) Intersect(e1, e2 *Elem, cross bool, sign1, sign2 int, del1, 
 		default:
 		case k2 < 0.0:
 			ns, tmpels, err = e2.DivideAtNode(n, 0, del2)
-		case 0.0 < k2 && k2 < 1.0:
+		case 0.0 <= k2 && k2 <= 1.0:
 			ns, tmpels, err = e2.DivideAtNode(n, 1*sign2, del2)
 		case 1.0 < k2:
 			ns, tmpels, err = e2.DivideAtNode(n, 2, del2)
