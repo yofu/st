@@ -1566,7 +1566,7 @@ pruneenod:
 
 // STRESS// {{{
 func (elem *Elem) ReturnStress(period string, nnum int, index int) float64 {
-	if period == "" || !elem.IsLineElem() {
+	if period == "" || !elem.IsLineElem() || elem.Stress == nil {
 		return 0.0
 	}
 	if pind := strings.Index(period, "+"); pind >= 0 {
