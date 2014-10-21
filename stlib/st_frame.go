@@ -3281,6 +3281,34 @@ fact_node:
 	return nil
 }
 
+
+func (frame *Frame) ShowPlane (n1, n2, n3 *Node, eps float64) error {
+	v1 := Direction(n1, n2, true)
+	v2 := Direction(n2, n3, true)
+	if IsParallel(v1, v2, eps) {
+		return errors.New("nodes are on the same line")
+	}
+	nv := Cross(v1, v2)
+	num := 0
+	ns := make([]*Node, len(frame.Nodes))
+	for _, n := range frame.Nodes {
+		n.Hide = true
+		if math.Abs(Dot(nv, Direction(n1, n, true), 3)) < eps {
+			n.Hide = false
+			ns[num] = n
+			num++
+		}
+	}
+	for _, el := range frame.Elems {
+		el.Hide = true
+	}
+	for _, el := range frame.NodeToElemAll(ns[:num]...) {
+		el.Hide = false
+	}
+	return nil
+}
+
+
 // Modify View// {{{
 func (frame *Frame) SetFocus(coord []float64) {
 	if coord == nil {

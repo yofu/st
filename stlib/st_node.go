@@ -378,6 +378,7 @@ func Direction(n1, n2 *Node, normalize bool) []float64 {
 	var l float64
 	if normalize {
 		l = Distance(n1, n2)
+		if l == 0.0 { l = 1.0 }
 	} else {
 		l = 1.0
 	}

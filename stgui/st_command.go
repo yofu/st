@@ -46,6 +46,7 @@ var (
 	HIDECURTAINWALL     = &Command{"HDCW", "HIDE CURTAIN WALL", "hide curtain wall", hidecurtainwall}
 	SELECTCHILDREN      = &Command{"_CLD", "SELECT CHILDREN", "select elem.Children", selectchildren}
 	ERRORELEM           = &Command{"ERRO", "ERROR ELEM", "select elem whose max(rate)>1.0", errorelem}
+	SHOWPLANE           = &Command{"PLNE", "PLANE", "show elems on the plane", showplane}
 	FENCE               = &Command{"FNCE", "FENCE", "select elem by fence", fence}
 	ADDLINEELEM         = &Command{"LINE", "ADD LINE ELEM", "add line elem", addlineelem}
 	ADDPLATEELEM        = &Command{"PLATE(4pts)", "ADD PLATE ELEM", "add plate elem", addplateelem}
@@ -129,6 +130,7 @@ func init() {
 	Commands["HIDECURTAINWALL"] = HIDECURTAINWALL
 	Commands["SELECTCHILDREN"] = SELECTCHILDREN
 	Commands["ERRORELEM"] = ERRORELEM
+	Commands["SHOWPLANE"] = SHOWPLANE
 	Commands["FENCE"] = FENCE
 	Commands["ADDLINEELEM"] = ADDLINEELEM
 	Commands["ADDPLATEELEM"] = ADDPLATEELEM
@@ -2454,6 +2456,20 @@ func errorelem(stw *Window) {
 }
 
 // }}}
+
+
+// SHOWPLANE
+func showplane (stw *Window) {
+	stw.addHistory("面を指定[3点]")
+	maxnum := 3
+	getnnodes(stw, maxnum, func(num int) {
+		if num >= 3 {
+			stw.Frame.ShowPlane(stw.SelectNode[0], stw.SelectNode[1], stw.SelectNode[2], EPS)
+			stw.EscapeAll()
+		}
+	})
+}
+
 
 // CUTTER TODO: UNDER CONSTRUCTION // {{{
 func cutter(stw *Window) {
