@@ -85,8 +85,9 @@ var (
 	StressTextColor  = cd.CD_GRAY
 	YieldedTextColor = cd.CD_YELLOW
 	BrittleTextColor = cd.CD_RED
-	fixRotate = false
-	fixMove = false
+	fixRotate        = false
+	fixMove          = false
+	colordlg *iup.Handle
 )
 
 var (
@@ -515,7 +516,7 @@ func NewWindow(homedir string) *Window { // {{{
 				iup.Item(
 					iup.Attr("TITLE", "Section"),
 					func(arg *iup.ItemAction) {
-						stw.SectionDialog()
+						stw.SectionDialog2()
 					},
 				),
 				iup.Separator(),
@@ -1004,8 +1005,8 @@ func NewWindow(homedir string) *Window { // {{{
 		iup.Hbox(datalabel("Zmin"), stw.Labels["ZMIN"]))
 	stw.PropertyDialog()
 	stw.SideBar = iup.Tabs(iup.Vbox(vlabels, tgrang, "TABTITLE=View"),
-			iup.Vbox(tgcolmode, tgparam, tgshow, tgncap, tgecap, tgelem, "TABTITLE=Show"),
-			iup.Vbox(iup.Hbox(propertylabel("LINE"), stw.Selected[0]),
+		iup.Vbox(tgcolmode, tgparam, tgshow, tgncap, tgecap, tgelem, "TABTITLE=Show"),
+		iup.Vbox(iup.Hbox(propertylabel("LINE"), stw.Selected[0]),
 			iup.Hbox(propertylabel(" (LENGTH)"), stw.Selected[1]),
 			iup.Hbox(propertylabel("PLATE"), stw.Selected[2]),
 			iup.Hbox(propertylabel(" (AREA)"), stw.Selected[3]),
@@ -1498,7 +1499,9 @@ func (stw *Window) SaveFile(fn string) error {
 		stw.Frame.View.Dists[1] *= scale
 	}
 	err := stw.Frame.WriteInp(fn)
-	if v != nil { stw.Frame.View = v }
+	if v != nil {
+		stw.Frame.View = v
+	}
 	if err != nil {
 		return err
 	}
@@ -1673,13 +1676,13 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64) {
 	stw.Frame.View.Center[1] = 0.5 * float64(ph)
 	stw.Frame.Show.ConfSize *= factor
 	stw.Frame.Show.BondSize *= factor
-	for i:=0; i<2; i++ {
+	for i := 0; i < 2; i++ {
 		stw.PageTitle.Position[i] *= factor
 		stw.Title.Position[i] *= factor
 		stw.Text.Position[i] *= factor
 	}
 	for _, t := range stw.TextBox {
-		for i:=0; i<2; i++ {
+		for i := 0; i < 2; i++ {
 			t.Position[i] *= factor
 		}
 	}
@@ -1710,13 +1713,13 @@ func (stw *Window) Print() {
 	stw.Frame.Show.ConfSize /= factor
 	stw.Frame.Show.BondSize /= factor
 	stw.Frame.View = v
-	for i:=0; i<2; i++ {
+	for i := 0; i < 2; i++ {
 		stw.PageTitle.Position[i] /= factor
 		stw.Title.Position[i] /= factor
 		stw.Text.Position[i] /= factor
 	}
 	for _, t := range stw.TextBox {
-		for i:=0; i<2; i++ {
+		for i := 0; i < 2; i++ {
 			t.Position[i] /= factor
 		}
 	}
@@ -2134,7 +2137,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 	case "DISP":
 		if un {
 			if len(lis) < 2 {
-				for i:=0; i<6; i++ {
+				for i := 0; i < 6; i++ {
 					stw.DispOff(i)
 				}
 			} else {
@@ -2167,7 +2170,9 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Frame.Show.Fes = true
 			if len(lis) >= 2 {
 				val, err := strconv.ParseFloat(lis[1], 64)
-				if err != nil { return err }
+				if err != nil {
+					return err
+				}
 				stw.Frame.Show.MassSize = val
 			}
 		}
@@ -2205,7 +2210,9 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 	case "ANONYMOUS":
 		for _, str := range lis[1:] {
 			val, err := strconv.ParseInt(str, 10, 64)
-			if err != nil { continue }
+			if err != nil {
+				continue
+			}
 			if _, ok := stw.Frame.Sects[int(val)]; ok {
 				sectionaliases[int(val)] = ""
 			}
@@ -2347,8 +2354,7 @@ func StartTool(fn string) {
 	cmd.Start()
 }
 
-
-func (stw *Window) SearchFile (fn string) (string, error) {
+func (stw *Window) SearchFile(fn string) (string, error) {
 	if _, err := os.Stat(fn); err == nil {
 		return fn, nil
 	} else {
@@ -2459,13 +2465,15 @@ func (stw *Window) NextCommand() {
 	}
 }
 
-func (stw *Window) NextSideBarTab () {
+func (stw *Window) NextSideBarTab() {
 	current := stw.SideBar.GetAttribute("VALUEPOS")
 	pos, _ := strconv.ParseInt(current, 10, 64)
 	size := stw.SideBar.GetAttribute("COUNT")
 	count, _ := strconv.ParseInt(size, 10, 64)
 	pos++
-	if pos >= count { pos -= count }
+	if pos >= count {
+		pos -= count
+	}
 	stw.SideBar.SetAttribute("VALUEPOS", fmt.Sprintf("%d", pos))
 }
 
@@ -2483,7 +2491,7 @@ func (stw *Window) addHistory(str string) {
 	stw.hist.SetAttribute("SCROLLTO", setpos)
 }
 
-func (stw *Window) SetCoord (x, y, z float64) {
+func (stw *Window) SetCoord(x, y, z float64) {
 	stw.coord.SetAttribute("VALUE", fmt.Sprintf("X: %8.3f Y: %8.3f Z: %8.3f", x, y, z))
 }
 
@@ -2877,7 +2885,9 @@ func (stw *Window) exmode(command string) {
 			}
 			val := int(tmp)
 			for _, el := range stw.SelectElem {
-				if el == nil { continue }
+				if el == nil {
+					continue
+				}
 				if sec, ok := stw.Frame.Sects[el.Sect.Num+val]; ok {
 					el.Sect = sec
 				}
@@ -4574,7 +4584,7 @@ func (stw *Window) CB_MouseButton() {
 	})
 }
 
-func (stw *Window) MoveOrRotate (arg *iup.MouseMotion) {
+func (stw *Window) MoveOrRotate(arg *iup.MouseMotion) {
 	if !fixMove && (isShift(arg.Status) || fixRotate) {
 		stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
 		stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
@@ -4703,20 +4713,24 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
 		iup.SetFocus(stw.cline)
 		current := stw.cline.GetAttribute("CARETPOS")
 		val, err := strconv.ParseInt(current, 10, 64)
-		if err != nil { return }
+		if err != nil {
+			return
+		}
 		var pos int
 		if val == 0 {
 			pos = 0
 		} else {
-			pos = int(val) -1
+			pos = int(val) - 1
 		}
 		stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", pos))
 	case KEY_RIGHTARROW:
 		iup.SetFocus(stw.cline)
 		current := stw.cline.GetAttribute("CARETPOS")
 		val, err := strconv.ParseInt(current, 10, 64)
-		if err != nil { return }
-		pos := int(val) +1
+		if err != nil {
+			return
+		}
+		pos := int(val) + 1
 		stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", pos))
 	case 'N':
 		if key.IsCtrl() {
@@ -5589,6 +5603,285 @@ func (stw *Window) SectionDialog() {
 //     return
 // }
 
+func (stw *Window) SectionDialog2() {
+	if stw.Frame == nil {
+		return
+	}
+	sects := make([]*st.Sect, len(stw.Frame.Sects))
+	snum := 0
+	for _, sec := range stw.Frame.Sects {
+		if sec.Num >= 900 {
+			continue
+		}
+		sects[snum] = sec
+		snum++
+	}
+	sects = sects[:snum]
+	sort.Sort(st.SectByNum{sects})
+	selstart := -1; selend := -1
+	codes := make([]*iup.Handle, snum)
+	snames := make([]*iup.Handle, snum)
+	hides := make([]*iup.Handle, snum)
+	colors := make([]*iup.Handle, snum)
+	title := iup.Hbox(
+		iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, "9"),
+			fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+			fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+			fmt.Sprintf("SIZE=%dx%d", 20, dataheight),
+			"TITLE=\"CODE\""),
+		iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, "9"),
+			fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+			fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+			fmt.Sprintf("SIZE=%dx%d", 200, dataheight),
+			"TITLE=\"NAME\""),
+		iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, "9"),
+			fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+			fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+			fmt.Sprintf("SIZE=%dx%d", 20, dataheight),
+			"TITLE=\"表示\""))
+	sections := iup.Vbox()
+	for i, sec := range sects {
+		codes[i] = iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, "9"),
+			fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+			fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+			fmt.Sprintf("TITLE=\"%d\"", sec.Num),
+			fmt.Sprintf("SIZE=%dx%d", 20, dataheight),
+		)
+		snames[i] = iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, "9"),
+			fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+			fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+			fmt.Sprintf("TITLE=\"%s\"", sec.Name),
+			fmt.Sprintf("SIZE=%dx%d", 200, dataheight),
+		)
+		func (num int) {
+			codes[num].SetCallback(func(arg *iup.MouseButton) {
+				if isShift(arg.Status) {
+					if selstart < 0 {
+						selstart = num
+						selend = num
+					} else {
+						if num < selstart {
+							selstart = num
+						} else if num > selend {
+							selend = num
+						}
+					}
+				} else {
+					selstart = num
+					selend = num
+				}
+				for j:=0; j<snum; j++ {
+					codes[j].SetAttribute("FGCOLOR", labelFGColor)
+					snames[j].SetAttribute("FGCOLOR", labelFGColor)
+				}
+				for j:=selstart; j<selend+1; j++ {
+					if j>snum { break }
+					codes[j].SetAttribute("FGCOLOR", "42  54 177")
+					snames[j].SetAttribute("FGCOLOR", "42  54 177")
+				}
+			})
+			snames[num].SetCallback(func(arg *iup.MouseButton) {
+				if isShift(arg.Status) {
+					if selstart < 0 {
+						selstart = num
+						selend = num
+					} else {
+						if num < selstart {
+							selstart = num
+						} else if num > selend {
+							selend = num
+						}
+					}
+				} else {
+					selstart = num
+					selend = num
+				}
+				for j:=0; j<snum; j++ {
+					codes[j].SetAttribute("FGCOLOR", labelFGColor)
+					snames[j].SetAttribute("FGCOLOR", labelFGColor)
+				}
+				for j:=selstart; j<selend+1; j++ {
+					if j>snum { break }
+					codes[j].SetAttribute("FGCOLOR", "42  54 177")
+					snames[j].SetAttribute("FGCOLOR", "42  54 177")
+				}
+			})
+		}(i)
+		var ishide string
+		if stw.Frame.Show.Sect[sec.Num] {
+			ishide = "ON"
+		} else {
+			ishide = "OFF"
+		}
+		hides[i] = iup.Toggle(fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
+			fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+			fmt.Sprintf("VALUE=%s", ishide),
+			"CANFOCUS=NO",
+			fmt.Sprintf("SIZE=%dx%d", 20, dataheight))
+		func(snum, num int) {
+			hides[num].SetCallback(func(arg *iup.ToggleAction) {
+				if stw.Frame != nil {
+					if arg.State == 1 {
+						if selstart <= num && num <= selend {
+							for j:=selstart; j<selend+1; j++ {
+								stw.Frame.Show.Sect[sects[j].Num] = true
+								hides[j].SetAttribute("VALUE", "ON")
+							}
+						} else {
+							stw.Frame.Show.Sect[snum] = true
+						}
+					} else {
+						if selstart <= num && num <= selend {
+							for j:=selstart; j<selend+1; j++ {
+								stw.Frame.Show.Sect[sects[j].Num] = false
+								hides[j].SetAttribute("VALUE", "OFF")
+							}
+						} else {
+							stw.Frame.Show.Sect[snum] = false
+						}
+					}
+					stw.Redraw()
+				}
+			})
+		}(sec.Num, i)
+		colors[i] = iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+			fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(sec.Color)),
+			"EXPAND=NO")
+		func(snum, num int) {
+			colors[num].SetCallback(func(arg *iup.MouseButton) {
+				if arg.Pressed == 0 {
+					fmt.Printf("Clicked: %d\n", num)
+					col, err := stw.ColorDialog()
+					if err != nil { return }
+					fmt.Println(col)
+				}
+			})
+		}(sec.Num, i)
+		sbox := iup.Hbox(codes[i], snames[i], hides[i], colors[i])
+		sections.Append(sbox)
+	}
+	dlg := iup.Dialog(iup.Vbox(title, iup.Label("SEPARATOR=HORIZONTAL"), iup.ScrollBox(sections, "SIZE=\"350x150\"")))
+	dlg.SetAttribute("TITLE", "Section")
+	dlg.SetAttribute("DIALOGFRAME", "YES")
+	dlg.SetAttribute("PARENTDIALOG", "mainwindow")
+	iup.SetHandle("sectiondialog", dlg)
+	dlg.Map()
+	dlg.Show()
+}
+
+func (stw *Window) ColorDialog () (int, error) {
+	if colordlg == nil {
+		reds := iup.Hbox()
+		pinks := iup.Hbox()
+		purples := iup.Hbox()
+		deeppurples := iup.Hbox()
+		indigos := iup.Hbox()
+		blues := iup.Hbox()
+		lightblues := iup.Hbox()
+		cyans := iup.Hbox()
+		teals := iup.Hbox()
+		greens := iup.Hbox()
+		lightgreens := iup.Hbox()
+		limes := iup.Hbox()
+		yellows := iup.Hbox()
+		ambers := iup.Hbox()
+		oranges := iup.Hbox()
+		deeporanges := iup.Hbox()
+		browns := iup.Hbox()
+		greys := iup.Hbox()
+		bluegreys := iup.Hbox()
+		colnames := []string{"100", "200", "300", "400", "500", "600", "700", "800", "900", "A100", "A200", "A400", "A700"}
+		for _, n := range colnames {
+			reds.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_RED[n])),
+				"EXPAND=NO"))
+			pinks.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_PINK[n])),
+				"EXPAND=NO"))
+			purples.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_PURPLE[n])),
+				"EXPAND=NO"))
+			deeppurples.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_DEEPPURPLE[n])),
+				"EXPAND=NO"))
+			indigos.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_INDIGO[n])),
+				"EXPAND=NO"))
+			blues.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_BLUE[n])),
+				"EXPAND=NO"))
+			lightblues.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_LIGHTBLUE[n])),
+				"EXPAND=NO"))
+			cyans.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_CYAN[n])),
+				"EXPAND=NO"))
+			teals.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_TEAL[n])),
+				"EXPAND=NO"))
+			greens.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_GREEN[n])),
+				"EXPAND=NO"))
+			lightgreens.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_LIGHTGREEN[n])),
+				"EXPAND=NO"))
+			limes.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_LIME[n])),
+				"EXPAND=NO"))
+			yellows.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_YELLOW[n])),
+				"EXPAND=NO"))
+			ambers.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_AMBER[n])),
+				"EXPAND=NO"))
+			oranges.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_ORANGE[n])),
+				"EXPAND=NO"))
+			deeporanges.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_DEEPORANGE[n])),
+				"EXPAND=NO"))
+		}
+		for _, n := range []string{"100", "200", "300", "400", "500", "600", "700", "800", "900"} {
+			browns.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_BROWN[n])),
+				"EXPAND=NO"))
+			bluegreys.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_BLUEGREY[n])),
+				"EXPAND=NO"))
+		}
+		for _, n := range []string{"0", "100", "200", "300", "400", "500", "600", "700", "800", "900", "1000"} {
+			greys.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_GREY[n])),
+				"EXPAND=NO"))
+		}
+		colordlg = iup.Dialog(iup.Vbox(reds,
+			pinks,
+			purples,
+			deeppurples,
+			indigos,
+			blues,
+			lightblues,
+			cyans,
+			teals,
+			greens,
+			lightgreens,
+			limes,
+			yellows,
+			ambers,
+			oranges,
+			deeporanges,
+			browns,
+			bluegreys,
+			greys))
+		colordlg.SetAttribute("TITLE", "Color")
+		colordlg.SetAttribute("DIALOGFRAME", "YES")
+		colordlg.SetAttribute("PARENTDIALOG", "sectiondialog")
+		colordlg.Map()
+	}
+	colordlg.Show()
+	return 0, nil
+}
+
 func (stw *Window) commandButton(name string, command *Command, size string) *iup.Handle {
 	rtn := iup.Button()
 	rtn.SetAttribute("TITLE", name)
@@ -6077,17 +6370,17 @@ func (stw *Window) StressOff(etype int, index uint) {
 	stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))].SetAttribute("FGCOLOR", labelOFFColor)
 }
 
-func (stw *Window) DeformationOn () {
+func (stw *Window) DeformationOn() {
 	stw.Frame.Show.Deformation = true
 	stw.Labels["DEFORMATION"].SetAttribute("FGCOLOR", labelFGColor)
 }
 
-func (stw *Window) DeformationOff () {
+func (stw *Window) DeformationOff() {
 	stw.Frame.Show.Deformation = false
 	stw.Labels["DEFORMATION"].SetAttribute("FGCOLOR", labelOFFColor)
 }
 
-func (stw *Window) DispOn (direction int) {
+func (stw *Window) DispOn(direction int) {
 	name := fmt.Sprintf("NC_%s", st.DispName[direction])
 	for i, str := range st.NODECAPTIONS {
 		if name == str {
@@ -6098,7 +6391,7 @@ func (stw *Window) DispOn (direction int) {
 	}
 }
 
-func (stw *Window) DispOff (direction int) {
+func (stw *Window) DispOff(direction int) {
 	name := fmt.Sprintf("NC_%s", st.DispName[direction])
 	for i, str := range st.NODECAPTIONS {
 		if name == str {

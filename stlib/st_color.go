@@ -4,20 +4,20 @@ package st
 // http://www.google.com/design/spec/style/color.html
 
 //Red
-const RED_50 int = 16580832   // #fde0dc 253 224 220
-const RED_100 int = 16318653  // #f9bdbb 249 189 187
-const RED_200 int = 16122009  // #f69988 246 153 136
-const RED_300 int = 15925356  // #f36c60 243 108  96
-const RED_400 int = 15204430  // #e84e40 232  78  64
-const RED_500 int = 15007772  // #e51c23 229  28  35
-const RED_600 int = 14483481  // #dd191d 221  25  29
-const RED_700 int = 13631511  // #d01716 208  23  22
-const RED_800 int = 12845076  // #c41411 196  20  17
-const RED_900 int = 11534354  // #b0120a 176  18  10
-const RED_A100 int = 16711801 // #ff7997 255 121 151
-const RED_A200 int = 16711761 // #ff5177 255  81 119
-const RED_A400 int = 16711725 // #ff2d6f 255  45 111
-const RED_A700 int = 14680064 // #e00032 224   0  50
+const RED_50 int = 16638172   // #fde0dc 253 224 220
+const RED_100 int = 16367035  // #f9bdbb 249 189 187
+const RED_200 int = 16161160  // #f69988 246 153 136
+const RED_300 int = 15952992  // #f36c60 243 108  96
+const RED_400 int = 15224384  // #e84e40 232  78  64
+const RED_500 int = 15014947  // #e51c23 229  28  35
+const RED_600 int = 14489885  // #dd191d 221  25  29
+const RED_700 int = 13637398  // #d01716 208  23  22
+const RED_800 int = 12850193  // #c41411 196  20  17
+const RED_900 int = 11538954  // #b0120a 176  18  10
+const RED_A100 int = 16742807 // #ff7997 255 121 151
+const RED_A200 int = 16732535 // #ff5177 255  81 119
+const RED_A400 int = 16723311 // #ff2d6f 255  45 111
+const RED_A700 int = 14680114 // #e00032 224   0  50
 var GOOGLE_RED = map[string]int{
 	"50":   RED_50,
 	"100":  RED_100,
@@ -36,20 +36,20 @@ var GOOGLE_RED = map[string]int{
 }
 
 // Pink
-const PINK_50 int = 16515300   // #fce4ec 252 228 236
-const PINK_100 int = 16253115  // #f8bbd0 248 187 208
-const PINK_200 int = 15990927  // #f48fb1 244 143 177
-const PINK_300 int = 15728738  // #f06292 240  98 146
-const PINK_400 int = 15466560  // #ec407a 236  64 122
-const PINK_500 int = 15269918  // #e91e63 233  30  99
-const PINK_600 int = 14155803  // #d81b60 216  27  96
-const PINK_700 int = 12714008  // #c2185b 194  24  91
-const PINK_800 int = 11337748  // #ad1457 173  20  87
-const PINK_900 int = 8912910   // #880e4f 136  14  79
-const PINK_A100 int = 16711808 // #ff80ab 255 128 171
-const PINK_A200 int = 16711744 // #ff4081 255  64 129
-const PINK_A400 int = 16056320 // #f50057 245   0  87
-const PINK_A700 int = 12910609 // #c51162 197  17  98
+const PINK_50 int = 16573676   // #fce4ec 252 228 236
+const PINK_100 int = 16301008  // #f8bbd0 248 187 208
+const PINK_200 int = 16027569  // #f48fb1 244 143 177
+const PINK_300 int = 15753874  // #f06292 240 98 146
+const PINK_400 int = 15483002  // #ec407a 236 64 122
+const PINK_500 int = 15277667  // #e91e63 233 30 99
+const PINK_600 int = 14162784  // #d81b60 216 27 96
+const PINK_700 int = 12720219  // #c2185b 194 24 91
+const PINK_800 int = 11342935  // #ad1457 173 20 87
+const PINK_900 int = 8916559   // #880e4f 136 14 79
+const PINK_A100 int = 16744619 // #ff80ab 255 128 171
+const PINK_A200 int = 16728193 // #ff4081 255 64 129
+const PINK_A400 int = 16056407 // #f50057 245 0 87
+const PINK_A700 int = 12915042 // #c51162 197 17 98
 var GOOGLE_PINK = map[string]int{
 	"50":   PINK_50,
 	"100":  PINK_100,
@@ -68,20 +68,20 @@ var GOOGLE_PINK = map[string]int{
 }
 
 // Purple
-const PURPLE_50 int = 15925477   // #f3e5f5 243 229 245
-const PURPLE_100 int = 14745790  // #e1bee7 225 190 231
-const PURPLE_200 int = 13500563  // #ce93d8 206 147 216
-const PURPLE_300 int = 12189800  // #ba68c8 186 104 200
-const PURPLE_400 int = 11206727  // #ab47bc 171  71 188
-const PURPLE_500 int = 10223655  // #9c27b0 156  39 176
-const PURPLE_600 int = 9306148   // #8e24aa 142  36 170
-const PURPLE_700 int = 8060959   // #7b1fa2 123  31 162
-const PURPLE_800 int = 6946843   // #6a1b9a 106  27 154
-const PURPLE_900 int = 4849684   // #4a148c  74  20 140
-const PURPLE_A100 int = 15335552 // #ea80fc 234 128 252
-const PURPLE_A200 int = 14680128 // #e040fb 224  64 251
-const PURPLE_A400 int = 13959168 // #d500f9 213   0 249
-const PURPLE_A700 int = 11141120 // #aa00ff 170   0 255
+const PURPLE_50 int = 15984117   // #f3e5f5 243 229 245
+const PURPLE_100 int = 14794471  // #e1bee7 225 190 231
+const PURPLE_200 int = 13538264  // #ce93d8 206 147 216
+const PURPLE_300 int = 12216520  // #ba68c8 186 104 200
+const PURPLE_400 int = 11225020  // #ab47bc 171 71 188
+const PURPLE_500 int = 10233776  // #9c27b0 156 39 176
+const PURPLE_600 int = 9315498   // #8e24aa 142 36 170
+const PURPLE_700 int = 8069026   // #7b1fa2 123 31 162
+const PURPLE_800 int = 6953882   // #6a1b9a 106 27 154
+const PURPLE_900 int = 4854924   // #4a148c 74 20 140
+const PURPLE_A100 int = 15368444 // #ea80fc 234 128 252
+const PURPLE_A200 int = 14696699 // #e040fb 224 64 251
+const PURPLE_A400 int = 13959417 // #d500f9 213 0 249
+const PURPLE_A700 int = 11141375 // #aa00ff 170 0 255
 var GOOGLE_PURPLE = map[string]int{
 	"50":   PURPLE_50,
 	"100":  PURPLE_100,
@@ -100,20 +100,20 @@ var GOOGLE_PURPLE = map[string]int{
 }
 
 // DeepPurple
-const DEEPPURPLE_50 int = 15532263   // #ede7f6 237 231 246
-const DEEPPURPLE_100 int = 13697220  // #d1c4e9 209 196 233
-const DEEPPURPLE_200 int = 11731101  // #b39ddb 179 157 219
-const DEEPPURPLE_300 int = 9764981   // #9575cd 149 117 205
-const DEEPPURPLE_400 int = 8257623   // #7e57c2 126  87 194
-const DEEPPURPLE_500 int = 6750266   // #673ab7 103  58 183
-const DEEPPURPLE_600 int = 6160437   // #5e35b1  94  53 177
-const DEEPPURPLE_700 int = 5308461   // #512da8  81  45 168
-const DEEPPURPLE_800 int = 4522023   // #4527a0  69  39 160
-const DEEPPURPLE_900 int = 3211291   // #311b92  49  27 146
-const DEEPPURPLE_A100 int = 11731080 // #b388ff 179 136 255
-const DEEPPURPLE_A200 int = 8126541  // #7c4dff 124  77 255
-const DEEPPURPLE_A400 int = 6619167  // #651fff 101  31 255
-const DEEPPURPLE_A700 int = 6422528  // #6200ea  98   0 234
+const DEEPPURPLE_50 int = 15591414   // #ede7f6 237 231 246
+const DEEPPURPLE_100 int = 13747433  // #d1c4e9 209 196 233
+const DEEPPURPLE_200 int = 11771355  // #b39ddb 179 157 219
+const DEEPPURPLE_300 int = 9795021   // #9575cd 149 117 205
+const DEEPPURPLE_400 int = 8280002   // #7e57c2 126 87 194
+const DEEPPURPLE_500 int = 6765239   // #673ab7 103 58 183
+const DEEPPURPLE_600 int = 6174129   // #5e35b1 94 53 177
+const DEEPPURPLE_700 int = 5320104   // #512da8 81 45 168
+const DEEPPURPLE_800 int = 4532128   // #4527a0 69 39 160
+const DEEPPURPLE_900 int = 3218322   // #311b92 49 27 146
+const DEEPPURPLE_A100 int = 11766015 // #b388ff 179 136 255
+const DEEPPURPLE_A200 int = 8146431  // #7c4dff 124 77 255
+const DEEPPURPLE_A400 int = 6627327  // #651fff 101 31 255
+const DEEPPURPLE_A700 int = 6422762  // #6200ea 98 0 234
 var GOOGLE_DEEPPURPLE = map[string]int{
 	"50":   DEEPPURPLE_50,
 	"100":  DEEPPURPLE_100,
@@ -132,20 +132,20 @@ var GOOGLE_DEEPPURPLE = map[string]int{
 }
 
 // Indigo
-const INDIGO_50 int = 15204586  // #e8eaf6 232 234 246
-const INDIGO_100 int = 12910794 // #c5cae9 197 202 233
-const INDIGO_200 int = 10420392 // #9fa8da 159 168 218
-const INDIGO_300 int = 7929990  // #7986cb 121 134 203
-const INDIGO_400 int = 6029419  // #5c6bc0  92 107 192
-const INDIGO_500 int = 4128849  // #3f51b5  63  81 181
-const INDIGO_600 int = 3735625  // #3949ab  57  73 171
-const INDIGO_700 int = 3145791  // #303f9f  48  63 159
-const INDIGO_800 int = 2621493  // #283593  40  53 147
-const INDIGO_900 int = 1703971  // #1a237e  26  35 126
-const INDIGO_A100 int = 9175198 // #8c9eff 140 158 255
-const INDIGO_A200 int = 5439597 // #536dfe  83 109 254
-const INDIGO_A400 int = 3997786 // #3d5afe  61  90 254
-const INDIGO_A700 int = 3145807 // #304ffe  48  79 254
+const INDIGO_50 int = 15264502  // #e8eaf6 232 234 246
+const INDIGO_100 int = 12962537 // #c5cae9 197 202 233
+const INDIGO_200 int = 10463450 // #9fa8da 159 168 218
+const INDIGO_300 int = 7964363  // #7986cb 121 134 203
+const INDIGO_400 int = 6056896  // #5c6bc0 92 107 192
+const INDIGO_500 int = 4149685  // #3f51b5 63 81 181
+const INDIGO_600 int = 3754411  // #3949ab 57 73 171
+const INDIGO_700 int = 3162015  // #303f9f 48 63 159
+const INDIGO_800 int = 2635155  // #283593 40 53 147
+const INDIGO_900 int = 1713022  // #1a237e 26 35 126
+const INDIGO_A100 int = 9215743 // #8c9eff 140 158 255
+const INDIGO_A200 int = 5467646 // #536dfe 83 109 254
+const INDIGO_A400 int = 4020990 // #3d5afe 61 90 254
+const INDIGO_A700 int = 3166206 // #304ffe 48 79 254
 var GOOGLE_INDIGO = map[string]int{
 	"50":   INDIGO_50,
 	"100":  INDIGO_100,
@@ -164,20 +164,20 @@ var GOOGLE_INDIGO = map[string]int{
 }
 
 // Blue
-const BLUE_50 int = 15139049   // #e7e9fd 231 233 253
-const BLUE_100 int = 13631705  // #d0d9ff 208 217 255
-const BLUE_200 int = 11468991  // #afbfff 175 191 255
-const BLUE_300 int = 9502887   // #91a7ff 145 167 255
-const BLUE_400 int = 7536783   // #738ffe 115 143 254
-const BLUE_500 int = 5636215   // #5677fc  86 119 252
-const BLUE_600 int = 5111916   // #4e6cef  78 108 239
-const BLUE_700 int = 4522078   // #455ede  69  94 222
-const BLUE_800 int = 3866704   // #3b50ce  59  80 206
-const BLUE_900 int = 2752566   // #2a36b1  42  54 177
-const BLUE_A100 int = 10879162 // #a6baff 166 186 255
-const BLUE_A200 int = 6815881  // #6889ff 104 137 255
-const BLUE_A400 int = 5046387  // #4d73ff  77 115 255
-const BLUE_A700 int = 5046377  // #4d69ff  77 105 255
+const BLUE_50 int = 15198717   // #e7e9fd 231 233 253
+const BLUE_100 int = 13687295  // #d0d9ff 208 217 255
+const BLUE_200 int = 11517951  // #afbfff 175 191 255
+const BLUE_300 int = 9545727   // #91a7ff 145 167 255
+const BLUE_400 int = 7573502   // #738ffe 115 143 254
+const BLUE_500 int = 5666812   // #5677fc 86 119 252
+const BLUE_600 int = 5139695   // #4e6cef 78 108 239
+const BLUE_700 int = 4546270   // #455ede 69 94 222
+const BLUE_800 int = 3887310   // #3b50ce 59 80 206
+const BLUE_900 int = 2766513   // #2a36b1 42 54 177
+const BLUE_A100 int = 10926847 // #a6baff 166 186 255
+const BLUE_A200 int = 6851071  // #6889ff 104 137 255
+const BLUE_A400 int = 5075967  // #4d73ff 77 115 255
+const BLUE_A700 int = 5073407  // #4d69ff 77 105 255
 var GOOGLE_BLUE = map[string]int{
 	"50":   BLUE_50,
 	"100":  BLUE_100,
@@ -196,20 +196,20 @@ var GOOGLE_BLUE = map[string]int{
 }
 
 // LightBlue
-const LIGHTBLUE_50 int = 14745845  // #e1f5fe 225 245 254
-const LIGHTBLUE_100 int = 11731173 // #b3e5fc 179 229 252
-const LIGHTBLUE_200 int = 8454356  // #81d4fa 129 212 250
-const LIGHTBLUE_300 int = 5177539  // #4fc3f7  79 195 247
-const LIGHTBLUE_400 int = 2687158  // #29b6f6  41 182 246
-const LIGHTBLUE_500 int = 196777   // #03a9f4   3 169 244
-const LIGHTBLUE_600 int = 196763   // #039be5   3 155 229
-const LIGHTBLUE_700 int = 131208   // #0288d1   2 136 209
-const LIGHTBLUE_800 int = 131191   // #0277bd   2 119 189
-const LIGHTBLUE_900 int = 65623    // #01579b   1  87 155
-const LIGHTBLUE_A100 int = 8388824 // #80d8ff 128 216 255
-const LIGHTBLUE_A200 int = 4194500 // #40c4ff  64 196 255
-const LIGHTBLUE_A400 int = 176     // #00b0ff   0 176 255
-const LIGHTBLUE_A700 int = 145     // #0091ea   0 145 234
+const LIGHTBLUE_50 int = 14808574  // #e1f5fe 225 245 254
+const LIGHTBLUE_100 int = 11789820 // #b3e5fc 179 229 252
+const LIGHTBLUE_200 int = 8508666  // #81d4fa 129 212 250
+const LIGHTBLUE_300 int = 5227511  // #4fc3f7 79 195 247
+const LIGHTBLUE_400 int = 2733814  // #29b6f6 41 182 246
+const LIGHTBLUE_500 int = 240116   // #03a9f4 3 169 244
+const LIGHTBLUE_600 int = 236517   // #039be5 3 155 229
+const LIGHTBLUE_700 int = 166097   // #0288d1 2 136 209
+const LIGHTBLUE_800 int = 161725   // #0277bd 2 119 189
+const LIGHTBLUE_900 int = 87963    // #01579b 1 87 155
+const LIGHTBLUE_A100 int = 8444159 // #80d8ff 128 216 255
+const LIGHTBLUE_A200 int = 4244735 // #40c4ff 64 196 255
+const LIGHTBLUE_A400 int = 45311   // #00b0ff 0 176 255
+const LIGHTBLUE_A700 int = 37354   // #0091ea 0 145 234
 var GOOGLE_LIGHTBLUE = map[string]int{
 	"50":   LIGHTBLUE_50,
 	"100":  LIGHTBLUE_100,
@@ -228,20 +228,20 @@ var GOOGLE_LIGHTBLUE = map[string]int{
 }
 
 // Cyan
-const CYAN_50 int = 14680311  // #e0f7fa 224 247 250
-const CYAN_100 int = 11665643 // #b2ebf2 178 235 242
-const CYAN_200 int = 8388830  // #80deea 128 222 234
-const CYAN_300 int = 5046480  // #4dd0e1  77 208 225
-const CYAN_400 int = 2490566  // #26c6da  38 198 218
-const CYAN_500 int = 188      // #00bcd4   0 188 212
-const CYAN_600 int = 172      // #00acc1   0 172 193
-const CYAN_700 int = 151      // #0097a7   0 151 167
-const CYAN_800 int = 131      // #00838f   0 131 143
-const CYAN_900 int = 96       // #006064   0  96 100
-const CYAN_A100 int = 8651007 // #84ffff 132 255 255
-const CYAN_A200 int = 1573119 // #18ffff  24 255 255
-const CYAN_A400 int = 229     // #00e5ff   0 229 255
-const CYAN_A700 int = 184     // #00b8d4   0 184 212
+const CYAN_50 int = 14743546  // #e0f7fa 224 247 250
+const CYAN_100 int = 11725810 // #b2ebf2 178 235 242
+const CYAN_200 int = 8445674  // #80deea 128 222 234
+const CYAN_300 int = 5099745  // #4dd0e1 77 208 225
+const CYAN_400 int = 2541274  // #26c6da 38 198 218
+const CYAN_500 int = 48340    // #00bcd4 0 188 212
+const CYAN_600 int = 44225    // #00acc1 0 172 193
+const CYAN_700 int = 38823    // #0097a7 0 151 167
+const CYAN_800 int = 33679    // #00838f 0 131 143
+const CYAN_900 int = 24676    // #006064 0 96 100
+const CYAN_A100 int = 8716287 // #84ffff 132 255 255
+const CYAN_A200 int = 1638399 // #18ffff 24 255 255
+const CYAN_A400 int = 58879   // #00e5ff 0 229 255
+const CYAN_A700 int = 47316   // #00b8d4 0 184 212
 var GOOGLE_CYAN = map[string]int{
 	"50":   CYAN_50,
 	"100":  CYAN_100,
@@ -260,20 +260,20 @@ var GOOGLE_CYAN = map[string]int{
 }
 
 // Teal
-const TEAL_50 int = 14680306   // #e0f2f1 224 242 241
-const TEAL_100 int = 11665631  // #b2dfdb 178 223 219
-const TEAL_200 int = 8388811   // #80cbc4 128 203 196
-const TEAL_300 int = 5046454   // #4db6ac  77 182 172
-const TEAL_400 int = 2490534   // #26a69a  38 166 154
-const TEAL_500 int = 150       // #009688   0 150 136
-const TEAL_600 int = 137       // #00897b   0 137 123
-const TEAL_700 int = 121       // #00796b   0 121 107
-const TEAL_800 int = 105       // #00695c   0 105  92
-const TEAL_900 int = 77        // #004d40   0  77  64
-const TEAL_A100 int = 10944767 // #a7ffeb 167 255 235
-const TEAL_A200 int = 6553855  // #64ffda 100 255 218
-const TEAL_A400 int = 1900777  // #1de9b6  29 233 182
-const TEAL_A700 int = 191      // #00bfa5   0 191 165
+const TEAL_50 int = 14742257   // #e0f2f1 224 242 241
+const TEAL_100 int = 11722715  // #b2dfdb 178 223 219
+const TEAL_200 int = 8440772   // #80cbc4 128 203 196
+const TEAL_300 int = 5093036   // #4db6ac 77 182 172
+const TEAL_400 int = 2533018   // #26a69a 38 166 154
+const TEAL_500 int = 38536     // #009688 0 150 136
+const TEAL_600 int = 35195     // #00897b 0 137 123
+const TEAL_700 int = 31083     // #00796b 0 121 107
+const TEAL_800 int = 26972     // #00695c 0 105 92
+const TEAL_900 int = 19776     // #004d40 0 77 64
+const TEAL_A100 int = 11010027 // #a7ffeb 167 255 235
+const TEAL_A200 int = 6619098  // #64ffda 100 255 218
+const TEAL_A400 int = 1960374  // #1de9b6 29 233 182
+const TEAL_A700 int = 49061    // #00bfa5 0 191 165
 var GOOGLE_TEAL = map[string]int{
 	"50":   TEAL_50,
 	"100":  TEAL_100,
@@ -292,20 +292,20 @@ var GOOGLE_TEAL = map[string]int{
 }
 
 // Green
-const GREEN_50 int = 13631736   // #d0f8ce 208 248 206
-const GREEN_100 int = 10682601  // #a3e9a4 163 233 164
-const GREEN_200 int = 7471317   // #72d572 114 213 114
-const GREEN_300 int = 4325565   // #42bd41  66 189  65
-const GREEN_400 int = 2818223   // #2baf2b  43 175  43
-const GREEN_500 int = 2424987   // #259b24  37 155  36
-const GREEN_600 int = 655503    // #0a8f08  10 143   8
-const GREEN_700 int = 655486    // #0a7e07  10 126   7
-const GREEN_800 int = 327791    // #056f00   5 111   0
-const GREEN_900 int = 852051    // #0d5302  13  83   2
-const GREEN_A100 int = 10617079 // #a2f78d 162 247 141
-const GREEN_A200 int = 5898481  // #5af158  90 241  88
-const GREEN_A400 int = 1310951  // #14e715  20 231  21
-const GREEN_A700 int = 1179847  // #12c700  18 199   0
+const GREEN_50 int = 13695182   // #d0f8ce 208 248 206
+const GREEN_100 int = 10742180  // #a3e9a4 163 233 164
+const GREEN_200 int = 7525746   // #72d572 114 213 114
+const GREEN_300 int = 4373825   // #42bd41 66 189 65
+const GREEN_400 int = 2862891   // #2baf2b 43 175 43
+const GREEN_500 int = 2464548   // #259b24 37 155 36
+const GREEN_600 int = 691976    // #0a8f08 10 143 8
+const GREEN_700 int = 687623    // #0a7e07 10 126 7
+const GREEN_800 int = 356096    // #056f00 5 111 0
+const GREEN_900 int = 873218    // #0d5302 13 83 2
+const GREEN_A100 int = 10680205 // #a2f78d 162 247 141
+const GREEN_A200 int = 5960024  // #5af158 90 241 88
+const GREEN_A400 int = 1369877  // #14e715 20 231 21
+const GREEN_A700 int = 1230592  // #12c700 18 199 0
 var GOOGLE_GREEN = map[string]int{
 	"50":   GREEN_50,
 	"100":  GREEN_100,
@@ -324,20 +324,20 @@ var GOOGLE_GREEN = map[string]int{
 }
 
 // LightGreen
-const LIGHTGREEN_50 int = 15794424   // #f1f8e9 241 248 233
-const LIGHTGREEN_100 int = 14418157  // #dcedc8 220 237 200
-const LIGHTGREEN_200 int = 12910817  // #c5e1a5 197 225 165
-const LIGHTGREEN_300 int = 11403477  // #aed581 174 213 129
-const LIGHTGREEN_400 int = 10223820  // #9ccc65 156 204 101
-const LIGHTGREEN_500 int = 9109699   // #8bc34a 139 195  74
-const LIGHTGREEN_600 int = 8126643   // #7cb342 124 179  66
-const LIGHTGREEN_700 int = 6815903   // #689f38 104 159  56
-const LIGHTGREEN_800 int = 5570699   // #558b2f  85 139  47
-const LIGHTGREEN_900 int = 3342441   // #33691e  51 105  30
-const LIGHTGREEN_A100 int = 13369599 // #ccff90 204 255 144
-const LIGHTGREEN_A200 int = 11665663 // #b2ff59 178 255  89
-const LIGHTGREEN_A400 int = 7733503  // #76ff03 118 255   3
-const LIGHTGREEN_A700 int = 6553821  // #64dd17 100 221  23
+const LIGHTGREEN_50 int = 15857897   // #f1f8e9 241 248 233
+const LIGHTGREEN_100 int = 14478792  // #dcedc8 220 237 200
+const LIGHTGREEN_200 int = 12968357  // #c5e1a5 197 225 165
+const LIGHTGREEN_300 int = 11457921  // #aed581 174 213 129
+const LIGHTGREEN_400 int = 10275941  // #9ccc65 156 204 101
+const LIGHTGREEN_500 int = 9159498   // #8bc34a 139 195 74
+const LIGHTGREEN_600 int = 8172354   // #7cb342 124 179 66
+const LIGHTGREEN_700 int = 6856504   // #689f38 104 159 56
+const LIGHTGREEN_800 int = 5606191   // #558b2f 85 139 47
+const LIGHTGREEN_900 int = 3369246   // #33691e 51 105 30
+const LIGHTGREEN_A100 int = 13434768 // #ccff90 204 255 144
+const LIGHTGREEN_A200 int = 11730777 // #b2ff59 178 255 89
+const LIGHTGREEN_A400 int = 7798531  // #76ff03 118 255 3
+const LIGHTGREEN_A700 int = 6610199  // #64dd17 100 221 23
 var GOOGLE_LIGHTGREEN = map[string]int{
 	"50":   LIGHTGREEN_50,
 	"100":  LIGHTGREEN_100,
@@ -356,20 +356,20 @@ var GOOGLE_LIGHTGREEN = map[string]int{
 }
 
 // Lime
-const LIME_50 int = 16318715   // #f9fbe7 249 251 231
-const LIME_100 int = 15728884  // #f0f4c3 240 244 195
-const LIME_200 int = 15073518  // #e6ee9c 230 238 156
-const LIME_300 int = 14418151  // #dce775 220 231 117
-const LIME_400 int = 13893857  // #d4e157 212 225  87
-const LIME_500 int = 13435100  // #cddc39 205 220  57
-const LIME_600 int = 12583114  // #c0ca33 192 202  51
-const LIME_700 int = 11468980  // #afb42b 175 180  43
-const LIME_800 int = 10354845  // #9e9d24 158 157  36
-const LIME_900 int = 8519799   // #827717 130 119  23
-const LIME_A100 int = 15991039 // #f4ff81 244 255 129
-const LIME_A200 int = 15597823 // #eeff41 238 255  65
-const LIME_A400 int = 12976383 // #c6ff00 198 255   0
-const LIME_A700 int = 11403498 // #aeea00 174 234   0
+const LIME_50 int = 16382951   // #f9fbe7 249 251 231
+const LIME_100 int = 15791299  // #f0f4c3 240 244 195
+const LIME_200 int = 15134364  // #e6ee9c 230 238 156
+const LIME_300 int = 14477173  // #dce775 220 231 117
+const LIME_400 int = 13951319  // #d4e157 212 225 87
+const LIME_500 int = 13491257  // #cddc39 205 220 57
+const LIME_600 int = 12634675  // #c0ca33 192 202 51
+const LIME_700 int = 11514923  // #afb42b 175 180 43
+const LIME_800 int = 10394916  // #9e9d24 158 157 36
+const LIME_900 int = 8550167   // #827717 130 119 23
+const LIME_A100 int = 16056193 // #f4ff81 244 255 129
+const LIME_A200 int = 15662913 // #eeff41 238 255 65
+const LIME_A400 int = 13041408 // #c6ff00 198 255 0
+const LIME_A700 int = 11463168 // #aeea00 174 234 0
 var GOOGLE_LIME = map[string]int{
 	"50":   LIME_50,
 	"100":  LIME_100,
@@ -388,20 +388,20 @@ var GOOGLE_LIME = map[string]int{
 }
 
 // Yellow
-const YELLOW_50 int = 16711933   // #fffde7 255 253 231
-const YELLOW_100 int = 16711929  // #fff9c4 255 249 196
-const YELLOW_200 int = 16711925  // #fff59d 255 245 157
-const YELLOW_300 int = 16711921  // #fff176 255 241 118
-const YELLOW_400 int = 16711918  // #ffee58 255 238  88
-const YELLOW_500 int = 16711915  // #ffeb3b 255 235  59
-const YELLOW_600 int = 16580824  // #fdd835 253 216  53
-const YELLOW_700 int = 16449728  // #fbc02d 251 192  45
-const YELLOW_800 int = 16318632  // #f9a825 249 168  37
-const YELLOW_900 int = 16056447  // #f57f17 245 127  23
-const YELLOW_A100 int = 16711935 // #ffff8d 255 255 141
-const YELLOW_A200 int = 16711935 // #ffff00 255 255   0
-const YELLOW_A400 int = 16711914 // #ffea00 255 234   0
-const YELLOW_A700 int = 16711894 // #ffd600 255 214   0
+const YELLOW_50 int = 16776679   // #fffde7 255 253 231
+const YELLOW_100 int = 16775620  // #fff9c4 255 249 196
+const YELLOW_200 int = 16774557  // #fff59d 255 245 157
+const YELLOW_300 int = 16773494  // #fff176 255 241 118
+const YELLOW_400 int = 16772696  // #ffee58 255 238 88
+const YELLOW_500 int = 16771899  // #ffeb3b 255 235 59
+const YELLOW_600 int = 16635957  // #fdd835 253 216 53
+const YELLOW_700 int = 16498733  // #fbc02d 251 192 45
+const YELLOW_800 int = 16361509  // #f9a825 249 168 37
+const YELLOW_900 int = 16088855  // #f57f17 245 127 23
+const YELLOW_A100 int = 16777101 // #ffff8d 255 255 141
+const YELLOW_A200 int = 16776960 // #ffff00 255 255 0
+const YELLOW_A400 int = 16771584 // #ffea00 255 234 0
+const YELLOW_A700 int = 16766464 // #ffd600 255 214 0
 var GOOGLE_YELLOW = map[string]int{
 	"50":   YELLOW_50,
 	"100":  YELLOW_100,
@@ -420,20 +420,20 @@ var GOOGLE_YELLOW = map[string]int{
 }
 
 // Amber
-const AMBER_50 int = 16711928   // #fff8e1 255 248 225
-const AMBER_100 int = 16711916  // #ffecb3 255 236 179
-const AMBER_200 int = 16711904  // #ffe082 255 224 130
-const AMBER_300 int = 16711893  // #ffd54f 255 213  79
-const AMBER_400 int = 16711882  // #ffca28 255 202  40
-const AMBER_500 int = 16711873  // #ffc107 255 193   7
-const AMBER_600 int = 16711859  // #ffb300 255 179   0
-const AMBER_700 int = 16711840  // #ffa000 255 160   0
-const AMBER_800 int = 16711823  // #ff8f00 255 143   0
-const AMBER_900 int = 16711791  // #ff6f00 255 111   0
-const AMBER_A100 int = 16711909 // #ffe57f 255 229 127
-const AMBER_A200 int = 16711895 // #ffd740 255 215  64
-const AMBER_A400 int = 16711876 // #ffc400 255 196   0
-const AMBER_A700 int = 16711851 // #ffab00 255 171   0
+const AMBER_50 int = 16775393   // #fff8e1 255 248 225
+const AMBER_100 int = 16772275  // #ffecb3 255 236 179
+const AMBER_200 int = 16769154  // #ffe082 255 224 130
+const AMBER_300 int = 16766287  // #ffd54f 255 213 79
+const AMBER_400 int = 16763432  // #ffca28 255 202 40
+const AMBER_500 int = 16761095  // #ffc107 255 193 7
+const AMBER_600 int = 16757504  // #ffb300 255 179 0
+const AMBER_700 int = 16752640  // #ffa000 255 160 0
+const AMBER_800 int = 16748288  // #ff8f00 255 143 0
+const AMBER_900 int = 16740096  // #ff6f00 255 111 0
+const AMBER_A100 int = 16770431 // #ffe57f 255 229 127
+const AMBER_A200 int = 16766784 // #ffd740 255 215 64
+const AMBER_A400 int = 16761856 // #ffc400 255 196 0
+const AMBER_A700 int = 16755456 // #ffab00 255 171 0
 var GOOGLE_AMBER = map[string]int{
 	"50":   AMBER_50,
 	"100":  AMBER_100,
@@ -452,20 +452,20 @@ var GOOGLE_AMBER = map[string]int{
 }
 
 // Orange
-const ORANGE_50 int = 16711923   // #fff3e0 255 243 224
-const ORANGE_100 int = 16711904  // #ffe0b2 255 224 178
-const ORANGE_200 int = 16711884  // #ffcc80 255 204 128
-const ORANGE_300 int = 16711863  // #ffb74d 255 183  77
-const ORANGE_400 int = 16711847  // #ffa726 255 167  38
-const ORANGE_500 int = 16711832  // #ff9800 255 152   0
-const ORANGE_600 int = 16449676  // #fb8c00 251 140   0
-const ORANGE_700 int = 16056444  // #f57c00 245 124   0
-const ORANGE_800 int = 15663212  // #ef6c00 239 108   0
-const ORANGE_900 int = 15073361  // #e65100 230  81   0
-const ORANGE_A100 int = 16711889 // #ffd180 255 209 128
-const ORANGE_A200 int = 16711851 // #ffab40 255 171  64
-const ORANGE_A400 int = 16711825 // #ff9100 255 145   0
-const ORANGE_A700 int = 16711789 // #ff6d00 255 109   0
+const ORANGE_50 int = 16774112   // #fff3e0 255 243 224
+const ORANGE_100 int = 16769202  // #ffe0b2 255 224 178
+const ORANGE_200 int = 16764032  // #ffcc80 255 204 128
+const ORANGE_300 int = 16758605  // #ffb74d 255 183 77
+const ORANGE_400 int = 16754470  // #ffa726 255 167 38
+const ORANGE_500 int = 16750592  // #ff9800 255 152 0
+const ORANGE_600 int = 16485376  // #fb8c00 251 140 0
+const ORANGE_700 int = 16088064  // #f57c00 245 124 0
+const ORANGE_800 int = 15690752  // #ef6c00 239 108 0
+const ORANGE_900 int = 15094016  // #e65100 230 81 0
+const ORANGE_A100 int = 16765312 // #ffd180 255 209 128
+const ORANGE_A200 int = 16755520 // #ffab40 255 171 64
+const ORANGE_A400 int = 16748800 // #ff9100 255 145 0
+const ORANGE_A700 int = 16739584 // #ff6d00 255 109 0
 var GOOGLE_ORANGE = map[string]int{
 	"50":   ORANGE_50,
 	"100":  ORANGE_100,
@@ -484,20 +484,20 @@ var GOOGLE_ORANGE = map[string]int{
 }
 
 // DeepOrange
-const DEEPORANGE_50 int = 16449769   // #fbe9e7 251 233 231
-const DEEPORANGE_100 int = 16711884  // #ffccbc 255 204 188
-const DEEPORANGE_200 int = 16711851  // #ffab91 255 171 145
-const DEEPORANGE_300 int = 16711818  // #ff8a65 255 138 101
-const DEEPORANGE_400 int = 16711792  // #ff7043 255 112  67
-const DEEPORANGE_500 int = 16711767  // #ff5722 255  87  34
-const DEEPORANGE_600 int = 15990865  // #f4511e 244  81  30
-const DEEPORANGE_700 int = 15073354  // #e64a19 230  74  25
-const DEEPORANGE_800 int = 14155843  // #d84315 216  67  21
-const DEEPORANGE_900 int = 12517430  // #bf360c 191  54  12
-const DEEPORANGE_A100 int = 16711838 // #ff9e80 255 158 128
-const DEEPORANGE_A200 int = 16711790 // #ff6e40 255 110  64
-const DEEPORANGE_A400 int = 16711741 // #ff3d00 255  61   0
-const DEEPORANGE_A700 int = 14483500 // #dd2c00 221  44   0
+const DEEPORANGE_50 int = 16509415   // #fbe9e7 251 233 231
+const DEEPORANGE_100 int = 16764092  // #ffccbc 255 204 188
+const DEEPORANGE_200 int = 16755601  // #ffab91 255 171 145
+const DEEPORANGE_300 int = 16747109  // #ff8a65 255 138 101
+const DEEPORANGE_400 int = 16740419  // #ff7043 255 112 67
+const DEEPORANGE_500 int = 16733986  // #ff5722 255 87 34
+const DEEPORANGE_600 int = 16011550  // #f4511e 244 81 30
+const DEEPORANGE_700 int = 15092249  // #e64a19 230 74 25
+const DEEPORANGE_800 int = 14172949  // #d84315 216 67 21
+const DEEPORANGE_900 int = 12531212  // #bf360c 191 54 12
+const DEEPORANGE_A100 int = 16752256 // #ff9e80 255 158 128
+const DEEPORANGE_A200 int = 16739904 // #ff6e40 255 110 64
+const DEEPORANGE_A400 int = 16727296 // #ff3d00 255 61 0
+const DEEPORANGE_A700 int = 14494720 // #dd2c00 221 44 0
 var GOOGLE_DEEPORANGE = map[string]int{
 	"50":   DEEPORANGE_50,
 	"100":  DEEPORANGE_100,
@@ -516,16 +516,16 @@ var GOOGLE_DEEPORANGE = map[string]int{
 }
 
 // Brown
-const BROWN_50 int = 15663339  // #efebe9 239 235 233
-const BROWN_100 int = 14090444 // #d7ccc8 215 204 200
-const BROWN_200 int = 12320938 // #bcaaa4 188 170 164
-const BROWN_300 int = 10551432 // #a1887f 161 136 127
-const BROWN_400 int = 9240686  // #8d6e63 141 110  99
-const BROWN_500 int = 7929941  // #795548 121  85  72
-const BROWN_600 int = 7143500  // #6d4c41 109  76  65
-const BROWN_700 int = 6094912  // #5d4037  93  64  55
-const BROWN_800 int = 5111860  // #4e342e  78  52  46
-const BROWN_900 int = 4063271  // #3e2723  62  39  35
+const BROWN_50 int = 15723497  // #efebe9 239 235 233
+const BROWN_100 int = 14142664 // #d7ccc8 215 204 200
+const BROWN_200 int = 12364452 // #bcaaa4 188 170 164
+const BROWN_300 int = 10586239 // #a1887f 161 136 127
+const BROWN_400 int = 9268835  // #8d6e63 141 110 99
+const BROWN_500 int = 7951688  // #795548 121 85 72
+const BROWN_600 int = 7162945  // #6d4c41 109 76 65
+const BROWN_700 int = 6111287  // #5d4037 93 64 55
+const BROWN_800 int = 5125166  // #4e342e 78 52 46
+const BROWN_900 int = 4073251  // #3e2723 62 39 35
 var GOOGLE_BROWN = map[string]int{
 	"50":  BROWN_50,
 	"100": BROWN_100,
@@ -540,18 +540,18 @@ var GOOGLE_BROWN = map[string]int{
 }
 
 // Grey
-const GREY_0 int = 16711935   // #ffffff 255 255 255
-const GREY_50 int = 16384250  // #fafafa 250 250 250
-const GREY_100 int = 16056565 // #f5f5f5 245 245 245
-const GREY_200 int = 15597806 // #eeeeee 238 238 238
-const GREY_300 int = 14680288 // #e0e0e0 224 224 224
-const GREY_400 int = 12386493 // #bdbdbd 189 189 189
-const GREY_500 int = 10354846 // #9e9e9e 158 158 158
-const GREY_600 int = 7667829  // #757575 117 117 117
-const GREY_700 int = 6357089  // #616161  97  97  97
-const GREY_800 int = 4325442  // #424242  66  66  66
-const GREY_900 int = 2162721  // #212121  33  33  33
-const GREY_1000 int = 0       // #000000   0   0   0
+const GREY_0 int = 16777215   // #ffffff 255 255 255
+const GREY_50 int = 16448250  // #fafafa 250 250 250
+const GREY_100 int = 16119285 // #f5f5f5 245 245 245
+const GREY_200 int = 15658734 // #eeeeee 238 238 238
+const GREY_300 int = 14737632 // #e0e0e0 224 224 224
+const GREY_400 int = 12434877 // #bdbdbd 189 189 189
+const GREY_500 int = 10395294 // #9e9e9e 158 158 158
+const GREY_600 int = 7697781  // #757575 117 117 117
+const GREY_700 int = 6381921  // #616161 97 97 97
+const GREY_800 int = 4342338  // #424242 66 66 66
+const GREY_900 int = 2171169  // #212121 33 33 33
+const GREY_1000 int = 0       // #000000 0 0 0
 var GOOGLE_GREY = map[string]int{
 	"0":    GREY_0,
 	"50":   GREY_50,
@@ -568,16 +568,16 @@ var GOOGLE_GREY = map[string]int{
 }
 
 // BlueGrey
-const BLUEGREY_50 int = 15466735  // #eceff1 236 239 241
-const BLUEGREY_100 int = 13566168 // #cfd8dc 207 216 220
-const BLUEGREY_200 int = 11534526 // #b0bec5 176 190 197
-const BLUEGREY_300 int = 9437348  // #90a4ae 144 164 174
-const BLUEGREY_400 int = 7864464  // #78909c 120 144 156
-const BLUEGREY_500 int = 6291581  // #607d8b  96 125 139
-const BLUEGREY_600 int = 5505134  // #546e7a  84 110 122
-const BLUEGREY_700 int = 4522074  // #455a64  69  90 100
-const BLUEGREY_800 int = 3604551  // #37474f  55  71  79
-const BLUEGREY_900 int = 2490418  // #263238  38  50  56
+const BLUEGREY_50 int = 15527921  // #eceff1 236 239 241
+const BLUEGREY_100 int = 13621468 // #cfd8dc 207 216 220
+const BLUEGREY_200 int = 11583173 // #b0bec5 176 190 197
+const BLUEGREY_300 int = 9479342  // #90a4ae 144 164 174
+const BLUEGREY_400 int = 7901340  // #78909c 120 144 156
+const BLUEGREY_500 int = 6323595  // #607d8b 96 125 139
+const BLUEGREY_600 int = 5533306  // #546e7a 84 110 122
+const BLUEGREY_700 int = 4545124  // #455a64 69 90 100
+const BLUEGREY_800 int = 3622735  // #37474f 55 71 79
+const BLUEGREY_900 int = 2503224  // #263238 38 50 56
 var GOOGLE_BLUEGREY = map[string]int{
 	"50":  BLUEGREY_50,
 	"100": BLUEGREY_100,
