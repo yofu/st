@@ -87,7 +87,6 @@ var (
 	BrittleTextColor = cd.CD_RED
 	fixRotate        = false
 	fixMove          = false
-	colordlg *iup.Handle
 )
 
 var (
@@ -5618,7 +5617,8 @@ func (stw *Window) SectionDialog2() {
 	}
 	sects = sects[:snum]
 	sort.Sort(st.SectByNum{sects})
-	selstart := -1; selend := -1
+	selstart := -1
+	selend := -1
 	codes := make([]*iup.Handle, snum)
 	snames := make([]*iup.Handle, snum)
 	hides := make([]*iup.Handle, snum)
@@ -5653,7 +5653,7 @@ func (stw *Window) SectionDialog2() {
 			fmt.Sprintf("TITLE=\"%s\"", sec.Name),
 			fmt.Sprintf("SIZE=%dx%d", 200, dataheight),
 		)
-		func (num int) {
+		func(num int) {
 			codes[num].SetCallback(func(arg *iup.MouseButton) {
 				if isShift(arg.Status) {
 					if selstart < 0 {
@@ -5670,12 +5670,14 @@ func (stw *Window) SectionDialog2() {
 					selstart = num
 					selend = num
 				}
-				for j:=0; j<snum; j++ {
+				for j := 0; j < snum; j++ {
 					codes[j].SetAttribute("FGCOLOR", labelFGColor)
 					snames[j].SetAttribute("FGCOLOR", labelFGColor)
 				}
-				for j:=selstart; j<selend+1; j++ {
-					if j>snum { break }
+				for j := selstart; j < selend+1; j++ {
+					if j > snum {
+						break
+					}
 					codes[j].SetAttribute("FGCOLOR", "42  54 177")
 					snames[j].SetAttribute("FGCOLOR", "42  54 177")
 				}
@@ -5696,12 +5698,14 @@ func (stw *Window) SectionDialog2() {
 					selstart = num
 					selend = num
 				}
-				for j:=0; j<snum; j++ {
+				for j := 0; j < snum; j++ {
 					codes[j].SetAttribute("FGCOLOR", labelFGColor)
 					snames[j].SetAttribute("FGCOLOR", labelFGColor)
 				}
-				for j:=selstart; j<selend+1; j++ {
-					if j>snum { break }
+				for j := selstart; j < selend+1; j++ {
+					if j > snum {
+						break
+					}
 					codes[j].SetAttribute("FGCOLOR", "42  54 177")
 					snames[j].SetAttribute("FGCOLOR", "42  54 177")
 				}
@@ -5723,7 +5727,7 @@ func (stw *Window) SectionDialog2() {
 				if stw.Frame != nil {
 					if arg.State == 1 {
 						if selstart <= num && num <= selend {
-							for j:=selstart; j<selend+1; j++ {
+							for j := selstart; j < selend+1; j++ {
 								stw.Frame.Show.Sect[sects[j].Num] = true
 								hides[j].SetAttribute("VALUE", "ON")
 							}
@@ -5732,7 +5736,7 @@ func (stw *Window) SectionDialog2() {
 						}
 					} else {
 						if selstart <= num && num <= selend {
-							for j:=selstart; j<selend+1; j++ {
+							for j := selstart; j < selend+1; j++ {
 								stw.Frame.Show.Sect[sects[j].Num] = false
 								hides[j].SetAttribute("VALUE", "OFF")
 							}
@@ -5750,10 +5754,10 @@ func (stw *Window) SectionDialog2() {
 		func(snum, num int) {
 			colors[num].SetCallback(func(arg *iup.MouseButton) {
 				if arg.Pressed == 0 {
-					fmt.Printf("Clicked: %d\n", num)
 					col, err := stw.ColorDialog()
 					if err != nil { return }
-					fmt.Println(col)
+					stw.Frame.Sects[snum].Color = col
+					colors[num].SetAttribute("BGCOLOR", st.IntColor(col))
 				}
 			})
 		}(sec.Num, i)
@@ -5769,117 +5773,54 @@ func (stw *Window) SectionDialog2() {
 	dlg.Show()
 }
 
-func (stw *Window) ColorDialog () (int, error) {
-	if colordlg == nil {
-		reds := iup.Hbox()
-		pinks := iup.Hbox()
-		purples := iup.Hbox()
-		deeppurples := iup.Hbox()
-		indigos := iup.Hbox()
-		blues := iup.Hbox()
-		lightblues := iup.Hbox()
-		cyans := iup.Hbox()
-		teals := iup.Hbox()
-		greens := iup.Hbox()
-		lightgreens := iup.Hbox()
-		limes := iup.Hbox()
-		yellows := iup.Hbox()
-		ambers := iup.Hbox()
-		oranges := iup.Hbox()
-		deeporanges := iup.Hbox()
+func (stw *Window) ColorDialog() (int, error) {
+	var rtn int
+	var err error
+	func(col *int, er *error) {
+		var colordlg *iup.Handle
+		*er = errors.New("not selected")
+		colors := iup.Vbox()
 		browns := iup.Hbox()
 		greys := iup.Hbox()
 		bluegreys := iup.Hbox()
-		colnames := []string{"100", "200", "300", "400", "500", "600", "700", "800", "900", "A100", "A200", "A400", "A700"}
-		for _, n := range colnames {
-			reds.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_RED[n])),
-				"EXPAND=NO"))
-			pinks.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_PINK[n])),
-				"EXPAND=NO"))
-			purples.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_PURPLE[n])),
-				"EXPAND=NO"))
-			deeppurples.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_DEEPPURPLE[n])),
-				"EXPAND=NO"))
-			indigos.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_INDIGO[n])),
-				"EXPAND=NO"))
-			blues.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_BLUE[n])),
-				"EXPAND=NO"))
-			lightblues.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_LIGHTBLUE[n])),
-				"EXPAND=NO"))
-			cyans.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_CYAN[n])),
-				"EXPAND=NO"))
-			teals.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_TEAL[n])),
-				"EXPAND=NO"))
-			greens.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_GREEN[n])),
-				"EXPAND=NO"))
-			lightgreens.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_LIGHTGREEN[n])),
-				"EXPAND=NO"))
-			limes.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_LIME[n])),
-				"EXPAND=NO"))
-			yellows.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_YELLOW[n])),
-				"EXPAND=NO"))
-			ambers.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_AMBER[n])),
-				"EXPAND=NO"))
-			oranges.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_ORANGE[n])),
-				"EXPAND=NO"))
-			deeporanges.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_DEEPORANGE[n])),
-				"EXPAND=NO"))
+		// colnames := []string{"100", "200", "300", "400", "500", "600", "700", "800", "900"}
+		colnames := []string{"200", "300", "400", "500", "600", "700", "800", "900"}
+		// for _, gc := range []map[string]int{st.GOOGLE_RED, st.GOOGLE_PINK, st.GOOGLE_PURPLE, st.GOOGLE_DEEPPURPLE, st.GOOGLE_INDIGO, st.GOOGLE_BLUE, st.GOOGLE_LIGHTBLUE, st.GOOGLE_CYAN, st.GOOGLE_TEAL, st.GOOGLE_GREEN, st.GOOGLE_LIGHTGREEN, st.GOOGLE_LIME, st.GOOGLE_YELLOW, st.GOOGLE_AMBER, st.GOOGLE_ORANGE, st.GOOGLE_DEEPORANGE, st.GOOGLE_BROWN, st.GOOGLE_BLUEGREY, st.GOOGLE_GREY} {
+		for _, gc := range []map[string]int{st.GOOGLE_RED, st.GOOGLE_PURPLE, st.GOOGLE_INDIGO, st.GOOGLE_BLUE, st.GOOGLE_LIGHTBLUE, st.GOOGLE_GREEN, st.GOOGLE_YELLOW, st.GOOGLE_DEEPORANGE, st.GOOGLE_GREY} {
+			func (color map[string]int) {
+				tmp := iup.Hbox()
+				for _, name := range colnames {
+					func(n string) {
+						tmp.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
+							fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(color[n])),
+							"EXPAND=NO",
+							func(arg *iup.MouseButton) {
+								if arg.Pressed == 0 {
+									colordlg.SetAttribute("TITLE", fmt.Sprintf("Color: %s", st.IntColor(color[n])))
+								} else {
+									if isDouble(arg.Status) {
+										*col = color[n]
+										*er = nil
+										colordlg.Destroy()
+									}
+								}
+							}))
+						}(name)
+				}
+				colors.Append(tmp)
+			}(gc)
 		}
-		for _, n := range []string{"100", "200", "300", "400", "500", "600", "700", "800", "900"} {
-			browns.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_BROWN[n])),
-				"EXPAND=NO"))
-			bluegreys.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_BLUEGREY[n])),
-				"EXPAND=NO"))
-		}
-		for _, n := range []string{"0", "100", "200", "300", "400", "500", "600", "700", "800", "900", "1000"} {
-			greys.Append(iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight),
-				fmt.Sprintf("BGCOLOR=\"%s\"", st.IntColor(st.GOOGLE_GREY[n])),
-				"EXPAND=NO"))
-		}
-		colordlg = iup.Dialog(iup.Vbox(reds,
-			pinks,
-			purples,
-			deeppurples,
-			indigos,
-			blues,
-			lightblues,
-			cyans,
-			teals,
-			greens,
-			lightgreens,
-			limes,
-			yellows,
-			ambers,
-			oranges,
-			deeporanges,
-			browns,
-			bluegreys,
-			greys))
+		colors.Append(browns)
+		colors.Append(bluegreys)
+		colors.Append(greys)
+		colordlg = iup.Dialog(colors)
 		colordlg.SetAttribute("TITLE", "Color")
 		colordlg.SetAttribute("DIALOGFRAME", "YES")
 		colordlg.SetAttribute("PARENTDIALOG", "sectiondialog")
 		colordlg.Map()
-	}
-	colordlg.Show()
-	return 0, nil
+		colordlg.Popup(iup.CENTER, iup.CENTER)
+	}(&rtn, &err)
+	return rtn, err
 }
 
 func (stw *Window) commandButton(name string, command *Command, size string) *iup.Handle {
