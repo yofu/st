@@ -5610,6 +5610,7 @@ func (stw *Window) SectionDialog2() {
 	if stw.Frame == nil {
 		return
 	}
+	var dlg *iup.Handle
 	sects := make([]*st.Sect, len(stw.Frame.Sects))
 	nsect := 0
 	for _, sec := range stw.Frame.Sects {
@@ -5623,16 +5624,62 @@ func (stw *Window) SectionDialog2() {
 	sort.Sort(st.SectByNum{sects})
 	selstart := -1
 	selend := -1
+	lines := make([]*iup.Handle, nsect)
 	codes := make([]*iup.Handle, nsect)
 	snames := make([]*iup.Handle, nsect)
 	hides := make([]*iup.Handle, nsect)
 	colors := make([]*iup.Handle, nsect)
+	sections := iup.Vbox()
 	iup.Menu(
 		iup.Attrs("FGCOLOR", sectiondlgFGColor),
 		iup.Attrs("BGCOLOR", labelBGColor),
 		iup.Item("TITLE=\"＋\"",
 			func(arg *iup.ItemAction) {
-				fmt.Println("ADDSECTION")
+				ans, err := stw.Query("SECT CODE")
+				if err != nil { return }
+				val, err := strconv.ParseInt(ans, 10, 64)
+				if err != nil { return }
+				if _, exist := stw.Frame.Sects[int(val)]; exist {
+					stw.addHistory(fmt.Sprintf("SECT: %d already exists", int(val)))
+					return
+				}
+				sec := stw.Frame.AddSect(int(val))
+				sects = append(sects, sec)
+				code := iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, sectiondlgFontSize),
+					fmt.Sprintf("FGCOLOR=\"%s\"", sectiondlgFGColor),
+					fmt.Sprintf("TITLE=\"%d\"", sec.Num),
+					fmt.Sprintf("SIZE=%dx%d", 20, dataheight))
+				sname := iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, sectiondlgFontSize),
+					fmt.Sprintf("FGCOLOR=\"%s\"", sectiondlgFGColor),
+					fmt.Sprintf("TITLE=\"%s\"", sec.Name),
+					fmt.Sprintf("SIZE=%dx%d", 200, dataheight))
+				hide := iup.Toggle("VALUE=ON", "CANFOCUS=NO", fmt.Sprintf("SIZE=%dx%d", 25, dataheight))
+				color := iup.Canvas(fmt.Sprintf("SIZE=\"%dx%d\"", 20, dataheight), "BGCOLOR=\"255 255 255\"", "EXPAND=NO")
+				line := iup.Hbox(code, sname, hide, color)
+				codes = append(codes, code)
+				snames = append(snames, sname)
+				hides = append(hides, hide)
+				colors = append(colors, color)
+				lines = append(lines, line)
+				sections.Append(line)
+				dlg.Map() // TODO: display new section on the dialog
+			}),
+		iup.Item("TITLE=\"－\"",
+			func(arg *iup.ItemAction) {
+				if selstart < 0 { return }
+				deletesect:
+				for i:=selstart; i<selend+1; i++ {
+					for _, el := range stw.Frame.Elems {
+						if el.Sect.Num == sects[i].Num {
+							continue deletesect
+						}
+					}
+					delete(stw.Frame.Sects, sects[i].Num)
+					codes[i].SetAttribute("ACTIVE", "NO")
+					snames[i].SetAttribute("ACTIVE", "NO")
+					hides[i].SetAttribute("ACTIVE", "NO")
+					colors[i].SetAttribute("ACTIVE", "NO")
+				}
 			}),
 	).SetName("sectiondlg_menu")
 	title := iup.Hbox(
@@ -5652,7 +5699,6 @@ func (stw *Window) SectionDialog2() {
 			fmt.Sprintf("FGCOLOR=\"%s\"", sectiondlgFGColor),
 			fmt.Sprintf("SIZE=%dx%d", 20, dataheight),
 			"TITLE=\"色\""))
-	sections := iup.Vbox()
 	for i, sec := range sects {
 		codes[i] = iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, sectiondlgFontSize),
 			fmt.Sprintf("FGCOLOR=\"%s\"", sectiondlgFGColor),
@@ -5712,6 +5758,7 @@ func (stw *Window) SectionDialog2() {
 					if arg.State == 1 {
 						if selstart <= num && num <= selend {
 							for j := selstart; j < selend+1; j++ {
+								if hides[j].GetAttribute("ACTIVE") == "NO" { continue }
 								stw.Frame.Show.Sect[sects[j].Num] = true
 								hides[j].SetAttribute("VALUE", "ON")
 							}
@@ -5721,6 +5768,7 @@ func (stw *Window) SectionDialog2() {
 					} else {
 						if selstart <= num && num <= selend {
 							for j := selstart; j < selend+1; j++ {
+								if hides[j].GetAttribute("ACTIVE") == "NO" { continue }
 								stw.Frame.Show.Sect[sects[j].Num] = false
 								hides[j].SetAttribute("VALUE", "OFF")
 							}
@@ -5747,10 +5795,11 @@ func (stw *Window) SectionDialog2() {
 				}
 			})
 		}(sec.Num, i)
-		sbox := iup.Hbox(codes[i], snames[i], hides[i], colors[i])
-		sections.Append(sbox)
+		codes[i].SaveClassAttributes()
+		lines[i] = iup.Hbox(codes[i], snames[i], hides[i], colors[i])
+		sections.Append(lines[i])
 	}
-	dlg := iup.Dialog(iup.Vbox(title, iup.Label("SEPARATOR=HORIZONTAL"), iup.ScrollBox(sections, "SIZE=\"350x150\"")),
+	dlg = iup.Dialog(iup.Vbox(title, iup.Label("SEPARATOR=HORIZONTAL"), iup.ScrollBox(sections, "SIZE=\"350x150\"")),
 		fmt.Sprintf("BGCOLOR=\"%s\"", sectiondlgBGColor),
 		"MENU=\"sectiondlg_menu\"")
 	dlg.SetAttribute("TITLE", "Section")
