@@ -5627,6 +5627,14 @@ func (stw *Window) SectionDialog2() {
 	snames := make([]*iup.Handle, nsect)
 	hides := make([]*iup.Handle, nsect)
 	colors := make([]*iup.Handle, nsect)
+	iup.Menu(
+		iup.Attrs("FGCOLOR", sectiondlgFGColor),
+		iup.Attrs("BGCOLOR", labelBGColor),
+		iup.Item("TITLE=\"＋\"",
+			func(arg *iup.ItemAction) {
+				fmt.Println("ADDSECTION")
+			}),
+	).SetName("sectiondlg_menu")
 	title := iup.Hbox(
 		iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, sectiondlgFontSize),
 			fmt.Sprintf("FGCOLOR=\"%s\"", sectiondlgFGColor),
@@ -5743,7 +5751,8 @@ func (stw *Window) SectionDialog2() {
 		sections.Append(sbox)
 	}
 	dlg := iup.Dialog(iup.Vbox(title, iup.Label("SEPARATOR=HORIZONTAL"), iup.ScrollBox(sections, "SIZE=\"350x150\"")),
-		fmt.Sprintf("BGCOLOR=\"%s\"", sectiondlgBGColor))
+		fmt.Sprintf("BGCOLOR=\"%s\"", sectiondlgBGColor),
+		"MENU=\"sectiondlg_menu\"")
 	dlg.SetAttribute("TITLE", "Section")
 	dlg.SetAttribute("DIALOGFRAME", "YES")
 	dlg.SetAttribute("PARENTDIALOG", "mainwindow")
