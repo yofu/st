@@ -55,19 +55,23 @@ var (
 	commandFontSize = "11"
 	labelFGColor    = "0 0 0"
 	// labelBGColor = "255 255 255"
-	labelBGColor         = "212 208 200"
-	commandFGColor       = "0 127 31"
-	commandBGColor       = "191 191 191"
-	historyBGColor       = "220 220 220"
-	sectionLabelColor    = "204 51 0"
-	labelOFFColor        = "160 160 160"
-	canvasFontFace       = "IPA明朝"
-	canvasFontSize       = 9
-	canvasFontColor      = cd.CD_DARK_GRAY
-	DefaultTextAlignment = cd.CD_BASE_LEFT
-	printFontColor       = cd.CD_BLACK
-	printFontFace        = "IPA明朝"
-	printFontSize        = 8
+	labelBGColor          = "212 208 200"
+	commandFGColor        = "0 127 31"
+	commandBGColor        = "191 191 191"
+	historyBGColor        = "220 220 220"
+	sectionLabelColor     = "204 51 0"
+	labelOFFColor         = "160 160 160"
+	canvasFontFace        = "IPA明朝"
+	canvasFontSize        = 9
+	sectiondlgFontSize    = "9"
+	sectiondlgFGColor     = "255 255 255"
+	sectiondlgBGColor     = "66 66 66"
+	sectiondlgSelectColor = "255 255 0"
+	canvasFontColor       = cd.CD_DARK_GRAY
+	DefaultTextAlignment  = cd.CD_BASE_LEFT
+	printFontColor        = cd.CD_BLACK
+	printFontFace         = "IPA明朝"
+	printFontSize         = 8
 )
 
 const (
@@ -5607,54 +5611,53 @@ func (stw *Window) SectionDialog2() {
 		return
 	}
 	sects := make([]*st.Sect, len(stw.Frame.Sects))
-	snum := 0
+	nsect := 0
 	for _, sec := range stw.Frame.Sects {
 		if sec.Num >= 900 {
 			continue
 		}
-		sects[snum] = sec
-		snum++
+		sects[nsect] = sec
+		nsect++
 	}
-	sects = sects[:snum]
+	sects = sects[:nsect]
 	sort.Sort(st.SectByNum{sects})
 	selstart := -1
 	selend := -1
-	codes := make([]*iup.Handle, snum)
-	snames := make([]*iup.Handle, snum)
-	hides := make([]*iup.Handle, snum)
-	colors := make([]*iup.Handle, snum)
+	codes := make([]*iup.Handle, nsect)
+	snames := make([]*iup.Handle, nsect)
+	hides := make([]*iup.Handle, nsect)
+	colors := make([]*iup.Handle, nsect)
 	title := iup.Hbox(
-		iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, "9"),
-			fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
-			fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+		iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, sectiondlgFontSize),
+			fmt.Sprintf("FGCOLOR=\"%s\"", sectiondlgFGColor),
 			fmt.Sprintf("SIZE=%dx%d", 20, dataheight),
 			"TITLE=\"CODE\""),
-		iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, "9"),
-			fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
-			fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+		iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, sectiondlgFontSize),
+			fmt.Sprintf("FGCOLOR=\"%s\"", sectiondlgFGColor),
 			fmt.Sprintf("SIZE=%dx%d", 200, dataheight),
 			"TITLE=\"NAME\""),
-		iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, "9"),
-			fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
-			fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+		iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, sectiondlgFontSize),
+			fmt.Sprintf("FGCOLOR=\"%s\"", sectiondlgFGColor),
+			fmt.Sprintf("SIZE=%dx%d", 25, dataheight),
+			"TITLE=\"表示\""),
+		iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, sectiondlgFontSize),
+			fmt.Sprintf("FGCOLOR=\"%s\"", sectiondlgFGColor),
 			fmt.Sprintf("SIZE=%dx%d", 20, dataheight),
-			"TITLE=\"表示\""))
+			"TITLE=\"色\""))
 	sections := iup.Vbox()
 	for i, sec := range sects {
-		codes[i] = iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, "9"),
-			fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
-			fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+		codes[i] = iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, sectiondlgFontSize),
+			fmt.Sprintf("FGCOLOR=\"%s\"", sectiondlgFGColor),
 			fmt.Sprintf("TITLE=\"%d\"", sec.Num),
 			fmt.Sprintf("SIZE=%dx%d", 20, dataheight),
 		)
-		snames[i] = iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, "9"),
-			fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
-			fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+		snames[i] = iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, sectiondlgFontSize),
+			fmt.Sprintf("FGCOLOR=\"%s\"", sectiondlgFGColor),
 			fmt.Sprintf("TITLE=\"%s\"", sec.Name),
 			fmt.Sprintf("SIZE=%dx%d", 200, dataheight),
 		)
-		func(num int) {
-			codes[num].SetCallback(func(arg *iup.MouseButton) {
+		func(snum, num int) {
+			mbcb := func(arg *iup.MouseButton) {
 				if isShift(arg.Status) {
 					if selstart < 0 {
 						selstart = num
@@ -5670,58 +5673,31 @@ func (stw *Window) SectionDialog2() {
 					selstart = num
 					selend = num
 				}
-				for j := 0; j < snum; j++ {
-					codes[j].SetAttribute("FGCOLOR", labelFGColor)
-					snames[j].SetAttribute("FGCOLOR", labelFGColor)
+				if isDouble(arg.Status) {
+					stw.SectionProperty(stw.Frame.Sects[snum])
 				}
-				for j := selstart; j < selend+1; j++ {
-					if j > snum {
-						break
-					}
-					codes[j].SetAttribute("FGCOLOR", "42  54 177")
-					snames[j].SetAttribute("FGCOLOR", "42  54 177")
-				}
-			})
-			snames[num].SetCallback(func(arg *iup.MouseButton) {
-				if isShift(arg.Status) {
-					if selstart < 0 {
-						selstart = num
-						selend = num
+				for j := 0; j < nsect; j++ {
+					if selstart <= j && j <= selend {
+						codes[j].SetAttribute("FGCOLOR", sectiondlgSelectColor)
+						snames[j].SetAttribute("FGCOLOR", sectiondlgSelectColor)
 					} else {
-						if num < selstart {
-							selstart = num
-						} else if num > selend {
-							selend = num
-						}
+						codes[j].SetAttribute("FGCOLOR", sectiondlgFGColor)
+						snames[j].SetAttribute("FGCOLOR", sectiondlgFGColor)
 					}
-				} else {
-					selstart = num
-					selend = num
 				}
-				for j := 0; j < snum; j++ {
-					codes[j].SetAttribute("FGCOLOR", labelFGColor)
-					snames[j].SetAttribute("FGCOLOR", labelFGColor)
-				}
-				for j := selstart; j < selend+1; j++ {
-					if j > snum {
-						break
-					}
-					codes[j].SetAttribute("FGCOLOR", "42  54 177")
-					snames[j].SetAttribute("FGCOLOR", "42  54 177")
-				}
-			})
-		}(i)
+			}
+			codes[num].SetCallback(mbcb)
+			snames[num].SetCallback(mbcb)
+		}(sec.Num, i)
 		var ishide string
 		if stw.Frame.Show.Sect[sec.Num] {
 			ishide = "ON"
 		} else {
 			ishide = "OFF"
 		}
-		hides[i] = iup.Toggle(fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
-			fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
-			fmt.Sprintf("VALUE=%s", ishide),
+		hides[i] = iup.Toggle(fmt.Sprintf("VALUE=%s", ishide),
 			"CANFOCUS=NO",
-			fmt.Sprintf("SIZE=%dx%d", 20, dataheight))
+			fmt.Sprintf("SIZE=%dx%d", 25, dataheight))
 		func(snum, num int) {
 			hides[num].SetCallback(func(arg *iup.ToggleAction) {
 				if stw.Frame != nil {
@@ -5755,7 +5731,9 @@ func (stw *Window) SectionDialog2() {
 			colors[num].SetCallback(func(arg *iup.MouseButton) {
 				if arg.Pressed == 0 {
 					col, err := stw.ColorDialog()
-					if err != nil { return }
+					if err != nil {
+						return
+					}
 					stw.Frame.Sects[snum].Color = col
 					colors[num].SetAttribute("BGCOLOR", st.IntColor(col))
 				}
@@ -5764,7 +5742,8 @@ func (stw *Window) SectionDialog2() {
 		sbox := iup.Hbox(codes[i], snames[i], hides[i], colors[i])
 		sections.Append(sbox)
 	}
-	dlg := iup.Dialog(iup.Vbox(title, iup.Label("SEPARATOR=HORIZONTAL"), iup.ScrollBox(sections, "SIZE=\"350x150\"")))
+	dlg := iup.Dialog(iup.Vbox(title, iup.Label("SEPARATOR=HORIZONTAL"), iup.ScrollBox(sections, "SIZE=\"350x150\"")),
+		fmt.Sprintf("BGCOLOR=\"%s\"", sectiondlgBGColor))
 	dlg.SetAttribute("TITLE", "Section")
 	dlg.SetAttribute("DIALOGFRAME", "YES")
 	dlg.SetAttribute("PARENTDIALOG", "mainwindow")
@@ -5787,7 +5766,7 @@ func (stw *Window) ColorDialog() (int, error) {
 		colnames := []string{"200", "300", "400", "500", "600", "700", "800", "900"}
 		// for _, gc := range []map[string]int{st.GOOGLE_RED, st.GOOGLE_PINK, st.GOOGLE_PURPLE, st.GOOGLE_DEEPPURPLE, st.GOOGLE_INDIGO, st.GOOGLE_BLUE, st.GOOGLE_LIGHTBLUE, st.GOOGLE_CYAN, st.GOOGLE_TEAL, st.GOOGLE_GREEN, st.GOOGLE_LIGHTGREEN, st.GOOGLE_LIME, st.GOOGLE_YELLOW, st.GOOGLE_AMBER, st.GOOGLE_ORANGE, st.GOOGLE_DEEPORANGE, st.GOOGLE_BROWN, st.GOOGLE_BLUEGREY, st.GOOGLE_GREY} {
 		for _, gc := range []map[string]int{st.GOOGLE_RED, st.GOOGLE_PURPLE, st.GOOGLE_INDIGO, st.GOOGLE_BLUE, st.GOOGLE_LIGHTBLUE, st.GOOGLE_GREEN, st.GOOGLE_YELLOW, st.GOOGLE_DEEPORANGE, st.GOOGLE_GREY} {
-			func (color map[string]int) {
+			func(color map[string]int) {
 				tmp := iup.Hbox()
 				for _, name := range colnames {
 					func(n string) {
@@ -5805,7 +5784,7 @@ func (stw *Window) ColorDialog() (int, error) {
 									}
 								}
 							}))
-						}(name)
+					}(name)
 				}
 				colors.Append(tmp)
 			}(gc)
@@ -5821,6 +5800,179 @@ func (stw *Window) ColorDialog() (int, error) {
 		colordlg.Popup(iup.CENTER, iup.CENTER)
 	}(&rtn, &err)
 	return rtn, err
+}
+
+func (stw *Window) SectionProperty(sc *st.Sect) {
+	var data, linedata, platedata *iup.Handle
+	var addfig *iup.Handle
+	dataset := make(map[string]*iup.Handle, 0)
+	dataset["NAME"] = datatext("-")
+	dataset["NAME"].SetAttribute("EXPAND", "HORIZONTAL")
+	dataset["CODE"] = datatext("-")
+	dataset["PROP"] = datatext("-")
+	dataset["AREA"] = datatext("-")
+	dataset["IXX"] = datatext("-")
+	dataset["IYY"] = datatext("-")
+	dataset["VEN"] = datatext("-")
+	dataset["THICK"] = datatext("-")
+	dataset["LLOAD0"] = datatext("-")
+	dataset["LLOAD1"] = datatext("-")
+	dataset["LLOAD2"] = datatext("-")
+	proplist := iup.List("SIZE=\"68x\"",
+		"DROPDOWN=YES")
+	linedata = iup.Vbox(iup.Hbox(propertylabel("AREA"), dataset["AREA"]),
+		iup.Hbox(propertylabel("IXX"), dataset["IXX"]),
+		iup.Hbox(propertylabel("IYY"), dataset["IYY"]),
+		iup.Hbox(propertylabel("VEN"), dataset["VEN"]))
+	platedata = iup.Vbox(iup.Hbox(propertylabel("THICK"), dataset["THICK"]),
+		iup.Hbox(propertylabel("LLOAD"), dataset["LLOAD0"]),
+		iup.Hbox(propertylabel(""), dataset["LLOAD1"]),
+		iup.Hbox(propertylabel(""), dataset["LLOAD2"]))
+	iup.SetHandle("linedata", linedata)
+	iup.SetHandle("platedata", platedata)
+	data = iup.Zbox(linedata, platedata)
+	updatedata := func(sec *st.Sect, ind int) {
+		if sec.Num > 700 && sec.Num < 900 {
+			addfig.SetAttribute("ACTIVE", "YES")
+			if len(sec.Figs) > ind {
+				dataset["PROP"].SetAttribute("VALUE", fmt.Sprintf("%d", sec.Figs[ind].Prop.Num))
+				dataset["THICK"].SetAttribute("VALUE", fmt.Sprintf("%.4f", sec.Figs[ind].Value["THICK"]))
+				dataset["LLOAD0"].SetAttribute("VALUE", fmt.Sprintf("%.3f", sec.Lload[0]))
+				dataset["LLOAD1"].SetAttribute("VALUE", fmt.Sprintf("%.3f", sec.Lload[1]))
+				dataset["LLOAD2"].SetAttribute("VALUE", fmt.Sprintf("%.3f", sec.Lload[2]))
+			} else {
+				dataset["PROP"].SetAttribute("VALUE", "-")
+				dataset["AREA"].SetAttribute("VALUE", "-")
+				dataset["IXX"].SetAttribute("VALUE", "-")
+				dataset["IYY"].SetAttribute("VALUE", "-")
+				dataset["VEN"].SetAttribute("VALUE", "-")
+			}
+			data.SetAttribute("VALUE", "platedata")
+		} else {
+			addfig.SetAttribute("ACTIVE", "NO")
+			if len(sec.Figs) > ind {
+				dataset["PROP"].SetAttribute("VALUE", fmt.Sprintf("%d", sec.Figs[ind].Prop.Num))
+				dataset["AREA"].SetAttribute("VALUE", fmt.Sprintf("%.4f", sec.Figs[ind].Value["AREA"]))
+				dataset["IXX"].SetAttribute("VALUE", fmt.Sprintf("%.8f", sec.Figs[ind].Value["IXX"]))
+				dataset["IYY"].SetAttribute("VALUE", fmt.Sprintf("%.8f", sec.Figs[ind].Value["IYY"]))
+				dataset["VEN"].SetAttribute("VALUE", fmt.Sprintf("%.8f", sec.Figs[ind].Value["VEN"]))
+			} else {
+				dataset["PROP"].SetAttribute("VALUE", "-")
+				dataset["AREA"].SetAttribute("VALUE", "-")
+				dataset["IXX"].SetAttribute("VALUE", "-")
+				dataset["IYY"].SetAttribute("VALUE", "-")
+				dataset["VEN"].SetAttribute("VALUE", "-")
+			}
+			data.SetAttribute("VALUE", "linedata")
+		}
+	}
+	updateproplist := func(sec *st.Sect) {
+		proplist.SetAttribute("REMOVEITEM", "ALL")
+		for _, f := range sec.Figs {
+			proplist.SetAttribute("APPENDITEM", fmt.Sprintf("%d: %d", f.Num, f.Prop.Num))
+		}
+		proplist.SetAttribute("VALUE", "1")
+	}
+	proplist.SetCallback(func(arg *iup.ValueChanged) {
+		var ind int
+		fmt.Sscanf(proplist.GetAttribute("VALUE"), "%d", &ind)
+		ind--
+		updatedata(sc, ind)
+	})
+	addfig = iup.Button("TITLE=\"Add Figure\"", "ACTIVE=NO", "SIZE=\"60x\"")
+	addfig.SetCallback(func(arg *iup.ButtonAction) {
+		f := st.NewFig()
+		f.Prop = stw.Frame.DefaultProp()
+		f.Num = len(sc.Figs) + 1
+		sc.Figs = append(sc.Figs, f)
+		updateproplist(sc)
+		proplist.SetAttribute("VALUE", fmt.Sprintf("%d", f.Num))
+		updatedata(sc, f.Num-1)
+	})
+	ctlg := iup.Button("TITLE=\"Catalog\"",
+		"SIZE=\"100x20\"",
+		"EXPAND=HORIZONTAL") // TODO: Section Catalog
+	bt := iup.Button("TITLE=\"Set\"",
+		"SIZE=\"100x20\"",
+		"EXPAND=HORIZONTAL")
+	bt.SetCallback(func(arg *iup.ButtonAction) {
+		var ind int
+		fmt.Sscanf(proplist.GetAttribute("VALUE"), "%d", &ind)
+		ind--
+		if sc.Num > 700 && sc.Num < 900 {
+			if len(sc.Figs) > ind {
+				var num int64
+				var tmp float64
+				var err error
+				num, err = strconv.ParseInt(dataset["PROP"].GetAttribute("VALUE"), 10, 64)
+				if err == nil {
+					if p, ok := stw.Frame.Props[int(num)]; ok {
+						sc.Figs[ind].Prop = p
+					}
+				}
+				tmp, err = strconv.ParseFloat(dataset["THICK"].GetAttribute("VALUE"), 64)
+				if err == nil {
+					sc.Figs[ind].Value["THICK"] = tmp
+				}
+				tmp, err = strconv.ParseFloat(dataset["LLOAD0"].GetAttribute("VALUE"), 64)
+				if err == nil {
+					sc.Lload[0] = tmp
+				}
+				tmp, err = strconv.ParseFloat(dataset["LLOAD1"].GetAttribute("VALUE"), 64)
+				if err == nil {
+					sc.Lload[1] = tmp
+				}
+				tmp, err = strconv.ParseFloat(dataset["LLOAD2"].GetAttribute("VALUE"), 64)
+				if err == nil {
+					sc.Lload[2] = tmp
+				}
+			}
+		} else {
+			if len(sc.Figs) > ind {
+				var num int64
+				var tmp float64
+				var err error
+				num, err = strconv.ParseInt(dataset["PROP"].GetAttribute("VALUE"), 10, 64)
+				if err == nil {
+					if p, ok := stw.Frame.Props[int(num)]; ok {
+						sc.Figs[ind].Prop = p
+					}
+				}
+				tmp, err = strconv.ParseFloat(dataset["AREA"].GetAttribute("VALUE"), 64)
+				if err == nil {
+					sc.Figs[ind].Value["AREA"] = tmp
+				}
+				tmp, err = strconv.ParseFloat(dataset["IXX"].GetAttribute("VALUE"), 64)
+				if err == nil {
+					sc.Figs[ind].Value["IXX"] = tmp
+				}
+				tmp, err = strconv.ParseFloat(dataset["IYY"].GetAttribute("VALUE"), 64)
+				if err == nil {
+					sc.Figs[ind].Value["IYY"] = tmp
+				}
+				tmp, err = strconv.ParseFloat(dataset["VEN"].GetAttribute("VALUE"), 64)
+				if err == nil {
+					sc.Figs[ind].Value["VEN"] = tmp
+				}
+			}
+		}
+		updatedata(sc, ind)
+	})
+	dlg := iup.Dialog(iup.Vbox(dataset["NAME"],
+			iup.Hbox(propertylabel("CODE"), dataset["CODE"]),
+			iup.Hbox(proplist, addfig),
+			iup.Hbox(propertylabel("PROP"), dataset["PROP"]),
+			data,
+			ctlg, bt))
+	dlg.SetAttribute("TITLE", "Section")
+	dlg.SetAttribute("DIALOGFRAME", "YES")
+	dlg.SetAttribute("PARENTDIALOG", "mainwindow")
+	dlg.Map()
+	dataset["CODE"].SetAttribute("VALUE", fmt.Sprintf("%d", sc.Num))
+	dataset["NAME"].SetAttribute("VALUE", fmt.Sprintf("%s", sc.Name))
+	updateproplist(sc)
+	updatedata(sc, 0)
+	dlg.Show()
 }
 
 func (stw *Window) commandButton(name string, command *Command, size string) *iup.Handle {
