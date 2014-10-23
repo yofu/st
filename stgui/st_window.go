@@ -746,10 +746,8 @@ func NewWindow(homedir string) *Window { // {{{
 				iup.SetFocus(stw.canv)
 			case KEY_TAB:
 				tmp := stw.cline.GetAttribute("VALUE")
-				if strings.Contains(tmp, "%") {
-					stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
-					stw.cline.SetAttribute("CARETPOS", "100")
-				}
+				stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
+				stw.cline.SetAttribute("CARETPOS", "100")
 				arg.Return = int32(iup.IGNORE)
 			case KEY_UPARROW:
 				stw.PrevCommand()
@@ -2634,13 +2632,44 @@ func (stw *Window) execAliasCommand(al string) {
 	return
 }
 
+// func (stw *Window) Interpolate(str string) string {
+// 	str = strings.Replace(str, "%:h", stw.Cwd, 1)
+// 	if stw.Frame == nil {
+// 		return str
+// 	}
+// 	str = strings.Replace(str, "%<", st.PruneExt(stw.Frame.Path), 1)
+// 	str = strings.Replace(str, "%", stw.Frame.Path, 1)
+// 	return str
+// }
+
 func (stw *Window) Interpolate(str string) string {
-	str = strings.Replace(str, "%:h", stw.Cwd, 1)
-	if stw.Frame == nil {
-		return str
+	envval := regexp.MustCompile("[$]([a-zA-Z]+)")
+	if envval.MatchString(str) {
+		efs := envval.FindStringSubmatch(str)
+		if len(efs) >= 2 {
+			val := os.Getenv(strings.ToUpper(efs[1]))
+			if val != "" {
+				str = strings.Replace(str, efs[0], val, 1)
+			}
+		}
 	}
-	str = strings.Replace(str, "%<", st.PruneExt(stw.Frame.Path), 1)
-	str = strings.Replace(str, "%", stw.Frame.Path, 1)
+	if strings.Contains(str, "%") {
+		str = strings.Replace(str, "%:h", stw.Cwd, 1)
+		if stw.Frame != nil {
+			str = strings.Replace(str, "%<", st.PruneExt(stw.Frame.Path), 1)
+			str = strings.Replace(str, "%", stw.Frame.Path, 1)
+		}
+	}
+	sharp := regexp.MustCompile("#([0-9]+)")
+	if sharp.MatchString(str) {
+		sfs := sharp.FindStringSubmatch(str)
+		if len(sfs) >= 2 {
+			tmp, err := strconv.ParseInt(sfs[1], 10, 64)
+			if err == nil && int(tmp) < nRecentFiles {
+				str = strings.Replace(str, sfs[0], stw.recentfiles[int(tmp)], 1)
+			}
+		}
+	}
 	return str
 }
 
@@ -2662,21 +2691,9 @@ func (stw *Window) exmode(command string) {
 	if narg < 2 {
 		fn = ""
 	} else {
-		if ok, _ := regexp.MatchString("^#[0-9]+$", args[1]); ok {
-			val, _ := strconv.ParseInt(strings.TrimPrefix(args[1], "#"), 10, 64)
-			if int(val) < nRecentFiles {
-				fn = stw.recentfiles[int(val)]
-			} else {
-				fn = ""
-			}
-		} else if strings.Contains(args[1], "%") {
-			fn = stw.Interpolate(args[1])
-		} else {
-			if filepath.Dir(args[1]) == "." {
-				fn = filepath.Join(stw.Cwd, args[1])
-			} else {
-				fn = args[1]
-			}
+		fn = stw.Interpolate(args[1])
+		if filepath.Dir(fn) == "." {
+			fn = filepath.Join(stw.Cwd, fn)
 		}
 	}
 	bang := strings.HasSuffix(args[0], "!")
@@ -4695,10 +4712,8 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
 			stw.NextSideBarTab()
 		} else {
 			tmp := stw.cline.GetAttribute("VALUE")
-			if strings.Contains(tmp, "%") {
-				stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
-				stw.cline.SetAttribute("CARETPOS", "100")
-			}
+			stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
+			stw.cline.SetAttribute("CARETPOS", "100")
 		}
 	case KEY_UPARROW:
 		if key.IsCtrl() {
