@@ -32,6 +32,7 @@ var (
 	SearchingInpsDone  chan bool
 	DoubleClickCommand = []string{"TOGGLEBOND", "EDITPLATEELEM"}
 	comhistpos         int
+	prevkey            int
 )
 var (
 	gopath          = os.Getenv("GOPATH")
@@ -750,9 +751,17 @@ func NewWindow(homedir string) *Window { // {{{
 				stw.cline.SetAttribute("CARETPOS", "100")
 				arg.Return = int32(iup.IGNORE)
 			case KEY_UPARROW:
-				stw.PrevCommand()
+				var input string
+				if !(prevkey == KEY_UPARROW || prevkey == KEY_DOWNARROW) {
+					input = stw.cline.GetAttribute("VALUE")
+				}
+				stw.PrevCommand(input)
 			case KEY_DOWNARROW:
-				stw.NextCommand()
+				var input string
+				if !(prevkey == KEY_UPARROW || prevkey == KEY_DOWNARROW) {
+					input = stw.cline.GetAttribute("VALUE")
+				}
+				stw.NextCommand(input)
 			case '[':
 				if key.IsCtrl() {
 					stw.cline.SetAttribute("VALUE", "")
@@ -790,6 +799,7 @@ func NewWindow(homedir string) *Window { // {{{
 					stw.EditInp()
 				}
 			}
+			prevkey = key.Key()
 		},
 	)
 	stw.coord = iup.Text(
@@ -2507,20 +2517,32 @@ func (stw *Window) addCommandHistory(str string) {
 	stw.comhist = tmp
 }
 
-func (stw *Window) PrevCommand() {
-	if comhistpos < CommandHistorySize {
-		if stw.comhist[comhistpos+1] != "" {
-			comhistpos++
+func (stw *Window) PrevCommand(str string) {
+	for {
+		comhistpos++
+		if comhistpos >= CommandHistorySize {
+			comhistpos = CommandHistorySize - 1
+			return
+		}
+		if strings.HasPrefix(stw.comhist[comhistpos], str) {
 			stw.cline.SetAttribute("VALUE", stw.comhist[comhistpos])
+			stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", len(stw.comhist[comhistpos])+1))
+			return
 		}
 	}
 }
 
-func (stw *Window) NextCommand() {
-	if comhistpos > 0 {
-		if stw.comhist[comhistpos-1] != "" {
-			comhistpos--
+func (stw *Window) NextCommand(str string) {
+	for {
+		comhistpos--
+		if comhistpos <= 0 {
+			comhistpos = -1
+			return
+		}
+		if strings.HasPrefix(stw.comhist[comhistpos], str) {
 			stw.cline.SetAttribute("VALUE", stw.comhist[comhistpos])
+			stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", len(stw.comhist[comhistpos])+1))
+			return
 		}
 	}
 }
@@ -4856,13 +4878,21 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
 		if key.IsCtrl() {
 			stw.NextFloor()
 		} else {
-			stw.PrevCommand()
+			var input string
+			if !(prevkey == KEY_UPARROW || prevkey == KEY_DOWNARROW) {
+				input = stw.cline.GetAttribute("VALUE")
+			}
+			stw.PrevCommand(input)
 		}
 	case KEY_DOWNARROW:
 		if key.IsCtrl() {
 			stw.PrevFloor()
 		} else {
-			stw.NextCommand()
+			var input string
+			if !(prevkey == KEY_UPARROW || prevkey == KEY_DOWNARROW) {
+				input = stw.cline.GetAttribute("VALUE")
+			}
+			stw.NextCommand(input)
 		}
 	case KEY_LEFTARROW:
 		iup.SetFocus(stw.cline)
@@ -4950,6 +4980,7 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
 			stw.PasteClipboard()
 		}
 	}
+	prevkey = key.Key()
 }
 
 func (stw *Window) CB_CommonKeyAny() {
@@ -7017,6 +7048,7 @@ func (stw *Window) EscapeCB() {
 	if stw.Frame != nil {
 		stw.Redraw()
 	}
+	comhistpos = -1
 }
 
 func (stw *Window) EscapeAll() {
