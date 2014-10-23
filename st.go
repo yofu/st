@@ -8,7 +8,7 @@ import (
 
 const (
 	version  = "0.1.0"
-	modified = "LAST CHANGE:21-Oct-2014."
+	modified = "LAST CHANGE:23-Oct-2014."
 	HOME     = "C:/D/CDOCS/Hogan/Debug"
 	HOGAN    = "C:/D/CDOCS/Hogan/Debug"
 )
@@ -25,4 +25,5 @@ func main() {
 	// brk := make(chan bool)
 	// go stgui.UpdateInps("C:/D/CDOCS/Hogan", brk)
 	iup.MainLoop()
+	sw.SaveCommandHistory()
 }

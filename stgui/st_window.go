@@ -1072,6 +1072,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.SetCoord(0.0, 0.0, 0.0)
 	stw.recentfiles = make([]string, nRecentFiles)
 	stw.SetRecently()
+	stw.SetCommandHistory()
 	return stw
 }
 
@@ -2454,6 +2455,45 @@ func (stw *Window) feedCommand() {
 		stw.execAliasCommand(command)
 	}
 	iup.SetFocus(stw.canv)
+}
+
+func (stw *Window) SetCommandHistory() error {
+	if st.FileExists(historyfn) {
+		tmp := make([]string, CommandHistorySize)
+		f, err := os.Open(historyfn)
+		if err != nil {
+			return err
+		}
+		s := bufio.NewScanner(f)
+		num := 0
+		for s.Scan() {
+			if com := s.Text(); com != "" {
+				tmp[num] = com
+				num++
+			}
+		}
+		if err := s.Err(); err != nil {
+			return err
+		}
+		stw.comhist = tmp
+		return nil
+	}
+	return errors.New("SetCommandHistory: file doesn't exist")
+}
+
+func (stw *Window) SaveCommandHistory() error {
+	var otp bytes.Buffer
+	for _, com := range stw.comhist {
+		otp.WriteString(com)
+		otp.WriteString("\n")
+	}
+	w, err := os.Create(historyfn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
+	otp.WriteTo(w)
+	return nil
 }
 
 func (stw *Window) addCommandHistory(str string) {
