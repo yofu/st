@@ -2484,8 +2484,10 @@ func (stw *Window) SetCommandHistory() error {
 func (stw *Window) SaveCommandHistory() error {
 	var otp bytes.Buffer
 	for _, com := range stw.comhist {
-		otp.WriteString(com)
-		otp.WriteString("\n")
+		if com != "" {
+			otp.WriteString(com)
+			otp.WriteString("\n")
+		}
 	}
 	w, err := os.Create(historyfn)
 	defer w.Close()
@@ -2507,15 +2509,19 @@ func (stw *Window) addCommandHistory(str string) {
 
 func (stw *Window) PrevCommand() {
 	if comhistpos < CommandHistorySize {
-		comhistpos++
-		stw.cline.SetAttribute("VALUE", stw.comhist[comhistpos])
+		if stw.comhist[comhistpos+1] != "" {
+			comhistpos++
+			stw.cline.SetAttribute("VALUE", stw.comhist[comhistpos])
+		}
 	}
 }
 
 func (stw *Window) NextCommand() {
 	if comhistpos > 0 {
-		comhistpos--
-		stw.cline.SetAttribute("VALUE", stw.comhist[comhistpos])
+		if stw.comhist[comhistpos-1] != "" {
+			comhistpos--
+			stw.cline.SetAttribute("VALUE", stw.comhist[comhistpos])
+		}
 	}
 }
 
