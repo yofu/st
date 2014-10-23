@@ -348,28 +348,29 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64) err
 
 func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodemap map[int]int) (map[int]int, error) {
 	var err error
-	var def, num int
+	var def int
+	var node *Node
 	if len(lis) == 0 {
 		return nodemap, nil
 	}
 	first := lis[0]
 	switch first {
 	case "ELEM":
-		err = frame.ParseElem(lis, nodemap)
+		_, err = frame.ParseElem(lis, nodemap)
 	case "NODE":
-		def, num, err = frame.ParseNode(lis, coord, angle)
-		nodemap[def] = num
+		node, def, err = frame.ParseNode(lis, coord, angle)
+		nodemap[def] = node.Num
 	case "SECT":
-		err = frame.ParseSect(lis)
+		_, err = frame.ParseSect(lis)
 	case "PROP":
-		err = frame.ParseProp(lis)
+		_, err = frame.ParseProp(lis)
 	case "PILE":
-		err = frame.ParsePile(lis)
+		_, err = frame.ParsePile(lis)
 	}
 	return nodemap, err
 }
 
-func (frame *Frame) ParseProp(lis []string) error {
+func (frame *Frame) ParseProp(lis []string) (*Prop, error) {
 	var num int64
 	var err error
 	p := new(Prop)
@@ -396,14 +397,14 @@ func (frame *Frame) ParseProp(lis []string) error {
 			}
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	frame.Props[p.Num] = p
-	return nil
+	return p, nil
 }
 
-func (frame *Frame) ParsePile(lis []string) error {
+func (frame *Frame) ParsePile(lis []string) (*Pile, error) {
 	var num int64
 	var err error
 	p := new(Pile)
@@ -418,14 +419,14 @@ func (frame *Frame) ParsePile(lis []string) error {
 			p.Moment, err = strconv.ParseFloat(lis[i+1], 64)
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	frame.Piles[p.Num] = p
-	return nil
+	return p, nil
 }
 
-func (frame *Frame) ParseSect(lis []string) error {
+func (frame *Frame) ParseSect(lis []string) (*Sect, error) {
 	var num int64
 	var err error
 	s := NewSect()
@@ -469,14 +470,14 @@ func (frame *Frame) ParseSect(lis []string) error {
 			}
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	err = s.ParseFig(frame, tmp)
 	s.Frame = frame
 	frame.Sects[s.Num] = s
 	frame.Show.Sect[s.Num] = true
-	return nil
+	return s, nil
 }
 
 func (sect *Sect) ParseFig(frame *Frame, lis []string) error {
@@ -572,7 +573,7 @@ func (sect *Sect) ParseFig(frame *Frame, lis []string) error {
 	return err
 }
 
-func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (int, int, error) {
+func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (*Node, int, error) {
 	var num int64
 	var err error
 	n := NewNode()
@@ -584,7 +585,7 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (int
 			n.Num = int(num)
 		case "CORD":
 			if llis < i+4 {
-				return 0, 0, errors.New(fmt.Sprintf("ParseNode: CORD IndexError NODE %d", n.Num))
+				return nil, 0, errors.New(fmt.Sprintf("ParseNode: CORD IndexError NODE %d", n.Num))
 			}
 			for j := 0; j < 3; j++ {
 				n.Coord[j], err = strconv.ParseFloat(lis[i+1+j], 64)
@@ -592,7 +593,7 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (int
 			}
 		case "ICON":
 			if llis < i+7 {
-				return 0, 0, errors.New(fmt.Sprintf("ParseNode: ICON IndexError NODE %d", n.Num))
+				return nil, 0, errors.New(fmt.Sprintf("ParseNode: ICON IndexError NODE %d", n.Num))
 			}
 			for j := 0; j < 6; j++ {
 				if lis[i+1+j] == "0" {
@@ -603,28 +604,28 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (int
 			}
 		case "VCON":
 			if llis < i+7 {
-				return 0, 0, errors.New(fmt.Sprintf("ParseNode: VCON IndexError NODE %d", n.Num))
+				return nil, 0, errors.New(fmt.Sprintf("ParseNode: VCON IndexError NODE %d", n.Num))
 			}
 			for j := 0; j < 6; j++ {
 				n.Load[j], err = strconv.ParseFloat(lis[i+1+j], 64)
 			}
 		case "PCON":
 			if llis < i+2 {
-				return 0, 0, errors.New(fmt.Sprintf("ParseNode: PCON IndexError NODE %d", n.Num))
+				return nil, 0, errors.New(fmt.Sprintf("ParseNode: PCON IndexError NODE %d", n.Num))
 			}
 			var pnum int64
 			pnum, err = strconv.ParseInt(lis[i+1], 10, 64)
 			if err != nil {
-				return 0, 0, err
+				return nil, 0, err
 			}
 			if p, ok := frame.Piles[int(pnum)]; ok {
 				n.Pile = p
 			} else {
-				return 0, 0, errors.New(fmt.Sprintf("ParseNode: Pile %d doesn't exist NODE %d", pnum, n.Num))
+				return nil, 0, errors.New(fmt.Sprintf("ParseNode: Pile %d doesn't exist NODE %d", pnum, n.Num))
 			}
 		}
 		if err != nil {
-			return 0, 0, err
+			return nil, 0, err
 		}
 	}
 	c := RotateVector(n.Coord, coord, []float64{0.0, 0.0, 1.0}, angle)
@@ -637,21 +638,21 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (int
 			n.Num = frame.Maxnnum
 			frame.Nodes[n.Num] = n
 			n.Frame = frame
-			return old, n.Num, nil
+			return n, old, nil
 		} else {
 			if n.Num > frame.Maxnnum {
 				frame.Maxnnum = n.Num
 			}
 			frame.Nodes[n.Num] = n
 			n.Frame = frame
-			return n.Num, n.Num, nil
+			return n, n.Num, nil
 		}
 	} else {
-		return n.Num, newnode.Num, nil
+		return newnode, n.Num, nil
 	}
 }
 
-func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) error {
+func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) (*Elem, error) {
 	var num int64
 	var err error
 	e := new(Elem)
@@ -664,7 +665,7 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) error {
 		case "ESECT":
 			tmp, err := strconv.ParseInt(lis[i+1], 10, 64)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			if val, ok := frame.Sects[int(tmp)]; ok {
 				e.Sect = val
@@ -677,24 +678,24 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) error {
 			e.Enods = int(num)
 		case "ENOD":
 			if llis < i+1+e.Enods {
-				return errors.New(fmt.Sprintf("ParseElem: ENOD IndexError ELEM %d", e.Num))
+				return nil, errors.New(fmt.Sprintf("ParseElem: ENOD IndexError ELEM %d", e.Num))
 			}
 			en := make([]*Node, int(e.Enods))
 			for j := 0; j < e.Enods; j++ {
 				tmp, err := strconv.ParseInt(lis[i+1+j], 10, 64)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				if val, ok := frame.Nodes[nodemap[int(tmp)]]; ok {
 					en[j] = val
 				} else {
-					return errors.New(fmt.Sprintf("ParseElem: Enod not found ELEM %d ENOD %d", e.Num, tmp))
+					return nil, errors.New(fmt.Sprintf("ParseElem: Enod not found ELEM %d ENOD %d", e.Num, tmp))
 				}
 			}
 			e.Enod = en
 		case "BONDS":
 			if llis < i+1+e.Enods*6 {
-				return errors.New(fmt.Sprintf("ParseElem: BONDS IndexError ELEM %d", e.Num))
+				return nil, errors.New(fmt.Sprintf("ParseElem: BONDS IndexError ELEM %d", e.Num))
 			}
 			bon := make([]bool, int(e.Enods)*6)
 			for j := 0; j < int(e.Enods)*6; j++ {
@@ -707,7 +708,7 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) error {
 			e.Bonds = bon
 		case "CMQ":
 			if llis < i+1+e.Enods*6 {
-				return errors.New(fmt.Sprintf("ParseElem: CMQ IndexError ELEM %d", e.Num))
+				return nil, errors.New(fmt.Sprintf("ParseElem: CMQ IndexError ELEM %d", e.Num))
 			}
 			cmq := make([]float64, int(e.Enods)*6)
 			for j := 0; j < int(e.Enods)*6; j++ {
@@ -721,7 +722,7 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) error {
 			for j := 0; j < 2; j++ {
 				val, err := strconv.ParseFloat(lis[i+1+j], 64)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				wrect[j] = val
 			}
@@ -730,7 +731,7 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) error {
 			err = e.setEtype(lis[i+1])
 		}
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	var el *Elem
@@ -759,7 +760,7 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) error {
 		el.Num = frame.Maxenum
 		frame.Elems[frame.Maxenum] = el
 	}
-	return nil
+	return el, nil
 }
 
 // }}}
@@ -2000,7 +2001,9 @@ func (frame *Frame) AddSect(num int) *Sect {
 }
 
 func (frame *Frame) AddPropAndSect(filename string) error {
+	newsects := make(map[int]*Sect)
 	tmp := make([]string, 0)
+	var sec *Sect
 	err := ParseFile(filename, func(words []string) error {
 		var err error
 		first := words[0]
@@ -2014,37 +2017,51 @@ func (frame *Frame) AddPropAndSect(filename string) error {
 		default:
 			tmp = append(tmp, words...)
 		case "PROP", "SECT":
-			err = frame.ParsePropAndSect(tmp)
+			sec, err = frame.ParsePropAndSect(tmp)
 			tmp = words
 		}
 		if err != nil {
 			return err
+		}
+		if sec != nil {
+			newsects[sec.Num] = sec
 		}
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	err = frame.ParsePropAndSect(tmp)
+	sec, err = frame.ParsePropAndSect(tmp)
 	if err != nil {
 		return err
+	}
+	if sec != nil {
+		newsects[sec.Num] = sec
+	}
+	if len(newsects) > 0 {
+		for _, el := range frame.Elems {
+			if sec, ok := newsects[el.Sect.Num]; ok {
+				el.Sect = sec
+			}
+		}
 	}
 	return nil
 }
 
-func (frame *Frame) ParsePropAndSect(lis []string) error {
+func (frame *Frame) ParsePropAndSect(lis []string) (*Sect, error) {
 	var err error
+	var sec *Sect
 	if len(lis) == 0 {
-		return nil
+		return nil, nil
 	}
 	first := lis[0]
 	switch first {
 	case "SECT":
-		err = frame.ParseSect(lis)
+		sec, err = frame.ParseSect(lis)
 	case "PROP":
-		err = frame.ParseProp(lis)
+		_, err = frame.ParseProp(lis)
 	}
-	return err
+	return sec, err
 }
 
 func (frame *Frame) AddNode(x, y, z float64) *Node {
