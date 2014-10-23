@@ -56,10 +56,42 @@ func NewSect() *Sect {
 	return s
 }
 
+func (sect *Sect) Snapshot(frame *Frame) *Sect {
+	s := NewSect()
+	s.Frame = frame
+	s.Num = sect.Num
+	s.Name = sect.Name
+	s.Figs = make([]*Fig, len(sect.Figs))
+	for i, f := range sect.Figs {
+		s.Figs[i] = f.Snapshot(frame)
+	}
+	s.Exp = sect.Exp
+	s.Exq = sect.Exq
+	for i:=0; i<3; i++ {
+		s.Lload[i] = sect.Lload[i]
+	}
+	for i:=0; i<12; i++ {
+		s.Yield[i] = sect.Yield[i]
+	}
+	s.Type = sect.Type
+	s.Color = sect.Color
+	return s
+}
+
 func NewFig() *Fig {
 	f := new(Fig)
 	f.Num = 1
 	f.Value = make(map[string]float64)
+	return f
+}
+
+func (fig *Fig) Snapshot(frame *Frame) *Fig {
+	f := NewFig()
+	f.Num = fig.Num
+	f.Prop = frame.Props[fig.Prop.Num]
+	for k, v := range fig.Value {
+		f.Value[k] = v
+	}
 	return f
 }
 

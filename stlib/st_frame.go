@@ -160,6 +160,40 @@ func NewAiparameter() *Aiparameter {
 	return a
 }
 
+func (ai *Aiparameter) Snapshot() *Aiparameter {
+	a := NewAiparameter()
+	a.Base = ai.Base
+	a.Locate = ai.Locate
+	a.Tfact = ai.Tfact
+	a.Gperiod = ai.Gperiod
+	a.T = ai.T
+	a.Rt = ai.Rt
+	a.Nfloor = ai.Nfloor
+	a.Boundary = make([]float64, a.Nfloor+1)
+	if len(ai.Level) > 0 {
+		a.Level = make([]float64, a.Nfloor)
+		a.Wi = make([]float64, a.Nfloor)
+		a.W = make([]float64, a.Nfloor)
+		a.Ai = make([]float64, a.Nfloor-1)
+		a.Ci = make([]float64, a.Nfloor)
+		a.Qi = make([]float64, a.Nfloor)
+		a.Hi = make([]float64, a.Nfloor)
+		for i:=0; i<a.Nfloor+1; i++ {
+			a.Boundary[i] = ai.Boundary[i]
+			if i == a.Nfloor { continue }
+			a.Level[i] = ai.Level[i]
+			a.Wi[i] = ai.Wi[i]
+			a.W[i] = ai.W[i]
+			a.Ci[i] = ai.Ci[i]
+			a.Qi[i] = ai.Qi[i]
+			a.Hi[i] = ai.Hi[i]
+			if i == a.Nfloor-1 { continue }
+			a.Ai[i] = ai.Ai[i]
+		}
+	}
+	return a
+}
+
 // type View// {{{
 type View struct {
 	Gfact       float64
@@ -205,6 +239,58 @@ func (v *View) Copy() *View {
 }
 
 // }}}
+
+
+func (frame *Frame) Snapshot () *Frame {
+	f := NewFrame()
+	f.Title = frame.Title
+	f.Name = frame.Name
+	f.Project = frame.Project
+	f.Path = frame.Path
+	f.Home = frame.Home
+	f.View = frame.View.Copy()
+	for _, p := range frame.Props {
+		f.Props[p.Num] = p.Snapshot()
+	}
+	for _, s := range frame.Sects {
+		f.Sects[s.Num] = s.Snapshot(f)
+	}
+	for _, p := range frame.Piles {
+		f.Piles[p.Num] = p.Snapshot()
+	}
+	for _, n := range frame.Nodes {
+		f.Nodes[n.Num] = n.Snapshot(f)
+	}
+	for _, el := range frame.Elems {
+		f.Elems[el.Num] = el.Snapshot(f)
+	}
+	for _, a := range frame.Allows {
+		f.Allows[a.Num()] = a.Snapshot()
+	}
+	for k, v := range frame.Eigenvalue {
+		f.Eigenvalue[k] = v
+	}
+	for _, k := range frame.Kijuns {
+		f.Kijuns[k.Name] = k.Snapshot()
+	}
+	f.Maxenum = frame.Maxenum
+	f.Maxnnum = frame.Maxnnum
+	f.Maxsnum = frame.Maxsnum
+	for k, v := range frame.Nlap {
+		f.Nlap[k] = v
+	}
+	f.Ai = frame.Ai.Snapshot()
+	f.Show = frame.Show.Copy()
+	for k, v := range frame.DataFileName {
+		f.DataFileName[k] = v
+	}
+	for k, v := range frame.ResultFileName {
+		f.ResultFileName[k] = v
+	}
+	f.LstFileName = frame.LstFileName
+	return f
+}
+
 
 func (frame *Frame) Bbox() (xmin, xmax, ymin, ymax, zmin, zmax float64) {
 	var mins, maxs [3]float64

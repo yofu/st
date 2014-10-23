@@ -27,6 +27,14 @@ func (p PileByNum) Less(i, j int) bool {
 
 // }}}
 
+func (pile *Pile) Snapshot() *Pile {
+	p := new(Pile)
+	p.Num = pile.Num
+	p.Name = pile.Name
+	p.Moment = pile.Moment
+	return p
+}
+
 func (pile *Pile) InpString() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("PILE %d INAME %s\n", pile.Num, pile.Name))

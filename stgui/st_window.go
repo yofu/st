@@ -48,6 +48,7 @@ var (
 const (
 	windowSize   = "FULLxFULL"
 	nRecentFiles = 3
+	nUndo = 5
 )
 
 // Font
@@ -219,6 +220,7 @@ type Window struct { // {{{
 
 	comhist     []string
 	recentfiles []string
+	undostack   []*st.Frame
 }
 
 // }}}
@@ -406,11 +408,13 @@ func NewWindow(homedir string) *Window { // {{{
 					iup.Attr("TITLE", "Quit"),
 					iup.Attr("TIP", "Exit Application"),
 					func(arg *iup.ItemAction) {
-						// if stw.Changed {
-						//     if stw.Yn("CHANGED", "変更を保存しますか") {
-						//         stw.SaveAS()
-						//     }
-						// }
+						if stw.Changed {
+						    if stw.Yn("CHANGED", "変更を保存しますか") {
+						        stw.SaveAS()
+						    } else {
+								return
+							}
+						}
 						arg.Return = iup.CLOSE
 					},
 				),
@@ -1051,11 +1055,13 @@ func NewWindow(homedir string) *Window { // {{{
 			iup.Hbox(stw.cname, stw.cline, stw.coord),
 		),
 		func(arg *iup.DialogClose) {
-			// if stw.Changed {
-			//     if stw.Yn("CHANGED", "変更を保存しますか") {
-			//         stw.SaveAS()
-			//     }
-			// }
+			if stw.Changed {
+			    if stw.Yn("CHANGED", "変更を保存しますか") {
+			        stw.SaveAS()
+			    } else {
+					return
+				}
+			}
 			arg.Return = iup.CLOSE
 		},
 		func(arg *iup.CommonGetFocus) {
@@ -1085,6 +1091,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.recentfiles = make([]string, nRecentFiles)
 	stw.SetRecently()
 	stw.SetCommandHistory()
+	stw.undostack = make([]*st.Frame, nUndo)
 	return stw
 }
 
@@ -1092,6 +1099,29 @@ func NewWindow(homedir string) *Window { // {{{
 
 func (stw *Window) FocusCanv() {
 	iup.SetFocus(stw.canv)
+}
+
+func (stw *Window) Snapshot() {
+	stw.Changed = true
+	tmp := make([]*st.Frame, nUndo)
+	tmp[0] = stw.Frame.Snapshot()
+	for i:=0; i<nUndo-1; i++ {
+		tmp[i+1] = stw.undostack[i]
+	}
+	stw.undostack = tmp
+}
+
+func (stw *Window) Undo() {
+	if stw.undostack == nil || len(stw.undostack) <= 1 || stw.undostack[1] == nil {
+		stw.addHistory("cannot undo any more")
+		return
+	}
+	fmt.Println(stw.undostack)
+	stw.Frame = stw.undostack[1]
+	tmp := make([]*st.Frame, nUndo)
+	for i:=1; i<nUndo-1; i++ {
+		tmp[i] = stw.undostack[i+1]
+	}
 }
 
 func (stw *Window) Chdir(dir string) error {
@@ -1529,11 +1559,13 @@ func (stw *Window) SaveFile(fn string) error {
 // }}}
 
 func (stw *Window) Close(force bool) {
-	// if stw.Changed {
-	//     if stw.Yn("CHANGED", "変更を保存しますか") {
-	//         stw.SaveAS()
-	//     }
-	// }
+	if !force && stw.Changed {
+	    if stw.Yn("CHANGED", "変更を保存しますか") {
+	        stw.SaveAS()
+	    } else {
+			return
+		}
+	}
 	stw.Dlg.Destroy()
 }
 
@@ -2798,6 +2830,13 @@ func (stw *Window) exmode(command string) {
 				}
 			}
 		case "inc":
+			if !bang && stw.Changed {
+			    if stw.Yn("CHANGED", "変更を保存しますか") {
+			        stw.SaveAS()
+			    } else {
+					break
+				}
+			}
 			var times int
 			if narg >= 2 {
 				val, err := strconv.ParseInt(args[1], 10, 64)
@@ -2824,11 +2863,13 @@ func (stw *Window) exmode(command string) {
 				stw.EditReadme(filepath.Dir(fn))
 			}
 		case "e":
-			// if !bang && stw.Changed {
-			//     if stw.Yn("CHANGED", "変更を保存しますか") {
-			//         stw.SaveAS()
-			//     }
-			// }
+			if !bang && stw.Changed {
+			    if stw.Yn("CHANGED", "変更を保存しますか") {
+			        stw.SaveAS()
+			    } else {
+					break
+				}
+			}
 			if fn != "" {
 				if !st.FileExists(fn) {
 					sfn, err := stw.SearchFile(args[1])
@@ -2863,6 +2904,7 @@ func (stw *Window) exmode(command string) {
 					stw.addHistory(err.Error())
 				}
 				err = stw.Frame.ReadInp(fn, stw.SelectNode[0].Coord, angle*math.Pi/180.0)
+				stw.Snapshot()
 				if err != nil {
 					stw.addHistory(err.Error())
 				}
@@ -2870,6 +2912,7 @@ func (stw *Window) exmode(command string) {
 			}
 		case "ps":
 			err := stw.AddPropAndSect(fn)
+			stw.Snapshot()
 			if err != nil {
 				stw.addHistory(err.Error())
 			}
@@ -2953,6 +2996,7 @@ func (stw *Window) exmode(command string) {
 					}
 				}
 			}
+			stw.Snapshot()
 		case "conf":
 			lis := make([]bool, 6)
 			if len(args[1]) >= 6 {
@@ -2992,6 +3036,7 @@ func (stw *Window) exmode(command string) {
 				for _, n := range stw.SelectNode {
 					n.Pile = p
 				}
+				stw.Snapshot()
 			} else {
 				stw.addHistory(fmt.Sprintf("PILE %d doesn't exist", val))
 			}
@@ -3059,6 +3104,7 @@ func (stw *Window) exmode(command string) {
 					el.Sect = sec
 				}
 			}
+			stw.Snapshot()
 		case "view":
 			switch strings.ToUpper(args[1]) {
 			case "TOP":
@@ -3759,6 +3805,7 @@ func (stw *Window) DeleteSelected() {
 		}
 	}
 	stw.Deselect()
+	stw.Snapshot()
 	stw.Redraw()
 }
 
@@ -4984,6 +5031,10 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		if key.IsCtrl() {
 			stw.PasteClipboard()
 		}
+	case 'Z':
+		if key.IsCtrl() {
+			stw.Undo()
+		}
 	}
 	prevkey = key.Key()
 }
@@ -5205,11 +5256,13 @@ func (stw *Window) CMenu() {
 					iup.Attr("TITLE", "Quit"),
 					iup.Attr("TIP", "Exit Application"),
 					func(arg *iup.ItemAction) {
-						// if stw.Changed {
-						//     if stw.Yn("CHANGED", "変更を保存しますか") {
-						//         stw.SaveAS()
-						//     }
-						// }
+						if stw.Changed {
+						    if stw.Yn("CHANGED", "変更を保存しますか") {
+						        stw.SaveAS()
+						    } else {
+								return
+							}
+						}
 						arg.Return = iup.CLOSE
 					},
 				),

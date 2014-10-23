@@ -123,6 +123,45 @@ func NewPlateElem(ns []*Node, sect *Sect, etype int) *Elem {
 
 // }}}
 
+func (elem *Elem) Snapshot(frame *Frame) *Elem {
+	if elem == nil { return nil }
+	var el *Elem
+	enod := make([]*Node, elem.Enods)
+	for i, en := range elem.Enod {
+		enod[i] = frame.Nodes[en.Num]
+	}
+	if elem.IsLineElem() {
+		el = NewLineElem(enod, frame.Sects[elem.Sect.Num], elem.Etype)
+		el.Cang = elem.Cang
+		for i:=0; i<12; i++ {
+			el.Bonds[i] = elem.Bonds[i]
+			el.Cmq[i] = elem.Cmq[i]
+		}
+		el.Rate = make([]float64, len(elem.Rate))
+		for i, r := range elem.Rate {
+			el.Rate[i] = r
+		}
+		for i:=0; i<3; i++ {
+			el.Strong[i] = elem.Strong[i]
+			el.Weak[i] = elem.Weak[i]
+		}
+		if elem.Parent != nil {
+			el.Parent = frame.Elems[elem.Parent.Num]
+		}
+		el.Eldest = elem.Eldest
+	} else {
+		el = NewPlateElem(enod, frame.Sects[elem.Sect.Num], elem.Etype)
+		for i:=0; i<2; i++ {
+			el.Wrect[i] = elem.Wrect[i]
+		}
+	}
+	el.Num = elem.Num
+	el.Frame = frame
+	el.Hide = elem.Hide
+	el.Lock = elem.Lock
+	return el
+}
+
 func (elem *Elem) PrincipalAxis(cang float64) ([]float64, []float64, error) {
 	d := elem.Direction(true)
 	c := math.Cos(cang)

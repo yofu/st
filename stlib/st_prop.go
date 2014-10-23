@@ -30,6 +30,17 @@ func (p PropByNum) Less(i, j int) bool {
 
 // }}}
 
+func (prop *Prop) Snapshot() *Prop {
+	p := new(Prop)
+	p.Num = prop.Num
+	p.Name = prop.Name
+	p.Hiju = prop.Hiju
+	p.E = prop.E
+	p.Poi = prop.Poi
+	p.Color = prop.Color
+	return p
+}
+
 func (prop *Prop) InpString() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("PROP %d PNAME %s\n", prop.Num, prop.Name))

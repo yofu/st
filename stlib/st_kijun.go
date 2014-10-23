@@ -23,6 +23,21 @@ func NewKijun() *Kijun {
 	return k
 }
 
+func (k *Kijun) Snapshot() *Kijun {
+	rtn := NewKijun()
+	rtn.Name = k.Name
+	for i:=0; i<3; i++ {
+		rtn.Start[i] = k.Start[i]
+		rtn.End[i] = k.End[i]
+	}
+	for i:=0; i<2; i++ {
+		rtn.Pstart[i] = k.Pstart[i]
+		rtn.Pend[i] = k.Pend[i]
+	}
+	rtn.Hide = k.Hide
+	return rtn
+}
+
 func (k *Kijun) Length() float64 {
 	sum := 0.0
 	for i := 0; i < 3; i++ {

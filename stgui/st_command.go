@@ -418,6 +418,7 @@ func togglebond(stw *Window) {
 			el.ToggleBond(n.Num)
 			// if err == nil { break }
 		}
+		stw.Snapshot()
 	})
 }
 
@@ -587,6 +588,7 @@ func addlineelem(stw *Window) {
 		sec := stw.Frame.DefaultSect()
 		el := stw.Frame.AddLineElem(-1, stw.SelectNode, sec, st.NONE)
 		stw.addHistory(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, stw.SelectNode[0].Num, n.Num, sec.Num))
+		stw.Snapshot()
 		// stw.cdcanv.Foreground(cd.CD_WHITE)
 		// stw.cdcanv.WriteMode(cd.CD_REPLACE)
 		stw.EscapeAll()
@@ -751,6 +753,7 @@ func addplateelem(stw *Window) {
 			}
 			buf.WriteString(fmt.Sprintf(", SECT: %d)", sec.Num))
 			stw.addHistory(buf.String())
+			stw.Snapshot()
 		}
 		stw.EscapeAll()
 	})
@@ -791,6 +794,7 @@ func addplateelembyline(stw *Window) {
 			}
 			buf.WriteString(fmt.Sprintf(", SECT: %d)", sec.Num))
 			stw.addHistory(buf.String())
+			stw.Snapshot()
 			stw.EscapeAll()
 		}
 	})
@@ -1054,6 +1058,7 @@ func copyelem(stw *Window) {
 				}
 				el.Copy(x, y, z)
 			}
+			stw.Snapshot()
 			stw.Redraw()
 		}
 	})
@@ -1077,6 +1082,7 @@ func moveelem(stw *Window) {
 		for _, n := range stw.Frame.NodeNoReference() {
 			delete(stw.Frame.Nodes, n.Num)
 		}
+		stw.Snapshot()
 		stw.Redraw()
 	})
 }
@@ -1120,6 +1126,7 @@ func movenode(stw *Window) {
 			}
 			n.Move(x, y, z)
 		}
+		stw.Snapshot()
 		stw.EscapeCB()
 	})
 }
@@ -1150,6 +1157,7 @@ func movetoline(stw *Window) {
 		}
 		stw.cdcanv.Foreground(cd.CD_WHITE)
 		stw.cdcanv.WriteMode(cd.CD_REPLACE)
+		stw.Snapshot()
 		stw.EscapeAll()
 	},
 		func() {
@@ -1283,6 +1291,7 @@ func rotate(stw *Window) {
 						}
 						n.Rotate(n0.Coord, []float64{x, y, z}, angle)
 					}
+					stw.Snapshot()
 				}
 				stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
 					key := iup.KeyState(arg.Key)
@@ -1381,6 +1390,7 @@ func mirror(stw *Window) {
 				}
 			}
 		}
+		stw.Snapshot()
 	}
 	getnnodes(stw, maxnum, func(num int) {
 		switch num {
@@ -1455,6 +1465,7 @@ func scale(stw *Window) {
 			}
 			n.Scale(n0.Coord, val)
 		}
+		stw.Snapshot()
 		stw.EscapeCB()
 	})
 }
@@ -1525,6 +1536,7 @@ func insert(stw *Window) {
 			if err != nil {
 				stw.addHistory(err.Error())
 			}
+			stw.Snapshot()
 			stw.EscapeAll()
 		})
 	} else {
@@ -1609,6 +1621,7 @@ func matchproperty(stw *Window) {
 		el.Sect = stw.SelectElem[0].Sect
 		el.Etype = stw.SelectElem[0].Etype
 		stw.Redraw()
+		stw.Snapshot()
 	},
 		func(el *st.Elem) bool {
 			return true
@@ -1624,6 +1637,7 @@ func copybond(stw *Window) {
 			for i := 0; i < 12; i++ {
 				el.Bonds[i] = stw.SelectElem[0].Bonds[i]
 			}
+			stw.Snapshot()
 		}
 		stw.Redraw()
 	},
@@ -1653,6 +1667,7 @@ func axistocang(stw *Window) {
 					stw.addHistory(fmt.Sprintf("部材軸を設定できません: ELEM %d", el.Num))
 				}
 			}
+			stw.Snapshot()
 			stw.EscapeAll()
 		}
 	}
@@ -1713,6 +1728,7 @@ func bondpin(stw *Window) {
 			}
 		}
 	}
+	stw.Snapshot()
 	stw.EscapeAll()
 }
 
@@ -1733,6 +1749,7 @@ func bondrigid(stw *Window) {
 			}
 		}
 	}
+	stw.Snapshot()
 	stw.EscapeAll()
 }
 
@@ -1752,6 +1769,7 @@ func setconf(stw *Window, lis []bool) {
 			n.Conf[i] = lis[i]
 		}
 	}
+	stw.Snapshot()
 	stw.EscapeCB()
 }
 
@@ -1770,6 +1788,7 @@ func conffix(stw *Window) {
 			n.Conf[i+3] = true
 		}
 	}
+	stw.Snapshot()
 	stw.EscapeCB()
 }
 
@@ -1788,6 +1807,7 @@ func confpin(stw *Window) {
 			n.Conf[i+3] = false
 		}
 	}
+	stw.Snapshot()
 	stw.EscapeCB()
 }
 
@@ -1807,6 +1827,7 @@ func confxyroller(stw *Window) {
 		}
 		n.Conf[2] = true
 	}
+	stw.Snapshot()
 	stw.EscapeCB()
 }
 
@@ -1825,6 +1846,7 @@ func conffree(stw *Window) {
 			n.Conf[i+3] = false
 		}
 	}
+	stw.Snapshot()
 	stw.EscapeCB()
 }
 
@@ -1846,6 +1868,7 @@ func trim(stw *Window) {
 				stw.Deselect()
 				stw.Redraw()
 			}
+			stw.Snapshot()
 			stw.EscapeAll()
 		}
 		stw.Redraw()
@@ -1869,6 +1892,7 @@ func extend(stw *Window) {
 				stw.Deselect()
 				stw.Redraw()
 			}
+			stw.Snapshot()
 			stw.EscapeAll()
 		}
 		stw.Redraw()
@@ -2145,6 +2169,7 @@ func nodenoreference(stw *Window) {
 			for _, n := range ns {
 				delete(stw.Frame.Nodes, n.Num)
 			}
+			stw.Snapshot()
 		}
 	}
 	stw.EscapeAll()
@@ -2166,6 +2191,7 @@ func elemsamenode(stw *Window) {
 				}
 				delete(stw.Frame.Elems, el.Num)
 			}
+			stw.Snapshot()
 		}
 	}
 	stw.EscapeAll()
@@ -2207,6 +2233,7 @@ func pruneenod(stw *Window) {
 				}
 				el.PruneEnod()
 			}
+			stw.Snapshot()
 		}
 	}
 	stw.EscapeAll()
@@ -2226,6 +2253,7 @@ func nodeduplication(stw *Window) {
 		if stw.Yn("NODE DUPLICATION", "重なった節点を削除しますか?") {
 			stw.Frame.ReplaceNode(nm)
 		}
+		stw.Snapshot()
 	}
 	stw.EscapeAll()
 }
@@ -2248,6 +2276,7 @@ func elemduplication(stw *Window) {
 				}
 				delete(stw.Frame.Elems, el.Num)
 			}
+			stw.Snapshot()
 			stw.EscapeAll()
 		} else {
 			stw.EscapeCB()
@@ -2293,6 +2322,7 @@ func checkframe(stw *Window) {
 		if stw.Yn("CHECK FRAME", "部材の向きを修正しますか？") {
 			stw.Frame.Upside()
 		}
+		stw.Snapshot()
 	}
 	if eall {
 		stw.EscapeAll()
@@ -2314,6 +2344,7 @@ func nodesort(stw *Window) {
 			stw.EscapeAll()
 		}
 		stw.addHistory(fmt.Sprintf("並び替え後: %d (%s方向)", bw, []string{"X", "Y", "Z"}[d]))
+		stw.Snapshot()
 		stw.Redraw()
 	}
 	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
@@ -2517,6 +2548,7 @@ func divide(stw *Window, divfunc func(*st.Elem) ([]*st.Node, []*st.Elem, error))
 			}
 		}
 		stw.SelectElem = tmpels
+		stw.Snapshot()
 		stw.EscapeCB()
 	}
 }
@@ -2566,6 +2598,7 @@ func intersect(stw *Window) {
 				}
 				stw.Redraw()
 			}
+			stw.Snapshot()
 			stw.EscapeCB()
 		}
 	})
@@ -2618,6 +2651,7 @@ func intersectall(stw *Window) {
 		}
 		checked = append(checked, els...)
 	}
+	stw.Snapshot()
 	stw.EscapeAll()
 }
 
@@ -2800,6 +2834,7 @@ func hatchplateelem(stw *Window) {
 				}
 			}
 		}
+		stw.Snapshot()
 	}
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
 		if stw.Frame != nil {
@@ -2870,6 +2905,7 @@ func editplateelem(stw *Window) {
 			}
 		}
 		stw.SelectNode = make([]*st.Node, 2)
+		stw.Snapshot()
 		stw.Redraw()
 	}
 	prune := func() {
@@ -2926,6 +2962,7 @@ func editwrect(stw *Window) {
 				el.Wrect[1] = h
 			}
 		}
+		stw.Snapshot()
 	}
 	selected := false
 	if stw.SelectElem != nil {
@@ -3202,6 +3239,7 @@ func catbynode(stw *Window) {
 		if err != nil {
 			stw.addHistory(err.Error())
 		} else {
+			stw.Snapshot()
 			stw.Redraw()
 		}
 	})
@@ -3253,6 +3291,7 @@ func catintermediatenode(stw *Window) {
 			for _, n := range stw.SelectNode {
 				stw.Frame.CatByNode(n, true)
 			}
+			stw.Snapshot()
 		}
 	}
 	stw.EscapeAll()
@@ -3355,15 +3394,18 @@ func joinlineelem(stw *Window) {
 				switch err.(type) {
 				default:
 					stw.addHistory(err.Error())
+					return
 				case st.ParallelError:
 					if stw.Yn("JOIN LINE ELEM", "平行でない部材を結合しますか") {
 						err := stw.Frame.JoinLineElem(els[0], els[1], false)
 						if err != nil {
 							stw.addHistory(err.Error())
+							return
 						}
 					}
 				}
 			}
+			stw.Snapshot()
 			stw.EscapeAll()
 		}
 	})
@@ -3390,6 +3432,7 @@ func joinplateelem(stw *Window) {
 			if err != nil {
 				stw.addHistory(err.Error())
 			} else {
+				stw.Snapshot()
 				stw.EscapeAll()
 			}
 		}
@@ -3432,6 +3475,7 @@ func mergenode(stw *Window) {
 				}
 			}
 			stw.Frame.ReplaceNode(delmap)
+			stw.Snapshot()
 		}
 	}
 	if stw.SelectNode != nil {
@@ -3453,6 +3497,7 @@ func erase(stw *Window) {
 		for _, n := range ns {
 			delete(stw.Frame.Nodes, n.Num)
 		}
+		stw.Snapshot()
 	}
 	stw.EscapeAll()
 }

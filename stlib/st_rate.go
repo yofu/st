@@ -110,6 +110,8 @@ var (
 
 // Section
 type SectionRate interface {
+	Num()    int
+	Snapshot() SectionRate
 	String() string
 	SetName(string)
 	SetValue(string, []float64)
@@ -140,7 +142,7 @@ type Shape interface {
 type SColumn struct {
 	Steel
 	Shape
-	Num      int
+	num      int
 	Etype    string
 	Name     string
 	XFace    []float64
@@ -154,6 +156,29 @@ type SColumn struct {
 func NewSColumn(num int, shape Shape, material Steel) *SColumn {
 	sc := &SColumn{material, shape, num, "COLUMN", "", nil, nil, nil, nil, nil, nil}
 	return sc
+}
+func (sc *SColumn) Num() int {
+	return sc.num
+}
+func (sc *SColumn) Snapshot() SectionRate {
+	s := NewSColumn(sc.num, sc.Shape, sc.Steel)
+	s.Etype = sc.Etype
+	s.Name = sc.Name
+	s.XFace = make([]float64, 2)
+	s.YFace = make([]float64, 2)
+	s.BBLength = make([]float64, 2)
+	s.BTLength = make([]float64, 2)
+	s.BBFactor = make([]float64, 2)
+	s.BTFactor = make([]float64, 2)
+	for i:=0; i<2; i++ {
+		s.XFace[i] = sc.XFace[i]
+		s.YFace[i] = sc.YFace[i]
+		s.BBLength[i] = sc.BBLength[i]
+		s.BTLength[i] = sc.BTLength[i]
+		s.BBFactor[i] = sc.BBFactor[i]
+		s.BTFactor[i] = sc.BTFactor[i]
+	}
+	return s
 }
 func (sc *SColumn) SetName(name string) {
 	sc.Name = name
@@ -176,7 +201,7 @@ func (sc *SColumn) SetValue(name string, vals []float64) {
 }
 func (sc *SColumn) String() string {
 	var rtn bytes.Buffer
-	rtn.WriteString(fmt.Sprintf("CODE %3d S %s %57s\n", sc.Num, sc.Etype, fmt.Sprintf("\"%s\"", sc.Name)))
+	rtn.WriteString(fmt.Sprintf("CODE %3d S %s %57s\n", sc.num, sc.Etype, fmt.Sprintf("\"%s\"", sc.Name)))
 	line2 := fmt.Sprintf("         %%-29s %%s %%%ds\n", 35-len(sc.Steel.Name))
 	rtn.WriteString(fmt.Sprintf(line2, sc.Shape.String(), sc.Steel.Name, fmt.Sprintf("\"%s\"", sc.Shape.Description())))
 	if sc.XFace != nil {
@@ -749,7 +774,7 @@ func (cr CRect) Height(strong bool) float64 {
 type RCColumn struct {
 	Concrete
 	CShape
-	Num    int
+	num    int
 	Name   string
 	Nreins int
 	Reins  []Reinforce
@@ -765,7 +790,7 @@ type Hoop struct {
 
 func NewRCColumn(num int) *RCColumn {
 	rc := new(RCColumn)
-	rc.Num = num
+	rc.num = num
 	rc.Nreins = 0
 	rc.Reins = make([]Reinforce, 0)
 	rc.XFace = make([]float64, 2)
@@ -825,6 +850,26 @@ func (rc *RCColumn) SetConcrete(lis []string) error {
 }
 func (rc *RCColumn) String() string {
 	return ""
+}
+func (rc *RCColumn) Num() int {
+	return rc.num
+}
+func (rc *RCColumn) Snapshot() SectionRate {
+	r := NewRCColumn(rc.num)
+	r.Concrete = rc.Concrete
+	r.CShape = rc.CShape
+	r.Name = rc.Name
+	r.Nreins = rc.Nreins
+	r.Reins = make([]Reinforce, r.Nreins)
+	for i, rf := range rc.Reins {
+		r.Reins[i] = rf
+	}
+	r.Hoops = rc.Hoops
+	for i:=0; i<2; i++ {
+		r.XFace[i] = rc.XFace[i]
+		r.YFace[i] = rc.YFace[i]
+	}
+	return r
 }
 func (rc *RCColumn) SetName(name string) {
 }

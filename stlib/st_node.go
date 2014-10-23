@@ -97,6 +97,51 @@ func NewNode() *Node {
 		Reaction: make(map[string][]float64)}
 }
 
+
+func (node *Node) Snapshot(frame *Frame) *Node {
+	if node == nil { return nil }
+	n := NewNode()
+	n.Frame = frame
+	n.Num = node.Num
+	n.Factor = node.Factor
+	if node.Pile != nil {
+		n.Pile = frame.Piles[node.Pile.Num]
+	}
+	n.Hide = node.Hide
+	n.Lock = node.Lock
+	for i:=0; i<3; i++ {
+		n.Coord[i] = node.Coord[i]
+		n.Weight[i] = node.Weight[i]
+	}
+	for i:=0; i<2; i++ {
+		n.Pcoord[i] = node.Pcoord[i]
+		n.Dcoord[i] = node.Dcoord[i]
+	}
+	for i:=0; i<6; i++ {
+		n.Conf[i] = node.Conf[i]
+		n.Load[i] = node.Load[i]
+	}
+	for k, v := range node.Disp {
+		n.Disp[k] = make([]float64, 6)
+		for i:=0; i<6; i++ {
+			n.Disp[k][i] = v[i]
+		}
+	}
+	for k, v := range node.Force {
+		n.Force[k] = make([]float64, 6)
+		for i:=0; i<6; i++ {
+			n.Force[k][i] = v[i]
+		}
+	}
+	for k, v := range node.Reaction {
+		n.Reaction[k] = make([]float64, 6)
+		for i:=0; i<6; i++ {
+			n.Reaction[k][i] = v[i]
+		}
+	}
+	return n
+}
+
 func (node *Node) InpString() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("NODE %4d  CORD %7.3f %7.3f %7.3f  ICON ", node.Num, node.Coord[0], node.Coord[1], node.Coord[2]))
