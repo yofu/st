@@ -3677,6 +3677,20 @@ func (stw *Window) DeleteSelected() {
 	stw.Redraw()
 }
 
+func (stw *Window) SelectNotHidden() {
+	if stw.Frame == nil { return }
+	stw.Deselect()
+	stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
+	num := 0
+	for _, el := range stw.Frame.Elems {
+		if el.IsHide(stw.Frame.Show) { continue }
+		stw.SelectElem[num] = el
+		num++
+	}
+	stw.SelectElem = stw.SelectElem[:num]
+	stw.Redraw()
+}
+
 func (stw *Window) CopyClipboard() error {
 	var rtn error
 	if stw.SelectElem == nil {
@@ -4842,7 +4856,8 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
 		}
 	case 'S':
 		if key.IsCtrl() {
-			stw.Save()
+			// stw.Save()
+			stw.ShowAll()
 		}
 	case 'L':
 		if key.IsCtrl() {
@@ -4854,7 +4869,8 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
 		}
 	case 'A':
 		if key.IsCtrl() {
-			stw.ShowAll()
+			// stw.ShowAll()
+			stw.SelectNotHidden()
 		}
 	case 'R':
 		if key.IsCtrl() {
