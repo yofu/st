@@ -814,7 +814,7 @@ func NewWindow(homedir string) *Window { // {{{
 		"BORDER=NO",
 		"CARET=NO",
 		"SIZE=x50",
-		"NAME=histroy",
+		"NAME=history",
 	)
 	stw.cname = iup.Text(
 		fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
