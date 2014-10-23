@@ -1126,6 +1126,7 @@ func (stw *Window) Open() {
 }
 
 func (stw *Window) AddRecently(fn string) error {
+	fn = filepath.ToSlash(fn)
 	if st.FileExists(recentfn) {
 		f, err := os.Open(recentfn)
 		if err != nil {
