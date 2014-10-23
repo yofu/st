@@ -2787,7 +2787,10 @@ func (stw *Window) exmode(command string) {
 				stw.EscapeAll()
 			}
 		case "ps":
-			stw.AddPropAndSect(fn)
+			err := stw.AddPropAndSect(fn)
+			if err != nil {
+				stw.addHistory(err.Error())
+			}
 		case "rb":
 			stw.ReadBucklingFile(fn)
 		case "rz":
