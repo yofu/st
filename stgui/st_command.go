@@ -260,7 +260,7 @@ func getcoord(stw *Window, f func(x, y, z float64)) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(key)
+			stw.DefaultKeyAny(arg)
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -362,7 +362,7 @@ func get1node(stw *Window, f func(n *st.Node)) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(key)
+			stw.DefaultKeyAny(arg)
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -528,7 +528,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(key)
+			stw.DefaultKeyAny(arg)
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -713,7 +713,7 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(key)
+			stw.DefaultKeyAny(arg)
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -828,7 +828,7 @@ func searchelem(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(key)
+			stw.DefaultKeyAny(arg)
 			// stw.cline.SetAttribute("INSERT", string(key.Key()))
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
@@ -1017,7 +1017,7 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(key)
+			stw.DefaultKeyAny(arg)
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -1160,7 +1160,7 @@ func movetoline(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(key)
+			stw.DefaultKeyAny(arg)
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -1661,7 +1661,7 @@ func axistocang(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(key)
+			stw.DefaultKeyAny(arg)
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -2320,7 +2320,7 @@ func nodesort(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(key)
+			stw.DefaultKeyAny(arg)
 			// stw.cline.SetAttribute("INSERT", string(key.Key()))
 		case '0', 'X', 'x':
 			ns(0)
@@ -3081,7 +3081,7 @@ func sumreaction(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(key)
+			stw.DefaultKeyAny(arg)
 			// stw.cline.SetAttribute("INSERT", string(key.Key()))
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
@@ -3143,7 +3143,7 @@ func uplift(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(key)
+			stw.DefaultKeyAny(arg)
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -3319,7 +3319,7 @@ func getnelems(stw *Window, size int, f func(int)) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(key)
+			stw.DefaultKeyAny(arg)
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {

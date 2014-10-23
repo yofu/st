@@ -158,7 +158,7 @@ func ven14normal(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(key)
+			stw.DefaultKeyAny(arg)
 		case KEY_ESCAPE:
 			// stw.Show.NodeNormal = false
 			stw.Frame.Show.ElemNormal = false

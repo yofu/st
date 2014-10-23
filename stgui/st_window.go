@@ -756,12 +756,14 @@ func NewWindow(homedir string) *Window { // {{{
 					input = stw.cline.GetAttribute("VALUE")
 				}
 				stw.PrevCommand(input)
+				arg.Return = int32(iup.IGNORE)
 			case KEY_DOWNARROW:
 				var input string
 				if !(prevkey == KEY_UPARROW || prevkey == KEY_DOWNARROW) {
 					input = stw.cline.GetAttribute("VALUE")
 				}
 				stw.NextCommand(input)
+				arg.Return = int32(iup.IGNORE)
 			case '[':
 				if key.IsCtrl() {
 					stw.cline.SetAttribute("VALUE", "")
@@ -2526,7 +2528,7 @@ func (stw *Window) PrevCommand(str string) {
 		}
 		if strings.HasPrefix(stw.comhist[comhistpos], str) {
 			stw.cline.SetAttribute("VALUE", stw.comhist[comhistpos])
-			stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", len(stw.comhist[comhistpos])+1))
+			stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", len(stw.comhist[comhistpos])))
 			return
 		}
 	}
@@ -2541,7 +2543,7 @@ func (stw *Window) NextCommand(str string) {
 		}
 		if strings.HasPrefix(stw.comhist[comhistpos], str) {
 			stw.cline.SetAttribute("VALUE", stw.comhist[comhistpos])
-			stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", len(stw.comhist[comhistpos])+1))
+			stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", len(stw.comhist[comhistpos])))
 			return
 		}
 	}
@@ -4820,7 +4822,8 @@ func (stw *Window) CB_CanvasWheel() {
 	})
 }
 
-func (stw *Window) DefaultKeyAny(key iup.KeyState) {
+func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
+	key := iup.KeyState(arg.Key)
 	switch key.Key() {
 	default:
 		// fmt.Println(key.Key())
@@ -4883,6 +4886,7 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
 				input = stw.cline.GetAttribute("VALUE")
 			}
 			stw.PrevCommand(input)
+			arg.Return = int32(iup.IGNORE)
 		}
 	case KEY_DOWNARROW:
 		if key.IsCtrl() {
@@ -4893,6 +4897,7 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
 				input = stw.cline.GetAttribute("VALUE")
 			}
 			stw.NextCommand(input)
+			arg.Return = int32(iup.IGNORE)
 		}
 	case KEY_LEFTARROW:
 		iup.SetFocus(stw.cline)
@@ -4985,8 +4990,7 @@ func (stw *Window) DefaultKeyAny(key iup.KeyState) {
 
 func (stw *Window) CB_CommonKeyAny() {
 	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
-		key := iup.KeyState(arg.Key)
-		stw.DefaultKeyAny(key)
+		stw.DefaultKeyAny(arg)
 	})
 }
 
