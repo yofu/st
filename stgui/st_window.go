@@ -2806,6 +2806,60 @@ func (stw *Window) exmode(command string) {
 			if err != nil {
 				fmt.Println(err)
 			}
+		case "bond":
+			if narg < 2 {
+				stw.addHistory("Not enough arguments")
+				break
+			}
+			lis := make([]bool, 6)
+			switch strings.ToUpper(args[1]) {
+			case "PIN":
+				lis[4] = true
+				lis[5] = true
+			}
+			f := func(el *st.Elem, ind int) bool {
+				return true
+			}
+			if narg >= 3 {
+				condition := strings.ToUpper(strings.Join(args[2:], " "))
+				sectnum := regexp.MustCompile("^ *SECT? *={0,2} *[[]?([0-9, ]+)[]]?")
+				switch {
+				case sectnum.MatchString(condition):
+					fs := sectnum.FindStringSubmatch(condition)
+					if len(fs) < 2 { break }
+					splitter := regexp.MustCompile("[, ]")
+					tmp := splitter.Split(fs[1], -1)
+					snums := make([]int, len(tmp))
+					i := 0
+					for _, numstr := range tmp {
+						val, err := strconv.ParseInt(strings.Trim(numstr, " "), 10, 64)
+						if err != nil { continue }
+						snums[i] = int(val)
+						i++
+					}
+					snums = snums[:i]
+					fmt.Println(snums)
+					f = func(el *st.Elem, ind int) bool {
+						for _, sel := range el.Frame.SearchElem(el.Enod[ind]) {
+							for _, snum := range snums {
+								if sel.Sect.Num == snum {
+									return true
+								}
+							}
+						}
+						return false
+					}
+				}
+			}
+			for _, el := range stw.SelectElem {
+				if !el.IsLineElem() { continue }
+				for i:=0; i<2; i++ {
+					if !f(el, i) { continue }
+					for j:=0; j<6; j++ {
+						el.Bonds[6*i+j] = lis[j]
+					}
+				}
+			}
 		case "conf":
 			lis := make([]bool, 6)
 			if len(args[1]) >= 6 {
