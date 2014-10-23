@@ -2270,6 +2270,18 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		stw.HideNotSelected()
 	case "PERIOD":
 		stw.SetPeriod(strings.ToUpper(lis[1]))
+	case "NOCAPTION":
+		for _, nc := range st.NODECAPTIONS {
+			stw.NodeCaptionOff(nc)
+		}
+		for _, ec := range st.ELEMCAPTIONS {
+			stw.ElemCaptionOff(ec)
+		}
+		for etype := range st.ETYPES[1:] {
+			for i := 0; i < 6; i++ {
+				stw.StressOff(etype, uint(i))
+			}
+		}
 	case "NOMOMENTVALUE":
 		if un {
 			stw.Frame.Show.NoMomentValue = false
@@ -6619,12 +6631,16 @@ func (stw *Window) ElemCaptionOff(name string) {
 
 func (stw *Window) StressOn(etype int, index uint) {
 	stw.Frame.Show.Stress[etype] |= (1 << index)
-	stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))].SetAttribute("FGCOLOR", labelFGColor)
+	if lbl, ok := stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))]; ok {
+		lbl.SetAttribute("FGCOLOR", labelFGColor)
+	}
 }
 
 func (stw *Window) StressOff(etype int, index uint) {
 	stw.Frame.Show.Stress[etype] &= ^(1 << index)
-	stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))].SetAttribute("FGCOLOR", labelOFFColor)
+	if lbl, ok := stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))]; ok {
+		lbl.SetAttribute("FGCOLOR", labelOFFColor)
+	}
 }
 
 func (stw *Window) DeformationOn() {
