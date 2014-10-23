@@ -2826,19 +2826,22 @@ func (stw *Window) exmode(command string) {
 				switch {
 				case sectnum.MatchString(condition):
 					fs := sectnum.FindStringSubmatch(condition)
-					if len(fs) < 2 { break }
+					if len(fs) < 2 {
+						break
+					}
 					splitter := regexp.MustCompile("[, ]")
 					tmp := splitter.Split(fs[1], -1)
 					snums := make([]int, len(tmp))
 					i := 0
 					for _, numstr := range tmp {
 						val, err := strconv.ParseInt(strings.Trim(numstr, " "), 10, 64)
-						if err != nil { continue }
+						if err != nil {
+							continue
+						}
 						snums[i] = int(val)
 						i++
 					}
 					snums = snums[:i]
-					fmt.Println(snums)
 					f = func(el *st.Elem, ind int) bool {
 						for _, sel := range el.Frame.SearchElem(el.Enod[ind]) {
 							for _, snum := range snums {
@@ -2852,10 +2855,14 @@ func (stw *Window) exmode(command string) {
 				}
 			}
 			for _, el := range stw.SelectElem {
-				if !el.IsLineElem() { continue }
-				for i:=0; i<2; i++ {
-					if !f(el, i) { continue }
-					for j:=0; j<6; j++ {
+				if !el.IsLineElem() {
+					continue
+				}
+				for i := 0; i < 2; i++ {
+					if !f(el, i) {
+						continue
+					}
+					for j := 0; j < 6; j++ {
 						el.Bonds[6*i+j] = lis[j]
 					}
 				}
@@ -5705,9 +5712,13 @@ func (stw *Window) SectionDialog2() {
 		iup.Item("TITLE=\"＋\"",
 			func(arg *iup.ItemAction) {
 				ans, err := stw.Query("SECT CODE")
-				if err != nil { return }
+				if err != nil {
+					return
+				}
 				val, err := strconv.ParseInt(ans, 10, 64)
-				if err != nil { return }
+				if err != nil {
+					return
+				}
 				if _, exist := stw.Frame.Sects[int(val)]; exist {
 					stw.addHistory(fmt.Sprintf("SECT: %d already exists", int(val)))
 					return
@@ -5735,9 +5746,11 @@ func (stw *Window) SectionDialog2() {
 			}),
 		iup.Item("TITLE=\"－\"",
 			func(arg *iup.ItemAction) {
-				if selstart < 0 { return }
-				deletesect:
-				for i:=selstart; i<selend+1; i++ {
+				if selstart < 0 {
+					return
+				}
+			deletesect:
+				for i := selstart; i < selend+1; i++ {
 					for _, el := range stw.Frame.Elems {
 						if el.Sect.Num == sects[i].Num {
 							continue deletesect
@@ -5827,7 +5840,9 @@ func (stw *Window) SectionDialog2() {
 					if arg.State == 1 {
 						if selstart <= num && num <= selend {
 							for j := selstart; j < selend+1; j++ {
-								if hides[j].GetAttribute("ACTIVE") == "NO" { continue }
+								if hides[j].GetAttribute("ACTIVE") == "NO" {
+									continue
+								}
 								stw.Frame.Show.Sect[sects[j].Num] = true
 								hides[j].SetAttribute("VALUE", "ON")
 							}
@@ -5837,7 +5852,9 @@ func (stw *Window) SectionDialog2() {
 					} else {
 						if selstart <= num && num <= selend {
 							for j := selstart; j < selend+1; j++ {
-								if hides[j].GetAttribute("ACTIVE") == "NO" { continue }
+								if hides[j].GetAttribute("ACTIVE") == "NO" {
+									continue
+								}
 								stw.Frame.Show.Sect[sects[j].Num] = false
 								hides[j].SetAttribute("VALUE", "OFF")
 							}
@@ -6086,11 +6103,11 @@ func (stw *Window) SectionProperty(sc *st.Sect) {
 		updatedata(sc, ind)
 	})
 	dlg := iup.Dialog(iup.Vbox(dataset["NAME"],
-			iup.Hbox(propertylabel("CODE"), dataset["CODE"]),
-			iup.Hbox(proplist, addfig),
-			iup.Hbox(propertylabel("PROP"), dataset["PROP"]),
-			data,
-			ctlg, bt))
+		iup.Hbox(propertylabel("CODE"), dataset["CODE"]),
+		iup.Hbox(proplist, addfig),
+		iup.Hbox(propertylabel("PROP"), dataset["PROP"]),
+		data,
+		ctlg, bt))
 	dlg.SetAttribute("TITLE", "Section")
 	dlg.SetAttribute("DIALOGFRAME", "YES")
 	dlg.SetAttribute("PARENTDIALOG", "mainwindow")
