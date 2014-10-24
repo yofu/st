@@ -2960,6 +2960,29 @@ func (stw *Window) exmode(command string) {
 			if err != nil {
 				fmt.Println(err)
 			}
+		case "pload":
+			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+				stw.addHistory("no selected node")
+				break
+			}
+			if narg < 3 {
+				stw.addHistory("Not enough arguments")
+				break
+			}
+			ind, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				stw.addHistory(err.Error())
+				break
+			}
+			val, err := strconv.ParseFloat(args[2], 64)
+			if err != nil {
+				stw.addHistory(err.Error())
+				break
+			}
+			for _, n := range stw.SelectNode {
+				n.Load[int(ind)] = val
+			}
+			stw.Snapshot()
 		case "bond":
 			if narg < 2 {
 				stw.addHistory("Not enough arguments")
