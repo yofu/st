@@ -131,6 +131,7 @@ const (
 	KEY_LEFTARROW  = 132
 	KEY_RIGHTARROW = 134
 	KEY_DOWNARROW  = 136
+	KEY_F4         = 146
 
 	BUTTON_LEFT   = 49
 	BUTTON_CENTER = 50
@@ -187,6 +188,8 @@ type Window struct { // {{{
 	formattag, lsformattag *iup.Handle
 	cname                  *iup.Handle
 	context                *iup.Handle
+
+	sectiondlg             *iup.Handle
 
 	CanvasSize []float64 // width, height
 
@@ -527,7 +530,11 @@ func NewWindow(homedir string) *Window { // {{{
 				iup.Item(
 					iup.Attr("TITLE", "Section"),
 					func(arg *iup.ItemAction) {
-						stw.SectionDialog2()
+						if stw.sectiondlg != nil {
+							iup.SetFocus(stw.sectiondlg)
+						} else {
+							stw.SectionDialog2()
+						}
 					},
 				),
 				iup.Separator(),
@@ -804,6 +811,14 @@ func NewWindow(homedir string) *Window { // {{{
 			case 'E':
 				if key.IsCtrl() {
 					stw.EditInp()
+				}
+			case 'X':
+				if key.IsCtrl() {
+					if stw.sectiondlg != nil {
+						iup.SetFocus(stw.sectiondlg)
+					} else {
+						stw.SectionDialog2()
+					}
 				}
 			}
 			prevkey = key.Key()
@@ -5099,6 +5114,14 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		if key.IsCtrl() {
 			stw.PasteClipboard()
 		}
+	case 'X':
+		if key.IsCtrl() {
+			if stw.sectiondlg != nil {
+				iup.SetFocus(stw.sectiondlg)
+			} else {
+				stw.SectionDialog2()
+			}
+		}
 	case 'Y':
 		if key.IsCtrl() {
 			stw.Redo()
@@ -5924,7 +5947,6 @@ func (stw *Window) SectionDialog2() {
 	if stw.Frame == nil {
 		return
 	}
-	var dlg *iup.Handle
 	sects := make([]*st.Sect, len(stw.Frame.Sects))
 	nsect := 0
 	for _, sec := range stw.Frame.Sects {
@@ -5980,7 +6002,7 @@ func (stw *Window) SectionDialog2() {
 				colors = append(colors, color)
 				lines = append(lines, line)
 				sections.Append(line)
-				dlg.Map() // TODO: display new section on the dialog
+				stw.sectiondlg.Map() // TODO: display new section on the dialog
 			}),
 		iup.Item("TITLE=\"－\"",
 			func(arg *iup.ItemAction) {
@@ -6123,14 +6145,35 @@ func (stw *Window) SectionDialog2() {
 		lines[i] = iup.Hbox(codes[i], snames[i], hides[i], colors[i])
 		sections.Append(lines[i])
 	}
-	dlg = iup.Dialog(iup.Vbox(title, iup.Label("SEPARATOR=HORIZONTAL"), iup.ScrollBox(sections, "SIZE=\"350x150\"")),
+	stw.sectiondlg = iup.Dialog(iup.Vbox(title, iup.Label("SEPARATOR=HORIZONTAL"), iup.ScrollBox(sections, "SIZE=\"350x150\"")),
 		fmt.Sprintf("BGCOLOR=\"%s\"", sectiondlgBGColor),
-		"MENU=\"sectiondlg_menu\"")
-	dlg.SetAttribute("DIALOGFRAME", "YES")
-	dlg.SetAttribute("PARENTDIALOG", "mainwindow")
-	iup.SetHandle("sectiondialog", dlg)
-	dlg.Map()
-	dlg.Show()
+		"MENU=\"sectiondlg_menu\"",
+		func(arg *iup.CommonKeyAny) {
+			key := iup.KeyState(arg.Key)
+			switch key.Key() {
+			default:
+				stw.FocusCanv()
+				stw.DefaultKeyAny(arg)
+			case KEY_ESCAPE:
+				stw.sectiondlg.Destroy()
+				stw.sectiondlg = nil
+			case KEY_F4:
+				if key.IsAlt() {
+					stw.sectiondlg.Destroy()
+					stw.sectiondlg = nil
+				}
+			}
+		},
+		func(arg *iup.DialogClose) {
+			stw.sectiondlg = nil
+		})
+	stw.sectiondlg.SetAttribute("DIALOGFRAME", "YES")
+	stw.sectiondlg.SetAttribute("OPACITY", "220")
+	stw.sectiondlg.SetAttribute("PARENTDIALOG", "mainwindow")
+	stw.sectiondlg.SetAttribute("TOOLBOX", "YES")
+	iup.SetHandle("sectiondialog", stw.sectiondlg)
+	stw.sectiondlg.Map()
+	stw.sectiondlg.Show()
 }
 
 func (stw *Window) ColorDialog() (int, error) {
