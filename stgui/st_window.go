@@ -32,6 +32,7 @@ var (
 	SearchingInpsDone  chan bool
 	DoubleClickCommand = []string{"TOGGLEBOND", "EDITPLATEELEM"}
 	comhistpos         int
+	undopos            int
 	prevkey            int
 )
 var (
@@ -43,6 +44,7 @@ var (
 	recentfn        = filepath.Join(home, ".st/recent.dat")
 	historyfn       = filepath.Join(home, ".st/history.dat")
 	analysiscommand = "C:/an/an.exe"
+	NOUNDO = false
 )
 
 const (
@@ -1092,6 +1094,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.SetRecently()
 	stw.SetCommandHistory()
 	stw.undostack = make([]*st.Frame, nUndo)
+	undopos = 0
 	return stw
 }
 
@@ -1103,6 +1106,7 @@ func (stw *Window) FocusCanv() {
 
 func (stw *Window) Snapshot() {
 	stw.Changed = true
+	if NOUNDO { return }
 	tmp := make([]*st.Frame, nUndo)
 	tmp[0] = stw.Frame.Snapshot()
 	for i:=0; i<nUndo-1; i++ {
@@ -1111,17 +1115,38 @@ func (stw *Window) Snapshot() {
 	stw.undostack = tmp
 }
 
+func (stw *Window) Redo() {
+	if NOUNDO {
+		stw.addHistory("undo/redo is off")
+		return
+	}
+	undopos--
+	if undopos < 0 {
+		stw.addHistory("cannot redo any more")
+		undopos = 0
+		return
+	}
+	stw.Frame = stw.undostack[undopos]
+	stw.Redraw()
+}
+
 func (stw *Window) Undo() {
-	if stw.undostack == nil || len(stw.undostack) <= 1 || stw.undostack[1] == nil {
+	if NOUNDO {
+		stw.addHistory("undo/redo is off")
+		return
+	}
+	if stw.undostack[undopos+1] == nil {
 		stw.addHistory("cannot undo any more")
 		return
 	}
-	fmt.Println(stw.undostack)
-	stw.Frame = stw.undostack[1]
-	tmp := make([]*st.Frame, nUndo)
-	for i:=1; i<nUndo-1; i++ {
-		tmp[i] = stw.undostack[i+1]
+	undopos++
+	if undopos > nUndo {
+		stw.addHistory("cannot undo any more")
+		undopos = nUndo - 1
+		return
 	}
+	stw.Frame = stw.undostack[undopos]
+	stw.Redraw()
 }
 
 func (stw *Window) Chdir(dir string) error {
@@ -1475,9 +1500,10 @@ func (stw *Window) OpenFile(fn string) error {
 	stw.Dlg.SetAttribute("TITLE", stw.Frame.Name)
 	stw.Frame.Home = stw.Home
 	stw.LinkTextValue()
-	stw.Changed = false
 	stw.Cwd = filepath.Dir(fn)
 	stw.AddRecently(fn)
+	stw.Snapshot()
+	stw.Changed = false
 	return nil
 }
 
@@ -3122,6 +3148,13 @@ func (stw *Window) exmode(command string) {
 			fixRotate = !fixRotate
 		case "fixm":
 			fixMove = !fixMove
+		case "noundo":
+			NOUNDO = true
+			stw.addHistory("undo/redo is off")
+		case "undo":
+			NOUNDO = false
+			stw.Snapshot()
+			stw.addHistory("undo/redo is on")
 		}
 	} else {
 		switch cname {
@@ -3146,6 +3179,12 @@ func (stw *Window) exmode(command string) {
 			}
 		case "vim":
 			stw.Vim(fn)
+		case "noundo":
+			NOUNDO = true
+			stw.addHistory("undo/redo is off")
+		case "undo":
+			NOUNDO = false
+			stw.addHistory("undo/redo is on")
 		}
 	}
 }
@@ -5030,6 +5069,10 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 	case 'V':
 		if key.IsCtrl() {
 			stw.PasteClipboard()
+		}
+	case 'Y':
+		if key.IsCtrl() {
+			stw.Redo()
 		}
 	case 'Z':
 		if key.IsCtrl() {

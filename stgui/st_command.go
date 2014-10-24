@@ -3497,7 +3497,6 @@ func erase(stw *Window) {
 		for _, n := range ns {
 			delete(stw.Frame.Nodes, n.Num)
 		}
-		stw.Snapshot()
 	}
 	stw.EscapeAll()
 }
