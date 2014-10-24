@@ -216,6 +216,8 @@ type Window struct { // {{{
 	endY   int
 
 	lastcommand *Command
+	lastexcommand   string
+	lastfig2command string
 
 	Labels map[string]*iup.Handle
 
@@ -1950,6 +1952,11 @@ func (stw *Window) fig2mode(command string) {
 	if len(command) == 1 {
 		return
 	}
+	if command == "'." {
+		stw.fig2mode(stw.lastfig2command)
+		return
+	}
+	stw.lastfig2command = command
 	command = command[1:]
 	var un bool
 	if strings.HasPrefix(command, "!") {
@@ -2709,7 +2716,11 @@ func (stw *Window) execAliasCommand(al string) {
 		return
 	}
 	alu := strings.ToUpper(al)
-	if value, ok := aliases[alu]; ok {
+	if alu == "." {
+		if stw.lastcommand != nil {
+			stw.ExecCommand(stw.lastcommand)
+		}
+	} else if value, ok := aliases[alu]; ok {
 		stw.ExecCommand(value)
 	} else if value, ok := Commands[alu]; ok {
 		stw.ExecCommand(value)
@@ -2844,6 +2855,11 @@ func (stw *Window) exmode(command string) {
 	if len(command) == 1 {
 		return
 	}
+	if command == ":." {
+		stw.exmode(stw.lastexcommand)
+		return
+	}
+	stw.lastexcommand = command
 	tmpargs := strings.Split(command, " ")
 	args := make([]string, len(tmpargs))
 	narg := 0
