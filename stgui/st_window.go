@@ -2980,6 +2980,7 @@ func (stw *Window) exmode(command string) {
 				break
 			}
 			for _, n := range stw.SelectNode {
+				if n == nil { continue }
 				n.Load[int(ind)] = val
 			}
 			stw.Snapshot()
@@ -6125,7 +6126,6 @@ func (stw *Window) SectionDialog2() {
 	dlg = iup.Dialog(iup.Vbox(title, iup.Label("SEPARATOR=HORIZONTAL"), iup.ScrollBox(sections, "SIZE=\"350x150\"")),
 		fmt.Sprintf("BGCOLOR=\"%s\"", sectiondlgBGColor),
 		"MENU=\"sectiondlg_menu\"")
-	dlg.SetAttribute("TITLE", "Section")
 	dlg.SetAttribute("DIALOGFRAME", "YES")
 	dlg.SetAttribute("PARENTDIALOG", "mainwindow")
 	iup.SetHandle("sectiondialog", dlg)
