@@ -46,6 +46,7 @@ var (
 	historyfn       = filepath.Join(home, ".st/history.dat")
 	analysiscommand = "C:/an/an.exe"
 	NOUNDO = false
+	ALTSELECTNODE = true
 )
 
 const (
@@ -3325,6 +3326,13 @@ func (stw *Window) exmode(command string) {
 			NOUNDO = false
 			stw.Snapshot()
 			stw.addHistory("undo/redo is on")
+		case "alt":
+			ALTSELECTNODE = !ALTSELECTNODE
+			if ALTSELECTNODE {
+				stw.addHistory("select node with Alt key")
+			} else {
+				stw.addHistory("select elem with Alt key")
+			}
 		}
 	} else {
 		switch cname {
@@ -3355,6 +3363,13 @@ func (stw *Window) exmode(command string) {
 		case "undo":
 			NOUNDO = false
 			stw.addHistory("undo/redo is on")
+		case "alt":
+			ALTSELECTNODE = !ALTSELECTNODE
+			if ALTSELECTNODE {
+				stw.addHistory("select node with Alt key")
+			} else {
+				stw.addHistory("select elem with Alt key")
+			}
 		}
 	}
 }
@@ -4303,7 +4318,11 @@ func (stw *Window) SelectNodeStart(arg *iup.MouseButton) {
 		top := max(stw.startY, stw.endY)
 		if (right-left < nodeSelectPixel) && (top-bottom < nodeSelectPixel) {
 			n := stw.PickNode(left, bottom)
-			stw.MergeSelectNode([]*st.Node{n}, isShift(arg.Status))
+			if n != nil {
+				stw.MergeSelectNode([]*st.Node{n}, isShift(arg.Status))
+			} else {
+				stw.SelectNode = make([]*st.Node, 0)
+			}
 		} else {
 			tmpselect := make([]*st.Node, len(stw.Frame.Nodes))
 			i := 0
@@ -4963,7 +4982,7 @@ func (stw *Window) CB_MouseButton() {
 		if stw.Frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
-				if isAlt(arg.Status) {
+				if isAlt(arg.Status) == ALTSELECTNODE {
 					stw.SelectNodeStart(arg)
 				} else {
 					stw.SelectElemStart(arg)
@@ -5039,7 +5058,7 @@ func (stw *Window) CB_MouseMotion() {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch statusKey(arg.Status) {
 			case STATUS_LEFT:
-				if isAlt(arg.Status) {
+				if isAlt(arg.Status) == ALTSELECTNODE {
 					stw.SelectNodeMotion(arg)
 				} else {
 					stw.SelectElemMotion(arg)
