@@ -2975,6 +2975,88 @@ func (stw *Window) exmode(command string) {
 			if err != nil {
 				fmt.Println(err)
 			}
+		case "node":
+			stw.Deselect()
+			f := func(n *st.Node) bool {
+				return true
+			}
+			if narg >= 2 {
+				condition := strings.ToUpper(strings.Join(args[1:], " "))
+				coordstr := regexp.MustCompile("^ *([XYZ]) *([<!=>]{0,2}) *([0-9.]+)")
+				switch {
+				case coordstr.MatchString(condition):
+					fs := coordstr.FindStringSubmatch(condition)
+					if len(fs) < 4 {
+						break
+					}
+					var ind int
+					switch fs[1] {
+					case "X":
+						ind = 0
+					case "Y":
+						ind = 1
+					case "Z":
+						ind = 2
+					}
+					val, err := strconv.ParseFloat(fs[3], 64)
+					if err != nil {
+						break
+					}
+					switch fs[2] {
+					case "", "=", "==":
+						f = func(n *st.Node) bool {
+							if n.Coord[ind] == val {
+								return true
+							}
+							return false
+						}
+					case "!=":
+						f = func(n *st.Node) bool {
+							if n.Coord[ind] != val {
+								return true
+							}
+							return false
+						}
+					case ">":
+						f = func(n *st.Node) bool {
+							if n.Coord[ind] > val {
+								return true
+							}
+							return false
+						}
+					case ">=":
+						f = func(n *st.Node) bool {
+							if n.Coord[ind] >= val {
+								return true
+							}
+							return false
+						}
+					case "<":
+						f = func(n *st.Node) bool {
+							if n.Coord[ind] < val {
+								return true
+							}
+							return false
+						}
+					case "<=":
+						f = func(n *st.Node) bool {
+							if n.Coord[ind] <= val {
+								return true
+							}
+							return false
+						}
+					}
+				}
+				stw.SelectNode = make([]*st.Node, len(stw.Frame.Nodes))
+				num := 0
+				for _, n := range stw.Frame.Nodes {
+					if f(n) {
+						stw.SelectNode[num] = n
+						num++
+					}
+				}
+				stw.SelectNode = stw.SelectNode[:num]
+			}
 		case "pload":
 			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
 				stw.addHistory("no selected node")
