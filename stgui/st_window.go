@@ -2975,6 +2975,27 @@ func (stw *Window) exmode(command string) {
 			if err != nil {
 				fmt.Println(err)
 			}
+		case "fence":
+			if narg < 3 {
+				stw.addHistory("Not enough arguments")
+				break
+			}
+			var axis int
+			switch strings.ToUpper(args[1]) {
+			default:
+				return
+			case "X":
+				axis = 0
+			case "Y":
+				axis = 1
+			case "Z":
+				axis = 2
+			}
+			val, err := strconv.ParseFloat(args[2], 64)
+			if err != nil {
+				break
+			}
+			stw.SelectElem = stw.Frame.Fence(axis, val, false)
 		case "node":
 			stw.Deselect()
 			f := func(n *st.Node) bool {
