@@ -7367,11 +7367,15 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 				words = append(words, k)
 			}
 		}
-		if len(words) == 0 {
+		if len(words) < 2 {
 			continue
 		}
 		if value, ok := Commands[strings.ToUpper(words[1])]; ok {
 			aliases[strings.ToUpper(words[0])] = value
+		} else if strings.HasPrefix(words[1], ":") {
+			aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
+				stw.exmode(strings.Join(words[1:], " "))
+			}}
 		}
 	}
 	if err := s.Err(); err != nil {
