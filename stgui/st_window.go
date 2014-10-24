@@ -776,6 +776,22 @@ func NewWindow(homedir string) *Window { // {{{
 				}
 				stw.NextCommand(clineinput)
 				arg.Return = int32(iup.IGNORE)
+			case ':':
+				val := stw.cline.GetAttribute("VALUE")
+				if val == "" {
+					stw.cline.SetAttribute("APPEND", ";")
+				} else {
+					stw.cline.SetAttribute("APPEND", ":")
+				}
+				arg.Return = int32(iup.IGNORE)
+			case ';':
+				val := stw.cline.GetAttribute("VALUE")
+				if val == "" {
+					stw.cline.SetAttribute("APPEND", ":")
+				} else {
+					stw.cline.SetAttribute("APPEND", ";")
+				}
+				arg.Return = int32(iup.IGNORE)
 			case '[':
 				if key.IsCtrl() {
 					stw.cline.SetAttribute("VALUE", "")
@@ -2563,7 +2579,6 @@ func (stw *Window) feedCommand() {
 		stw.cline.SetAttribute("VALUE", "")
 		stw.execAliasCommand(command)
 	}
-	iup.SetFocus(stw.canv)
 }
 
 func (stw *Window) SetCommandHistory() error {
@@ -2787,7 +2802,9 @@ func (stw *Window) execAliasCommand(al string) {
 		}
 	}
 	stw.Redraw()
-	iup.SetFocus(stw.canv)
+	if stw.cline.GetAttribute("VALUE") == "" {
+		stw.FocusCanv()
+	}
 	return
 }
 
@@ -7377,13 +7394,33 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 		if value, ok := Commands[strings.ToUpper(words[1])]; ok {
 			aliases[strings.ToUpper(words[0])] = value
 		} else if strings.HasPrefix(words[1], ":") {
-			aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-				stw.exmode(strings.Join(words[1:], " "))
-			}}
+			command := strings.Join(words[1:], " ")
+			if strings.Contains(command, "_") {
+				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
+					pos := strings.Index(command, "_")
+					iup.SetFocus(stw.cline)
+					stw.cline.SetAttribute("VALUE", strings.Replace(command, "_", "", -1))
+					stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", pos))
+				}}
+			} else {
+				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
+					stw.exmode(command)
+				}}
+			}
 		} else if strings.HasPrefix(words[1], "'") {
-			aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-				stw.fig2mode(strings.Join(words[1:], " "))
-			}}
+			command := strings.Join(words[1:], " ")
+			if strings.Contains(command, "_") {
+				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
+					pos := strings.Index(command, "_")
+					iup.SetFocus(stw.cline)
+					stw.cline.SetAttribute("VALUE", strings.Replace(command, "_", "", -1))
+					stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", pos))
+				}}
+			} else {
+				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
+					stw.fig2mode(command)
+				}}
+			}
 		}
 	}
 	if err := s.Err(); err != nil {
