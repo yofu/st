@@ -3001,6 +3001,14 @@ func (stw *Window) exmode(command string) {
 				condition := strings.ToUpper(strings.Join(args[2:], " "))
 				sectnum := regexp.MustCompile("^ *SECT? *={0,2} *[[]?([0-9, ]+)[]]?")
 				switch {
+				case condition == "UPPER":
+					f = func (el *st.Elem, ind int) bool {
+						return el.Enod[ind].Coord[2] > el.Enod[1-ind].Coord[2]
+					}
+				case condition == "LOWER":
+					f = func (el *st.Elem, ind int) bool {
+						return el.Enod[ind].Coord[2] < el.Enod[1-ind].Coord[2]
+					}
 				case sectnum.MatchString(condition):
 					fs := sectnum.FindStringSubmatch(condition)
 					if len(fs) < 2 {
