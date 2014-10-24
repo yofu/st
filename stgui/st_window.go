@@ -1929,6 +1929,31 @@ func (stw *Window) ParseFig2Page(pcanv *cd.Canvas, lis [][]string) error {
 	return nil
 }
 
+func (stw *Window) fig2mode(command string) {
+	if len(command) == 1 {
+		return
+	}
+	command = command[1:]
+	var un bool
+	if strings.HasPrefix(command, "!") {
+		un = true
+		command = command[1:]
+	} else {
+		un = false
+	}
+	tmpargs := strings.Split(command, " ")
+	args := make([]string, len(tmpargs))
+	narg := 0
+	for i := 0; i < len(tmpargs); i++ {
+		if tmpargs[i] != "" {
+			args[narg] = tmpargs[i]
+			narg++
+		}
+	}
+	args = args[:narg]
+	stw.fig2keyword(args, un)
+}
+
 func (stw *Window) fig2keyword(lis []string, un bool) error {
 	if len(lis) < 1 {
 		return st.NotEnoughArgs("Fig2Keyword")
@@ -2679,28 +2704,7 @@ func (stw *Window) execAliasCommand(al string) {
 		case strings.HasPrefix(al, ":"):
 			stw.exmode(al)
 		case strings.HasPrefix(al, "'"):
-			if len(al) == 1 {
-				break
-			}
-			al = al[1:]
-			var un bool
-			if strings.HasPrefix(al, "!") {
-				un = true
-				al = al[1:]
-			} else {
-				un = false
-			}
-			tmpargs := strings.Split(al, " ")
-			args := make([]string, len(tmpargs))
-			narg := 0
-			for i := 0; i < len(tmpargs); i++ {
-				if tmpargs[i] != "" {
-					args[narg] = tmpargs[i]
-					narg++
-				}
-			}
-			args = args[:narg]
-			stw.fig2keyword(args, un)
+			stw.fig2mode(al)
 		case axrn_minmax.MatchString(alu):
 			var axis int
 			fs := axrn_minmax.FindStringSubmatch(alu)
@@ -7375,6 +7379,10 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 		} else if strings.HasPrefix(words[1], ":") {
 			aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
 				stw.exmode(strings.Join(words[1:], " "))
+			}}
+		} else if strings.HasPrefix(words[1], "'") {
+			aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
+				stw.fig2mode(strings.Join(words[1:], " "))
 			}}
 		}
 	}
