@@ -2939,10 +2939,16 @@ func (stw *Window) exmode(command string) {
 						stw.addHistory(err.Error())
 						break
 					}
-					stw.OpenFile(sfn)
+					err = stw.OpenFile(sfn)
+					if err != nil {
+						stw.addHistory(err.Error())
+					}
 					stw.Redraw()
 				} else {
-					stw.OpenFile(fn)
+					err := stw.OpenFile(fn)
+					if err != nil {
+						stw.addHistory(err.Error())
+					}
 					stw.Redraw()
 				}
 			} else {
@@ -3346,10 +3352,16 @@ func (stw *Window) exmode(command string) {
 						stw.addHistory(err.Error())
 						break
 					}
-					stw.OpenFile(sfn)
+					err = stw.OpenFile(sfn)
+					if err != nil {
+						stw.addHistory(err.Error())
+					}
 					stw.Redraw()
 				} else {
-					stw.OpenFile(fn)
+					err := stw.OpenFile(fn)
+					if err != nil {
+						stw.addHistory(err.Error())
+					}
 					stw.Redraw()
 				}
 			} else {
