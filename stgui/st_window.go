@@ -34,6 +34,7 @@ var (
 	comhistpos         int
 	undopos            int
 	prevkey            int
+	clineinput         string
 )
 var (
 	gopath          = os.Getenv("GOPATH")
@@ -757,18 +758,16 @@ func NewWindow(homedir string) *Window { // {{{
 				stw.cline.SetAttribute("CARETPOS", "100")
 				arg.Return = int32(iup.IGNORE)
 			case KEY_UPARROW:
-				var input string
 				if !(prevkey == KEY_UPARROW || prevkey == KEY_DOWNARROW) {
-					input = stw.cline.GetAttribute("VALUE")
+					clineinput = stw.cline.GetAttribute("VALUE")
 				}
-				stw.PrevCommand(input)
+				stw.PrevCommand(clineinput)
 				arg.Return = int32(iup.IGNORE)
 			case KEY_DOWNARROW:
-				var input string
 				if !(prevkey == KEY_UPARROW || prevkey == KEY_DOWNARROW) {
-					input = stw.cline.GetAttribute("VALUE")
+					clineinput = stw.cline.GetAttribute("VALUE")
 				}
-				stw.NextCommand(input)
+				stw.NextCommand(clineinput)
 				arg.Return = int32(iup.IGNORE)
 			case '[':
 				if key.IsCtrl() {
@@ -4967,22 +4966,20 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		if key.IsCtrl() {
 			stw.NextFloor()
 		} else {
-			var input string
 			if !(prevkey == KEY_UPARROW || prevkey == KEY_DOWNARROW) {
-				input = stw.cline.GetAttribute("VALUE")
+				clineinput = stw.cline.GetAttribute("VALUE")
 			}
-			stw.PrevCommand(input)
+			stw.PrevCommand(clineinput)
 			arg.Return = int32(iup.IGNORE)
 		}
 	case KEY_DOWNARROW:
 		if key.IsCtrl() {
 			stw.PrevFloor()
 		} else {
-			var input string
 			if !(prevkey == KEY_UPARROW || prevkey == KEY_DOWNARROW) {
-				input = stw.cline.GetAttribute("VALUE")
+				clineinput = stw.cline.GetAttribute("VALUE")
 			}
-			stw.NextCommand(input)
+			stw.NextCommand(clineinput)
 			arg.Return = int32(iup.IGNORE)
 		}
 	case KEY_LEFTARROW:
@@ -7149,6 +7146,7 @@ func (stw *Window) EscapeCB() {
 		stw.Redraw()
 	}
 	comhistpos = -1
+	clineinput = ""
 }
 
 func (stw *Window) EscapeAll() {
