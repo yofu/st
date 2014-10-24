@@ -1840,7 +1840,6 @@ func (frame *Frame) ParseKjn(lis []string) error {
 func (frame *Frame) WriteInp(fn string) error {
 	var nums, otp bytes.Buffer
 	var pnum, snum, inum, nnum, enum int
-	fmt.Printf("Save: %s\n", fn)
 	// Frame
 	otp.WriteString(fmt.Sprintf("BASE    %5.3f\n", frame.Ai.Base))
 	otp.WriteString(fmt.Sprintf("LOCATE  %5.3f\n", frame.Ai.Locate))
