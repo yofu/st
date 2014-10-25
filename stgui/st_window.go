@@ -78,7 +78,7 @@ var (
 	printFontColor        = cd.CD_BLACK
 	printFontFace         = "IPA明朝"
 	printFontSize         = 8
-	showprintrange        = true
+	showprintrange        = false
 )
 
 const (
@@ -3407,6 +3407,23 @@ func (stw *Window) exmode(command string) {
 				stw.addHistory("select node with Alt key")
 			} else {
 				stw.addHistory("select elem with Alt key")
+			}
+		case "printrange":
+			if narg < 2 {
+				showprintrange = !showprintrange
+				break
+			}
+			switch strings.ToUpper(args[1]) {
+			case "ON", "TRUE", "YES":
+				showprintrange = true
+				if narg >= 3 {
+					stw.exmode(fmt.Sprintf(":paper %d", strings.Join(args[2:], " ")))
+				}
+			case "OFF", "FALSE", "NO":
+				showprintrange = false
+			default:
+				showprintrange = true
+				stw.exmode(fmt.Sprintf(":paper %d", strings.Join(args[1:], " ")))
 			}
 		case "paper":
 			if narg < 2 {
