@@ -2008,13 +2008,12 @@ func (stw *Window) ParseFig2Page(pcanv *cd.Canvas, lis [][]string) error {
 	return nil
 }
 
-func (stw *Window) fig2mode(command string) {
+func (stw *Window) fig2mode(command string) error {
 	if len(command) == 1 {
-		return
+		return st.NotEnoughArgs("fig2mode")
 	}
 	if command == "'." {
-		stw.fig2mode(stw.lastfig2command)
-		return
+		return stw.fig2mode(stw.lastfig2command)
 	}
 	stw.lastfig2command = command
 	command = command[1:]
@@ -2035,7 +2034,7 @@ func (stw *Window) fig2mode(command string) {
 		}
 	}
 	args = args[:narg]
-	stw.fig2keyword(args, un)
+	return stw.fig2keyword(args, un)
 }
 
 func (stw *Window) fig2keyword(lis []string, un bool) error {
@@ -2769,7 +2768,10 @@ func (stw *Window) ExecCommand(com *Command) {
 func (stw *Window) execAliasCommand(al string) {
 	if stw.Frame == nil {
 		if strings.HasPrefix(al, ":") {
-			stw.exmode(al)
+			err := stw.exmode(al)
+			if err != nil {
+				stw.addHistory(err.Error())
+			}
 		} else {
 			stw.Open()
 		}
@@ -2790,9 +2792,15 @@ func (stw *Window) execAliasCommand(al string) {
 		default:
 			stw.addHistory(fmt.Sprintf("command doesn't exist: %s", al))
 		case strings.HasPrefix(al, ":"):
-			stw.exmode(al)
+			err := stw.exmode(al)
+			if err != nil {
+				stw.addHistory(err.Error())
+			}
 		case strings.HasPrefix(al, "'"):
-			stw.fig2mode(al)
+			err := stw.fig2mode(al)
+			if err != nil {
+				stw.addHistory(err.Error())
+			}
 		case axrn_minmax.MatchString(alu):
 			var axis int
 			fs := axrn_minmax.FindStringSubmatch(alu)
@@ -2912,13 +2920,12 @@ func (stw *Window) Interpolate(str string) string {
 	return str
 }
 
-func (stw *Window) exmode(command string) {
+func (stw *Window) exmode(command string) error {
 	if len(command) == 1 {
-		return
+		return st.NotEnoughArgs("exmode")
 	}
 	if command == ":." {
-		stw.exmode(stw.lastexcommand)
-		return
+		return stw.exmode(stw.lastexcommand)
 	}
 	stw.lastexcommand = command
 	tmpargs := strings.Split(command, " ")
@@ -2950,7 +2957,10 @@ func (stw *Window) exmode(command string) {
 			} else {
 				if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
 					err := stw.SaveFile(fn)
-					if err == nil && fn != stw.Frame.Path {
+					if err != nil {
+						return err
+					}
+					if fn != stw.Frame.Path {
 						stw.Copylsts(fn)
 					}
 					if cname == "sav" {
@@ -2963,29 +2973,29 @@ func (stw *Window) exmode(command string) {
 				if stw.Yn("CHANGED", "変更を保存しますか") {
 					stw.SaveAS()
 				} else {
-					break
+					return errors.New("not saved")
 				}
 			}
 			var times int
 			if narg >= 2 {
 				val, err := strconv.ParseInt(args[1], 10, 64)
 				if err != nil {
-					stw.addHistory(err.Error())
-					times = 1
-				} else {
-					times = int(val)
+					return err
 				}
+				times = int(val)
 			} else {
 				times = 1
 			}
 			fn, err := st.Increment(stw.Frame.Path, "_", 1, times)
 			if err != nil {
-				stw.addHistory(err.Error())
-				break
+				return err
 			}
 			if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
 				err := stw.SaveFile(fn)
-				if err == nil && fn != stw.Frame.Path {
+				if err != nil {
+					return err
+				}
+				if fn != stw.Frame.Path {
 					stw.Copylsts(fn)
 				}
 				stw.Rebase(fn)
@@ -2996,24 +3006,24 @@ func (stw *Window) exmode(command string) {
 				if stw.Yn("CHANGED", "変更を保存しますか") {
 					stw.SaveAS()
 				} else {
-					break
+					return errors.New("not saved")
 				}
 			}
 			if fn != "" {
 				if !st.FileExists(fn) {
 					sfn, err := stw.SearchFile(args[1])
 					if err != nil {
-						stw.addHistory(err.Error())
-						break
+						return err
 					}
 					err = stw.OpenFile(sfn)
 					if err != nil {
-						stw.addHistory(err.Error())
+						return err
 					}
 					stw.Redraw()
 				} else {
 					err := stw.OpenFile(fn)
 					if err != nil {
+						return err
 						stw.addHistory(err.Error())
 					}
 					stw.Redraw()
@@ -3036,12 +3046,12 @@ func (stw *Window) exmode(command string) {
 			if narg > 2 && len(stw.SelectNode) >= 1 {
 				angle, err := strconv.ParseFloat(args[2], 64)
 				if err != nil {
-					stw.addHistory(err.Error())
+					return err
 				}
 				err = stw.Frame.ReadInp(fn, stw.SelectNode[0].Coord, angle*math.Pi/180.0)
 				stw.Snapshot()
 				if err != nil {
-					stw.addHistory(err.Error())
+					return err
 				}
 				stw.EscapeAll()
 			}
@@ -3049,36 +3059,50 @@ func (stw *Window) exmode(command string) {
 			err := stw.AddPropAndSect(fn)
 			stw.Snapshot()
 			if err != nil {
-				stw.addHistory(err.Error())
+				return err
 			}
 		case "rb":
-			stw.ReadBucklingFile(fn)
+			err := stw.ReadBucklingFile(fn)
+			if err != nil {
+				return err
+			}
 		case "rz":
-			stw.ReadZoubunFile(fn)
+			err := stw.ReadZoubunFile(fn)
+			if err != nil {
+				return err
+			}
 		case "add":
-			stw.AddResult(fn, false)
+			err := stw.AddResult(fn, false)
+			if err != nil {
+				return err
+			}
 		case "adds":
-			stw.AddResult(fn, true)
+			err := stw.AddResult(fn, true)
+			if err != nil {
+				return err
+			}
 		case "wo":
 			if narg < 3 {
-				stw.addHistory("Not enough arguments")
+				return st.NotEnoughArgs(":wo")
 			} else {
-				stw.Frame.WriteOutput(fn, args[2])
+				err := stw.Frame.WriteOutput(fn, args[2])
+				if err != nil {
+					return err
+				}
 			}
 		case "fig2":
 			err := stw.ReadFig2(fn)
 			if err != nil {
-				fmt.Println(err)
+				return err
 			}
 		case "fence":
 			if narg < 3 {
-				stw.addHistory("Not enough arguments")
-				break
+				return st.NotEnoughArgs(":fence")
 			}
 			var axis int
 			switch strings.ToUpper(args[1]) {
 			default:
-				return
+				return errors.New(":fence unknown direction")
 			case "X":
 				axis = 0
 			case "Y":
@@ -3088,7 +3112,7 @@ func (stw *Window) exmode(command string) {
 			}
 			val, err := strconv.ParseFloat(args[2], 64)
 			if err != nil {
-				break
+				return err
 			}
 			stw.SelectElem = stw.Frame.Fence(axis, val, false)
 		case "node":
@@ -3103,7 +3127,7 @@ func (stw *Window) exmode(command string) {
 				case coordstr.MatchString(condition):
 					fs := coordstr.FindStringSubmatch(condition)
 					if len(fs) < 4 {
-						break
+						return errors.New(":node invalid input")
 					}
 					var ind int
 					switch fs[1] {
@@ -3116,7 +3140,7 @@ func (stw *Window) exmode(command string) {
 					}
 					val, err := strconv.ParseFloat(fs[3], 64)
 					if err != nil {
-						break
+						return err
 					}
 					switch fs[2] {
 					case "", "=", "==":
@@ -3175,22 +3199,18 @@ func (stw *Window) exmode(command string) {
 			}
 		case "pload":
 			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
-				stw.addHistory("no selected node")
-				break
+				return errors.New(":pload no selected node")
 			}
 			if narg < 3 {
-				stw.addHistory("Not enough arguments")
-				break
+				return st.NotEnoughArgs(":pload")
 			}
 			ind, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
-				stw.addHistory(err.Error())
-				break
+				return err
 			}
 			val, err := strconv.ParseFloat(args[2], 64)
 			if err != nil {
-				stw.addHistory(err.Error())
-				break
+				return err
 			}
 			for _, n := range stw.SelectNode {
 				if n == nil {
@@ -3201,8 +3221,7 @@ func (stw *Window) exmode(command string) {
 			stw.Snapshot()
 		case "bond":
 			if narg < 2 {
-				stw.addHistory("Not enough arguments")
-				break
+				return st.NotEnoughArgs(":bond")
 			}
 			lis := make([]bool, 6)
 			switch strings.ToUpper(args[1]) {
@@ -3288,21 +3307,21 @@ func (stw *Window) exmode(command string) {
 				}
 				setconf(stw, lis)
 			} else {
-				stw.addHistory("Not enough arguments")
+				return st.NotEnoughArgs(":conf")
 			}
 		case "pile":
 			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
-				return
+				return errors.New(":pile no selected node")
 			}
 			if narg < 2 {
 				for _, n := range stw.SelectNode {
 					n.Pile = nil
 				}
-				return
+				break
 			}
 			val, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
-				return
+				return err
 			}
 			if p, ok := stw.Frame.Piles[int(val)]; ok {
 				for _, n := range stw.SelectNode {
@@ -3310,24 +3329,26 @@ func (stw *Window) exmode(command string) {
 				}
 				stw.Snapshot()
 			} else {
-				stw.addHistory(fmt.Sprintf("PILE %d doesn't exist", val))
+				return errors.New(fmt.Sprintf(":pile PILE %d doesn't exist", val))
 			}
 		case "an":
-			stw.SaveFile(stw.Frame.Path)
+			err := stw.SaveFile(stw.Frame.Path)
+			if err != nil {
+				return err
+			}
 			var anarg string
 			if narg >= 3 {
 				anarg = args[2]
 			} else {
 				anarg = "-a"
 			}
-			err := stw.Analysis(filepath.ToSlash(stw.Frame.Path), anarg)
+			err = stw.Analysis(filepath.ToSlash(stw.Frame.Path), anarg)
 			if err != nil {
-				stw.addHistory("Analysis Failed")
-			} else {
-				stw.Reload()
-				stw.ReadAll()
-				stw.Redraw()
+				return err
 			}
+			stw.Reload()
+			stw.ReadAll()
+			stw.Redraw()
 		case "f":
 			stw.FilterSelectedElem(strings.Join(args[1:], " "))
 		case "ht":
@@ -3335,21 +3356,21 @@ func (stw *Window) exmode(command string) {
 				axisrange(stw, 2, -100.0, 1000.0, false)
 			}
 			if narg < 3 {
-				return
+				return st.NotEnoughArgs(":ht")
 			}
 			tmp, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
-				return
+				return err
 			}
 			min := int(tmp)
 			tmp, err = strconv.ParseInt(args[2], 10, 64)
 			if err != nil {
-				return
+				return err
 			}
 			max := int(tmp)
 			l := len(stw.Frame.Ai.Boundary)
 			if min < 0 || min > l || max < 0 || max > l {
-				return
+				return errors.New(":ht out of boundary")
 			}
 			axisrange(stw, 2, stw.Frame.Ai.Boundary[min], stw.Frame.Ai.Boundary[max], false)
 		case "ht+":
@@ -3358,14 +3379,14 @@ func (stw *Window) exmode(command string) {
 			stw.PrevFloor()
 		case "section+":
 			if narg < 2 {
-				return
+				return st.NotEnoughArgs(":section+")
 			}
 			tmp, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
-				return
+				return err
 			}
 			if tmp == 0 {
-				return
+				break
 			}
 			val := int(tmp)
 			for _, el := range stw.SelectElem {
@@ -3417,18 +3438,23 @@ func (stw *Window) exmode(command string) {
 			case "ON", "TRUE", "YES":
 				showprintrange = true
 				if narg >= 3 {
-					stw.exmode(fmt.Sprintf(":paper %d", strings.Join(args[2:], " ")))
+					err := stw.exmode(fmt.Sprintf(":paper %d", strings.Join(args[2:], " ")))
+					if err != nil {
+						return err
+					}
 				}
 			case "OFF", "FALSE", "NO":
 				showprintrange = false
 			default:
+				err := stw.exmode(fmt.Sprintf(":paper %d", strings.Join(args[1:], " ")))
+				if err != nil {
+					return err
+				}
 				showprintrange = true
-				stw.exmode(fmt.Sprintf(":paper %d", strings.Join(args[1:], " ")))
 			}
 		case "paper":
 			if narg < 2 {
-				stw.addHistory("Not enough arguments")
-				break
+				return st.NotEnoughArgs(":paper")
 			}
 			tate := regexp.MustCompile("(?i)a([0-9]+) *t(a(t(e?)?)?)?")
 			yoko := regexp.MustCompile("(?i)a([0-9]+) *y(o(k(o?)?)?)?")
@@ -3450,6 +3476,8 @@ func (stw *Window) exmode(command string) {
 				case "4":
 					stw.papersize = A4_YOKO
 				}
+			default:
+				return errors.New(":paper unknown papersize")
 			}
 		}
 	} else {
@@ -3461,18 +3489,17 @@ func (stw *Window) exmode(command string) {
 				if !st.FileExists(fn) {
 					sfn, err := stw.SearchFile(args[1])
 					if err != nil {
-						stw.addHistory(err.Error())
-						break
+						return err
 					}
 					err = stw.OpenFile(sfn)
 					if err != nil {
-						stw.addHistory(err.Error())
+						return err
 					}
 					stw.Redraw()
 				} else {
 					err := stw.OpenFile(fn)
 					if err != nil {
-						stw.addHistory(err.Error())
+						return err
 					}
 					stw.Redraw()
 				}
@@ -3496,6 +3523,7 @@ func (stw *Window) exmode(command string) {
 			}
 		}
 	}
+	return nil
 }
 
 func (stw *Window) NextFloor() {
