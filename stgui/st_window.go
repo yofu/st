@@ -7201,7 +7201,10 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 				}}
 			} else {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					stw.exmode(command)
+					err := stw.exmode(command)
+					if err != nil {
+						stw.addHistory(err.Error())
+					}
 				}}
 			}
 		} else if strings.HasPrefix(words[1], "'") {
@@ -7215,7 +7218,10 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 				}}
 			} else {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					stw.fig2mode(command)
+					err := stw.fig2mode(command)
+					if err != nil {
+						stw.addHistory(err.Error())
+					}
 				}}
 			}
 		}
