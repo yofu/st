@@ -1,7 +1,5 @@
 package stgui
 
-// TODO: changeconf, copyconf
-
 import (
 	"bytes"
 	"errors"

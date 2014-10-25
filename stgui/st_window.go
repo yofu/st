@@ -243,7 +243,7 @@ type Window struct { // {{{
 	Selected []*iup.Handle
 	Props    []*iup.Handle
 
-	Changed bool // TODO: Set stw.Changed to true when stw.Frame is changed
+	Changed bool
 
 	comhist     []string
 	recentfiles []string
