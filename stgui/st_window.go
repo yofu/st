@@ -45,14 +45,14 @@ var (
 	recentfn        = filepath.Join(home, ".st/recent.dat")
 	historyfn       = filepath.Join(home, ".st/history.dat")
 	analysiscommand = "C:/an/an.exe"
-	NOUNDO = false
-	ALTSELECTNODE = true
+	NOUNDO          = false
+	ALTSELECTNODE   = true
 )
 
 const (
 	windowSize   = "FULLxFULL"
 	nRecentFiles = 3
-	nUndo = 5
+	nUndo        = 5
 )
 
 // Font
@@ -78,7 +78,7 @@ var (
 	printFontColor        = cd.CD_BLACK
 	printFontFace         = "IPA明朝"
 	printFontSize         = 8
-	showprintrange = true
+	showprintrange        = true
 )
 
 const (
@@ -96,7 +96,7 @@ const (
 
 // Draw
 var (
-	first            = 1
+	first                   = 1
 	defaultPlateEdgeColor   = cd.CD_GRAY
 	defaultBondColor        = cd.CD_GRAY
 	defaultConfColor        = cd.CD_GRAY
@@ -104,15 +104,15 @@ var (
 	defaultStressTextColor  = cd.CD_GRAY
 	defaultYieldedTextColor = cd.CD_YELLOW
 	defaultBrittleTextColor = cd.CD_RED
-	PlateEdgeColor   = defaultPlateEdgeColor
-	BondColor        = defaultBondColor
-	ConfColor        = defaultConfColor
-	MomentColor      = defaultMomentColor
-	StressTextColor  = defaultStressTextColor
-	YieldedTextColor = defaultYieldedTextColor
-	BrittleTextColor = defaultBrittleTextColor
-	fixRotate        = false
-	fixMove          = false
+	PlateEdgeColor          = defaultPlateEdgeColor
+	BondColor               = defaultBondColor
+	ConfColor               = defaultConfColor
+	MomentColor             = defaultMomentColor
+	StressTextColor         = defaultStressTextColor
+	YieldedTextColor        = defaultYieldedTextColor
+	BrittleTextColor        = defaultBrittleTextColor
+	fixRotate               = false
+	fixMove                 = false
 )
 
 var (
@@ -206,7 +206,7 @@ type Window struct { // {{{
 	cname                  *iup.Handle
 	context                *iup.Handle
 
-	sectiondlg             *iup.Handle
+	sectiondlg *iup.Handle
 
 	CanvasSize []float64 // width, height
 
@@ -233,7 +233,7 @@ type Window struct { // {{{
 	endX   int
 	endY   int
 
-	lastcommand *Command
+	lastcommand     *Command
 	lastexcommand   string
 	lastfig2command string
 
@@ -436,9 +436,9 @@ func NewWindow(homedir string) *Window { // {{{
 					iup.Attr("TIP", "Exit Application"),
 					func(arg *iup.ItemAction) {
 						if stw.Changed {
-						    if stw.Yn("CHANGED", "変更を保存しますか") {
-						        stw.SaveAS()
-						    } else {
+							if stw.Yn("CHANGED", "変更を保存しますか") {
+								stw.SaveAS()
+							} else {
 								return
 							}
 						}
@@ -1109,9 +1109,9 @@ func NewWindow(homedir string) *Window { // {{{
 		),
 		func(arg *iup.DialogClose) {
 			if stw.Changed {
-			    if stw.Yn("CHANGED", "変更を保存しますか") {
-			        stw.SaveAS()
-			    } else {
+				if stw.Yn("CHANGED", "変更を保存しますか") {
+					stw.SaveAS()
+				} else {
 					return
 				}
 			}
@@ -1158,10 +1158,12 @@ func (stw *Window) FocusCanv() {
 
 func (stw *Window) Snapshot() {
 	stw.Changed = true
-	if NOUNDO { return }
+	if NOUNDO {
+		return
+	}
 	tmp := make([]*st.Frame, nUndo)
 	tmp[0] = stw.Frame.Snapshot()
-	for i:=0; i<nUndo-1; i++ {
+	for i := 0; i < nUndo-1; i++ {
 		tmp[i+1] = stw.undostack[i]
 	}
 	stw.undostack = tmp
@@ -1638,9 +1640,9 @@ func (stw *Window) SaveFile(fn string) error {
 
 func (stw *Window) Close(force bool) {
 	if !force && stw.Changed {
-	    if stw.Yn("CHANGED", "変更を保存しますか") {
-	        stw.SaveAS()
-	    } else {
+		if stw.Yn("CHANGED", "変更を保存しますか") {
+			stw.SaveAS()
+		} else {
 			return
 		}
 	}
@@ -1822,14 +1824,14 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 func (stw *Window) PaperSize(canv *cd.Canvas) (float64, float64, error) {
 	w, h := canv.GetSize()
 	length := math.Min(float64(w), float64(h)) * 0.9
-	val := 1.0/math.Sqrt(2)
+	val := 1.0 / math.Sqrt(2)
 	switch stw.papersize {
 	default:
 		return 0.0, 0.0, errors.New("unknown papersize")
 	case A4_TATE, A3_TATE:
-		return length*val, length, nil
+		return length * val, length, nil
 	case A4_YOKO, A3_YOKO:
-		return length, length*val, nil
+		return length, length * val, nil
 	}
 }
 
@@ -1851,11 +1853,11 @@ func (stw *Window) Print() {
 	default:
 		stw.DrawFrame(pcanv, stw.Frame.Show.ColorMode, false)
 	case st.ECOLOR_WHITE:
-		PlateEdgeColor   = cd.CD_BLACK
-		BondColor        = cd.CD_BLACK
-		ConfColor        = cd.CD_BLACK
-		MomentColor      = cd.CD_BLACK
-		StressTextColor  = cd.CD_BLACK
+		PlateEdgeColor = cd.CD_BLACK
+		BondColor = cd.CD_BLACK
+		ConfColor = cd.CD_BLACK
+		MomentColor = cd.CD_BLACK
+		StressTextColor = cd.CD_BLACK
 		YieldedTextColor = cd.CD_BLACK
 		BrittleTextColor = cd.CD_BLACK
 		stw.DrawFrame(pcanv, st.ECOLOR_BLACK, false)
@@ -1877,11 +1879,11 @@ func (stw *Window) Print() {
 			t.Position[i] /= factor
 		}
 	}
-	PlateEdgeColor   = defaultPlateEdgeColor
-	BondColor        = defaultBondColor
-	ConfColor        = defaultConfColor
-	MomentColor      = defaultMomentColor
-	StressTextColor  = defaultStressTextColor
+	PlateEdgeColor = defaultPlateEdgeColor
+	BondColor = defaultBondColor
+	ConfColor = defaultConfColor
+	MomentColor = defaultMomentColor
+	StressTextColor = defaultStressTextColor
 	YieldedTextColor = defaultYieldedTextColor
 	BrittleTextColor = defaultBrittleTextColor
 	stw.Redraw()
@@ -2958,9 +2960,9 @@ func (stw *Window) exmode(command string) {
 			}
 		case "inc":
 			if !bang && stw.Changed {
-			    if stw.Yn("CHANGED", "変更を保存しますか") {
-			        stw.SaveAS()
-			    } else {
+				if stw.Yn("CHANGED", "変更を保存しますか") {
+					stw.SaveAS()
+				} else {
 					break
 				}
 			}
@@ -2991,9 +2993,9 @@ func (stw *Window) exmode(command string) {
 			}
 		case "e":
 			if !bang && stw.Changed {
-			    if stw.Yn("CHANGED", "変更を保存しますか") {
-			        stw.SaveAS()
-			    } else {
+				if stw.Yn("CHANGED", "変更を保存しますか") {
+					stw.SaveAS()
+				} else {
 					break
 				}
 			}
@@ -3191,7 +3193,9 @@ func (stw *Window) exmode(command string) {
 				break
 			}
 			for _, n := range stw.SelectNode {
-				if n == nil { continue }
+				if n == nil {
+					continue
+				}
 				n.Load[int(ind)] = val
 			}
 			stw.Snapshot()
@@ -3214,11 +3218,11 @@ func (stw *Window) exmode(command string) {
 				sectnum := regexp.MustCompile("^ *SECT? *={0,2} *[[]?([0-9, ]+)[]]?")
 				switch {
 				case condition == "UPPER":
-					f = func (el *st.Elem, ind int) bool {
+					f = func(el *st.Elem, ind int) bool {
 						return el.Enod[ind].Coord[2] > el.Enod[1-ind].Coord[2]
 					}
 				case condition == "LOWER":
-					f = func (el *st.Elem, ind int) bool {
+					f = func(el *st.Elem, ind int) bool {
 						return el.Enod[ind].Coord[2] < el.Enod[1-ind].Coord[2]
 					}
 				case sectnum.MatchString(condition):
@@ -4157,12 +4161,16 @@ func (stw *Window) DeleteSelected() {
 }
 
 func (stw *Window) SelectNotHidden() {
-	if stw.Frame == nil { return }
+	if stw.Frame == nil {
+		return
+	}
 	stw.Deselect()
 	stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
 	num := 0
 	for _, el := range stw.Frame.Elems {
-		if el.IsHide(stw.Frame.Show) { continue }
+		if el.IsHide(stw.Frame.Show) {
+			continue
+		}
 		stw.SelectElem[num] = el
 		num++
 	}
@@ -5643,9 +5651,9 @@ func (stw *Window) CMenu() {
 					iup.Attr("TIP", "Exit Application"),
 					func(arg *iup.ItemAction) {
 						if stw.Changed {
-						    if stw.Yn("CHANGED", "変更を保存しますか") {
-						        stw.SaveAS()
-						    } else {
+							if stw.Yn("CHANGED", "変更を保存しますか") {
+								stw.SaveAS()
+							} else {
 								return
 							}
 						}
