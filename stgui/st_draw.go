@@ -8,6 +8,24 @@ import (
 	"math"
 )
 
+func DrawPrintRange(stw *Window) {
+	stw.dbuff.Begin(cd.CD_CLOSED_LINES)
+	centrex := 0.5*stw.CanvasSize[0]
+	centrey := 0.5*stw.CanvasSize[1]
+	width, height, err := stw.PaperSize(stw.dbuff)
+	width *= 0.5
+	height *= 0.5
+	if err != nil {
+		stw.addHistory(err.Error())
+		return
+	}
+	stw.dbuff.FVertex(centrex - width, centrey - height)
+	stw.dbuff.FVertex(centrex + width, centrey - height)
+	stw.dbuff.FVertex(centrex + width, centrey + height)
+	stw.dbuff.FVertex(centrex - width, centrey + height)
+	stw.dbuff.End()
+}
+
 // FRAME
 func DrawEccentric(frame *st.Frame, cvs *cd.Canvas, show *st.Show) {
 	if show.Fes {

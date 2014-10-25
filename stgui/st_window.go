@@ -78,6 +78,7 @@ var (
 	printFontColor        = cd.CD_BLACK
 	printFontFace         = "IPA明朝"
 	printFontSize         = 8
+	showprintrange = true
 )
 
 const (
@@ -85,16 +86,31 @@ const (
 	FONT_CANVAS
 )
 
+// Paper Size
+const (
+	A4_TATE = iota
+	A4_YOKO
+	A3_TATE
+	A3_YOKO
+)
+
 // Draw
 var (
 	first            = 1
-	PlateEdgeColor   = cd.CD_GRAY
-	BondColor        = cd.CD_GRAY
-	ConfColor        = cd.CD_GRAY
-	MomentColor      = cd.CD_DARK_MAGENTA
-	StressTextColor  = cd.CD_GRAY
-	YieldedTextColor = cd.CD_YELLOW
-	BrittleTextColor = cd.CD_RED
+	defaultPlateEdgeColor   = cd.CD_GRAY
+	defaultBondColor        = cd.CD_GRAY
+	defaultConfColor        = cd.CD_GRAY
+	defaultMomentColor      = cd.CD_DARK_MAGENTA
+	defaultStressTextColor  = cd.CD_GRAY
+	defaultYieldedTextColor = cd.CD_YELLOW
+	defaultBrittleTextColor = cd.CD_RED
+	PlateEdgeColor   = defaultPlateEdgeColor
+	BondColor        = defaultBondColor
+	ConfColor        = defaultConfColor
+	MomentColor      = defaultMomentColor
+	StressTextColor  = defaultStressTextColor
+	YieldedTextColor = defaultYieldedTextColor
+	BrittleTextColor = defaultBrittleTextColor
 	fixRotate        = false
 	fixMove          = false
 )
@@ -205,6 +221,8 @@ type Window struct { // {{{
 	Title     *TextBox
 	Text      *TextBox
 	TextBox   []*TextBox
+
+	papersize uint
 
 	Version  string
 	Modified string
@@ -1109,6 +1127,7 @@ func NewWindow(homedir string) *Window { // {{{
 	w, h := stw.cdcanv.GetSize()
 	stw.CanvasSize = []float64{float64(w), float64(h)}
 	stw.dbuff.TextAlignment(DefaultTextAlignment)
+	stw.papersize = A4_TATE
 	stw.PageTitle = NewTextBox()
 	stw.PageTitle.Font.Size = 16
 	stw.PageTitle.Position = []float64{30.0, stw.CanvasSize[1] - 30.0}
@@ -1771,15 +1790,20 @@ func SetPrinter(name string) (*cd.Canvas, error) {
 	return pcanv, nil
 }
 
-func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64) {
+func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 	v := stw.Frame.View.Copy()
-	pw, ph := pcanv.GetSize()
-	factor := math.Min(float64(pw)/stw.CanvasSize[0], float64(ph)/stw.CanvasSize[1])
+	pw, ph := pcanv.GetSize() // seems to be [mm]/25.4*[dpi]*2
+	w0, h0 := stw.dbuff.GetSize()
+	w, h, err := stw.PaperSize(stw.dbuff)
+	if err != nil {
+		return v, 0.0, err
+	}
+	factor := math.Min(float64(pw)/w, float64(ph)/h)
 	stw.CanvasSize[0] = float64(pw)
 	stw.CanvasSize[1] = float64(ph)
 	stw.Frame.View.Gfact *= factor
-	stw.Frame.View.Center[0] = 0.5 * float64(pw)
-	stw.Frame.View.Center[1] = 0.5 * float64(ph)
+	stw.Frame.View.Center[0] = float64(pw)*0.5 + factor*(stw.Frame.View.Center[0]-0.5*float64(w0))
+	stw.Frame.View.Center[1] = float64(ph)*0.5 + factor*(stw.Frame.View.Center[1]-0.5*float64(h0))
 	stw.Frame.Show.ConfSize *= factor
 	stw.Frame.Show.BondSize *= factor
 	for i := 0; i < 2; i++ {
@@ -1792,7 +1816,21 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64) {
 			t.Position[i] *= factor
 		}
 	}
-	return v, factor
+	return v, factor, nil
+}
+
+func (stw *Window) PaperSize(canv *cd.Canvas) (float64, float64, error) {
+	w, h := canv.GetSize()
+	length := math.Min(float64(w), float64(h)) * 0.9
+	val := 1.0/math.Sqrt(2)
+	switch stw.papersize {
+	default:
+		return 0.0, 0.0, errors.New("unknown papersize")
+	case A4_TATE, A3_TATE:
+		return length*val, length, nil
+	case A4_YOKO, A3_YOKO:
+		return length, length*val, nil
+	}
 }
 
 func (stw *Window) Print() {
@@ -1804,15 +1842,25 @@ func (stw *Window) Print() {
 		stw.addHistory(err.Error())
 		return
 	}
-	v, factor := stw.FittoPrinter(pcanv)
+	v, factor, err := stw.FittoPrinter(pcanv)
+	if err != nil {
+		stw.addHistory(err.Error())
+		return
+	}
 	switch stw.Frame.Show.ColorMode {
 	default:
 		stw.DrawFrame(pcanv, stw.Frame.Show.ColorMode, false)
 	case st.ECOLOR_WHITE:
+		PlateEdgeColor   = cd.CD_BLACK
+		BondColor        = cd.CD_BLACK
+		ConfColor        = cd.CD_BLACK
+		MomentColor      = cd.CD_BLACK
+		StressTextColor  = cd.CD_BLACK
+		YieldedTextColor = cd.CD_BLACK
+		BrittleTextColor = cd.CD_BLACK
 		stw.DrawFrame(pcanv, st.ECOLOR_BLACK, false)
 	}
 	stw.DrawTexts(pcanv, true)
-	pcanv.Flush()
 	pcanv.Kill()
 	w, h := stw.cdcanv.GetSize()
 	stw.CanvasSize = []float64{float64(w), float64(h)}
@@ -1829,6 +1877,13 @@ func (stw *Window) Print() {
 			t.Position[i] /= factor
 		}
 	}
+	PlateEdgeColor   = defaultPlateEdgeColor
+	BondColor        = defaultBondColor
+	ConfColor        = defaultConfColor
+	MomentColor      = defaultMomentColor
+	StressTextColor  = defaultStressTextColor
+	YieldedTextColor = defaultYieldedTextColor
+	BrittleTextColor = defaultBrittleTextColor
 	stw.Redraw()
 }
 
@@ -1840,7 +1895,10 @@ func (stw *Window) PrintFig2(filename string) error {
 	if err != nil {
 		return err
 	}
-	v, factor := stw.FittoPrinter(pcanv)
+	v, factor, err := stw.FittoPrinter(pcanv)
+	if err != nil {
+		return err
+	}
 	tmp := make([][]string, 0)
 	err = st.ParseFile(filename, func(words []string) error {
 		var err error
@@ -2713,6 +2771,7 @@ func (stw *Window) execAliasCommand(al string) {
 		} else {
 			stw.Open()
 		}
+		stw.FocusCanv()
 		return
 	}
 	alu := strings.ToUpper(al)
@@ -3345,6 +3404,32 @@ func (stw *Window) exmode(command string) {
 			} else {
 				stw.addHistory("select elem with Alt key")
 			}
+		case "paper":
+			if narg < 2 {
+				stw.addHistory("Not enough arguments")
+				break
+			}
+			tate := regexp.MustCompile("(?i)a([0-9]+) *t(a(t(e?)?)?)?")
+			yoko := regexp.MustCompile("(?i)a([0-9]+) *y(o(k(o?)?)?)?")
+			name := strings.Join(args[1:], " ")
+			switch {
+			case tate.MatchString(name):
+				fs := tate.FindStringSubmatch(name)
+				switch fs[1] {
+				case "3":
+					stw.papersize = A3_TATE
+				case "4":
+					stw.papersize = A4_TATE
+				}
+			case yoko.MatchString(name):
+				fs := yoko.FindStringSubmatch(name)
+				switch fs[1] {
+				case "3":
+					stw.papersize = A3_YOKO
+				case "4":
+					stw.papersize = A4_YOKO
+				}
+			}
 		}
 	} else {
 		switch cname {
@@ -3491,7 +3576,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		canv.Clear()
 		stw.Frame.View.Set(0)
 		if stw.Frame.Show.GlobalAxis {
-			stw.DrawGlobalAxis(canv)
+			stw.DrawGlobalAxis(canv, color)
 		}
 		if stw.Frame.Show.Kijun {
 			canv.TextAlignment(cd.CD_CENTER)
@@ -3515,24 +3600,28 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 			if n.Hide {
 				continue
 			}
-			if n.Lock {
-				canv.Foreground(LOCKED_NODE_COLOR)
+			if color == st.ECOLOR_BLACK {
+				canv.Foreground(cd.CD_BLACK)
 			} else {
-				switch n.ConfState() {
-				case st.CONF_FREE:
-					canv.Foreground(canvasFontColor)
-				case st.CONF_PIN:
-					canv.Foreground(cd.CD_GREEN)
-				case st.CONF_FIX:
-					canv.Foreground(cd.CD_DARK_GREEN)
-				default:
-					canv.Foreground(cd.CD_CYAN)
+				if n.Lock {
+					canv.Foreground(LOCKED_NODE_COLOR)
+				} else {
+					switch n.ConfState() {
+					case st.CONF_FREE:
+						canv.Foreground(canvasFontColor)
+					case st.CONF_PIN:
+						canv.Foreground(cd.CD_GREEN)
+					case st.CONF_FIX:
+						canv.Foreground(cd.CD_DARK_GREEN)
+					default:
+						canv.Foreground(cd.CD_CYAN)
+					}
 				}
-			}
-			for _, j := range stw.SelectNode {
-				if j == n {
-					canv.Foreground(cd.CD_RED)
-					break
+				for _, j := range stw.SelectNode {
+					if j == n {
+						canv.Foreground(cd.CD_RED)
+						break
+					}
 				}
 			}
 			DrawNode(n, canv, stw.Frame.Show)
@@ -3631,6 +3720,14 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		if stw.Frame.Fes != nil {
 			DrawEccentric(stw.Frame, canv, stw.Frame.Show)
 		}
+		if showprintrange {
+			if color == st.ECOLOR_BLACK {
+				canv.Foreground(cd.CD_BLACK)
+			} else {
+				canv.Foreground(cd.CD_GRAY)
+			}
+			DrawPrintRange(stw)
+		}
 		if flush {
 			canv.Flush()
 		}
@@ -3697,7 +3794,7 @@ func (stw *Window) DrawFrameNode() {
 		stw.dbuff.Clear()
 		stw.Frame.View.Set(0)
 		if stw.Frame.Show.GlobalAxis {
-			stw.DrawGlobalAxis(stw.dbuff)
+			stw.DrawGlobalAxis(stw.dbuff, stw.Frame.Show.ColorMode)
 		}
 		for _, n := range stw.Frame.Nodes {
 			stw.Frame.View.ProjectNode(n)
@@ -3735,7 +3832,7 @@ func (stw *Window) DrawFrameNode() {
 	}
 }
 
-func (stw *Window) DrawGlobalAxis(canv *cd.Canvas) {
+func (stw *Window) DrawGlobalAxis(canv *cd.Canvas, color uint) {
 	origin := stw.Frame.View.ProjectCoord([]float64{0.0, 0.0, 0.0})
 	xaxis := stw.Frame.View.ProjectCoord([]float64{stw.Frame.Show.GlobalAxisSize, 0.0, 0.0})
 	yaxis := stw.Frame.View.ProjectCoord([]float64{0.0, stw.Frame.Show.GlobalAxisSize, 0.0})
@@ -3743,13 +3840,21 @@ func (stw *Window) DrawGlobalAxis(canv *cd.Canvas) {
 	size := 0.3
 	theta := 10.0 * math.Pi / 180.0
 	canv.LineStyle(cd.CD_CONTINUOUS)
-	canv.Foreground(cd.CD_RED)
-	Arrow(canv, origin[0], origin[1], xaxis[0], xaxis[1], size, theta)
-	canv.Foreground(cd.CD_GREEN)
-	Arrow(canv, origin[0], origin[1], yaxis[0], yaxis[1], size, theta)
-	canv.Foreground(cd.CD_BLUE)
-	Arrow(canv, origin[0], origin[1], zaxis[0], zaxis[1], size, theta)
-	canv.Foreground(cd.CD_WHITE)
+	switch color {
+	case st.ECOLOR_BLACK:
+		canv.Foreground(cd.CD_BLACK)
+		Arrow(canv, origin[0], origin[1], xaxis[0], xaxis[1], size, theta)
+		Arrow(canv, origin[0], origin[1], yaxis[0], yaxis[1], size, theta)
+		Arrow(canv, origin[0], origin[1], zaxis[0], zaxis[1], size, theta)
+	default:
+		canv.Foreground(cd.CD_RED)
+		Arrow(canv, origin[0], origin[1], xaxis[0], xaxis[1], size, theta)
+		canv.Foreground(cd.CD_GREEN)
+		Arrow(canv, origin[0], origin[1], yaxis[0], yaxis[1], size, theta)
+		canv.Foreground(cd.CD_BLUE)
+		Arrow(canv, origin[0], origin[1], zaxis[0], zaxis[1], size, theta)
+		canv.Foreground(cd.CD_WHITE)
+	}
 }
 
 func Arrow(cvs *cd.Canvas, x1, y1, x2, y2, size, theta float64) {
@@ -4279,6 +4384,27 @@ func (stw *Window) UnlockAll() {
 	stw.Redraw()
 }
 
+func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
+	for _, n := range stw.Frame.Nodes {
+		stw.Frame.View.ProjectNode(n)
+	}
+	xmin, xmax, ymin, ymax := stw.Bbox()
+	w, h, err := stw.PaperSize(canv)
+	if err != nil {
+		stw.addHistory(err.Error())
+		return
+	}
+	scale := math.Min(w/(xmax-xmin), h/(ymax-ymin)) * 0.9
+	if stw.Frame.View.Perspective {
+		stw.Frame.View.Dists[1] *= scale
+	} else {
+		stw.Frame.View.Gfact *= scale
+	}
+	cw, ch := canv.GetSize()
+	stw.Frame.View.Center[0] = float64(cw)*0.5 + scale*(stw.Frame.View.Center[0]-0.5*(xmax+xmin))
+	stw.Frame.View.Center[1] = float64(ch)*0.5 + scale*(stw.Frame.View.Center[1]-0.5*(ymax+ymin))
+}
+
 func (stw *Window) ShowAtCanvasCenter(canv *cd.Canvas) {
 	for _, n := range stw.Frame.Nodes {
 		stw.Frame.View.ProjectNode(n)
@@ -4296,7 +4422,11 @@ func (stw *Window) ShowAtCanvasCenter(canv *cd.Canvas) {
 }
 
 func (stw *Window) ShowCenter() {
-	stw.ShowAtCanvasCenter(stw.cdcanv)
+	if showprintrange {
+		stw.ShowAtPaperCenter(stw.cdcanv)
+	} else {
+		stw.ShowAtCanvasCenter(stw.cdcanv)
+	}
 	stw.Redraw()
 }
 
