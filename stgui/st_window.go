@@ -3479,6 +3479,25 @@ func (stw *Window) exmode(command string) error {
 			default:
 				return errors.New(":paper unknown papersize")
 			}
+		case "color":
+			if narg < 2 {
+				stw.SetColorMode(st.ECOLOR_SECT)
+				break
+			}
+			switch strings.ToUpper(args[1]) {
+			case "N":
+				stw.SetColorMode(st.ECOLOR_N)
+			case "SECT":
+				stw.SetColorMode(st.ECOLOR_SECT)
+			case "RATE":
+				stw.SetColorMode(st.ECOLOR_RATE)
+			case "WHIHTE", "MONO", "MONOCHROME":
+				stw.SetColorMode(st.ECOLOR_WHITE)
+			case "STRONG":
+				stw.SetColorMode(st.ECOLOR_STRONG)
+			}
+		case "mono":
+			stw.SetColorMode(st.ECOLOR_WHITE)
 		}
 	} else {
 		switch cname {
