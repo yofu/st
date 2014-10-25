@@ -2948,7 +2948,7 @@ func (stw *Window) exmode(command string) error {
 		}
 	}
 	bang := strings.HasSuffix(args[0], "!")
-	cname := strings.TrimSuffix(strings.TrimPrefix(args[0], ":"), "!")
+	cname := strings.ToLower(strings.TrimSuffix(strings.TrimPrefix(args[0], ":"), "!"))
 	if stw.Frame != nil {
 		switch cname {
 		case "w", "sav":
