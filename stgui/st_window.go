@@ -4248,7 +4248,7 @@ func (stw *Window) FilterSelectedElem(str string) {
 	parallel := regexp.MustCompile("(?i)^ *// *([xyz]{1})")
 	ortho := regexp.MustCompile("^ *TT *([xyzXYZ]{1})")
 	sectnum := regexp.MustCompile("^ *sect? *==? *([0-9]+)")
-	etypestr := regexp.MustCompile("^ *et(y(p(e?)?)?) *==? *([a-zA-Z]+)")
+	etypestr := regexp.MustCompile("^ *et(y(p(e?)?)?)? *==? *([a-zA-Z]+)")
 	var filterfunc func(el *st.Elem) bool
 	var hstr string
 	switch {
