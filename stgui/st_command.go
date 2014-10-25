@@ -2495,7 +2495,10 @@ func showplane (stw *Window) {
 	maxnum := 3
 	getnnodes(stw, maxnum, func(num int) {
 		if num >= 3 {
-			stw.Frame.ShowPlane(stw.SelectNode[0], stw.SelectNode[1], stw.SelectNode[2], EPS)
+			err := stw.Frame.ShowPlane(stw.SelectNode[0], stw.SelectNode[1], stw.SelectNode[2], EPS)
+			if err != nil {
+				stw.addHistory(err.Error())
+			}
 			stw.EscapeAll()
 		}
 	})

@@ -3384,6 +3384,19 @@ fact_node:
 }
 
 
+func (view *View) SetVectorAngle(vec []float64) error {
+	if len(vec) < 3 {
+		return errors.New("SetVectorAngle: vector size error")
+	}
+	l1 := math.Sqrt(vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2])
+	l2 := math.Sqrt(vec[0]*vec[0] + vec[1]*vec[1])
+	if l2 != 0.0 {
+		view.Angle[0] = math.Atan2(vec[2], l1)
+		view.Angle[1] = math.Acos(vec[0]/l2)*180.0/math.Pi - 180.0
+	}
+	return nil
+}
+
 func (frame *Frame) ShowPlane (n1, n2, n3 *Node, eps float64) error {
 	v1 := Direction(n1, n2, true)
 	v2 := Direction(n2, n3, true)
@@ -3391,6 +3404,7 @@ func (frame *Frame) ShowPlane (n1, n2, n3 *Node, eps float64) error {
 		return errors.New("nodes are on the same line")
 	}
 	nv := Cross(v1, v2)
+	frame.View.SetVectorAngle(nv)
 	num := 0
 	ns := make([]*Node, len(frame.Nodes))
 	for _, n := range frame.Nodes {
