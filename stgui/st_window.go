@@ -2284,18 +2284,64 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			return st.NotEnoughArgs("STRESS")
 		}
 		etype := -1
+		var sects []int
 		et := strings.ToUpper(lis[1])
 		for i, e := range st.ETYPES {
 			if et == e {
 				etype = i
+				break
 			}
 		}
 		if etype == -1 {
-			break
+			sectnum := regexp.MustCompile("^ *([0-9]+) *$")
+			sectrange := regexp.MustCompile("(?i)^ *range *[(] *([0-9]+) *, *([0-9]+) *[)] *$")
+			switch {
+			case sectnum.MatchString(lis[1]):
+				val, _ := strconv.ParseInt(lis[1], 10, 64)
+				if _, ok := stw.Frame.Sects[int(val)]; ok {
+					sects = []int{int(val)}
+				}
+			case sectrange.MatchString(lis[1]):
+				fs := sectrange.FindStringSubmatch(lis[1])
+				if len(fs) < 3 {
+					return errors.New("STRESS, invalid input")
+				}
+				start, _ := strconv.ParseInt(fs[1], 10, 64)
+				end, _ := strconv.ParseInt(fs[2], 10, 64)
+				if start > end {
+					return errors.New("STRESS, invalid input")
+				}
+				sects = make([]int, int(end - start))
+				nsect := 0
+				for i:=int(start); i<int(end); i++ {
+					if _, ok := stw.Frame.Sects[i]; ok {
+						sects[nsect] = i
+						nsect++
+					}
+				}
+				sects = sects[:nsect]
+			}
+			if sects == nil || len(sects) == 0 {
+				return errors.New("STRESS, invalid input")
+			}
 		}
-		if l < 3 && un {
-			for i := 0; i < 6; i++ {
-				stw.StressOff(etype, uint(i))
+		if l < 3 {
+			if sects != nil && len(sects) > 0 {
+				if un {
+					for _, snum := range sects {
+						delete(stw.Frame.Show.Stress, snum)
+					}
+				} else {
+					for _, snum := range sects {
+						for i := 0; i < 6; i++ {
+							stw.StressOff(snum, uint(i))
+						}
+					}
+				}
+			} else {
+				for i := 0; i < 6; i++ {
+					stw.StressOff(etype, uint(i))
+				}
 			}
 			break
 		}
@@ -2316,9 +2362,21 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			break
 		}
 		if un {
-			stw.StressOff(etype, uint(index))
+			if sects != nil && len(sects) > 0 {
+				for _, snum := range sects {
+					stw.StressOff(snum, uint(index))
+				}
+			} else {
+				stw.StressOff(etype, uint(index))
+			}
 		} else {
-			stw.StressOn(etype, uint(index))
+			if sects != nil && len(sects) > 0 {
+				for _, snum := range sects {
+					stw.StressOn(snum, uint(index))
+				}
+			} else {
+				stw.StressOn(etype, uint(index))
+			}
 		}
 	case "DEFORMATION":
 		if un {
@@ -6819,15 +6877,19 @@ func (stw *Window) ElemCaptionOff(name string) {
 
 func (stw *Window) StressOn(etype int, index uint) {
 	stw.Frame.Show.Stress[etype] |= (1 << index)
-	if lbl, ok := stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))]; ok {
-		lbl.SetAttribute("FGCOLOR", labelFGColor)
+	if etype <= st.SLAB {
+		if lbl, ok := stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))]; ok {
+			lbl.SetAttribute("FGCOLOR", labelFGColor)
+		}
 	}
 }
 
 func (stw *Window) StressOff(etype int, index uint) {
 	stw.Frame.Show.Stress[etype] &= ^(1 << index)
-	if lbl, ok := stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))]; ok {
-		lbl.SetAttribute("FGCOLOR", labelOFFColor)
+	if etype <= st.SLAB {
+		if lbl, ok := stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))]; ok {
+			lbl.SetAttribute("FGCOLOR", labelOFFColor)
+		}
 	}
 }
 
