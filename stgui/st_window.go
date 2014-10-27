@@ -7339,13 +7339,13 @@ func StartLogging() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	logger = log.New(logf, "", 0)
+	logger = log.New(logf, "", log.LstdFlags)
 	logger.Println("session started")
 	logger.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 }
 
 func StopLogging() {
-	logger.SetFlags(0)
+	logger.SetFlags(log.LstdFlags)
 	logger.Println("session closed")
 	logf.Close()
 }
