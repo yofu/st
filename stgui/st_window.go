@@ -20,6 +20,7 @@ import (
 	"github.com/atotto/clipboard"
 	"github.com/visualfc/go-iup/cd"
 	"github.com/yofu/st/stlib"
+	"log"
 )
 
 // Constants & Variables// {{{
@@ -35,6 +36,8 @@ var (
 	undopos            int
 	prevkey            int
 	clineinput         string
+	logf               os.File
+	logger             *log.Logger
 )
 var (
 	gopath          = os.Getenv("GOPATH")
@@ -47,6 +50,18 @@ var (
 	analysiscommand = "C:/an/an.exe"
 	NOUNDO          = false
 	ALTSELECTNODE   = true
+)
+
+const LOGFILE  = "_st.log"
+var (
+	LOGLEVEL = []string{"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+)
+const (
+	DEBUG = iota
+	INFO
+	WARNING
+	ERROR
+	CRITICAL
 )
 
 const (
@@ -1147,6 +1162,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.SetCommandHistory()
 	stw.undostack = make([]*st.Frame, nUndo)
 	undopos = 0
+	StartLogging()
 	return stw
 }
 
@@ -1389,7 +1405,7 @@ func (stw *Window) SearchInp() {
 	openfile := func(fn string) {
 		err := stw.OpenFile(fn)
 		if err != nil {
-			stw.addHistory(err.Error())
+			stw.errormessage(err, INFO)
 		}
 		if searchinginps_r {
 			brk <- true
@@ -1655,7 +1671,7 @@ func (stw *Window) Read() {
 		if name, ok := iup.GetOpenFile("", ""); ok {
 			err := stw.ReadFile(name)
 			if err != nil {
-				fmt.Println(err)
+				stw.errormessage(err, INFO)
 			}
 		}
 	}
@@ -1673,6 +1689,8 @@ func (stw *Window) ReadAll() {
 			}
 		}
 		exts := []string{".inl", ".ihx", ".ihy", ".otl", ".ohx", ".ohy", ".rat2", ".wgt", ".kjn"}
+		read := make([]string, 9)
+		nread := 0
 		for _, ext := range exts {
 			name := st.Ce(stw.Frame.Path, ext)
 			err = stw.ReadFile(name)
@@ -1683,9 +1701,13 @@ func (stw *Window) ReadAll() {
 						continue
 					}
 				}
-				fmt.Println(err)
+				stw.errormessage(err, INFO)
+			} else {
+				read[nread] = ext
+				nread++
 			}
 		}
+		stw.addHistory(fmt.Sprintf("READ: %s", strings.Join(read, " ")))
 	}
 }
 
@@ -1719,11 +1741,8 @@ func (stw *Window) ReadFile(filename string) error {
 		err = stw.Frame.ReadZoubun(filename)
 	}
 	if err != nil {
-		stw.addHistory(fmt.Sprintf("NOT READ: %s", filename))
-		stw.addHistory(fmt.Sprintf(">>>> %s", err.Error()))
 		return err
 	}
-	stw.addHistory(fmt.Sprintf("READ: %s", filename))
 	return nil
 }
 
@@ -1731,11 +1750,8 @@ func (stw *Window) ReadBucklingFile(filename string) error {
 	var err error
 	err = stw.Frame.ReadBuckling(filename)
 	if err != nil {
-		stw.addHistory(fmt.Sprintf("NOT READ: %s", filename))
-		stw.addHistory(fmt.Sprintf(">>>> %s", err.Error()))
 		return err
 	}
-	stw.addHistory(fmt.Sprintf("READ: %s", filename))
 	return nil
 }
 
@@ -1743,11 +1759,8 @@ func (stw *Window) ReadZoubunFile(filename string) error {
 	var err error
 	err = stw.Frame.ReadZoubun(filename)
 	if err != nil {
-		stw.addHistory(fmt.Sprintf("NOT READ: %s", filename))
-		stw.addHistory(fmt.Sprintf(">>>> %s", err.Error()))
 		return err
 	}
-	stw.addHistory(fmt.Sprintf("READ: %s", filename))
 	return nil
 }
 
@@ -1759,11 +1772,8 @@ func (stw *Window) AddResult(filename string, search bool) error {
 		err = stw.Frame.ReadResult(filename, st.ADD_RESULT)
 	}
 	if err != nil {
-		stw.addHistory(fmt.Sprintf("NOT READ: %s", filename))
-		stw.addHistory(fmt.Sprintf(">>>> %s", err.Error()))
 		return err
 	}
-	stw.addHistory(fmt.Sprintf("READ: %s", filename))
 	return nil
 }
 
@@ -1841,12 +1851,12 @@ func (stw *Window) Print() {
 	}
 	pcanv, err := SetPrinter(stw.Frame.Name)
 	if err != nil {
-		stw.addHistory(err.Error())
+		stw.errormessage(err, INFO)
 		return
 	}
 	v, factor, err := stw.FittoPrinter(pcanv)
 	if err != nil {
-		stw.addHistory(err.Error())
+		stw.errormessage(err, INFO)
 		return
 	}
 	switch stw.Frame.Show.ColorMode {
@@ -2812,6 +2822,15 @@ func (stw *Window) addHistory(str string) {
 	stw.hist.SetAttribute("SCROLLTO", setpos)
 }
 
+func (stw *Window) errormessage(err error, level uint) {
+	if err == nil {
+		return
+	}
+	otp := fmt.Sprintf("[%s]: %s", LOGLEVEL[level], err.Error())
+	stw.addHistory(otp)
+	logger.Println(otp)
+}
+
 func (stw *Window) SetCoord(x, y, z float64) {
 	stw.coord.SetAttribute("VALUE", fmt.Sprintf("X: %8.3f Y: %8.3f Z: %8.3f", x, y, z))
 }
@@ -2828,7 +2847,7 @@ func (stw *Window) execAliasCommand(al string) {
 		if strings.HasPrefix(al, ":") {
 			err := stw.exmode(al)
 			if err != nil {
-				stw.addHistory(err.Error())
+				stw.errormessage(err, INFO)
 			}
 		} else {
 			stw.Open()
@@ -2852,12 +2871,12 @@ func (stw *Window) execAliasCommand(al string) {
 		case strings.HasPrefix(al, ":"):
 			err := stw.exmode(al)
 			if err != nil {
-				stw.addHistory(err.Error())
+				stw.errormessage(err, INFO)
 			}
 		case strings.HasPrefix(al, "'"):
 			err := stw.fig2mode(al)
 			if err != nil {
-				stw.addHistory(err.Error())
+				stw.errormessage(err, INFO)
 			}
 		case axrn_minmax.MatchString(alu):
 			var axis int
@@ -3082,7 +3101,6 @@ func (stw *Window) exmode(command string) error {
 					err := stw.OpenFile(fn)
 					if err != nil {
 						return err
-						stw.addHistory(err.Error())
 					}
 					stw.Redraw()
 				}
@@ -3099,7 +3117,10 @@ func (stw *Window) exmode(command string) error {
 		case "vim":
 			stw.Vim(fn)
 		case "read":
-			stw.ReadFile(fn)
+			err := stw.ReadFile(fn)
+			if err != nil {
+				return err
+			}
 		case "insert":
 			if narg > 2 && len(stw.SelectNode) >= 1 {
 				angle, err := strconv.ParseFloat(args[2], 64)
@@ -4521,7 +4542,7 @@ func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
 	xmin, xmax, ymin, ymax := stw.Bbox()
 	w, h, err := stw.PaperSize(canv)
 	if err != nil {
-		stw.addHistory(err.Error())
+		stw.errormessage(err, INFO)
 		return
 	}
 	scale := math.Min(w/(xmax-xmin), h/(ymax-ymin)) * 0.9
@@ -7284,7 +7305,7 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
 					err := stw.exmode(command)
 					if err != nil {
-						stw.addHistory(err.Error())
+						stw.errormessage(err, INFO)
 					}
 				}}
 			}
@@ -7301,7 +7322,7 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
 					err := stw.fig2mode(command)
 					if err != nil {
-						stw.addHistory(err.Error())
+						stw.errormessage(err, INFO)
 					}
 				}}
 			}
@@ -7311,6 +7332,22 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 		return err
 	}
 	return nil
+}
+
+func StartLogging() {
+	logf, err := os.OpenFile(LOGFILE, os.O_WRONLY | os.O_APPEND | os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	logger = log.New(logf, "", 0)
+	logger.Println("session started")
+	logger.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+}
+
+func StopLogging() {
+	logger.SetFlags(0)
+	logger.Println("session closed")
+	logf.Close()
 }
 
 // Initialize

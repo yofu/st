@@ -13,12 +13,12 @@ func DrawPrintRange(stw *Window) {
 	centrex := 0.5*stw.CanvasSize[0]
 	centrey := 0.5*stw.CanvasSize[1]
 	width, height, err := stw.PaperSize(stw.dbuff)
-	width *= 0.5
-	height *= 0.5
 	if err != nil {
-		stw.addHistory(err.Error())
+		stw.errormessage(err, INFO)
 		return
 	}
+	width *= 0.5
+	height *= 0.5
 	stw.dbuff.FVertex(centrex - width, centrey - height)
 	stw.dbuff.FVertex(centrex + width, centrey - height)
 	stw.dbuff.FVertex(centrex + width, centrey + height)
