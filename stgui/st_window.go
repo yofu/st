@@ -1818,6 +1818,7 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 	stw.Frame.View.Center[1] = float64(ph)*0.5 + factor*(stw.Frame.View.Center[1]-0.5*float64(h0))
 	stw.Frame.Show.ConfSize *= factor
 	stw.Frame.Show.BondSize *= factor
+	stw.Frame.Show.MassSize *= factor
 	for i := 0; i < 2; i++ {
 		stw.PageTitle.Position[i] *= factor
 		stw.Title.Position[i] *= factor
@@ -1863,6 +1864,7 @@ func (stw *Window) Print() {
 	default:
 		stw.DrawFrame(pcanv, stw.Frame.Show.ColorMode, false)
 	case st.ECOLOR_WHITE:
+		stw.Frame.Show.ColorMode = st.ECOLOR_BLACK
 		PlateEdgeColor = cd.CD_BLACK
 		BondColor = cd.CD_BLACK
 		ConfColor = cd.CD_BLACK
@@ -1871,6 +1873,7 @@ func (stw *Window) Print() {
 		YieldedTextColor = cd.CD_BLACK
 		BrittleTextColor = cd.CD_BLACK
 		stw.DrawFrame(pcanv, st.ECOLOR_BLACK, false)
+		stw.Frame.Show.ColorMode = st.ECOLOR_WHITE
 	}
 	stw.DrawTexts(pcanv, true)
 	pcanv.Kill()
@@ -1878,6 +1881,7 @@ func (stw *Window) Print() {
 	stw.CanvasSize = []float64{float64(w), float64(h)}
 	stw.Frame.Show.ConfSize /= factor
 	stw.Frame.Show.BondSize /= factor
+	stw.Frame.Show.MassSize /= factor
 	stw.Frame.View = v
 	for i := 0; i < 2; i++ {
 		stw.PageTitle.Position[i] /= factor

@@ -41,7 +41,11 @@ func DrawEccentric(frame *st.Frame, cvs *cd.Canvas, show *st.Show) {
 			wcoord[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfWeight[i+1][0], frame.Fes.CentreOfWeight[i+1][1], frame.Fes.AverageLevel[i+1]})
 			rcoord1[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0], frame.Fes.CentreOfRigid[i][1], frame.Fes.AverageLevel[i]})
 			rcoord2[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0], frame.Fes.CentreOfRigid[i][1], frame.Fes.AverageLevel[i+1]})
-			cvs.Foreground(cd.CD_WHITE)
+			if show.ColorMode == st.ECOLOR_BLACK {
+				cvs.Foreground(cd.CD_BLACK)
+			} else {
+				cvs.Foreground(cd.CD_GRAY)
+			}
 			cvs.FLine(wcoord[i][0], wcoord[i][1], rcoord2[i][0], rcoord2[i][1])
 			if show.Deformation {
 				cvs.LineStyle(cd.CD_DOTTED)
@@ -50,26 +54,34 @@ func DrawEccentric(frame *st.Frame, cvs *cd.Canvas, show *st.Show) {
 					dcoord1[i] = rcoord1[i]
 					dcoord2[i] = rcoord2[i]
 				case "X":
-					val := frame.Fes.Factor/frame.Fes.AverageDrift[i][0]
-					switch {
-					case val < 120:
-						cvs.Foreground(cd.CD_RED)
-					case val < 200:
-						cvs.Foreground(cd.CD_YELLOW)
-					default:
-						cvs.Foreground(cd.CD_WHITE)
+					if show.ColorMode == st.ECOLOR_BLACK {
+						cvs.Foreground(cd.CD_BLACK)
+					} else {
+						val := frame.Fes.Factor/frame.Fes.AverageDrift[i][0]
+						switch {
+						case val < 120:
+							cvs.Foreground(cd.CD_RED)
+						case val < 200:
+							cvs.Foreground(cd.CD_YELLOW)
+						default:
+							cvs.Foreground(cd.CD_WHITE)
+						}
 					}
 					dcoord1[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0]+show.Dfact*frame.Fes.AverageDisp[i][0], frame.Fes.CentreOfRigid[i][1], frame.Fes.AverageLevel[i]})
 					dcoord2[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0]+show.Dfact*frame.Fes.AverageDisp[i+1][0], frame.Fes.CentreOfRigid[i][1], frame.Fes.AverageLevel[i+1]})
 				case "Y":
-					val := frame.Fes.Factor/frame.Fes.AverageDrift[i][1]
-					switch {
-					case val < 120:
-						cvs.Foreground(cd.CD_RED)
-					case val < 200:
-						cvs.Foreground(cd.CD_YELLOW)
-					default:
-						cvs.Foreground(cd.CD_WHITE)
+					if show.ColorMode == st.ECOLOR_BLACK {
+						cvs.Foreground(cd.CD_BLACK)
+					} else {
+						val := frame.Fes.Factor/frame.Fes.AverageDrift[i][1]
+						switch {
+						case val < 120:
+							cvs.Foreground(cd.CD_RED)
+						case val < 200:
+							cvs.Foreground(cd.CD_YELLOW)
+						default:
+							cvs.Foreground(cd.CD_WHITE)
+						}
 					}
 					dcoord1[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0], frame.Fes.CentreOfRigid[i][1]+show.Dfact*frame.Fes.AverageDisp[i][1], frame.Fes.AverageLevel[i]})
 					dcoord2[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0], frame.Fes.CentreOfRigid[i][1]+show.Dfact*frame.Fes.AverageDisp[i+1][1], frame.Fes.AverageLevel[i+1]})
@@ -78,11 +90,17 @@ func DrawEccentric(frame *st.Frame, cvs *cd.Canvas, show *st.Show) {
 				cvs.FLine(dcoord1[i][0], dcoord1[i][1], dcoord2[i][0], dcoord2[i][1])
 				cvs.LineStyle(cd.CD_CONTINUOUS)
 			}
-			cvs.Foreground(cd.CD_BLUE)
-			if i>=1 { cvs.FLine(rcoord2[i-1][0], rcoord2[i-1][1], rcoord1[i][0], rcoord1[i][1]) }
-			cvs.FLine(rcoord1[i][0], rcoord1[i][1], rcoord2[i][0], rcoord2[i][1])
-			cvs.Foreground(cd.CD_DARK_RED)
-			cvs.FFilledCircle(wcoord[i][0], wcoord[i][1], show.MassSize*frame.Fes.TotalWeight[i+1])
+			if show.ColorMode == st.ECOLOR_BLACK {
+				cvs.Foreground(cd.CD_BLACK)
+				cvs.FLine(rcoord1[i][0], rcoord1[i][1], rcoord2[i][0], rcoord2[i][1])
+				cvs.FFilledCircle(wcoord[i][0], wcoord[i][1], show.MassSize*frame.Fes.TotalWeight[i+1])
+			} else {
+				cvs.Foreground(cd.CD_BLUE)
+				if i>=1 { cvs.FLine(rcoord2[i-1][0], rcoord2[i-1][1], rcoord1[i][0], rcoord1[i][1]) }
+				cvs.FLine(rcoord1[i][0], rcoord1[i][1], rcoord2[i][0], rcoord2[i][1])
+				cvs.Foreground(cd.CD_DARK_RED)
+				cvs.FFilledCircle(wcoord[i][0], wcoord[i][1], show.MassSize*frame.Fes.TotalWeight[i+1])
+			}
 		}
 		cvs.RestoreState(s)
 	}
