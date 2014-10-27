@@ -3581,6 +3581,14 @@ func (stw *Window) exmode(command string) error {
 			}
 		case "mono":
 			stw.SetColorMode(st.ECOLOR_WHITE)
+		case "postscript":
+			if fn == "" {
+				fn = filepath.Join(stw.Cwd, "test.ps")
+			}
+			err := stw.Frame.PostScript(fn)
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		switch cname {
