@@ -1205,14 +1205,14 @@ func (stw *Window) Undo() {
 		stw.addHistory("undo/redo is off")
 		return
 	}
-	if stw.undostack[undopos+1] == nil {
-		stw.addHistory("cannot undo any more")
-		return
-	}
 	undopos++
-	if undopos > nUndo {
+	if undopos >= nUndo {
 		stw.addHistory("cannot undo any more")
 		undopos = nUndo - 1
+		return
+	}
+	if stw.undostack[undopos] == nil {
+		stw.addHistory("cannot undo any more")
 		return
 	}
 	stw.Frame = stw.undostack[undopos]
