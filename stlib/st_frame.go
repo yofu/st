@@ -2816,7 +2816,7 @@ func (frame *Frame) Intersect(e1, e2 *Elem, cross bool, sign1, sign2 int, del1, 
 	if d > eps {
 		return nil, nil, errors.New(fmt.Sprintf("Intersect: Distance= %.3f", d))
 	}
-	if !cross || ((0.0 <= k1 && k1 <= 1.0) && (0.0 <= k2 && k2 <= 1.0)) {
+	if !cross || ((-eps <= k1 && k1 <= 1.0+eps) && (-eps <= k2 && k2 <= 1.0+eps)) {
 		var ns []*Node
 		var els []*Elem
 		var tmpels []*Elem
@@ -2825,11 +2825,11 @@ func (frame *Frame) Intersect(e1, e2 *Elem, cross bool, sign1, sign2 int, del1, 
 		n, _ := frame.CoordNode(e1.Enod[0].Coord[0]+k1*d1[0], e1.Enod[0].Coord[1]+k1*d1[1], e1.Enod[0].Coord[2]+k1*d1[2])
 		switch {
 		default:
-		case k1 < 0.0:
+		case k1 < -eps:
 			ns, els, err = e1.DivideAtNode(n, 0, del1)
-		case 0.0 <= k1 && k1 <= 1.0:
+		case -eps <= k1 && k1 <= 1.0+eps:
 			ns, els, err = e1.DivideAtNode(n, 1*sign1, del1)
-		case 1.0 < k1:
+		case 1.0+eps < k1:
 			ns, els, err = e1.DivideAtNode(n, 2, del1)
 		}
 		if err != nil {
@@ -2842,11 +2842,11 @@ func (frame *Frame) Intersect(e1, e2 *Elem, cross bool, sign1, sign2 int, del1, 
 		}
 		switch {
 		default:
-		case k2 < 0.0:
+		case k2 < -eps:
 			ns, tmpels, err = e2.DivideAtNode(n, 0, del2)
-		case 0.0 <= k2 && k2 <= 1.0:
+		case -eps <= k2 && k2 <= 1.0+eps:
 			ns, tmpels, err = e2.DivideAtNode(n, 1*sign2, del2)
-		case 1.0 < k2:
+		case 1.0+eps < k2:
 			ns, tmpels, err = e2.DivideAtNode(n, 2, del2)
 		}
 		if err != nil {
@@ -2876,7 +2876,7 @@ func (frame *Frame) CutByElem(cutter, cuttee *Elem, cross bool, sign int, del bo
 	if d > eps {
 		return nil, nil, errors.New(fmt.Sprintf("CutByElem: Distance= %.3f", d))
 	}
-	if !cross || ((0.0 < k1 && k1 < 1.0) && (0.0 < k2 && k2 < 1.0)) {
+	if !cross || ((-eps <= k1 && k1 <= 1.0+eps) && (-eps <= k2 && k2 <= 1.0+eps)) {
 		var ns []*Node
 		var els []*Elem
 		var err error
@@ -2884,11 +2884,11 @@ func (frame *Frame) CutByElem(cutter, cuttee *Elem, cross bool, sign int, del bo
 		n, _ := frame.CoordNode(cutter.Enod[0].Coord[0]+k1*d1[0], cutter.Enod[0].Coord[1]+k1*d1[1], cutter.Enod[0].Coord[2]+k1*d1[2])
 		switch {
 		default:
-		case k2 < 0.0:
+		case k2 < -eps:
 			ns, els, err = cuttee.DivideAtNode(n, 0, del)
-		case 0.0 < k2 && k2 < 1.0:
+		case -eps <= k2 && k2 <= 1.0+eps:
 			ns, els, err = cuttee.DivideAtNode(n, 1*sign, del)
-		case 1.0 < k2:
+		case 1.0+eps < k2:
 			ns, els, err = cuttee.DivideAtNode(n, 2, del)
 		}
 		if err != nil {
