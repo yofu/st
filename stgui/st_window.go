@@ -3585,7 +3585,7 @@ func (stw *Window) exmode(command string) error {
 			if fn == "" {
 				fn = filepath.Join(stw.Cwd, "test.ps")
 			}
-			err := stw.Frame.PostScript(fn)
+			err := stw.Frame.PrintPostScript(fn)
 			if err != nil {
 				return err
 			}

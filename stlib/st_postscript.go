@@ -6,17 +6,24 @@ import (
 )
 
 
-func (frame *Frame) PostScript (fn string) error {
-	cvs := ps.NewCanvas()
-	for _, el := range frame.Elems {
-		el.PostScript(cvs, frame.Show)
-	}
+func (frame *Frame) PrintPostScript (fn string) error {
+	doc := ps.NewDoc(fn)
+	doc.SetPaperSize(ps.A4Landscape)
+	doc.Canvas.NewPage("1", ps.A4Landscape)
+	frame.PostScript(doc.Canvas)
 	w, err := os.Create(fn)
+	defer w.Close()
 	if err != nil {
 		return err
 	}
-	cvs.WriteTo(w)
+	doc.WriteTo(w)
 	return nil
+}
+
+func (frame *Frame) PostScript (cvs *ps.Canvas) {
+	for _, el := range frame.Elems {
+		el.PostScript(cvs, frame.Show)
+	}
 }
 
 func (elem *Elem) PostScript (cvs *ps.Canvas, show *Show) {
