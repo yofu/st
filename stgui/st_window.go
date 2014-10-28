@@ -19,6 +19,7 @@ import (
 	// "github.com/visualfc/go-iup/iupim"
 	"github.com/atotto/clipboard"
 	"github.com/visualfc/go-iup/cd"
+	"github.com/yofu/ps"
 	"github.com/yofu/st/stlib"
 	"log"
 )
@@ -3585,7 +3586,24 @@ func (stw *Window) exmode(command string) error {
 			if fn == "" {
 				fn = filepath.Join(stw.Cwd, "test.ps")
 			}
-			err := stw.Frame.PrintPostScript(fn)
+			var paper ps.Paper
+			switch stw.papersize {
+			default:
+				paper = ps.A4Portrait
+			case A4_TATE:
+				paper = ps.A4Portrait
+			case A4_YOKO:
+				paper = ps.A4Landscape
+			case A3_TATE:
+				paper = ps.A3Portrait
+			case A3_YOKO:
+				paper = ps.A3Landscape
+			}
+			v := stw.Frame.View.Copy()
+			stw.Frame.SetFocus(nil)
+			stw.Frame.CentringTo(paper)
+			err := stw.Frame.PrintPostScript(fn, paper)
+			stw.Frame.View = v
 			if err != nil {
 				return err
 			}

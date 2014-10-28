@@ -1,15 +1,27 @@
 package st
 
 import (
+	"fmt"
 	"github.com/yofu/ps"
 	"os"
 )
 
+func (frame *Frame) CentringTo(paper ps.Paper) {
+	w, h := paper.Size()
+	if paper.Portrait {
+		frame.View.Center[0] = float64(w)*0.5
+		frame.View.Center[1] = float64(h)*0.5
+	} else {
+		frame.View.Center[0] = float64(h)*0.5
+		frame.View.Center[1] = float64(w)*0.5
+	}
+	fmt.Println(frame.View.Center)
+}
 
-func (frame *Frame) PrintPostScript (fn string) error {
+func (frame *Frame) PrintPostScript (fn string, paper ps.Paper) error {
 	doc := ps.NewDoc(fn)
-	doc.SetPaperSize(ps.A4Landscape)
-	doc.Canvas.NewPage("1", ps.A4Landscape)
+	doc.SetPaperSize(paper)
+	doc.Canvas.NewPage("1", paper)
 	frame.PostScript(doc.Canvas)
 	w, err := os.Create(fn)
 	defer w.Close()
@@ -21,6 +33,12 @@ func (frame *Frame) PrintPostScript (fn string) error {
 }
 
 func (frame *Frame) PostScript (cvs *ps.Canvas) {
+	for _, n := range frame.Nodes {
+		frame.View.ProjectNode(n)
+		if frame.Show.Deformation {
+			frame.View.ProjectDeformation(n, frame.Show)
+		}
+	}
 	for _, el := range frame.Elems {
 		el.PostScript(cvs, frame.Show)
 	}
