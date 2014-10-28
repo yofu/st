@@ -2169,9 +2169,9 @@ func (frame *Frame) SearchNode(x, y, z float64) *Node {
 	return nil
 }
 
-func (frame *Frame) CoordNode(x, y, z float64) (*Node, bool) {
+func (frame *Frame) CoordNode(x, y, z, eps float64) (*Node, bool) {
 	for _, n := range frame.Nodes {
-		if math.Sqrt(math.Pow(x-n.Coord[0], 2)+math.Pow(y-n.Coord[1], 2)+math.Pow(z-n.Coord[2], 2)) <= 1e-4 {
+		if math.Sqrt(math.Pow(x-n.Coord[0], 2)+math.Pow(y-n.Coord[1], 2)+math.Pow(z-n.Coord[2], 2)) <= eps {
 			return n, false
 		}
 	}
@@ -2822,7 +2822,7 @@ func (frame *Frame) Intersect(e1, e2 *Elem, cross bool, sign1, sign2 int, del1, 
 		var tmpels []*Elem
 		var err error
 		d1 := e1.Direction(false)
-		n, _ := frame.CoordNode(e1.Enod[0].Coord[0]+k1*d1[0], e1.Enod[0].Coord[1]+k1*d1[1], e1.Enod[0].Coord[2]+k1*d1[2])
+		n, _ := frame.CoordNode(e1.Enod[0].Coord[0]+k1*d1[0], e1.Enod[0].Coord[1]+k1*d1[1], e1.Enod[0].Coord[2]+k1*d1[2], eps)
 		switch {
 		default:
 		case k1 < -eps:
@@ -2881,7 +2881,7 @@ func (frame *Frame) CutByElem(cutter, cuttee *Elem, cross bool, sign int, del bo
 		var els []*Elem
 		var err error
 		d1 := cutter.Direction(false)
-		n, _ := frame.CoordNode(cutter.Enod[0].Coord[0]+k1*d1[0], cutter.Enod[0].Coord[1]+k1*d1[1], cutter.Enod[0].Coord[2]+k1*d1[2])
+		n, _ := frame.CoordNode(cutter.Enod[0].Coord[0]+k1*d1[0], cutter.Enod[0].Coord[1]+k1*d1[1], cutter.Enod[0].Coord[2]+k1*d1[2], eps)
 		switch {
 		default:
 		case k2 < -eps:

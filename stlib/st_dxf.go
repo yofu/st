@@ -150,8 +150,8 @@ func (frame *Frame) ParseDxfLine(lis []string, coord []float64) error {
 			return err
 		}
 	}
-	n1, _ := frame.CoordNode(startx*factor+coord[0], starty*factor+coord[1], startz*factor+coord[2])
-	n2, _ := frame.CoordNode(endx*factor+coord[0], endy*factor+coord[1], endz*factor+coord[2])
+	n1, _ := frame.CoordNode(startx*factor+coord[0], starty*factor+coord[1], startz*factor+coord[2], 1e-4)
+	n2, _ := frame.CoordNode(endx*factor+coord[0], endy*factor+coord[1], endz*factor+coord[2], 1e-4)
 	frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
 	return nil
 }
@@ -210,7 +210,7 @@ func (frame *Frame) ParseDxf3DFace(lis []string, coord []float64) error {
 	}
 	enod := make([]*Node, size)
 	for i := 0; i < size; i++ {
-		enod[i], _ = frame.CoordNode(coords[i][0]*factor+coord[0], coords[i][1]*factor+coord[1], coords[i][2]*factor+coord[2])
+		enod[i], _ = frame.CoordNode(coords[i][0]*factor+coord[0], coords[i][1]*factor+coord[1], coords[i][2]*factor+coord[2], 1e-4)
 	}
 	if sec, ok := frame.Sects[201]; ok {
 		sect = sec
@@ -334,7 +334,7 @@ func (frame *Frame) ParseDxfVertex(lis []string, coord []float64, vertices []*No
 		}
 		frame.AddPlateElem(-1, enod, sect, WALL)
 	} else {
-		n, _ := frame.CoordNode(x*factor+coord[0], y*factor+coord[1], z*factor+coord[2])
+		n, _ := frame.CoordNode(x*factor+coord[0], y*factor+coord[1], z*factor+coord[2], 1e-4)
 		vertices = append(vertices, n)
 	}
 	return vertices, nil
