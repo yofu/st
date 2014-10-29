@@ -3329,32 +3329,14 @@ func (stw *Window) exmode(command string) error {
 						return el.Enod[ind].Coord[2] < el.Enod[1-ind].Coord[2]
 					}
 				case sectnum.MatchString(condition):
-					fs := sectnum.FindStringSubmatch(condition)
-					if len(fs) < 2 {
-						break
-					}
-					splitter := regexp.MustCompile("[, ]")
-					tmp := splitter.Split(fs[1], -1)
-					snums := make([]int, len(tmp))
-					i := 0
-					for _, numstr := range tmp {
-						val, err := strconv.ParseInt(strings.Trim(numstr, " "), 10, 64)
-						if err != nil {
-							continue
-						}
-						snums[i] = int(val)
-						i++
-					}
-					snums = snums[:i]
+					tmpf, _ := SectFilter(condition)
 					f = func(el *st.Elem, ind int) bool {
 						for _, sel := range el.Frame.SearchElem(el.Enod[ind]) {
 							if sel.Num == el.Num {
 								continue
 							}
-							for _, snum := range snums {
-								if sel.Sect.Num == snum {
-									return true
-								}
+							if tmpf(sel) {
+								return true
 							}
 						}
 						return false
@@ -4424,6 +4406,72 @@ func (stw *Window) PasteClipboard() error {
 	return nil
 }
 
+var sectnum = regexp.MustCompile("(?i)^ *sect? *={0,2} *[[]?([0-9, ]+)[]]?")
+func SectFilter(str string) (func(*st.Elem) bool, string) {
+	var filterfunc func(el *st.Elem) bool
+	var hstr string
+	fs := sectnum.FindStringSubmatch(str)
+	if len(fs) < 2 {
+		return nil, ""
+	}
+	splitter := regexp.MustCompile("[, ]")
+	tmp := splitter.Split(fs[1], -1)
+	snums := make([]int, len(tmp))
+	i := 0
+	for _, numstr := range tmp {
+		val, err := strconv.ParseInt(strings.Trim(numstr, " "), 10, 64)
+		if err != nil {
+			continue
+		}
+		snums[i] = int(val)
+		i++
+	}
+	snums = snums[:i]
+	filterfunc = func(el *st.Elem) bool {
+		for _, snum := range snums {
+			if el.Sect.Num == snum {
+				return true
+			}
+		}
+		return false
+	}
+	hstr = fmt.Sprintf("Sect == %s", fs[1])
+	return filterfunc, hstr
+}
+
+var etypestr = regexp.MustCompile("^ *et(y(pe?)?)? *={0,2} *([a-zA-Z]+)")
+func EtypeFilter(str string) (func(*st.Elem) bool, string) {
+	var filterfunc func(el *st.Elem) bool
+	var hstr string
+	fs := etypestr.FindStringSubmatch(str)
+	l := len(fs)
+	if l >= 4 {
+		col := regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
+		gir := regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
+		bra := regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
+		wal := regexp.MustCompile("(?i)wa(l){0,2}$")
+		sla := regexp.MustCompile("(?i)sl(a(b)?)?$")
+		var val int
+		switch {
+		case col.MatchString(fs[l-1]):
+			val = st.COLUMN
+		case gir.MatchString(fs[l-1]):
+			val = st.GIRDER
+		case bra.MatchString(fs[l-1]):
+			val = st.BRACE
+		case wal.MatchString(fs[l-1]):
+			val = st.WALL
+		case sla.MatchString(fs[l-1]):
+			val = st.SLAB
+		}
+		filterfunc = func(el *st.Elem) bool {
+			return el.Etype == val
+		}
+		hstr = fmt.Sprintf("Etype == %s", st.ETYPES[val])
+	}
+	return filterfunc, hstr
+}
+
 func (stw *Window) FilterSelectedElem(str string) {
 	l := len(stw.SelectElem)
 	if stw.SelectElem == nil || l == 0 {
@@ -4431,8 +4479,7 @@ func (stw *Window) FilterSelectedElem(str string) {
 	}
 	parallel := regexp.MustCompile("(?i)^ *// *([xyz]{1})")
 	ortho := regexp.MustCompile("^ *TT *([xyzXYZ]{1})")
-	sectnum := regexp.MustCompile("^ *sect? *==? *([0-9]+)")
-	etypestr := regexp.MustCompile("^ *et(y(p(e?)?)?)? *==? *([a-zA-Z]+)")
+	adjoin  := regexp.MustCompile("^ *ad(j(o(in?)?)?)? (.*)")
 	var filterfunc func(el *st.Elem) bool
 	var hstr string
 	switch {
@@ -4473,47 +4520,38 @@ func (stw *Window) FilterSelectedElem(str string) {
 		}
 		hstr = fmt.Sprintf("Orthogonal to %sAXIS", tmp)
 	case sectnum.MatchString(str):
-		fs := sectnum.FindStringSubmatch(str)
-		if len(fs) < 2 {
-			break
-		}
-		tmp, err := strconv.ParseInt(fs[1], 10, 64)
-		if err != nil {
-			break
-		}
-		snum := int(tmp)
-		filterfunc = func(el *st.Elem) bool {
-			return el.Sect.Num == snum
-		}
-		hstr = fmt.Sprintf("Sect == %d", snum)
+		filterfunc, hstr = SectFilter(str)
 	case etypestr.MatchString(str):
-		fs := etypestr.FindStringSubmatch(str)
-		l := len(fs)
-		if l >= 4 {
-			col := regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
-			gir := regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
-			bra := regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
-			wal := regexp.MustCompile("(?i)wa(l){0,2}$")
-			sla := regexp.MustCompile("(?i)sl(a(b)?)?$")
-			var val int
+		filterfunc, hstr = EtypeFilter(str)
+	case adjoin.MatchString(str):
+		fs := adjoin.FindStringSubmatch(str)
+		if len(fs) >= 5 {
+			condition := fs[4]
+			var fil func(*st.Elem) bool
+			var hst string
 			switch {
-			case col.MatchString(fs[l-1]):
-				val = st.COLUMN
-			case gir.MatchString(fs[l-1]):
-				val = st.GIRDER
-			case bra.MatchString(fs[l-1]):
-				val = st.BRACE
-			case wal.MatchString(fs[l-1]):
-				val = st.WALL
-			case sla.MatchString(fs[l-1]):
-				val = st.SLAB
+			case sectnum.MatchString(condition):
+				fil, hst = SectFilter(condition)
+			case etypestr.MatchString(condition):
+				fil, hst = EtypeFilter(condition)
+			}
+			if fil == nil {
+				break
 			}
 			filterfunc = func(el *st.Elem) bool {
-				return el.Etype == val
+				for _, en := range el.Enod {
+					for _, sel := range stw.Frame.SearchElem(en) {
+						if sel.Num == el.Num {
+							continue
+						}
+						if fil(sel) {
+							return true
+						}
+					}
+				}
+				return false
 			}
-			hstr = fmt.Sprintf("Etype == %s", st.ETYPES[val])
-		} else {
-			break
+			hstr = fmt.Sprintf("ADJOIN TO %s", hst)
 		}
 	}
 	if filterfunc != nil {
