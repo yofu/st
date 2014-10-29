@@ -3348,6 +3348,9 @@ func (stw *Window) exmode(command string) error {
 					snums = snums[:i]
 					f = func(el *st.Elem, ind int) bool {
 						for _, sel := range el.Frame.SearchElem(el.Enod[ind]) {
+							if sel.Num == el.Num {
+								continue
+							}
 							for _, snum := range snums {
 								if sel.Sect.Num == snum {
 									return true
