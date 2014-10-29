@@ -1595,6 +1595,7 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 				}
 			case BUTTON_RIGHT:
 				if arg.Pressed == 0 {
+					stw.Snapshot()
 					stw.EscapeAll()
 				}
 			}
@@ -1609,6 +1610,16 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 			}
 		}
 	})
+	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+		key := iup.KeyState(arg.Key)
+		switch key.Key() {
+		default:
+			stw.DefaultKeyAny(arg)
+		case KEY_ESCAPE:
+			stw.Snapshot()
+			stw.EscapeAll()
+		}
+	})
 }
 
 // }}}
@@ -1619,7 +1630,6 @@ func matchproperty(stw *Window) {
 		el.Sect = stw.SelectElem[0].Sect
 		el.Etype = stw.SelectElem[0].Etype
 		stw.Redraw()
-		stw.Snapshot()
 	},
 		func(el *st.Elem) bool {
 			return true
@@ -1635,7 +1645,6 @@ func copybond(stw *Window) {
 			for i := 0; i < 12; i++ {
 				el.Bonds[i] = stw.SelectElem[0].Bonds[i]
 			}
-			stw.Snapshot()
 		}
 		stw.Redraw()
 	},
@@ -1863,11 +1872,11 @@ func trim(stw *Window) {
 			if err != nil {
 				stw.errormessage(err, INFO)
 			} else {
-				stw.Deselect()
+				// stw.Deselect()
 				stw.Redraw()
 			}
-			stw.Snapshot()
-			stw.EscapeAll()
+			// stw.Snapshot()
+			// stw.EscapeAll()
 		}
 		stw.Redraw()
 	},
@@ -1887,11 +1896,11 @@ func extend(stw *Window) {
 			if err != nil {
 				stw.errormessage(err, INFO)
 			} else {
-				stw.Deselect()
+				// stw.Deselect()
 				stw.Redraw()
 			}
-			stw.Snapshot()
-			stw.EscapeAll()
+			// stw.Snapshot()
+			// stw.EscapeAll()
 		}
 		stw.Redraw()
 	},
@@ -2963,7 +2972,6 @@ func editwrect(stw *Window) {
 				el.Wrect[1] = h
 			}
 		}
-		stw.Snapshot()
 	}
 	selected := false
 	if stw.SelectElem != nil {
