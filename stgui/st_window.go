@@ -21,6 +21,7 @@ import (
 	"github.com/visualfc/go-iup/cd"
 	"github.com/yofu/ps"
 	"github.com/yofu/st/stlib"
+	"gopkg.in/fsnotify.v1"
 	"log"
 )
 
@@ -39,6 +40,7 @@ var (
 	clineinput         string
 	logf               os.File
 	logger             *log.Logger
+	watcher            *fsnotify.Watcher
 )
 var (
 	gopath          = os.Getenv("GOPATH")
@@ -265,6 +267,7 @@ type Window struct { // {{{
 	Selected []*iup.Handle
 	Props    []*iup.Handle
 
+	InpModified bool
 	Changed bool
 
 	comhist     []string
@@ -1141,6 +1144,12 @@ func NewWindow(homedir string) *Window { // {{{
 		},
 		func(arg *iup.CommonGetFocus) {
 			if stw.Frame != nil {
+				if stw.InpModified {
+					stw.InpModified = false
+					if stw.Yn("RELOAD", fmt.Sprintf(".inpをリロードしますか？")) {
+						stw.Reload()
+					}
+				}
 				stw.Redraw()
 			}
 		},
@@ -1559,6 +1568,7 @@ func (stw *Window) OpenFile(fn string) error {
 			return err
 		}
 		stw.Frame = frame
+		stw.WatchFile(fn)
 	case ".dxf":
 		err = frame.ReadDxf(fn, []float64{0.0, 0.0, 0.0})
 		if err != nil {
@@ -1582,6 +1592,36 @@ func (stw *Window) OpenFile(fn string) error {
 	stw.Snapshot()
 	stw.Changed = false
 	return nil
+}
+
+func (stw *Window) WatchFile(fn string) {
+	if watcher != nil {
+		watcher.Close()
+	}
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		stw.errormessage(err, INFO)
+	}
+	fmt.Printf("start watching %s\n", fn)
+	go func() {
+		for {
+			select {
+			case event := <-watcher.Events:
+				if event.Op&fsnotify.Remove == fsnotify.Remove {
+					stw.InpModified = true
+					stw.WatchFile(fn)
+				} else if event.Op&fsnotify.Write == fsnotify.Write {
+					stw.InpModified = true
+				}
+			case err := <-watcher.Errors:
+				stw.errormessage(err, INFO)
+			}
+		}
+	}()
+	err = watcher.Add(fn)
+	if err != nil {
+		stw.errormessage(err, INFO)
+	}
 }
 
 // }}}
