@@ -539,18 +539,22 @@ func DrawSection(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 			rc := al.(*st.RCColumn)
 			vertices := rc.CShape.Vertices()
 			DrawClosedLine(cvs, origin, theta, show.DrawSize, vertices)
+			c := math.Cos(theta)
+			s := math.Sin(theta)
 			for _, reins := range rc.Reins {
 				d := math.Sqrt(reins.Area*4.0/math.Pi) * show.DrawSize
-				cvs.FCircle(origin[0] + reins.Position[0], origin[1] + reins.Position[1], d)
+				cvs.FCircle(origin[0] + (reins.Position[0]*c + reins.Position[1]*s) * show.DrawSize, origin[1] + (-reins.Position[0]*s + reins.Position[1]*c) * show.DrawSize, d)
 			}
 		case *st.RCGirder:
 			rg := al.(*st.RCGirder)
 			vertices := rg.CShape.Vertices()
 			DrawClosedLine(cvs, origin, theta, show.DrawSize, vertices)
+			c := math.Cos(theta)
+			s := math.Sin(theta)
 			for _, reins := range rg.Reins {
 				fmt.Println(reins.Position)
 				d := math.Sqrt(reins.Area*4.0/math.Pi) * show.DrawSize
-				cvs.FCircle(origin[0] + reins.Position[0], origin[1] + reins.Position[1], d)
+				cvs.FCircle(origin[0] + (reins.Position[0]*c + reins.Position[1]*s) * show.DrawSize, origin[1] + (-reins.Position[0]*s + reins.Position[1]*c) * show.DrawSize, d)
 			}
 		}
 	}
