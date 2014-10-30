@@ -548,6 +548,7 @@ func DrawSection(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 			vertices := rg.CShape.Vertices()
 			DrawClosedLine(cvs, origin, theta, show.DrawSize, vertices)
 			for _, reins := range rg.Reins {
+				fmt.Println(reins.Position)
 				d := math.Sqrt(reins.Area*4.0/math.Pi) * show.DrawSize
 				cvs.FCircle(origin[0] + reins.Position[0], origin[1] + reins.Position[1], d)
 			}

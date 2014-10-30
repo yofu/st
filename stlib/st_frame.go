@@ -1670,7 +1670,7 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 	default:
 		return nil
 	}
-	for _, words := range lis[2:] {
+	for _, words := range lis[1:] {
 		first := strings.ToUpper(words[0])
 		switch first {
 		case "REINS":
