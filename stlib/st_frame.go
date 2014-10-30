@@ -1609,6 +1609,8 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 	case "CPIPE":
 		size = 2
 		shape, err = NewCPIPE(lis[1][1 : 1+size])
+	default:
+		return nil
 	}
 	if err != nil {
 		return err
@@ -1626,6 +1628,8 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 		sr = NewSColumn(num, shape, material)
 	case "GIRDER":
 		sr = NewSGirder(num, shape, material)
+	default:
+		return nil
 	}
 	for _, words := range lis[2:] {
 		first := strings.ToUpper(words[0])
@@ -1663,6 +1667,8 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 		sr = NewRCColumn(num)
 	case "GIRDER":
 		sr = NewRCGirder(num)
+	default:
+		return nil
 	}
 	for _, words := range lis[2:] {
 		first := strings.ToUpper(words[0])

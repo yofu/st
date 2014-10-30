@@ -402,6 +402,16 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 					DrawWrect(elem.Parent, cvs, show)
 				}
 			}
+		} else {
+			if show.Draw[elem.Etype] {
+				DrawSection(elem, cvs, show)
+			} else {
+				if dr, ok := show.Draw[elem.Sect.Num]; ok {
+					if dr {
+						DrawSection(elem, cvs, show)
+					}
+				}
+			}
 		}
 	} else {
 		cvs.InteriorStyle(cd.CD_HATCH)
@@ -484,6 +494,65 @@ func DrawElemNormal(elem *st.Elem, canv *cd.Canvas, show *st.Show) {
 	angle := 10.0 * math.Pi / 180.0
 	canv.LineStyle(cd.CD_CONTINUOUS)
 	Arrow(canv, mp[0], mp[1], vec[0], vec[1], arrow, angle)
+}
+
+// SECT
+func DrawClosedLine(cvs *cd.Canvas, origin []float64, theta float64, scale float64, vertices [][]float64) {
+	c := math.Cos(theta)
+	s := math.Sin(theta)
+	cvs.Begin(cd.CD_CLOSED_LINES)
+	for _, v := range vertices {
+		if v == nil {
+			cvs.End()
+			cvs.Begin(cd.CD_CLOSED_LINES)
+			continue
+		}
+		cvs.FVertex(origin[0] + (v[0]*c + v[1]*s) * scale, origin[1] + (-v[0]*s + v[1]*c) * scale)
+	}
+	cvs.End()
+}
+
+func DrawSection(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
+	if al, ok := elem.Frame.Allows[elem.Sect.Num]; ok {
+		position := elem.MidPoint()
+		origin := elem.Frame.View.ProjectCoord(position)
+		var theta float64
+		if elem.Frame.View.Angle[0] == 90.0 {
+			theta = -elem.Cang + elem.Frame.View.Angle[1]*math.Pi/180.0
+		} else {
+			theta = -elem.Cang
+		}
+		switch al.(type) {
+		case *st.SColumn:
+			sh := al.(*st.SColumn).Shape
+			switch sh.(type) {
+			case st.HKYOU, st.HWEAK, st.RPIPE:
+				vertices := sh.Vertices()
+				DrawClosedLine(cvs, origin, theta, show.DrawSize, vertices)
+			case st.CPIPE:
+				d1 := sh.(st.CPIPE).D * show.DrawSize
+				d2 := (d1 - sh.(st.CPIPE).T * 2) * show.DrawSize
+				cvs.FCircle(origin[0], origin[1], d1)
+				cvs.FCircle(origin[0], origin[1], d2)
+			}
+		case *st.RCColumn:
+			rc := al.(*st.RCColumn)
+			vertices := rc.CShape.Vertices()
+			DrawClosedLine(cvs, origin, theta, show.DrawSize, vertices)
+			for _, reins := range rc.Reins {
+				d := math.Sqrt(reins.Area*4.0/math.Pi) * show.DrawSize
+				cvs.FCircle(origin[0] + reins.Position[0], origin[1] + reins.Position[1], d)
+			}
+		case *st.RCGirder:
+			rg := al.(*st.RCGirder)
+			vertices := rg.CShape.Vertices()
+			DrawClosedLine(cvs, origin, theta, show.DrawSize, vertices)
+			for _, reins := range rg.Reins {
+				d := math.Sqrt(reins.Area*4.0/math.Pi) * show.DrawSize
+				cvs.FCircle(origin[0] + reins.Position[0], origin[1] + reins.Position[1], d)
+			}
+		}
+	}
 }
 
 // KIJUN

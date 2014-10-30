@@ -89,6 +89,9 @@ type Show struct { // {{{
 	BondColor int
 	Phinge    bool
 
+	Draw     map[int]bool
+	DrawSize float64
+
 	Period string
 
 	Deformation bool
@@ -171,12 +174,15 @@ func NewShow(frame *Frame) *Show {
 		s.Sect[snum] = true
 	}
 	s.Etype = make(map[int]bool)
+	s.Draw = make(map[int]bool)
+	s.DrawSize = 1.0
 	for i, _ := range ETYPES {
 		if i == WBRACE || i == SBRACE {
 			s.Etype[i] = false
 		} else {
 			s.Etype[i] = true
 		}
+		s.Draw[i] = false
 	}
 
 	s.Xrange = []float64{-100.0, 1000.0}

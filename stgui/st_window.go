@@ -201,6 +201,12 @@ var (
 	axrn_max1   = regexp.MustCompile("([+-]?[-0-9.]+)>=?([XYZxyz]{1})")
 	axrn_max2   = regexp.MustCompile("([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
 	axrn_eq     = regexp.MustCompile("([XYZxyz]{1})=([+-]?[-0-9.]+)")
+	re_etype  = regexp.MustCompile("^ *et(y(pe?)?)? *={0,2} *([a-zA-Z]+)")
+	re_column = regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
+	re_girder = regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
+	re_brace  = regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
+	re_wall   = regexp.MustCompile("(?i)wa(l){0,2}$")
+	re_slab   = regexp.MustCompile("(?i)sl(a(b)?)?$")
 )
 
 // }}}
@@ -1732,6 +1738,8 @@ func (stw *Window) ReadFile(filename string) error {
 		err = stw.Frame.ReadResult(filename, st.UPDATE_RESULT)
 	case ".rat", ".rat2":
 		err = stw.Frame.ReadRat(filename)
+	case ".lst":
+		err = stw.Frame.ReadLst(filename)
 	case ".wgt":
 		err = stw.Frame.ReadWgt(filename)
 	case ".kjn":
@@ -2442,6 +2450,45 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 					return err
 				}
 				stw.Frame.Show.MassSize = val
+			}
+		}
+	case "DRAW":
+		if un {
+			for k := range stw.Frame.Show.Draw {
+				stw.Frame.Show.Draw[k] = false
+			}
+		} else {
+			if len(lis) < 2 {
+				return st.NotEnoughArgs("DRAW")
+			}
+			var val int
+			switch {
+			case re_column.MatchString(lis[1]):
+				val = st.COLUMN
+			case re_girder.MatchString(lis[1]):
+				val = st.GIRDER
+			case re_slab.MatchString(lis[1]):
+				val = st.BRACE
+			case re_wall.MatchString(lis[1]):
+				val = st.WALL
+			case re_slab.MatchString(lis[1]):
+				val = st.SLAB
+			default:
+				tmp, err := strconv.ParseInt(lis[1], 10, 64)
+				if err != nil {
+					return err
+				}
+				val = int(tmp)
+			}
+			if val != 0 {
+				stw.Frame.Show.Draw[val] = true
+			}
+			if len(lis) >= 3 {
+				tmp, err := strconv.ParseFloat(lis[2], 64)
+				if err != nil {
+					return err
+				}
+				stw.Frame.Show.DrawSize = tmp
 			}
 		}
 	case "ALIAS":
@@ -4439,29 +4486,23 @@ func SectFilter(str string) (func(*st.Elem) bool, string) {
 	return filterfunc, hstr
 }
 
-var etypestr = regexp.MustCompile("^ *et(y(pe?)?)? *={0,2} *([a-zA-Z]+)")
 func EtypeFilter(str string) (func(*st.Elem) bool, string) {
 	var filterfunc func(el *st.Elem) bool
 	var hstr string
-	fs := etypestr.FindStringSubmatch(str)
+	fs := re_etype.FindStringSubmatch(str)
 	l := len(fs)
 	if l >= 4 {
-		col := regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
-		gir := regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
-		bra := regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
-		wal := regexp.MustCompile("(?i)wa(l){0,2}$")
-		sla := regexp.MustCompile("(?i)sl(a(b)?)?$")
 		var val int
 		switch {
-		case col.MatchString(fs[l-1]):
+		case re_column.MatchString(fs[l-1]):
 			val = st.COLUMN
-		case gir.MatchString(fs[l-1]):
+		case re_girder.MatchString(fs[l-1]):
 			val = st.GIRDER
-		case bra.MatchString(fs[l-1]):
+		case re_slab.MatchString(fs[l-1]):
 			val = st.BRACE
-		case wal.MatchString(fs[l-1]):
+		case re_wall.MatchString(fs[l-1]):
 			val = st.WALL
-		case sla.MatchString(fs[l-1]):
+		case re_slab.MatchString(fs[l-1]):
 			val = st.SLAB
 		}
 		filterfunc = func(el *st.Elem) bool {
@@ -4521,7 +4562,7 @@ func (stw *Window) FilterSelectedElem(str string) {
 		hstr = fmt.Sprintf("Orthogonal to %sAXIS", tmp)
 	case sectnum.MatchString(str):
 		filterfunc, hstr = SectFilter(str)
-	case etypestr.MatchString(str):
+	case re_etype.MatchString(str):
 		filterfunc, hstr = EtypeFilter(str)
 	case adjoin.MatchString(str):
 		fs := adjoin.FindStringSubmatch(str)
@@ -4532,7 +4573,7 @@ func (stw *Window) FilterSelectedElem(str string) {
 			switch {
 			case sectnum.MatchString(condition):
 				fil, hst = SectFilter(condition)
-			case etypestr.MatchString(condition):
+			case re_etype.MatchString(condition):
 				fil, hst = EtypeFilter(condition)
 			}
 			if fil == nil {
@@ -5705,21 +5746,16 @@ func (stw *Window) PropertyDialog() {
 	stw.LinkProperty(2, func() {
 		word := stw.Props[2].GetAttribute("VALUE")
 		var val int
-		col := regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
-		gir := regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
-		bra := regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
-		wal := regexp.MustCompile("(?i)wa(l){0,2}$")
-		sla := regexp.MustCompile("(?i)sl(a(b)?)?$")
 		switch {
-		case col.MatchString(word):
+		case re_column.MatchString(word):
 			val = st.COLUMN
-		case gir.MatchString(word):
+		case re_girder.MatchString(word):
 			val = st.GIRDER
-		case bra.MatchString(word):
+		case re_brace.MatchString(word):
 			val = st.BRACE
-		case wal.MatchString(word):
+		case re_wall.MatchString(word):
 			val = st.WALL
-		case sla.MatchString(word):
+		case re_slab.MatchString(word):
 			val = st.SLAB
 		}
 		stw.Props[2].SetAttribute("VALUE", st.ETYPES[val])

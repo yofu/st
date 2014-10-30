@@ -136,6 +136,7 @@ type Shape interface {
 	Torsion() float64
 	Zx() float64
 	Zy() float64
+	Vertices() [][]float64
 }
 
 // S COLUMN// {{{
@@ -423,6 +424,10 @@ func (sc *SColumn) Rate(stress []float64, cond *Condition) ([]float64, error) {
 	return rate, nil
 }
 
+func (sc *SColumn) Vertices() [][]float64 {
+	return sc.Shape.Vertices()
+}
+
 // }}}
 
 // HKYOU// {{{
@@ -495,6 +500,27 @@ func (hk HKYOU) Zx() float64 {
 }
 func (hk HKYOU) Zy() float64 {
 	return hk.Iy() / hk.B * 2.0
+}
+
+func (hk HKYOU) Vertices() [][]float64 {
+	h := hk.H * 0.5
+	b := hk.B * 0.5
+	w := hk.Tw * 0.5
+	f := hk.Tf
+	vertices := make([][]float64, 12)
+	vertices[0] = []float64{-b, -h}
+	vertices[1] = []float64{b, -h}
+	vertices[2] = []float64{b, -(h-f)}
+	vertices[3] = []float64{w, -(h-f)}
+	vertices[4] = []float64{w, h-f}
+	vertices[5] = []float64{b, h-f}
+	vertices[6] = []float64{b, h}
+	vertices[7] = []float64{-b, h}
+	vertices[8] = []float64{-b, h-f}
+	vertices[9] = []float64{-w, h-f}
+	vertices[10] = []float64{-w, -(h-f)}
+	vertices[11] = []float64{-b, -(h-f)}
+	return vertices
 }
 
 // }}}
@@ -571,6 +597,27 @@ func (hw HWEAK) Zy() float64 {
 	return hw.Iy() / hw.H * 2.0
 }
 
+func (hw HWEAK) Vertices() [][]float64 {
+	h := hw.H * 0.5
+	b := hw.B * 0.5
+	w := hw.Tw * 0.5
+	f := hw.Tf
+	vertices := make([][]float64, 12)
+	vertices[0] = []float64{-h, -b}
+	vertices[1] = []float64{-h, b}
+	vertices[2] = []float64{-(h-f), b}
+	vertices[3] = []float64{-(h-f), w}
+	vertices[4] = []float64{h-f, w}
+	vertices[5] = []float64{h-f, b}
+	vertices[6] = []float64{h, b}
+	vertices[7] = []float64{h, -b}
+	vertices[8] = []float64{h-f, -b}
+	vertices[9] = []float64{h-f, -w}
+	vertices[10] = []float64{-(h-f), -w}
+	vertices[11] = []float64{-(h-f), -b}
+	return vertices
+}
+
 // }}}
 
 // RPIPE// {{{
@@ -645,6 +692,24 @@ func (rp RPIPE) Zy() float64 {
 	return rp.Iy() / rp.B * 2.0
 }
 
+func (rp RPIPE) Vertices() [][]float64 {
+	h := rp.H * 0.5
+	b := rp.B * 0.5
+	hw := h - rp.Tw
+	bf := b - rp.Tf
+	vertices := make([][]float64, 9)
+	vertices[0] = []float64{-b, -h}
+	vertices[1] = []float64{b, -h}
+	vertices[2] = []float64{b, h}
+	vertices[3] = []float64{-b, h}
+	vertices[4] = nil
+	vertices[5] = []float64{-bf, -hw}
+	vertices[6] = []float64{bf, -hw}
+	vertices[7] = []float64{bf, hw}
+	vertices[8] = []float64{-bf, hw}
+	return vertices
+}
+
 // }}}
 
 // CPIPE// {{{
@@ -705,6 +770,9 @@ func (cp CPIPE) Zy() float64 {
 	return cp.Iy() / cp.D * 2.0
 }
 
+func (cp CPIPE) Vertices() [][]float64 {
+	return nil
+}
 // }}}
 
 // S GIRDER// {{{
@@ -725,6 +793,7 @@ type CShape interface {
 	Bound(int) float64
 	Breadth(bool) float64
 	Height(bool) float64
+	Vertices() [][]float64
 }
 
 // TODO: implement CCircle
@@ -766,6 +835,15 @@ func (cr CRect) Height(strong bool) float64 {
 	} else {
 		return cr.Right - cr.Left
 	}
+}
+
+func (cr CRect) Vertices() [][]float64 {
+	vertices := make([][]float64, 4)
+	vertices[0] = []float64{cr.Left, cr.Lower}
+	vertices[1] = []float64{cr.Right, cr.Lower}
+	vertices[2] = []float64{cr.Right, cr.Upper}
+	vertices[3] = []float64{cr.Left, cr.Upper}
+	return vertices
 }
 
 // }}}
