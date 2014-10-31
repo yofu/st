@@ -2444,6 +2444,27 @@ func (frame *Frame) SearchBraceSect(f *Fig, t int) *Sect {
 // }}}
 
 // Modify Frame// {{{
+func (frame *Frame) DeleteNode(num int) {
+	delete(frame.Nodes, num)
+	if frame.Maxnnum == num {
+		frame.Maxnnum--
+	}
+}
+
+func (frame *Frame) DeleteElem(num int) {
+	delete(frame.Elems, num)
+	if frame.Maxenum == num {
+		frame.Maxenum--
+	}
+}
+
+func (frame *Frame) DeleteSect(num int) {
+	delete(frame.Sects, num)
+	if frame.Maxsnum == num {
+		frame.Maxsnum--
+	}
+}
+
 func (frame *Frame) NodeNoReference() []*Node {
 	nnums := make(map[int]int, len(frame.Nodes))
 	for _, n := range frame.Nodes {
@@ -2513,7 +2534,7 @@ func (frame *Frame) ReplaceNode(nmap map[*Node]*Node) {
 		}
 	}
 	for k := range nmap {
-		delete(frame.Nodes, k.Num)
+		frame.DeleteNode(k.Num)
 	}
 }
 
@@ -2660,8 +2681,8 @@ func (frame *Frame) Cat(e1, e2 *Elem, n *Node) error {
 	for j := 0; j < 6; j++ {
 		e1.Bonds[6*ind1+j] = e2.Bonds[6*ind1+j]
 	}
-	delete(frame.Nodes, n.Num)
-	delete(frame.Elems, e2.Num)
+	frame.DeleteNode(n.Num)
+	frame.DeleteElem(e2.Num)
 	return nil
 }
 
@@ -2732,7 +2753,7 @@ func (frame *Frame) JoinPlateElem(e1, e2 *Elem) error {
 								e1.Enod[num1] = e2.Enod[num2]
 							}
 						}
-						delete(frame.Elems, e2.Num)
+						frame.DeleteElem(e2.Num)
 						return nil
 					}
 				}
@@ -2769,7 +2790,7 @@ func (frame *Frame) JoinPlateElem(e1, e2 *Elem) error {
 								e1.Enod[num1] = e2.Enod[num2]
 							}
 						}
-						delete(frame.Elems, e2.Num)
+						frame.DeleteElem(e2.Num)
 						return nil
 					}
 				}

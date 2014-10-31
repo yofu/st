@@ -1078,7 +1078,7 @@ func moveelem(stw *Window) {
 			el.Move(x, y, z)
 		}
 		for _, n := range stw.Frame.NodeNoReference() {
-			delete(stw.Frame.Nodes, n.Num)
+			stw.Frame.DeleteNode(n.Num)
 		}
 		stw.Snapshot()
 		stw.Redraw()
@@ -2174,7 +2174,7 @@ func nodenoreference(stw *Window) {
 		stw.Redraw()
 		if stw.Yn("NODE NO REFERENCE", "不要な節点を削除しますか?") {
 			for _, n := range ns {
-				delete(stw.Frame.Nodes, n.Num)
+				stw.Frame.DeleteNode(n.Num)
 			}
 			stw.Snapshot()
 		}
@@ -2196,7 +2196,7 @@ func elemsamenode(stw *Window) {
 				if el.Lock {
 					continue
 				}
-				delete(stw.Frame.Elems, el.Num)
+				stw.Frame.DeleteElem(el.Num)
 			}
 			stw.Snapshot()
 		}
@@ -2281,7 +2281,7 @@ func elemduplication(stw *Window) {
 				if el.Lock {
 					continue
 				}
-				delete(stw.Frame.Elems, el.Num)
+				stw.Frame.DeleteElem(el.Num)
 			}
 			stw.Snapshot()
 			stw.EscapeAll()
@@ -2313,13 +2313,13 @@ func checkframe(stw *Window) {
 				if n.Lock {
 					continue
 				}
-				delete(stw.Frame.Nodes, n.Num)
+				stw.Frame.DeleteNode(n.Num)
 			}
 			for _, el := range els {
 				if el.Lock {
 					continue
 				}
-				delete(stw.Frame.Elems, el.Num)
+				stw.Frame.DeleteElem(el.Num)
 			}
 		} else {
 			eall = false
@@ -3504,7 +3504,7 @@ func erase(stw *Window) {
 	ns := stw.Frame.NodeNoReference()
 	if len(ns) != 0 {
 		for _, n := range ns {
-			delete(stw.Frame.Nodes, n.Num)
+			stw.Frame.DeleteNode(n.Num)
 		}
 	}
 	stw.EscapeAll()

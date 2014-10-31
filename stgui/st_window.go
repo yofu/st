@@ -1730,7 +1730,7 @@ func (stw *Window) ReadAll() {
 		for _, el := range stw.Frame.Elems {
 			switch el.Etype {
 			case st.WBRACE, st.SBRACE:
-				delete(stw.Frame.Elems, el.Num)
+				stw.Frame.DeleteElem(el.Num)
 			case st.WALL, st.SLAB:
 				el.Children = make([]*st.Elem, 2)
 			}
@@ -4396,7 +4396,7 @@ func (stw *Window) DeleteSelected() {
 	if stw.SelectElem != nil {
 		for _, el := range stw.SelectElem {
 			if el != nil && !el.Lock {
-				delete(stw.Frame.Elems, el.Num)
+				stw.Frame.DeleteElem(el.Num)
 			}
 		}
 	}
@@ -6182,7 +6182,7 @@ func (stw *Window) SectionDialog() {
 							continue deletesect
 						}
 					}
-					delete(stw.Frame.Sects, sects[i].Num)
+					stw.Frame.DeleteSect(sects[i].Num)
 					codes[i].SetAttribute("ACTIVE", "NO")
 					snames[i].SetAttribute("ACTIVE", "NO")
 					hides[i].SetAttribute("ACTIVE", "NO")
