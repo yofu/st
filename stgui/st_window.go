@@ -2932,7 +2932,8 @@ func (stw *Window) errormessage(err error, level uint) {
 	if err == nil {
 		return
 	}
-	otp := fmt.Sprintf("[%s]: %s", LOGLEVEL[level], err.Error())
+	_, file, line, _ := runtime.Caller(1)
+	otp := fmt.Sprintf("%s:%d: [%s]: %s", filepath.Base(file), line, LOGLEVEL[level], err.Error())
 	stw.addHistory(otp)
 	logger.Println(otp)
 }
@@ -7502,11 +7503,9 @@ func StartLogging() {
 	}
 	logger = log.New(logf, "", log.LstdFlags)
 	logger.Println("session started")
-	logger.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 }
 
 func StopLogging() {
-	logger.SetFlags(log.LstdFlags)
 	logger.Println("session closed")
 	logf.Close()
 }
