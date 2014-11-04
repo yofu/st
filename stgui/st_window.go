@@ -1707,8 +1707,7 @@ func (stw *Window) SaveFile(fn string) error {
 	if err != nil {
 		return err
 	}
-	savestr := fmt.Sprintf("SAVE: %s", fn)
-	stw.addHistory(savestr)
+	stw.errormessage(errors.New(fmt.Sprintf("SAVE: %s", fn)), INFO)
 	stw.Changed = false
 	return nil
 }
@@ -2932,8 +2931,13 @@ func (stw *Window) errormessage(err error, level uint) {
 	if err == nil {
 		return
 	}
-	_, file, line, _ := runtime.Caller(1)
-	otp := fmt.Sprintf("%s:%d: [%s]: %s", filepath.Base(file), line, LOGLEVEL[level], err.Error())
+	var otp string
+	if level >= ERROR {
+		_, file, line, _ := runtime.Caller(1)
+		otp = fmt.Sprintf("%s:%d: [%s]: %s", filepath.Base(file), line, LOGLEVEL[level], err.Error())
+	} else {
+		otp = fmt.Sprintf("[%s]: %s", LOGLEVEL[level], err.Error())
+	}
 	stw.addHistory(otp)
 	logger.Println(otp)
 }
