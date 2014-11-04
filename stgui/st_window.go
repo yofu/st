@@ -56,10 +56,12 @@ var (
 	ALTSELECTNODE   = true
 )
 
-const LOGFILE  = "_st.log"
+const LOGFILE = "_st.log"
+
 var (
 	LOGLEVEL = []string{"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 )
+
 const (
 	DEBUG = iota
 	INFO
@@ -204,12 +206,12 @@ var (
 	axrn_max1   = regexp.MustCompile("([+-]?[-0-9.]+)>=?([XYZxyz]{1})")
 	axrn_max2   = regexp.MustCompile("([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
 	axrn_eq     = regexp.MustCompile("([XYZxyz]{1})=([+-]?[-0-9.]+)")
-	re_etype  = regexp.MustCompile("^ *et(y(pe?)?)? *={0,2} *([a-zA-Z]+)")
-	re_column = regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
-	re_girder = regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
-	re_brace  = regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
-	re_wall   = regexp.MustCompile("(?i)wa(l){0,2}$")
-	re_slab   = regexp.MustCompile("(?i)sl(a(b)?)?$")
+	re_etype    = regexp.MustCompile("^ *et(y(pe?)?)? *={0,2} *([a-zA-Z]+)")
+	re_column   = regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
+	re_girder   = regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
+	re_brace    = regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
+	re_wall     = regexp.MustCompile("(?i)wa(l){0,2}$")
+	re_slab     = regexp.MustCompile("(?i)sl(a(b)?)?$")
 )
 
 // }}}
@@ -269,7 +271,7 @@ type Window struct { // {{{
 	Props    []*iup.Handle
 
 	InpModified bool
-	Changed bool
+	Changed     bool
 
 	comhist     []string
 	recentfiles []string
@@ -1608,7 +1610,6 @@ func (stw *Window) WatchFile(fn string) {
 		for {
 			select {
 			case event := <-watcher.Events:
-				fmt.Print("READ: ",read,"\n")
 				if read {
 					if passwatcher {
 						passwatcher = false
@@ -1620,10 +1621,6 @@ func (stw *Window) WatchFile(fn string) {
 							stw.InpModified = true
 						}
 					}
-					fmt.Println(event.String())
-					fmt.Println(passwatcher)
-					fmt.Print("PASS: ",passwatcher,"\n")
-					fmt.Print("MOD: ",stw.InpModified,"\n")
 				}
 				read = !read
 			case err := <-watcher.Errors:
@@ -2387,9 +2384,9 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				if start > end {
 					return errors.New("STRESS, invalid input")
 				}
-				sects = make([]int, int(end - start))
+				sects = make([]int, int(end-start))
 				nsect := 0
-				for i:=int(start); i<int(end); i++ {
+				for i := int(start); i < int(end); i++ {
 					if _, ok := stw.Frame.Sects[i]; ok {
 						sects[nsect] = i
 						nsect++
@@ -4513,6 +4510,7 @@ func (stw *Window) PasteClipboard() error {
 }
 
 var sectnum = regexp.MustCompile("(?i)^ *sect? *={0,2} *[[]?([0-9, ]+)[]]?")
+
 func SectFilter(str string) (func(*st.Elem) bool, string) {
 	var filterfunc func(el *st.Elem) bool
 	var hstr string
@@ -4579,7 +4577,7 @@ func (stw *Window) FilterSelectedElem(str string) {
 	}
 	parallel := regexp.MustCompile("(?i)^ *// *([xyz]{1})")
 	ortho := regexp.MustCompile("^ *TT *([xyzXYZ]{1})")
-	adjoin  := regexp.MustCompile("^ *ad(j(o(in?)?)?)? (.*)")
+	adjoin := regexp.MustCompile("^ *ad(j(o(in?)?)?)? (.*)")
 	var filterfunc func(el *st.Elem) bool
 	var hstr string
 	switch {
@@ -7501,7 +7499,7 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 }
 
 func StartLogging() {
-	logf, err := os.OpenFile(LOGFILE, os.O_WRONLY | os.O_APPEND | os.O_CREATE, 0666)
+	logf, err := os.OpenFile(LOGFILE, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
