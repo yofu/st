@@ -141,7 +141,7 @@ func ven14surface(stw *Window) {
 			}
 			w, err := os.Create(name)
 			if err != nil {
-				stw.errormessage(err, INFO)
+				stw.errormessage(err, ERROR)
 				return
 			}
 			result.WriteTo(w)

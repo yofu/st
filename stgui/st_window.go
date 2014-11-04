@@ -1422,7 +1422,7 @@ func (stw *Window) SearchInp() {
 	openfile := func(fn string) {
 		err := stw.OpenFile(fn)
 		if err != nil {
-			stw.errormessage(err, INFO)
+			stw.errormessage(err, ERROR)
 		}
 		if searchinginps_r {
 			brk <- true
@@ -1601,7 +1601,7 @@ func (stw *Window) WatchFile(fn string) {
 	}
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		stw.errormessage(err, INFO)
+		stw.errormessage(err, ERROR)
 	}
 	read := true
 	go func() {
@@ -1627,13 +1627,13 @@ func (stw *Window) WatchFile(fn string) {
 				}
 				read = !read
 			case err := <-watcher.Errors:
-				stw.errormessage(err, INFO)
+				stw.errormessage(err, ERROR)
 			}
 		}
 	}()
 	err = watcher.Add(fn)
 	if err != nil {
-		stw.errormessage(err, INFO)
+		stw.errormessage(err, ERROR)
 	}
 }
 
@@ -1732,7 +1732,7 @@ func (stw *Window) Read() {
 		if name, ok := iup.GetOpenFile("", ""); ok {
 			err := stw.ReadFile(name)
 			if err != nil {
-				stw.errormessage(err, INFO)
+				stw.errormessage(err, ERROR)
 			}
 		}
 	}
@@ -1762,7 +1762,7 @@ func (stw *Window) ReadAll() {
 						continue
 					}
 				}
-				stw.errormessage(err, INFO)
+				stw.errormessage(err, ERROR)
 			} else {
 				read[nread] = ext
 				nread++
@@ -1915,12 +1915,12 @@ func (stw *Window) Print() {
 	}
 	pcanv, err := SetPrinter(stw.Frame.Name)
 	if err != nil {
-		stw.errormessage(err, INFO)
+		stw.errormessage(err, ERROR)
 		return
 	}
 	v, factor, err := stw.FittoPrinter(pcanv)
 	if err != nil {
-		stw.errormessage(err, INFO)
+		stw.errormessage(err, ERROR)
 		return
 	}
 	switch stw.Frame.Show.ColorMode {
@@ -2954,7 +2954,7 @@ func (stw *Window) execAliasCommand(al string) {
 		if strings.HasPrefix(al, ":") {
 			err := stw.exmode(al)
 			if err != nil {
-				stw.errormessage(err, INFO)
+				stw.errormessage(err, ERROR)
 			}
 		} else {
 			stw.Open()
@@ -2978,12 +2978,12 @@ func (stw *Window) execAliasCommand(al string) {
 		case strings.HasPrefix(al, ":"):
 			err := stw.exmode(al)
 			if err != nil {
-				stw.errormessage(err, INFO)
+				stw.errormessage(err, ERROR)
 			}
 		case strings.HasPrefix(al, "'"):
 			err := stw.fig2mode(al)
 			if err != nil {
-				stw.errormessage(err, INFO)
+				stw.errormessage(err, ERROR)
 			}
 		case axrn_minmax.MatchString(alu):
 			var axis int
@@ -4709,7 +4709,7 @@ func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
 	xmin, xmax, ymin, ymax := stw.Bbox()
 	w, h, err := stw.PaperSize(canv)
 	if err != nil {
-		stw.errormessage(err, INFO)
+		stw.errormessage(err, ERROR)
 		return
 	}
 	scale := math.Min(w/(xmax-xmin), h/(ymax-ymin)) * 0.9
@@ -7467,7 +7467,7 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
 					err := stw.exmode(command)
 					if err != nil {
-						stw.errormessage(err, INFO)
+						stw.errormessage(err, ERROR)
 					}
 				}}
 			}
@@ -7484,7 +7484,7 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
 					err := stw.fig2mode(command)
 					if err != nil {
-						stw.errormessage(err, INFO)
+						stw.errormessage(err, ERROR)
 					}
 				}}
 			}
