@@ -41,6 +41,7 @@ var (
 	logf               os.File
 	logger             *log.Logger
 	watcher            *fsnotify.Watcher
+	passwatcher        bool
 )
 var (
 	gopath          = os.Getenv("GOPATH")
@@ -1602,17 +1603,29 @@ func (stw *Window) WatchFile(fn string) {
 	if err != nil {
 		stw.errormessage(err, INFO)
 	}
-	fmt.Printf("start watching %s\n", fn)
+	read := true
 	go func() {
 		for {
 			select {
 			case event := <-watcher.Events:
-				if event.Op&fsnotify.Remove == fsnotify.Remove {
-					stw.InpModified = true
-					stw.WatchFile(fn)
-				} else if event.Op&fsnotify.Write == fsnotify.Write {
-					stw.InpModified = true
+				fmt.Print("READ: ",read,"\n")
+				if read {
+					if passwatcher {
+						passwatcher = false
+					} else {
+						if event.Op&fsnotify.Remove == fsnotify.Remove {
+							stw.InpModified = true
+							stw.WatchFile(fn)
+						} else if event.Op&fsnotify.Write == fsnotify.Write {
+							stw.InpModified = true
+						}
+					}
+					fmt.Println(event.String())
+					fmt.Println(passwatcher)
+					fmt.Print("PASS: ",passwatcher,"\n")
+					fmt.Print("MOD: ",stw.InpModified,"\n")
 				}
+				read = !read
 			case err := <-watcher.Errors:
 				stw.errormessage(err, INFO)
 			}
@@ -1686,6 +1699,7 @@ func (stw *Window) SaveFile(fn string) error {
 		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * 0.9
 		stw.Frame.View.Dists[1] *= scale
 	}
+	passwatcher = true
 	err := stw.Frame.WriteInp(fn)
 	if v != nil {
 		stw.Frame.View = v
