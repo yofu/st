@@ -3526,6 +3526,7 @@ func (stw *Window) exmode(command string) error {
 		case "ht":
 			if narg == 1 {
 				axisrange(stw, 2, -100.0, 1000.0, false)
+				return nil
 			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":ht")
