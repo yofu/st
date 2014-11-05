@@ -8,7 +8,7 @@ import (
 
 const (
 	version  = "0.1.0"
-	modified = "LAST CHANGE:27-Oct-2014."
+	modified = "LAST CHANGE:05-Nov-2014."
 	HOME     = "C:/D/CDOCS/Hogan/Debug"
 	HOGAN    = "C:/D/CDOCS/Hogan/Debug"
 )
@@ -18,6 +18,8 @@ func main() {
 	iup.Open()
 	defer iup.Close()
 	sw := stgui.NewWindow(HOME)
+	defer sw.SaveCommandHistory()
+	defer stgui.StopLogging()
 	sw.Version = version
 	sw.Modified = modified
 	sw.Dlg.Show()
@@ -25,6 +27,4 @@ func main() {
 	// brk := make(chan bool)
 	// go stgui.UpdateInps("C:/D/CDOCS/Hogan", brk)
 	iup.MainLoop()
-	sw.SaveCommandHistory()
-	stgui.StopLogging()
 }
