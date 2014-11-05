@@ -21,6 +21,7 @@ import (
 	"github.com/visualfc/go-iup/cd"
 	"github.com/yofu/ps"
 	"github.com/yofu/st/stlib"
+	"github.com/yofu/abbrev"
 	"gopkg.in/fsnotify.v1"
 	"log"
 )
@@ -3105,6 +3106,644 @@ func (stw *Window) Interpolate(str string) string {
 	return str
 }
 
+// func (stw *Window) exmode(command string) error {
+// 	if len(command) == 1 {
+// 		return st.NotEnoughArgs("exmode")
+// 	}
+// 	if command == ":." {
+// 		return stw.exmode(stw.lastexcommand)
+// 	}
+// 	stw.lastexcommand = command
+// 	tmpargs := strings.Split(command, " ")
+// 	args := make([]string, len(tmpargs))
+// 	narg := 0
+// 	for i := 0; i < len(tmpargs); i++ {
+// 		if tmpargs[i] != "" {
+// 			args[narg] = tmpargs[i]
+// 			narg++
+// 		}
+// 	}
+// 	args = args[:narg]
+// 	var fn string
+// 	if narg < 2 {
+// 		fn = ""
+// 	} else {
+// 		fn = stw.Interpolate(args[1])
+// 		if filepath.Dir(fn) == "." {
+// 			fn = filepath.Join(stw.Cwd, fn)
+// 		}
+// 	}
+// 	bang := strings.HasSuffix(args[0], "!")
+// 	cname := strings.ToLower(strings.TrimSuffix(strings.TrimPrefix(args[0], ":"), "!"))
+// 	if stw.Frame != nil {
+// 		switch cname {
+// 		case "w", "sav":
+// 			if fn == "" {
+// 				stw.SaveFile(stw.Frame.Path)
+// 			} else {
+// 				if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
+// 					err := stw.SaveFile(fn)
+// 					if err != nil {
+// 						return err
+// 					}
+// 					if fn != stw.Frame.Path {
+// 						stw.Copylsts(fn)
+// 					}
+// 					if cname == "sav" {
+// 						stw.Rebase(fn)
+// 					}
+// 				}
+// 			}
+// 		case "inc":
+// 			if !bang && stw.Changed {
+// 				if stw.Yn("CHANGED", "変更を保存しますか") {
+// 					stw.SaveAS()
+// 				} else {
+// 					return errors.New("not saved")
+// 				}
+// 			}
+// 			var times int
+// 			if narg >= 2 {
+// 				val, err := strconv.ParseInt(args[1], 10, 64)
+// 				if err != nil {
+// 					return err
+// 				}
+// 				times = int(val)
+// 			} else {
+// 				times = 1
+// 			}
+// 			fn, err := st.Increment(stw.Frame.Path, "_", 1, times)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
+// 				err := stw.SaveFile(fn)
+// 				if err != nil {
+// 					return err
+// 				}
+// 				if fn != stw.Frame.Path {
+// 					stw.Copylsts(fn)
+// 				}
+// 				stw.Rebase(fn)
+// 				stw.EditReadme(filepath.Dir(fn))
+// 			}
+// 		case "e":
+// 			if !bang && stw.Changed {
+// 				if stw.Yn("CHANGED", "変更を保存しますか") {
+// 					stw.SaveAS()
+// 				} else {
+// 					return errors.New("not saved")
+// 				}
+// 			}
+// 			if fn != "" {
+// 				if !st.FileExists(fn) {
+// 					sfn, err := stw.SearchFile(args[1])
+// 					if err != nil {
+// 						return err
+// 					}
+// 					err = stw.OpenFile(sfn)
+// 					if err != nil {
+// 						return err
+// 					}
+// 					stw.Redraw()
+// 				} else {
+// 					err := stw.OpenFile(fn)
+// 					if err != nil {
+// 						return err
+// 					}
+// 					stw.Redraw()
+// 				}
+// 			} else {
+// 				stw.Reload()
+// 			}
+// 		case "q":
+// 			stw.Close(bang)
+// 		case "c":
+// 			checkframe(stw)
+// 			stw.addHistory("CHECKED")
+// 		case "#":
+// 			stw.ShowRecently()
+// 		case "vim":
+// 			stw.Vim(fn)
+// 		case "read":
+// 			err := stw.ReadFile(fn)
+// 			if err != nil {
+// 				return err
+// 			}
+// 		case "insert":
+// 			if narg > 2 && len(stw.SelectNode) >= 1 {
+// 				angle, err := strconv.ParseFloat(args[2], 64)
+// 				if err != nil {
+// 					return err
+// 				}
+// 				err = stw.Frame.ReadInp(fn, stw.SelectNode[0].Coord, angle*math.Pi/180.0)
+// 				stw.Snapshot()
+// 				if err != nil {
+// 					return err
+// 				}
+// 				stw.EscapeAll()
+// 			}
+// 		case "ps":
+// 			err := stw.AddPropAndSect(fn)
+// 			stw.Snapshot()
+// 			if err != nil {
+// 				return err
+// 			}
+// 		case "rb":
+// 			err := stw.ReadBucklingFile(fn)
+// 			if err != nil {
+// 				return err
+// 			}
+// 		case "rz":
+// 			err := stw.ReadZoubunFile(fn)
+// 			if err != nil {
+// 				return err
+// 			}
+// 		case "add":
+// 			err := stw.AddResult(fn, false)
+// 			if err != nil {
+// 				return err
+// 			}
+// 		case "adds":
+// 			err := stw.AddResult(fn, true)
+// 			if err != nil {
+// 				return err
+// 			}
+// 		case "wo":
+// 			if narg < 3 {
+// 				return st.NotEnoughArgs(":wo")
+// 			} else {
+// 				err := stw.Frame.WriteOutput(fn, args[2])
+// 				if err != nil {
+// 					return err
+// 				}
+// 			}
+// 		case "fig2":
+// 			err := stw.ReadFig2(fn)
+// 			if err != nil {
+// 				return err
+// 			}
+// 		case "fence":
+// 			if narg < 3 {
+// 				return st.NotEnoughArgs(":fence")
+// 			}
+// 			var axis int
+// 			switch strings.ToUpper(args[1]) {
+// 			default:
+// 				return errors.New(":fence unknown direction")
+// 			case "X":
+// 				axis = 0
+// 			case "Y":
+// 				axis = 1
+// 			case "Z":
+// 				axis = 2
+// 			}
+// 			val, err := strconv.ParseFloat(args[2], 64)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			stw.SelectElem = stw.Frame.Fence(axis, val, false)
+// 		case "node":
+// 			stw.Deselect()
+// 			f := func(n *st.Node) bool {
+// 				return true
+// 			}
+// 			if narg >= 2 {
+// 				condition := strings.ToUpper(strings.Join(args[1:], " "))
+// 				coordstr := regexp.MustCompile("^ *([XYZ]) *([<!=>]{0,2}) *([0-9.]+)")
+// 				switch {
+// 				case coordstr.MatchString(condition):
+// 					fs := coordstr.FindStringSubmatch(condition)
+// 					if len(fs) < 4 {
+// 						return errors.New(":node invalid input")
+// 					}
+// 					var ind int
+// 					switch fs[1] {
+// 					case "X":
+// 						ind = 0
+// 					case "Y":
+// 						ind = 1
+// 					case "Z":
+// 						ind = 2
+// 					}
+// 					val, err := strconv.ParseFloat(fs[3], 64)
+// 					if err != nil {
+// 						return err
+// 					}
+// 					switch fs[2] {
+// 					case "", "=", "==":
+// 						f = func(n *st.Node) bool {
+// 							if n.Coord[ind] == val {
+// 								return true
+// 							}
+// 							return false
+// 						}
+// 					case "!=":
+// 						f = func(n *st.Node) bool {
+// 							if n.Coord[ind] != val {
+// 								return true
+// 							}
+// 							return false
+// 						}
+// 					case ">":
+// 						f = func(n *st.Node) bool {
+// 							if n.Coord[ind] > val {
+// 								return true
+// 							}
+// 							return false
+// 						}
+// 					case ">=":
+// 						f = func(n *st.Node) bool {
+// 							if n.Coord[ind] >= val {
+// 								return true
+// 							}
+// 							return false
+// 						}
+// 					case "<":
+// 						f = func(n *st.Node) bool {
+// 							if n.Coord[ind] < val {
+// 								return true
+// 							}
+// 							return false
+// 						}
+// 					case "<=":
+// 						f = func(n *st.Node) bool {
+// 							if n.Coord[ind] <= val {
+// 								return true
+// 							}
+// 							return false
+// 						}
+// 					}
+// 				}
+// 				stw.SelectNode = make([]*st.Node, len(stw.Frame.Nodes))
+// 				num := 0
+// 				for _, n := range stw.Frame.Nodes {
+// 					if f(n) {
+// 						stw.SelectNode[num] = n
+// 						num++
+// 					}
+// 				}
+// 				stw.SelectNode = stw.SelectNode[:num]
+// 			}
+// 		case "pload":
+// 			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+// 				return errors.New(":pload no selected node")
+// 			}
+// 			if narg < 3 {
+// 				return st.NotEnoughArgs(":pload")
+// 			}
+// 			ind, err := strconv.ParseInt(args[1], 10, 64)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			val, err := strconv.ParseFloat(args[2], 64)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			for _, n := range stw.SelectNode {
+// 				if n == nil {
+// 					continue
+// 				}
+// 				n.Load[int(ind)] = val
+// 			}
+// 			stw.Snapshot()
+// 		case "bond":
+// 			if narg < 2 {
+// 				return st.NotEnoughArgs(":bond")
+// 			}
+// 			lis := make([]bool, 6)
+// 			switch strings.ToUpper(args[1]) {
+// 			case "PIN":
+// 				lis[4] = true
+// 				lis[5] = true
+// 			}
+// 			f := func(el *st.Elem, ind int) bool {
+// 				return true
+// 			}
+// 			if narg >= 3 {
+// 				condition := strings.ToUpper(strings.Join(args[2:], " "))
+// 				sectnum := regexp.MustCompile("^ *SECT? *={0,2} *[[]?([0-9, ]+)[]]?")
+// 				switch {
+// 				case condition == "UPPER":
+// 					f = func(el *st.Elem, ind int) bool {
+// 						return el.Enod[ind].Coord[2] > el.Enod[1-ind].Coord[2]
+// 					}
+// 				case condition == "LOWER":
+// 					f = func(el *st.Elem, ind int) bool {
+// 						return el.Enod[ind].Coord[2] < el.Enod[1-ind].Coord[2]
+// 					}
+// 				case sectnum.MatchString(condition):
+// 					tmpf, _ := SectFilter(condition)
+// 					f = func(el *st.Elem, ind int) bool {
+// 						for _, sel := range el.Frame.SearchElem(el.Enod[ind]) {
+// 							if sel.Num == el.Num {
+// 								continue
+// 							}
+// 							if tmpf(sel) {
+// 								return true
+// 							}
+// 						}
+// 						return false
+// 					}
+// 				}
+// 			}
+// 			for _, el := range stw.SelectElem {
+// 				if !el.IsLineElem() {
+// 					continue
+// 				}
+// 				for i := 0; i < 2; i++ {
+// 					if !f(el, i) {
+// 						continue
+// 					}
+// 					for j := 0; j < 6; j++ {
+// 						el.Bonds[6*i+j] = lis[j]
+// 					}
+// 				}
+// 			}
+// 			stw.Snapshot()
+// 		case "conf":
+// 			lis := make([]bool, 6)
+// 			if len(args[1]) >= 6 {
+// 				for i := 0; i < 6; i++ {
+// 					switch args[1][i] {
+// 					default:
+// 						lis[i] = false
+// 					case '0':
+// 						lis[i] = false
+// 					case '1':
+// 						lis[i] = true
+// 					case '_':
+// 						continue
+// 					case 't':
+// 						lis[i] = !lis[i]
+// 					}
+// 				}
+// 				setconf(stw, lis)
+// 			} else {
+// 				return st.NotEnoughArgs(":conf")
+// 			}
+// 		case "pile":
+// 			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+// 				return errors.New(":pile no selected node")
+// 			}
+// 			if narg < 2 {
+// 				for _, n := range stw.SelectNode {
+// 					n.Pile = nil
+// 				}
+// 				break
+// 			}
+// 			val, err := strconv.ParseInt(args[1], 10, 64)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			if p, ok := stw.Frame.Piles[int(val)]; ok {
+// 				for _, n := range stw.SelectNode {
+// 					n.Pile = p
+// 				}
+// 				stw.Snapshot()
+// 			} else {
+// 				return errors.New(fmt.Sprintf(":pile PILE %d doesn't exist", val))
+// 			}
+// 		case "an":
+// 			err := stw.SaveFile(stw.Frame.Path)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			var anarg string
+// 			if narg >= 3 {
+// 				anarg = args[2]
+// 			} else {
+// 				anarg = "-a"
+// 			}
+// 			err = stw.Analysis(filepath.ToSlash(stw.Frame.Path), anarg)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			stw.Reload()
+// 			stw.ReadAll()
+// 			stw.Redraw()
+// 		case "f":
+// 			stw.FilterSelectedElem(strings.Join(args[1:], " "))
+// 		case "ht":
+// 			if narg == 1 {
+// 				axisrange(stw, 2, -100.0, 1000.0, false)
+// 				return nil
+// 			}
+// 			if narg < 3 {
+// 				return st.NotEnoughArgs(":ht")
+// 			}
+// 			tmp, err := strconv.ParseInt(args[1], 10, 64)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			min := int(tmp)
+// 			tmp, err = strconv.ParseInt(args[2], 10, 64)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			max := int(tmp)
+// 			l := len(stw.Frame.Ai.Boundary)
+// 			if min < 0 || min > l || max < 0 || max > l {
+// 				return errors.New(":ht out of boundary")
+// 			}
+// 			axisrange(stw, 2, stw.Frame.Ai.Boundary[min], stw.Frame.Ai.Boundary[max], false)
+// 		case "ht+":
+// 			stw.NextFloor()
+// 		case "ht-":
+// 			stw.PrevFloor()
+// 		case "section+":
+// 			if narg < 2 {
+// 				return st.NotEnoughArgs(":section+")
+// 			}
+// 			tmp, err := strconv.ParseInt(args[1], 10, 64)
+// 			if err != nil {
+// 				return err
+// 			}
+// 			if tmp == 0 {
+// 				break
+// 			}
+// 			val := int(tmp)
+// 			for _, el := range stw.SelectElem {
+// 				if el == nil {
+// 					continue
+// 				}
+// 				if sec, ok := stw.Frame.Sects[el.Sect.Num+val]; ok {
+// 					el.Sect = sec
+// 				}
+// 			}
+// 			stw.Snapshot()
+// 		case "view":
+// 			switch strings.ToUpper(args[1]) {
+// 			case "TOP":
+// 				stw.SetAngle(90.0, -90.0)
+// 			case "FRONT":
+// 				stw.SetAngle(0.0, -90.0)
+// 			case "BACK":
+// 				stw.SetAngle(0.0, 90.0)
+// 			case "RIGHT":
+// 				stw.SetAngle(0.0, 0.0)
+// 			case "LEFT":
+// 				stw.SetAngle(0.0, 180.0)
+// 			}
+// 		case "fixr":
+// 			fixRotate = !fixRotate
+// 		case "fixm":
+// 			fixMove = !fixMove
+// 		case "noundo":
+// 			NOUNDO = true
+// 			stw.addHistory("undo/redo is off")
+// 		case "undo":
+// 			NOUNDO = false
+// 			stw.Snapshot()
+// 			stw.addHistory("undo/redo is on")
+// 		case "alt":
+// 			ALTSELECTNODE = !ALTSELECTNODE
+// 			if ALTSELECTNODE {
+// 				stw.addHistory("select node with Alt key")
+// 			} else {
+// 				stw.addHistory("select elem with Alt key")
+// 			}
+// 		case "printrange":
+// 			if narg < 2 {
+// 				showprintrange = !showprintrange
+// 				break
+// 			}
+// 			switch strings.ToUpper(args[1]) {
+// 			case "ON", "TRUE", "YES":
+// 				showprintrange = true
+// 				if narg >= 3 {
+// 					err := stw.exmode(fmt.Sprintf(":paper %d", strings.Join(args[2:], " ")))
+// 					if err != nil {
+// 						return err
+// 					}
+// 				}
+// 			case "OFF", "FALSE", "NO":
+// 				showprintrange = false
+// 			default:
+// 				err := stw.exmode(fmt.Sprintf(":paper %d", strings.Join(args[1:], " ")))
+// 				if err != nil {
+// 					return err
+// 				}
+// 				showprintrange = true
+// 			}
+// 		case "paper":
+// 			if narg < 2 {
+// 				return st.NotEnoughArgs(":paper")
+// 			}
+// 			tate := regexp.MustCompile("(?i)a([0-9]+) *t(a(t(e?)?)?)?")
+// 			yoko := regexp.MustCompile("(?i)a([0-9]+) *y(o(k(o?)?)?)?")
+// 			name := strings.Join(args[1:], " ")
+// 			switch {
+// 			case tate.MatchString(name):
+// 				fs := tate.FindStringSubmatch(name)
+// 				switch fs[1] {
+// 				case "3":
+// 					stw.papersize = A3_TATE
+// 				case "4":
+// 					stw.papersize = A4_TATE
+// 				}
+// 			case yoko.MatchString(name):
+// 				fs := yoko.FindStringSubmatch(name)
+// 				switch fs[1] {
+// 				case "3":
+// 					stw.papersize = A3_YOKO
+// 				case "4":
+// 					stw.papersize = A4_YOKO
+// 				}
+// 			default:
+// 				return errors.New(":paper unknown papersize")
+// 			}
+// 		case "color":
+// 			if narg < 2 {
+// 				stw.SetColorMode(st.ECOLOR_SECT)
+// 				break
+// 			}
+// 			switch strings.ToUpper(args[1]) {
+// 			case "N":
+// 				stw.SetColorMode(st.ECOLOR_N)
+// 			case "SECT":
+// 				stw.SetColorMode(st.ECOLOR_SECT)
+// 			case "RATE":
+// 				stw.SetColorMode(st.ECOLOR_RATE)
+// 			case "WHIHTE", "MONO", "MONOCHROME":
+// 				stw.SetColorMode(st.ECOLOR_WHITE)
+// 			case "STRONG":
+// 				stw.SetColorMode(st.ECOLOR_STRONG)
+// 			}
+// 		case "mono":
+// 			stw.SetColorMode(st.ECOLOR_WHITE)
+// 		case "postscript":
+// 			if fn == "" {
+// 				fn = filepath.Join(stw.Cwd, "test.ps")
+// 			}
+// 			var paper ps.Paper
+// 			switch stw.papersize {
+// 			default:
+// 				paper = ps.A4Portrait
+// 			case A4_TATE:
+// 				paper = ps.A4Portrait
+// 			case A4_YOKO:
+// 				paper = ps.A4Landscape
+// 			case A3_TATE:
+// 				paper = ps.A3Portrait
+// 			case A3_YOKO:
+// 				paper = ps.A3Landscape
+// 			}
+// 			v := stw.Frame.View.Copy()
+// 			stw.Frame.SetFocus(nil)
+// 			stw.Frame.CentringTo(paper)
+// 			err := stw.Frame.PrintPostScript(fn, paper)
+// 			stw.Frame.View = v
+// 			if err != nil {
+// 				return err
+// 			}
+// 		}
+// 	} else {
+// 		switch cname {
+// 		case "q":
+// 			stw.Close(bang)
+// 		case "e":
+// 			if fn != "" {
+// 				if !st.FileExists(fn) {
+// 					sfn, err := stw.SearchFile(args[1])
+// 					if err != nil {
+// 						return err
+// 					}
+// 					err = stw.OpenFile(sfn)
+// 					if err != nil {
+// 						return err
+// 					}
+// 					stw.Redraw()
+// 				} else {
+// 					err := stw.OpenFile(fn)
+// 					if err != nil {
+// 						return err
+// 					}
+// 					stw.Redraw()
+// 				}
+// 			} else {
+// 				stw.Open()
+// 			}
+// 		case "vim":
+// 			stw.Vim(fn)
+// 		case "noundo":
+// 			NOUNDO = true
+// 			stw.addHistory("undo/redo is off")
+// 		case "undo":
+// 			NOUNDO = false
+// 			stw.addHistory("undo/redo is on")
+// 		case "alt":
+// 			ALTSELECTNODE = !ALTSELECTNODE
+// 			if ALTSELECTNODE {
+// 				stw.addHistory("select node with Alt key")
+// 			} else {
+// 				stw.addHistory("select elem with Alt key")
+// 			}
+// 		}
+// 	}
+// 	return nil
+// }
+
 func (stw *Window) exmode(command string) error {
 	if len(command) == 1 {
 		return st.NotEnoughArgs("exmode")
@@ -3135,8 +3774,8 @@ func (stw *Window) exmode(command string) error {
 	bang := strings.HasSuffix(args[0], "!")
 	cname := strings.ToLower(strings.TrimSuffix(strings.TrimPrefix(args[0], ":"), "!"))
 	if stw.Frame != nil {
-		switch cname {
-		case "w", "sav":
+		switch {
+		case abbrev.MatchString("w/rite", cname), abbrev.MatchString("sav/e", cname):
 			if fn == "" {
 				stw.SaveFile(stw.Frame.Path)
 			} else {
@@ -3153,7 +3792,7 @@ func (stw *Window) exmode(command string) error {
 					}
 				}
 			}
-		case "inc":
+		case abbrev.MatchString("inc/rement", cname):
 			if !bang && stw.Changed {
 				if stw.Yn("CHANGED", "変更を保存しますか") {
 					stw.SaveAS()
@@ -3186,7 +3825,7 @@ func (stw *Window) exmode(command string) error {
 				stw.Rebase(fn)
 				stw.EditReadme(filepath.Dir(fn))
 			}
-		case "e":
+		case abbrev.MatchString("e/dit", cname):
 			if !bang && stw.Changed {
 				if stw.Yn("CHANGED", "変更を保存しますか") {
 					stw.SaveAS()
@@ -3215,21 +3854,21 @@ func (stw *Window) exmode(command string) error {
 			} else {
 				stw.Reload()
 			}
-		case "q":
+		case abbrev.MatchString("q/uit", cname):
 			stw.Close(bang)
-		case "c":
+		case abbrev.MatchString("c/heck", cname):
 			checkframe(stw)
 			stw.addHistory("CHECKED")
-		case "#":
+		case cname == "#":
 			stw.ShowRecently()
-		case "vim":
+		case abbrev.MatchString("vi/m", cname):
 			stw.Vim(fn)
-		case "read":
+		case abbrev.MatchString("re/ad", cname):
 			err := stw.ReadFile(fn)
 			if err != nil {
 				return err
 			}
-		case "insert":
+		case abbrev.MatchString("ins/ert", cname):
 			if narg > 2 && len(stw.SelectNode) >= 1 {
 				angle, err := strconv.ParseFloat(args[2], 64)
 				if err != nil {
@@ -3242,33 +3881,33 @@ func (stw *Window) exmode(command string) error {
 				}
 				stw.EscapeAll()
 			}
-		case "ps":
+		case cname == "ps":
 			err := stw.AddPropAndSect(fn)
 			stw.Snapshot()
 			if err != nil {
 				return err
 			}
-		case "rb":
+		case cname == "rb":
 			err := stw.ReadBucklingFile(fn)
 			if err != nil {
 				return err
 			}
-		case "rz":
+		case cname == "rz":
 			err := stw.ReadZoubunFile(fn)
 			if err != nil {
 				return err
 			}
-		case "add":
+		case cname == "add":
 			err := stw.AddResult(fn, false)
 			if err != nil {
 				return err
 			}
-		case "adds":
+		case cname == "adds":
 			err := stw.AddResult(fn, true)
 			if err != nil {
 				return err
 			}
-		case "wo":
+		case cname == "wo":
 			if narg < 3 {
 				return st.NotEnoughArgs(":wo")
 			} else {
@@ -3277,12 +3916,12 @@ func (stw *Window) exmode(command string) error {
 					return err
 				}
 			}
-		case "fig2":
+		case abbrev.MatchString("fi/g2", cname):
 			err := stw.ReadFig2(fn)
 			if err != nil {
 				return err
 			}
-		case "fence":
+		case abbrev.MatchString("fe/nce", cname):
 			if narg < 3 {
 				return st.NotEnoughArgs(":fence")
 			}
@@ -3302,7 +3941,7 @@ func (stw *Window) exmode(command string) error {
 				return err
 			}
 			stw.SelectElem = stw.Frame.Fence(axis, val, false)
-		case "node":
+		case abbrev.MatchString("no/de", cname):
 			stw.Deselect()
 			f := func(n *st.Node) bool {
 				return true
@@ -3384,7 +4023,7 @@ func (stw *Window) exmode(command string) error {
 				}
 				stw.SelectNode = stw.SelectNode[:num]
 			}
-		case "pload":
+		case abbrev.MatchString("pl/oad", cname):
 			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
 				return errors.New(":pload no selected node")
 			}
@@ -3406,7 +4045,7 @@ func (stw *Window) exmode(command string) error {
 				n.Load[int(ind)] = val
 			}
 			stw.Snapshot()
-		case "bond":
+		case abbrev.MatchString("bo/nd", cname):
 			if narg < 2 {
 				return st.NotEnoughArgs(":bond")
 			}
@@ -3460,7 +4099,7 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 			stw.Snapshot()
-		case "conf":
+		case abbrev.MatchString("co/nf", cname):
 			lis := make([]bool, 6)
 			if len(args[1]) >= 6 {
 				for i := 0; i < 6; i++ {
@@ -3481,7 +4120,7 @@ func (stw *Window) exmode(command string) error {
 			} else {
 				return st.NotEnoughArgs(":conf")
 			}
-		case "pile":
+		case abbrev.MatchString("pi/le", cname):
 			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
 				return errors.New(":pile no selected node")
 			}
@@ -3503,7 +4142,7 @@ func (stw *Window) exmode(command string) error {
 			} else {
 				return errors.New(fmt.Sprintf(":pile PILE %d doesn't exist", val))
 			}
-		case "an":
+		case abbrev.MatchString("an/alysis", cname):
 			err := stw.SaveFile(stw.Frame.Path)
 			if err != nil {
 				return err
@@ -3521,9 +4160,9 @@ func (stw *Window) exmode(command string) error {
 			stw.Reload()
 			stw.ReadAll()
 			stw.Redraw()
-		case "f":
+		case abbrev.MatchString("f/ilter", cname):
 			stw.FilterSelectedElem(strings.Join(args[1:], " "))
-		case "ht":
+		case cname == "ht":
 			if narg == 1 {
 				axisrange(stw, 2, -100.0, 1000.0, false)
 				return nil
@@ -3546,11 +4185,11 @@ func (stw *Window) exmode(command string) error {
 				return errors.New(":ht out of boundary")
 			}
 			axisrange(stw, 2, stw.Frame.Ai.Boundary[min], stw.Frame.Ai.Boundary[max], false)
-		case "ht+":
+		case cname == "ht+":
 			stw.NextFloor()
-		case "ht-":
+		case cname == "ht-":
 			stw.PrevFloor()
-		case "section+":
+		case cname == "section+":
 			if narg < 2 {
 				return st.NotEnoughArgs(":section+")
 			}
@@ -3571,7 +4210,7 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 			stw.Snapshot()
-		case "view":
+		case cname == "view":
 			switch strings.ToUpper(args[1]) {
 			case "TOP":
 				stw.SetAngle(90.0, -90.0)
@@ -3584,25 +4223,25 @@ func (stw *Window) exmode(command string) error {
 			case "LEFT":
 				stw.SetAngle(0.0, 180.0)
 			}
-		case "fixr":
+		case cname == "fixr":
 			fixRotate = !fixRotate
-		case "fixm":
+		case cname == "fixm":
 			fixMove = !fixMove
-		case "noundo":
+		case abbrev.MatchString("noun/do", cname):
 			NOUNDO = true
 			stw.addHistory("undo/redo is off")
-		case "undo":
+		case abbrev.MatchString("un/do", cname):
 			NOUNDO = false
 			stw.Snapshot()
 			stw.addHistory("undo/redo is on")
-		case "alt":
+		case cname == "alt":
 			ALTSELECTNODE = !ALTSELECTNODE
 			if ALTSELECTNODE {
 				stw.addHistory("select node with Alt key")
 			} else {
 				stw.addHistory("select elem with Alt key")
 			}
-		case "printrange":
+		case cname == "printrange":
 			if narg < 2 {
 				showprintrange = !showprintrange
 				break
@@ -3625,7 +4264,7 @@ func (stw *Window) exmode(command string) error {
 				}
 				showprintrange = true
 			}
-		case "paper":
+		case cname == "paper":
 			if narg < 2 {
 				return st.NotEnoughArgs(":paper")
 			}
@@ -3652,7 +4291,7 @@ func (stw *Window) exmode(command string) error {
 			default:
 				return errors.New(":paper unknown papersize")
 			}
-		case "color":
+		case abbrev.MatchString("col/or", cname):
 			if narg < 2 {
 				stw.SetColorMode(st.ECOLOR_SECT)
 				break
@@ -3669,9 +4308,9 @@ func (stw *Window) exmode(command string) error {
 			case "STRONG":
 				stw.SetColorMode(st.ECOLOR_STRONG)
 			}
-		case "mono":
+		case cname == "mono":
 			stw.SetColorMode(st.ECOLOR_WHITE)
-		case "postscript":
+		case cname == "postscript":
 			if fn == "" {
 				fn = filepath.Join(stw.Cwd, "test.ps")
 			}
@@ -3698,10 +4337,10 @@ func (stw *Window) exmode(command string) error {
 			}
 		}
 	} else {
-		switch cname {
-		case "q":
+		switch {
+		case abbrev.MatchString("q/uit", cname):
 			stw.Close(bang)
-		case "e":
+		case abbrev.MatchString("e/dit", cname):
 			if fn != "" {
 				if !st.FileExists(fn) {
 					sfn, err := stw.SearchFile(args[1])
@@ -3723,15 +4362,15 @@ func (stw *Window) exmode(command string) error {
 			} else {
 				stw.Open()
 			}
-		case "vim":
+		case abbrev.MatchString("vi/m", cname):
 			stw.Vim(fn)
-		case "noundo":
+		case abbrev.MatchString("noun/do", cname):
 			NOUNDO = true
 			stw.addHistory("undo/redo is off")
-		case "undo":
+		case abbrev.MatchString("un/do", cname):
 			NOUNDO = false
 			stw.addHistory("undo/redo is on")
-		case "alt":
+		case cname == "alt":
 			ALTSELECTNODE = !ALTSELECTNODE
 			if ALTSELECTNODE {
 				stw.addHistory("select node with Alt key")
