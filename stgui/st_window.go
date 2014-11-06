@@ -2191,7 +2191,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Frame.View.Angle[i] = val
 			stw.Labels[str].SetAttribute("VALUE", fmt.Sprintf("%f", stw.Frame.View.Angle[i]))
 		}
-	case abbrev.For("dis/ts", key):
+	case abbrev.For("dist/s", key):
 		if len(lis) < 3 {
 			return st.NotEnoughArgs("DISTS")
 		}
