@@ -3775,7 +3775,7 @@ func (stw *Window) exmode(command string) error {
 	cname := strings.ToLower(strings.TrimSuffix(strings.TrimPrefix(args[0], ":"), "!"))
 	if stw.Frame != nil {
 		switch {
-		case abbrev.MatchString("w/rite", cname), abbrev.MatchString("sav/e", cname):
+		case abbrev.For("w/rite", cname), abbrev.For("sav/e", cname):
 			if fn == "" {
 				stw.SaveFile(stw.Frame.Path)
 			} else {
@@ -3792,7 +3792,7 @@ func (stw *Window) exmode(command string) error {
 					}
 				}
 			}
-		case abbrev.MatchString("inc/rement", cname):
+		case abbrev.For("inc/rement", cname):
 			if !bang && stw.Changed {
 				if stw.Yn("CHANGED", "変更を保存しますか") {
 					stw.SaveAS()
@@ -3825,7 +3825,7 @@ func (stw *Window) exmode(command string) error {
 				stw.Rebase(fn)
 				stw.EditReadme(filepath.Dir(fn))
 			}
-		case abbrev.MatchString("e/dit", cname):
+		case abbrev.For("e/dit", cname):
 			if !bang && stw.Changed {
 				if stw.Yn("CHANGED", "変更を保存しますか") {
 					stw.SaveAS()
@@ -3854,21 +3854,21 @@ func (stw *Window) exmode(command string) error {
 			} else {
 				stw.Reload()
 			}
-		case abbrev.MatchString("q/uit", cname):
+		case abbrev.For("q/uit", cname):
 			stw.Close(bang)
-		case abbrev.MatchString("c/heck", cname):
+		case abbrev.For("c/heck", cname):
 			checkframe(stw)
 			stw.addHistory("CHECKED")
 		case cname == "#":
 			stw.ShowRecently()
-		case abbrev.MatchString("vi/m", cname):
+		case abbrev.For("vi/m", cname):
 			stw.Vim(fn)
-		case abbrev.MatchString("re/ad", cname):
+		case abbrev.For("re/ad", cname):
 			err := stw.ReadFile(fn)
 			if err != nil {
 				return err
 			}
-		case abbrev.MatchString("ins/ert", cname):
+		case abbrev.For("ins/ert", cname):
 			if narg > 2 && len(stw.SelectNode) >= 1 {
 				angle, err := strconv.ParseFloat(args[2], 64)
 				if err != nil {
@@ -3881,18 +3881,18 @@ func (stw *Window) exmode(command string) error {
 				}
 				stw.EscapeAll()
 			}
-		case cname == "ps":
+		case abbrev.For("p/rop/s/ect", cname):
 			err := stw.AddPropAndSect(fn)
 			stw.Snapshot()
 			if err != nil {
 				return err
 			}
-		case cname == "rb":
+		case abbrev.For("r/ead/b/uckling", cname):
 			err := stw.ReadBucklingFile(fn)
 			if err != nil {
 				return err
 			}
-		case cname == "rz":
+		case abbrev.For("r/ead/z/oubun", cname):
 			err := stw.ReadZoubunFile(fn)
 			if err != nil {
 				return err
@@ -3907,7 +3907,7 @@ func (stw *Window) exmode(command string) error {
 			if err != nil {
 				return err
 			}
-		case cname == "wo":
+		case abbrev.For("w/rite/o/utput", cname):
 			if narg < 3 {
 				return st.NotEnoughArgs(":wo")
 			} else {
@@ -3916,12 +3916,12 @@ func (stw *Window) exmode(command string) error {
 					return err
 				}
 			}
-		case abbrev.MatchString("fi/g2", cname):
+		case abbrev.For("fi/g2", cname):
 			err := stw.ReadFig2(fn)
 			if err != nil {
 				return err
 			}
-		case abbrev.MatchString("fe/nce", cname):
+		case abbrev.For("fe/nce", cname):
 			if narg < 3 {
 				return st.NotEnoughArgs(":fence")
 			}
@@ -3941,7 +3941,7 @@ func (stw *Window) exmode(command string) error {
 				return err
 			}
 			stw.SelectElem = stw.Frame.Fence(axis, val, false)
-		case abbrev.MatchString("no/de", cname):
+		case abbrev.For("no/de", cname):
 			stw.Deselect()
 			f := func(n *st.Node) bool {
 				return true
@@ -4023,7 +4023,7 @@ func (stw *Window) exmode(command string) error {
 				}
 				stw.SelectNode = stw.SelectNode[:num]
 			}
-		case abbrev.MatchString("pl/oad", cname):
+		case abbrev.For("pl/oad", cname):
 			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
 				return errors.New(":pload no selected node")
 			}
@@ -4045,7 +4045,7 @@ func (stw *Window) exmode(command string) error {
 				n.Load[int(ind)] = val
 			}
 			stw.Snapshot()
-		case abbrev.MatchString("bo/nd", cname):
+		case abbrev.For("bo/nd", cname):
 			if narg < 2 {
 				return st.NotEnoughArgs(":bond")
 			}
@@ -4099,7 +4099,7 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 			stw.Snapshot()
-		case abbrev.MatchString("co/nf", cname):
+		case abbrev.For("co/nf", cname):
 			lis := make([]bool, 6)
 			if len(args[1]) >= 6 {
 				for i := 0; i < 6; i++ {
@@ -4120,7 +4120,7 @@ func (stw *Window) exmode(command string) error {
 			} else {
 				return st.NotEnoughArgs(":conf")
 			}
-		case abbrev.MatchString("pi/le", cname):
+		case abbrev.For("pi/le", cname):
 			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
 				return errors.New(":pile no selected node")
 			}
@@ -4142,7 +4142,7 @@ func (stw *Window) exmode(command string) error {
 			} else {
 				return errors.New(fmt.Sprintf(":pile PILE %d doesn't exist", val))
 			}
-		case abbrev.MatchString("an/alysis", cname):
+		case abbrev.For("an/alysis", cname):
 			err := stw.SaveFile(stw.Frame.Path)
 			if err != nil {
 				return err
@@ -4160,9 +4160,9 @@ func (stw *Window) exmode(command string) error {
 			stw.Reload()
 			stw.ReadAll()
 			stw.Redraw()
-		case abbrev.MatchString("f/ilter", cname):
+		case abbrev.For("f/ilter", cname):
 			stw.FilterSelectedElem(strings.Join(args[1:], " "))
-		case cname == "ht":
+		case abbrev.For("h/eigh/t/", cname):
 			if narg == 1 {
 				axisrange(stw, 2, -100.0, 1000.0, false)
 				return nil
@@ -4185,11 +4185,11 @@ func (stw *Window) exmode(command string) error {
 				return errors.New(":ht out of boundary")
 			}
 			axisrange(stw, 2, stw.Frame.Ai.Boundary[min], stw.Frame.Ai.Boundary[max], false)
-		case cname == "ht+":
+		case abbrev.For("h/eigh/t+/", cname):
 			stw.NextFloor()
-		case cname == "ht-":
+		case abbrev.For("h/eigh/t-/", cname):
 			stw.PrevFloor()
-		case cname == "section+":
+		case abbrev.For("sec/tion/+/", cname):
 			if narg < 2 {
 				return st.NotEnoughArgs(":section+")
 			}
@@ -4223,14 +4223,14 @@ func (stw *Window) exmode(command string) error {
 			case "LEFT":
 				stw.SetAngle(0.0, 180.0)
 			}
-		case cname == "fixr":
+		case abbrev.For("fixr/otate", cname):
 			fixRotate = !fixRotate
-		case cname == "fixm":
+		case abbrev.For("fixm/ove", cname):
 			fixMove = !fixMove
-		case abbrev.MatchString("noun/do", cname):
+		case abbrev.For("noun/do", cname):
 			NOUNDO = true
 			stw.addHistory("undo/redo is off")
-		case abbrev.MatchString("un/do", cname):
+		case abbrev.For("un/do", cname):
 			NOUNDO = false
 			stw.Snapshot()
 			stw.addHistory("undo/redo is on")
@@ -4291,7 +4291,7 @@ func (stw *Window) exmode(command string) error {
 			default:
 				return errors.New(":paper unknown papersize")
 			}
-		case abbrev.MatchString("col/or", cname):
+		case abbrev.For("col/or", cname):
 			if narg < 2 {
 				stw.SetColorMode(st.ECOLOR_SECT)
 				break
@@ -4338,9 +4338,9 @@ func (stw *Window) exmode(command string) error {
 		}
 	} else {
 		switch {
-		case abbrev.MatchString("q/uit", cname):
+		case abbrev.For("q/uit", cname):
 			stw.Close(bang)
-		case abbrev.MatchString("e/dit", cname):
+		case abbrev.For("e/dit", cname):
 			if fn != "" {
 				if !st.FileExists(fn) {
 					sfn, err := stw.SearchFile(args[1])
@@ -4362,12 +4362,12 @@ func (stw *Window) exmode(command string) error {
 			} else {
 				stw.Open()
 			}
-		case abbrev.MatchString("vi/m", cname):
+		case abbrev.For("vi/m", cname):
 			stw.Vim(fn)
-		case abbrev.MatchString("noun/do", cname):
+		case abbrev.For("noun/do", cname):
 			NOUNDO = true
 			stw.addHistory("undo/redo is off")
-		case abbrev.MatchString("un/do", cname):
+		case abbrev.For("un/do", cname):
 			NOUNDO = false
 			stw.addHistory("undo/redo is on")
 		case cname == "alt":
