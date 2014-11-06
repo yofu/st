@@ -3421,14 +3421,14 @@ func (stw *Window) exmode(command string) error {
 				return true
 			}
 			if narg >= 3 {
-				condition := strings.ToUpper(strings.Join(args[2:], " "))
-				sectnum := regexp.MustCompile("^ *SECT? *={0,2} *[[]?([0-9, ]+)[]]?")
+				condition := strings.ToLower(strings.Join(args[2:], " "))
+				sectnum := regexp.MustCompile("^ *sect? *={0,2} *[[]?([0-9, ]+)[]]?")
 				switch {
-				case condition == "UPPER":
+				case abbrev.For("up/per", condition):
 					f = func(el *st.Elem, ind int) bool {
 						return el.Enod[ind].Coord[2] > el.Enod[1-ind].Coord[2]
 					}
-				case condition == "LOWER":
+				case abbrev.For("lo/wer", condition):
 					f = func(el *st.Elem, ind int) bool {
 						return el.Enod[ind].Coord[2] < el.Enod[1-ind].Coord[2]
 					}
