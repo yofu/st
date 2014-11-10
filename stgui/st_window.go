@@ -2322,6 +2322,119 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Frame.Show.Kijun = true
 			stw.Labels["KIJUN"].SetAttribute("FGCOLOR", labelFGColor)
 		}
+	case abbrev.For("mea/sure", key):
+		if un {
+			stw.Frame.Show.Measure = false
+		} else {
+			stw.Frame.Show.Measure = true
+			if len(lis) < 4 {
+				return st.NotEnoughArgs("MEASURE")
+			}
+			if abbrev.For("k/ijun", strings.ToLower(lis[1])) { // measure kijun x1 x2 offset dotsize rotate overwrite
+				if k1, ok := stw.Frame.Kijuns[lis[2]]; ok {
+					if k2, ok := stw.Frame.Kijuns[lis[3]]; ok {
+						m := stw.Frame.AddMeasure(k1.Start, k2.Start, k1.Direction())
+						m.Text = fmt.Sprintf("%.0f", k1.Distance(k2)*1000)
+						if len(lis) < 5 {
+							return nil
+						}
+						val, err := strconv.ParseFloat(lis[4], 64)
+						if err != nil {
+							return err
+						}
+						m.Gap = 2*val
+						m.Extension = -val
+						if len(lis) < 6 {
+							return nil
+						}
+						val, err = strconv.ParseFloat(lis[5], 64)
+						if err != nil {
+							return err
+						}
+						m.ArrowSize = val
+						if len(lis) < 7 {
+							return nil
+						}
+						val, err = strconv.ParseFloat(lis[6], 64)
+						if err != nil {
+							return err
+						}
+						m.Rotate = val
+						if len(lis) < 8 {
+							return nil
+						}
+						m.Text = lis[7]
+					} else {
+						return errors.New(fmt.Sprintf("no kijun named %s", lis[3]))
+					}
+				} else {
+					return errors.New(fmt.Sprintf("no kijun named %s", lis[2]))
+				}
+			} else { // measure nnum1 nnum2 direction offset dotsize rotate overwrite
+				nnum, err := strconv.ParseInt(lis[1], 10, 64)
+				if err != nil {
+					return err
+				}
+				if n1, ok := stw.Frame.Nodes[int(nnum)]; ok {
+					nnum, err := strconv.ParseInt(lis[2], 10, 64)
+					if err != nil {
+						return err
+					}
+					if n2, ok := stw.Frame.Nodes[int(nnum)]; ok {
+						var u,v []float64
+						switch strings.ToUpper(lis[3]) {
+						case "X":
+							u = st.XAXIS
+							v = st.YAXIS
+						case "Y":
+							u = st.YAXIS
+							v = st.XAXIS
+						case "Z":
+							u = st.ZAXIS
+						case "V":
+							v = st.Direction(n1, n2, true)
+							u = st.Cross(v, st.ZAXIS)
+						default:
+							return errors.New("unknown direction")
+						}
+						m := stw.Frame.AddMeasure(n1.Coord, n2.Coord, u)
+						m.Text = fmt.Sprintf("%.0f", st.VectorDistance(n1, n2, v)*1000)
+						if len(lis) < 5 {
+							return nil
+						}
+						val, err := strconv.ParseFloat(lis[4], 64)
+						if err != nil {
+							return err
+						}
+						m.Extension = val
+						if len(lis) < 6 {
+							return nil
+						}
+						val, err = strconv.ParseFloat(lis[5], 64)
+						if err != nil {
+							return err
+						}
+						m.ArrowSize = val
+						if len(lis) < 7 {
+							return nil
+						}
+						val, err = strconv.ParseFloat(lis[6], 64)
+						if err != nil {
+							return err
+						}
+						m.Rotate = val
+						if len(lis) < 8 {
+							return nil
+						}
+						m.Text = lis[7]
+					} else {
+						return errors.New(fmt.Sprintf("no node %d", nnum))
+					}
+				} else {
+					return errors.New(fmt.Sprintf("no node %d", nnum))
+				}
+			}
+		}
 	case abbrev.For("el/em/c/ode", key):
 		if un {
 			stw.ElemCaptionOff("EC_NUM")
@@ -3857,6 +3970,19 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 				DrawKijun(k, canv, stw.Frame.Show)
 			}
 			canv.TextAlignment(DefaultTextAlignment)
+		}
+		if stw.Frame.Show.Measure {
+			canv.TextAlignment(cd.CD_SOUTH)
+			canv.InteriorStyle(cd.CD_SOLID)
+			canv.Foreground(cd.CD_GRAY)
+			for _, m := range stw.Frame.Measures {
+				if m.Hide {
+					continue
+				}
+				DrawMeasure(m, canv, stw.Frame.Show)
+			}
+			canv.TextAlignment(DefaultTextAlignment)
+			canv.InteriorStyle(cd.CD_HATCH)
 		}
 		canv.Foreground(cd.CD_WHITE)
 		for _, n := range stw.Frame.Nodes {

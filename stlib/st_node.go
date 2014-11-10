@@ -418,6 +418,15 @@ func Distance(n1, n2 *Node) float64 {
 	return math.Sqrt(sum)
 }
 
+func VectorDistance(n1, n2 *Node, vec []float64) float64 {
+	fmt.Println(vec)
+	rtn := 0.0
+	for i:=0; i<3; i++ {
+		rtn += (n2.Coord[i] - n1.Coord[i])*vec[i]
+	}
+	return rtn
+}
+
 func Direction(n1, n2 *Node, normalize bool) []float64 {
 	vec := make([]float64, 3)
 	var l float64

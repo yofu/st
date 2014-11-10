@@ -577,6 +577,50 @@ func DrawKijun(k *st.Kijun, cvs *cd.Canvas, show *st.Show) {
 	}
 }
 
+// MEASURE
+func DrawMeasure(m *st.Measure, cvs *cd.Canvas, show *st.Show) {
+	n1 := make([]float64, 3)
+	n2 := make([]float64, 3)
+	n3 := make([]float64, 3)
+	n4 := make([]float64, 3)
+	for i:=0; i<3; i++ {
+		d1 := m.Direction[i] * m.Gap
+		d2 := m.Direction[i] * (m.Gap + m.Extension)
+		n1[i] = m.Start[i] + d1
+		n2[i] = m.Start[i] + d2
+		n3[i] = m.End[i] + d2
+		n4[i] = m.End[i] + d1
+	}
+	pn1 := m.Frame.View.ProjectCoord(n1)
+	pn2 := m.Frame.View.ProjectCoord(n2)
+	pn3 := m.Frame.View.ProjectCoord(n3)
+	pn4 := m.Frame.View.ProjectCoord(n4)
+	cvs.FLine(pn1[0], pn1[1], pn2[0], pn2[1])
+	cvs.FLine(pn2[0], pn2[1], pn3[0], pn3[1])
+	cvs.FLine(pn3[0], pn3[1], pn4[0], pn4[1])
+	cvs.FFilledCircle(pn2[0], pn2[1], m.ArrowSize)
+	cvs.FFilledCircle(pn3[0], pn3[1], m.ArrowSize)
+	xpos := 0.5*(pn2[0] + pn3[0])
+	ypos := 0.5*(pn2[1] + pn3[1])
+	pd := make([]float64, 2)
+	pd[0] = pn3[0] - pn2[0]
+	pd[1] = pn3[1] - pn2[1]
+	l := math.Sqrt(pd[0] * pd[0] + pd[1] * pd[1])
+	if l != 0.0 {
+		pd[0] /= l
+		pd[1] /= l
+	}
+	deg := math.Atan2(pd[1], pd[0]) * 180.0 / math.Pi + m.Rotate
+	if deg > 90.0 {
+		deg -= 180.0
+	} else if deg < -90.0 {
+		deg += 180.0
+	}
+	cvs.TextOrientation(deg)
+	cvs.FText(xpos, ypos, m.Text)
+	cvs.TextOrientation(0.0)
+}
+
 // TEXT
 func DrawText(t *TextBox, cvs *cd.Canvas) {
 	s := cvs.SaveState()

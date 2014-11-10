@@ -112,6 +112,8 @@ type Show struct { // {{{
 	Kijun     bool
 	KijunSize float64
 
+	Measure   bool
+
 	Select bool
 
 	Sect  map[int]bool
@@ -166,6 +168,8 @@ func NewShow(frame *Frame) *Show {
 
 	s.Kijun = false
 	s.KijunSize = 12.0
+
+	s.Measure = true
 
 	s.Select = false
 

@@ -77,3 +77,14 @@ func (k *Kijun) PDirection(normalize bool) []float64 {
 	}
 	return vec
 }
+
+func (k *Kijun) Distance(k2 *Kijun) float64 {
+	d := k.Direction()
+	rtn := 0.0
+	for i:=0; i<3; i++ {
+		val := k2.Start[i] - k.Start[i]
+		val2 := val*val
+		rtn += val2 - val2*d[i]*d[i]
+	}
+	return math.Sqrt(rtn)
+}

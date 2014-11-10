@@ -79,7 +79,8 @@ type Frame struct {
 
 	Eigenvalue map[int]float64
 
-	Kijuns map[string]*Kijun
+	Kijuns   map[string]*Kijun
+	Measures []*Measure
 
 	Maxenum int
 	Maxnnum int
@@ -108,6 +109,7 @@ func NewFrame() *Frame {
 	f.Piles = make(map[int]*Pile)
 	f.Eigenvalue = make(map[int]float64)
 	f.Kijuns = make(map[string]*Kijun)
+	f.Measures = make([]*Measure, 0)
 	f.View = NewView()
 	f.Maxnnum = 100
 	f.Maxenum = 1000
@@ -2214,6 +2216,12 @@ func (frame *Frame) AddPlateElem(enum int, ns []*Node, sect *Sect, etype int) (e
 	return elem
 }
 
+func (frame *Frame) AddMeasure(start, end, direction []float64) *Measure {
+	m := NewMeasure(start, end, direction)
+	m.Frame = frame
+	frame.Measures = append(frame.Measures, m)
+	return m
+}
 // }}}
 
 // Search// {{{
