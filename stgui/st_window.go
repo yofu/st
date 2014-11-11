@@ -3960,7 +3960,11 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		}
 		if stw.Frame.Show.Kijun {
 			canv.TextAlignment(cd.CD_CENTER)
-			canv.Foreground(cd.CD_GRAY)
+			if color == st.ECOLOR_BLACK {
+				canv.Foreground(cd.CD_BLACK)
+			} else {
+				canv.Foreground(cd.CD_GRAY)
+			}
 			for _, k := range stw.Frame.Kijuns {
 				if k.Hide {
 					continue
@@ -3974,7 +3978,11 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		if stw.Frame.Show.Measure {
 			canv.TextAlignment(cd.CD_SOUTH)
 			canv.InteriorStyle(cd.CD_SOLID)
-			canv.Foreground(cd.CD_GRAY)
+			if color == st.ECOLOR_BLACK {
+				canv.Foreground(cd.CD_BLACK)
+			} else {
+				canv.Foreground(cd.CD_GRAY)
+			}
 			for _, m := range stw.Frame.Measures {
 				if m.Hide {
 					continue
