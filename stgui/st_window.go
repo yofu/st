@@ -2331,8 +2331,8 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				return st.NotEnoughArgs("MEASURE")
 			}
 			if abbrev.For("k/ijun", strings.ToLower(lis[1])) { // measure kijun x1 x2 offset dotsize rotate overwrite
-				if k1, ok := stw.Frame.Kijuns[lis[2]]; ok {
-					if k2, ok := stw.Frame.Kijuns[lis[3]]; ok {
+				if k1, ok := stw.Frame.Kijuns[strings.ToLower(lis[2])]; ok {
+					if k2, ok := stw.Frame.Kijuns[strings.ToLower(lis[3])]; ok {
 						m := stw.Frame.AddMeasure(k1.Start, k2.Start, k1.Direction())
 						m.Text = fmt.Sprintf("%.0f", k1.Distance(k2)*1000)
 						if len(lis) < 5 {
