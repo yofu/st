@@ -2358,7 +2358,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 						if err != nil {
 							return err
 						}
-						m.Gap = 2*val
+						m.Gap = 2 * val
 						m.Extension = -val
 						if len(lis) < 6 {
 							return nil
@@ -2397,7 +2397,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 						return err
 					}
 					if n2, ok := stw.Frame.Nodes[int(nnum)]; ok {
-						var u,v []float64
+						var u, v []float64
 						switch strings.ToUpper(lis[3]) {
 						case "X":
 							u = st.XAXIS
