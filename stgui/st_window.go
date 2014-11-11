@@ -3672,7 +3672,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			max := int(tmp)
 			l := len(stw.Frame.Ai.Boundary)
-			if min < 0 || min > l || max < 0 || max > l {
+			if min < 0 || min >= l || max < 0 || max >= l {
 				return errors.New(":ht out of boundary")
 			}
 			axisrange(stw, 2, stw.Frame.Ai.Boundary[min], stw.Frame.Ai.Boundary[max], false)
