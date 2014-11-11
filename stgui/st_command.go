@@ -21,6 +21,7 @@ var (
 	Commands = make(map[string]*Command, 0)
 
 	DISTS               = &Command{"DISTANCE", "DISTS", "measure distance", dists}
+	MEASURE             = &Command{"MEASURE", "MEASURE", "create dimension line", measure}
 	TOGGLEBOND          = &Command{"TOGGLE", "TOGGLE BOND", "toggle bond of selected elem", togglebond}
 	COPYBOND            = &Command{"COPY", "COPY BOND", "copy bond of selected elem", copybond}
 	BONDPIN             = &Command{"PIN", "BOND PIN", "set bond of selected elem to pin-pin", bondpin}
@@ -105,6 +106,7 @@ var (
 
 func init() {
 	Commands["DISTS"] = DISTS
+	Commands["MEASURE"] = MEASURE
 	Commands["TOGGLEBOND"] = TOGGLEBOND
 	Commands["COPYBOND"] = COPYBOND
 	Commands["BONDPIN"] = BONDPIN
@@ -578,6 +580,57 @@ func dists(stw *Window) {
 }
 
 // }}}
+
+func measure(stw *Window) {
+	get2nodes(stw, func(n *st.Node) {
+		stw.SelectNode[1] = n
+		stw.addHistory("引き出し方向を指定[X, Y, Z, V]")
+		createmeasure := func(direction string) {
+			var u,v []float64
+			switch direction {
+			case "X":
+				u = st.XAXIS
+				v = st.YAXIS
+			case "Y":
+				u = st.YAXIS
+				v = st.XAXIS
+			case "Z":
+				u = st.ZAXIS
+			case "V":
+				v = st.Direction(stw.SelectNode[0], stw.SelectNode[1], true)
+				u = st.Cross(v, st.ZAXIS)
+			default:
+				stw.errormessage(errors.New("unknown direction"), ERROR)
+				stw.EscapeAll()
+				return
+			}
+			m := stw.Frame.AddMeasure(stw.SelectNode[0].Coord, stw.SelectNode[1].Coord, u)
+			m.Text = fmt.Sprintf("%.0f", st.VectorDistance(stw.SelectNode[0], stw.SelectNode[1], v)*1000)
+			stw.EscapeAll()
+		}
+		stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+			key := iup.KeyState(arg.Key)
+			switch key.Key() {
+			default:
+				stw.DefaultKeyAny(arg)
+			case KEY_ESCAPE:
+				stw.EscapeAll()
+			case 'X','x':
+				createmeasure("X")
+			case 'Y','y':
+				createmeasure("Y")
+			case 'Z','z':
+				createmeasure("Z")
+			case 'V','v':
+				createmeasure("V")
+			}
+		})
+	},
+	func() {
+		stw.SelectNode = make([]*st.Node, 2)
+		stw.Redraw()
+	})
+}
 
 // ADDLINEELEM// {{{
 func addlineelem(stw *Window) {
