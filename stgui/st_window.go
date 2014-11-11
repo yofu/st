@@ -1884,6 +1884,9 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 	stw.Frame.Show.BondSize *= factor
 	stw.Frame.Show.KijunSize = 150
 	stw.Frame.Show.MassSize *= factor
+	for _, m := range stw.Frame.Measures {
+		m.ArrowSize = 75.0
+	}
 	for i := 0; i < 2; i++ {
 		stw.PageTitle.Position[i] *= factor
 		stw.Title.Position[i] *= factor
@@ -1950,6 +1953,9 @@ func (stw *Window) Print() {
 	stw.Frame.Show.BondSize /= factor
 	stw.Frame.Show.KijunSize = 12.0
 	stw.Frame.Show.MassSize /= factor
+	for _, m := range stw.Frame.Measures {
+		m.ArrowSize = 6.0
+	}
 	stw.Frame.View = v
 	for i := 0; i < 2; i++ {
 		stw.PageTitle.Position[i] /= factor
@@ -4910,6 +4916,23 @@ func (stw *Window) PickNode(x, y int) (rtn *st.Node) {
 		if dist < mindist {
 			mindist = dist
 			rtn = v
+		}
+	}
+	if stw.Frame.Show.Kijun {
+		for _, k := range stw.Frame.Kijuns {
+			if k.Hide {
+				continue
+			}
+			for _, n := range [][]float64{k.Start, k.End} {
+				pc := stw.Frame.View.ProjectCoord(n)
+				dist := math.Hypot(float64(x)-pc[0], float64(y)-pc[1])
+				if dist < mindist {
+					mindist = dist
+					rtn = st.NewNode()
+					rtn.Coord = n
+					rtn.Pcoord = pc
+				}
+			}
 		}
 	}
 	return
