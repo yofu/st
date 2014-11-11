@@ -123,6 +123,8 @@ var (
 	defaultBondColor        = cd.CD_GRAY
 	defaultConfColor        = cd.CD_GRAY
 	defaultMomentColor      = cd.CD_DARK_MAGENTA
+	defaultKijunColor       = cd.CD_GRAY
+	defaultMeasureColor     = cd.CD_GRAY
 	defaultStressTextColor  = cd.CD_GRAY
 	defaultYieldedTextColor = cd.CD_YELLOW
 	defaultBrittleTextColor = cd.CD_RED
@@ -130,6 +132,8 @@ var (
 	BondColor               = defaultBondColor
 	ConfColor               = defaultConfColor
 	MomentColor             = defaultMomentColor
+	KijunColor              = defaultKijunColor
+	MeasureColor            = defaultMeasureColor
 	StressTextColor         = defaultStressTextColor
 	YieldedTextColor        = defaultYieldedTextColor
 	BrittleTextColor        = defaultBrittleTextColor
@@ -1921,18 +1925,20 @@ func (stw *Window) Print() {
 		stw.errormessage(err, ERROR)
 		return
 	}
+	PlateEdgeColor = cd.CD_BLACK
+	BondColor = cd.CD_BLACK
+	ConfColor = cd.CD_BLACK
+	MomentColor = cd.CD_BLACK
+	KijunColor = cd.CD_BLACK
+	MeasureColor = cd.CD_BLACK
+	StressTextColor = cd.CD_BLACK
+	YieldedTextColor = cd.CD_BLACK
+	BrittleTextColor = cd.CD_BLACK
 	switch stw.Frame.Show.ColorMode {
 	default:
 		stw.DrawFrame(pcanv, stw.Frame.Show.ColorMode, false)
 	case st.ECOLOR_WHITE:
 		stw.Frame.Show.ColorMode = st.ECOLOR_BLACK
-		PlateEdgeColor = cd.CD_BLACK
-		BondColor = cd.CD_BLACK
-		ConfColor = cd.CD_BLACK
-		MomentColor = cd.CD_BLACK
-		StressTextColor = cd.CD_BLACK
-		YieldedTextColor = cd.CD_BLACK
-		BrittleTextColor = cd.CD_BLACK
 		stw.DrawFrame(pcanv, st.ECOLOR_BLACK, false)
 		stw.Frame.Show.ColorMode = st.ECOLOR_WHITE
 	}
@@ -1959,6 +1965,8 @@ func (stw *Window) Print() {
 	BondColor = defaultBondColor
 	ConfColor = defaultConfColor
 	MomentColor = defaultMomentColor
+	KijunColor = defaultKijunColor
+	MeasureColor = defaultMeasureColor
 	StressTextColor = defaultStressTextColor
 	YieldedTextColor = defaultYieldedTextColor
 	BrittleTextColor = defaultBrittleTextColor
@@ -3962,11 +3970,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		}
 		if stw.Frame.Show.Kijun {
 			canv.TextAlignment(cd.CD_CENTER)
-			if color == st.ECOLOR_BLACK {
-				canv.Foreground(cd.CD_BLACK)
-			} else {
-				canv.Foreground(cd.CD_GRAY)
-			}
+			canv.Foreground(KijunColor)
 			for _, k := range stw.Frame.Kijuns {
 				if k.Hide {
 					continue
@@ -3980,11 +3984,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		if stw.Frame.Show.Measure {
 			canv.TextAlignment(cd.CD_SOUTH)
 			canv.InteriorStyle(cd.CD_SOLID)
-			if color == st.ECOLOR_BLACK {
-				canv.Foreground(cd.CD_BLACK)
-			} else {
-				canv.Foreground(cd.CD_GRAY)
-			}
+			canv.Foreground(MeasureColor)
 			for _, m := range stw.Frame.Measures {
 				if m.Hide {
 					continue
