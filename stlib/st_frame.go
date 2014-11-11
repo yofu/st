@@ -1804,11 +1804,7 @@ func (frame *Frame) ReadKjn(filename string) error {
 			return nil
 		}
 		var err error
-		if _, ok := frame.Kijuns[strings.ToLower(words[0])]; ok {
-			fmt.Printf("KIJUN %s already exists\n", words[0])
-		} else {
-			err = frame.ParseKjn(words)
-		}
+		err = frame.ParseKjn(words)
 		if err != nil {
 			return err
 		}
