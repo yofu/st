@@ -1878,6 +1878,7 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 	stw.Frame.View.Center[1] = float64(ph)*0.5 + factor*(stw.Frame.View.Center[1]-0.5*float64(h0))
 	stw.Frame.Show.ConfSize *= factor
 	stw.Frame.Show.BondSize *= factor
+	stw.Frame.Show.KijunSize *= factor
 	stw.Frame.Show.MassSize *= factor
 	for i := 0; i < 2; i++ {
 		stw.PageTitle.Position[i] *= factor
@@ -1941,6 +1942,7 @@ func (stw *Window) Print() {
 	stw.CanvasSize = []float64{float64(w), float64(h)}
 	stw.Frame.Show.ConfSize /= factor
 	stw.Frame.Show.BondSize /= factor
+	stw.Frame.Show.KijunSize /= factor
 	stw.Frame.Show.MassSize /= factor
 	stw.Frame.View = v
 	for i := 0; i < 2; i++ {
