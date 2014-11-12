@@ -2379,7 +2379,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 						if len(lis) < 8 {
 							return nil
 						}
-						m.Text = lis[7]
+						m.Text = st.Convert(lis[7])
 					} else {
 						return errors.New(fmt.Sprintf("no kijun named %s", lis[3]))
 					}
@@ -2442,7 +2442,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 						if len(lis) < 8 {
 							return nil
 						}
-						m.Text = lis[7]
+						m.Text = st.Convert(lis[7])
 					} else {
 						return errors.New(fmt.Sprintf("no node %d", nnum))
 					}
@@ -2698,7 +2698,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				if len(lis) < 3 {
 					sectionaliases[int(val)] = ""
 				} else {
-					sectionaliases[int(val)] = lis[2]
+					sectionaliases[int(val)] = st.Convert(lis[2])
 				}
 			}
 		}
@@ -2788,7 +2788,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.PageTitle.Value = make([]string, 0)
 			stw.PageTitle.Hide = true
 		} else {
-			stw.PageTitle.Value = append(stw.PageTitle.Value, strings.Join(lis[1:], " "))
+			stw.PageTitle.Value = append(stw.PageTitle.Value, st.Convert(strings.Join(lis[1:], " ")))
 			stw.PageTitle.Hide = false
 		}
 	case abbrev.For("tit/le", key):
@@ -2796,7 +2796,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Title.Value = make([]string, 0)
 			stw.Title.Hide = true
 		} else {
-			stw.Title.Value = append(stw.Title.Value, strings.Join(lis[1:], " "))
+			stw.Title.Value = append(stw.Title.Value, st.Convert(strings.Join(lis[1:], " ")))
 			stw.Title.Hide = false
 		}
 	case key == "text":
@@ -2804,7 +2804,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Text.Value = make([]string, 0)
 			stw.Text.Hide = true
 		} else {
-			stw.Text.Value = append(stw.Text.Value, strings.Join(lis[1:], " "))
+			stw.Text.Value = append(stw.Text.Value, st.Convert(strings.Join(lis[1:], " ")))
 			stw.Text.Hide = false
 		}
 	case abbrev.For("pos/ition", key):
