@@ -1413,11 +1413,11 @@ func (elem *Elem) DivideAtElem(eps float64) ([]*Elem, error) {
 divatelem:
 	for i := 0; i < 2; i++ {
 		ns1 = elem.OnNode(i, eps)
-		if len(ns1) == 2 {
+		if len(ns1) == 0 {
 			continue
 		}
 		ns2 = elem.OnNode(i+2, eps)
-		if len(ns2) == 2 {
+		if len(ns2) == 0 {
 			continue
 		}
 		for p := 0; p < len(ns1); p++ {
