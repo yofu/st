@@ -37,6 +37,8 @@ var (
 	DoubleClickCommand = []string{"TOGGLEBOND", "EDITPLATEELEM"}
 	comhistpos         int
 	undopos            int
+	completepos        int
+	completes          []string
 	prevkey            int
 	clineinput         string
 	logf               os.File
@@ -815,7 +817,15 @@ func NewWindow(homedir string) *Window { // {{{
 				iup.SetFocus(stw.canv)
 			case KEY_TAB:
 				tmp := stw.cline.GetAttribute("VALUE")
-				stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
+				if prevkey == KEY_TAB {
+					if key.IsShift() {
+						stw.cline.SetAttribute("VALUE", PrevComplete(tmp))
+					} else {
+						stw.cline.SetAttribute("VALUE", NextComplete(tmp))
+					}
+				} else {
+					stw.cline.SetAttribute("VALUE", stw.Complete(tmp))
+				}
 				stw.cline.SetAttribute("CARETPOS", "100")
 				arg.Return = int32(iup.IGNORE)
 			case KEY_UPARROW:
@@ -3204,7 +3214,7 @@ func (stw *Window) execAliasCommand(al string) {
 	return
 }
 
-func (stw *Window) Interpolate(str string) string {
+func (stw *Window) Complete(str string) string {
 	envval := regexp.MustCompile("[$]([a-zA-Z]+)")
 	if envval.MatchString(str) {
 		efs := envval.FindStringSubmatch(str)
@@ -3232,7 +3242,47 @@ func (stw *Window) Interpolate(str string) string {
 			}
 		}
 	}
+	lis := strings.Split(str, " ")
+	path := lis[len(lis)-1]
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(stw.Cwd, path)
+	}
+	var err error
+	tmp, err := filepath.Glob(path + "*")
+	if err != nil || len(tmp) == 0 {
+		completes = make([]string, 0)
+	} else {
+		completes = make([]string, len(tmp))
+		for i:=0; i<len(tmp); i++ {
+			lis[len(lis)-1] = tmp[i]
+			completes[i] = strings.Join(lis, " ")
+		}
+		completepos = 0
+		str = completes[0]
+	}
 	return str
+}
+
+func PrevComplete(str string) string {
+	if completes == nil || len(completes) == 0 {
+		return str
+	}
+	completepos--
+	if completepos < 0 {
+		completepos = len(completes) - 1
+	}
+	return completes[completepos]
+}
+
+func NextComplete(str string) string {
+	if completes == nil || len(completes) == 0 {
+		return str
+	}
+	completepos++
+	if completepos >= len(completes) {
+		completepos = 0
+	}
+	return completes[completepos]
 }
 
 func (stw *Window) exmode(command string) error {
@@ -3257,7 +3307,7 @@ func (stw *Window) exmode(command string) error {
 	if narg < 2 {
 		fn = ""
 	} else {
-		fn = stw.Interpolate(args[1])
+		fn = stw.Complete(args[1])
 		if filepath.Dir(fn) == "." {
 			fn = filepath.Join(stw.Cwd, fn)
 		}
@@ -5778,7 +5828,7 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 			stw.NextSideBarTab()
 		} else {
 			tmp := stw.cline.GetAttribute("VALUE")
-			stw.cline.SetAttribute("VALUE", stw.Interpolate(tmp))
+			stw.cline.SetAttribute("VALUE", stw.Complete(tmp))
 			stw.cline.SetAttribute("CARETPOS", "100")
 		}
 	case KEY_UPARROW:
