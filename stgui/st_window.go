@@ -4358,6 +4358,9 @@ func (stw *Window) DrawConvexHull() {
 	stopccw := false
 	ncw := 0
 	nccw := 0
+	num := 0
+	dcw := 0.0
+	dccw := 0.0
 	for {
 		cwminangle := 10000.0
 		ccwminangle := 10000.0
@@ -4378,37 +4381,60 @@ func (stw *Window) DrawConvexHull() {
 			var cwangle, ccwangle float64
 			var cw bool
 			if !stopcw {
-				if ncw == 0 {
-					cwangle, cw = st.ClockWise(cworigin, cwnodes[ncw].Pcoord, n.Pcoord)
-				} else {
-					cwangle, cw = st.ClockWise(cwnodes[ncw-1].Pcoord, cwnodes[ncw].Pcoord, n.Pcoord)
-				}
-				cwangle = math.Abs(cwangle)
-				// if n.Num == 727 {
-				//     fmt.Printf("CWANGLE = %.3f\n", cwangle)
-				// }
-				if cw && cwangle < cwminangle {
-					tmpcw = n
-					cwminangle = cwangle
+				if st.Distance(hstart, n) > dcw {
+					if ncw == 0 {
+						cwangle, cw = st.ClockWise(cworigin, cwnodes[ncw].Pcoord, n.Pcoord)
+						cw = true
+					} else {
+						cwangle, cw = st.ClockWise(cwnodes[ncw-1].Pcoord, cwnodes[ncw].Pcoord, n.Pcoord)
+					}
+					cwangle = math.Abs(cwangle)
+					// if n.Num == 727 {
+					//     fmt.Printf("CWANGLE = %.3f\n", cwangle)
+					// }
+					if cw {
+						if cwangle == cwminangle {
+							if st.Distance(cwnodes[ncw], n) > st.Distance(cwnodes[ncw], tmpcw) {
+								tmpcw = n
+								cwminangle = cwangle
+								dcw = st.Distance(hstart, n)
+							}
+						} else if cwangle < cwminangle {
+							tmpcw = n
+							cwminangle = cwangle
+							dcw = st.Distance(hstart, n)
+						}
+					}
 				}
 			}
 			if !stopccw {
-				if nccw == 0 {
-					ccwangle, cw = st.ClockWise(ccworigin, ccwnodes[nccw].Pcoord, n.Pcoord)
-				} else {
-					ccwangle, cw = st.ClockWise(ccwnodes[nccw-1].Pcoord, ccwnodes[nccw].Pcoord, n.Pcoord)
-				}
-				ccwangle = math.Abs(ccwangle)
-				// if n.Num == 727 {
-				//     fmt.Printf("CCWANGLE = %.3f\n", ccwangle)
-				// }
-				if !cw && ccwangle < ccwminangle {
-					tmpccw = n
-					ccwminangle = ccwangle
+				if st.Distance(hstart, n) > dccw {
+					if nccw == 0 {
+						ccwangle, cw = st.ClockWise(ccworigin, ccwnodes[nccw].Pcoord, n.Pcoord)
+						cw = false
+					} else {
+						ccwangle, cw = st.ClockWise(ccwnodes[nccw-1].Pcoord, ccwnodes[nccw].Pcoord, n.Pcoord)
+					}
+					ccwangle *= -1
+					if n.Num == 102 || n.Num == 124 {
+						fmt.Printf("CCWANGLE = %.3f (%d)\n", ccwangle, n.Num)
+					}
+					if !cw {
+						if ccwangle == ccwminangle {
+							if st.Distance(cwnodes[ncw], n) > st.Distance(cwnodes[ncw], tmpcw) {
+								tmpccw = n
+								ccwminangle = ccwangle
+								dccw = st.Distance(hstart, n)
+							}
+						} else if ccwangle < ccwminangle {
+							tmpccw = n
+							ccwminangle = ccwangle
+							dccw = st.Distance(hstart, n)
+						}
+					}
 				}
 			}
 		}
-		fmt.Printf("CW: %d, CCW: %d\n", tmpcw.Num, tmpccw.Num)
 		if !stopcw && tmpcw != nil {
 			fmt.Printf("CW: %d, ", tmpcw.Num)
 			ncw++
@@ -4431,6 +4457,10 @@ func (stw *Window) DrawConvexHull() {
 		}
 		fmt.Println(stopcw, stopccw)
 		if stopcw && stopccw {
+			break
+		}
+		num++
+		if num > 10 {
 			break
 		}
 	}
