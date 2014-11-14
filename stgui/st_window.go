@@ -2153,7 +2153,10 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				axis = 0
 			}
 			axisrange(stw, axis, k.Start[axis], k.Start[axis], false)
+			return nil
 		}
+		stw.errormessage(errors.New(fmt.Sprintf("no fig2 keyword: %s", key)), INFO)
+		return nil
 	case abbrev.For("gf/act", key):
 		val, err := strconv.ParseFloat(lis[1], 64)
 		if err != nil {
@@ -3316,6 +3319,9 @@ func (stw *Window) exmode(command string) error {
 	cname := strings.ToLower(strings.TrimSuffix(strings.TrimPrefix(args[0], ":"), "!"))
 	if stw.Frame != nil {
 		switch {
+		default:
+			stw.errormessage(errors.New(fmt.Sprintf("no exmode command: %s", cname)), INFO)
+			return nil
 		case abbrev.For("w/rite", cname), abbrev.For("sav/e", cname):
 			if fn == "" {
 				stw.SaveFile(stw.Frame.Path)
@@ -3879,6 +3885,9 @@ func (stw *Window) exmode(command string) error {
 		}
 	} else {
 		switch {
+		default:
+			stw.errormessage(errors.New(fmt.Sprintf("no exmode command: %s", cname)), INFO)
+			return nil
 		case abbrev.For("q/uit", cname):
 			stw.Close(bang)
 		case abbrev.For("e/dit", cname):
