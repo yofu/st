@@ -518,41 +518,30 @@ func DrawClosedLine(elem *st.Elem, cvs *cd.Canvas, position []float64, scale flo
 func DrawSection(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 	if al, ok := elem.Frame.Allows[elem.Sect.Num]; ok {
 		position := elem.MidPoint()
-		origin := elem.Frame.View.ProjectCoord(position)
 		switch al.(type) {
 		case *st.SColumn:
 			sh := al.(*st.SColumn).Shape
 			switch sh.(type) {
-			case st.HKYOU, st.HWEAK, st.RPIPE:
+			case st.HKYOU, st.HWEAK, st.RPIPE, st.CPIPE:
 				vertices := sh.Vertices()
 				DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
-			case st.CPIPE:
-				d1 := sh.(st.CPIPE).D * show.DrawSize
-				d2 := (d1 - sh.(st.CPIPE).T * 2) * show.DrawSize
-				cvs.FCircle(origin[0], origin[1], d1)
-				cvs.FCircle(origin[0], origin[1], d2)
 			}
-		// case *st.RCColumn:
-		// 	rc := al.(*st.RCColumn)
-		// 	vertices := rc.CShape.Vertices()
-		// 	DrawClosedLine(cvs, origin, theta, show.DrawSize, vertices)
-		// 	c := math.Cos(theta)
-		// 	s := math.Sin(theta)
-		// 	for _, reins := range rc.Reins {
-		// 		d := math.Sqrt(reins.Area*4.0/math.Pi) * show.DrawSize
-		// 		cvs.FCircle(origin[0] + (reins.Position[0]*c + reins.Position[1]*s) * show.DrawSize, origin[1] + (-reins.Position[0]*s + reins.Position[1]*c) * show.DrawSize, d)
-		// 	}
-		// case *st.RCGirder:
-		// 	rg := al.(*st.RCGirder)
-		// 	vertices := rg.CShape.Vertices()
-		// 	DrawClosedLine(cvs, origin, theta, show.DrawSize, vertices)
-		// 	c := math.Cos(theta)
-		// 	s := math.Sin(theta)
-		// 	for _, reins := range rg.Reins {
-		// 		fmt.Println(reins.Position)
-		// 		d := math.Sqrt(reins.Area*4.0/math.Pi) * show.DrawSize
-		// 		cvs.FCircle(origin[0] + (reins.Position[0]*c + reins.Position[1]*s) * show.DrawSize, origin[1] + (-reins.Position[0]*s + reins.Position[1]*c) * show.DrawSize, d)
-		// 	}
+		case *st.RCColumn:
+			rc := al.(*st.RCColumn)
+			vertices := rc.CShape.Vertices()
+			DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
+			for _, reins := range rc.Reins {
+				vertices = reins.Vertices()
+				DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
+			}
+		case *st.RCGirder:
+			rg := al.(*st.RCGirder)
+			vertices := rg.CShape.Vertices()
+			DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
+			for _, reins := range rg.Reins {
+				vertices = reins.Vertices()
+				DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
+			}
 		}
 	}
 }

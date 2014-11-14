@@ -84,6 +84,19 @@ func (rf Reinforce) Ftw(cond *Condition) float64 {
 		return rf.Material.Fs
 	}
 }
+func (rf Reinforce) Vertices() [][]float64 {
+	d := 0.5 * math.Sqrt(rf.Area*4.0/math.Pi)
+	val := math.Pi/8.0
+	theta := 0.0
+	vertices := make([][]float64, 16)
+	for i:=0; i<16; i++ {
+		c := math.Cos(theta)
+		s := math.Sin(theta)
+		vertices[i] = []float64{d*c + rf.Position[0], d*s + rf.Position[1]}
+		theta += val
+	}
+	return vertices
+}
 
 type Wood struct {
 	Name float64
@@ -771,7 +784,20 @@ func (cp CPIPE) Zy() float64 {
 }
 
 func (cp CPIPE) Vertices() [][]float64 {
-	return nil
+	d := 0.5 * cp.D
+	dt := d - cp.T
+	val := math.Pi/8.0
+	theta := 0.0
+	vertices := make([][]float64, 33)
+	for i:=0; i<16; i++ {
+		c := math.Cos(theta)
+		s := math.Sin(theta)
+		vertices[i] = []float64{d*c, d*s}
+		vertices[i+17] = []float64{dt*c, dt*s}
+		theta += val
+	}
+	vertices[16] = nil
+	return vertices
 }
 // }}}
 
