@@ -2937,11 +2937,13 @@ func (frame *Frame) CutByElem(cutter, cuttee *Elem, cross bool, sign int, del bo
 }
 
 func (frame *Frame) Trim(e1, e2 *Elem, sign int, eps float64) ([]*Node, []*Elem, error) {
-	return frame.Intersect(e1, e2, true, 1, sign, false, true, eps)
+	// return frame.Intersect(e1, e2, true, 1, sign, false, true, eps)
+	return frame.CutByElem(e1, e2, true, sign, true, eps)
 }
 
 func (frame *Frame) Extend(e1, e2 *Elem, eps float64) ([]*Node, []*Elem, error) {
-	return frame.Intersect(e1, e2, false, 1, 1, false, true, eps)
+	// return frame.Intersect(e1, e2, false, 1, 1, false, true, eps)
+	return frame.CutByElem(e1, e2, false, 1, true, eps)
 }
 
 func (frame *Frame) Fillet(e1, e2 *Elem, sign1, sign2 int, eps float64) ([]*Node, []*Elem, error) {

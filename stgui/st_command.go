@@ -1609,7 +1609,7 @@ func setfocus(stw *Window) {
 // }}}
 
 // GET1ELEM// {{{
-func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) bool) {
+func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) bool, exitfunc func()) {
 	stw.SelectElem = make([]*st.Elem, 1)
 	selected := false
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
@@ -1648,6 +1648,7 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 				}
 			case BUTTON_RIGHT:
 				if arg.Pressed == 0 {
+					exitfunc()
 					stw.Snapshot()
 					stw.EscapeAll()
 				}
@@ -1669,6 +1670,7 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 		default:
 			stw.DefaultKeyAny(arg)
 		case KEY_ESCAPE:
+			exitfunc()
 			stw.Snapshot()
 			stw.EscapeAll()
 		}
@@ -1686,7 +1688,8 @@ func matchproperty(stw *Window) {
 	},
 		func(el *st.Elem) bool {
 			return true
-		})
+		},
+		func(){})
 }
 
 // }}}
@@ -1703,7 +1706,8 @@ func copybond(stw *Window) {
 	},
 		func(el *st.Elem) bool {
 			return el.IsLineElem()
-		})
+		},
+		func(){})
 }
 
 // }}}
@@ -1925,16 +1929,16 @@ func trim(stw *Window) {
 			if err != nil {
 				stw.errormessage(err, ERROR)
 			} else {
-				// stw.Deselect()
 				stw.Redraw()
 			}
-			// stw.Snapshot()
-			// stw.EscapeAll()
 		}
 		stw.Redraw()
 	},
 		func(el *st.Elem) bool {
 			return el.IsLineElem()
+		},
+		func() {
+			stw.SelectElem[0].DivideAtOns(EPS)
 		})
 }
 
@@ -1949,16 +1953,16 @@ func extend(stw *Window) {
 			if err != nil {
 				stw.errormessage(err, ERROR)
 			} else {
-				// stw.Deselect()
 				stw.Redraw()
 			}
-			// stw.Snapshot()
-			// stw.EscapeAll()
 		}
 		stw.Redraw()
 	},
 		func(el *st.Elem) bool {
 			return el.IsLineElem()
+		},
+		func() {
+			stw.SelectElem[0].DivideAtOns(EPS)
 		})
 }
 
@@ -3051,7 +3055,8 @@ func editwrect(stw *Window) {
 	},
 		func(el *st.Elem) bool {
 			return !el.IsLineElem()
-		})
+		},
+		func(){})
 }
 
 // }}}
