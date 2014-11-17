@@ -419,6 +419,30 @@ func ClockWise(p1, p2, p3 []float64) (float64, bool) {
 	}
 }
 
+func ClockWise2(p1, p2, p3 []float64) (float64, bool) {
+	v1 := []float64{p2[0] - p1[0], p2[1] - p1[1]}
+	v2 := []float64{p3[0] - p2[0], p3[1] - p2[1]}
+	var sum1, sum2 float64
+	for i := 0; i < 2; i++ {
+		sum1 += v1[i] * v1[i]
+		sum2 += v2[i] * v2[i]
+	}
+	if sum1 == 0 || sum2 == 0 {
+		return 0.0, false
+	}
+	sum1 = math.Sqrt(sum1)
+	sum2 = math.Sqrt(sum2)
+	for i := 0; i < 2; i++ {
+		v1[i] /= sum1
+		v2[i] /= sum2
+	}
+	if val := v2[0]*v1[1] - v2[1]*v1[0]; val > 0 {
+		return math.Acos(v1[0]*v2[0]+v1[1]*v2[1]), true
+	} else {
+		return math.Acos(v1[0]*v2[0]+v1[1]*v2[1]), false
+	}
+}
+
 func DistLineLine(coord1, vec1, coord2, vec2 []float64) (float64, float64, float64, error) {
 	var l1, l2 float64
 	for i := 0; i < 3; i++ {

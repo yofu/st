@@ -3064,7 +3064,7 @@ func editwrect(stw *Window) {
 // CONVEXHULL
 func convexhull(stw *Window) {
 	stw.DrawConvexHull()
-	stw.EscapeAll()
+	// stw.EscapeAll()
 }
 
 // REACTION// {{{

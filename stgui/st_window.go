@@ -4350,15 +4350,14 @@ func (stw *Window) DrawConvexHull() {
 	fmt.Printf("START: %d, END: %d\n", hstart.Num, hend.Num)
 	cwnodes := make([]*st.Node, 1)
 	cwnodes[0] = hstart
-	cworigin := []float64{-1000.0, cwnodes[0].Pcoord[1]}
+	cworigin := []float64{1000.0, cwnodes[0].Pcoord[1]}
 	ccwnodes := make([]*st.Node, 1)
 	ccwnodes[0] = hstart
-	ccworigin := []float64{1000.0, ccwnodes[0].Pcoord[1]}
+	ccworigin := []float64{-1000.0, ccwnodes[0].Pcoord[1]}
 	stopcw := false
 	stopccw := false
 	ncw := 0
 	nccw := 0
-	num := 0
 	dcw := 0.0
 	dccw := 0.0
 	for {
@@ -4383,26 +4382,24 @@ func (stw *Window) DrawConvexHull() {
 			if !stopcw {
 				if st.Distance(hstart, n) > dcw {
 					if ncw == 0 {
-						cwangle, cw = st.ClockWise(cworigin, cwnodes[ncw].Pcoord, n.Pcoord)
-						cw = true
+						cwangle, cw = st.ClockWise2(cworigin, cwnodes[ncw].Pcoord, n.Pcoord)
 					} else {
-						cwangle, cw = st.ClockWise(cwnodes[ncw-1].Pcoord, cwnodes[ncw].Pcoord, n.Pcoord)
+						cwangle, cw = st.ClockWise2(cwnodes[ncw-1].Pcoord, cwnodes[ncw].Pcoord, n.Pcoord)
 					}
 					cwangle = math.Abs(cwangle)
-					// if n.Num == 727 {
-					//     fmt.Printf("CWANGLE = %.3f\n", cwangle)
-					// }
+					if n.Num == 101 || n.Num == 170 {
+						fmt.Printf("CWANGLE = %.3f (%d)\n", cwangle, n.Num)
+						fmt.Print(cw)
+					}
 					if cw {
 						if cwangle == cwminangle {
 							if st.Distance(cwnodes[ncw], n) > st.Distance(cwnodes[ncw], tmpcw) {
 								tmpcw = n
 								cwminangle = cwangle
-								dcw = st.Distance(hstart, n)
 							}
 						} else if cwangle < cwminangle {
 							tmpcw = n
 							cwminangle = cwangle
-							dcw = st.Distance(hstart, n)
 						}
 					}
 				}
@@ -4410,26 +4407,22 @@ func (stw *Window) DrawConvexHull() {
 			if !stopccw {
 				if st.Distance(hstart, n) > dccw {
 					if nccw == 0 {
-						ccwangle, cw = st.ClockWise(ccworigin, ccwnodes[nccw].Pcoord, n.Pcoord)
-						cw = false
+						ccwangle, cw = st.ClockWise2(ccworigin, ccwnodes[nccw].Pcoord, n.Pcoord)
 					} else {
-						ccwangle, cw = st.ClockWise(ccwnodes[nccw-1].Pcoord, ccwnodes[nccw].Pcoord, n.Pcoord)
+						ccwangle, cw = st.ClockWise2(ccwnodes[nccw-1].Pcoord, ccwnodes[nccw].Pcoord, n.Pcoord)
 					}
-					ccwangle *= -1
-					if n.Num == 102 || n.Num == 124 {
-						fmt.Printf("CCWANGLE = %.3f (%d)\n", ccwangle, n.Num)
-					}
+					// if n.Num == 101 || n.Num == 170 {
+					// 	fmt.Printf("CCWANGLE = %.3f (%d)\n", ccwangle, n.Num)
+					// }
 					if !cw {
 						if ccwangle == ccwminangle {
 							if st.Distance(cwnodes[ncw], n) > st.Distance(cwnodes[ncw], tmpcw) {
 								tmpccw = n
 								ccwminangle = ccwangle
-								dccw = st.Distance(hstart, n)
 							}
 						} else if ccwangle < ccwminangle {
 							tmpccw = n
 							ccwminangle = ccwangle
-							dccw = st.Distance(hstart, n)
 						}
 					}
 				}
@@ -4437,50 +4430,55 @@ func (stw *Window) DrawConvexHull() {
 		}
 		if !stopcw && tmpcw != nil {
 			fmt.Printf("CW: %d, ", tmpcw.Num)
-			ncw++
-			cwnodes = append(cwnodes, tmpcw)
 			if tmpcw == hend {
 				stopcw = true
+			} else {
+				ncw++
+				cwnodes = append(cwnodes, tmpcw)
+				dcw = st.Distance(hstart, tmpcw)
 			}
 		} else {
 			fmt.Println("CW: -, ")
 		}
 		if !stopccw && tmpccw != nil {
 			fmt.Printf("CCW: %d, ", tmpccw.Num)
-			nccw++
-			ccwnodes = append(ccwnodes, tmpccw)
 			if tmpccw == hend {
 				stopccw = true
+			} else {
+				nccw++
+				ccwnodes = append(ccwnodes, tmpccw)
+				dccw = st.Distance(hstart, tmpccw)
 			}
 		} else {
 			fmt.Println("CCW: -")
 		}
 		fmt.Println(stopcw, stopccw)
+		fmt.Println(cwnodes[len(cwnodes)-1].Num, ccwnodes[len(ccwnodes)-1].Num)
 		if stopcw && stopccw {
 			break
 		}
-		num++
-		if num > 10 {
-			break
-		}
 	}
-	chnodes := make([]*st.Node, ncw+nccw-2)
-	fmt.Println(ncw, len(cwnodes))
-	fmt.Println(nccw, len(ccwnodes))
-	fmt.Println(len(chnodes))
-	for i := 0; i < ncw; i++ {
+	chnodes := make([]*st.Node, ncw+nccw+2)
+	chnodes[0] = hstart
+	for i := 1; i < ncw+1; i++ {
 		chnodes[i] = cwnodes[i]
 	}
-	for i := nccw - 2; i > 0; i-- {
-		chnodes[i+ncw] = ccwnodes[i]
+	chnodes[ncw+1] = hend
+	for i := 1; i < nccw+1; i++ {
+		chnodes[i+1+ncw] = ccwnodes[nccw+1-i]
 	}
+	for i, n := range chnodes {
+		fmt.Printf("%d: %d\n", i, n.Num)
+	}
+	stw.dbuff.Clear()
 	stw.dbuff.Begin(cd.CD_FILL)
 	stw.dbuff.Foreground(PlateEdgeColor)
 	stw.dbuff.Begin(cd.CD_CLOSED_LINES)
-	for i := 0; i < ncw+nccw-2; i++ {
+	for i := 0; i < ncw+nccw+2; i++ {
 		stw.dbuff.FVertex(chnodes[i].Pcoord[0], chnodes[i].Pcoord[1])
 	}
 	stw.dbuff.End()
+	stw.dbuff.Flush()
 }
 
 func (stw *Window) SetSelectData() {
