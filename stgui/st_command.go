@@ -432,7 +432,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 	stw.cdcanv.Foreground(cd.CD_YELLOW)
 	stw.cdcanv.WriteMode(cd.CD_XOR)
 	stw.SelectNode = make([]*st.Node, 2)
-	stw.addHistory("始端を指定[ダイアログ(D)]")
+	stw.addHistory("始端を指定[ダイアログ(D,R)]")
 	setnnum := func() {
 		nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
@@ -444,7 +444,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 					stw.cdcanv.Foreground(cd.CD_DARK_RED)
 					stw.cdcanv.WriteMode(cd.CD_XOR)
 					first = 1
-					stw.addHistory("終端を指定[ダイアログ(D)]")
+					stw.addHistory("終端を指定[ダイアログ(D,R)]")
 				}
 			}
 		}
@@ -467,7 +467,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 							stw.cdcanv.Foreground(cd.CD_DARK_RED)
 							stw.cdcanv.WriteMode(cd.CD_XOR)
 							first = 1
-							stw.addHistory("終端を指定[ダイアログ(D)]")
+							stw.addHistory("終端を指定[ダイアログ(D,R)]")
 						}
 					}
 					stw.Redraw()
@@ -553,7 +553,24 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 					stw.cdcanv.Foreground(cd.CD_DARK_RED)
 					stw.cdcanv.WriteMode(cd.CD_XOR)
 					first = 1
-					stw.addHistory("終端を指定[ダイアログ(D)]")
+					stw.addHistory("終端を指定[ダイアログ(D,R)]")
+				}
+			}
+		case 'R', 'r':
+			x, y, z, err := stw.QueryCoord("GET COORD")
+			if err == nil {
+				if stw.SelectNode[0] != nil {
+					n, _ := stw.Frame.CoordNode(x + stw.SelectNode[0].Coord[0], y + stw.SelectNode[0].Coord[1], z + stw.SelectNode[0].Coord[2], EPS)
+					stw.Redraw()
+					f(n)
+				} else {
+					n, _ := stw.Frame.CoordNode(x, y, z, EPS)
+					stw.Redraw()
+					stw.SelectNode[0] = n
+					stw.cdcanv.Foreground(cd.CD_DARK_RED)
+					stw.cdcanv.WriteMode(cd.CD_XOR)
+					first = 1
+					stw.addHistory("終端を指定[ダイアログ(D,R)]")
 				}
 			}
 		}
