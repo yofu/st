@@ -3257,6 +3257,13 @@ func (stw *Window) Complete(str string) string {
 	} else {
 		completes = make([]string, len(tmp))
 		for i:=0; i<len(tmp); i++ {
+			stat, err := os.Stat(tmp[i])
+			if err != nil {
+				continue
+			}
+			if stat.IsDir() {
+				tmp[i] += string(os.PathSeparator)
+			}
 			lis[len(lis)-1] = tmp[i]
 			completes[i] = strings.Join(lis, " ")
 		}
