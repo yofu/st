@@ -4815,6 +4815,7 @@ func (stw *Window) FilterSelectedElem(str string) {
 	}
 	parallel := regexp.MustCompile("(?i)^ *// *([xyz]{1})")
 	ortho := regexp.MustCompile("^ *TT *([xyzXYZ]{1})")
+	onplane := regexp.MustCompile("(?i)^ *on *([xyz]{2})")
 	adjoin := regexp.MustCompile("^ *ad(j(o(in?)?)?)? (.*)")
 	var filterfunc func(el *st.Elem) bool
 	var hstr string
@@ -4855,6 +4856,22 @@ func (stw *Window) FilterSelectedElem(str string) {
 			return el.IsOrthogonal(axis, 1e-4)
 		}
 		hstr = fmt.Sprintf("Orthogonal to %sAXIS", tmp)
+	case onplane.MatchString(str):
+		var axis int
+		fs := onplane.FindStringSubmatch(str)
+		if len(fs) < 2 {
+			break
+		}
+		tmp := strings.ToUpper(fs[1])
+		for i, val := range []string{"X", "Y", "Z"} {
+			if strings.Contains(tmp, val) {
+				continue
+			}
+			axis = i
+		}
+		filterfunc = func(el *st.Elem) bool {
+			return el.Direction(false)[axis] == 0.0
+		}
 	case sectnum.MatchString(str):
 		filterfunc, hstr = SectFilter(str)
 	case re_etype.MatchString(str):
