@@ -3581,3 +3581,61 @@ func (view *View) ProjectDeformation(node *Node, show *Show) {
 }
 
 // }}}
+
+
+func WriteOutput(fn string, p string, els []*Elem) error {
+	var otp bytes.Buffer
+	// Elem
+	otp.WriteString("\n\n** FORCES OF MEMBER\n\n")
+	otp.WriteString("  NO   KT NODE         N        Q1        Q2        MT        M1        M2\n\n")
+	sort.Sort(ElemByNum{els})
+	for _, el := range els {
+		if !el.IsLineElem() {
+			continue
+		}
+		otp.WriteString(el.OutputStress(p))
+	}
+	// Node
+	var add bool
+	ns := make([]*Node, 0)
+	for _, el := range els {
+		if el == nil {
+			continue
+		}
+		for _, en := range el.Enod {
+			add = true
+			for _, n := range ns {
+				if en == n {
+					add = false
+					break
+				}
+			}
+			if add {
+				ns = append(ns, en)
+			}
+		}
+	}
+	sort.Sort(NodeByNum{ns})
+	otp.WriteString("\n\n** DISPLACEMENT OF NODE\n\n")
+	otp.WriteString("  NO          U          V          W         KSI         ETA       OMEGA\n\n")
+	for _, n := range ns {
+		otp.WriteString(n.OutputDisp(p))
+	}
+	otp.WriteString("\n\n** REACTION\n\n")
+	otp.WriteString("  NO  DIRECTION              R    NC\n\n")
+	for _, n := range ns {
+		for i := 0; i < 6; i++ {
+			if n.Conf[i] {
+				otp.WriteString(n.OutputReaction(p, i))
+			}
+		}
+	}
+	// Write
+	w, err := os.Create(fn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
+	otp.WriteTo(w)
+	return nil
+}

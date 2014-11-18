@@ -3465,7 +3465,12 @@ func (stw *Window) exmode(command string) error {
 			if narg < 3 {
 				return st.NotEnoughArgs(":wo")
 			} else {
-				err := stw.Frame.WriteOutput(fn, args[2])
+				var err error
+				if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
+					err = st.WriteOutput(fn, args[2], stw.SelectElem)
+				} else {
+					err = stw.Frame.WriteOutput(fn, args[2])
+				}
 				if err != nil {
 					return err
 				}
