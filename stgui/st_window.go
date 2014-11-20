@@ -4798,7 +4798,7 @@ func EtypeFilter(str string) (func(*st.Elem) bool, string) {
 			val = st.COLUMN
 		case re_girder.MatchString(fs[l-1]):
 			val = st.GIRDER
-		case re_slab.MatchString(fs[l-1]):
+		case re_brace.MatchString(fs[l-1]):
 			val = st.BRACE
 		case re_wall.MatchString(fs[l-1]):
 			val = st.WALL
