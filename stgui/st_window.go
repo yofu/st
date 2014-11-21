@@ -3606,6 +3606,27 @@ func (stw *Window) exmode(command string) error {
 				n.Load[int(ind)] = val
 			}
 			stw.Snapshot()
+		case abbrev.For("z/oubun/d/isp", cname):
+			if narg < 3 {
+				return st.NotEnoughArgs(":zoubundisp")
+			}
+			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+				return st.NotEnoughArgs(":zoubundisp no selected node")
+			}
+			pers := []string{args[1]}
+			val, err := strconv.ParseInt(args[2], 10, 64)
+			if err != nil {
+				return errors.New(":zoubundisp unknown direction")
+			}
+			d := int(val)
+			if d < 0 || d > 5 {
+				return errors.New(":zoubundisp direction should be between 0 ~ 6")
+			}
+			fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
+			err = stw.Frame.ReportZoubunDisp(fn, stw.SelectNode, pers, d)
+			if err != nil {
+				return err
+			}
 		case abbrev.For("el/em", cname):
 			stw.Deselect()
 			f := func(el *st.Elem) bool {

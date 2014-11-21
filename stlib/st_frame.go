@@ -1994,6 +1994,41 @@ func (frame *Frame) WriteOutput(fn string, p string) error {
 	return nil
 }
 
+func (frame *Frame) ReportZoubunDisp(fn string, ns []*Node, pers []string, direction int) error {
+	var otp bytes.Buffer
+	sort.Sort(NodeByZCoord{ns})
+	otp.WriteString(fmt.Sprintf("ZOUBUN DISP: %s\n", frame.Name))
+	for _, per := range pers {
+		per = strings.ToUpper(per)
+		if nlap, ok := frame.Nlap[per]; ok {
+			otp.WriteString(fmt.Sprintf("PERIOD: %s, DIRECTION: %d\n", per, direction))
+			otp.WriteString("LAP     ")
+			for _, n := range ns {
+				otp.WriteString(fmt.Sprintf(" %8d", n.Num))
+			}
+			otp.WriteString("\n")
+			for i := 0; i < nlap; i++ {
+				nper := fmt.Sprintf("%s@%d", per, i+1)
+				otp.WriteString(fmt.Sprintf("%8s", nper))
+				for _, n := range ns {
+					otp.WriteString(fmt.Sprintf(" %8.5f", n.Disp[nper][direction]))
+				}
+				otp.WriteString("\n")
+			}
+			otp.WriteString("\n")
+		} else {
+			return errors.New(fmt.Sprintf("ReportZoubunDisp: unknown period: %s", per))
+		}
+	}
+	w, err := os.Create(fn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
+	otp.WriteTo(w)
+	return nil
+}
+
 // }}}
 
 func (frame *Frame) Check() ([]*Node, []*Elem, bool) {

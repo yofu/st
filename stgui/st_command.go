@@ -3623,37 +3623,18 @@ func zoubundisp(stw *Window) {
 		stw.EscapeCB()
 	}
 	d := int(val)
-	var otp bytes.Buffer
-	sort.Sort(st.NodeByZCoord{stw.SelectNode})
-	for _, per := range pers {
-		per = strings.ToUpper(per)
-		if nlap, ok := stw.Frame.Nlap[per]; ok {
-			otp.WriteString(fmt.Sprintf("ZOUBUN DISP: %s\n", stw.Frame.Name))
-			otp.WriteString(fmt.Sprintf("PERIOD: %s, DIRECTION: %d\n", per, d))
-			otp.WriteString("LAP     ")
-			for _, n := range stw.SelectNode {
-				otp.WriteString(fmt.Sprintf(" %8d", n.Num))
-			}
-			otp.WriteString("\n")
-			for i := 0; i < nlap; i++ {
-				nper := fmt.Sprintf("%s@%d", per, i+1)
-				otp.WriteString(fmt.Sprintf("%8s", nper))
-				for _, n := range stw.SelectNode {
-					otp.WriteString(fmt.Sprintf(" %8.5f", n.Disp[nper][d]))
-				}
-				otp.WriteString("\n")
-			}
-			otp.WriteString("\n")
-		}
+	if d < 0 || d > 5 {
+		stw.errormessage(errors.New(":zoubundisp direction should be between 0 ~ 6"), ERROR)
+		stw.EscapeCB()
+		return
 	}
 	fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
-	w, err := os.Create(fn)
-	defer w.Close()
+	err = stw.Frame.ReportZoubunDisp(fn, stw.SelectNode, pers, d)
 	if err != nil {
 		stw.errormessage(err, ERROR)
 		stw.EscapeCB()
+		return
 	}
-	otp.WriteTo(w)
 	stw.addHistory(fmt.Sprintf("OUTPUT: %s", fn))
 	stw.EscapeCB()
 }
