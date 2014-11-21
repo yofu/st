@@ -2778,6 +2778,10 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		stw.HideNotSelected()
 	case abbrev.For("per/iod", key):
 		stw.SetPeriod(strings.ToUpper(lis[1]))
+	case abbrev.For("per/iod/++/", key):
+		stw.IncrementPeriod(1)
+	case abbrev.For("per/iod/--/", key):
+		stw.IncrementPeriod(-1)
 	case abbrev.For("nocap/tion", key):
 		for _, nc := range st.NODECAPTIONS {
 			stw.NodeCaptionOff(nc)
@@ -7378,6 +7382,24 @@ func (stw *Window) displayLabel(name string, defval bool) *iup.Handle {
 func (stw *Window) SetPeriod(per string) {
 	stw.Labels["PERIOD"].SetAttribute("VALUE", per)
 	stw.Frame.Show.Period = per
+}
+
+func (stw *Window) IncrementPeriod(num int) {
+	pat := regexp.MustCompile("([a-zA-Z]+)(@[0-9]+)")
+	fs := pat.FindStringSubmatch(stw.Frame.Show.Period)
+	if len(fs) < 3 {
+		return
+	}
+	if nl, ok := stw.Frame.Nlap[strings.ToUpper(fs[1])]; ok {
+		tmp, _ := strconv.ParseInt(fs[2][1:], 10, 64)
+		val := int(tmp) + num
+		if val < 1 || val > nl {
+			return
+		}
+		per := strings.Replace(stw.Frame.Show.Period, fs[2], fmt.Sprintf("@%d", val), -1)
+		stw.Labels["PERIOD"].SetAttribute("VALUE", per)
+		stw.Frame.Show.Period = per
+	}
 }
 
 func (stw *Window) NodeCaptionOn(name string) {
