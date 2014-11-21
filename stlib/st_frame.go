@@ -2011,13 +2011,56 @@ func (frame *Frame) ReportZoubunDisp(fn string, ns []*Node, pers []string, direc
 				nper := fmt.Sprintf("%s@%d", per, i+1)
 				otp.WriteString(fmt.Sprintf("%8s", nper))
 				for _, n := range ns {
-					otp.WriteString(fmt.Sprintf(" %8.5f", n.Disp[nper][direction]))
+					if d, ok := n.Disp[nper]; ok {
+						otp.WriteString(fmt.Sprintf(" %8.5f", d[direction]))
+					} else {
+						otp.WriteString(" --------")
+					}
 				}
 				otp.WriteString("\n")
 			}
 			otp.WriteString("\n")
 		} else {
 			return errors.New(fmt.Sprintf("ReportZoubunDisp: unknown period: %s", per))
+		}
+	}
+	w, err := os.Create(fn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
+	otp.WriteTo(w)
+	return nil
+}
+
+func (frame *Frame) ReportZoubunReaction(fn string, ns []*Node, pers []string, direction int) error {
+	var otp bytes.Buffer
+	sort.Sort(NodeByNum{ns})
+	otp.WriteString(fmt.Sprintf("ZOUBUN REACTION: %s\n", frame.Name))
+	for _, per := range pers {
+		per = strings.ToUpper(per)
+		if nlap, ok := frame.Nlap[per]; ok {
+			otp.WriteString(fmt.Sprintf("PERIOD: %s, DIRECTION: %d\n", per, direction))
+			otp.WriteString("LAP     ")
+			for _, n := range ns {
+				otp.WriteString(fmt.Sprintf(" %8d", n.Num))
+			}
+			otp.WriteString("\n")
+			for i := 0; i < nlap; i++ {
+				nper := fmt.Sprintf("%s@%d", per, i+1)
+				otp.WriteString(fmt.Sprintf("%8s", nper))
+				for _, n := range ns {
+					if r, ok := n.Reaction[nper]; ok {
+						otp.WriteString(fmt.Sprintf(" %8.3f", r[direction]))
+					} else {
+						otp.WriteString(" --------")
+					}
+				}
+				otp.WriteString("\n")
+			}
+			otp.WriteString("\n")
+		} else {
+			return errors.New(fmt.Sprintf("ReportZoubunReaction: unknown period: %s", per))
 		}
 	}
 	w, err := os.Create(fn)
