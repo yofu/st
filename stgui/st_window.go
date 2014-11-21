@@ -213,12 +213,14 @@ var (
 	axrn_max1   = regexp.MustCompile("([+-]?[-0-9.]+)>=?([XYZxyz]{1})")
 	axrn_max2   = regexp.MustCompile("([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
 	axrn_eq     = regexp.MustCompile("([XYZxyz]{1})=([+-]?[-0-9.]+)")
-	re_etype    = regexp.MustCompile("^ *et(y(pe?)?)? *={0,2} *([a-zA-Z]+)")
+	re_etype    = regexp.MustCompile("(?i)^ *et(y(pe?)?)? *={0,2} *([a-zA-Z]+)")
 	re_column   = regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
 	re_girder   = regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
 	re_brace    = regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
 	re_wall     = regexp.MustCompile("(?i)wa(l){0,2}$")
 	re_slab     = regexp.MustCompile("(?i)sl(a(b)?)?$")
+	re_sectnum  = regexp.MustCompile("(?i)^ *sect? *={0,2} *[[]?([0-9, ]+)[]]?")
+
 )
 
 // }}}
@@ -3417,7 +3419,7 @@ func (stw *Window) exmode(command string) error {
 			stw.ShowRecently()
 		case abbrev.For("vi/m", cname):
 			stw.Vim(fn)
-		case abbrev.For("re/ad", cname):
+		case abbrev.For("r/ead", cname):
 			err := stw.ReadFile(fn)
 			if err != nil {
 				return err
@@ -3604,6 +3606,56 @@ func (stw *Window) exmode(command string) error {
 				n.Load[int(ind)] = val
 			}
 			stw.Snapshot()
+		case abbrev.For("el/em", cname):
+			stw.Deselect()
+			f := func(el *st.Elem) bool {
+				return true
+			}
+			if narg >= 2 {
+				condition := strings.ToUpper(strings.Join(args[1:], " "))
+				numstr := regexp.MustCompile("^[0-9, ]+$")
+				switch {
+				default:
+					return errors.New(":elem: unknown format")
+				case numstr.MatchString(condition):
+					enums := SplitNums(condition)
+					f = func(el *st.Elem) bool {
+						for _, enum := range enums {
+							if el.Num == enum {
+								return true
+							}
+						}
+						return false
+					}
+				case re_sectnum.MatchString(condition):
+					f, _ = SectFilter(condition)
+					if f == nil {
+						return errors.New(":elem sect: format error")
+					}
+				case re_etype.MatchString(condition):
+					f, _ = EtypeFilter(condition)
+					if f == nil {
+						return errors.New(":elem etype: format error")
+					}
+				}
+				stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
+				num := 0
+				for _, el := range stw.Frame.Elems {
+					if f(el) {
+						stw.SelectElem[num] = el
+						num++
+					}
+				}
+				stw.SelectElem = stw.SelectElem[:num]
+			} else {
+				stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
+				num := 0
+				for _, el := range stw.Frame.Elems {
+					stw.SelectElem[num] = el
+					num++
+				}
+				stw.SelectElem = stw.SelectElem[:num]
+			}
 		case abbrev.For("bo/nd", cname):
 			if narg < 2 {
 				return st.NotEnoughArgs(":bond")
@@ -3619,7 +3671,6 @@ func (stw *Window) exmode(command string) error {
 			}
 			if narg >= 3 {
 				condition := strings.ToLower(strings.Join(args[2:], " "))
-				sectnum := regexp.MustCompile("^ *sect? *={0,2} *[[]?([0-9, ]+)[]]?")
 				switch {
 				case abbrev.For("up/per", condition):
 					f = func(el *st.Elem, ind int) bool {
@@ -3629,7 +3680,7 @@ func (stw *Window) exmode(command string) error {
 					f = func(el *st.Elem, ind int) bool {
 						return el.Enod[ind].Coord[2] < el.Enod[1-ind].Coord[2]
 					}
-				case sectnum.MatchString(condition):
+				case re_sectnum.MatchString(condition):
 					tmpf, _ := SectFilter(condition)
 					f = func(el *st.Elem, ind int) bool {
 						for _, sel := range el.Frame.SearchElem(el.Enod[ind]) {
@@ -4752,28 +4803,30 @@ func (stw *Window) PasteClipboard() error {
 	return nil
 }
 
-var sectnum = regexp.MustCompile("(?i)^ *sect? *={0,2} *[[]?([0-9, ]+)[]]?")
-
-func SectFilter(str string) (func(*st.Elem) bool, string) {
-	var filterfunc func(el *st.Elem) bool
-	var hstr string
-	fs := sectnum.FindStringSubmatch(str)
-	if len(fs) < 2 {
-		return nil, ""
-	}
+func SplitNums(nums string) []int {
 	splitter := regexp.MustCompile("[, ]")
-	tmp := splitter.Split(fs[1], -1)
-	snums := make([]int, len(tmp))
+	tmp := splitter.Split(nums, -1)
+	rtn := make([]int, len(tmp))
 	i := 0
 	for _, numstr := range tmp {
 		val, err := strconv.ParseInt(strings.Trim(numstr, " "), 10, 64)
 		if err != nil {
 			continue
 		}
-		snums[i] = int(val)
+		rtn[i] = int(val)
 		i++
 	}
-	snums = snums[:i]
+	return rtn[:i]
+}
+
+func SectFilter(str string) (func(*st.Elem) bool, string) {
+	var filterfunc func(el *st.Elem) bool
+	var hstr string
+	fs := re_sectnum.FindStringSubmatch(str)
+	if len(fs) < 2 {
+		return nil, ""
+	}
+	snums := SplitNums(fs[1])
 	filterfunc = func(el *st.Elem) bool {
 		for _, snum := range snums {
 			if el.Sect.Num == snum {
@@ -4877,7 +4930,7 @@ func (stw *Window) FilterSelectedElem(str string) {
 		filterfunc = func(el *st.Elem) bool {
 			return el.Direction(false)[axis] == 0.0
 		}
-	case sectnum.MatchString(str):
+	case re_sectnum.MatchString(str):
 		filterfunc, hstr = SectFilter(str)
 	case re_etype.MatchString(str):
 		filterfunc, hstr = EtypeFilter(str)
@@ -4888,7 +4941,7 @@ func (stw *Window) FilterSelectedElem(str string) {
 			var fil func(*st.Elem) bool
 			var hst string
 			switch {
-			case sectnum.MatchString(condition):
+			case re_sectnum.MatchString(condition):
 				fil, hst = SectFilter(condition)
 			case re_etype.MatchString(condition):
 				fil, hst = EtypeFilter(condition)
