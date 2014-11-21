@@ -172,6 +172,9 @@ func (ai *Aiparameter) Snapshot() *Aiparameter {
 	a.Rt = ai.Rt
 	a.Nfloor = ai.Nfloor
 	a.Boundary = make([]float64, a.Nfloor+1)
+	for i:=0; i<a.Nfloor+1; i++ {
+		a.Boundary[i] = ai.Boundary[i]
+	}
 	if len(ai.Level) > 0 {
 		a.Level = make([]float64, a.Nfloor)
 		a.Wi = make([]float64, a.Nfloor)
@@ -180,9 +183,7 @@ func (ai *Aiparameter) Snapshot() *Aiparameter {
 		a.Ci = make([]float64, a.Nfloor)
 		a.Qi = make([]float64, a.Nfloor)
 		a.Hi = make([]float64, a.Nfloor)
-		for i:=0; i<a.Nfloor+1; i++ {
-			a.Boundary[i] = ai.Boundary[i]
-			if i == a.Nfloor { continue }
+		for i:=0; i<a.Nfloor; i++ {
 			a.Level[i] = ai.Level[i]
 			a.Wi[i] = ai.Wi[i]
 			a.W[i] = ai.W[i]
