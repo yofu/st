@@ -3416,6 +3416,8 @@ func (stw *Window) exmode(command string) error {
 			}
 		case abbrev.For("q/uit", cname):
 			stw.Close(bang)
+		case cname == "mkdir":
+			os.MkdirAll(fn, 0644)
 		case abbrev.For("c/heck", cname):
 			checkframe(stw)
 			stw.addHistory("CHECKED")
@@ -4021,6 +4023,8 @@ func (stw *Window) exmode(command string) error {
 			} else {
 				stw.Open()
 			}
+		case cname == "mkdir":
+			os.MkdirAll(fn, 0644)
 		case abbrev.For("vi/m", cname):
 			stw.Vim(fn)
 		case abbrev.For("noun/do", cname):
