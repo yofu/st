@@ -1519,6 +1519,9 @@ func (frame *Frame) ParseZoubunForm(lis [][]string, period string) error {
 			}
 			if n, ok := frame.Nodes[int(nnum)]; ok {
 				disp := make([]float64, 6)
+				if len(l) < 9 {
+					return errors.New(fmt.Sprintf("ParseZoubunForm: Index Error NODE %d", n.Num))
+				}
 				for i := 0; i < 6; i++ {
 					val, err := strconv.ParseFloat(strings.Trim(l[3+i], "\r"), 64)
 					if err != nil {
