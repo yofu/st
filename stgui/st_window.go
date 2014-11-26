@@ -845,17 +845,17 @@ func NewWindow(homedir string) *Window { // {{{
 			case ':':
 				val := stw.cline.GetAttribute("VALUE")
 				if val == "" {
-					stw.cline.SetAttribute("APPEND", ";")
+					stw.cline.SetAttribute("INSERT", ";")
 				} else {
-					stw.cline.SetAttribute("APPEND", ":")
+					stw.cline.SetAttribute("INSERT", ":")
 				}
 				arg.Return = int32(iup.IGNORE)
 			case ';':
 				val := stw.cline.GetAttribute("VALUE")
 				if val == "" {
-					stw.cline.SetAttribute("APPEND", ":")
+					stw.cline.SetAttribute("INSERT", ":")
 				} else {
-					stw.cline.SetAttribute("APPEND", ";")
+					stw.cline.SetAttribute("INSERT", ";")
 				}
 				arg.Return = int32(iup.IGNORE)
 			case '[':
