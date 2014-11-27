@@ -386,14 +386,21 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 					}
 				}
 				stpos := elem.Frame.View.ProjectCoord(coord)
-				// TODO: rotate text
 				if j == 0 {
 					cvs.TextAlignment(cd.CD_SOUTH)
 				} else {
 					cvs.TextAlignment(cd.CD_NORTH)
 				}
+				deg := math.Atan2(pd[1], pd[0]) * 180.0 / math.Pi
+				if deg > 90.0 {
+					deg -= 180.0
+				} else if deg < -90.0 {
+					deg += 180.0
+				}
+				cvs.TextOrientation(deg)
 				cvs.FText(stpos[0], stpos[1], fmt.Sprintf("%.3f", f[j]))
 				cvs.TextAlignment(DefaultTextAlignment)
+				cvs.TextOrientation(0.0)
 			}
 		}
 		if elem.Etype == st.WBRACE || elem.Etype == st.SBRACE {
