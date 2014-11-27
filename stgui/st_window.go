@@ -2237,7 +2237,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Frame.View.Dists[i] = val
 			stw.Labels[str].SetAttribute("VALUE", fmt.Sprintf("%f", stw.Frame.View.Dists[i]))
 		}
-	case abbrev.For("per/spective", key):
+	case abbrev.For("pers/pective", key):
 		stw.Frame.View.Perspective = true
 	case abbrev.For("ax/onometric", key):
 		stw.Frame.View.Perspective = false
