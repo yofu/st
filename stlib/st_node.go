@@ -222,18 +222,27 @@ func (node *Node) InlConditionString(period int) string {
 func (node *Node) OutputDisp(p string) string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("%4d ", node.Num))
-	for i := 0; i < 3; i++ {
-		rtn.WriteString(fmt.Sprintf("% 10.6f ", node.Disp[p][i]))
+	if disp, ok := node.Disp[p]; ok {
+		for i := 0; i < 3; i++ {
+			rtn.WriteString(fmt.Sprintf("% 10.6f ", disp[i]))
+		}
+		for i := 3; i < 5; i++ {
+			rtn.WriteString(fmt.Sprintf("% 11.7f ", disp[i]))
+		}
+		rtn.WriteString(fmt.Sprintf("% 11.7f\n", disp[5]))
+	} else {
+		rtn.WriteString(strings.Repeat(fmt.Sprintf("% 10.6f ", 0.0), 3))
+		rtn.WriteString(strings.Repeat(fmt.Sprintf("% 11.7f ", 0.0), 2))
+		rtn.WriteString(fmt.Sprintf("% 11.7f\n", 0.0))
 	}
-	for i := 3; i < 5; i++ {
-		rtn.WriteString(fmt.Sprintf("% 11.7f ", node.Disp[p][i]))
-	}
-	rtn.WriteString(fmt.Sprintf("% 11.7f\n", node.Disp[p][5]))
 	return rtn.String()
 }
 
 func (node *Node) OutputReaction(p string, ind int) string {
-	return fmt.Sprintf(" %4d %10d %14.6f     1\n", node.Num, ind+1, node.Reaction[p][ind])
+	if reaction, ok := node.Reaction[p]; ok {
+		return fmt.Sprintf(" %4d %10d %14.6f     1\n", node.Num, ind+1, reaction[ind])
+	}
+	return ""
 }
 
 func (node *Node) Move(x, y, z float64) {

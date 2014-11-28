@@ -461,12 +461,18 @@ func (elem *Elem) InlString(period int) string {
 func (elem *Elem) OutputStress(p string) string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("%5d %4d %4d", elem.Num, elem.Sect.Num, elem.Enod[0].Num))
-	for _, st := range elem.Stress[p][elem.Enod[0].Num] {
-		rtn.WriteString(fmt.Sprintf(" %15.12f", st))
-	}
-	rtn.WriteString(fmt.Sprintf("\n           %4d", elem.Enod[1].Num))
-	for _, st := range elem.Stress[p][elem.Enod[1].Num] {
-		rtn.WriteString(fmt.Sprintf(" %15.12f", st))
+	if stress, ok := elem.Stress[p]; ok {
+		for _, st := range stress[elem.Enod[0].Num] {
+			rtn.WriteString(fmt.Sprintf(" %15.12f", st))
+		}
+		rtn.WriteString(fmt.Sprintf("\n           %4d", elem.Enod[1].Num))
+		for _, st := range stress[elem.Enod[1].Num] {
+			rtn.WriteString(fmt.Sprintf(" %15.12f", st))
+		}
+	} else {
+		rtn.WriteString(strings.Repeat(fmt.Sprintf(" %15.12f", 0.0), 6))
+		rtn.WriteString(fmt.Sprintf("\n           %4d", elem.Enod[1].Num))
+		rtn.WriteString(strings.Repeat(fmt.Sprintf(" %15.12f", 0.0), 6))
 	}
 	rtn.WriteString("\n")
 	return rtn.String()

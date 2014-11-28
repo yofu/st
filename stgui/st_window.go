@@ -3533,10 +3533,11 @@ func (stw *Window) exmode(command string) error {
 				return st.NotEnoughArgs(":wo")
 			} else {
 				var err error
+				period := strings.ToUpper(args[2])
 				if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
-					err = st.WriteOutput(fn, args[2], stw.SelectElem)
+					err = st.WriteOutput(fn, period, stw.SelectElem)
 				} else {
-					err = stw.Frame.WriteOutput(fn, args[2])
+					err = stw.Frame.WriteOutput(fn, period)
 				}
 				if err != nil {
 					return err
