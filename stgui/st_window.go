@@ -3391,6 +3391,14 @@ func (stw *Window) exmode(command string) error {
 					var err error
 					if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
 						err = stw.SaveFileSelected(fn, stw.SelectElem)
+						if err != nil {
+							return err
+						}
+						err = stw.OpenFile(fn)
+						if err != nil {
+							return err
+						}
+						stw.Copylsts(fn)
 					} else {
 						err = stw.SaveFile(fn)
 					}
