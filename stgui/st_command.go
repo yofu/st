@@ -3667,7 +3667,7 @@ func zoubunyield(stw *Window) {
 			otp.WriteString(fmt.Sprintf("         %4d     最大   ", sec.Num))
 			otp.WriteString(fmt.Sprintf(" %8.1f", sec.Yield[0]))
 			otp.WriteString("\n")
-			otp.WriteString(fmt.Sprintf("                  最小   ", sec.Num))
+			otp.WriteString("                  最小   ")
 			otp.WriteString(fmt.Sprintf(" %8.1f", sec.Yield[1]))
 			otp.WriteString("\n")
 		}
