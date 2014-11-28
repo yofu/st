@@ -1375,26 +1375,32 @@ func (stw *Window) SetRecently() error {
 	}
 }
 
-func UpdateInps(dirname string, brk chan bool) {
-	Inps = make([]string, 0)
-	SearchingInps = true
-	SearchingInpsDone = make(chan bool)
-	inpch := st.SearchInp(dirname)
-createinps:
-	for {
-		select {
-		case <-brk:
-			break createinps
-		case fn := <-inpch:
-			if fn == "" {
-				break createinps
-			} else {
-				Inps = append(Inps, fn)
-			}
-		}
+// func UpdateInps(dirname string, brk chan bool) {
+func UpdateInps(dirname string) {
+	tmp, err := filepath.Glob(dirname + "/**/**/*.inp")
+	if err != nil {
+		return
 	}
-	SearchingInps = false
-	SearchingInpsDone <- true
+	Inps = tmp
+// 	Inps = make([]string, 0)
+// 	SearchingInps = true
+// 	SearchingInpsDone = make(chan bool)
+// 	inpch := st.SearchInp(dirname)
+// createinps:
+// 	for {
+// 		select {
+// 		case <-brk:
+// 			break createinps
+// 		case fn := <-inpch:
+// 			if fn == "" {
+// 				break createinps
+// 			} else {
+// 				Inps = append(Inps, fn)
+// 			}
+// 		}
+// 	}
+// 	SearchingInps = false
+// 	SearchingInpsDone <- true
 }
 
 func (stw *Window) SearchInp() {
@@ -1423,7 +1429,7 @@ func (stw *Window) SearchInp() {
 		"ALIGNMENT=ALEFT",
 		fmt.Sprintf("SIZE=%dx%d", datalabelwidth*8, dataheight),
 	)
-	brk := make(chan bool)
+	// brk := make(chan bool)
 	searchinginps_r := false
 	updateresult := func() {
 		result.SetAttribute("REMOVEITEM", "ALL")
@@ -1443,24 +1449,24 @@ func (stw *Window) SearchInp() {
 		if err != nil {
 			stw.errormessage(err, ERROR)
 		}
-		if searchinginps_r {
-			brk <- true
-		}
+		// if searchinginps_r {
+		// 	brk <- true
+		// }
 		dlg.Destroy()
 	}
-	go func() {
-	searchinp:
-		for {
-			if !SearchingInps {
-				break
-			}
-			select {
-			case <-SearchingInpsDone:
-				updateresult()
-				break searchinp
-			}
-		}
-	}()
+	// go func() {
+	// searchinp:
+	// 	for {
+	// 		if !SearchingInps {
+	// 			break
+	// 		}
+	// 		select {
+	// 		case <-SearchingInpsDone:
+	// 			updateresult()
+	// 			break searchinp
+	// 		}
+	// 	}
+	// }()
 	basedir.SetCallback(func(arg *iup.CommonKillFocus) {
 		updateresult()
 	})
@@ -1477,9 +1483,9 @@ func (stw *Window) SearchInp() {
 			}
 			openfile(result.GetAttribute(val))
 		case KEY_ESCAPE:
-			if searchinginps_r {
-				brk <- true
-			}
+			// if searchinginps_r {
+			// 	brk <- true
+			// }
 			dlg.Destroy()
 		case 'J':
 			if key.IsCtrl() {
@@ -1515,21 +1521,22 @@ func (stw *Window) SearchInp() {
 					result.SetAttribute("REMOVEITEM", "ALL")
 					result.SetAttribute("1", "Searching...")
 					searchinginps_r = true
-					go UpdateInps(basedir.GetAttribute("VALUE"), brk)
-					go func() {
-					searchinp_r:
-						for {
-							if !searchinginps_r {
-								break
-							}
-							select {
-							case <-SearchingInpsDone:
-								updateresult()
-								searchinginps_r = false
-								break searchinp_r
-							}
-						}
-					}()
+					UpdateInps(basedir.GetAttribute("VALUE"))
+					// go UpdateInps(basedir.GetAttribute("VALUE"), brk)
+					// go func() {
+					// searchinp_r:
+					// 	for {
+					// 		if !searchinginps_r {
+					// 			break
+					// 		}
+					// 		select {
+					// 		case <-SearchingInpsDone:
+					// 			updateresult()
+					// 			searchinginps_r = false
+					// 			break searchinp_r
+					// 		}
+					// 	}
+					// }()
 				}
 			}
 		}
