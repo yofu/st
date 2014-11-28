@@ -171,10 +171,13 @@ func (ai *Aiparameter) Snapshot() *Aiparameter {
 	a.T = ai.T
 	a.Rt = ai.Rt
 	a.Nfloor = ai.Nfloor
-	// TODO
-	a.Boundary = make([]float64, a.Nfloor+1)
-	for i:=0; i<a.Nfloor+1; i++ {
-		a.Boundary[i] = ai.Boundary[i]
+	if ai.Nfloor > 0 {
+		a.Boundary = make([]float64, a.Nfloor+1)
+		for i:=0; i<a.Nfloor+1; i++ {
+			a.Boundary[i] = ai.Boundary[i]
+		}
+	} else {
+		a.Boundary = make([]float64, 0)
 	}
 	if len(ai.Level) > 0 {
 		a.Level = make([]float64, a.Nfloor)
