@@ -1733,6 +1733,33 @@ func (stw *Window) SaveFile(fn string) error {
 	return nil
 }
 
+func (stw *Window) SaveFileSelected(fn string, els []*st.Elem) error {
+	var v *st.View
+	if !stw.Frame.View.Perspective {
+		v = stw.Frame.View.Copy()
+		stw.Frame.View.Gfact = 1.0
+		stw.Frame.View.Perspective = true
+		for _, n := range stw.Frame.Nodes {
+			stw.Frame.View.ProjectNode(n)
+		}
+		xmin, xmax, ymin, ymax := stw.Bbox()
+		w, h := stw.cdcanv.GetSize()
+		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * 0.9
+		stw.Frame.View.Dists[1] *= scale
+	}
+	passwatcher = true
+	err := st.WriteInp(fn, stw.Frame.View, stw.Frame.Ai, els)
+	if v != nil {
+		stw.Frame.View = v
+	}
+	if err != nil {
+		return err
+	}
+	stw.errormessage(errors.New(fmt.Sprintf("SAVE: %s", fn)), INFO)
+	stw.Changed = false
+	return nil
+}
+
 // }}}
 
 func (stw *Window) Close(force bool) {
@@ -3342,7 +3369,7 @@ func (stw *Window) exmode(command string) error {
 		default:
 			stw.errormessage(errors.New(fmt.Sprintf("no exmode command: %s", cname)), INFO)
 			return nil
-		case abbrev.For("w/rite", cname), abbrev.For("sav/e", cname):
+		case abbrev.For("w/rite", cname):
 			if fn == "" {
 				stw.SaveFile(stw.Frame.Path)
 			} else {
@@ -3354,9 +3381,26 @@ func (stw *Window) exmode(command string) error {
 					if fn != stw.Frame.Path {
 						stw.Copylsts(fn)
 					}
-					if cname == "sav" {
-						stw.Rebase(fn)
+				}
+			}
+		case abbrev.For("sav/e", cname):
+			if fn == "" {
+				return st.NotEnoughArgs(":save")
+			} else {
+				if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
+					var err error
+					if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
+						err = stw.SaveFileSelected(fn, stw.SelectElem)
+					} else {
+						err = stw.SaveFile(fn)
 					}
+					if err != nil {
+						return err
+					}
+					if fn != stw.Frame.Path {
+						stw.Copylsts(fn)
+					}
+					stw.Rebase(fn)
 				}
 			}
 		case abbrev.For("inc/rement", cname):

@@ -171,6 +171,7 @@ func (ai *Aiparameter) Snapshot() *Aiparameter {
 	a.T = ai.T
 	a.Rt = ai.Rt
 	a.Nfloor = ai.Nfloor
+	// TODO
 	a.Boundary = make([]float64, a.Nfloor+1)
 	for i:=0; i<a.Nfloor+1; i++ {
 		a.Boundary[i] = ai.Boundary[i]
@@ -1846,26 +1847,7 @@ func (frame *Frame) ParseKjn(lis []string) error {
 // Write
 // WriteInp// {{{
 func (frame *Frame) WriteInp(fn string) error {
-	var nums, otp bytes.Buffer
 	var pnum, snum, inum, nnum, enum int
-	// Frame
-	otp.WriteString(fmt.Sprintf("BASE    %5.3f\n", frame.Ai.Base))
-	otp.WriteString(fmt.Sprintf("LOCATE  %5.3f\n", frame.Ai.Locate))
-	otp.WriteString(fmt.Sprintf("TFACT   %5.3f\n", frame.Ai.Tfact))
-	otp.WriteString(fmt.Sprintf("GPERIOD %5.3f\n", frame.Ai.Gperiod))
-	if frame.Ai.Nfloor > 0 {
-		otp.WriteString(fmt.Sprintf("NFLOOR %d\n", frame.Ai.Nfloor))
-		otp.WriteString("HEIGHT")
-		for i := 0; i < frame.Ai.Nfloor+1; i++ {
-			otp.WriteString(fmt.Sprintf(" %.1f", frame.Ai.Boundary[i]))
-		}
-		otp.WriteString("\n")
-	}
-	otp.WriteString("\n")
-	otp.WriteString(fmt.Sprintf("GFACT %.1f\n", frame.View.Gfact))
-	otp.WriteString(fmt.Sprintf("FOCUS %.1f %.1f %.1f\n", frame.View.Focus[0], frame.View.Focus[1], frame.View.Focus[2]))
-	otp.WriteString(fmt.Sprintf("ANGLE %.1f %.1f\n", frame.View.Angle[0], frame.View.Angle[1]))
-	otp.WriteString(fmt.Sprintf("DISTS %.1f %.1f\n\n", frame.View.Dists[0], frame.View.Dists[1]))
 	// Prop
 	props := make([]*Prop, len(frame.Props))
 	for _, p := range frame.Props {
@@ -1873,10 +1855,6 @@ func (frame *Frame) WriteInp(fn string) error {
 		pnum++
 	}
 	sort.Sort(PropByNum{props})
-	for _, p := range props {
-		otp.WriteString(p.InpString())
-	}
-	otp.WriteString("\n")
 	// Sect
 	sects := make([]*Sect, len(frame.Sects))
 	for _, sec := range frame.Sects {
@@ -1888,22 +1866,15 @@ func (frame *Frame) WriteInp(fn string) error {
 	}
 	sects = sects[:snum]
 	sort.Sort(SectByNum{sects})
-	for _, sec := range sects {
-		otp.WriteString(sec.InpString())
-	}
-	otp.WriteString("\n")
 	// Pile
+	var piles []*Pile
 	if len(frame.Piles) >= 1 {
-		piles := make([]*Pile, len(frame.Piles))
+		piles = make([]*Pile, len(frame.Piles))
 		for _, i := range frame.Piles {
 			piles[inum] = i
 			inum++
 		}
 		sort.Sort(PileByNum{piles})
-		for _, i := range piles {
-			otp.WriteString(i.InpString())
-		}
-		otp.WriteString("\n")
 	}
 	// Node
 	nodes := make([]*Node, len(frame.Nodes))
@@ -1912,10 +1883,6 @@ func (frame *Frame) WriteInp(fn string) error {
 		nnum++
 	}
 	sort.Sort(NodeByNum{nodes})
-	for _, n := range nodes {
-		otp.WriteString(n.InpString())
-	}
-	otp.WriteString("\n")
 	// Elem
 	elems := make([]*Elem, len(frame.Elems))
 	for _, el := range frame.Elems {
@@ -1927,27 +1894,7 @@ func (frame *Frame) WriteInp(fn string) error {
 	}
 	elems = elems[:enum]
 	sort.Sort(ElemByNum{elems})
-	for _, el := range elems {
-		otp.WriteString(el.InpString())
-	}
-	nums.WriteString(fmt.Sprintf("%s\n", frame.Title))
-	nums.WriteString(fmt.Sprintf("NNODE %d\n", nnum))
-	nums.WriteString(fmt.Sprintf("NELEM %d\n", enum))
-	nums.WriteString(fmt.Sprintf("NPROP %d\n", pnum))
-	nums.WriteString(fmt.Sprintf("NSECT %d\n", snum))
-	if inum >= 1 {
-		nums.WriteString(fmt.Sprintf("NPILE %d\n", inum))
-	}
-	nums.WriteString("\n")
-	// Write
-	w, err := os.Create(fn)
-	defer w.Close()
-	if err != nil {
-		return err
-	}
-	nums.WriteTo(w)
-	otp.WriteTo(w)
-	return nil
+	return writeinp(fn, frame.Title, frame.View, frame.Ai, props, sects, piles, nodes, elems)
 }
 
 // }}}
@@ -3664,6 +3611,162 @@ func (view *View) ProjectDeformation(node *Node, show *Show) {
 
 // }}}
 
+
+func WriteInp(fn string, view *View, ai *Aiparameter, els []*Elem) error {
+	var pnum, snum, inum, nnum, enum int
+	elems := make([]*Elem, 0)
+	for _, el := range els {
+		if el == nil {
+			continue
+		}
+		elems = append(elems, el)
+		enum++
+	}
+	elems = elems[:enum]
+	sort.Sort(ElemByNum{elems})
+	// Sect
+	var add bool
+	sects := make([]*Sect, 0)
+	for _, el := range elems {
+		add = true
+		for _, s := range sects {
+			if el.Sect == s {
+				add = false
+				break
+			}
+		}
+		if add {
+			sects = append(sects, el.Sect)
+			snum++
+		}
+	}
+	sects = sects[:snum]
+	sort.Sort(SectByNum{sects})
+	// Prop
+	props := make([]*Prop, 0)
+	for _, sec := range sects {
+		add = true
+		for _, f := range sec.Figs {
+			for _, p := range props {
+				if f.Prop == p {
+					add = false
+					break
+				}
+			}
+			if add {
+				props = append(props, f.Prop)
+				pnum++
+			}
+		}
+	}
+	props = props[:pnum]
+	sort.Sort(PropByNum{props})
+	// Node
+	nodes := make([]*Node, 0)
+	for _, el := range elems {
+		for _, en := range el.Enod {
+			add = true
+			for _, n := range nodes {
+				if en == n {
+					add = false
+					break
+				}
+			}
+			if add {
+				nodes = append(nodes, en)
+				nnum++
+			}
+		}
+	}
+	nodes = nodes[:nnum]
+	sort.Sort(NodeByNum{nodes})
+	// Pile
+	piles := make([]*Pile, 0)
+	for _, n := range nodes {
+		if n.Pile != nil {
+			add = true
+			for _, i := range piles {
+				if n.Pile == i {
+					add = false
+					break
+				}
+			}
+			if add {
+				piles = append(piles, n.Pile)
+				inum++
+			}
+		}
+	}
+	piles = piles[:inum]
+	sort.Sort(PileByNum{piles})
+	return writeinp(fn, "\"CREATED ORGAN FRAME.\"", view, ai, props, sects, piles, nodes, elems)
+}
+
+func writeinp(fn, title string, view *View, ai *Aiparameter, props []*Prop, sects []*Sect, piles []*Pile, nodes []*Node, elems []*Elem) error {
+	var otp bytes.Buffer
+	inum := len(piles)
+	// Frame
+	otp.WriteString(fmt.Sprintf("%s\n", title))
+	otp.WriteString(fmt.Sprintf("NNODE %d\n", len(nodes)))
+	otp.WriteString(fmt.Sprintf("NELEM %d\n", len(elems)))
+	otp.WriteString(fmt.Sprintf("NPROP %d\n", len(props)))
+	otp.WriteString(fmt.Sprintf("NSECT %d\n", len(sects)))
+	if inum >= 1 {
+		otp.WriteString(fmt.Sprintf("NPILE %d\n", inum))
+	}
+	otp.WriteString("\n")
+	otp.WriteString(fmt.Sprintf("BASE    %5.3f\n", ai.Base))
+	otp.WriteString(fmt.Sprintf("LOCATE  %5.3f\n", ai.Locate))
+	otp.WriteString(fmt.Sprintf("TFACT   %5.3f\n", ai.Tfact))
+	otp.WriteString(fmt.Sprintf("GPERIOD %5.3f\n", ai.Gperiod))
+	if ai.Nfloor > 0 {
+		otp.WriteString(fmt.Sprintf("NFLOOR %d\n", ai.Nfloor))
+		otp.WriteString("HEIGHT")
+		for i := 0; i < ai.Nfloor+1; i++ {
+			otp.WriteString(fmt.Sprintf(" %.1f", ai.Boundary[i]))
+		}
+		otp.WriteString("\n")
+	}
+	otp.WriteString("\n")
+	otp.WriteString(fmt.Sprintf("GFACT %.1f\n", view.Gfact))
+	otp.WriteString(fmt.Sprintf("FOCUS %.1f %.1f %.1f\n", view.Focus[0], view.Focus[1], view.Focus[2]))
+	otp.WriteString(fmt.Sprintf("ANGLE %.1f %.1f\n", view.Angle[0], view.Angle[1]))
+	otp.WriteString(fmt.Sprintf("DISTS %.1f %.1f\n\n", view.Dists[0], view.Dists[1]))
+	// Prop
+	for _, p := range props {
+		otp.WriteString(p.InpString())
+	}
+	otp.WriteString("\n")
+	// Sect
+	for _, sec := range sects {
+		otp.WriteString(sec.InpString())
+	}
+	otp.WriteString("\n")
+	// Pile
+	if inum >= 1 {
+		for _, i := range piles {
+			otp.WriteString(i.InpString())
+		}
+		otp.WriteString("\n")
+	}
+	// Node
+	for _, n := range nodes {
+		otp.WriteString(n.InpString())
+	}
+	otp.WriteString("\n")
+	// Elem
+	for _, el := range elems {
+		otp.WriteString(el.InpString())
+	}
+	// Write
+	w, err := os.Create(fn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
+	otp.WriteTo(w)
+	return nil
+}
 
 func WriteOutput(fn string, p string, els []*Elem) error {
 	var otp bytes.Buffer
