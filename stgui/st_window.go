@@ -2215,6 +2215,9 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			if n, ok := stw.Frame.Nodes[int(val)]; ok {
 				stw.Frame.SetFocus(n.Coord)
 			}
+			w, h := stw.cdcanv.GetSize()
+			stw.Frame.View.Center[0] = float64(w) * 0.5
+			stw.Frame.View.Center[1] = float64(h) * 0.5
 		case "ELEM":
 			val, err := strconv.ParseInt(lis[2], 10, 64)
 			if err != nil {
@@ -2223,6 +2226,9 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			if el, ok := stw.Frame.Elems[int(val)]; ok {
 				stw.Frame.SetFocus(el.MidPoint())
 			}
+			w, h := stw.cdcanv.GetSize()
+			stw.Frame.View.Center[0] = float64(w) * 0.5
+			stw.Frame.View.Center[1] = float64(h) * 0.5
 		default:
 			if len(lis) < 4 {
 				return st.NotEnoughArgs("FOCUS")
