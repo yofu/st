@@ -7999,9 +7999,16 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 					stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", pos))
 				}}
 			} else if strings.Contains(command, "@") {
-				val := 0 // TODO: set value in .pgp file
+				pat := regexp.MustCompile("@[0-9-]*")
+				str := pat.FindString(command)
+				var tmp int64
+				tmp, err := strconv.ParseInt(str[1:], 10, 64)
+				if err != nil {
+					tmp = 0
+				}
+				val := int(tmp)
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					currentcommand := strings.Replace(command, "@", fmt.Sprintf("%d", val), -1)
+					currentcommand := strings.Replace(command, str, fmt.Sprintf("%d", val), -1)
 					err := stw.exmode(currentcommand)
 					if err != nil {
 						stw.errormessage(err, ERROR)
