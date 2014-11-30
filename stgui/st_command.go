@@ -58,6 +58,7 @@ var (
 	MATCHPROP           = &Command{"COPY PROPERTY", "MATCH PROPERTY", "match property", matchproperty}
 	AXISTOCANG          = &Command{"CANG", "AXISTOCANG", "set cang by axis", axistocang}
 	COPYELEM            = &Command{"COPY", "COPY ELEM", "copy selected elems", copyelem}
+	DUPLICATEELEM       = &Command{"DUP.", "DUPLICATE ELEM", "duplicate selected elems", duplicateelem}
 	MOVEELEM            = &Command{"MOVE", "MOVE ELEM", "move selected elems", moveelem}
 	MOVENODE            = &Command{"MOVE", "MOVE NODE", "move selected nodes", movenode}
 	MOVETOLINE          = &Command{"MOVETOLINE", "MOVE NODE ONTO LINE", "move selected nodes onto the line", movetoline}
@@ -143,6 +144,7 @@ func init() {
 	Commands["MATCHPROP"] = MATCHPROP
 	Commands["AXISTOCANG"] = AXISTOCANG
 	Commands["COPYELEM"] = COPYELEM
+	Commands["DUPLICATEELEM"] = DUPLICATEELEM
 	Commands["MOVEELEM"] = MOVEELEM
 	Commands["MOVENODE"] = MOVENODE
 	Commands["MOVETOLINE"] = MOVETOLINE
@@ -1130,6 +1132,34 @@ func copyelem(stw *Window) {
 			stw.Redraw()
 		}
 	})
+}
+
+// }}}
+
+// DUPLICATEELEM// {{{
+func duplicateelem(stw *Window) {
+	if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+		return
+	}
+	newels := make([]*st.Elem, len(stw.SelectElem))
+	enum := 0
+	for _, el := range stw.SelectElem {
+		if el == nil || el.IsHide(stw.Frame.Show) || el.Lock {
+			continue
+		}
+		newel := el.Snapshot(stw.Frame)
+		newels[enum] = newel
+		enum++
+	}
+	newels = newels[:enum]
+	sort.Sort(st.ElemByNum{newels})
+	for _, el := range newels {
+		stw.Frame.AddElem(-1, el)
+	}
+	stw.SelectElem = newels
+	stw.Snapshot()
+	stw.EscapeCB()
+	stw.Redraw()
 }
 
 // }}}
