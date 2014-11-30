@@ -3780,6 +3780,9 @@ func (stw *Window) exmode(command string) error {
 			if narg < 2 {
 				return st.NotEnoughArgs(":bond")
 			}
+			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+				return errors.New(":bond no selected elem")
+			}
 			lis := make([]bool, 6)
 			switch strings.ToUpper(args[1]) {
 			case "PIN":
@@ -3826,6 +3829,48 @@ func (stw *Window) exmode(command string) error {
 					for j := 0; j < 6; j++ {
 						el.Bonds[6*i+j] = lis[j]
 					}
+				}
+			}
+			stw.Snapshot()
+		case abbrev.For("ax/is/2//c/ang", cname):
+			if narg < 4 {
+				return st.NotEnoughArgs(":axis2cang")
+			}
+			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+				return errors.New(":axis2cang no selected elem")
+			}
+			nnum1, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return err
+			}
+			nnum2, err := strconv.ParseInt(args[2], 10, 64)
+			if err != nil {
+				return err
+			}
+			var strong bool
+			if strings.EqualFold(args[3], "strong") {
+				strong = true
+			} else if strings.EqualFold(args[3], "weak") {
+				strong = false
+			} else {
+				return errors.New(":axis2cang: last argument must be strong or weak")
+			}
+			var n1, n2 *st.Node
+			var found bool
+			if n1, found = stw.Frame.Nodes[int(nnum1)]; !found {
+				return errors.New(fmt.Sprintf(":axis2cang: NODE %d not found", nnum1))
+			}
+			if n2, found = stw.Frame.Nodes[int(nnum2)]; !found {
+				return errors.New(fmt.Sprintf(":axis2cang: NODE %d not found", nnum2))
+			}
+			vec := []float64{n2.Coord[0] - n1.Coord[0], n2.Coord[1] - n1.Coord[1], n2.Coord[2] - n1.Coord[2]}
+			for _, el := range stw.SelectElem {
+				if el == nil || el.IsHide(stw.Frame.Show) || el.Lock || !el.IsLineElem() {
+					continue
+				}
+				_, err := el.AxisToCang(vec, strong)
+				if err != nil {
+					return err
 				}
 			}
 			stw.Snapshot()
