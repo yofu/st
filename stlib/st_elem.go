@@ -65,6 +65,8 @@ type Elem struct {
 	Stress        map[string]map[int][]float64
 	InitialStress map[int][]float64
 
+	Prestress float64
+
 	Phinge map[string]map[int]bool
 
 	Strong []float64
@@ -399,6 +401,9 @@ func (elem *Elem) InpString() string {
 			}
 		}
 		rtn.WriteString(fmt.Sprintf("           TYPE %s\n", ETYPES[elem.Etype]))
+		if elem.Prestress != 0.0 {
+			rtn.WriteString(fmt.Sprintf("           PREST %.3f\n", elem.Prestress))
+		}
 		return rtn.String()
 	} else {
 		rtn.WriteString(fmt.Sprintf("ELEM %5d ESECT %3d ENODS %d ENOD", elem.Num, elem.Sect.Num, elem.Enods))

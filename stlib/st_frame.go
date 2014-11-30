@@ -820,6 +820,12 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) (*Elem, error) 
 				wrect[j] = val
 			}
 			e.Wrect = wrect
+		case "PREST":
+			val, err := strconv.ParseFloat(lis[i+1], 64)
+			if err != nil {
+				return nil, err
+			}
+			e.Prestress = val
 		case "TYPE":
 			err = e.setEtype(lis[i+1])
 		}
@@ -834,6 +840,7 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) (*Elem, error) 
 		el.Cang = e.Cang
 		el.Cmq = e.Cmq
 		el.Bonds = e.Bonds
+		el.Prestress = e.Prestress
 		el.SetPrincipalAxis()
 	} else {
 		el = NewPlateElem(e.Enod, e.Sect, e.Etype)

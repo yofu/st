@@ -243,6 +243,12 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 		ecap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["RATE"]), val))
 		oncap = true
 	}
+	if show.ElemCaption&st.EC_PREST != 0 {
+		if elem.Prestress != 0.0 {
+			ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Prestress))
+			oncap = true
+		}
+	}
 	if oncap {
 		var textpos []float64
 		if st.BRACE <= elem.Etype && elem.Etype <= st.SBRACE {

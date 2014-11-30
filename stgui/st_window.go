@@ -2636,6 +2636,12 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.StressOn(etype, uint(index))
 			}
 		}
+	case abbrev.For("prest/ress", key):
+		if un {
+			stw.ElemCaptionOff("EC_PREST")
+		} else {
+			stw.ElemCaptionOn("EC_PREST")
+		}
 	case abbrev.For("def/ormation", key):
 		if un {
 			stw.DeformationOff()
@@ -3821,6 +3827,24 @@ func (stw *Window) exmode(command string) error {
 						el.Bonds[6*i+j] = lis[j]
 					}
 				}
+			}
+			stw.Snapshot()
+		case abbrev.For("prest/ress", cname):
+			if narg < 2 {
+				return st.NotEnoughArgs(":prestress")
+			}
+			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+				return errors.New(":prestress no selected elem")
+			}
+			val, err := strconv.ParseFloat(args[1], 64)
+			if err != nil {
+				return err
+			}
+			for _, el := range stw.SelectElem {
+				if el == nil || el.Lock || !el.IsLineElem() {
+					continue
+				}
+				el.Prestress = val
 			}
 			stw.Snapshot()
 		case abbrev.For("co/nf", cname):
