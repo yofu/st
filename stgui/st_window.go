@@ -4282,7 +4282,6 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 			stw.DrawGlobalAxis(canv, color)
 		}
 		if stw.Frame.Show.Kijun {
-			canv.TextAlignment(cd.CD_CENTER)
 			canv.Foreground(KijunColor)
 			for _, k := range stw.Frame.Kijuns {
 				if k.Hide {
@@ -4292,7 +4291,6 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 				k.Pend = stw.Frame.View.ProjectCoord(k.End)
 				DrawKijun(k, canv, stw.Frame.Show)
 			}
-			canv.TextAlignment(DefaultTextAlignment)
 		}
 		if stw.Frame.Show.Measure {
 			canv.TextAlignment(cd.CD_SOUTH)

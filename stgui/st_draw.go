@@ -6,6 +6,7 @@ import (
 	"github.com/visualfc/go-iup/cd"
 	"github.com/yofu/st/stlib"
 	"math"
+	"regexp"
 )
 
 func DrawPrintRange(stw *Window) {
@@ -559,7 +560,10 @@ func DrawSection(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 	}
 }
 
+
 // KIJUN
+var fl = regexp.MustCompile("FL$")
+
 func DrawKijun(k *st.Kijun, cvs *cd.Canvas, show *st.Show) {
 	d := k.PDirection(true)
 	if math.Abs(d[0]) <= 1e-6 && math.Abs(d[1]) <= 1e-6 {
@@ -568,11 +572,32 @@ func DrawKijun(k *st.Kijun, cvs *cd.Canvas, show *st.Show) {
 	cvs.LineStyle(cd.CD_DASH_DOT)
 	cvs.FLine(k.Pstart[0], k.Pstart[1], k.Pend[0], k.Pend[1])
 	cvs.LineStyle(cd.CD_CONTINUOUS)
-	cvs.FCircle(k.Pstart[0]-d[0]*show.KijunSize, k.Pstart[1]-d[1]*show.KijunSize, show.KijunSize*2)
-	if k.Name[0] == '_' {
-		cvs.FText(k.Pstart[0]-d[0]*show.KijunSize, k.Pstart[1]-d[1]*show.KijunSize, k.Name[1:])
-	} else {
-		cvs.FText(k.Pstart[0]-d[0]*show.KijunSize, k.Pstart[1]-d[1]*show.KijunSize, k.Name)
+	switch {
+	default:
+		cvs.TextAlignment(cd.CD_CENTER)
+		cvs.FCircle(k.Pstart[0]-d[0]*show.KijunSize, k.Pstart[1]-d[1]*show.KijunSize, show.KijunSize*2)
+		if k.Name[0] == '_' {
+			cvs.FText(k.Pstart[0]-d[0]*show.KijunSize, k.Pstart[1]-d[1]*show.KijunSize, k.Name[1:])
+		} else {
+			cvs.FText(k.Pstart[0]-d[0]*show.KijunSize, k.Pstart[1]-d[1]*show.KijunSize, k.Name)
+		}
+		cvs.TextAlignment(DefaultTextAlignment)
+	case fl.MatchString(k.Name):
+		if d[0] >= 0.0 {
+			cvs.TextAlignment(cd.CD_SOUTH_WEST)
+		} else {
+			cvs.TextAlignment(cd.CD_SOUTH_EAST)
+		}
+		deg := math.Atan2(d[1], d[0]) * 180.0 / math.Pi
+		if deg > 90.0 {
+			deg -= 180.0
+		} else if deg < -90.0 {
+			deg += 180.0
+		}
+		cvs.TextOrientation(deg)
+		cvs.FText(k.Pstart[0], k.Pstart[1], k.Name)
+		cvs.TextOrientation(0.0)
+		cvs.TextAlignment(DefaultTextAlignment)
 	}
 }
 
