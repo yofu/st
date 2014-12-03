@@ -3588,7 +3588,20 @@ func (stw *Window) exmode(command string) error {
 			if narg >= 2 {
 				condition := strings.ToUpper(strings.Join(args[1:], " "))
 				coordstr := regexp.MustCompile("^ *([XYZ]) *([<!=>]{0,2}) *([0-9.]+)")
+				numstr := regexp.MustCompile("^[0-9, ]+$")
 				switch {
+				default:
+					return errors.New(":node: unknown format")
+				case numstr.MatchString(condition):
+					nnums := SplitNums(condition)
+					f = func(n *st.Node) bool {
+						for _, nnum := range nnums {
+							if n.Num == nnum {
+								return true
+							}
+						}
+						return false
+					}
 				case coordstr.MatchString(condition):
 					fs := coordstr.FindStringSubmatch(condition)
 					if len(fs) < 4 {
