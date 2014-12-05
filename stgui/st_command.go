@@ -2989,16 +2989,71 @@ func hatchplateelem(stw *Window) {
 
 // }}}
 
-// ADDPLATEALL TODO: UNDER CONSTRUCTION// {{{
+// ADDPLATEALL
 func addplateall(stw *Window) {
-	if stw.SelectElem == nil {
-		ns := stw.Frame.ElemToNode(stw.SelectElem...)
-		stw.SelectNode = append(stw.SelectNode, ns...)
-	}
-	if stw.SelectNode == nil || len(stw.SelectNode) < 3 {
+	if stw.SelectElem == nil || len(stw.SelectElem) < 2 {
 		stw.EscapeAll()
 		return
 	}
+	elems := make([]*st.Elem, len(stw.SelectElem))
+	enum := 0
+	for _, el := range stw.SelectElem {
+		if el != nil && el.IsLineElem() {
+			elems[enum] = el
+			enum++
+		}
+	}
+	elems = elems[:enum]
+	sort.Sort(st.ElemByNum{elems})
+	sec := stw.Frame.DefaultSect()
+	etype := st.NONE
+	add := 0
+	added := make([]*st.Elem, 0)
+	var found bool
+	for i, el1 := range elems[:enum-1] {
+		for _, el2 := range elems[i+1:] {
+			if el1.Enod[0] == el2.Enod[0] || el1.Enod[1] == el2.Enod[1] || el1.Enod[0] == el2.Enod[1] || el1.Enod[1] == el2.Enod[0] {
+				continue
+			} else {
+				for j:=0; j<2; j++ {
+					var sel *st.Elem
+					found = false
+					for _, sel = range stw.Frame.SearchElem(el1.Enod[0], el2.Enod[j]) {
+						if sel.IsLineElem() {
+							found = true
+							break
+						}
+					}
+					if !found {
+						continue
+					}
+					found = false
+					for _, sel = range stw.Frame.SearchElem(el1.Enod[1], el2.Enod[1-j]) {
+						if sel.IsLineElem() {
+							found = true
+							break
+						}
+					}
+					if !found {
+						continue
+					}
+					en := []*st.Node{el1.Enod[0], el1.Enod[1], el2.Enod[1-j], el2.Enod[j]}
+					if len(stw.Frame.SearchElem(en...)) == 0 {
+						el := stw.Frame.AddPlateElem(-1, en, sec, etype)
+						added = append(added, el)
+						add++
+						break
+					}
+				}
+			}
+		}
+	}
+	added = added[:add]
+	stw.SelectElem = added
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("%d ELEM (SECT %d, ETYPE %s) added", add, sec.Num, st.ETYPES[etype]))
+	stw.addHistory(buf.String())
+	stw.EscapeCB()
 }
 
 // }}}
