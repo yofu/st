@@ -1424,19 +1424,19 @@ func (elem *Elem) OnNode(num int, eps float64) []*Node {
 	return sortednodes
 }
 
-func (elem *Elem) DivideAtOns(eps float64) (n []*Node, els []*Elem, err error) {
+func (elem *Elem) DivideAtOns(eps float64) (rn []*Node, els []*Elem, err error) {
 	if !elem.IsLineElem() {
 		return nil, nil, NotLineElem("DivideAtCoord")
 	}
-	ns := elem.OnNode(0, eps)
-	l := len(ns)
+	rn = elem.OnNode(0, eps)
+	l := len(rn)
 	if l == 0 {
 		return nil, []*Elem{elem}, nil
 	}
 	els = make([]*Elem, l+1)
 	els[0] = elem
 	for i := l - 1; i >= 0; i-- {
-		_, newels, err := elem.DivideAtNode(ns[i], 1, false)
+		_, newels, err := elem.DivideAtNode(rn[i], 1, false)
 		if err != nil {
 			return nil, nil, err
 		}
