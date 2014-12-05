@@ -1362,6 +1362,32 @@ func (elem *Elem) DivideAtAxis(axis int, coord float64) (n []*Node, els []*Elem,
 	return elem.DivideAtCoord(c[0], c[1], c[2])
 }
 
+func (elem *Elem) DivideInN(n int) (rn []*Node, els []*Elem, err error) {
+	if !elem.IsLineElem() {
+		return nil, nil, NotLineElem("DivideInN")
+	}
+	if n == 1 {
+		return nil, []*Elem{elem}, nil
+	}
+	rate := make([]float64, n-1)
+	for i:=1; i<n; i++ {
+		fmt.Printf("%d / %d\n", i, i+1)
+		rate[i-1] = float64(i) / float64(i+1)
+	}
+	rn = make([]*Node, n-1)
+	els = make([]*Elem, n)
+	els[0] = elem
+	for i := n - 2; i >= 0; i-- {
+		newn, newels, err := elem.DivideAtRate(rate[i])
+		if err != nil {
+			return nil, nil, err
+		}
+		rn[i] = newn[0]
+		els[i+1] = newels[1]
+	}
+	return
+}
+
 func (elem *Elem) OnNode(num int, eps float64) []*Node {
 	var num2 int
 	if num >= elem.Enods {

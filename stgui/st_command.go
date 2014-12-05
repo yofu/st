@@ -86,6 +86,7 @@ var (
 	ARCLM001            = &Command{"A001", "ARCLM001", "arclm001", arclm001}
 	DIVIDEATONS         = &Command{"ON NODES", "DIVIDE AT ONS", "divide selected elems at onnode", divideatons}
 	DIVIDEATMID         = &Command{"MID POINT", "DIVIDE AT MID", "divide selected elems at midpoint", divideatmid}
+	DIVIDEINN           = &Command{"IN N", "DIVIDE IN N", "divide selected elems in n parts", divideinn}
 	DIVIDEATELEM        = &Command{"AT ELEM", "DIVIDE AT ELEM", "divide selected elems at elem", divideatelem}
 	INTERSECT           = &Command{"INTS", "INTERSECT", "divide selected elems at intersection", intersect}
 	INTERSECTALL        = &Command{"INTA", "INTERSECT ALL", "divide selected elems at all intersection", intersectall}
@@ -172,6 +173,7 @@ func init() {
 	Commands["ARCLM001"] = ARCLM001
 	Commands["DIVIDEATONS"] = DIVIDEATONS
 	Commands["DIVIDEATMID"] = DIVIDEATMID
+	Commands["DIVIDEINN"] = DIVIDEINN
 	Commands["DIVIDEATELEM"] = DIVIDEATELEM
 	Commands["INTERSECT"] = INTERSECT
 	Commands["INTERSECTALL"] = INTERSECTALL
@@ -2674,6 +2676,24 @@ func divideatons(stw *Window) {
 func divideatmid(stw *Window) {
 	divide(stw, func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
 		return el.DivideAtMid()
+	})
+}
+func divideinn(stw *Window) {
+	ans, err := stw.Query("分割数")
+	if err != nil {
+		stw.errormessage(err, ERROR)
+		stw.EscapeCB()
+		return
+	}
+	val, err := strconv.ParseInt(ans, 10, 64)
+	if err != nil {
+		stw.errormessage(err, ERROR)
+		stw.EscapeCB()
+		return
+	}
+	n := int(val)
+	divide(stw, func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+		return el.DivideInN(n)
 	})
 }
 func divideatelem(stw *Window) {
