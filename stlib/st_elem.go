@@ -1371,7 +1371,6 @@ func (elem *Elem) DivideInN(n int) (rn []*Node, els []*Elem, err error) {
 	}
 	rate := make([]float64, n-1)
 	for i:=1; i<n; i++ {
-		fmt.Printf("%d / %d\n", i, i+1)
 		rate[i-1] = float64(i) / float64(i+1)
 	}
 	rn = make([]*Node, n-1)
