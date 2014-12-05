@@ -1277,6 +1277,8 @@ func (elem *Elem) DivideAtCoord(x, y, z float64) (ns []*Node, els []*Elem, err e
 		els[1].Bonds[6+j] = elem.Bonds[6+j]
 		elem.Bonds[6+j] = false
 	}
+	els[1].Cang = elem.Cang
+	els[1].SetPrincipalAxis()
 	return
 }
 
@@ -1322,16 +1324,22 @@ func (elem *Elem) DivideAtNode(n *Node, position int, del bool) (rn []*Node, els
 				els[1].Bonds[6+j] = elem.Bonds[6+j]
 				elem.Bonds[6+j] = false
 			}
+			els[1].Cang = elem.Cang
+			els[1].SetPrincipalAxis()
 			return []*Node{n}, els, nil
 		case 0:
 			newelem := elem.Frame.AddLineElem(-1, []*Node{n, elem.Enod[0]}, elem.Sect, elem.Etype)
 			els[0] = elem
 			els[1] = newelem
+			els[1].Cang = elem.Cang
+			els[1].SetPrincipalAxis()
 			return []*Node{n}, els, nil
 		case 2:
 			newelem := elem.Frame.AddLineElem(-1, []*Node{elem.Enod[1], n}, elem.Sect, elem.Etype)
 			els[0] = elem
 			els[1] = newelem
+			els[1].Cang = elem.Cang
+			els[1].SetPrincipalAxis()
 			return []*Node{n}, els, nil
 		}
 	}
