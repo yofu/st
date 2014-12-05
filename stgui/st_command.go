@@ -3172,21 +3172,25 @@ func editwrect(stw *Window) {
 		if err != nil {
 			stw.errormessage(err, ERROR)
 			stw.EscapeCB()
+			return
 		}
 		w, err := strconv.ParseFloat(ans, 64)
 		if err != nil {
 			stw.errormessage(err, ERROR)
 			stw.EscapeCB()
+			return
 		}
 		ans, err = stw.Query("開口高さ l[m]")
 		if err != nil {
 			stw.errormessage(err, ERROR)
 			stw.EscapeCB()
+			return
 		}
 		h, err := strconv.ParseFloat(ans, 64)
 		if err != nil {
 			stw.errormessage(err, ERROR)
 			stw.EscapeCB()
+			return
 		}
 		for _, el := range els {
 			if !el.IsLineElem() {
