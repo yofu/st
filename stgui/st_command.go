@@ -3005,31 +3005,82 @@ func addplateall(stw *Window) {
 	}
 	elems = elems[:enum]
 	sort.Sort(st.ElemByNum{elems})
+	search := func(ns ...*st.Node) []*st.Elem {
+		els := make([]*st.Elem, 0)
+		num := 0
+		l := len(ns)
+		for _, el := range elems {
+			count := 0
+			found := make([]bool, len(el.Enod))
+		loopse:
+			for _, n := range ns {
+				for i, en := range el.Enod {
+					if found[i] {
+						continue
+					}
+					if en == n {
+						found[i] = true
+						count++
+						continue loopse
+					}
+				}
+			}
+			if count == l {
+				els = append(els, el)
+				num++
+			}
+		}
+		return els[:num]
+	}
 	sec := stw.Frame.DefaultSect()
 	etype := st.NONE
 	add := 0
 	added := make([]*st.Elem, 0)
 	var found bool
+	var n1, n2 *st.Node
+	var en []*st.Node
 	for _, el := range elems {
 		found = false
-		for _, el1 := range stw.Frame.SearchElem(el.Enod[0]) {
-			if !el1.IsLineElem() {
+		for _, el1 := range search(el.Enod[0]) {
+			if el1 == el || !el1.IsLineElem() {
 				continue
 			}
-			for _, el2 := range stw.Frame.SearchElem(el.Enod[1]) {
-				if !el2.IsLineElem() {
+			n1 = el1.Otherside(el.Enod[0])
+			if n1 == nil {
+				continue
+			}
+			for _, sel := range search(n1, el.Enod[1]) {
+				if sel.IsLineElem() {
+					found = true
+					break
+				}
+			}
+			if found {
+				en = []*st.Node{el.Enod[0], el.Enod[1], n1}
+				if len(stw.Frame.SearchElem(en...)) == 0 {
+					el := stw.Frame.AddPlateElem(-1, en, sec, etype)
+					added = append(added, el)
+					add++
+				}
+				found = false
+				continue
+			}
+			for _, el2 := range search(el.Enod[1]) {
+				if el2 == el || !el2.IsLineElem() {
 					continue
 				}
-				n1 := el1.Otherside(el.Enod[0])
-				n2 := el2.Otherside(el.Enod[1])
-				for _, sel := range stw.Frame.SearchElem(n1, n2) {
+				n2 = el2.Otherside(el.Enod[1])
+				if n2 == nil {
+					continue
+				}
+				for _, sel := range search(n1, n2) {
 					if sel.IsLineElem() {
 						found = true
 						break
 					}
 				}
 				if found {
-					en := []*st.Node{el.Enod[0], el.Enod[1], n2, n1}
+					en = []*st.Node{el.Enod[0], el.Enod[1], n2, n1}
 					if len(stw.Frame.SearchElem(en...)) == 0 {
 						el := stw.Frame.AddPlateElem(-1, en, sec, etype)
 						added = append(added, el)
@@ -3040,44 +3091,6 @@ func addplateall(stw *Window) {
 			}
 		}
 	}
-	// for i, el1 := range elems[:enum-1] {
-	// 	for _, el2 := range elems[i+1:] {
-	// 		if el1.Enod[0] == el2.Enod[0] || el1.Enod[1] == el2.Enod[1] || el1.Enod[0] == el2.Enod[1] || el1.Enod[1] == el2.Enod[0] {
-	// 			continue
-	// 		} else {
-	// 			for j:=0; j<2; j++ {
-	// 				var sel *st.Elem
-	// 				found = false
-	// 				for _, sel = range stw.Frame.SearchElem(el1.Enod[0], el2.Enod[j]) {
-	// 					if sel.IsLineElem() {
-	// 						found = true
-	// 						break
-	// 					}
-	// 				}
-	// 				if !found {
-	// 					continue
-	// 				}
-	// 				found = false
-	// 				for _, sel = range stw.Frame.SearchElem(el1.Enod[1], el2.Enod[1-j]) {
-	// 					if sel.IsLineElem() {
-	// 						found = true
-	// 						break
-	// 					}
-	// 				}
-	// 				if !found {
-	// 					continue
-	// 				}
-	// 				en := []*st.Node{el1.Enod[0], el1.Enod[1], el2.Enod[1-j], el2.Enod[j]}
-	// 				if len(stw.Frame.SearchElem(en...)) == 0 {
-	// 					el := stw.Frame.AddPlateElem(-1, en, sec, etype)
-	// 					added = append(added, el)
-	// 					add++
-	// 					break
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// }
 	added = added[:add]
 	stw.SelectElem = added
 	var buf bytes.Buffer
