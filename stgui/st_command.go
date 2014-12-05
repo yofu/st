@@ -3009,7 +3009,7 @@ func hatchplateelem(stw *Window) {
 
 // }}}
 
-// ADDPLATEALL
+// ADDPLATEALL // {{{
 func addplateall(stw *Window) {
 	if stw.SelectElem == nil || len(stw.SelectElem) < 1 {
 		stw.EscapeAll()
