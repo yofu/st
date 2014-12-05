@@ -1585,6 +1585,15 @@ func (elem *Elem) RefNnum(nnum int) (int, error) {
 	return 0, errors.New("RefNnum: Not Found")
 }
 
+func (elem *Elem) Otherside (n *Node) *Node {
+	for i, en := range elem.Enod {
+		if en == n {
+			return elem.Enod[1-i]
+		}
+	}
+	return nil
+}
+
 func (elem *Elem) RefEnod(nnum int) (*Node, error) {
 	if 0 <= nnum && nnum < elem.Enods {
 		return elem.Enod[nnum], nil
