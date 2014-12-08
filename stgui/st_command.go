@@ -1987,7 +1987,11 @@ func trim(stw *Window) {
 			return el.IsLineElem()
 		},
 		func() {
-			stw.SelectElem[0].DivideAtOns(EPS)
+			if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
+				if stw.SelectElem[0] != nil {
+					stw.SelectElem[0].DivideAtOns(EPS)
+				}
+			}
 		})
 }
 
@@ -2011,7 +2015,11 @@ func extend(stw *Window) {
 			return el.IsLineElem()
 		},
 		func() {
-			stw.SelectElem[0].DivideAtOns(EPS)
+			if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
+				if stw.SelectElem[0] != nil {
+					stw.SelectElem[0].DivideAtOns(EPS)
+				}
+			}
 		})
 }
 
