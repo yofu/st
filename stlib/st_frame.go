@@ -1042,7 +1042,7 @@ func (frame *Frame) ReadData(filename string) error {
 				ns[i] = frame.Nodes[int(tmp)]
 			}
 			sect := frame.Sects[int(sec)]
-			newel := frame.AddLineElem(enum, ns, sect, sect.Type-1) // TODO: set etype, cang, ...
+			newel := frame.AddLineElem(enum, ns, sect, sect.Type) // TODO: set etype, cang, ...
 			if newel.Etype == WBRACE || newel.Etype == SBRACE {
 				// wg.Add(1)
 				// go func (nel *Elem, n []*Node) {
@@ -3393,6 +3393,36 @@ func (frame *Frame) AssemGlobalMatrix() (map[int]int, *matrix.CRSMatrix, error) 
 	end = time.Now()
 	fmt.Printf("LDLT : %fsec\n", (end.Sub(start)).Seconds())
 	return ind, rtn, nil
+}
+
+
+// SectionRate
+func (frame *Frame)SectionRateCalculation() {
+	cond := NewCondition()
+	for _, el := range frame.Elems {
+		if !el.IsLineElem() {
+			continue
+		}
+		if al, ok := frame.Allows[el.Sect.Num]; ok {
+			cond.Length = el.Length()
+			for _, per := range []string{"L", "X", "Y"} {
+				if st, ok := el.Stress[per]; ok {
+					for i:=0; i<2; i++ {
+						cond.Period = per
+						cond.Sign = float64(1-2*i)
+						sti := st[el.Enod[i].Num]
+						rate, err := Rate(al, sti, cond)
+						if err != nil {
+							fmt.Println(err)
+						}
+						fmt.Printf("ELEM %d SECT %d ENOD %d RATE %v\n", el.Num, el.Sect.Num, el.Enod[i].Num, rate)
+					}
+				} else {
+					fmt.Printf("ELEM: %d PERIOD: %s : no data\n", el.Num, per)
+				}
+			}
+		}
+	}
 }
 
 func (frame *Frame) Facts(fn string, etypes []int) error {

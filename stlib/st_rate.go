@@ -133,7 +133,6 @@ type SectionRate interface {
 	Qa(*Condition) float64
 	Ma(*Condition) float64
 	Mza(*Condition) float64
-	Rate([]float64, *Condition) ([]float64, error)
 }
 
 type Shape interface {
@@ -390,51 +389,6 @@ func (sc *SColumn) Ma(cond *Condition) float64 {
 }
 func (sc *SColumn) Mza(cond *Condition) float64 {
 	return sc.Fs(cond) * sc.Torsion() * 0.01 // [tfm]
-}
-func (sc *SColumn) Rate(stress []float64, cond *Condition) ([]float64, error) {
-	if len(stress) < 6 {
-		return nil, errors.New("Rate: Not enough number of Stress")
-	}
-	rate := make([]float64, 6)
-	na := sc.Na(cond)
-	if na != 0.0 {
-		rate[0] = stress[0] / na
-	} else {
-		return rate, ZeroAllowableError{"Na"}
-	}
-	cond.Strong = true
-	qax := sc.Qa(cond)
-	if qax != 0.0 {
-		rate[1] = stress[1] / qax
-	} else {
-		return rate, ZeroAllowableError{"Qax"}
-	}
-	max := sc.Ma(cond)
-	if max != 0.0 {
-		rate[4] = stress[4] / max
-	} else {
-		return rate, ZeroAllowableError{"MaX"}
-	}
-	cond.Strong = false
-	qay := sc.Qa(cond)
-	if qay != 0.0 {
-		rate[2] = stress[2] / qay
-	} else {
-		return rate, ZeroAllowableError{"Qay"}
-	}
-	may := sc.Ma(cond)
-	if may != 0.0 {
-		rate[5] = stress[5] / may
-	} else {
-		return rate, ZeroAllowableError{"May"}
-	}
-	maz := sc.Mza(cond)
-	if maz != 0.0 {
-		rate[3] = stress[3] / maz
-	} else {
-		return rate, ZeroAllowableError{"Maz"}
-	}
-	return rate, nil
 }
 
 func (sc *SColumn) Vertices() [][]float64 {
@@ -818,6 +772,7 @@ type CShape interface {
 	String() string
 	Bound(int) float64
 	Breadth(bool) float64
+	Area() float64
 	Height(bool) float64
 	Vertices() [][]float64
 }
@@ -862,6 +817,9 @@ func (cr CRect) Height(strong bool) float64 {
 		return cr.Right - cr.Left
 	}
 }
+func (cr CRect) Area() float64 {
+	return cr.Breadth(true) * cr.Height(true)
+}
 
 func (cr CRect) Vertices() [][]float64 {
 	vertices := make([][]float64, 4)
@@ -890,6 +848,16 @@ type Hoop struct {
 	Ps       []float64
 	Name     string
 	Material SD
+}
+func (hp Hoop) Ftw(cond *Condition) float64 {
+	switch cond.Period {
+	default:
+		return 0.0
+	case "L":
+		return 2.0
+	case "X", "Y", "S":
+		return hp.Material.Fs
+	}
 }
 
 func NewRCColumn(num int) *RCColumn {
@@ -1169,10 +1137,54 @@ func (rc *RCColumn) NeutralAxis(cond *Condition) (float64, float64, error) {
 	}
 }
 func (rc *RCColumn) Na(cond *Condition) float64 {
-	return 0.0
+	if cond.Compression {
+		return rc.Fc(cond) * rc.Area()
+	} else {
+		if rc.Reins == nil {
+			return 0.0
+		}
+		rtn := 0.0
+		for _, r := range rc.Reins {
+			rtn += r.Area * r.Ft(cond)
+		}
+		return rtn
+	}
+}
+func (rc *RCColumn) Alpha(d float64, cond *Condition) float64 {
+	alpha := 4.0 / (math.Abs(cond.M * 100.0 / (cond.Q * d)) + 1.0)
+	if alpha < 1.0 {
+		alpha = 1.0
+	} else if alpha > 1.5 {
+		alpha = 1.5
+	}
+	return alpha
 }
 func (rc *RCColumn) Qa(cond *Condition) float64 {
-	return 0.0
+	b := rc.Breadth(cond.Strong)
+	d := rc.FarSideReins(cond)
+	fs := rc.Fs(cond)
+	alpha := rc.Alpha(d, cond)
+	switch cond.Period {
+	default:
+		fmt.Println("unknown period")
+		return 0.0
+	case "L":
+		return 7/8.0 * b * d * alpha * fs
+	case "X", "Y":
+		var pw float64
+		if cond.Strong { // for Qy
+			pw = rc.Hoops.Ps[1]
+		} else { // for Qx
+			pw = rc.Hoops.Ps[0]
+		}
+		if pw < 0.002 {
+			fmt.Printf("shortage in pw: %.6f\n", pw)
+			return 0.0
+		} else if pw > 0.012 {
+			pw = 0.012
+		}
+		return 7/8.0 * b * d * (fs + 0.5 * rc.Hoops.Ftw(cond) * (pw - 0.002))
+	}
 }
 func (rc *RCColumn) Ma(cond *Condition) float64 {
 	b := rc.Breadth(cond.Strong)
@@ -1188,10 +1200,42 @@ func (rc *RCColumn) Ma(cond *Condition) float64 {
 	}
 }
 func (rc *RCColumn) Mza(cond *Condition) float64 {
-	return 0.0
-}
-func (rc *RCColumn) Rate(stress []float64, cond *Condition) ([]float64, error) {
-	return nil, nil
+	if rc.Reins == nil || len(rc.Reins) < 1 {
+		return 0.0
+	}
+	ft := rc.Reins[0].Ft(cond)
+	fs := rc.Fs(cond)
+	wft := rc.Hoops.Ftw(cond)
+	b := rc.Breadth(true)
+	d := rc.Height(true)
+	dw := 11.0 // TODO: set dw, aw, lw & kaburi
+	aw := 0.7133
+	lw := 20.0
+	kaburi := 5.0
+	b0 := b - kaburi*2.0 - dw
+	d0 := d - kaburi*2.0 - dw
+	A0 := b0 * d0
+	var T1, T2, T3 float64
+	if b >= d {
+		T1 = b * d * d * fs * 4.0 / 3.0 / 100.0 // [tfm]
+	} else {
+		T1 = b * b * d * fs * 4.0 /3.0 / 100.0 // [tfm]
+	}
+	T2 = aw * 2.0 * wft * A0 / lw / 100.0 // [tfm]
+	T3 = rc.Ai() * 2.0 * ft * A0 / (2 * b0 + 2 * d0) / 100.0 // [tfm]
+	if T1 <= T2 {
+		if T1 <= T3 {
+			return T1
+		} else {
+			return T3
+		}
+	} else {
+		if T2 <= T3 {
+			return T2
+		} else {
+			return T3
+		}
+	}
 }
 
 type RCGirder struct {
@@ -1201,6 +1245,15 @@ type RCGirder struct {
 func NewRCGirder(num int) *RCGirder {
 	rc := NewRCColumn(num)
 	return &RCGirder{*rc}
+}
+func (rg *RCGirder) Alpha(d float64, cond *Condition) float64 {
+	alpha := 4.0 / (math.Abs(cond.M * 100.0 / (cond.Q * d)) + 1.0)
+	if alpha < 1.0 {
+		alpha = 1.0
+	} else if alpha > 2.0 {
+		alpha = 2.0
+	}
+	return alpha
 }
 
 type RCWall struct {
@@ -1227,6 +1280,9 @@ type Condition struct {
 	Positive    bool
 	FbOld       bool
 	N           float64
+	M           float64
+	Q           float64
+	Sign        float64
 }
 
 func NewCondition() *Condition {
@@ -1238,5 +1294,57 @@ func NewCondition() *Condition {
 	c.Positive = true
 	c.FbOld = false
 	c.N = 0.0
+	c.M = 0.0
+	c.Q = 0.0
+	c.Sign = 1.0
 	return c
+}
+
+// TODO: too many bugs
+func Rate(sr SectionRate, stress []float64, cond *Condition) ([]float64, error) {
+	if len(stress) < 6 {
+		return nil, errors.New("Rate: Not enough number of Stress")
+	}
+	rate := make([]float64, 6)
+	cond.N = cond.Sign * stress[0]
+	cond.Compression = cond.N >= 0.0
+	na := sr.Na(cond)
+	if na == 0.0 && stress[0] != 0.0 {
+		return rate, ZeroAllowableError{"Na"}
+	}
+	rate[0] = stress[0] / na
+	cond.Strong = true
+	cond.M = cond.Sign * stress[4]
+	cond.Q = cond.Sign * stress[2]
+	cond.Positive = cond.M >= 0.0
+	qay := sr.Qa(cond)
+	if qay == 0.0 && stress[2] != 0.0 {
+		return rate, ZeroAllowableError{"Qay"}
+	}
+	rate[2] = stress[2] / qay
+	max := sr.Ma(cond)
+	if max == 0.0 && stress[4] != 0.0 {
+		return rate, ZeroAllowableError{"MaX"}
+	}
+	rate[4] = stress[4] / max
+	cond.Strong = false
+	cond.M = cond.Sign * stress[5]
+	cond.Q = cond.Sign * stress[1]
+	cond.Positive = cond.M >= 0.0
+	qax := sr.Qa(cond)
+	if qax == 0.0 && stress[1] != 0.0 {
+		return rate, ZeroAllowableError{"Qax"}
+	}
+	rate[1] = stress[1] / qax
+	may := sr.Ma(cond)
+	if may == 0.0 && stress[5] != 0.0 {
+		return rate, ZeroAllowableError{"May"}
+	}
+	rate[5] = stress[5] / may
+	maz := sr.Mza(cond)
+	if maz == 0.0 && stress[3] != 0.0 {
+		return rate, ZeroAllowableError{"Maz"}
+	}
+	rate[3] = stress[3] / maz
+	return rate, nil
 }

@@ -3555,6 +3555,8 @@ func (stw *Window) exmode(command string) error {
 					return err
 				}
 			}
+		case cname == "srcal":
+			stw.Frame.SectionRateCalculation()
 		case abbrev.For("fi/g2", cname):
 			err := stw.ReadFig2(fn)
 			if err != nil {

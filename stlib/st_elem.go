@@ -11,14 +11,15 @@ import (
 )
 
 // Constants & Variables// {{{
-var ETYPES = [8]string{"NONE", "COLUMN", "GIRDER", "BRACE", "WBRACE", "SBRACE", "WALL", "SLAB"}
-var StressName = [6]string{"Nz", "Qx", "Qy", "Mz", "Mx", "My"}
+var ETYPES = []string{"NONE", "COLUMN", "GIRDER", "BRACE", "TRUSS", "WBRACE", "SBRACE", "WALL", "SLAB"}
+var StressName = []string{"Nz", "Qx", "Qy", "Mz", "Mx", "My"}
 
 const (
 	NONE = iota
 	COLUMN
 	GIRDER
 	BRACE
+	TRUSS
 	WBRACE
 	SBRACE
 	WALL
