@@ -1311,6 +1311,42 @@ func (rg *RCGirder) Alpha(d float64, cond *Condition) float64 {
 	}
 	return alpha
 }
+func (rg *RCGirder) Qa(cond *Condition) float64 {
+	b := rg.Breadth(cond.Strong)
+	d := rg.FarSideReins(cond)
+	fs := rg.Fs(cond)
+	alpha := rg.Alpha(d, cond)
+	if cond.Verbose {
+		fmt.Println(b, d, alpha, fs)
+	}
+	var pw float64
+	if cond.Strong { // for Qy
+		pw = rg.Hoops.Ps[1]
+	} else { // for Qx
+		pw = rg.Hoops.Ps[0]
+	}
+	switch cond.Period {
+	default:
+		fmt.Println("unknown period")
+		return 0.0
+	case "L":
+		if pw < 0.002 {
+			// fmt.Printf("shortage in pw: %.6f\n", pw)
+			return 7/8.0 * b * d * fs
+		} else if pw > 0.006 {
+			pw = 0.006
+		}
+		return 7/8.0 * b * d * (alpha * fs + 0.5 * rg.Hoops.Ftw(cond) * (pw - 0.002))
+	case "X", "Y", "S":
+		if pw < 0.002 {
+			// fmt.Printf("shortage in pw: %.6f\n", pw)
+			return 7/8.0 * b * d * fs
+		} else if pw > 0.012 {
+			pw = 0.012
+		}
+		return 7/8.0 * b * d * (alpha * fs + 0.5 * rg.Hoops.Ftw(cond) * (pw - 0.002))
+	}
+}
 
 type RCWall struct {
 	Concrete
