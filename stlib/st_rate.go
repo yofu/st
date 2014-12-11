@@ -124,6 +124,7 @@ var (
 // Section
 type SectionRate interface {
 	Num()    int
+	TypeString() string
 	Snapshot() SectionRate
 	String() string
 	SetName(string)
@@ -172,6 +173,9 @@ func NewSColumn(num int, shape Shape, material Steel) *SColumn {
 }
 func (sc *SColumn) Num() int {
 	return sc.num
+}
+func (sc *SColumn) TypeString() string {
+	return "Ｓ柱"
 }
 func (sc *SColumn) Snapshot() SectionRate {
 	s := NewSColumn(sc.num, sc.Shape, sc.Steel)
@@ -793,13 +797,13 @@ func (cr CRect) String() string {
 func (cr CRect) Bound(side int) float64 {
 	switch side {
 	case 0:
-		return cr.Lower
-	case 1:
 		return cr.Left
+	case 1:
+		return cr.Lower
 	case 2:
-		return cr.Upper
-	case 3:
 		return cr.Right
+	case 3:
+		return cr.Upper
 	}
 	return 0.0
 }
@@ -912,7 +916,7 @@ func (rc *RCColumn) SetConcrete(lis []string) error {
 		}
 		rc.CShape = NewCRect(vals)
 	}
-	switch lis[4] {
+	switch lis[5] {
 	case "FC24":
 		rc.Concrete = FC24
 	case "FC36":
@@ -925,6 +929,9 @@ func (rc *RCColumn) String() string {
 }
 func (rc *RCColumn) Num() int {
 	return rc.num
+}
+func (rc *RCColumn) TypeString() string {
+	return "ＲＣ柱"
 }
 func (rc *RCColumn) Snapshot() SectionRate {
 	r := NewRCColumn(rc.num)
@@ -966,7 +973,7 @@ func (rc *RCColumn) Factor(p string) float64 {
 func (rc *RCColumn) Fs(cond *Condition) float64 {
 	var rtn float64
 	f1 := rc.fc / 30.0
-	f2 := 0.5 + rc.fc/100.0
+	f2 := 0.005 + rc.fc/100.0
 	if f1 <= f2 {
 		rtn = f1
 	} else {
@@ -1112,32 +1119,69 @@ func (rc *RCColumn) NeutralAxis(cond *Condition) (float64, float64, error) {
 	if xn > h {
 		ryc := rc.NearSideReins(cond)
 		if (xn-ryc)/xn*fc*NCS <= ft { // NeutralAxis is outside of section, Ma is determined by concrete
+			if cond.Verbose {
+				fmt.Println("# 1. Neutral Axis is outside of section")
+				fmt.Println("#    Ma is determined by concrete.")
+			}
 			return xn, fc, nil
 		} else { // NeutralAxis is outside of section, Ma is determined by reinforcement
 			num := 0.5*ft*b*math.Pow(h, 2.0) + NCS*ft*rc.LiAi(cond) - NCS*ryc*cond.N
 			den := ft*b*h - NCS*cond.N + NCS*ft*rc.Ai()
 			xn = num / den
+			if cond.Verbose {
+				fmt.Println("# 2. Neutral Axis is outside of section")
+				fmt.Println("#    Ma is determined by reinforcement.")
+			}
 			return xn, xn / (NCS * (xn - ryc)) * ft, nil
 		}
 	} else {
 		k1 := 0.5 * fc * b
 		k2 := NCS*fc*rc.Ai() - cond.N
 		k3 := -NCS * fc * rc.LiAi(cond)
-		xn := (-k2 + math.Sqrt(math.Pow(k2, 2.0)-4*k1*k3)) / (2.0 * k1)
 		ryt := rc.FarSideReins(cond)
-		if (ryt-xn)/xn*fc*NCS <= ft { // NeutralAxis is inside of section, Ma is determined by concrete
-			return xn, ft, nil
-		} else { // NeutralAxis is inside of section, Ma is determined by reinforcement
-			k1 := 0.5 * ft * b
-			k2 := NCS*ft*rc.Ai() + NCS*cond.N
-			k3 := -NCS*ft*rc.LiAi(cond) - NCS*ryt*cond.N
-			xn := (-k2 + math.Sqrt(math.Pow(k2, 2.0)-4*k1*k3)) / (2.0 * k1)
-			return xn, xn / (NCS * (ryt - xn)) * ft, nil
+		D1 := k2 * k2 - 4.0 * k1 * k3
+		if D1 >= 0.0 {
+			xn := (-k2 + math.Sqrt(D1)) / (2.0 * k1)
+			if xn >= 0.0 {
+				if (ryt-xn)/xn*fc*NCS <= ft { // NeutralAxis is inside of section, Ma is determined by concrete
+					if cond.Verbose {
+						fmt.Println("# 3. Neutral Axis is inside of section")
+						fmt.Println("#    Ma is determined by concrete.")
+					}
+					return xn, fc, nil
+				} else { // NeutralAxis is inside of section, Ma is determined by reinforcement
+					k1 := 0.5 * ft * b
+					k2 := NCS*ft*rc.Ai() + NCS*cond.N
+					k3 := -NCS*ft*rc.LiAi(cond) - NCS*ryt*cond.N
+					D2 := k2 * k2 - 4.0 * k1 * k3
+					if D2 >= 0.0 {
+						xn := (-k2 + math.Sqrt(D2)) / (2.0 * k1)
+						if xn >= 0.0 {
+							if cond.Verbose {
+								fmt.Println("# 4. Neutral Axis is inside of section")
+								fmt.Println("#    Ma is determined by reinforcement.")
+							}
+							return xn, xn / (NCS * (ryt - xn)) * ft, nil
+						}
+					}
+				}
+			}
 		}
+		num := ft * rc.LiAi(cond) + ryt * cond.N
+		den := ft * rc.Ai() + cond.N
+		xn = num / den
+		if cond.Verbose {
+			fmt.Println("# 5. Neutral Axis is outside of section")
+			fmt.Println("#    Ma is determined by reinforcement.")
+		}
+		return xn, -xn / (NCS * (ryt - xn)) * ft, nil
 	}
 }
 func (rc *RCColumn) Na(cond *Condition) float64 {
 	if cond.Compression {
+		if cond.Verbose {
+			fmt.Printf("# Fc= %.3f [tf/cm2]\n# Ac= %.3f [cm2]\n", rc.Fc(cond), rc.Area())
+		}
 		return rc.Fc(cond) * rc.Area()
 	} else {
 		if rc.Reins == nil {
@@ -1170,7 +1214,7 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 		return 0.0
 	case "L":
 		return 7/8.0 * b * d * alpha * fs
-	case "X", "Y":
+	case "X", "Y", "S":
 		var pw float64
 		if cond.Strong { // for Qy
 			pw = rc.Hoops.Ps[1]
@@ -1178,8 +1222,8 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 			pw = rc.Hoops.Ps[0]
 		}
 		if pw < 0.002 {
-			fmt.Printf("shortage in pw: %.6f\n", pw)
-			return 0.0
+			// fmt.Printf("shortage in pw: %.6f\n", pw)
+			return 7/8.0 * b * d * fs
 		} else if pw > 0.012 {
 			pw = 0.012
 		}
@@ -1191,7 +1235,13 @@ func (rc *RCColumn) Ma(cond *Condition) float64 {
 	h := rc.Height(cond.Strong)
 	xn, sigma, err := rc.NeutralAxis(cond)
 	if err != nil {
+		if cond.Verbose {
+			fmt.Println(err)
+		}
 		return 0.0
+	}
+	if cond.Verbose {
+		fmt.Printf("# xn= %.3f [m]\n# sigma= %.3f [tf/cm2]\n", xn, sigma)
 	}
 	if xn >= h {
 		return (sigma/xn*(b*h*(3.0*math.Pow(xn, 2.0)-3.0*xn*h+math.Pow(h, 2.0))/3.0+NCS*(math.Pow(xn, 2.0)*rc.Ai()-2.0*xn*rc.LiAi(cond)+rc.Li2Ai(cond))) - cond.N*(xn-h/2.0)) * 0.01 // [tfm]
@@ -1223,6 +1273,9 @@ func (rc *RCColumn) Mza(cond *Condition) float64 {
 	}
 	T2 = aw * 2.0 * wft * A0 / lw / 100.0 // [tfm]
 	T3 = rc.Ai() * 2.0 * ft * A0 / (2 * b0 + 2 * d0) / 100.0 // [tfm]
+	if cond.Verbose {
+		fmt.Printf("# T1= %.3f [tfm] T2= %.3f [tfm] T3= %.3f [tfm]\n", T1, T2, T3)
+	}
 	if T1 <= T2 {
 		if T1 <= T3 {
 			return T1
@@ -1245,6 +1298,9 @@ type RCGirder struct {
 func NewRCGirder(num int) *RCGirder {
 	rc := NewRCColumn(num)
 	return &RCGirder{*rc}
+}
+func (rg *RCGirder) TypeString() string {
+	return "ＲＣ大梁"
 }
 func (rg *RCGirder) Alpha(d float64, cond *Condition) float64 {
 	alpha := 4.0 / (math.Abs(cond.M * 100.0 / (cond.Q * d)) + 1.0)
@@ -1283,6 +1339,7 @@ type Condition struct {
 	M           float64
 	Q           float64
 	Sign        float64
+	Verbose     bool
 }
 
 func NewCondition() *Condition {
@@ -1300,51 +1357,127 @@ func NewCondition() *Condition {
 	return c
 }
 
-// TODO: too many bugs
-func Rate(sr SectionRate, stress []float64, cond *Condition) ([]float64, error) {
-	if len(stress) < 6 {
-		return nil, errors.New("Rate: Not enough number of Stress")
+func Rate(sr SectionRate, stress []float64, cond *Condition) ([]float64, string, error) {
+	if len(stress) < 12 {
+		return nil, "", errors.New("Rate: Not enough number of Stress")
 	}
-	rate := make([]float64, 6)
-	cond.N = cond.Sign * stress[0]
-	cond.Compression = cond.N >= 0.0
-	na := sr.Na(cond)
-	if na == 0.0 && stress[0] != 0.0 {
-		return rate, ZeroAllowableError{"Na"}
+	rate := make([]float64, 12)
+	fa := make([]float64, 12)
+	var ind int
+	for i:=0; i<2; i++ {
+		if i == 0 {
+			cond.N = stress[6*i]
+			cond.M = stress[6*i+4]
+			cond.Q = stress[6*i+2]
+		} else {
+			cond.N = -stress[6*i]
+			cond.M = -stress[6*i+4]
+			cond.Q = -stress[6*i+2]
+		}
+		ind = 6*i+0
+		cond.Compression = cond.N >= 0.0
+		na := sr.Na(cond)
+		if cond.Verbose {
+			if cond.Compression {
+				fmt.Printf("# N= %.3f / Na= %.3f (COMPRESSION)\n", stress[ind], na)
+			} else {
+				fmt.Printf("# N= %.3f / Na= %.3f (TENSION)\n", stress[ind], na)
+			}
+		}
+		if na == 0.0 && stress[ind] != 0.0 {
+			return rate, "", ZeroAllowableError{"Na"}
+		}
+		rate[ind] = math.Abs(stress[ind] / na)
+		fa[ind] = na
+		cond.Strong = true
+		ind = 6*i+2
+		cond.Positive = cond.M >= 0.0
+		qay := sr.Qa(cond)
+		if cond.Verbose {
+			fmt.Printf("# Qy= %.3f / Qay= %.3f\n", stress[ind], qay)
+		}
+		if qay == 0.0 && stress[ind] != 0.0 {
+			return rate, "", ZeroAllowableError{"Qay"}
+		}
+		rate[ind] = math.Abs(stress[ind] / qay)
+		fa[ind] = qay
+		ind = 6*i+4
+		max := sr.Ma(cond)
+		if cond.Verbose {
+			fmt.Printf("# Mx= %.3f / Max= %.3f\n", stress[ind], max)
+		}
+		if max == 0.0 && stress[ind] != 0.0 {
+			return rate, "", ZeroAllowableError{"MaX"}
+		}
+		rate[ind] = math.Abs(stress[ind] / max)
+		fa[ind] = max
+		cond.Strong = false
+		if i == 0 {
+			cond.M = stress[6*i+5]
+			cond.Q = stress[6*i+1]
+		} else {
+			cond.M = -stress[6*i+5]
+			cond.Q = -stress[6*i+1]
+		}
+		cond.Positive = cond.M >= 0.0
+		ind = 6*i+1
+		qax := sr.Qa(cond)
+		if cond.Verbose {
+			fmt.Printf("# Qx= %.3f / Qax= %.3f\n", stress[ind], qax)
+		}
+		if qax == 0.0 && stress[ind] != 0.0 {
+			return rate, "", ZeroAllowableError{"Qax"}
+		}
+		rate[ind] = math.Abs(stress[ind] / qax)
+		fa[ind] = qax
+		ind = 6*i+5
+		may := sr.Ma(cond)
+		if cond.Verbose {
+			fmt.Printf("# My= %.3f / May= %.3f\n", stress[ind], may)
+		}
+		if may == 0.0 && stress[ind] != 0.0 {
+			return rate, "", ZeroAllowableError{"May"}
+		}
+		rate[ind] = math.Abs(stress[ind] / may)
+		fa[ind] = may
+		ind = 6*i+3
+		maz := sr.Mza(cond)
+		if cond.Verbose {
+			fmt.Printf("# Mz= %.3f / Maz= %.3f\n", stress[ind], maz)
+		}
+		if maz == 0.0 && stress[ind] != 0.0 {
+			return rate, "", ZeroAllowableError{"Maz"}
+		}
+		rate[ind] = math.Abs(stress[ind] / maz)
+		fa[ind] = maz
 	}
-	rate[0] = stress[0] / na
-	cond.Strong = true
-	cond.M = cond.Sign * stress[4]
-	cond.Q = cond.Sign * stress[2]
-	cond.Positive = cond.M >= 0.0
-	qay := sr.Qa(cond)
-	if qay == 0.0 && stress[2] != 0.0 {
-		return rate, ZeroAllowableError{"Qay"}
+	var otp bytes.Buffer
+	for i:=0; i<6; i++ {
+		for j:=0; j<2; j++ {
+			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[6*j+i], stress[6*j+i]*SI))
+			if i == 0 || i == 3 {
+				break
+			}
+		}
 	}
-	rate[2] = stress[2] / qay
-	max := sr.Ma(cond)
-	if max == 0.0 && stress[4] != 0.0 {
-		return rate, ZeroAllowableError{"MaX"}
+	otp.WriteString("\n     許容値:")
+	for i:=0; i<6; i++ {
+		for j:=0; j<2; j++ {
+			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", fa[6*j+i], fa[6*j+i]*SI))
+			if i == 0 || i == 3 {
+				break
+			}
+		}
 	}
-	rate[4] = stress[4] / max
-	cond.Strong = false
-	cond.M = cond.Sign * stress[5]
-	cond.Q = cond.Sign * stress[1]
-	cond.Positive = cond.M >= 0.0
-	qax := sr.Qa(cond)
-	if qax == 0.0 && stress[1] != 0.0 {
-		return rate, ZeroAllowableError{"Qax"}
+	otp.WriteString("\n     安全率:")
+	for i:=0; i<6; i++ {
+		for j:=0; j<2; j++ {
+			otp.WriteString(fmt.Sprintf(" %8.3f          ", rate[6*j+i]))
+			if i == 0 || i == 3 {
+				break
+			}
+		}
 	}
-	rate[1] = stress[1] / qax
-	may := sr.Ma(cond)
-	if may == 0.0 && stress[5] != 0.0 {
-		return rate, ZeroAllowableError{"May"}
-	}
-	rate[5] = stress[5] / may
-	maz := sr.Mza(cond)
-	if maz == 0.0 && stress[3] != 0.0 {
-		return rate, ZeroAllowableError{"Maz"}
-	}
-	rate[3] = stress[3] / maz
-	return rate, nil
+	otp.WriteString("\n")
+	return rate, otp.String(), nil
 }
