@@ -3435,8 +3435,8 @@ func (frame *Frame)SectionRateCalculation() error {
 		}
 		return rtn
 	}
-	pfact := []float64{NFACT, QFACT, QFACT, 1.0, MFACT, MFACT}
-	mfact := []float64{-NFACT, -QFACT, -QFACT, -1.0, -MFACT, -MFACT}
+	plus := []float64{NFACT, QFACT, QFACT, 1.0, MFACT, MFACT}
+	minus := []float64{-NFACT, -QFACT, -QFACT, -1.0, -MFACT, -MFACT}
 	var enum int
 	elems := make([]*Elem, len(frame.Elems))
 	for _, el := range frame.Elems {
@@ -3519,19 +3519,19 @@ func (frame *Frame)SectionRateCalculation() error {
 			mlrate = maxrate(rate[4], rate[5], rate[10], rate[11])
 			cond.Period = "S"
 			otp.WriteString("\n短期X正方向:")
-			rate, err = calc(al, stl, stx, pfact)
+			rate, err = calc(al, stl, stx, plus)
 			qsrate = maxrate(rate[1], rate[2], rate[7], rate[8])
 			msrate = maxrate(rate[4], rate[5], rate[10], rate[11])
 			otp.WriteString("短期X負方向:")
-			rate, err = calc(al, stl, stx, mfact)
+			rate, err = calc(al, stl, stx, minus)
 			qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
 			msrate = maxrate(msrate, rate[4], rate[5], rate[10], rate[11])
 			otp.WriteString("\n短期Y正方向:")
-			rate, err = calc(al, stl, sty, pfact)
+			rate, err = calc(al, stl, sty, plus)
 			qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
 			msrate = maxrate(msrate, rate[4], rate[5], rate[10], rate[11])
 			otp.WriteString("短期Y負方向:")
-			rate, err = calc(al, stl, sty, mfact)
+			rate, err = calc(al, stl, sty, minus)
 			qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
 			msrate = maxrate(msrate, rate[4], rate[5], rate[10], rate[11])
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
