@@ -769,6 +769,9 @@ func NewSGirder(num int, shape Shape, material Steel) *SGirder {
 	sc.Etype = "GIRDER"
 	return &SGirder{*sc}
 }
+func (sg *SGirder) TypeString() string {
+	return "Ｓ大梁"
+}
 
 // }}}
 
@@ -1350,6 +1353,127 @@ func (rg *RCGirder) Qa(cond *Condition) float64 {
 
 type RCWall struct {
 	Concrete
+	num int
+	Name string
+	Thick float64
+	Srein float64
+	Material SD
+	Wrect []float64
+	XFace []float64
+	YFace []float64
+}
+func NewRCWall(num int) *RCWall {
+	rw := new(RCWall)
+	rw.num = num
+	rw.Wrect = make([]float64, 2)
+	rw.XFace = make([]float64, 2)
+	rw.YFace = make([]float64, 2)
+	return rw
+}
+func (rw *RCWall) SetConcrete(lis []string) error {
+	switch lis[0] {
+	case "THICK":
+		val, err := strconv.ParseFloat(lis[1], 64)
+		if err != nil {
+			return err
+		}
+		rw.Thick = val
+	}
+	switch lis[2] {
+	case "FC24":
+		rw.Concrete = FC24
+	case "FC36":
+		rw.Concrete = FC36
+	}
+	return nil
+}
+func (rw *RCWall) Num() int {
+	return rw.num
+}
+func (rw *RCWall) TypeString() string {
+	return "ＲＣ壁"
+}
+func (rw *RCWall) Snapshot() SectionRate {
+	r := NewRCWall(rw.num)
+	r.Name = rw.Name
+	r.Thick = rw.Thick
+	for i:=0; i<2; i++ {
+		r.Wrect[i] = rw.Wrect[i]
+		r.XFace[i] = rw.XFace[i]
+		r.YFace[i] = rw.YFace[i]
+	}
+	return rw
+}
+func (rw *RCWall) String() string {
+	return ""
+}
+func (rw *RCWall) SetName(name string) {
+	rw.Name = name
+}
+func (rw *RCWall) SetValue(name string, vals []float64) {
+	switch name {
+	case "WRECT":
+		rw.Wrect = vals
+	case "XFACE":
+		rw.XFace = vals
+	case "YFACE":
+		rw.YFace = vals
+	}
+}
+func (rw *RCWall) Factor(p string) float64 {
+	switch p {
+	default:
+		return 0.0
+	case "L":
+		return 1.0
+	case "X", "Y", "S":
+		return 2.0
+	}
+}
+func (rw *RCWall) Fs(cond *Condition) float64 {
+	var rtn float64
+	f1 := rw.fc / 30.0
+	f2 := 0.005 + rw.fc/100.0
+	if f1 <= f2 {
+		rtn = f1
+	} else {
+		rtn = f2
+	}
+	switch cond.Period {
+	default:
+		rtn = 0.0
+	case "L":
+		rtn *= 1.0
+	case "X", "Y", "S":
+		rtn *= 1.5
+	}
+	return rtn
+}
+func (rw *RCWall) Na(cond *Condition) float64 {
+	fs := rw.Fs(cond)
+	var Qc, Qw, Qa float64
+	r := 1.0 // TODO: set windowrate
+	Qc = r * rw.Thick * cond.Length * fs
+	switch cond.Period {
+	case "L":
+		Qa = Qc
+	case "X", "Y", "S":
+		Qa = Qc
+		Qw = r * rw.Thick * rw.Srein * cond.Length * fs
+		if Qw > Qc {
+			Qa = Qw
+		}
+	}
+	return Qa
+}
+func (rw *RCWall) Qa(cond *Condition) float64 {
+	return 0.0
+}
+func (rw *RCWall) Ma(cond *Condition) float64 {
+	return 0.0
+}
+func (rw *RCWall) Mza(cond *Condition) float64 {
+	return 0.0
 }
 
 func SetSD(name string) SD {
@@ -1393,7 +1517,7 @@ func NewCondition() *Condition {
 	return c
 }
 
-func Rate(sr SectionRate, stress []float64, cond *Condition) ([]float64, string, error) {
+func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string, error) {
 	if len(stress) < 12 {
 		return nil, "", errors.New("Rate: Not enough number of Stress")
 	}
@@ -1516,4 +1640,17 @@ func Rate(sr SectionRate, stress []float64, cond *Condition) ([]float64, string,
 	}
 	otp.WriteString("\n")
 	return rate, otp.String(), nil
+}
+
+func Rate2(sr SectionRate, stress float64, cond *Condition) (float64, string, error) {
+	var rate float64
+	na := sr.Na(cond)
+	if cond.Verbose {
+		fmt.Printf("# N= %.3f / Na= %.3f (COMPRESSION)\n", stress, na)
+	}
+	if na == 0.0 && stress != 0.0 {
+		return rate, "", ZeroAllowableError{"Na"}
+	}
+	rate = math.Abs(stress / na)
+	return rate, fmt.Sprintf(" %8.3f(%8.2f)\n     許容値: %8.3f(%8.2f)\n     安全率: %8.3f\n", stress, stress*SI, na, na*SI, rate), nil
 }
