@@ -3907,6 +3907,99 @@ func (stw *Window) exmode(command string) error {
 				el.Prestress = val
 			}
 			stw.Snapshot()
+		case abbrev.For("div/ide", cname):
+			if narg < 2 {
+				return st.NotEnoughArgs(":divide")
+			}
+			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+				return errors.New(":divide: no selected elem")
+			}
+			var divfunc func(*st.Elem) ([]*st.Node, []*st.Elem, error)
+			switch strings.ToLower(args[1]) {
+			case "mid":
+				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+					return el.DivideAtMid()
+				}
+			case "n":
+				if narg < 3 {
+					return st.NotEnoughArgs(":divide n")
+				}
+				val, err := strconv.ParseInt(args[2], 10, 64)
+				if err != nil {
+					return err
+				}
+				ndiv := int(val)
+				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+					return el.DivideInN(ndiv)
+				}
+			case "elem":
+				eps := EPS
+				if narg >= 3 {
+					val, err := strconv.ParseFloat(args[2], 64)
+					if err == nil {
+						eps = val
+					}
+				}
+				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+					els, err := el.DivideAtElem(eps)
+					return nil, els, err
+				}
+			case "ons":
+				eps := EPS
+				if narg >= 3 {
+					val, err := strconv.ParseFloat(args[2], 64)
+					if err == nil {
+						eps = val
+					}
+				}
+				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+					return el.DivideAtOns(eps)
+				}
+			case "axis":
+				if narg < 4 {
+					return st.NotEnoughArgs(":divide axis")
+				}
+				var axis int
+				switch args[2] {
+				default:
+					return errors.New(":divide axis: unknown axis")
+				case "x", "X":
+					axis = 0
+				case "y", "Y":
+					axis = 1
+				case "z", "Z":
+					axis = 2
+				}
+				val, err := strconv.ParseFloat(args[3], 64)
+				if err != nil {
+					return err
+				}
+				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+					return el.DivideAtAxis(axis, val)
+				}
+			}
+			if divfunc == nil {
+				return errors.New(":divide: unknown format")
+			}
+			tmpels := make([]*st.Elem, 0)
+			enum := 0
+			for _, el := range stw.SelectElem {
+				if el == nil {
+					continue
+				}
+				divfunc(el)
+				_, els, err := divfunc(el)
+				if err != nil {
+					stw.errormessage(err, ERROR)
+					continue
+				}
+				if err == nil && len(els) > 1 {
+					tmpels = append(tmpels, els...)
+					enum += len(els)
+				}
+			}
+			stw.SelectElem = tmpels[:enum]
+			stw.Snapshot()
 		case abbrev.For("co/nf", cname):
 			lis := make([]bool, 6)
 			if len(args[1]) >= 6 {
