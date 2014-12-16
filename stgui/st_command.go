@@ -3424,7 +3424,7 @@ func uplift(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.DefaultKeyAny(arg)
+			stw.cline.SetAttribute("APPEND", string(key.Key()))
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
