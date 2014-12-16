@@ -321,6 +321,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.Labels["WBRACE"] = stw.etypeLabel("WBRACE", datatextwidth, st.WBRACE, false)
 	stw.Labels["SBRACE"] = stw.etypeLabel("SBRACE", datatextwidth, st.SBRACE, false)
 	stw.Labels["NC_NUM"] = stw.captionLabel("NODE", "  CODE", datalabelwidth+datatextwidth, st.NC_NUM, true)
+	stw.Labels["NC_WEIGHT"] = stw.captionLabel("NODE", "  WEIGHT", datalabelwidth+datatextwidth, st.NC_WEIGHT, false)
 	stw.Labels["NC_DX"] = stw.captionLabel("NODE", " dX", (datalabelwidth+datatextwidth)/6, st.NC_DX, false)
 	stw.Labels["NC_DY"] = stw.captionLabel("NODE", " dY", (datalabelwidth+datatextwidth)/6, st.NC_DY, false)
 	stw.Labels["NC_DZ"] = stw.captionLabel("NODE", " dZ", (datalabelwidth+datatextwidth)/6, st.NC_DZ, false)
@@ -1033,6 +1034,7 @@ func NewWindow(homedir string) *Window { // {{{
 			stw.Labels["SLAB_MY"]))
 	tgncap := iup.Vbox(datasectionlabel("NODE CAPTION"),
 		stw.Labels["NC_NUM"],
+		stw.Labels["NC_WEIGHT"],
 		iup.Hbox(stw.Labels["NC_DX"],
 			stw.Labels["NC_DY"],
 			stw.Labels["NC_DZ"],
@@ -2778,6 +2780,12 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.NodeCaptionOff("NC_NUM")
 		} else {
 			stw.NodeCaptionOn("NC_NUM")
+		}
+	case abbrev.For("wei/ght", key):
+		if un {
+			stw.NodeCaptionOff("NC_WEIGHT")
+		} else {
+			stw.NodeCaptionOn("NC_WEIGHT")
 		}
 	case abbrev.For("con/f", key):
 		if un {

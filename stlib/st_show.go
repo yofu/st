@@ -1,12 +1,13 @@
 package st
 
 var (
-	NODECAPTIONS = []string{"NC_NUM", "NC_ZCOORD", "NC_DX", "NC_DY", "NC_DZ", "NC_TX", "NC_TY", "NC_TZ", "NC_RX", "NC_RY", "NC_RZ", "NC_MX", "NC_MY", "NC_MZ", "NC_PILE"}
+	NODECAPTIONS = []string{"NC_NUM", "NC_WEIGHT", "NC_ZCOORD", "NC_DX", "NC_DY", "NC_DZ", "NC_TX", "NC_TY", "NC_TZ", "NC_RX", "NC_RY", "NC_RZ", "NC_MX", "NC_MY", "NC_MZ", "NC_PILE"}
 	ELEMCAPTIONS = []string{"EC_NUM", "EC_SECT", "EC_RATE_L", "EC_RATE_S", "EC_PREST"}
 )
 
 const ( // NodeCaption
 	NC_NUM = 1 << iota
+	NC_WEIGHT
 	NC_ZCOORD
 	NC_DX
 	NC_DY
