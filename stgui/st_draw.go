@@ -250,9 +250,11 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 		oncap = true
 	}
 	if show.ElemCaption&st.EC_RATE_L != 0 || show.ElemCaption&st.EC_RATE_S != 0 {
-		val := elem.RateMax(show)
-		ecap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["RATE"]), val))
-		oncap = true
+		val, err := elem.RateMax(show)
+		if err == nil {
+			ecap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["RATE"]), val))
+			oncap = true
+		}
 	}
 	if show.ElemCaption&st.EC_PREST != 0 {
 		if elem.Prestress != 0.0 {

@@ -1937,10 +1937,10 @@ func (elem *Elem) MomentCoord(show *Show, index int) [][]float64 {
 //     }
 // }
 
-func (elem *Elem) RateMax(show *Show) float64 {
-	returnratemax := func(e *Elem) float64 {
+func (elem *Elem) RateMax(show *Show) (float64, error) {
+	returnratemax := func(e *Elem) (float64, error) {
 		if e.Rate == nil {
-			return 0.0
+			return 0.0, errors.New("RateMax: no value")
 		}
 		if len(e.Rate)%3 != 0 || (show.ElemCaption&EC_RATE_L == 0 && show.ElemCaption&EC_RATE_S == 0) {
 			val := 0.0
@@ -1949,7 +1949,7 @@ func (elem *Elem) RateMax(show *Show) float64 {
 					val = tmp
 				}
 			}
-			return val
+			return val, nil
 		} else {
 			vall := 0.0
 			vals := 0.0
@@ -1974,9 +1974,9 @@ func (elem *Elem) RateMax(show *Show) float64 {
 				vals = 0.0
 			}
 			if vall >= vals {
-				return vall
+				return vall, nil
 			} else {
-				return vals
+				return vals, nil
 			}
 		}
 	}
@@ -1988,15 +1988,19 @@ func (elem *Elem) RateMax(show *Show) float64 {
 		if elem.Children != nil {
 			for _, el := range elem.Children {
 				if el != nil {
-					rtn += returnratemax(el)
+					val, err := returnratemax(el)
+					if err != nil {
+						return 0.0, err
+					}
+					rtn += val
 					num++
 				}
 			}
 		}
 		if num > 0 {
-			return rtn / float64(num)
+			return rtn / float64(num), nil
 		} else {
-			return 0.0
+			return 0.0, errors.New("RateMax: no value")
 		}
 	}
 }

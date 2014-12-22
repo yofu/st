@@ -2596,7 +2596,10 @@ func errorelem(stw *Window) {
 	for _, el := range stw.Frame.Elems {
 		switch el.Etype {
 		case st.COLUMN, st.GIRDER, st.BRACE, st.WALL, st.SLAB:
-			val := el.RateMax(stw.Frame.Show)
+			val, err := el.RateMax(stw.Frame.Show)
+			if err != nil {
+				continue
+			}
 			if val > 1.0 {
 				tmpels[i] = el
 				i++
