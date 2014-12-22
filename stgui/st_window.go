@@ -2248,6 +2248,8 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			}
 		}
 	case key == "fit":
+		stw.Frame.SetFocus(nil)
+		stw.DrawFrameNode()
 		stw.ShowCenter()
 	case abbrev.For("ang/le", key):
 		if len(lis) < 3 {

@@ -3762,6 +3762,18 @@ func (frame *Frame) SetFocus(coord []float64) {
 			frame.View.Focus[i] = coord[i]
 		}
 	}
+	for {
+		if frame.View.Angle[1] <= 360.0 {
+			break
+		}
+		frame.View.Angle[1] -= 360.0
+	}
+	for {
+		if frame.View.Angle[1] >= 0.0 {
+			break
+		}
+		frame.View.Angle[1] += 360.0
+	}
 }
 
 // }}}
