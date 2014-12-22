@@ -7414,7 +7414,9 @@ func (stw *Window) HideEtype(etype int) {
 		return
 	}
 	stw.Frame.Show.Etype[etype] = false
-	stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelOFFColor)
+	if lbl, ok := stw.Labels[st.ETYPES[etype]]; ok {
+		lbl.SetAttribute("FGCOLOR", labelOFFColor)
+	}
 }
 
 func (stw *Window) ShowEtype(etype int) {
@@ -7423,7 +7425,9 @@ func (stw *Window) ShowEtype(etype int) {
 	}
 	stw.Frame.Show.Etype[etype] = true
 	stw.UpdateShowRange() // TODO: ShowRange
-	stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelFGColor)
+	if lbl, ok := stw.Labels[st.ETYPES[etype]]; ok {
+		lbl.SetAttribute("FGCOLOR", labelFGColor)
+	}
 }
 
 func (stw *Window) ToggleEtype(etype int) {
