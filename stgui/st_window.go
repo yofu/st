@@ -3363,6 +3363,11 @@ func (stw *Window) exmode(command string) error {
 		return stw.exmode(stw.lastexcommand)
 	}
 	stw.lastexcommand = command
+	var usage bool
+	if strings.HasSuffix(command, "?") {
+		usage = true
+		command = strings.TrimSuffix(command, "?")
+	}
 	tmpargs := strings.Split(command, " ")
 	args := make([]string, len(tmpargs))
 	narg := 0
@@ -3549,6 +3554,10 @@ func (stw *Window) exmode(command string) error {
 				return err
 			}
 		case abbrev.For("w/rite/o/utput", cname):
+			if usage {
+				stw.addHistory(":writeoutput filename period")
+				return nil
+			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":wo")
 			} else {
