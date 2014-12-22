@@ -3510,10 +3510,13 @@ func catintermediatenode(stw *Window) {
 				ind++
 			}
 		}
+		if ind < 2 {
+			continue
+		}
 		d := lels[0].Direction(false)
 		sec := lels[0].Sect
 		ci := true
-		for _, el := range lels[1:] {
+		for _, el := range lels[1:ind] {
 			if el.Sect != sec {
 				ci = false
 				break
