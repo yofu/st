@@ -2421,9 +2421,9 @@ func (frame *Frame) Fence(axis int, coord float64, plate bool) []*Elem {
 	return rtn
 }
 
-func (frame *Frame) Cutter(axis int, coord float64) error {
+func (frame *Frame) Cutter(axis int, coord float64, eps float64) error {
 	for _, el := range frame.Fence(axis, coord, false) {
-		_, _, err := el.DivideAtAxis(axis, coord)
+		_, _, err := el.DivideAtAxis(axis, coord, eps)
 		if err != nil {
 			return err
 		}

@@ -1077,11 +1077,11 @@ func (elem *Elem) PDirection(normalize bool) []float64 {
 // }}}
 
 // Modify// {{{
-func (elem *Elem) Move(x, y, z float64) {
+func (elem *Elem) Move(x, y, z float64, eps float64) {
 	newenod := make([]*Node, elem.Enods)
 	for i := 0; i < elem.Enods; i++ {
 		var created bool
-		newenod[i], created = elem.Frame.CoordNode(elem.Enod[i].Coord[0]+x, elem.Enod[i].Coord[1]+y, elem.Enod[i].Coord[2]+z, 1e-4)
+		newenod[i], created = elem.Frame.CoordNode(elem.Enod[i].Coord[0]+x, elem.Enod[i].Coord[1]+y, elem.Enod[i].Coord[2]+z, eps)
 		if created {
 			for j := 0; j < 6; j++ {
 				newenod[i].Conf[j] = elem.Enod[i].Conf[j]
@@ -1091,11 +1091,11 @@ func (elem *Elem) Move(x, y, z float64) {
 	elem.Enod = newenod
 }
 
-func (elem *Elem) Copy(x, y, z float64) *Elem {
+func (elem *Elem) Copy(x, y, z float64, eps float64) *Elem {
 	newenod := make([]*Node, elem.Enods)
 	for i := 0; i < elem.Enods; i++ {
 		var created bool
-		newenod[i], created = elem.Frame.CoordNode(elem.Enod[i].Coord[0]+x, elem.Enod[i].Coord[1]+y, elem.Enod[i].Coord[2]+z, 1e-4)
+		newenod[i], created = elem.Frame.CoordNode(elem.Enod[i].Coord[0]+x, elem.Enod[i].Coord[1]+y, elem.Enod[i].Coord[2]+z, eps)
 		if created {
 			for j := 0; j < 6; j++ {
 				newenod[i].Conf[j] = elem.Enod[i].Conf[j]
@@ -1117,12 +1117,12 @@ func (elem *Elem) Copy(x, y, z float64) *Elem {
 	}
 }
 
-func (elem *Elem) Mirror(coord, vec []float64, del bool) *Elem {
+func (elem *Elem) Mirror(coord, vec []float64, del bool, eps float64) *Elem {
 	newenod := make([]*Node, elem.Enods)
 	var add bool
 	for i := 0; i < elem.Enods; i++ {
 		newcoord := elem.Enod[i].MirrorCoord(coord, vec)
-		newenod[i], _ = elem.Frame.CoordNode(newcoord[0], newcoord[1], newcoord[2], 1e-4)
+		newenod[i], _ = elem.Frame.CoordNode(newcoord[0], newcoord[1], newcoord[2], eps)
 		if !add && (newenod[i] != elem.Enod[i]) {
 			add = true
 		}
@@ -1258,11 +1258,11 @@ func (elem *Elem) AxisCoord(axis int, coord float64) (rtn []float64, err error) 
 	return elem.DividingPoint(k), nil
 }
 
-func (elem *Elem) DivideAtCoord(x, y, z float64) (ns []*Node, els []*Elem, err error) {
+func (elem *Elem) DivideAtCoord(x, y, z float64, eps float64) (ns []*Node, els []*Elem, err error) {
 	if !elem.IsLineElem() {
 		return nil, nil, NotLineElem("DivideAtCoord")
 	}
-	n, _ := elem.Frame.CoordNode(x, y, z, 1e-4)
+	n, _ := elem.Frame.CoordNode(x, y, z, eps)
 	for i := 0; i < elem.Enods; i++ {
 		if n == elem.Enod[i] {
 			return nil, nil, DivideAtEnod("DivideAtCoord")
@@ -1346,24 +1346,24 @@ func (elem *Elem) DivideAtNode(n *Node, position int, del bool) (rn []*Node, els
 	}
 }
 
-func (elem *Elem) DivideAtRate(k float64) (n []*Node, els []*Elem, err error) {
+func (elem *Elem) DivideAtRate(k float64, eps float64) (n []*Node, els []*Elem, err error) {
 	c := elem.DividingPoint(k)
-	return elem.DivideAtCoord(c[0], c[1], c[2])
+	return elem.DivideAtCoord(c[0], c[1], c[2], eps)
 }
 
-func (elem *Elem) DivideAtMid() (n []*Node, els []*Elem, err error) {
-	return elem.DivideAtRate(0.5)
+func (elem *Elem) DivideAtMid(eps float64) (n []*Node, els []*Elem, err error) {
+	return elem.DivideAtRate(0.5, eps)
 }
 
-func (elem *Elem) DivideAtAxis(axis int, coord float64) (n []*Node, els []*Elem, err error) {
+func (elem *Elem) DivideAtAxis(axis int, coord float64, eps float64) (n []*Node, els []*Elem, err error) {
 	c, err := elem.AxisCoord(axis, coord)
 	if err != nil {
 		return
 	}
-	return elem.DivideAtCoord(c[0], c[1], c[2])
+	return elem.DivideAtCoord(c[0], c[1], c[2], eps)
 }
 
-func (elem *Elem) DivideInN(n int) (rn []*Node, els []*Elem, err error) {
+func (elem *Elem) DivideInN(n int, eps float64) (rn []*Node, els []*Elem, err error) {
 	if !elem.IsLineElem() {
 		return nil, nil, NotLineElem("DivideInN")
 	}
@@ -1378,7 +1378,7 @@ func (elem *Elem) DivideInN(n int) (rn []*Node, els []*Elem, err error) {
 	els = make([]*Elem, n)
 	els[0] = elem
 	for i := n - 2; i >= 0; i-- {
-		newn, newels, err := elem.DivideAtRate(rate[i])
+		newn, newels, err := elem.DivideAtRate(rate[i], eps)
 		if err != nil {
 			return nil, nil, err
 		}

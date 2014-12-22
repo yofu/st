@@ -3937,7 +3937,7 @@ func (stw *Window) exmode(command string) error {
 			switch strings.ToLower(args[1]) {
 			case "mid":
 				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
-					return el.DivideAtMid()
+					return el.DivideAtMid(EPS)
 				}
 			case "n":
 				if narg < 3 {
@@ -3949,7 +3949,7 @@ func (stw *Window) exmode(command string) error {
 				}
 				ndiv := int(val)
 				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
-					return el.DivideInN(ndiv)
+					return el.DivideInN(ndiv, EPS)
 				}
 			case "elem":
 				eps := EPS
@@ -3994,7 +3994,7 @@ func (stw *Window) exmode(command string) error {
 					return err
 				}
 				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
-					return el.DivideAtAxis(axis, val)
+					return el.DivideAtAxis(axis, val, EPS)
 				}
 			}
 			if divfunc == nil {

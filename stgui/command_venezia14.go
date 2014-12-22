@@ -64,7 +64,7 @@ func ven14cutter(stw *Window) {
 		var keys []float64
 		nodes := make(map[float64]*st.Node)
 		for _, el := range els {
-			n, _, _ := el.DivideAtAxis(axis, coord)
+			n, _, _ := el.DivideAtAxis(axis, coord, EPS)
 			nodes[n[0].Coord[compare]] = n[0]
 			keys = append(keys, n[0].Coord[compare])
 		}
@@ -100,7 +100,7 @@ func ven14cutter(stw *Window) {
 		var keys []float64
 		nodes := make(map[float64]*st.Node)
 		for _, el := range els {
-			n, _, _ := el.DivideAtAxis(axis, coord)
+			n, _, _ := el.DivideAtAxis(axis, coord, EPS)
 			nodes[n[0].Coord[compare]] = n[0]
 			keys = append(keys, n[0].Coord[compare])
 		}

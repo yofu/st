@@ -1128,7 +1128,7 @@ func copyelem(stw *Window) {
 				if el == nil || el.IsHide(stw.Frame.Show) || el.Lock {
 					continue
 				}
-				el.Copy(x, y, z)
+				el.Copy(x, y, z, EPS)
 			}
 			stw.Snapshot()
 			stw.Redraw()
@@ -1177,7 +1177,7 @@ func moveelem(stw *Window) {
 			if el == nil || el.IsHide(stw.Frame.Show) || el.Lock {
 				continue
 			}
-			el.Move(x, y, z)
+			el.Move(x, y, z, EPS)
 		}
 		for _, n := range stw.Frame.NodeNoReference() {
 			stw.Frame.DeleteNode(n.Num)
@@ -2365,7 +2365,7 @@ func pruneenod(stw *Window) {
 // NODEDUPLICATION// {{{
 func nodeduplication(stw *Window) {
 	stw.Deselect()
-	nm := stw.Frame.NodeDuplication(5e-3)
+	nm := stw.Frame.NodeDuplication(EPS)
 	if len(nm) != 0 {
 		for k := range nm {
 			stw.SelectNode = append(stw.SelectNode, k)
@@ -2651,7 +2651,7 @@ func cutter(stw *Window) {
 	if err != nil {
 		return
 	}
-	stw.Frame.Cutter(axis, coord)
+	stw.Frame.Cutter(axis, coord, EPS)
 	stw.EscapeAll()
 }
 
@@ -2683,7 +2683,7 @@ func divideatons(stw *Window) {
 }
 func divideatmid(stw *Window) {
 	divide(stw, func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
-		return el.DivideAtMid()
+		return el.DivideAtMid(EPS)
 	})
 }
 func divideinn(stw *Window) {
@@ -2701,7 +2701,7 @@ func divideinn(stw *Window) {
 	}
 	n := int(val)
 	divide(stw, func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
-		return el.DivideInN(n)
+		return el.DivideInN(n, EPS)
 	})
 }
 func divideatelem(stw *Window) {
