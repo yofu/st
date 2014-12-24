@@ -3928,6 +3928,10 @@ func (stw *Window) exmode(command string) error {
 			stw.Snapshot()
 		case abbrev.For("div/ide", cname):
 			if narg < 2 {
+				if usage {
+					stw.addHistory(":divide [mid, n, elem, ons, axis]")
+					return nil
+				}
 				return st.NotEnoughArgs(":divide")
 			}
 			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
@@ -3936,10 +3940,18 @@ func (stw *Window) exmode(command string) error {
 			var divfunc func(*st.Elem) ([]*st.Node, []*st.Elem, error)
 			switch strings.ToLower(args[1]) {
 			case "mid":
+				if usage {
+					stw.addHistory(":divide mid")
+					return nil
+				}
 				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
 					return el.DivideAtMid(EPS)
 				}
 			case "n":
+				if usage {
+					stw.addHistory(":divide n div")
+					return nil
+				}
 				if narg < 3 {
 					return st.NotEnoughArgs(":divide n")
 				}
@@ -3952,6 +3964,10 @@ func (stw *Window) exmode(command string) error {
 					return el.DivideInN(ndiv, EPS)
 				}
 			case "elem":
+				if usage {
+					stw.addHistory(":divide elem (eps)")
+					return nil
+				}
 				eps := EPS
 				if narg >= 3 {
 					val, err := strconv.ParseFloat(args[2], 64)
@@ -3964,6 +3980,10 @@ func (stw *Window) exmode(command string) error {
 					return nil, els, err
 				}
 			case "ons":
+				if usage {
+					stw.addHistory(":divide ons (eps)")
+					return nil
+				}
 				eps := EPS
 				if narg >= 3 {
 					val, err := strconv.ParseFloat(args[2], 64)
@@ -3975,6 +3995,10 @@ func (stw *Window) exmode(command string) error {
 					return el.DivideAtOns(eps)
 				}
 			case "axis":
+				if usage {
+					stw.addHistory(":divide axis [x, y, z] coord")
+					return nil
+				}
 				if narg < 4 {
 					return st.NotEnoughArgs(":divide axis")
 				}
