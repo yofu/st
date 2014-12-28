@@ -3760,6 +3760,32 @@ func (stw *Window) exmode(command string) error {
 			if err != nil {
 				return err
 			}
+		case abbrev.For("go/han/l/st", cname):
+			if narg < 3 {
+				return st.NotEnoughArgs(":gohanlst")
+			}
+			snum, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return err
+			}
+			if sec, ok := stw.Frame.Sects[int(snum)]; ok {
+				var otp bytes.Buffer
+				var etype string
+				val, err := strconv.ParseFloat(args[2], 64)
+				if err != nil {
+					return err
+				}
+				for _, s := range sec.BraceSection() {
+					if s.Type == 5 {
+						etype = "WALL"
+					} else if s.Type == 6 {
+						etype = "SLAB"
+					}
+					otp.WriteString(fmt.Sprintf("CODE %4d WOOD %s                                                    \"%s1\"\n", s.Num, etype, etype[:1]))
+					otp.WriteString(fmt.Sprintf("         THICK %5.3f       GOHAN                                     \"x%3.1f\"\n\n", val/12.0,val)) // 2[kgf/cm] / 24[kgf/cm2] = 1/12[cm]
+				}
+				fmt.Println(otp.String())
+			}
 		case abbrev.For("el/em", cname):
 			stw.Deselect()
 			f := func(el *st.Elem) bool {

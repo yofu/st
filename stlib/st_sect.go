@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"sort"
 )
 
 var (
@@ -326,5 +327,31 @@ func (sect *Sect) Weight() []float64 {
 	for i := 0; i < 3; i++ {
 		rtn[i] = sum + sect.Lload[i]
 	}
+	return rtn
+}
+
+func (sect *Sect) BraceSection() []*Sect {
+	rtn := make([]*Sect, 0)
+	enum := 0
+	var add bool
+	for _, el := range sect.Frame.Elems {
+		if el.Etype == WBRACE || el.Etype == SBRACE {
+			if el.OriginalSection() == sect {
+				add = true
+				for _, v := range rtn {
+					if el.Sect == v {
+						add = false
+						break
+					}
+				}
+				if add {
+					rtn = append(rtn, el.Sect)
+					enum++
+				}
+			}
+		}
+	}
+	rtn = rtn[:enum]
+	sort.Sort(SectByNum{rtn})
 	return rtn
 }

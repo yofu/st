@@ -1053,7 +1053,7 @@ func (frame *Frame) ReadData(filename string) error {
 				// go func (nel *Elem, n []*Node) {
 				// defer wg.Done()
 				for _, el := range frame.SearchElem(ns...) {
-					if el.Etype == sect.Type+1 {
+					if el.Etype == sect.Type+2 {
 						el.Adopt(newel)
 					}
 				}

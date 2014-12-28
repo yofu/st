@@ -726,6 +726,15 @@ func (elem *Elem) Adopt(child *Elem) int {
 	return -1
 }
 
+func (elem *Elem) OriginalSection() *Sect {
+	switch elem.Etype {
+	default:
+		return elem.Sect
+	case WBRACE, SBRACE:
+		return elem.Parent.Sect
+	}
+}
+
 func (elem *Elem) EdgedBy() ([]*Elem, error) {
 	if elem.IsLineElem() {
 		return nil, NotPlateElem("EdgedBy")
