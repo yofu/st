@@ -381,6 +381,9 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64) err
 				frame.Ai.Nfloor = len(words) - 2
 				frame.Ai.Boundary = make([]float64, len(words)-1)
 			}
+			if len(words) <= frame.Ai.Nfloor+1 {
+				return errors.New(fmt.Sprintf("ReadInp: HEIGHT: not enough boundaries (%d < %d)", len(words)-1, frame.Ai.Nfloor+1))
+			}
 			for i := 0; i < frame.Ai.Nfloor+1; i++ {
 				val, err := strconv.ParseFloat(words[1+i], 64)
 				if err != nil {

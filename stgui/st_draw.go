@@ -321,6 +321,7 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 		// Deformation
 		if show.Deformation {
 			cvs.LineStyle(cd.CD_DOTTED)
+			cvs.Foreground(BondColor)
 			cvs.FLine(elem.Enod[0].Dcoord[0], elem.Enod[0].Dcoord[1], elem.Enod[1].Dcoord[0], elem.Enod[1].Dcoord[1])
 			cvs.LineStyle(cd.CD_CONTINUOUS)
 		}
