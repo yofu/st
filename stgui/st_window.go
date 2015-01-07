@@ -2180,6 +2180,18 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		return st.NotEnoughArgs("Fig2Keyword")
 	}
 	key := strings.ToLower(lis[0])
+	var usage bool
+	if strings.HasSuffix(key, "?") {
+		usage = true
+		key = strings.TrimSuffix(key, "?")
+	}
+	showhtml := func(fn string) {
+		f := filepath.Join(tooldir, "fig2/keywords", fn)
+		if st.FileExists(f) {
+			cmd := exec.Command("cmd", "/C", "start", f)
+			cmd.Start()
+		}
+	}
 	switch {
 	default:
 		if k, ok := stw.Frame.Kijuns[key]; ok {
@@ -2398,6 +2410,12 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Labels["KIJUN"].SetAttribute("FGCOLOR", labelFGColor)
 		}
 	case abbrev.For("mea/sure", key):
+		if usage {
+			stw.addHistory(":measure kijun x1 x2 offset dotsize rotate overwrite")
+			stw.addHistory(":measure nnum1 nnum2 direction offset dotsize rotate overwrite")
+			showhtml("MEASURE.html")
+			return nil
+		}
 		if un {
 			stw.Frame.Show.Measure = false
 		} else {
