@@ -3899,7 +3899,12 @@ func (stw *Window) exmode(command string) error {
 					otp.WriteString(fmt.Sprintf("CODE %4d WOOD %s                                                    \"%s1\"\n", s.Num, etype, etype[:1]))
 					otp.WriteString(fmt.Sprintf("         THICK %5.3f       GOHAN                                     \"x%3.1f\"\n\n", val/12.0,val)) // 2[kgf/cm] / 24[kgf/cm2] = 1/12[cm]
 				}
-				fmt.Println(otp.String())
+				w, err := os.Create(filepath.Join(stw.Cwd, "gohan.lst"))
+				defer w.Close()
+				if err != nil {
+					return err
+				}
+				otp.WriteTo(w)
 			}
 		case abbrev.For("el/em", cname):
 			if usage {
