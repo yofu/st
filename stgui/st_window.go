@@ -4151,6 +4151,10 @@ func (stw *Window) exmode(command string) error {
 		case abbrev.For("f/ilter", cname):
 			stw.FilterSelectedElem(strings.Join(args[1:], " "))
 		case abbrev.For("h/eigh/t/", cname):
+			if usage {
+				stw.addHistory(":height f1 f2")
+				return nil
+			}
 			if narg == 1 {
 				axisrange(stw, 2, -100.0, 1000.0, false)
 				return nil
@@ -4158,16 +4162,25 @@ func (stw *Window) exmode(command string) error {
 			if narg < 3 {
 				return st.NotEnoughArgs(":ht")
 			}
-			tmp, err := strconv.ParseInt(args[1], 10, 64)
-			if err != nil {
-				return err
+			var min, max int
+			if strings.EqualFold(args[1], "n") {
+				min = stw.Frame.Ai.Nfloor
+			} else {
+				tmp, err := strconv.ParseInt(args[1], 10, 64)
+				if err != nil {
+					return err
+				}
+				min = int(tmp)
 			}
-			min := int(tmp)
-			tmp, err = strconv.ParseInt(args[2], 10, 64)
-			if err != nil {
-				return err
+			if strings.EqualFold(args[2], "n") {
+				max = stw.Frame.Ai.Nfloor
+			} else {
+				tmp, err := strconv.ParseInt(args[2], 10, 64)
+				if err != nil {
+					return err
+				}
+				max = int(tmp)
 			}
-			max := int(tmp)
 			l := len(stw.Frame.Ai.Boundary)
 			if min < 0 || min >= l || max < 0 || max >= l {
 				return errors.New(":ht out of boundary")
