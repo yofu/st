@@ -3415,6 +3415,10 @@ func (stw *Window) exmode(command string) error {
 			stw.errormessage(errors.New(fmt.Sprintf("no exmode command: %s", cname)), INFO)
 			return nil
 		case abbrev.For("w/rite", cname):
+			if usage {
+				stw.addHistory(":write")
+				return nil
+			}
 			if fn == "" {
 				stw.SaveFile(stw.Frame.Path)
 			} else {
@@ -3429,6 +3433,10 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 		case abbrev.For("sav/e", cname):
+			if usage {
+				stw.addHistory(":save filename")
+				return nil
+			}
 			if fn == "" {
 				return st.NotEnoughArgs(":save")
 			} else {
@@ -3457,6 +3465,10 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 		case abbrev.For("inc/rement", cname):
+			if usage {
+				stw.addHistory(":increment {times:1}")
+				return nil
+			}
 			if !bang && stw.Changed {
 				if stw.Yn("CHANGED", "変更を保存しますか") {
 					stw.SaveAS()
@@ -3490,6 +3502,10 @@ func (stw *Window) exmode(command string) error {
 				stw.EditReadme(filepath.Dir(fn))
 			}
 		case abbrev.For("e/dit", cname):
+			if usage {
+				stw.addHistory(":edit [filename]")
+				return nil
+			}
 			if !bang && stw.Changed {
 				if stw.Yn("CHANGED", "変更を保存しますか") {
 					stw.SaveAS()
@@ -3519,22 +3535,50 @@ func (stw *Window) exmode(command string) error {
 				stw.Reload()
 			}
 		case abbrev.For("q/uit", cname):
+			if usage {
+				stw.addHistory(":quit")
+				return nil
+			}
 			stw.Close(bang)
 		case cname == "mkdir":
+			if usage {
+				stw.addHistory(":mkdir dirname")
+				return nil
+			}
 			os.MkdirAll(fn, 0644)
 		case abbrev.For("c/heck", cname):
+			if usage {
+				stw.addHistory(":check")
+				return nil
+			}
 			checkframe(stw)
 			stw.addHistory("CHECKED")
 		case cname == "#":
+			if usage {
+				stw.addHistory(":#")
+				return nil
+			}
 			stw.ShowRecently()
 		case abbrev.For("vi/m", cname):
+			if usage {
+				stw.addHistory(":vim filename")
+				return nil
+			}
 			stw.Vim(fn)
 		case abbrev.For("r/ead", cname):
+			if usage {
+				stw.addHistory(":read filename")
+				return nil
+			}
 			err := stw.ReadFile(fn)
 			if err != nil {
 				return err
 			}
 		case abbrev.For("ins/ert", cname):
+			if usage {
+				stw.addHistory(":insert filename angle(deg)")
+				return nil
+			}
 			if narg > 2 && len(stw.SelectNode) >= 1 {
 				angle, err := strconv.ParseFloat(args[2], 64)
 				if err != nil {
@@ -3548,27 +3592,47 @@ func (stw *Window) exmode(command string) error {
 				stw.EscapeAll()
 			}
 		case abbrev.For("p/rop/s/ect", cname):
+			if usage {
+				stw.addHistory(":propsect filename")
+				return nil
+			}
 			err := stw.AddPropAndSect(fn)
 			stw.Snapshot()
 			if err != nil {
 				return err
 			}
 		case abbrev.For("r/ead/b/uckling", cname):
+			if usage {
+				stw.addHistory(":readbuckling filename")
+				return nil
+			}
 			err := stw.ReadBucklingFile(fn)
 			if err != nil {
 				return err
 			}
 		case abbrev.For("r/ead/z/oubun", cname):
+			if usage {
+				stw.addHistory(":readzoubun filename")
+				return nil
+			}
 			err := stw.ReadZoubunFile(fn)
 			if err != nil {
 				return err
 			}
 		case cname == "add":
+			if usage {
+				stw.addHistory(":add filename")
+				return nil
+			}
 			err := stw.AddResult(fn, false)
 			if err != nil {
 				return err
 			}
 		case cname == "adds":
+			if usage {
+				stw.addHistory(":adds filename")
+				return nil
+			}
 			err := stw.AddResult(fn, true)
 			if err != nil {
 				return err
@@ -3593,13 +3657,25 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 		case cname == "srcal":
+			if usage {
+				stw.addHistory(":srcal")
+				return nil
+			}
 			stw.Frame.SectionRateCalculation("L", "X", "X", "Y", "Y", -1.0)
 		case abbrev.For("fi/g2", cname):
+			if usage {
+				stw.addHistory(":fig2 filename")
+				return nil
+			}
 			err := stw.ReadFig2(fn)
 			if err != nil {
 				return err
 			}
 		case abbrev.For("fe/nce", cname):
+			if usage {
+				stw.addHistory(":fence axis coord")
+				return nil
+			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":fence")
 			}
@@ -3620,6 +3696,11 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.SelectElem = stw.Frame.Fence(axis, val, false)
 		case abbrev.For("no/de", cname):
+			if usage {
+				stw.addHistory(":node nnum")
+				stw.addHistory(":node [x,y,z] [>,<,=] coord")
+				return nil
+			}
 			stw.Deselect()
 			f := func(n *st.Node) bool {
 				return true
@@ -3715,6 +3796,10 @@ func (stw *Window) exmode(command string) error {
 				stw.SelectNode = stw.SelectNode[:num]
 			}
 		case abbrev.For("pl/oad", cname):
+			if usage {
+				stw.addHistory(":pload position value")
+				return nil
+			}
 			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
 				return errors.New(":pload no selected node")
 			}
@@ -3737,6 +3822,10 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.Snapshot()
 		case abbrev.For("z/oubun/d/isp", cname):
+			if usage {
+				stw.addHistory(":zoubundisp period direction")
+				return nil
+			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":zoubundisp")
 			}
@@ -3758,6 +3847,10 @@ func (stw *Window) exmode(command string) error {
 				return err
 			}
 		case abbrev.For("z/oubun/r/eaction", cname):
+			if usage {
+				stw.addHistory(":zoubunreaction period direction")
+				return nil
+			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":zoubunreaction")
 			}
@@ -3779,6 +3872,10 @@ func (stw *Window) exmode(command string) error {
 				return err
 			}
 		case abbrev.For("go/han/l/st", cname):
+			if usage {
+				stw.addHistory(":gohanlst sectcode factor")
+				return nil
+			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":gohanlst")
 			}
@@ -3805,6 +3902,10 @@ func (stw *Window) exmode(command string) error {
 				fmt.Println(otp.String())
 			}
 		case abbrev.For("el/em", cname):
+			if usage {
+				stw.addHistory(":elem [elemcode,sect sectcode,etype]")
+				return nil
+			}
 			stw.Deselect()
 			f := func(el *st.Elem) bool {
 				return true
@@ -3855,6 +3956,10 @@ func (stw *Window) exmode(command string) error {
 				stw.SelectElem = stw.SelectElem[:num]
 			}
 		case abbrev.For("bo/nd", cname):
+			if usage {
+				stw.addHistory(":bond [pin,rigid] [upper,lower,sect sectcode]")
+				return nil
+			}
 			if narg < 2 {
 				return st.NotEnoughArgs(":bond")
 			}
@@ -3911,6 +4016,10 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.Snapshot()
 		case abbrev.For("ax/is/2//c/ang", cname):
+			if usage {
+				stw.addHistory(":axis2cang n1 n2 [strong,weak]")
+				return nil
+			}
 			if narg < 4 {
 				return st.NotEnoughArgs(":axis2cang")
 			}
@@ -3953,6 +4062,10 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.Snapshot()
 		case abbrev.For("prest/ress", cname):
+			if usage {
+				stw.addHistory(":prestress value")
+				return nil
+			}
 			if narg < 2 {
 				return st.NotEnoughArgs(":prestress")
 			}
@@ -3971,11 +4084,11 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.Snapshot()
 		case abbrev.For("div/ide", cname):
+			if usage {
+				stw.addHistory(":divide [mid, n, elem, ons, axis]")
+				return nil
+			}
 			if narg < 2 {
-				if usage {
-					stw.addHistory(":divide [mid, n, elem, ons, axis]")
-					return nil
-				}
 				return st.NotEnoughArgs(":divide")
 			}
 			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
@@ -4088,6 +4201,10 @@ func (stw *Window) exmode(command string) error {
 			stw.SelectElem = tmpels[:enum]
 			stw.Snapshot()
 		case abbrev.For("co/nf", cname):
+			if usage {
+				stw.addHistory(":conf [0,1]{6}")
+				return nil
+			}
 			lis := make([]bool, 6)
 			if len(args[1]) >= 6 {
 				for i := 0; i < 6; i++ {
@@ -4109,6 +4226,10 @@ func (stw *Window) exmode(command string) error {
 				return st.NotEnoughArgs(":conf")
 			}
 		case abbrev.For("pi/le", cname):
+			if usage {
+				stw.addHistory(":pile pilecode")
+				return nil
+			}
 			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
 				return errors.New(":pile no selected node")
 			}
@@ -4131,6 +4252,10 @@ func (stw *Window) exmode(command string) error {
 				return errors.New(fmt.Sprintf(":pile PILE %d doesn't exist", val))
 			}
 		case abbrev.For("an/alysis", cname):
+			if usage {
+				stw.addHistory(":analysis")
+				return nil
+			}
 			err := stw.SaveFile(stw.Frame.Path)
 			if err != nil {
 				return err
@@ -4149,6 +4274,10 @@ func (stw *Window) exmode(command string) error {
 			stw.ReadAll()
 			stw.Redraw()
 		case abbrev.For("f/ilter", cname):
+			if usage {
+				stw.addHistory(":filter condition")
+				return nil
+			}
 			stw.FilterSelectedElem(strings.Join(args[1:], " "))
 		case abbrev.For("h/eigh/t/", cname):
 			if usage {
@@ -4191,6 +4320,10 @@ func (stw *Window) exmode(command string) error {
 		case abbrev.For("h/eigh/t-/", cname):
 			stw.PrevFloor()
 		case abbrev.For("sec/tion/+/", cname):
+			if usage {
+				stw.addHistory(":section+ value")
+				return nil
+			}
 			if narg < 2 {
 				return st.NotEnoughArgs(":section+")
 			}
