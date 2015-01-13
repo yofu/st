@@ -3441,6 +3441,9 @@ func (stw *Window) exmode(command string) error {
 				return st.NotEnoughArgs(":save")
 			} else {
 				if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
+					if narg > 2 && strings.EqualFold(args[2], "mkdir") {
+						os.MkdirAll(filepath.Dir(fn), 0644)
+					}
 					var err error
 					if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
 						err = stw.SaveFileSelected(fn, stw.SelectElem)
