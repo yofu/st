@@ -4353,6 +4353,10 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.Snapshot()
 		case cname == "view":
+			if usage {
+				stw.addHistory(":view [top,front,back,right,left]")
+				return nil
+			}
 			switch strings.ToUpper(args[1]) {
 			case "TOP":
 				stw.SetAngle(90.0, -90.0)
@@ -4384,6 +4388,11 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory("select elem with Alt key")
 			}
 		case cname == "printrange":
+			if usage {
+				stw.addHistory(":printrange [on,true,yes] [a3tate,a3yoko,a4tate,a4yoko]")
+				stw.addHistory(":printrange [off,false,no]")
+				return nil
+			}
 			if narg < 2 {
 				showprintrange = !showprintrange
 				break
@@ -4407,6 +4416,10 @@ func (stw *Window) exmode(command string) error {
 				showprintrange = true
 			}
 		case cname == "paper":
+			if usage {
+				stw.addHistory(":paper [a3tate,a3yoko,a4tate,a4yoko]")
+				return nil
+			}
 			if narg < 2 {
 				return st.NotEnoughArgs(":paper")
 			}
@@ -4434,6 +4447,10 @@ func (stw *Window) exmode(command string) error {
 				return errors.New(":paper unknown papersize")
 			}
 		case abbrev.For("col/or", cname):
+			if usage {
+				stw.addHistory(":color [n,sect,rate,white,mono,strong]")
+				return nil
+			}
 			if narg < 2 {
 				stw.SetColorMode(st.ECOLOR_SECT)
 				break
