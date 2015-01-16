@@ -3683,9 +3683,9 @@ fact_node:
 						cont = false
 					}
 				}
-				if cont {
-					continue fact_node
-				}
+			}
+			if cont {
+				continue fact_node
 			}
 		}
 		for i := 0; i < l; i++ {
@@ -3703,6 +3703,18 @@ fact_node:
 				break
 			}
 		}
+		if skipany != nil || skipall != nil {
+			for _, sany := range skipany {
+				if el.Sect.Num == sany {
+					contained = false
+				}
+			}
+			for _, sall := range skipall {
+				if el.Sect.Num == sall {
+					contained = false
+				}
+			}
+		}
 		if !contained {
 			continue
 		}
@@ -3716,6 +3728,12 @@ fact_node:
 	f := NewFact(l, true, frame.Ai.Base/0.2)
 	f.SetFileName([]string{frame.DataFileName["L"], frame.DataFileName["X"], frame.DataFileName["Y"]},
 		[]string{frame.ResultFileName["L"], frame.ResultFileName["X"], frame.ResultFileName["Y"]})
+	for i:=0; i<len(nodes); i++ {
+		sort.Sort(NodeByNum{nodes[i]})
+	}
+	for i:=0; i<len(elems); i++ {
+		sort.Sort(ElemByNum{elems[i]})
+	}
 	err = f.CalcFact(nodes, elems)
 	if err != nil {
 		return err
