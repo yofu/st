@@ -2966,7 +2966,12 @@ func (stw *Window) SearchFile(fn string) (string, error) {
 		if pos2 < 0 {
 			return fn, errors.New(fmt.Sprintf("File not fount %s", fn))
 		}
-		return filepath.Join(stw.Home, fn[:pos1], fn[:pos2], fn), nil
+		cand := filepath.Join(stw.Home, fn[:pos1], fn[:pos2], fn)
+		if st.FileExists(cand) {
+			return cand, nil
+		} else {
+			return fn, errors.New(fmt.Sprintf("File not fount %s", fn))
+		}
 	}
 }
 
