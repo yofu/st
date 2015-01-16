@@ -3434,6 +3434,20 @@ func (stw *Window) exmode(command string) error {
 		}
 	}
 	args = args[:narg]
+	unnamed := make([]string, narg)
+	tmpnarg := 0
+	namedarg := regexp.MustCompile("^ *-{1,2}([^-]+)=(.+) *$")
+	for _, a := range args {
+		if namedarg.MatchString(a) {
+			fs := namedarg.FindStringSubmatch(a)
+			argdict[strings.ToUpper(fs[1])] = fs[2]
+		} else {
+			unnamed[tmpnarg] = a
+			tmpnarg++
+		}
+	}
+	args = unnamed[:tmpnarg]
+	narg = tmpnarg
 	var fn string
 	if narg < 2 {
 		fn = ""
@@ -3919,11 +3933,13 @@ func (stw *Window) exmode(command string) error {
 			fn = st.Ce(stw.Frame.Path, ".fes")
 			var skipany, skipall []int
 			if sany, ok := argdict["SKIPANY"]; ok {
+				stw.addHistory(fmt.Sprintf("SKIP ANY: %s", sany))
 				skipany = SplitNums(sany)
 			} else {
 				skipany = nil
 			}
 			if sall, ok := argdict["SKIPALL"]; ok {
+				stw.addHistory(fmt.Sprintf("SKIP ALL: %s", sall))
 				skipall = SplitNums(sall)
 			} else {
 				skipall = nil
