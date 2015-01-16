@@ -3649,7 +3649,7 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 	return nil
 }
 
-func (frame *Frame) Facts(fn string, etypes []int) error {
+func (frame *Frame) Facts(fn string, etypes []int, skipany, skipall []int) error {
 	var err error
 	l := frame.Ai.Nfloor
 	if l < 2 {
@@ -3663,10 +3663,30 @@ func (frame *Frame) Facts(fn string, etypes []int) error {
 			elems[i] = make([]*Elem, 0)
 		}
 	}
+	var cont bool
 fact_node:
 	for _, n := range frame.Nodes {
 		if n.Coord[2] < frame.Ai.Boundary[0] {
 			continue
+		}
+		if skipany != nil || skipall != nil {
+			els := frame.SearchElem(n)
+			cont = true
+			for _, el := range els {
+				for _, sany := range skipany {
+					if el.Sect.Num == sany {
+						continue fact_node
+					}
+				}
+				for _, sall := range skipall {
+					if el.Sect.Num != sall {
+						cont = false
+					}
+				}
+				if cont {
+					continue fact_node
+				}
+			}
 		}
 		for i := 0; i < l; i++ {
 			if n.Coord[2] < frame.Ai.Boundary[i+1] {

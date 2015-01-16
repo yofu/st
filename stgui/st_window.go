@@ -3395,6 +3395,7 @@ func (stw *Window) exmode(command string) error {
 	}
 	tmpargs := strings.Split(command, " ")
 	args := make([]string, len(tmpargs))
+	argdict := make(map[string]string, 0)
 	narg := 0
 	for i := 0; i < len(tmpargs); i++ {
 		if tmpargs[i] != "" {
@@ -3455,6 +3456,7 @@ func (stw *Window) exmode(command string) error {
 						if err != nil {
 							return err
 						}
+						stw.Deselect()
 						err = stw.OpenFile(fn)
 						if err != nil {
 							return err
@@ -3879,6 +3881,28 @@ func (stw *Window) exmode(command string) error {
 			if err != nil {
 				return err
 			}
+		case abbrev.For("fac/ts", cname):
+			if usage {
+				stw.addHistory(":facts {-skipany=code} {-skipall=code}")
+				return nil
+			}
+			fn = st.Ce(stw.Frame.Path, ".fes")
+			var skipany, skipall []int
+			if sany, ok := argdict["SKIPANY"]; ok {
+				skipany = SplitNums(sany)
+			} else {
+				skipany = nil
+			}
+			if sall, ok := argdict["SKIPALL"]; ok {
+				skipall = SplitNums(sall)
+			} else {
+				skipall = nil
+			}
+			err := stw.Frame.Facts(fn, []int{st.COLUMN, st.GIRDER, st.BRACE, st.WBRACE, st.SBRACE}, skipany, skipall)
+			if err != nil {
+				return err
+			}
+			stw.addHistory(fmt.Sprintf("Output: %s", fn))
 		case abbrev.For("go/han/l/st", cname):
 			if usage {
 				stw.addHistory(":gohanlst sectcode factor")
