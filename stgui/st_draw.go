@@ -262,6 +262,28 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 			oncap = true
 		}
 	}
+	if show.ElemCaption&st.EC_STIFF_X != 0 {
+		stiff := elem.LateralStiffness("X", false)
+		if stiff != 0.0 {
+			if stiff == 1e16 {
+				ecap.WriteString("∞")
+			} else {
+				ecap.WriteString(fmt.Sprintf("%.3f\n", stiff))
+			}
+			oncap = true
+		}
+	}
+	if show.ElemCaption&st.EC_STIFF_Y != 0 {
+		stiff := elem.LateralStiffness("Y", false)
+		if stiff != 0.0 {
+			if stiff == 1e16 {
+				ecap.WriteString("∞")
+			} else {
+				ecap.WriteString(fmt.Sprintf("%.3f\n", stiff))
+			}
+			oncap = true
+		}
+	}
 	if oncap {
 		var textpos []float64
 		if st.BRACE <= elem.Etype && elem.Etype <= st.SBRACE {

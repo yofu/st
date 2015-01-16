@@ -1763,7 +1763,6 @@ func (elem *Elem) LateralStiffness(period string, abs bool) float64 {
 			return 0.0
 		}
 		if delta == 0.0 {
-			fmt.Printf("LateralStiffness: Delta = 0(ELEM: %d)\n", elem.Num)
 			return 1e16
 		}
 		if abs {

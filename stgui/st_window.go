@@ -2664,6 +2664,36 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		} else {
 			stw.ElemCaptionOn("EC_PREST")
 		}
+	case abbrev.For("stiff/", key):
+		if usage {
+			stw.addHistory("'stiff [x,y]")
+			return nil
+		}
+		if len(lis) < 2 {
+			if un {
+				stw.ElemCaptionOff("EC_STIFF_X")
+				stw.ElemCaptionOff("EC_STIFF_Y")
+				return nil
+			} else {
+				return st.NotEnoughArgs("stiff")
+			}
+		}
+		switch strings.ToUpper(lis[1]) {
+		default:
+			return errors.New("unknown period")
+		case "X":
+			if un {
+				stw.ElemCaptionOff("EC_STIFF_X")
+			} else {
+				stw.ElemCaptionOn("EC_STIFF_X")
+			}
+		case "Y":
+			if un {
+				stw.ElemCaptionOff("EC_STIFF_Y")
+			} else {
+				stw.ElemCaptionOn("EC_STIFF_Y")
+			}
+		}
 	case abbrev.For("def/ormation", key):
 		if un {
 			stw.DeformationOff()
