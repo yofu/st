@@ -5492,7 +5492,23 @@ func (stw *Window) FilterSelectedElem(str string) {
 			axis = i
 		}
 		filterfunc = func(el *st.Elem) bool {
-			return el.Direction(false)[axis] == 0.0
+			if el.IsLineElem() {
+				return el.Direction(false)[axis] == 0.0
+			} else {
+				n := el.Normal(false)
+				if n == nil {
+					return false
+				}
+				for i:=0; i<3; i++ {
+					if i == axis {
+						continue
+					}
+					if n[i] != 0.0 {
+						return false
+					}
+				}
+				return true
+			}
 		}
 	case re_sectnum.MatchString(str):
 		filterfunc, hstr = SectFilter(str)
