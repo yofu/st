@@ -4038,6 +4038,36 @@ func (stw *Window) exmode(command string) error {
 				}
 				stw.SelectElem = stw.SelectElem[:num]
 			}
+		case cname == "max":
+			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+				return errors.New(":max no selected elem")
+			}
+			maxval := -1e16
+			var valfunc func(*st.Elem) float64
+			var sel *st.Elem
+			valfunc = func(elem *st.Elem) float64 {
+				f, err := elem.YieldFunction(stw.Frame.Show.Period)
+				if err[0] != nil || err[1] != nil {
+					return 0.0
+				}
+				if f[0] >= f[1] {
+					return f[0]
+				} else {
+					return f[1]
+				}
+			}
+			for _, el := range stw.SelectElem {
+				if el == nil {
+					continue
+				}
+				if tmpval := valfunc(el); tmpval > maxval {
+					sel = el
+					maxval = tmpval
+				}
+			}
+			if sel != nil {
+				stw.SelectElem = []*st.Elem{sel}
+			}
 		case abbrev.For("bo/nd", cname):
 			if usage {
 				stw.addHistory(":bond [pin,rigid] [upper,lower,sect sectcode]")
