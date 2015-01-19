@@ -220,6 +220,7 @@ var (
 	re_wall     = regexp.MustCompile("(?i)wa(l){0,2}$")
 	re_slab     = regexp.MustCompile("(?i)sl(a(b)?)?$")
 	re_sectnum  = regexp.MustCompile("(?i)^ *sect? *={0,2} *[[]?([0-9, ]+)[]]?")
+	re_orgsectnum  = regexp.MustCompile("(?i)^ *osect? *={0,2} *[[]?([0-9, ]+)[]]?")
 
 )
 
@@ -4014,6 +4015,11 @@ func (stw *Window) exmode(command string) error {
 					if f == nil {
 						return errors.New(":elem sect: format error")
 					}
+				case re_orgsectnum.MatchString(condition):
+					f, _ = OriginalSectFilter(condition)
+					if f == nil {
+						return errors.New(":elem sect: format error")
+					}
 				case re_etype.MatchString(condition):
 					f, _ = EtypeFilter(condition)
 					if f == nil {
@@ -5494,6 +5500,29 @@ func SectFilter(str string) (func(*st.Elem) bool, string) {
 	filterfunc = func(el *st.Elem) bool {
 		for _, snum := range snums {
 			if el.Sect.Num == snum {
+				return true
+			}
+		}
+		return false
+	}
+	hstr = fmt.Sprintf("Sect == %s", fs[1])
+	return filterfunc, hstr
+}
+
+func OriginalSectFilter(str string) (func(*st.Elem) bool, string) {
+	var filterfunc func(el *st.Elem) bool
+	var hstr string
+	fs := re_orgsectnum.FindStringSubmatch(str)
+	if len(fs) < 2 {
+		return nil, ""
+	}
+	snums := SplitNums(fs[1])
+	filterfunc = func(el *st.Elem) bool {
+		if el.Etype != st.WBRACE && el.Etype != st.SBRACE {
+			return false
+		}
+		for _, snum := range snums {
+			if el.OriginalSection().Num == snum {
 				return true
 			}
 		}
