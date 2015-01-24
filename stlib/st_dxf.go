@@ -203,7 +203,7 @@ func (frame *Frame) ParseDxf3DFace(lis []string, coord []float64, eps float64) e
 	var err error
 	var index int64
 	var sect *Sect
-	// var etype int
+	var etype int
 	coords := make([][]float64, 4)
 	size := 0
 	for i := 0; i < 4; i++ {
@@ -226,6 +226,21 @@ func (frame *Frame) ParseDxf3DFace(lis []string, coord []float64, eps float64) e
 			return err
 		}
 		switch int(index) {
+		case 8:
+			etype = Etype(layeretype.FindString(lis[i+1]))
+			if etype == 0 {
+				return nil
+			}
+			tmp, err := strconv.ParseInt(layersect.FindString(lis[i+1]), 10, 64)
+			if err != nil {
+				return err
+			}
+			if val, ok := frame.Sects[int(tmp)]; ok {
+				sect = val
+			} else {
+				sec := frame.AddSect(int(tmp))
+				sect = sec
+			}
 		case 10, 11, 12, 13:
 			coords[size][0], err = strconv.ParseFloat(lis[i+1], 64)
 		case 20, 21, 22, 23:
@@ -247,11 +262,7 @@ func (frame *Frame) ParseDxf3DFace(lis []string, coord []float64, eps float64) e
 	for i := 0; i < size; i++ {
 		enod[i], _ = frame.CoordNode(coords[i][0]*factor+coord[0], coords[i][1]*factor+coord[1], coords[i][2]*factor+coord[2], eps)
 	}
-	if sec, ok := frame.Sects[201]; ok {
-		sect = sec
-	} else {
-		sect = frame.AddSect(201)
-	}
+	lsect, letype := LineSect(frame, sect)
 	for i := 0; i < size; i++ {
 		addline := true
 		var j int
@@ -268,15 +279,10 @@ func (frame *Frame) ParseDxf3DFace(lis []string, coord []float64, eps float64) e
 			}
 		}
 		if addline {
-			frame.AddLineElem(-1, []*Node{enod[i], enod[j]}, sect, COLUMN)
+			frame.AddLineElem(-1, []*Node{enod[i], enod[j]}, lsect, letype)
 		}
 	}
-	if sec, ok := frame.Sects[801]; ok {
-		sect = sec
-	} else {
-		sect = frame.AddSect(801)
-	}
-	frame.AddPlateElem(-1, enod, sect, WALL)
+	frame.AddPlateElem(-1, enod, sect, etype)
 	return nil
 }
 
@@ -333,15 +339,25 @@ func (frame *Frame) ParseDxfVertex(lis []string, coord []float64, vertices []*No
 		}
 	}
 	if addelem {
+		if size < 3 {
+			return vertices, nil
+		}
 		enod := make([]*Node, size)
+		lsect, letype := LineSect(frame, sect)
 		for i := 0; i < size; i++ {
 			enod[i] = vertices[nnum[i]-1]
 		}
-		// if sec, ok := frame.Sects[201]; ok {
-		//     sect = sec
-		// } else {
-		//     sect = frame.AddSect(201)
-		// }
+		checked := make([]*Node, size)
+		pos := 1
+		checked[0] = enod[0]
+		for i, n := range enod[1:] {
+			if n.Num != enod[i].Num {
+				checked[pos] = n
+				pos++
+			}
+		}
+		enod = checked[:pos]
+		size = pos
 		for i := 0; i < size; i++ {
 			addline := true
 			var j int
@@ -358,19 +374,44 @@ func (frame *Frame) ParseDxfVertex(lis []string, coord []float64, vertices []*No
 				}
 			}
 			if addline {
-				frame.AddLineElem(-1, []*Node{enod[i], enod[j]}, sect, etype)
+				frame.AddLineElem(-1, []*Node{enod[i], enod[j]}, lsect, letype)
 			}
 		}
-		wsect := sect.Num + 300
-		if sec, ok := frame.Sects[wsect]; ok {
-			sect = sec
-		} else {
-			sect = frame.AddSect(wsect)
-		}
-		frame.AddPlateElem(-1, enod, sect, WALL)
+		frame.AddPlateElem(-1, enod, sect, etype)
 	} else {
 		n, _ := frame.CoordNode(x*factor+coord[0], y*factor+coord[1], z*factor+coord[2], eps)
 		vertices = append(vertices, n)
 	}
 	return vertices, nil
+}
+
+func LineSect (frame *Frame, sect *Sect) (*Sect, int) {
+	var lsect *Sect
+	var letype int
+	if sect.Num >= 700 && sect.Num < 800 {
+		lsecnum := sect.Num - 200
+		if sec, ok := frame.Sects[lsecnum]; ok {
+			lsect = sec
+		} else {
+			lsect = frame.AddSect(lsecnum)
+		}
+		letype = GIRDER
+	} else if sect.Num >= 800 && sect.Num < 900 {
+		lsecnum := sect.Num - 600
+		if sec, ok := frame.Sects[lsecnum]; ok {
+			lsect = sec
+		} else {
+			lsect = frame.AddSect(lsecnum)
+		}
+		letype = COLUMN
+	} else {
+		lsecnum := sect.Num + 100
+		if sec, ok := frame.Sects[lsecnum]; ok {
+			lsect = sec
+		} else {
+			lsect = frame.AddSect(lsecnum)
+		}
+		letype = COLUMN
+	}
+	return lsect, letype
 }
