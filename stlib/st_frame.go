@@ -2091,6 +2091,12 @@ func (frame *Frame) Move(x, y, z float64) {
 	}
 }
 
+func (frame *Frame) Scale (center []float64, factor float64) {
+	for _, n := range frame.Nodes {
+		n.Scale(center, factor)
+	}
+}
+
 func (frame *Frame) Rotate(center, vector []float64, angle float64) {
 	for _, n := range frame.Nodes {
 		n.Rotate(center, vector, angle)
