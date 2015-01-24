@@ -13,9 +13,9 @@ const (
 )
 
 var (
-	entstart, _   = regexp.Compile("^ *0 *$")
-	layeretype, _ = regexp.Compile("[a-zA-Z]+")
-	layersect, _  = regexp.Compile("[0-9]+")
+	entstart   = regexp.MustCompile("^ *0 *$")
+	layeretype = regexp.MustCompile("[a-zA-Z]+")
+	layersect  = regexp.MustCompile("[0-9]+")
 )
 
 func (frame *Frame) ReadDxf(filename string, coord []float64) (err error) {
