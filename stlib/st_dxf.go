@@ -93,6 +93,8 @@ func (frame *Frame) ParseDxf(lis []string, coord []float64, vertices []*Node, ep
 		err = frame.ParseDxfLine(lis, coord, eps)
 	// case "POLYLINE":
 	//     err = frame.ParseDxfPolyLine(lis)
+	case "POINT":
+		err = frame.ParseDxfPoint(lis, coord, eps)
 	case "VERTEX":
 		vertices, err = frame.ParseDxfVertex(lis, coord, vertices, eps)
 	case "SEQEND":
@@ -153,6 +155,47 @@ func (frame *Frame) ParseDxfLine(lis []string, coord []float64, eps float64) err
 	n1, _ := frame.CoordNode(startx*factor+coord[0], starty*factor+coord[1], startz*factor+coord[2], eps)
 	n2, _ := frame.CoordNode(endx*factor+coord[0], endy*factor+coord[1], endz*factor+coord[2], eps)
 	frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+	return nil
+}
+
+func (frame *Frame) ParseDxfPoint(lis []string, coord []float64, eps float64) error {
+	var err error
+	var index int64
+	var x, y, z float64
+	var conf []bool
+	for i, word := range lis {
+		if i%2 != 0 {
+			continue
+		}
+		index, err = strconv.ParseInt(word, 10, 64)
+		if err != nil {
+			return err
+		}
+		switch int(index) {
+		case 8:
+			switch strings.ToUpper(lis[i+1]) {
+			default:
+				conf = []bool{false, false, false, false, false, false}
+			case "FIX":
+				conf = []bool{true, true, true, true, true, true}
+			case "PIN":
+				conf = []bool{true, true, true, false, false, false}
+			}
+		case 10:
+			x, err = strconv.ParseFloat(lis[i+1], 64)
+		case 20:
+			y, err = strconv.ParseFloat(lis[i+1], 64)
+		case 30:
+			z, err = strconv.ParseFloat(lis[i+1], 64)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	n, _ := frame.CoordNode(x*factor+coord[0], y*factor+coord[1], z*factor+coord[2], eps)
+	if conf != nil {
+		n.Conf = conf
+	}
 	return nil
 }
 
