@@ -1600,7 +1600,7 @@ func (stw *Window) OpenFile(fn string) error {
 		stw.Frame = frame
 		stw.WatchFile(fn)
 	case ".dxf":
-		err = frame.ReadDxf(fn, []float64{0.0, 0.0, 0.0})
+		err = frame.ReadDxf(fn, []float64{0.0, 0.0, 0.0}, EPS)
 		if err != nil {
 			return err
 		}
