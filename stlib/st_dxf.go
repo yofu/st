@@ -166,6 +166,14 @@ func (frame *Frame) ParseDxf3DFace(lis []string, coord []float64, eps float64) e
 	for i := 0; i < 4; i++ {
 		coords[i] = make([]float64, 3)
 	}
+	check := func(c [][]float64, pos int) bool {
+		for i:=0; i<3; i++ {
+			if c[pos][i] != coords[pos-1][i] {
+				return true
+			}
+		}
+		return false
+	}
 	for i, word := range lis {
 		if i%2 != 0 {
 			continue
@@ -175,34 +183,18 @@ func (frame *Frame) ParseDxf3DFace(lis []string, coord []float64, eps float64) e
 			return err
 		}
 		switch int(index) {
-		case 10:
-			size++
-			coords[0][0], err = strconv.ParseFloat(lis[i+1], 64)
-		case 20:
-			coords[0][1], err = strconv.ParseFloat(lis[i+1], 64)
+		case 10, 11, 12, 13:
+			coords[size][0], err = strconv.ParseFloat(lis[i+1], 64)
+		case 20, 21, 22, 23:
+			coords[size][1], err = strconv.ParseFloat(lis[i+1], 64)
 		case 30:
 			coords[0][2], err = strconv.ParseFloat(lis[i+1], 64)
-		case 11:
 			size++
-			coords[1][0], err = strconv.ParseFloat(lis[i+1], 64)
-		case 21:
-			coords[1][1], err = strconv.ParseFloat(lis[i+1], 64)
-		case 31:
-			coords[1][2], err = strconv.ParseFloat(lis[i+1], 64)
-		case 12:
-			size++
-			coords[2][0], err = strconv.ParseFloat(lis[i+1], 64)
-		case 22:
-			coords[2][1], err = strconv.ParseFloat(lis[i+1], 64)
-		case 32:
-			coords[2][2], err = strconv.ParseFloat(lis[i+1], 64)
-		case 13:
-			size++
-			coords[3][0], err = strconv.ParseFloat(lis[i+1], 64)
-		case 23:
-			coords[3][1], err = strconv.ParseFloat(lis[i+1], 64)
-		case 33:
-			coords[3][2], err = strconv.ParseFloat(lis[i+1], 64)
+		case 31, 32, 33:
+			coords[size][2], err = strconv.ParseFloat(lis[i+1], 64)
+			if check(coords, size) {
+				size++
+			}
 		}
 		if err != nil {
 			return err
