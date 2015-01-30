@@ -300,7 +300,7 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
 	TotalStiffness := make([][]float64, f.Floor-1)
 	TotalStiffCoord := make([][]float64, f.Floor-1)
 	TotalStiffCoord2 := make([][]float64, f.Floor-1)
-	otp.WriteString("CODE Y QX RX X QY RY\n")
+	otp.WriteString("ELME SECT QX dx RX Y QY dy RY X\n")
 	for i := 0; i < f.Floor-1; i++ {
 		otp.WriteString(fmt.Sprintf("%dFL\n", i+1))
 		f.Shear[i] = make(map[int][]float64)
@@ -310,7 +310,7 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
 		tmpmaxdrift := make([]float64, 2)
 		maxdriftelem := make([]int, 2)
 		for _, el := range elems[i] {
-			otp.WriteString(fmt.Sprintf("%d", el.Num))
+			otp.WriteString(fmt.Sprintf("%d %d", el.Num, el.Sect.Num))
 			for j, per := range []string{"X", "Y"} {
 				drift := el.StoryDrift(per)
 				if math.Abs(drift) > math.Abs(tmpmaxdrift[j]) {
@@ -340,7 +340,8 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
 				tk[j] += stiff
 				tkx[j] += stiff * coord
 				tkxx[j] += stiff * coord * coord
-				otp.WriteString(fmt.Sprintf(" %.3f %.3f %.3f", coord, shear, stiff))
+				disp := el.Delta(per)
+				otp.WriteString(fmt.Sprintf(" %.3f %.8f %.3f %.3f", shear, disp, stiff, coord))
 			}
 			otp.WriteString("\n")
 		}

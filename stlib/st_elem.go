@@ -1745,20 +1745,17 @@ func (elem *Elem) VectorStress(period string, nnum int, vec []float64) float64 {
 
 func (elem *Elem) LateralStiffness(period string, abs bool) float64 {
 	if elem.IsLineElem() {
-		var index int
 		var axis []float64
 		switch period {
 		default:
 			return 0.0
 		case "X":
-			index = 0
 			axis = XAXIS
 		case "Y":
-			index = 1
 			axis = YAXIS
 		}
 		shear := elem.VectorStress(period, 0, axis)
-		delta := elem.Enod[1].ReturnDisp(period, index) - elem.Enod[0].ReturnDisp(period, index)
+		delta := elem.Delta(period)
 		if shear == 0.0 {
 			return 0.0
 		}
@@ -1775,7 +1772,7 @@ func (elem *Elem) LateralStiffness(period string, abs bool) float64 {
 	}
 }
 
-func (elem *Elem) StoryDrift(period string) float64 {
+func (elem *Elem) Delta(period string) float64 {
 	if elem.IsLineElem() {
 		var index int
 		switch period {
@@ -1786,8 +1783,16 @@ func (elem *Elem) StoryDrift(period string) float64 {
 		case "Y":
 			index = 1
 		}
+		return elem.Enod[1].ReturnDisp(period, index) - elem.Enod[0].ReturnDisp(period, index)
+	} else {
+		return 0.0
+	}
+}
+
+func (elem *Elem) StoryDrift(period string) float64 {
+	if elem.IsLineElem() {
+		delta := elem.Delta(period)
 		height := elem.Direction(false)[2]
-		delta := elem.Enod[1].ReturnDisp(period, index) - elem.Enod[0].ReturnDisp(period, index)
 		return delta / height
 	} else {
 		return 0.0
