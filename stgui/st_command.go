@@ -52,6 +52,7 @@ var (
 	ADDPLATEELEMBYLINE  = &Command{"PLATE(2lines)", "ADD PLATE ELEM BY LINE", "add plate elem by line", addplateelembyline}
 	HATCHPLATEELEM      = &Command{"HATCHING", "HATCH PLATE ELEM", "add plate elem by hatching", hatchplateelem}
 	ADDPLATEALL         = &Command{"PLATE(all)", "ADD PLATE ALL", "add all plate elem using selected nodes", addplateall}
+	EDITLINEELEM       = &Command{"EDLI", "EDIT LINE ELEM", "edit line elem", editlineelem}
 	EDITPLATEELEM       = &Command{"EDPL", "EDIT PLATE ELEM", "edit plate elem", editplateelem}
 	EDITWRECT           = &Command{"EDWR", "EDIT WINDOW RECT", "edit window rectangular", editwrect}
 	CONVEXHULL          = &Command{"CVXH", "CONVEX HULL", "draw convex hull", convexhull}
@@ -139,6 +140,7 @@ func init() {
 	Commands["ADDPLATEELEMBYLINE"] = ADDPLATEELEMBYLINE
 	Commands["HATCHPLATEELEM"] = HATCHPLATEELEM
 	Commands["ADDPLATEALL"] = ADDPLATEALL
+	Commands["EDITLINEELEM"] = EDITLINEELEM
 	Commands["EDITPLATEELEM"] = EDITPLATEELEM
 	Commands["EDITWRECT"] = EDITWRECT
 	Commands["CONVEXHULL"] = CONVEXHULL
@@ -3063,6 +3065,7 @@ func addplateall(stw *Window) {
 		}
 		return els[:num]
 	}
+	maxsize := 4
 	sec := stw.Frame.DefaultSect()
 	etype := st.NONE
 	add := 0
@@ -3070,66 +3073,109 @@ func addplateall(stw *Window) {
 	var found bool
 	var n1, n2 *st.Node
 	var en []*st.Node
-	for _, el := range elems {
-		found = false
-		for _, el1 := range search(el.Enod[0]) {
-			if el1 == el || !el1.IsLineElem() {
-				continue
-			}
-			n1 = el1.Otherside(el.Enod[0])
-			if n1 == nil {
-				continue
-			}
-			for _, sel := range search(n1, el.Enod[1]) {
-				if sel.IsLineElem() {
-					found = true
-					break
-				}
-			}
-			if found {
-				en = []*st.Node{el.Enod[0], el.Enod[1], n1}
-				if len(stw.Frame.SearchElem(en...)) == 0 {
-					el := stw.Frame.AddPlateElem(-1, en, sec, etype)
-					added = append(added, el)
-					add++
-				}
-				found = false
-				continue
-			}
-			for _, el2 := range search(el.Enod[1]) {
-				if el2 == el || !el2.IsLineElem() {
+	start := func() {
+		for _, el := range elems {
+			found = false
+			for _, el1 := range search(el.Enod[0]) {
+				if el1 == el || !el1.IsLineElem() {
 					continue
 				}
-				n2 = el2.Otherside(el.Enod[1])
-				if n2 == nil {
+				n1 = el1.Otherside(el.Enod[0])
+				if n1 == nil {
 					continue
 				}
-				for _, sel := range search(n1, n2) {
+				for _, sel := range search(n1, el.Enod[1]) {
 					if sel.IsLineElem() {
 						found = true
 						break
 					}
 				}
 				if found {
-					en = []*st.Node{el.Enod[0], el.Enod[1], n2, n1}
+					en = []*st.Node{el.Enod[0], el.Enod[1], n1}
 					if len(stw.Frame.SearchElem(en...)) == 0 {
 						el := stw.Frame.AddPlateElem(-1, en, sec, etype)
 						added = append(added, el)
 						add++
 					}
 					found = false
+					continue
+				}
+				if maxsize >= 4 {
+					for _, el2 := range search(el.Enod[1]) {
+						if el2 == el || !el2.IsLineElem() {
+							continue
+						}
+						n2 = el2.Otherside(el.Enod[1])
+						if n2 == nil {
+							continue
+						}
+						for _, sel := range search(n1, n2) {
+							if sel.IsLineElem() {
+								found = true
+								break
+							}
+						}
+						if found {
+							en = []*st.Node{el.Enod[0], el.Enod[1], n2, n1}
+							if len(stw.Frame.SearchElem(en...)) == 0 {
+								el := stw.Frame.AddPlateElem(-1, en, sec, etype)
+								added = append(added, el)
+								add++
+							}
+							found = false
+						}
+					}
 				}
 			}
 		}
+		added = added[:add]
+		stw.SelectElem = added
+		var buf bytes.Buffer
+		buf.WriteString(fmt.Sprintf("%d ELEM (SECT %d, ETYPE %s) added", add, sec.Num, st.ETYPES[etype]))
+		stw.addHistory(buf.String())
+		stw.EscapeCB()
 	}
-	added = added[:add]
-	stw.SelectElem = added
-	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("%d ELEM (SECT %d, ETYPE %s) added", add, sec.Num, st.ETYPES[etype]))
-	stw.addHistory(buf.String())
-	stw.EscapeCB()
+	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+		key := iup.KeyState(arg.Key)
+		switch key.Key() {
+		default:
+			stw.DefaultKeyAny(arg)
+		case '3':
+			maxsize = 3
+		case '4':
+			maxsize = 4
+		case KEY_ENTER:
+			start()
+		}
+	})
 }
 
+// }}}
+
+// EDITLINEELEM// {{{
+func editlineelem(stw *Window) {
+	if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+		stw.EscapeAll()
+		return
+	}
+	replaceenod := func(n *st.Node) {
+		for _, el := range stw.SelectElem {
+			for i, en := range el.Enod {
+				if en == stw.SelectNode[0] {
+					el.Enod[i] = n
+					break
+				}
+			}
+		}
+		stw.SelectNode = make([]*st.Node, 2)
+		stw.Snapshot()
+		stw.Redraw()
+	}
+	get2nodes(stw, replaceenod, func() {
+			stw.SelectNode = make([]*st.Node, 2)
+			stw.Redraw()
+		})
+}
 // }}}
 
 // EDITPLATEELEM// {{{

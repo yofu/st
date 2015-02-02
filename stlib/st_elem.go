@@ -1464,6 +1464,29 @@ func (elem *Elem) DivideAtElem(eps float64) ([]*Elem, error) {
 	var cand *Elem
 	var ind1, ind2, ind3, ind4 int
 	var ns1, ns2 []*Node
+	divdiag := -1
+divatdiag:
+	for i := 0; i < 2; i++ {
+		els := elem.Frame.SearchElem(elem.Enod[i], elem.Enod[i+2])
+		for _, el := range els {
+			if el.IsLineElem() {
+				divdiag = i
+				break divatdiag
+			}
+		}
+	}
+	switch divdiag {
+	case 0:
+		newel := elem.Frame.AddPlateElem(-1, []*Node{elem.Enod[2], elem.Enod[3], elem.Enod[0]}, elem.Sect, elem.Etype)
+		elem.Enod = elem.Enod[:3]
+		elem.Enods = 3
+		return []*Elem{elem, newel}, nil
+	case 1:
+		newel := elem.Frame.AddPlateElem(-1, []*Node{elem.Enod[1], elem.Enod[2], elem.Enod[3]}, elem.Sect, elem.Etype)
+		elem.Enod = []*Node{elem.Enod[0], elem.Enod[1], elem.Enod[3]}
+		elem.Enods = 3
+		return []*Elem{elem, newel}, nil
+	}
 divatelem:
 	for i := 0; i < 2; i++ {
 		ns1 = elem.OnNode(i, eps)
