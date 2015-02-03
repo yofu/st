@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	addedge = false
 	factor = 0.001
 )
 
@@ -262,24 +263,26 @@ func (frame *Frame) ParseDxf3DFace(lis []string, coord []float64, eps float64) e
 	for i := 0; i < size; i++ {
 		enod[i], _ = frame.CoordNode(coords[i][0]*factor+coord[0], coords[i][1]*factor+coord[1], coords[i][2]*factor+coord[2], eps)
 	}
-	lsect, letype := LineSect(frame, sect)
-	for i := 0; i < size; i++ {
-		addline := true
-		var j int
-		if i == size-1 {
-			j = 0
-		} else {
-			j = i + 1
-		}
-		els := frame.SearchElem(enod[i], enod[j])
-		for _, el := range els {
-			if el.IsLineElem() {
-				addline = false
-				break
+	if addedge {
+		lsect, letype := LineSect(frame, sect)
+		for i := 0; i < size; i++ {
+			addline := true
+			var j int
+			if i == size-1 {
+				j = 0
+			} else {
+				j = i + 1
 			}
-		}
-		if addline {
-			frame.AddLineElem(-1, []*Node{enod[i], enod[j]}, lsect, letype)
+			els := frame.SearchElem(enod[i], enod[j])
+			for _, el := range els {
+				if el.IsLineElem() {
+					addline = false
+					break
+				}
+			}
+			if addline {
+				frame.AddLineElem(-1, []*Node{enod[i], enod[j]}, lsect, letype)
+			}
 		}
 	}
 	frame.AddPlateElem(-1, enod, sect, etype)
@@ -358,23 +361,25 @@ func (frame *Frame) ParseDxfVertex(lis []string, coord []float64, vertices []*No
 		}
 		enod = checked[:pos]
 		size = pos
-		for i := 0; i < size; i++ {
-			addline := true
-			var j int
-			if i == size-1 {
-				j = 0
-			} else {
-				j = i + 1
-			}
-			els := frame.SearchElem(enod[i], enod[j])
-			for _, el := range els {
-				if el.IsLineElem() {
-					addline = false
-					break
+		if addedge {
+			for i := 0; i < size; i++ {
+				addline := true
+				var j int
+				if i == size-1 {
+					j = 0
+				} else {
+					j = i + 1
 				}
-			}
-			if addline {
-				frame.AddLineElem(-1, []*Node{enod[i], enod[j]}, lsect, letype)
+				els := frame.SearchElem(enod[i], enod[j])
+				for _, el := range els {
+					if el.IsLineElem() {
+						addline = false
+						break
+					}
+				}
+				if addline {
+					frame.AddLineElem(-1, []*Node{enod[i], enod[j]}, lsect, letype)
+				}
 			}
 		}
 		frame.AddPlateElem(-1, enod, sect, etype)
