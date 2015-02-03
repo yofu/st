@@ -4306,7 +4306,6 @@ func (stw *Window) exmode(command string) error {
 				if el == nil {
 					continue
 				}
-				divfunc(el)
 				_, els, err := divfunc(el)
 				if err != nil {
 					stw.errormessage(err, ERROR)
