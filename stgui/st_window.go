@@ -257,7 +257,7 @@ type Window struct { // {{{
 	PageTitle *TextBox
 	Title     *TextBox
 	Text      *TextBox
-	TextBox   []*TextBox
+	TextBox   map[string]*TextBox
 
 	papersize uint
 
@@ -1189,7 +1189,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.Title.Position = []float64{30.0, stw.CanvasSize[1] - 80.0}
 	stw.Text = NewTextBox()
 	stw.Text.Position = []float64{120.0, 65.0}
-	stw.TextBox = make([]*TextBox, 0)
+	stw.TextBox = make(map[string]*TextBox, 0)
 	iup.SetHandle("mainwindow", stw.Dlg)
 	stw.EscapeAll()
 	stw.Changed = false
@@ -4368,6 +4368,49 @@ func (stw *Window) exmode(command string) error {
 				stw.Snapshot()
 			} else {
 				return errors.New(fmt.Sprintf(":pile PILE %d doesn't exist", val))
+			}
+		case abbrev.For("sec/tion", cname):
+			if usage {
+				stw.addHistory(":section sectcode")
+				return nil
+			}
+			show := func (sec *st.Sect) {
+				var tb *TextBox
+				if t, tok := stw.TextBox["SECTION"]; tok {
+					tb = t
+				} else {
+					tb = NewTextBox()
+					tb.Hide = false
+					tb.Position = []float64{stw.CanvasSize[0] - 400.0, stw.CanvasSize[1] - 30.0}
+					stw.TextBox["SECTION"] = tb
+				}
+				tb.Value = strings.Split(sec.InpString(), "\n")
+			}
+			if narg < 2 {
+				if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+					show(stw.SelectElem[0].Sect)
+					return nil
+				}
+				if t, tok := stw.TextBox["SECTION"]; tok {
+					t.Value = make([]string, 0)
+				}
+				return nil
+			}
+			if strings.EqualFold(args[1], "off") {
+				if t, tok := stw.TextBox["SECTION"]; tok {
+					t.Value = make([]string, 0)
+				}
+				return nil
+			}
+			tmp, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return err
+			}
+			snum := int(tmp)
+			if sec, ok := stw.Frame.Sects[snum]; ok {
+				show(sec)
+			} else {
+				return errors.New(fmt.Sprintf(":section SECT %d doesn't exist", snum))
 			}
 		case abbrev.For("an/alysis", cname):
 			if usage {
