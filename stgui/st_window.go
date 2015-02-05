@@ -4385,6 +4385,9 @@ func (stw *Window) exmode(command string) error {
 					stw.TextBox["SECTION"] = tb
 				}
 				tb.Value = strings.Split(sec.InpString(), "\n")
+				if al, ok := stw.Frame.Allows[sec.Num]; ok {
+					tb.Value = append(tb.Value, strings.Split(al.String(), "\n")...)
+				}
 			}
 			if narg < 2 {
 				if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
