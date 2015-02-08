@@ -4170,6 +4170,44 @@ func (stw *Window) exmode(command string) error {
 			} else {
 				return errors.New(":average no selected elem/node")
 			}
+		case cname=="sum":
+			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+				var valfunc func(*st.Elem) float64
+				valfunc = func(elem *st.Elem) float64 {
+					return elem.CurrentValue(stw.Frame.Show, true)
+				}
+				val := 0.0
+				num := 0
+				for _, el := range stw.SelectElem {
+					if el == nil {
+						continue
+					}
+					val += valfunc(el)
+					num++
+				}
+				if num >= 1 {
+					stw.addHistory(fmt.Sprintf("%d ELEMs : %.5f", num, val))
+				}
+			} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
+				var valfunc func(*st.Node) float64
+				valfunc = func(node *st.Node) float64 {
+					return node.CurrentValue(stw.Frame.Show, true)
+				}
+				val := 0.0
+				num := 0
+				for _, n := range stw.SelectNode {
+					if n == nil {
+						continue
+					}
+					val += valfunc(n)
+					num++
+				}
+				if num >= 1 {
+					stw.addHistory(fmt.Sprintf("%d NODEs: %.5f", num, val))
+				}
+			} else {
+				return errors.New(":sum no selected elem/node")
+			}
 		case abbrev.For("bo/nd", cname):
 			if usage {
 				stw.addHistory(":bond [pin,rigid] [upper,lower,sect sectcode]")
