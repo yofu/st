@@ -4168,7 +4168,7 @@ func (stw *Window) exmode(command string) error {
 					stw.addHistory(fmt.Sprintf("%d NODEs: %.5f", num, val/float64(num)))
 				}
 			} else {
-				return errors.New(":min no selected elem/node")
+				return errors.New(":average no selected elem/node")
 			}
 		case abbrev.For("bo/nd", cname):
 			if usage {
