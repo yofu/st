@@ -3953,40 +3953,39 @@ func (stw *Window) exmode(command string) error {
 			stw.addHistory(fmt.Sprintf("Output: %s", fn))
 		case abbrev.For("go/han/l/st", cname):
 			if usage {
-				stw.addHistory(":gohanlst sectcode factor")
+				stw.addHistory(":gohanlst factor sectcode...")
 				return nil
 			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":gohanlst")
 			}
-			snum, err := strconv.ParseInt(args[1], 10, 64)
+			val, err := strconv.ParseFloat(args[1], 64)
 			if err != nil {
 				return err
 			}
-			if sec, ok := stw.Frame.Sects[int(snum)]; ok {
-				var otp bytes.Buffer
-				var etype string
-				val, err := strconv.ParseFloat(args[2], 64)
-				if err != nil {
-					return err
-				}
-				for _, s := range sec.BraceSection() {
-					if s.Type == 5 {
-						etype = "WALL"
-					} else if s.Type == 6 {
-						etype = "SLAB"
+			sects := SplitNums(strings.Join(args[2:], " "))
+			var otp bytes.Buffer
+			var etype string
+			for _, snum := range sects {
+				if sec, ok := stw.Frame.Sects[snum]; ok {
+					for _, s := range sec.BraceSection() {
+						if s.Type == 5 {
+							etype = "WALL"
+						} else if s.Type == 6 {
+							etype = "SLAB"
+						}
+						otp.WriteString(fmt.Sprintf("CODE %4d WOOD %s                                                \"%s(%3d)\"\n", s.Num, etype, etype[:1], snum))
+						otp.WriteString(fmt.Sprintf("         THICK %5.3f       GOHAN                                     \"x%3.1f\"\n\n", val/12.0,val)) // 2[kgf/cm] / 24[kgf/cm2] = 1/12[cm]
 					}
-					otp.WriteString(fmt.Sprintf("CODE %4d WOOD %s                                                    \"%s1\"\n", s.Num, etype, etype[:1]))
-					otp.WriteString(fmt.Sprintf("         THICK %5.3f       GOHAN                                     \"x%3.1f\"\n\n", val/12.0,val)) // 2[kgf/cm] / 24[kgf/cm2] = 1/12[cm]
 				}
-				w, err := os.Create(filepath.Join(stw.Cwd, "gohan.lst"))
-				defer w.Close()
-				if err != nil {
-					return err
-				}
-				otp = st.AddCR(otp)
-				otp.WriteTo(w)
 			}
+			w, err := os.Create(filepath.Join(stw.Cwd, "gohan.lst"))
+			defer w.Close()
+			if err != nil {
+				return err
+			}
+			otp = st.AddCR(otp)
+			otp.WriteTo(w)
 		case abbrev.For("el/em", cname):
 			if usage {
 				stw.addHistory(":elem [elemcode,sect sectcode,etype]")
