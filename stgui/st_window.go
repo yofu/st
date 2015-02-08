@@ -4052,15 +4052,29 @@ func (stw *Window) exmode(command string) error {
 			var valfunc func(*st.Elem) float64
 			var sel *st.Elem
 			valfunc = func(elem *st.Elem) float64 {
-				f, err := elem.YieldFunction(stw.Frame.Show.Period)
-				if err[0] != nil || err[1] != nil {
-					return 0.0
+				return elem.CurrentValue(stw.Frame.Show, true)
+			}
+			for _, el := range stw.SelectElem {
+				if el == nil {
+					continue
 				}
-				if f[0] >= f[1] {
-					return f[0]
-				} else {
-					return f[1]
+				if tmpval := valfunc(el); tmpval > maxval {
+					sel = el
+					maxval = tmpval
 				}
+			}
+			if sel != nil {
+				stw.SelectElem = []*st.Elem{sel}
+			}
+		case cname == "min":
+			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+				return errors.New(":min no selected elem")
+			}
+			maxval := 1e16
+			var valfunc func(*st.Elem) float64
+			var sel *st.Elem
+			valfunc = func(elem *st.Elem) float64 {
+				return elem.CurrentValue(stw.Frame.Show, false)
 			}
 			for _, el := range stw.SelectElem {
 				if el == nil {

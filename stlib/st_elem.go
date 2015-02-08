@@ -2050,3 +2050,88 @@ func (elem *Elem) DistFromProjection() float64 {
 	}
 	return v.Dists[0] - Dot(vec, v.Viewpoint[0], 3)
 }
+
+func (elem *Elem) CurrentValue(show *Show, max bool) float64 {
+	if show.ElemCaption&EC_NUM != 0 {
+		return float64(elem.Num)
+	}
+	if show.ElemCaption&EC_SECT != 0 {
+		return float64(elem.Sect.Num)
+	}
+	if show.ElemCaption&EC_RATE_L != 0 || show.ElemCaption&EC_RATE_S != 0 {
+		val, err := elem.RateMax(show)
+		if err != nil {
+			return 0.0
+		}
+		return val
+	}
+	if show.ElemCaption&EC_PREST != 0 {
+		return elem.Prestress
+	}
+	if show.ElemCaption&EC_STIFF_X != 0 {
+		return elem.LateralStiffness("X", false)
+	}
+	if show.ElemCaption&EC_STIFF_Y != 0 {
+		return elem.LateralStiffness("Y", false)
+	}
+	if show.YieldFunction {
+		f, err := elem.YieldFunction(show.Period)
+		if err[0] != nil || err[1] != nil {
+			return 0.0
+		}
+		if f[0] >= f[1] {
+			return f[0]
+		} else {
+			return f[1]
+		}
+	}
+	var flag uint
+	if f, ok := show.Stress[elem.Sect.Num]; ok {
+		flag = f
+	} else if f, ok := show.Stress[elem.Etype]; ok {
+		flag = f
+	}
+	if flag != 0 {
+		for i, st := range []uint{STRESS_NZ, STRESS_QX, STRESS_QY, STRESS_MZ, STRESS_MX, STRESS_MY} {
+			if flag&st != 0 {
+				switch i {
+				case 0:
+					return elem.ReturnStress(show.Period, 0, i)
+				case 1, 2, 3:
+					v1 := elem.ReturnStress(show.Period, 0, i)
+					v2 := elem.ReturnStress(show.Period, 1, i)
+					if max {
+						if v1 >= v2 {
+							return v1
+						} else {
+							return v2
+						}
+					} else {
+						if v1 >= v2 {
+							return v2
+						} else {
+							return v1
+						}
+					}
+				case 4, 5:
+					v1 := elem.ReturnStress(show.Period, 0, i)
+					v2 := elem.ReturnStress(show.Period, 1, i)
+					if max {
+						if v1 >= v2 {
+							return v1
+						} else {
+							return v2
+						}
+					} else {
+						if v1 >= v2 {
+							return v2
+						} else {
+							return v1
+						}
+					}
+				}
+			}
+		}
+	}
+	return 0.0
+}
