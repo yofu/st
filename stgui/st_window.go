@@ -4045,48 +4045,130 @@ func (stw *Window) exmode(command string) error {
 				stw.SelectElem = stw.SelectElem[:num]
 			}
 		case cname == "max":
-			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-				return errors.New(":max no selected elem")
-			}
-			maxval := -1e16
-			var valfunc func(*st.Elem) float64
-			var sel *st.Elem
-			valfunc = func(elem *st.Elem) float64 {
-				return elem.CurrentValue(stw.Frame.Show, true)
-			}
-			for _, el := range stw.SelectElem {
-				if el == nil {
-					continue
+			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+				maxval := -1e16
+				var valfunc func(*st.Elem) float64
+				var sel *st.Elem
+				valfunc = func(elem *st.Elem) float64 {
+					return elem.CurrentValue(stw.Frame.Show, true)
 				}
-				if tmpval := valfunc(el); tmpval > maxval {
-					sel = el
-					maxval = tmpval
+				for _, el := range stw.SelectElem {
+					if el == nil {
+						continue
+					}
+					if tmpval := valfunc(el); tmpval > maxval {
+						sel = el
+						maxval = tmpval
+					}
 				}
-			}
-			if sel != nil {
-				stw.SelectElem = []*st.Elem{sel}
+				if sel != nil {
+					stw.SelectElem = []*st.Elem{sel}
+					stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, true)))
+				}
+			} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
+				maxval := -1e16
+				var valfunc func(*st.Node) float64
+				var sn *st.Node
+				valfunc = func(node *st.Node) float64 {
+					return node.CurrentValue(stw.Frame.Show, true)
+				}
+				for _, n := range stw.SelectNode {
+					if n == nil {
+						continue
+					}
+					if tmpval := valfunc(n); tmpval > maxval {
+						sn = n
+						maxval = tmpval
+					}
+				}
+				if sn != nil {
+					stw.SelectNode = []*st.Node{sn}
+					stw.addHistory(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, true)))
+				}
+			} else {
+				return errors.New(":max no selected elem/node")
 			}
 		case cname == "min":
-			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-				return errors.New(":min no selected elem")
-			}
-			maxval := 1e16
-			var valfunc func(*st.Elem) float64
-			var sel *st.Elem
-			valfunc = func(elem *st.Elem) float64 {
-				return elem.CurrentValue(stw.Frame.Show, false)
-			}
-			for _, el := range stw.SelectElem {
-				if el == nil {
-					continue
+			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+				minval := 1e16
+				var valfunc func(*st.Elem) float64
+				var sel *st.Elem
+				valfunc = func(elem *st.Elem) float64 {
+					return elem.CurrentValue(stw.Frame.Show, true)
 				}
-				if tmpval := valfunc(el); tmpval > maxval {
-					sel = el
-					maxval = tmpval
+				for _, el := range stw.SelectElem {
+					if el == nil {
+						continue
+					}
+					if tmpval := valfunc(el); tmpval < minval {
+						sel = el
+						minval = tmpval
+					}
 				}
+				if sel != nil {
+					stw.SelectElem = []*st.Elem{sel}
+					stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, false)))
+				}
+			} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
+				minval := 1e16
+				var valfunc func(*st.Node) float64
+				var sn *st.Node
+				valfunc = func(node *st.Node) float64 {
+					return node.CurrentValue(stw.Frame.Show, true)
+				}
+				for _, n := range stw.SelectNode {
+					if n == nil {
+						continue
+					}
+					if tmpval := valfunc(n); tmpval < minval {
+						sn = n
+						minval = tmpval
+					}
+				}
+				if sn != nil {
+					stw.SelectNode = []*st.Node{sn}
+					stw.addHistory(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, false)))
+				}
+			} else {
+				return errors.New(":min no selected elem/node")
 			}
-			if sel != nil {
-				stw.SelectElem = []*st.Elem{sel}
+		case abbrev.For("ave/rage", cname):
+			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+				var valfunc func(*st.Elem) float64
+				valfunc = func(elem *st.Elem) float64 {
+					return elem.CurrentValue(stw.Frame.Show, true)
+				}
+				val := 0.0
+				num := 0
+				for _, el := range stw.SelectElem {
+					if el == nil {
+						continue
+					}
+					val += valfunc(el)
+					num++
+				}
+				if num >= 1 {
+					stw.addHistory(fmt.Sprintf("%d ELEMs : %.5f", num, val/float64(num)))
+				}
+			} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
+				var valfunc func(*st.Node) float64
+				valfunc = func(node *st.Node) float64 {
+					return node.CurrentValue(stw.Frame.Show, true)
+				}
+				val := 0.0
+				num := 0
+				for _, n := range stw.SelectNode {
+					if n == nil {
+						continue
+					}
+					val += valfunc(n)
+					num++
+				}
+				if num >= 1 {
+					stw.addHistory(fmt.Sprintf("%d NODEs: %.5f", num, val/float64(num)))
+				}
+			} else {
+				return errors.New(":min no selected elem/node")
 			}
 		case abbrev.For("bo/nd", cname):
 			if usage {

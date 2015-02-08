@@ -419,6 +419,46 @@ func (node *Node) ConfState() int {
 	return rtn
 }
 
+func (node *Node) CurrentValue(show *Show, max bool) float64 {
+	if show.NodeCaption&NC_NUM != 0 {
+		return float64(node.Num)
+	}
+	if show.NodeCaption&NC_WEIGHT != 0 {
+		if !node.Conf[2] || show.NodeCaption&NC_RZ == 0 {
+			return node.Weight[1]
+		}
+	}
+	for i, j := range []uint{NC_DX, NC_DY, NC_DZ, NC_TX, NC_TY, NC_TZ} {
+		if show.NodeCaption&j != 0 {
+			if !node.Conf[i] {
+				if i < 3 {
+					return node.ReturnDisp(show.Period, i)*100.0
+				} else {
+					return node.ReturnDisp(show.Period, i)
+				}
+			}
+		}
+	}
+	for i, j := range []uint{NC_RX, NC_RY, NC_RZ, NC_MX, NC_MY, NC_MZ} {
+		if show.NodeCaption&j != 0 {
+			if node.Conf[i] {
+				if i == 2 && show.NodeCaption&NC_WEIGHT != 0 {
+					return node.ReturnReaction(show.Period, i) + node.Weight[1]
+				} else {
+					return node.ReturnReaction(show.Period, i)
+				}
+			}
+		}
+	}
+	if show.NodeCaption&NC_ZCOORD != 0 {
+		return node.Coord[2]
+	}
+	if show.NodeCaption&NC_PILE != 0 {
+		return float64(node.Pile.Num)
+	}
+	return 0.0
+}
+
 // Miscellaneous// {{{
 func Distance(n1, n2 *Node) float64 {
 	sum := 0.0
