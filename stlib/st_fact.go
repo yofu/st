@@ -341,7 +341,7 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
 				tkx[j] += stiff * coord
 				tkxx[j] += stiff * coord * coord
 				disp := el.Delta(per)
-				otp.WriteString(fmt.Sprintf(" %.3f %.8f %.3f %.3f", shear, disp, stiff, coord))
+				otp.WriteString(fmt.Sprintf(" %.8f %.8f %.8f %.3f", shear, disp, stiff, coord))
 			}
 			otp.WriteString("\n")
 		}
