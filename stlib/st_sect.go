@@ -68,10 +68,10 @@ func (sect *Sect) Snapshot(frame *Frame) *Sect {
 	}
 	s.Exp = sect.Exp
 	s.Exq = sect.Exq
-	for i:=0; i<3; i++ {
+	for i := 0; i < 3; i++ {
 		s.Lload[i] = sect.Lload[i]
 	}
-	for i:=0; i<12; i++ {
+	for i := 0; i < 12; i++ {
 		s.Yield[i] = sect.Yield[i]
 	}
 	s.Type = sect.Type

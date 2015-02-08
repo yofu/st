@@ -10,7 +10,7 @@ import (
 
 const (
 	addedge = false
-	factor = 0.001
+	factor  = 0.001
 )
 
 var (
@@ -211,7 +211,7 @@ func (frame *Frame) ParseDxf3DFace(lis []string, coord []float64, eps float64) e
 		coords[i] = make([]float64, 3)
 	}
 	check := func(c [][]float64, pos int) bool {
-		for i:=0; i<3; i++ {
+		for i := 0; i < 3; i++ {
 			if c[pos][i] != coords[pos-1][i] {
 				return true
 			}
@@ -390,7 +390,7 @@ func (frame *Frame) ParseDxfVertex(lis []string, coord []float64, vertices []*No
 	return vertices, nil
 }
 
-func LineSect (frame *Frame, sect *Sect) (*Sect, int) {
+func LineSect(frame *Frame, sect *Sect) (*Sect, int) {
 	var lsect *Sect
 	var letype int
 	if sect.Num >= 700 && sect.Num < 800 {

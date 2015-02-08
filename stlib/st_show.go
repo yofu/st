@@ -110,13 +110,13 @@ type Show struct { // {{{
 	MomentColor     int
 	StressTextColor int
 
-	Fes bool
+	Fes      bool
 	MassSize float64
 
 	Kijun     bool
 	KijunSize float64
 
-	Measure   bool
+	Measure bool
 
 	Select bool
 
@@ -294,4 +294,3 @@ func (show *Show) ElemCaptionOff(val uint) {
 }
 
 // }}}
-

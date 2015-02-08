@@ -86,10 +86,10 @@ func (rf Reinforce) Ftw(cond *Condition) float64 {
 }
 func (rf Reinforce) Vertices() [][]float64 {
 	d := 0.5 * math.Sqrt(rf.Area*4.0/math.Pi)
-	val := math.Pi/8.0
+	val := math.Pi / 8.0
 	theta := 0.0
 	vertices := make([][]float64, 16)
-	for i:=0; i<16; i++ {
+	for i := 0; i < 16; i++ {
 		c := math.Cos(theta)
 		s := math.Sin(theta)
 		vertices[i] = []float64{d*c + rf.Position[0], d*s + rf.Position[1]}
@@ -123,7 +123,7 @@ var (
 
 // Section
 type SectionRate interface {
-	Num()    int
+	Num() int
 	TypeString() string
 	Snapshot() SectionRate
 	String() string
@@ -187,7 +187,7 @@ func (sc *SColumn) Snapshot() SectionRate {
 	s.BTLength = make([]float64, 2)
 	s.BBFactor = make([]float64, 2)
 	s.BTFactor = make([]float64, 2)
-	for i:=0; i<2; i++ {
+	for i := 0; i < 2; i++ {
 		s.XFace[i] = sc.XFace[i]
 		s.YFace[i] = sc.YFace[i]
 		s.BBLength[i] = sc.BBLength[i]
@@ -481,16 +481,16 @@ func (hk HKYOU) Vertices() [][]float64 {
 	vertices := make([][]float64, 12)
 	vertices[0] = []float64{-b, -h}
 	vertices[1] = []float64{b, -h}
-	vertices[2] = []float64{b, -(h-f)}
-	vertices[3] = []float64{w, -(h-f)}
-	vertices[4] = []float64{w, h-f}
-	vertices[5] = []float64{b, h-f}
+	vertices[2] = []float64{b, -(h - f)}
+	vertices[3] = []float64{w, -(h - f)}
+	vertices[4] = []float64{w, h - f}
+	vertices[5] = []float64{b, h - f}
 	vertices[6] = []float64{b, h}
 	vertices[7] = []float64{-b, h}
-	vertices[8] = []float64{-b, h-f}
-	vertices[9] = []float64{-w, h-f}
-	vertices[10] = []float64{-w, -(h-f)}
-	vertices[11] = []float64{-b, -(h-f)}
+	vertices[8] = []float64{-b, h - f}
+	vertices[9] = []float64{-w, h - f}
+	vertices[10] = []float64{-w, -(h - f)}
+	vertices[11] = []float64{-b, -(h - f)}
 	return vertices
 }
 
@@ -576,16 +576,16 @@ func (hw HWEAK) Vertices() [][]float64 {
 	vertices := make([][]float64, 12)
 	vertices[0] = []float64{-h, -b}
 	vertices[1] = []float64{-h, b}
-	vertices[2] = []float64{-(h-f), b}
-	vertices[3] = []float64{-(h-f), w}
-	vertices[4] = []float64{h-f, w}
-	vertices[5] = []float64{h-f, b}
+	vertices[2] = []float64{-(h - f), b}
+	vertices[3] = []float64{-(h - f), w}
+	vertices[4] = []float64{h - f, w}
+	vertices[5] = []float64{h - f, b}
 	vertices[6] = []float64{h, b}
 	vertices[7] = []float64{h, -b}
-	vertices[8] = []float64{h-f, -b}
-	vertices[9] = []float64{h-f, -w}
-	vertices[10] = []float64{-(h-f), -w}
-	vertices[11] = []float64{-(h-f), -b}
+	vertices[8] = []float64{h - f, -b}
+	vertices[9] = []float64{h - f, -w}
+	vertices[10] = []float64{-(h - f), -w}
+	vertices[11] = []float64{-(h - f), -b}
 	return vertices
 }
 
@@ -744,19 +744,20 @@ func (cp CPIPE) Zy() float64 {
 func (cp CPIPE) Vertices() [][]float64 {
 	d := 0.5 * cp.D
 	dt := d - cp.T
-	val := math.Pi/8.0
+	val := math.Pi / 8.0
 	theta := 0.0
 	vertices := make([][]float64, 33)
-	for i:=0; i<16; i++ {
+	for i := 0; i < 16; i++ {
 		c := math.Cos(theta)
 		s := math.Sin(theta)
-		vertices[i] = []float64{d*c, d*s}
-		vertices[i+17] = []float64{dt*c, dt*s}
+		vertices[i] = []float64{d * c, d * s}
+		vertices[i+17] = []float64{dt * c, dt * s}
 		theta += val
 	}
 	vertices[16] = nil
 	return vertices
 }
+
 // }}}
 
 // S GIRDER// {{{
@@ -856,6 +857,7 @@ type Hoop struct {
 	Name     string
 	Material SD
 }
+
 func (hp Hoop) Ftw(cond *Condition) float64 {
 	switch cond.Period {
 	default:
@@ -947,7 +949,7 @@ func (rc *RCColumn) Snapshot() SectionRate {
 		r.Reins[i] = rf
 	}
 	r.Hoops = rc.Hoops
-	for i:=0; i<2; i++ {
+	for i := 0; i < 2; i++ {
 		r.XFace[i] = rc.XFace[i]
 		r.YFace[i] = rc.YFace[i]
 	}
@@ -1142,7 +1144,7 @@ func (rc *RCColumn) NeutralAxis(cond *Condition) (float64, float64, error) {
 		k2 := NCS*fc*rc.Ai() - cond.N
 		k3 := -NCS * fc * rc.LiAi(cond)
 		ryt := rc.FarSideReins(cond)
-		D1 := k2 * k2 - 4.0 * k1 * k3
+		D1 := k2*k2 - 4.0*k1*k3
 		if D1 >= 0.0 {
 			xn := (-k2 + math.Sqrt(D1)) / (2.0 * k1)
 			if xn >= 0.0 {
@@ -1156,7 +1158,7 @@ func (rc *RCColumn) NeutralAxis(cond *Condition) (float64, float64, error) {
 					k1 := 0.5 * ft * b
 					k2 := NCS*ft*rc.Ai() + NCS*cond.N
 					k3 := -NCS*ft*rc.LiAi(cond) - NCS*ryt*cond.N
-					D2 := k2 * k2 - 4.0 * k1 * k3
+					D2 := k2*k2 - 4.0*k1*k3
 					if D2 >= 0.0 {
 						xn := (-k2 + math.Sqrt(D2)) / (2.0 * k1)
 						if xn >= 0.0 {
@@ -1170,8 +1172,8 @@ func (rc *RCColumn) NeutralAxis(cond *Condition) (float64, float64, error) {
 				}
 			}
 		}
-		num := ft * rc.LiAi(cond) + ryt * cond.N
-		den := ft * rc.Ai() + cond.N
+		num := ft*rc.LiAi(cond) + ryt*cond.N
+		den := ft*rc.Ai() + cond.N
 		xn = num / den
 		if cond.Verbose {
 			fmt.Println("# 5. Neutral Axis is outside of section")
@@ -1198,7 +1200,7 @@ func (rc *RCColumn) Na(cond *Condition) float64 {
 	}
 }
 func (rc *RCColumn) Alpha(d float64, cond *Condition) float64 {
-	alpha := 4.0 / (math.Abs(cond.M * 100.0 / (cond.Q * d)) + 1.0)
+	alpha := 4.0 / (math.Abs(cond.M*100.0/(cond.Q*d)) + 1.0)
 	if alpha < 1.0 {
 		alpha = 1.0
 	} else if alpha > 1.5 {
@@ -1216,7 +1218,7 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 		fmt.Println("unknown period")
 		return 0.0
 	case "L":
-		return 7/8.0 * b * d * alpha * fs
+		return 7 / 8.0 * b * d * alpha * fs
 	case "X", "Y", "S":
 		var pw float64
 		if cond.Strong { // for Qy
@@ -1226,11 +1228,11 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 		}
 		if pw < 0.002 {
 			// fmt.Printf("shortage in pw: %.6f\n", pw)
-			return 7/8.0 * b * d * fs
+			return 7 / 8.0 * b * d * fs
 		} else if pw > 0.012 {
 			pw = 0.012
 		}
-		return 7/8.0 * b * d * (fs + 0.5 * rc.Hoops.Ftw(cond) * (pw - 0.002))
+		return 7 / 8.0 * b * d * (fs + 0.5*rc.Hoops.Ftw(cond)*(pw-0.002))
 	}
 }
 func (rc *RCColumn) Ma(cond *Condition) float64 {
@@ -1272,10 +1274,10 @@ func (rc *RCColumn) Mza(cond *Condition) float64 {
 	if b >= d {
 		T1 = b * d * d * fs * 4.0 / 3.0 / 100.0 // [tfm]
 	} else {
-		T1 = b * b * d * fs * 4.0 /3.0 / 100.0 // [tfm]
+		T1 = b * b * d * fs * 4.0 / 3.0 / 100.0 // [tfm]
 	}
-	T2 = aw * 2.0 * wft * A0 / lw / 100.0 // [tfm]
-	T3 = rc.Ai() * 2.0 * ft * A0 / (2 * b0 + 2 * d0) / 100.0 // [tfm]
+	T2 = aw * 2.0 * wft * A0 / lw / 100.0                // [tfm]
+	T3 = rc.Ai() * 2.0 * ft * A0 / (2*b0 + 2*d0) / 100.0 // [tfm]
 	if cond.Verbose {
 		fmt.Printf("# T1= %.3f [tfm] T2= %.3f [tfm] T3= %.3f [tfm]\n", T1, T2, T3)
 	}
@@ -1306,7 +1308,7 @@ func (rg *RCGirder) TypeString() string {
 	return "ＲＣ大梁"
 }
 func (rg *RCGirder) Alpha(d float64, cond *Condition) float64 {
-	alpha := 4.0 / (math.Abs(cond.M * 100.0 / (cond.Q * d)) + 1.0)
+	alpha := 4.0 / (math.Abs(cond.M*100.0/(cond.Q*d)) + 1.0)
 	if alpha < 1.0 {
 		alpha = 1.0
 	} else if alpha > 2.0 {
@@ -1335,33 +1337,34 @@ func (rg *RCGirder) Qa(cond *Condition) float64 {
 	case "L":
 		if pw < 0.002 {
 			// fmt.Printf("shortage in pw: %.6f\n", pw)
-			return 7/8.0 * b * d * fs
+			return 7 / 8.0 * b * d * fs
 		} else if pw > 0.006 {
 			pw = 0.006
 		}
-		return 7/8.0 * b * d * (alpha * fs + 0.5 * rg.Hoops.Ftw(cond) * (pw - 0.002))
+		return 7 / 8.0 * b * d * (alpha*fs + 0.5*rg.Hoops.Ftw(cond)*(pw-0.002))
 	case "X", "Y", "S":
 		if pw < 0.002 {
 			// fmt.Printf("shortage in pw: %.6f\n", pw)
-			return 7/8.0 * b * d * fs
+			return 7 / 8.0 * b * d * fs
 		} else if pw > 0.012 {
 			pw = 0.012
 		}
-		return 7/8.0 * b * d * (alpha * fs + 0.5 * rg.Hoops.Ftw(cond) * (pw - 0.002))
+		return 7 / 8.0 * b * d * (alpha*fs + 0.5*rg.Hoops.Ftw(cond)*(pw-0.002))
 	}
 }
 
 type RCWall struct {
 	Concrete
-	num int
-	Name string
-	Thick float64
-	Srein float64
+	num      int
+	Name     string
+	Thick    float64
+	Srein    float64
 	Material SD
-	Wrect []float64
-	XFace []float64
-	YFace []float64
+	Wrect    []float64
+	XFace    []float64
+	YFace    []float64
 }
+
 func NewRCWall(num int) *RCWall {
 	rw := new(RCWall)
 	rw.num = num
@@ -1397,7 +1400,7 @@ func (rw *RCWall) Snapshot() SectionRate {
 	r := NewRCWall(rw.num)
 	r.Name = rw.Name
 	r.Thick = rw.Thick
-	for i:=0; i<2; i++ {
+	for i := 0; i < 2; i++ {
 		r.Wrect[i] = rw.Wrect[i]
 		r.XFace[i] = rw.XFace[i]
 		r.YFace[i] = rw.YFace[i]
@@ -1524,7 +1527,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 	rate := make([]float64, 12)
 	fa := make([]float64, 12)
 	var ind int
-	for i:=0; i<2; i++ {
+	for i := 0; i < 2; i++ {
 		if i == 0 {
 			cond.N = stress[6*i]
 			cond.M = stress[6*i+4]
@@ -1534,7 +1537,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 			cond.M = -stress[6*i+4]
 			cond.Q = -stress[6*i+2]
 		}
-		ind = 6*i+0
+		ind = 6*i + 0
 		cond.Compression = cond.N >= 0.0
 		na := sr.Na(cond)
 		if cond.Verbose {
@@ -1550,7 +1553,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		rate[ind] = math.Abs(stress[ind] / na)
 		fa[ind] = na
 		cond.Strong = true
-		ind = 6*i+2
+		ind = 6*i + 2
 		cond.Positive = cond.M >= 0.0
 		qay := sr.Qa(cond)
 		if cond.Verbose {
@@ -1561,7 +1564,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		}
 		rate[ind] = math.Abs(stress[ind] / qay)
 		fa[ind] = qay
-		ind = 6*i+4
+		ind = 6*i + 4
 		max := sr.Ma(cond)
 		if cond.Verbose {
 			fmt.Printf("# Mx= %.3f / Max= %.3f\n", stress[ind], max)
@@ -1580,7 +1583,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 			cond.Q = -stress[6*i+1]
 		}
 		cond.Positive = cond.M >= 0.0
-		ind = 6*i+1
+		ind = 6*i + 1
 		qax := sr.Qa(cond)
 		if cond.Verbose {
 			fmt.Printf("# Qx= %.3f / Qax= %.3f\n", stress[ind], qax)
@@ -1590,7 +1593,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		}
 		rate[ind] = math.Abs(stress[ind] / qax)
 		fa[ind] = qax
-		ind = 6*i+5
+		ind = 6*i + 5
 		may := sr.Ma(cond)
 		if cond.Verbose {
 			fmt.Printf("# My= %.3f / May= %.3f\n", stress[ind], may)
@@ -1600,7 +1603,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		}
 		rate[ind] = math.Abs(stress[ind] / may)
 		fa[ind] = may
-		ind = 6*i+3
+		ind = 6*i + 3
 		maz := sr.Mza(cond)
 		if cond.Verbose {
 			fmt.Printf("# Mz= %.3f / Maz= %.3f\n", stress[ind], maz)
@@ -1612,8 +1615,8 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		fa[ind] = maz
 	}
 	var otp bytes.Buffer
-	for i:=0; i<6; i++ {
-		for j:=0; j<2; j++ {
+	for i := 0; i < 6; i++ {
+		for j := 0; j < 2; j++ {
 			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[6*j+i], stress[6*j+i]*SI))
 			if i == 0 || i == 3 {
 				break
@@ -1621,8 +1624,8 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		}
 	}
 	otp.WriteString("\n     許容値:")
-	for i:=0; i<6; i++ {
-		for j:=0; j<2; j++ {
+	for i := 0; i < 6; i++ {
+		for j := 0; j < 2; j++ {
 			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", fa[6*j+i], fa[6*j+i]*SI))
 			if i == 0 || i == 3 {
 				break
@@ -1630,8 +1633,8 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		}
 	}
 	otp.WriteString("\n     安全率:")
-	for i:=0; i<6; i++ {
-		for j:=0; j<2; j++ {
+	for i := 0; i < 6; i++ {
+		for j := 0; j < 2; j++ {
 			otp.WriteString(fmt.Sprintf(" %8.3f          ", rate[6*j+i]))
 			if i == 0 || i == 3 {
 				break

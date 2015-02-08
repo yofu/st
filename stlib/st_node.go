@@ -97,9 +97,10 @@ func NewNode() *Node {
 		Reaction: make(map[string][]float64)}
 }
 
-
 func (node *Node) Snapshot(frame *Frame) *Node {
-	if node == nil { return nil }
+	if node == nil {
+		return nil
+	}
 	n := NewNode()
 	n.Frame = frame
 	n.Num = node.Num
@@ -109,33 +110,33 @@ func (node *Node) Snapshot(frame *Frame) *Node {
 	}
 	n.Hide = node.Hide
 	n.Lock = node.Lock
-	for i:=0; i<3; i++ {
+	for i := 0; i < 3; i++ {
 		n.Coord[i] = node.Coord[i]
 		n.Weight[i] = node.Weight[i]
 	}
-	for i:=0; i<2; i++ {
+	for i := 0; i < 2; i++ {
 		n.Pcoord[i] = node.Pcoord[i]
 		n.Dcoord[i] = node.Dcoord[i]
 	}
-	for i:=0; i<6; i++ {
+	for i := 0; i < 6; i++ {
 		n.Conf[i] = node.Conf[i]
 		n.Load[i] = node.Load[i]
 	}
 	for k, v := range node.Disp {
 		n.Disp[k] = make([]float64, 6)
-		for i:=0; i<6; i++ {
+		for i := 0; i < 6; i++ {
 			n.Disp[k][i] = v[i]
 		}
 	}
 	for k, v := range node.Force {
 		n.Force[k] = make([]float64, 6)
-		for i:=0; i<6; i++ {
+		for i := 0; i < 6; i++ {
 			n.Force[k][i] = v[i]
 		}
 	}
 	for k, v := range node.Reaction {
 		n.Reaction[k] = make([]float64, 6)
-		for i:=0; i<6; i++ {
+		for i := 0; i < 6; i++ {
 			n.Reaction[k][i] = v[i]
 		}
 	}
@@ -430,8 +431,8 @@ func Distance(n1, n2 *Node) float64 {
 func VectorDistance(n1, n2 *Node, vec []float64) float64 {
 	fmt.Println(vec)
 	rtn := 0.0
-	for i:=0; i<3; i++ {
-		rtn += (n2.Coord[i] - n1.Coord[i])*vec[i]
+	for i := 0; i < 3; i++ {
+		rtn += (n2.Coord[i] - n1.Coord[i]) * vec[i]
 	}
 	return rtn
 }
@@ -441,7 +442,9 @@ func Direction(n1, n2 *Node, normalize bool) []float64 {
 	var l float64
 	if normalize {
 		l = Distance(n1, n2)
-		if l == 0.0 { l = 1.0 }
+		if l == 0.0 {
+			l = 1.0
+		}
 	} else {
 		l = 1.0
 	}

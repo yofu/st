@@ -2,7 +2,10 @@ package st
 
 import (
 	"bufio"
-    "bytes"
+	"bytes"
+	"code.google.com/p/go.text/encoding"
+	"code.google.com/p/go.text/encoding/japanese"
+	"code.google.com/p/go.text/transform"
 	"errors"
 	"fmt"
 	"io"
@@ -12,9 +15,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-    "code.google.com/p/go.text/encoding"
-    "code.google.com/p/go.text/encoding/japanese"
-    "code.google.com/p/go.text/transform"
 )
 
 var (
@@ -438,9 +438,9 @@ func ClockWise2(p1, p2, p3 []float64) (float64, bool) {
 		v2[i] /= sum2
 	}
 	if val := v2[0]*v1[1] - v2[1]*v1[0]; val > 0 {
-		return math.Acos(v1[0]*v2[0]+v1[1]*v2[1]), true
+		return math.Acos(v1[0]*v2[0] + v1[1]*v2[1]), true
 	} else {
-		return math.Acos(v1[0]*v2[0]+v1[1]*v2[1]), false
+		return math.Acos(v1[0]*v2[0] + v1[1]*v2[1]), false
 	}
 }
 

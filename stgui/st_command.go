@@ -52,7 +52,7 @@ var (
 	ADDPLATEELEMBYLINE  = &Command{"PLATE(2lines)", "ADD PLATE ELEM BY LINE", "add plate elem by line", addplateelembyline}
 	HATCHPLATEELEM      = &Command{"HATCHING", "HATCH PLATE ELEM", "add plate elem by hatching", hatchplateelem}
 	ADDPLATEALL         = &Command{"PLATE(all)", "ADD PLATE ALL", "add all plate elem using selected nodes", addplateall}
-	EDITLINEELEM       = &Command{"EDLI", "EDIT LINE ELEM", "edit line elem", editlineelem}
+	EDITLINEELEM        = &Command{"EDLI", "EDIT LINE ELEM", "edit line elem", editlineelem}
 	EDITPLATEELEM       = &Command{"EDPL", "EDIT PLATE ELEM", "edit plate elem", editplateelem}
 	EDITWRECT           = &Command{"EDWR", "EDIT WINDOW RECT", "edit window rectangular", editwrect}
 	CONVEXHULL          = &Command{"CVXH", "CONVEX HULL", "draw convex hull", convexhull}
@@ -566,7 +566,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 			x, y, z, err := stw.QueryCoord("GET COORD")
 			if err == nil {
 				if stw.SelectNode[0] != nil {
-					n, _ := stw.Frame.CoordNode(x + stw.SelectNode[0].Coord[0], y + stw.SelectNode[0].Coord[1], z + stw.SelectNode[0].Coord[2], EPS)
+					n, _ := stw.Frame.CoordNode(x+stw.SelectNode[0].Coord[0], y+stw.SelectNode[0].Coord[1], z+stw.SelectNode[0].Coord[2], EPS)
 					stw.Redraw()
 					f(n)
 				} else {
@@ -609,7 +609,7 @@ func measure(stw *Window) {
 		stw.SelectNode[1] = n
 		stw.addHistory("引き出し方向を指定[X, Y, Z, V]")
 		createmeasure := func(direction string) {
-			var u,v []float64
+			var u, v []float64
 			switch direction {
 			case "X":
 				u = st.XAXIS
@@ -638,21 +638,21 @@ func measure(stw *Window) {
 				stw.DefaultKeyAny(arg)
 			case KEY_ESCAPE:
 				stw.EscapeAll()
-			case 'X','x':
+			case 'X', 'x':
 				createmeasure("X")
-			case 'Y','y':
+			case 'Y', 'y':
 				createmeasure("Y")
-			case 'Z','z':
+			case 'Z', 'z':
 				createmeasure("Z")
-			case 'V','v':
+			case 'V', 'v':
 				createmeasure("V")
 			}
 		})
 	},
-	func() {
-		stw.SelectNode = make([]*st.Node, 2)
-		stw.Redraw()
-	})
+		func() {
+			stw.SelectNode = make([]*st.Node, 2)
+			stw.Redraw()
+		})
 }
 
 // ADDLINEELEM// {{{
@@ -1740,7 +1740,7 @@ func matchproperty(stw *Window) {
 		func(el *st.Elem) bool {
 			return true
 		},
-		func(){})
+		func() {})
 }
 
 // }}}
@@ -1758,7 +1758,7 @@ func copybond(stw *Window) {
 		func(el *st.Elem) bool {
 			return el.IsLineElem()
 		},
-		func(){})
+		func() {})
 }
 
 // }}}
@@ -2614,9 +2614,8 @@ func errorelem(stw *Window) {
 
 // }}}
 
-
 // SHOWPLANE
-func showplane (stw *Window) {
+func showplane(stw *Window) {
 	stw.addHistory("面を指定[3点]")
 	maxnum := 3
 	getnnodes(stw, maxnum, func(num int) {
@@ -2629,7 +2628,6 @@ func showplane (stw *Window) {
 		}
 	})
 }
-
 
 // CUTTER TODO: UNDER CONSTRUCTION // {{{
 func cutter(stw *Window) {
@@ -3172,10 +3170,11 @@ func editlineelem(stw *Window) {
 		stw.Redraw()
 	}
 	get2nodes(stw, replaceenod, func() {
-			stw.SelectNode = make([]*st.Node, 2)
-			stw.Redraw()
-		})
+		stw.SelectNode = make([]*st.Node, 2)
+		stw.Redraw()
+	})
 }
+
 // }}}
 
 // EDITPLATEELEM// {{{
@@ -3282,7 +3281,7 @@ func editwrect(stw *Window) {
 		func(el *st.Elem) bool {
 			return !el.IsLineElem()
 		},
-		func(){})
+		func() {})
 }
 
 // }}}

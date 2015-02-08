@@ -127,7 +127,9 @@ func NewPlateElem(ns []*Node, sect *Sect, etype int) *Elem {
 // }}}
 
 func (elem *Elem) Snapshot(frame *Frame) *Elem {
-	if elem == nil { return nil }
+	if elem == nil {
+		return nil
+	}
 	var el *Elem
 	enod := make([]*Node, elem.Enods)
 	for i, en := range elem.Enod {
@@ -136,7 +138,7 @@ func (elem *Elem) Snapshot(frame *Frame) *Elem {
 	if elem.IsLineElem() {
 		el = NewLineElem(enod, frame.Sects[elem.Sect.Num], elem.Etype)
 		el.Cang = elem.Cang
-		for i:=0; i<12; i++ {
+		for i := 0; i < 12; i++ {
 			el.Bonds[i] = elem.Bonds[i]
 			el.Cmq[i] = elem.Cmq[i]
 		}
@@ -144,7 +146,7 @@ func (elem *Elem) Snapshot(frame *Frame) *Elem {
 		for i, r := range elem.Rate {
 			el.Rate[i] = r
 		}
-		for i:=0; i<3; i++ {
+		for i := 0; i < 3; i++ {
 			el.Strong[i] = elem.Strong[i]
 			el.Weak[i] = elem.Weak[i]
 		}
@@ -154,7 +156,7 @@ func (elem *Elem) Snapshot(frame *Frame) *Elem {
 		el.Eldest = elem.Eldest
 	} else {
 		el = NewPlateElem(enod, frame.Sects[elem.Sect.Num], elem.Etype)
-		for i:=0; i<2; i++ {
+		for i := 0; i < 2; i++ {
 			el.Wrect[i] = elem.Wrect[i]
 		}
 	}
@@ -1380,7 +1382,7 @@ func (elem *Elem) DivideInN(n int, eps float64) (rn []*Node, els []*Elem, err er
 		return nil, []*Elem{elem}, nil
 	}
 	rate := make([]float64, n-1)
-	for i:=1; i<n; i++ {
+	for i := 1; i < n; i++ {
 		rate[i-1] = float64(i) / float64(i+1)
 	}
 	rn = make([]*Node, n-1)
@@ -1643,7 +1645,7 @@ func (elem *Elem) RefNnum(nnum int) (int, error) {
 	return 0, errors.New("RefNnum: Not Found")
 }
 
-func (elem *Elem) Otherside (n *Node) *Node {
+func (elem *Elem) Otherside(n *Node) *Node {
 	for i, en := range elem.Enod {
 		if en == n {
 			return elem.Enod[1-i]

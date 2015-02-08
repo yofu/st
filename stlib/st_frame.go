@@ -175,7 +175,7 @@ func (ai *Aiparameter) Snapshot() *Aiparameter {
 	a.Nfloor = ai.Nfloor
 	if ai.Nfloor > 0 {
 		a.Boundary = make([]float64, a.Nfloor+1)
-		for i:=0; i<a.Nfloor+1; i++ {
+		for i := 0; i < a.Nfloor+1; i++ {
 			a.Boundary[i] = ai.Boundary[i]
 		}
 	} else {
@@ -189,14 +189,16 @@ func (ai *Aiparameter) Snapshot() *Aiparameter {
 		a.Ci = make([]float64, a.Nfloor)
 		a.Qi = make([]float64, a.Nfloor)
 		a.Hi = make([]float64, a.Nfloor)
-		for i:=0; i<a.Nfloor; i++ {
+		for i := 0; i < a.Nfloor; i++ {
 			a.Level[i] = ai.Level[i]
 			a.Wi[i] = ai.Wi[i]
 			a.W[i] = ai.W[i]
 			a.Ci[i] = ai.Ci[i]
 			a.Qi[i] = ai.Qi[i]
 			a.Hi[i] = ai.Hi[i]
-			if i == a.Nfloor-1 { continue }
+			if i == a.Nfloor-1 {
+				continue
+			}
 			a.Ai[i] = ai.Ai[i]
 		}
 	}
@@ -249,8 +251,7 @@ func (v *View) Copy() *View {
 
 // }}}
 
-
-func (frame *Frame) Snapshot () *Frame {
+func (frame *Frame) Snapshot() *Frame {
 	f := NewFrame()
 	f.Title = frame.Title
 	f.Name = frame.Name
@@ -299,7 +300,6 @@ func (frame *Frame) Snapshot () *Frame {
 	f.LstFileName = frame.LstFileName
 	return f
 }
-
 
 func (frame *Frame) Bbox() (xmin, xmax, ymin, ymax, zmin, zmax float64) {
 	var mins, maxs [3]float64
@@ -2094,7 +2094,7 @@ func (frame *Frame) Move(x, y, z float64) {
 	}
 }
 
-func (frame *Frame) Scale (center []float64, factor float64) {
+func (frame *Frame) Scale(center []float64, factor float64) {
 	for _, n := range frame.Nodes {
 		n.Scale(center, factor)
 	}
@@ -2271,6 +2271,7 @@ func (frame *Frame) AddMeasure(start, end, direction []float64) *Measure {
 	frame.Measures = append(frame.Measures, m)
 	return m
 }
+
 // }}}
 
 // Search// {{{
@@ -3411,9 +3412,8 @@ func (frame *Frame) AssemGlobalMatrix() (map[int]int, *matrix.CRSMatrix, error) 
 	return ind, rtn, nil
 }
 
-
 // SectionRate
-func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign float64) error {
+func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign float64) error {
 	cond := NewCondition()
 	var otp bytes.Buffer
 	var stl, stx1, stx2, sty1, sty2 []float64
@@ -3428,9 +3428,9 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 	calc1 := func(allow SectionRate, st1, st2, fact []float64) ([]float64, error) {
 		stress := make([]float64, 12)
 		if st2 != nil {
-			for i:=0; i<2; i++ {
-				for j:=0; j<6; j++ {
-					stress[6*i+j] = st1[6*i+j] + fact[j] * st2[6*i+j]
+			for i := 0; i < 2; i++ {
+				for j := 0; j < 6; j++ {
+					stress[6*i+j] = st1[6*i+j] + fact[j]*st2[6*i+j]
 				}
 			}
 		} else {
@@ -3444,7 +3444,7 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 		return rate, nil
 	}
 	calc2 := func(allow SectionRate, n1, n2, fact float64) (float64, error) {
-		stress := n1 + fact * n2
+		stress := n1 + fact*n2
 		rate, txt, err := Rate2(allow, stress, cond)
 		if err != nil {
 			return rate, err
@@ -3452,7 +3452,7 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 		otp.WriteString(txt)
 		return rate, nil
 	}
-	maxrate := func(rate... float64) float64 {
+	maxrate := func(rate ...float64) float64 {
 		rtn := 0.0
 		for _, val := range rate {
 			if val > rtn {
@@ -3462,7 +3462,7 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 		return rtn
 	}
 	plus := []float64{NFACT, QFACT, QFACT, 1.0, MFACT, MFACT}
-	minus := []float64{sign*NFACT, sign*QFACT, sign*QFACT, sign, sign*MFACT, sign*MFACT}
+	minus := []float64{sign * NFACT, sign * QFACT, sign * QFACT, sign, sign * MFACT, sign * MFACT}
 	var enum int
 	elems := make([]*Elem, len(frame.Elems))
 	for _, el := range frame.Elems {
@@ -3485,36 +3485,36 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 				sty1 = make([]float64, 12)
 				sty2 = make([]float64, 12)
 				if st, ok := el.Stress[long]; ok {
-					for i:=0; i<2; i++ {
-						for j:=0; j<6; j++ {
+					for i := 0; i < 2; i++ {
+						for j := 0; j < 6; j++ {
 							stl[6*i+j] = st[el.Enod[i].Num][j]
 						}
 					}
 				}
 				if st, ok := el.Stress[x1]; ok {
-					for i:=0; i<2; i++ {
-						for j:=0; j<6; j++ {
+					for i := 0; i < 2; i++ {
+						for j := 0; j < 6; j++ {
 							stx1[6*i+j] = st[el.Enod[i].Num][j]
 						}
 					}
 				}
 				if st, ok := el.Stress[x1]; ok {
-					for i:=0; i<2; i++ {
-						for j:=0; j<6; j++ {
+					for i := 0; i < 2; i++ {
+						for j := 0; j < 6; j++ {
 							stx2[6*i+j] = st[el.Enod[i].Num][j]
 						}
 					}
 				}
 				if st, ok := el.Stress[y1]; ok {
-					for i:=0; i<2; i++ {
-						for j:=0; j<6; j++ {
+					for i := 0; i < 2; i++ {
+						for j := 0; j < 6; j++ {
 							sty1[6*i+j] = st[el.Enod[i].Num][j]
 						}
 					}
 				}
 				if st, ok := el.Stress[y1]; ok {
-					for i:=0; i<2; i++ {
-						for j:=0; j<6; j++ {
+					for i := 0; i < 2; i++ {
+						for j := 0; j < 6; j++ {
 							sty2[6*i+j] = st[el.Enod[i].Num][j]
 						}
 					}
@@ -3524,8 +3524,8 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 				otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, al.TypeString(), cond.Length, cond.Length, cond.Length))
 				otp.WriteString("応力       :        N                Qxi                Qxj                Qyi                Qyj                 Mt                Mxi                Mxj                Myi                Myj\n")
 				otp.WriteString("鉛直時Z    :")
-				for i:=0; i<6; i++ {
-					for j:=0; j<2; j++ {
+				for i := 0; i < 6; i++ {
+					for j := 0; j < 2; j++ {
 						otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stl[6*j+i], stl[6*j+i]*SI))
 						if i == 0 || i == 3 {
 							break
@@ -3533,8 +3533,8 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 					}
 				}
 				otp.WriteString("\n水平時X    :")
-				for i:=0; i<6; i++ {
-					for j:=0; j<2; j++ {
+				for i := 0; i < 6; i++ {
+					for j := 0; j < 2; j++ {
 						otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stx1[6*j+i], stx1[6*j+i]*SI))
 						if i == 0 || i == 3 {
 							break
@@ -3543,8 +3543,8 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 				}
 				if x1 != x2 {
 					otp.WriteString("\n水平時X負  :")
-					for i:=0; i<6; i++ {
-						for j:=0; j<2; j++ {
+					for i := 0; i < 6; i++ {
+						for j := 0; j < 2; j++ {
 							otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stx2[6*j+i], stx2[6*j+i]*SI))
 							if i == 0 || i == 3 {
 								break
@@ -3553,8 +3553,8 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 					}
 				}
 				otp.WriteString("\n水平時Y    :")
-				for i:=0; i<6; i++ {
-					for j:=0; j<2; j++ {
+				for i := 0; i < 6; i++ {
+					for j := 0; j < 2; j++ {
 						otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", sty1[6*j+i], sty1[6*j+i]*SI))
 						if i == 0 || i == 3 {
 							break
@@ -3563,8 +3563,8 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 				}
 				if y1 != y2 {
 					otp.WriteString("\n水平時Y負  :")
-					for i:=0; i<6; i++ {
-						for j:=0; j<2; j++ {
+					for i := 0; i < 6; i++ {
+						for j := 0; j < 2; j++ {
 							otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", sty2[6*j+i], sty2[6*j+i]*SI))
 							if i == 0 || i == 3 {
 								break
@@ -3598,7 +3598,11 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 				el.Rate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 			case BRACE, WBRACE, SBRACE:
 				var qlrate, qsrate, qurate float64
-				nl = 0.0; nx1 = 0.0; nx2 = 0.0; ny1 = 0.0; ny2 = 0.0
+				nl = 0.0
+				nx1 = 0.0
+				nx2 = 0.0
+				ny1 = 0.0
+				ny2 = 0.0
 				if st, ok := el.Stress[long]; ok {
 					nl = st[el.Enod[0].Num][0]
 				}
@@ -3616,18 +3620,18 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 				otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, al.TypeString(), cond.Length, cond.Length, cond.Length))
 				otp.WriteString("応力       :        N\n")
 				otp.WriteString("鉛直時Z    :")
-				otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", nl, nl * SI))
+				otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", nl, nl*SI))
 				otp.WriteString("\n水平時X    :")
-				otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", nx1, nx1 * SI))
+				otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", nx1, nx1*SI))
 				if x1 != x2 {
 					otp.WriteString("\n水平時X負  :")
-					otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", nx2, nx2 * SI))
+					otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", nx2, nx2*SI))
 				}
 				otp.WriteString("\n水平時Y    :")
-				otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", ny1, ny1 * SI))
+				otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", ny1, ny1*SI))
 				if y1 != y2 {
 					otp.WriteString("\n水平時Y負  :")
-					otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", ny2, ny2 * SI))
+					otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", ny2, ny2*SI))
 				}
 				cond.Period = "L"
 				otp.WriteString("\n\n長期       :")
@@ -3740,10 +3744,10 @@ fact_node:
 	f := NewFact(l, true, frame.Ai.Base/0.2)
 	f.SetFileName([]string{frame.DataFileName["L"], frame.DataFileName["X"], frame.DataFileName["Y"]},
 		[]string{frame.ResultFileName["L"], frame.ResultFileName["X"], frame.ResultFileName["Y"]})
-	for i:=0; i<len(nodes); i++ {
+	for i := 0; i < len(nodes); i++ {
 		sort.Sort(NodeByNum{nodes[i]})
 	}
-	for i:=0; i<len(elems); i++ {
+	for i := 0; i < len(elems); i++ {
 		sort.Sort(ElemByNum{elems[i]})
 	}
 	err = f.CalcFact(nodes, elems)
@@ -3759,7 +3763,6 @@ fact_node:
 	return nil
 }
 
-
 func (view *View) SetVectorAngle(vec []float64) error {
 	if len(vec) < 3 {
 		return errors.New("SetVectorAngle: vector size error")
@@ -3773,7 +3776,7 @@ func (view *View) SetVectorAngle(vec []float64) error {
 	return nil
 }
 
-func (frame *Frame) ShowPlane (n1, n2, n3 *Node, eps float64) error {
+func (frame *Frame) ShowPlane(n1, n2, n3 *Node, eps float64) error {
 	v1 := Direction(n1, n2, true)
 	v2 := Direction(n2, n3, true)
 	if IsParallel(v1, v2, eps) {
@@ -3799,7 +3802,6 @@ func (frame *Frame) ShowPlane (n1, n2, n3 *Node, eps float64) error {
 	}
 	return nil
 }
-
 
 // Modify View// {{{
 func (frame *Frame) SetFocus(coord []float64) {
@@ -3936,7 +3938,6 @@ func (view *View) ProjectDeformation(node *Node, show *Show) {
 }
 
 // }}}
-
 
 func WriteInp(fn string, view *View, ai *Aiparameter, els []*Elem) error {
 	var pnum, snum, inum, nnum, enum int

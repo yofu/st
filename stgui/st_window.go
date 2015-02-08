@@ -207,21 +207,20 @@ var (
 )
 
 var (
-	axrn_minmax = regexp.MustCompile("([+-]?[-0-9.]+)<=?([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
-	axrn_min1   = regexp.MustCompile("([+-]?[-0-9.]+)<=?([XYZxyz]{1})")
-	axrn_min2   = regexp.MustCompile("([XYZxyz]{1})>=?([+-]?[-0-9.]+)")
-	axrn_max1   = regexp.MustCompile("([+-]?[-0-9.]+)>=?([XYZxyz]{1})")
-	axrn_max2   = regexp.MustCompile("([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
-	axrn_eq     = regexp.MustCompile("([XYZxyz]{1})=([+-]?[-0-9.]+)")
-	re_etype    = regexp.MustCompile("(?i)^ *et(y(pe?)?)? *={0,2} *([a-zA-Z]+)")
-	re_column   = regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
-	re_girder   = regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
-	re_brace    = regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
-	re_wall     = regexp.MustCompile("(?i)wa(l){0,2}$")
-	re_slab     = regexp.MustCompile("(?i)sl(a(b)?)?$")
-	re_sectnum  = regexp.MustCompile("(?i)^ *sect? *={0,2} *[[]?([0-9, ]+)[]]?")
-	re_orgsectnum  = regexp.MustCompile("(?i)^ *osect? *={0,2} *[[]?([0-9, ]+)[]]?")
-
+	axrn_minmax   = regexp.MustCompile("([+-]?[-0-9.]+)<=?([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
+	axrn_min1     = regexp.MustCompile("([+-]?[-0-9.]+)<=?([XYZxyz]{1})")
+	axrn_min2     = regexp.MustCompile("([XYZxyz]{1})>=?([+-]?[-0-9.]+)")
+	axrn_max1     = regexp.MustCompile("([+-]?[-0-9.]+)>=?([XYZxyz]{1})")
+	axrn_max2     = regexp.MustCompile("([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
+	axrn_eq       = regexp.MustCompile("([XYZxyz]{1})=([+-]?[-0-9.]+)")
+	re_etype      = regexp.MustCompile("(?i)^ *et(y(pe?)?)? *={0,2} *([a-zA-Z]+)")
+	re_column     = regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
+	re_girder     = regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
+	re_brace      = regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
+	re_wall       = regexp.MustCompile("(?i)wa(l){0,2}$")
+	re_slab       = regexp.MustCompile("(?i)sl(a(b)?)?$")
+	re_sectnum    = regexp.MustCompile("(?i)^ *sect? *={0,2} *[[]?([0-9, ]+)[]]?")
+	re_orgsectnum = regexp.MustCompile("(?i)^ *osect? *={0,2} *[[]?([0-9, ]+)[]]?")
 )
 
 // }}}
@@ -1385,25 +1384,25 @@ func UpdateInps(dirname string) {
 		return
 	}
 	Inps = tmp
-// 	Inps = make([]string, 0)
-// 	SearchingInps = true
-// 	SearchingInpsDone = make(chan bool)
-// 	inpch := st.SearchInp(dirname)
-// createinps:
-// 	for {
-// 		select {
-// 		case <-brk:
-// 			break createinps
-// 		case fn := <-inpch:
-// 			if fn == "" {
-// 				break createinps
-// 			} else {
-// 				Inps = append(Inps, fn)
-// 			}
-// 		}
-// 	}
-// 	SearchingInps = false
-// 	SearchingInpsDone <- true
+	// 	Inps = make([]string, 0)
+	// 	SearchingInps = true
+	// 	SearchingInpsDone = make(chan bool)
+	// 	inpch := st.SearchInp(dirname)
+	// createinps:
+	// 	for {
+	// 		select {
+	// 		case <-brk:
+	// 			break createinps
+	// 		case fn := <-inpch:
+	// 			if fn == "" {
+	// 				break createinps
+	// 			} else {
+	// 				Inps = append(Inps, fn)
+	// 			}
+	// 		}
+	// 	}
+	// 	SearchingInps = false
+	// 	SearchingInpsDone <- true
 }
 
 func (stw *Window) SearchInp() {
@@ -3373,7 +3372,7 @@ func (stw *Window) Complete(str string) string {
 		completes = make([]string, 0)
 	} else {
 		completes = make([]string, len(tmp))
-		for i:=0; i<len(tmp); i++ {
+		for i := 0; i < len(tmp); i++ {
 			stat, err := os.Stat(tmp[i])
 			if err != nil {
 				continue
@@ -3975,7 +3974,7 @@ func (stw *Window) exmode(command string) error {
 							etype = "SLAB"
 						}
 						otp.WriteString(fmt.Sprintf("CODE %4d WOOD %s                                                \"%s(%3d)\"\n", s.Num, etype, etype[:1], snum))
-						otp.WriteString(fmt.Sprintf("         THICK %5.3f       GOHAN                                     \"x%3.1f\"\n\n", val/12.0,val)) // 2[kgf/cm] / 24[kgf/cm2] = 1/12[cm]
+						otp.WriteString(fmt.Sprintf("         THICK %5.3f       GOHAN                                     \"x%3.1f\"\n\n", val/12.0, val)) // 2[kgf/cm] / 24[kgf/cm2] = 1/12[cm]
 					}
 				}
 			}
@@ -4389,7 +4388,7 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory(":section sectcode")
 				return nil
 			}
-			show := func (sec *st.Sect) {
+			show := func(sec *st.Sect) {
 				var tb *TextBox
 				if t, tok := stw.TextBox["SECTION"]; tok {
 					tb = t
@@ -5688,7 +5687,7 @@ func (stw *Window) FilterSelectedElem(str string) {
 				if n == nil {
 					return false
 				}
-				for i:=0; i<3; i++ {
+				for i := 0; i < 3; i++ {
 					if i == axis {
 						continue
 					}
