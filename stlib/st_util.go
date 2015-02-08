@@ -2,6 +2,7 @@ package st
 
 import (
 	"bufio"
+    "bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -513,6 +514,12 @@ func ParseFile(filename string, do func([]string) error) error {
 		return err
 	}
 	return nil
+}
+
+func AddCR(before bytes.Buffer) bytes.Buffer {
+	var after bytes.Buffer
+	after.WriteString(strings.Replace(before.String(), "\n", "\r\n", -1))
+	return after
 }
 
 func OnTheSameLine(n1, n2, n3 []float64, eps float64) bool {

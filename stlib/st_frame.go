@@ -1956,6 +1956,7 @@ func (frame *Frame) WriteOutput(fn string, p string) error {
 	if err != nil {
 		return err
 	}
+	otp = AddCR(otp)
 	otp.WriteTo(w)
 	return nil
 }
@@ -1995,6 +1996,7 @@ func (frame *Frame) ReportZoubunDisp(fn string, ns []*Node, pers []string, direc
 	if err != nil {
 		return err
 	}
+	otp = AddCR(otp)
 	otp.WriteTo(w)
 	return nil
 }
@@ -2034,6 +2036,7 @@ func (frame *Frame) ReportZoubunReaction(fn string, ns []*Node, pers []string, d
 	if err != nil {
 		return err
 	}
+	otp = AddCR(otp)
 	otp.WriteTo(w)
 	return nil
 }
@@ -3113,6 +3116,7 @@ func (frame *Frame) WeightDistribution() {
 	if err != nil {
 		return
 	}
+	otp = AddCR(otp)
 	otp.WriteTo(w)
 }
 
@@ -3336,6 +3340,7 @@ func (frame *Frame) SaveAsArclm(name string) error {
 			return err
 		}
 		w.WriteString(numstr)
+		otp[i] = AddCR(otp[i])
 		otp[i].WriteTo(w)
 	}
 	return nil
@@ -3651,6 +3656,7 @@ func (frame *Frame)SectionRateCalculation(long, x1, x2, y1, y2 string, sign floa
 	if err != nil {
 		return err
 	}
+	otp = AddCR(otp)
 	otp.WriteTo(w)
 	return nil
 }
@@ -4084,6 +4090,7 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, props []*Prop, sect
 	if err != nil {
 		return err
 	}
+	otp = AddCR(otp)
 	otp.WriteTo(w)
 	return nil
 }
@@ -4141,6 +4148,7 @@ func WriteOutput(fn string, p string, els []*Elem) error {
 	if err != nil {
 		return err
 	}
+	otp = AddCR(otp)
 	otp.WriteTo(w)
 	return nil
 }

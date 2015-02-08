@@ -3114,6 +3114,7 @@ func (stw *Window) SaveCommandHistory() error {
 	if err != nil {
 		return err
 	}
+	otp = st.AddCR(otp)
 	otp.WriteTo(w)
 	return nil
 }
@@ -3983,6 +3984,7 @@ func (stw *Window) exmode(command string) error {
 				if err != nil {
 					return err
 				}
+				otp = st.AddCR(otp)
 				otp.WriteTo(w)
 			}
 		case abbrev.For("el/em", cname):

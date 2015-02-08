@@ -216,6 +216,7 @@ func (f *Fact) WriteTo(fn string) error {
 	if err != nil {
 		return err
 	}
+	otp = AddCR(otp)
 	otp.WriteTo(w)
 	return nil
 }
@@ -386,6 +387,7 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
 	if err != nil {
 		return err
 	}
+	otp = AddCR(otp)
 	otp.WriteTo(w)
 	return nil
 }
