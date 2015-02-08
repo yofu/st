@@ -6664,8 +6664,14 @@ func (stw *Window) CB_MouseButton() {
 						stw.feedCommand()
 					} else {
 						if time.Since(pressed).Seconds() < repeatcommand {
-							if stw.lastcommand != nil {
-								stw.ExecCommand(stw.lastcommand)
+							if isShift(arg.Status) {
+								if stw.lastexcommand != "" {
+									stw.exmode(stw.lastexcommand)
+								}
+							} else {
+								if stw.lastcommand != nil {
+									stw.ExecCommand(stw.lastcommand)
+								}
 							}
 						} else {
 							stw.context.Popup(iup.MOUSEPOS, iup.MOUSEPOS)
