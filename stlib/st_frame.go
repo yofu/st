@@ -2899,7 +2899,7 @@ func (frame *Frame) Intersect(e1, e2 *Elem, cross bool, sign1, sign2 int, del1, 
 		return nil, nil, err
 	}
 	if d > eps {
-		return nil, nil, errors.New(fmt.Sprintf("Intersect: Distance= %.3f", d))
+		return nil, nil, errors.New(fmt.Sprintf("Intersect: Distance= %.5f", d))
 	}
 	if !cross || ((-eps <= k1 && k1 <= 1.0+eps) && (-eps <= k2 && k2 <= 1.0+eps)) {
 		var ns []*Node
@@ -2946,7 +2946,7 @@ func (frame *Frame) Intersect(e1, e2 *Elem, cross bool, sign1, sign2 int, del1, 
 		els = append(els, tmpels...)
 		return ns, els, nil
 	} else {
-		return nil, nil, errors.New(fmt.Sprintf("Intersect: Not Cross k1= %.3f, k2= %.3f", k1, k2))
+		return nil, nil, errors.New(fmt.Sprintf("Intersect: Not Cross k1= %.5f, k2= %.5f", k1, k2))
 	}
 }
 
@@ -2959,7 +2959,7 @@ func (frame *Frame) CutByElem(cutter, cuttee *Elem, cross bool, sign int, del bo
 		return nil, nil, err
 	}
 	if d > eps {
-		return nil, nil, errors.New(fmt.Sprintf("CutByElem: Distance= %.3f", d))
+		return nil, nil, errors.New(fmt.Sprintf("CutByElem: Distance= %.5f", d))
 	}
 	if !cross || ((-eps <= k1 && k1 <= 1.0+eps) && (-eps <= k2 && k2 <= 1.0+eps)) {
 		var ns []*Node
@@ -2986,7 +2986,7 @@ func (frame *Frame) CutByElem(cutter, cuttee *Elem, cross bool, sign int, del bo
 		}
 		return ns, els, nil
 	} else {
-		return nil, nil, errors.New(fmt.Sprintf("CutByElem: Not Cross k1= %.3f, k2= %.3f", k1, k2))
+		return nil, nil, errors.New(fmt.Sprintf("CutByElem: Not Cross k1= %.5f, k2= %.5f", k1, k2))
 	}
 }
 
