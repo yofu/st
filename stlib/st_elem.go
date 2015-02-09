@@ -1374,6 +1374,10 @@ func (elem *Elem) DivideAtAxis(axis int, coord float64, eps float64) (n []*Node,
 	return elem.DivideAtCoord(c[0], c[1], c[2], eps)
 }
 
+func (elem *Elem) DivideAtLength(length float64, eps float64) (n []*Node, els []*Elem, err error) {
+	return elem.DivideAtRate(length/elem.Length(), eps)
+}
+
 func (elem *Elem) DivideInN(n int, eps float64) (rn []*Node, els []*Elem, err error) {
 	if !elem.IsLineElem() {
 		return nil, nil, NotLineElem("DivideInN")

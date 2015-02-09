@@ -4338,7 +4338,7 @@ func (stw *Window) exmode(command string) error {
 			stw.Snapshot()
 		case abbrev.For("div/ide", cname):
 			if usage {
-				stw.addHistory(":divide [mid, n, elem, ons, axis]")
+				stw.addHistory(":divide [mid, n, elem, ons, axis, length]")
 				return nil
 			}
 			if narg < 2 {
@@ -4429,6 +4429,21 @@ func (stw *Window) exmode(command string) error {
 				}
 				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
 					return el.DivideAtAxis(axis, val, EPS)
+				}
+			case "length":
+				if usage {
+					stw.addHistory(":divide length l")
+					return nil
+				}
+				if narg < 3 {
+					return st.NotEnoughArgs(":divide length")
+				}
+				val, err := strconv.ParseFloat(args[2], 64)
+				if err != nil {
+					return err
+				}
+				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+					return el.DivideAtLength(val, EPS)
 				}
 			}
 			if divfunc == nil {
