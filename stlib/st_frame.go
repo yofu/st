@@ -12,7 +12,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	// "sync"
 	"github.com/yofu/st/stlib/matrix"
 	"time"
 )
@@ -1118,7 +1117,6 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 	tmpline := 0
 	pat1 := regexp.MustCompile("^ *\\*\\* *FORCES")
 	for _, j := range lis {
-		// if strings.HasPrefix(strings.Trim(j, " "), "**") {
 		if pat1.MatchString(j) {
 			tmpline++
 			break
@@ -1409,7 +1407,6 @@ func (frame *Frame) ReadZoubun(filename string) error {
 				nlap++
 				err = frame.ParseZoubun(tmp, period)
 				tmp = [][]string{words}
-				// period = fmt.Sprintf("%s@%s", ext, strings.Split(strings.Split(first, ":")[1], "/")[0])
 				period = fmt.Sprintf("%s@%d", ext, nlap)
 			} else {
 				tmp = append(tmp, words)
@@ -2991,12 +2988,10 @@ func (frame *Frame) CutByElem(cutter, cuttee *Elem, cross bool, sign int, del bo
 }
 
 func (frame *Frame) Trim(e1, e2 *Elem, sign int, eps float64) ([]*Node, []*Elem, error) {
-	// return frame.Intersect(e1, e2, true, 1, sign, false, true, eps)
 	return frame.CutByElem(e1, e2, true, sign, true, eps)
 }
 
 func (frame *Frame) Extend(e1, e2 *Elem, eps float64) ([]*Node, []*Elem, error) {
-	// return frame.Intersect(e1, e2, false, 1, 1, false, true, eps)
 	return frame.CutByElem(e1, e2, false, 1, true, eps)
 }
 
@@ -3122,7 +3117,6 @@ func (frame *Frame) WeightDistribution() {
 }
 
 func (frame *Frame) AiDistribution() string {
-	// size := len(frame.Ai.Boundary) + 1
 	size := frame.Ai.Nfloor
 	frame.Ai.Wi = make([]float64, size)
 	frame.Ai.Level = make([]float64, size)
