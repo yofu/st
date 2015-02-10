@@ -1565,7 +1565,7 @@ func scale(stw *Window) {
 			if n == nil || n.Hide || n.Lock {
 				continue
 			}
-			n.Scale(n0.Coord, val)
+			n.Scale(n0.Coord, val, val, val)
 		}
 		stw.Snapshot()
 		stw.EscapeCB()

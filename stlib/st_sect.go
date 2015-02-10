@@ -355,3 +355,10 @@ func (sect *Sect) BraceSection() []*Sect {
 	sort.Sort(SectByNum{rtn})
 	return rtn
 }
+
+func (sect *Sect) IsGohan(eps float64) bool {
+	if sect.Figs == nil || len(sect.Figs) < 1 {
+		return false
+	}
+	return sect.Figs[0].Prop.IsGohan(eps)
+}

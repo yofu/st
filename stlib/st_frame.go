@@ -2093,7 +2093,7 @@ func (frame *Frame) Move(x, y, z float64) {
 
 func (frame *Frame) Scale(center []float64, factor float64) {
 	for _, n := range frame.Nodes {
-		n.Scale(center, factor)
+		n.Scale(center, factor, factor, factor)
 	}
 }
 

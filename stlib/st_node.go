@@ -278,11 +278,11 @@ func (node *Node) Rotate(center, vector []float64, angle float64) {
 	node.MoveTo(c[0], c[1], c[2])
 }
 
-func (node *Node) Scale(center []float64, val float64) {
+func (node *Node) Scale(center []float64, xval, yval, zval float64) {
 	c := make([]float64, 3)
-	for i := 0; i < 3; i++ {
-		c[i] = (node.Coord[i]-center[i])*val + center[i]
-	}
+	c[0] = (node.Coord[0]-center[0])*xval + center[0]
+	c[1] = (node.Coord[1]-center[1])*yval + center[1]
+	c[2] = (node.Coord[2]-center[2])*zval + center[2]
 	node.MoveTo(c[0], c[1], c[2])
 }
 

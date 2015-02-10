@@ -3850,6 +3850,32 @@ func (stw *Window) exmode(command string) error {
 				}
 				stw.SelectNode = stw.SelectNode[:num]
 			}
+		case abbrev.For("zsc/ale", cname):
+			if usage {
+				stw.addHistory(":zscale factor coord")
+				return nil
+			}
+			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+				return errors.New(":zscale no selected node")
+			}
+			if narg < 3 {
+				return st.NotEnoughArgs(":zscale")
+			}
+			factor, err := strconv.ParseFloat(args[1], 64)
+			if err != nil {
+				return err
+			}
+			coord, err := strconv.ParseFloat(args[2], 64)
+			if err != nil {
+				return err
+			}
+			for _, n := range stw.SelectNode {
+				if n == nil {
+					continue
+				}
+				n.Scale([]float64{0.0, 0.0, coord}, 1.0, 1.0, factor)
+			}
+			stw.Snapshot()
 		case abbrev.For("pl/oad", cname):
 			if usage {
 				stw.addHistory(":pload position value")
@@ -4024,6 +4050,10 @@ func (stw *Window) exmode(command string) error {
 					f, _ = EtypeFilter(condition)
 					if f == nil {
 						return errors.New(":elem etype: format error")
+					}
+				case strings.EqualFold(condition, "isgohan"):
+					f = func(el *st.Elem) bool {
+						return el.Sect.IsGohan(EPS)
 					}
 				}
 				stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
