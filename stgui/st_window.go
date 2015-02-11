@@ -5160,6 +5160,8 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 			}
 		}
 		canv.Hatch(cd.CD_DIAGCROSS)
+		nomv := stw.Frame.Show.NoMomentValue
+		stw.Frame.Show.NoMomentValue = false
 		for _, el := range stw.SelectElem {
 			canv.LineStyle(cd.CD_DOTTED)
 			if el == nil || el.IsHide(stw.Frame.Show) {
@@ -5194,6 +5196,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 			}
 			DrawElem(el, canv, stw.Frame.Show)
 		}
+		stw.Frame.Show.NoMomentValue = nomv
 		if stw.Frame.Fes != nil {
 			DrawEccentric(stw.Frame, canv, stw.Frame.Show)
 		}
@@ -5289,6 +5292,8 @@ func (stw *Window) DrawFrameNode() {
 			DrawNode(n, stw.dbuff, stw.Frame.Show)
 		}
 		if len(stw.SelectElem) > 0 && stw.SelectElem[0] != nil {
+			nomv := stw.Frame.Show.NoMomentValue
+			stw.Frame.Show.NoMomentValue = false
 			stw.dbuff.Hatch(cd.CD_DIAGCROSS)
 			for _, el := range stw.SelectElem {
 				stw.dbuff.LineStyle(cd.CD_DOTTED)
@@ -5302,6 +5307,7 @@ func (stw *Window) DrawFrameNode() {
 				}
 				DrawElem(el, stw.dbuff, stw.Frame.Show)
 			}
+			stw.Frame.Show.NoMomentValue = nomv
 			stw.dbuff.LineStyle(cd.CD_CONTINUOUS)
 			stw.dbuff.Hatch(cd.CD_FDIAGONAL)
 		}
