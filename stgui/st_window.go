@@ -3850,6 +3850,58 @@ func (stw *Window) exmode(command string) error {
 				}
 				stw.SelectNode = stw.SelectNode[:num]
 			}
+		case abbrev.For("xsc/ale", cname):
+			if usage {
+				stw.addHistory(":xscale factor coord")
+				return nil
+			}
+			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+				return errors.New(":xscale no selected node")
+			}
+			if narg < 3 {
+				return st.NotEnoughArgs(":xscale")
+			}
+			factor, err := strconv.ParseFloat(args[1], 64)
+			if err != nil {
+				return err
+			}
+			coord, err := strconv.ParseFloat(args[2], 64)
+			if err != nil {
+				return err
+			}
+			for _, n := range stw.SelectNode {
+				if n == nil {
+					continue
+				}
+				n.Scale([]float64{coord, 0.0, 0.0}, factor, 1.0, 1.0)
+			}
+			stw.Snapshot()
+		case abbrev.For("ysc/ale", cname):
+			if usage {
+				stw.addHistory(":yscale factor coord")
+				return nil
+			}
+			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+				return errors.New(":yscale no selected node")
+			}
+			if narg < 3 {
+				return st.NotEnoughArgs(":yscale")
+			}
+			factor, err := strconv.ParseFloat(args[1], 64)
+			if err != nil {
+				return err
+			}
+			coord, err := strconv.ParseFloat(args[2], 64)
+			if err != nil {
+				return err
+			}
+			for _, n := range stw.SelectNode {
+				if n == nil {
+					continue
+				}
+				n.Scale([]float64{0.0, coord, 0.0}, 1.0, factor, 1.0)
+			}
+			stw.Snapshot()
 		case abbrev.For("zsc/ale", cname):
 			if usage {
 				stw.addHistory(":zscale factor coord")
