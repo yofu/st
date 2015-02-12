@@ -2863,6 +2863,9 @@ func (stw *Window) Chain(x, y float64, el *st.Elem, maxdepth int) ([]*st.Node, [
 					break
 				}
 			}
+			if otherside == nil { // case cand has same node
+				continue
+			}
 			angle, tmpcw := st.ClockWise(next.Pcoord, origin, otherside.Pcoord)
 			angle = math.Abs(angle)
 			if cw != tmpcw && angle < minangle {
