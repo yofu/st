@@ -113,9 +113,6 @@ func NewPlateElem(ns []*Node, sect *Sect, etype int) *Elem {
 			break
 		}
 	}
-	if el.Enods < 3 {
-		return nil
-	}
 	el.Enod = ns[:el.Enods]
 	el.Sect = sect
 	el.Etype = etype
@@ -159,8 +156,10 @@ func (elem *Elem) Snapshot(frame *Frame) *Elem {
 		el.Eldest = elem.Eldest
 	} else {
 		el = NewPlateElem(enod, frame.Sects[elem.Sect.Num], elem.Etype)
-		for i := 0; i < 2; i++ {
-			el.Wrect[i] = elem.Wrect[i]
+		if elem.Wrect != nil {
+			for i := 0; i < 2; i++ {
+				el.Wrect[i] = elem.Wrect[i]
+			}
 		}
 	}
 	el.Num = elem.Num

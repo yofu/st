@@ -463,6 +463,12 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 			}
 		}
 	} else {
+		if elem.Enods < 2 {
+			return
+		} else if elem.Enods == 2 {
+			cvs.FLine(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1], elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
+			return
+		}
 		cvs.InteriorStyle(cd.CD_HATCH)
 		cvs.Begin(cd.CD_FILL)
 		cvs.FVertex(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1])
