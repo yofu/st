@@ -130,6 +130,9 @@ func (elem *Elem) Snapshot(frame *Frame) *Elem {
 	if elem == nil {
 		return nil
 	}
+	if elem.Etype == WBRACE || elem.Etype == SBRACE {
+		return elem
+	}
 	var el *Elem
 	enod := make([]*Node, elem.Enods)
 	for i, en := range elem.Enod {
