@@ -111,6 +111,7 @@ func NewFrame() *Frame {
 	f.Allows = make(map[int]SectionRate)
 	f.Props = make(map[int]*Prop)
 	f.Piles = make(map[int]*Pile)
+	f.Arclms = make(map[string]*arclm.Frame)
 	f.Eigenvalue = make(map[int]float64)
 	f.Kijuns = make(map[string]*Kijun)
 	f.Measures = make([]*Measure, 0)
@@ -940,9 +941,9 @@ func (frame *Frame) ReadData(filename string) error {
 	} else {
 		period = strings.ToUpper(ext[1:])
 	}
-	// af := arclm.NewFrame()
-	// af.ReadInput(filename)
-	// frame.Arclms[period] = af
+	af := arclm.NewFrame()
+	af.ReadInput(filename)
+	frame.Arclms[period] = af
 	f, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
@@ -3414,9 +3415,6 @@ func (frame *Frame) AssemGlobalMatrix() (map[int]int, *matrix.CRSMatrix, error) 
 	rtn := gmtx.ToCRS()
 	end = time.Now()
 	fmt.Printf("TOCRS: %fsec\n", (end.Sub(start)).Seconds())
-	rtn.LDLT()
-	end = time.Now()
-	fmt.Printf("LDLT : %fsec\n", (end.Sub(start)).Seconds())
 	return ind, rtn, nil
 }
 

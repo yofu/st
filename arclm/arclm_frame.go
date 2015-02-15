@@ -1,12 +1,14 @@
 package arclm
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"strconv"
 	"strings"
 	"github.com/yofu/st/matrix"
+	"os"
 	"time"
 )
 
@@ -112,24 +114,26 @@ func (af *Frame) ReadInput(filename string) error {
 	return nil
 }
 
-func (frame *Frame) AssemGlobalMatrix() (*matrix.CRSMatrix, error) { // TODO: UNDER CONSTRUCTION
+func (frame *Frame) AssemGlobalMatrix() (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
 	var err error
 	var tmatrix, estiff [][]float64
-	gmtx := matrix.NewCOOMatrix(6 * len(frame.Nodes))
-	fmt.Printf("MATRIX SIZE: %d\n", 6*len(frame.Nodes))
+	size := 6*len(frame.Nodes)
+	gmtx := matrix.NewCOOMatrix(size)
+	gvct := make([]float64, size)
+	fmt.Printf("MATRIX SIZE: %d\n", size)
 	start := time.Now()
 	for _, el := range frame.Elems {
 		tmatrix, err = el.TransMatrix()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		estiff, err = el.StiffMatrix()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		estiff, err = el.ModifyHinge(estiff)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		estiff = Transformation(estiff, tmatrix)
 		for n1 := 0; n1 < 2; n1++ {
@@ -148,15 +152,87 @@ func (frame *Frame) AssemGlobalMatrix() (*matrix.CRSMatrix, error) { // TODO: UN
 				}
 			}
 		}
+		el.ModifyCMQ()
+		gvct = el.AssemCMQ(tmatrix, gvct)
 	}
 	end := time.Now()
 	fmt.Printf("ASSEM: %fsec\n", (end.Sub(start)).Seconds())
-	rtn := gmtx.ToCRS()
-	end = time.Now()
-	fmt.Printf("TOCRS: %fsec\n", (end.Sub(start)).Seconds())
-	rtn.LDLT()
-	end = time.Now()
-	fmt.Printf("LDLT : %fsec\n", (end.Sub(start)).Seconds())
-	return rtn, nil
+	return gmtx, gvct, nil
 }
 
+func (frame *Frame) Arclm001() error { // TODO: test
+	var otp bytes.Buffer
+	gmtx, gvct, err := frame.AssemGlobalMatrix()
+	if err != nil {
+		return err
+	}
+	mtx := gmtx.ToCRS()
+	size := 6*len(frame.Nodes)
+	conf := make([]bool, size)
+	vecs := make([][]float64, 1)
+	vecs[0] = make([]float64, size)
+	for i, n := range frame.Nodes {
+		for j:=0; j<6; j++ {
+			vecs[0][6*i+j] = gvct[6*i+j]
+			if n.Conf[j] {
+				conf[6*i+j] = true
+			} else {
+				vecs[0][6*i+j] += n.Force[j]
+			}
+		}
+	}
+	answers := mtx.Solve(conf, vecs...)
+	for nans, ans := range answers {
+		fmt.Println("STRESS")
+		otp.WriteString("\n\n** FORCES OF MEMBER\n\n")
+		otp.WriteString("  NO   KT NODE         N        Q1        Q2        MT        M1        M2\n\n")
+		for _, el := range frame.Elems {
+			gdisp := make([]float64, 12)
+			for i:=0; i<2; i++ {
+				for j:=0; j<6; j++ {
+					gdisp[6*i+j] = ans[6*el.Enod[i].Index+j]
+				}
+			}
+			_, err := el.ElemStress(gdisp)
+			if err != nil {
+				return err
+			}
+			otp.WriteString(el.OutputStress())
+		}
+		fmt.Println("DISPLACEMENT")
+		otp.WriteString("\n\n** DISPLACEMENT OF NODE\n\n")
+		otp.WriteString("  NO          U          V          W         KSI         ETA       OMEGA\n\n")
+		for _, n := range frame.Nodes {
+			otp.WriteString(n.OutputDisp())
+		}
+		fmt.Println("REACTION");
+		otp.WriteString("\n\n** REACTION\n\n")
+		otp.WriteString("  NO  DIRECTION              R    NC\n\n")
+		for i, n := range frame.Nodes {
+			for j:=0; j<6; j++ {
+				if n.Conf[j] {
+					val := 0.0
+					for k:=0; k<mtx.Size; k++ {
+						stiff := mtx.Query(6*i+j, k)
+						val += stiff * ans[6*i+j]
+					}
+					n.Reaction[j] += val
+					otp.WriteString(fmt.Sprintf("%4d %10d %14.6f     1\n", n.Num, j+1, val))
+				}
+			}
+		}
+		fmt.Println("SET DISPLACEMENT")
+		for i, n := range frame.Nodes {
+			for j:=0; j<6; j++ {
+				n.Disp[j] += ans[6*i+j]
+			}
+		}
+		w, err := os.Create(fmt.Sprintf("hogtxt_%02d.otp", nans))
+		if err != nil {
+			return err
+		}
+		defer w.Close()
+		otp.WriteTo(w)
+	}
+	return nil
+}

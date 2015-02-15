@@ -1,11 +1,12 @@
 package arclm
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"github.com/yofu/st/matrix"
 	"math"
 	"strconv"
-	"github.com/yofu/st/matrix"
 )
 
 type Sect struct {
@@ -70,11 +71,13 @@ func ParseArclmSect(words []string) (*Sect, error) {
 }
 
 type Node struct {
-	Num   int
-	Index int
-	Coord []float64
-	Conf  []bool
-	Force []float64
+	Num      int
+	Index    int
+	Coord    []float64
+	Conf     []bool
+	Force    []float64
+	Disp     []float64
+	Reaction []float64
 }
 
 func NewNode() *Node {
@@ -82,6 +85,8 @@ func NewNode() *Node {
 	n.Coord = make([]float64, 3)
 	n.Conf = make([]bool, 6)
 	n.Force = make([]float64, 6)
+	n.Disp = make([]float64, 6)
+	n.Reaction = make([]float64, 6)
 	return n
 }
 
@@ -127,22 +132,35 @@ func (node *Node) Parse(words []string) error {
 	return nil
 }
 
+func (node *Node) OutputDisp() string {
+	var otp bytes.Buffer
+	otp.WriteString(fmt.Sprintf("%4d", node.Num))
+	for j := 0; j < 3; j++ {
+		otp.WriteString(fmt.Sprintf(" %10.6f", node.Disp[j]))
+	}
+	for j := 0; j < 3; j++ {
+		otp.WriteString(fmt.Sprintf(" %11.7f", node.Disp[3+j]))
+	}
+	otp.WriteString("\n")
+	return otp.String()
+}
+
 type Elem struct {
-	Num   int
-	Sect  *Sect
-	Enod  []*Node
-	Cang  float64
-	Bonds []int
-	Cmq   []float64
+	Num    int
+	Sect   *Sect
+	Enod   []*Node
+	Cang   float64
+	Bonds  []int
 	Strong []float64
-	Weak []float64
+	Weak   []float64
+	Stress []float64
 }
 
 func NewElem() *Elem {
 	el := new(Elem)
 	el.Enod = make([]*Node, 2)
 	el.Bonds = make([]int, 6)
-	el.Cmq = make([]float64, 12)
+	el.Stress = make([]float64, 12)
 	return el
 }
 
@@ -167,7 +185,6 @@ func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error)
 	if el.Sect == nil {
 		return el, errors.New(fmt.Sprintf("ELEM :%d : sect not found", el.Num, sec))
 	}
-	ns := make([]*Node, 2)
 	for i := 0; i < 2; i++ {
 		tmp, err := strconv.ParseInt(words[2+i], 10, 64)
 		if err != nil {
@@ -176,11 +193,11 @@ func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error)
 		enod := int(tmp)
 		for _, n := range nodes {
 			if n.Num == enod {
-				ns[i] = n
+				el.Enod[i] = n
 				break
 			}
 		}
-		if ns[i] == nil {
+		if el.Enod[i] == nil {
 			return el, errors.New(fmt.Sprintf("ELEM :%d : enod %d not found", el.Num, enod))
 		}
 	}
@@ -201,7 +218,7 @@ func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error)
 		if err != nil {
 			return el, err
 		}
-		el.Cmq[i] = val
+		el.Stress[i] = val
 	}
 	return el, nil
 }
@@ -209,6 +226,7 @@ func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error)
 func (elem *Elem) Length() float64 {
 	sum := 0.0
 	for i := 0; i < 3; i++ {
+		// sum += math.Pow((elem.Enod[1].Coord[i] + elem.Enod[1].Disp[i] - elem.Enod[0].Coord[i] - elem.Enod[0].Disp[i]), 2)
 		sum += math.Pow((elem.Enod[1].Coord[i] - elem.Enod[0].Coord[i]), 2)
 	}
 	return math.Sqrt(sum)
@@ -223,7 +241,7 @@ func (elem *Elem) Direction(normalize bool) []float64 {
 		l = 1.0
 	}
 	for i := 0; i < 3; i++ {
-		vec[i] = (elem.Enod[1].Coord[i] - elem.Enod[0].Coord[i]) / l
+		vec[i] = (elem.Enod[1].Coord[i] + elem.Enod[1].Disp[i] - elem.Enod[0].Coord[i] - elem.Enod[0].Disp[i]) / l
 	}
 	return vec
 }
@@ -363,7 +381,7 @@ func (elem *Elem) ModifyHinge(estiff [][]float64) ([][]float64, error) {
 	}
 	for n := 0; n < 2; n++ {
 		for i := 0; i < 6; i++ {
-			if i>=3 && elem.Bonds[3*n+i-3] == 1 {
+			if i >= 3 && elem.Bonds[3*n+i-3] == 1 {
 				kk := 6*n + i
 				if rtn[kk][kk] == 0.0 {
 					return nil, errors.New(fmt.Sprintf("Modifyhinge: ELEM %d: Matrix Singular", elem.Num))
@@ -384,6 +402,60 @@ func (elem *Elem) ModifyHinge(estiff [][]float64) ([][]float64, error) {
 	return rtn, nil
 }
 
+func (elem *Elem) ModifyCMQ() {
+	l := elem.Length()
+	if elem.Bonds[1] == 1 && elem.Bonds[4] == 1 {
+		elem.Stress[4] = 0.0
+		elem.Stress[10] = 0.0
+	}
+	if elem.Bonds[2] == 1 && elem.Bonds[5] == 1 {
+		elem.Stress[5] = 0.0
+		elem.Stress[11] = 0.0
+	}
+	if elem.Bonds[1] == 1 && elem.Bonds[4] == 0 {
+		elem.Stress[10] -= elem.Stress[4] * 0.5
+		elem.Stress[2] += elem.Stress[4] * 1.5 / l
+		elem.Stress[8] -= elem.Stress[4] * 1.5 / l
+		elem.Stress[4] = 0.0
+	}
+	if elem.Bonds[1] == 0 && elem.Bonds[4] == 1 {
+		elem.Stress[4] -= elem.Stress[10] * 0.5
+		elem.Stress[2] += elem.Stress[10] * 1.5 / l
+		elem.Stress[8] -= elem.Stress[10] * 1.5 / l
+		elem.Stress[10] = 0.0
+	}
+	if elem.Bonds[2] == 1 && elem.Bonds[5] == 0 {
+		elem.Stress[11] -= elem.Stress[5] * 0.5
+		elem.Stress[1] -= elem.Stress[5] * 1.5 / l
+		elem.Stress[7] += elem.Stress[5] * 1.5 / l
+		elem.Stress[5] = 0.0
+	}
+	if elem.Bonds[2] == 0 && elem.Bonds[5] == 1 {
+		elem.Stress[5] -= elem.Stress[11] * 0.5
+		elem.Stress[1] -= elem.Stress[11] * 1.5 / l
+		elem.Stress[7] += elem.Stress[11] * 1.5 / l
+		elem.Stress[11] = 0.0
+	}
+}
+
+func (elem *Elem) AssemCMQ(tmatrix[][]float64, vec []float64) []float64 {
+	tmp := make([]float64, 12)
+	for i:=0; i<12; i++ {
+		tmp[i] = elem.Stress[i]
+	}
+	tt := matrix.MatrixTranspose(tmatrix)
+	load := matrix.MatrixVector(tt, tmp)
+	rtn := make([]float64, len(vec))
+	for i:=0; i<2; i++ {
+		for j:=0; j<6; j++ {
+			if !elem.Enod[i].Conf[j] {
+				rtn[elem.Enod[i].Index+j] -= load[6*i+j]
+			}
+		}
+	}
+	return vec
+}
+
 func Transformation(estiff, tmatrix [][]float64) [][]float64 {
 	e := matrix.MatrixMatrix(estiff, tmatrix)
 	tt := matrix.MatrixTranspose(tmatrix)
@@ -391,3 +463,40 @@ func Transformation(estiff, tmatrix [][]float64) [][]float64 {
 	return rtn
 }
 
+func (elem *Elem) ElemStress(gdisp []float64) ([]float64, error) {
+	tmatrix, err := elem.TransMatrix()
+	if err != nil {
+		return nil, err
+	}
+	estiff, err := elem.StiffMatrix()
+	if err != nil {
+		return nil, err
+	}
+	estiff, err = elem.ModifyHinge(estiff)
+	if err != nil {
+		return nil, err
+	}
+	edisp := matrix.MatrixVector(tmatrix, gdisp)
+	estress := matrix.MatrixVector(estiff, edisp)
+	for i := 0; i < 12; i++ {
+		elem.Stress[i] += estress[i]
+	}
+	return estress, nil
+}
+
+func (elem *Elem) OutputStress() string {
+	var otp bytes.Buffer
+	for i := 0; i < 2; i++ {
+		if i == 0 {
+			otp.WriteString(fmt.Sprintf("%5d %4d", elem.Num, elem.Sect.Num))
+		} else {
+			otp.WriteString("          ")
+		}
+		otp.WriteString(fmt.Sprintf(" %4d", elem.Enod[i].Num))
+		for j := 0; j < 6; j++ {
+			otp.WriteString(fmt.Sprintf(" %15.12f", elem.Stress[6*i+j]))
+		}
+		otp.WriteString("\n")
+	}
+	return otp.String()
+}

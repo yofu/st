@@ -4881,6 +4881,8 @@ func (stw *Window) exmode(command string) error {
 			if err != nil {
 				return err
 			}
+		case abbrev.For("a/rclm/001/", cname):
+			stw.Frame.Arclms["L"].Arclm001()
 		}
 	} else {
 		switch {

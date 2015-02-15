@@ -23,20 +23,20 @@ import (
 // }
 
 type COOMatrix struct {
-	size int
+	Size int
 	nz   int
 	data map[int]map[int]float64
 }
 
 func NewCOOMatrix(size int) *COOMatrix {
 	rtn := new(COOMatrix)
-	rtn.size = size
+	rtn.Size = size
 	rtn.data = make(map[int]map[int]float64)
 	return rtn
 }
 
 func (co *COOMatrix) Query(row, col int) float64 {
-	if row > co.size || col > co.size {
+	if row > co.Size || col > co.Size {
 		return 0.0
 	}
 	if rdata, rok := co.data[row]; rok {
@@ -48,7 +48,7 @@ func (co *COOMatrix) Query(row, col int) float64 {
 }
 
 func (co *COOMatrix) Add(row, col int, val float64) {
-	if row > co.size || col > co.size {
+	if row > co.Size || col > co.Size {
 		return
 	}
 	if rdata, rok := co.data[row]; rok {
@@ -67,11 +67,11 @@ func (co *COOMatrix) Add(row, col int, val float64) {
 
 func (co *COOMatrix) ToCRS() *CRSMatrix {
 	nz := 0
-	rtn := NewCRSMatrix(co.size, co.nz)
-	for row := 0; row < co.size; row++ {
+	rtn := NewCRSMatrix(co.Size, co.nz)
+	for row := 0; row < co.Size; row++ {
 		rtn.row[row] = nz
 		if rdata, rok := co.data[row]; rok {
-			for col := 0; col < co.size; col++ {
+			for col := 0; col < co.Size; col++ {
 				if val, cok := rdata[col]; cok {
 					rtn.value[nz] = val
 					rtn.column[nz] = col
@@ -80,12 +80,12 @@ func (co *COOMatrix) ToCRS() *CRSMatrix {
 			}
 		}
 	}
-	rtn.row[co.size] = nz
+	rtn.row[co.Size] = nz
 	return rtn
 }
 
 type CRSMatrix struct {
-	size   int
+	Size   int
 	nz     int
 	value  []float64
 	row    []int
@@ -94,7 +94,7 @@ type CRSMatrix struct {
 
 func NewCRSMatrix(size int, nz int) *CRSMatrix {
 	rtn := new(CRSMatrix)
-	rtn.size = size
+	rtn.Size = size
 	rtn.nz = nz
 	rtn.value = make([]float64, nz)
 	rtn.row = make([]int, size+1)
@@ -103,8 +103,8 @@ func NewCRSMatrix(size int, nz int) *CRSMatrix {
 }
 
 func (cr *CRSMatrix) Copy() *CRSMatrix {
-	rtn := NewCRSMatrix(cr.size, cr.nz)
-	for i := 0; i < cr.size+1; i++ {
+	rtn := NewCRSMatrix(cr.Size, cr.nz)
+	for i := 0; i < cr.Size+1; i++ {
 		rtn.row[i] = cr.row[i]
 	}
 	for i := 0; i < cr.nz; i++ {
@@ -191,7 +191,7 @@ func ReadMtx(fn string) (*CRSMatrix, error) {
 
 func (cr *CRSMatrix) String() string {
 	var rtn bytes.Buffer
-	for row := 0; row < cr.size; row++ {
+	for row := 0; row < cr.Size; row++ {
 		last := 0
 		for col := cr.row[row]; col < cr.row[row+1]; col++ {
 			for i := 0; i < cr.column[col]-last; i++ {
@@ -200,7 +200,7 @@ func (cr *CRSMatrix) String() string {
 			rtn.WriteString(fmt.Sprintf("%8.3f ", cr.value[col]))
 			last = cr.column[col] + 1
 		}
-		for i := 0; i < cr.size-last; i++ {
+		for i := 0; i < cr.Size-last; i++ {
 			rtn.WriteString(fmt.Sprintf("%8.3f ", 0.0))
 		}
 		rtn.WriteString("\n")
@@ -209,7 +209,7 @@ func (cr *CRSMatrix) String() string {
 }
 
 func (cr *CRSMatrix) Query(row, col int) float64 {
-	if row > cr.size || col > cr.size {
+	if row > cr.Size || col > cr.Size {
 		return 0.0
 	}
 	if cr.column[cr.row[row]] > col || cr.column[cr.row[row+1]-1] < col {
@@ -228,7 +228,7 @@ func (cr *CRSMatrix) Query(row, col int) float64 {
 }
 
 func (cr *CRSMatrix) SetFuncNZ(row, col int, val float64, f func(float64) float64) float64 {
-	if row > cr.size || col > cr.size {
+	if row > cr.Size || col > cr.Size {
 		return 0.0
 	}
 	if cr.column[cr.row[row]] > col || cr.column[cr.row[row+1]-1] < col {
@@ -249,7 +249,7 @@ func (cr *CRSMatrix) SetFuncNZ(row, col int, val float64, f func(float64) float6
 }
 
 func (cr *CRSMatrix) SetFunc(row, col int, val float64, f func(float64) float64) float64 {
-	if row > cr.size || col > cr.size {
+	if row > cr.Size || col > cr.Size {
 		return 0.0
 	}
 	start := cr.row[row]
@@ -269,7 +269,7 @@ func (cr *CRSMatrix) SetFunc(row, col int, val float64, f func(float64) float64)
 		}
 		cr.column = tmpcolumn
 		cr.value = tmpvalue
-		for i := row + 1; i < cr.size+1; i++ {
+		for i := row + 1; i < cr.Size+1; i++ {
 			cr.row[i]++
 		}
 		cr.nz++
@@ -320,8 +320,8 @@ func (cr *CRSMatrix) Sqrt(row, col int) float64 {
 }
 
 func (cr *CRSMatrix) MulV(vec []float64) []float64 {
-	rtn := make([]float64, cr.size)
-	for row := 0; row < cr.size; row++ {
+	rtn := make([]float64, cr.Size)
+	for row := 0; row < cr.Size; row++ {
 		for col := cr.row[row]; col < cr.row[row+1]; col++ {
 			tmpcol := cr.column[col]
 			rtn[row] += vec[tmpcol] * cr.value[col]
@@ -331,7 +331,7 @@ func (cr *CRSMatrix) MulV(vec []float64) []float64 {
 }
 
 // func (cr *CRSMatrix) FELower (vec []float64, divide bool) []float64 {
-//     for i:=0; i<cr.size; i++ {
+//     for i:=0; i<cr.Size; i++ {
 //         for j:=0; j<i; j++ {
 //             vec[i] -= cr.Query(i, j) * vec[j]
 //         }
@@ -342,8 +342,11 @@ func (cr *CRSMatrix) MulV(vec []float64) []float64 {
 //     return vec
 // }
 
-func (cr *CRSMatrix) FELower(vec []float64) []float64 {
-	for row := 0; row < cr.size; row++ {
+func (cr *CRSMatrix) FELower(pass []bool, vec []float64) []float64 {
+	for row := 0; row < cr.Size; row++ {
+		if pass[row] {
+			continue
+		}
 		if cr.column[cr.row[row]] > row {
 			continue
 		}
@@ -352,6 +355,9 @@ func (cr *CRSMatrix) FELower(vec []float64) []float64 {
 			if tmpcol >= row {
 				break
 			}
+			if pass[tmpcol] {
+				continue
+			}
 			vec[row] -= cr.value[c] * vec[tmpcol]
 		}
 	}
@@ -359,7 +365,7 @@ func (cr *CRSMatrix) FELower(vec []float64) []float64 {
 }
 
 // func (cr *CRSMatrix) FEUpper (vec []float64, divide bool) []float64 {
-//     for i:=0; i<cr.size; i++ {
+//     for i:=0; i<cr.Size; i++ {
 //         for j:=0; j<i; j++ {
 //             vec[i] -= cr.Query(j, i) * vec[j]
 //         }
@@ -371,7 +377,7 @@ func (cr *CRSMatrix) FELower(vec []float64) []float64 {
 // }
 
 // func (cr *CRSMatrix) BSUpper (vec []float64, divide bool) []float64 {
-//     n := cr.size
+//     n := cr.Size
 //     for i:=n-1; i>=0; i-- {
 //         for j:=i+1; j<n; j++ {
 //             vec[i] -= cr.Query(i, j) * vec[j]
@@ -383,15 +389,21 @@ func (cr *CRSMatrix) FELower(vec []float64) []float64 {
 //     return vec
 // }
 
-func (cr *CRSMatrix) BSUpper(vec []float64) []float64 {
-	n := cr.size
+func (cr *CRSMatrix) BSUpper(pass []bool, vec []float64) []float64 {
+	n := cr.Size
 	for row := n - 1; row >= 0; row-- {
+		if pass[row] {
+			continue
+		}
 		if cr.column[cr.row[row]] > row {
 			continue
 		}
 		for c := cr.row[row]; c < cr.row[row+1]; c++ {
 			tmpcol := cr.column[c]
 			if tmpcol <= row {
+				continue
+			}
+			if pass[tmpcol] {
 				continue
 			}
 			vec[row] -= cr.value[c] * vec[tmpcol]
@@ -401,7 +413,7 @@ func (cr *CRSMatrix) BSUpper(vec []float64) []float64 {
 }
 
 // func (cr *CRSMatrix) BSLower (vec []float64, divide bool) []float64 {
-//     n := cr.size
+//     n := cr.Size
 //     for i:=n-1; i>=0; i-- {
 //         for j:=i+1; j<n; j++ {
 //             vec[i] -= cr.Query(j, i) * vec[j]
@@ -415,7 +427,7 @@ func (cr *CRSMatrix) BSUpper(vec []float64) []float64 {
 
 // func (cr *CRSMatrix) LDLT () *CRSMatrix {
 //     rtn := cr.Copy()
-//     n := cr.size
+//     n := cr.Size
 //     for k:=0; k<n; k++ {
 //         w := 1.0 / rtn.Query(k, k)
 //         for i:=k+1; i<n; i++ {
@@ -436,13 +448,19 @@ func (cr *CRSMatrix) BSUpper(vec []float64) []float64 {
 //     return rtn
 // }
 
-func (cr *CRSMatrix) LDLT() *CRSMatrix {
+func (cr *CRSMatrix) LDLT(pass []bool) *CRSMatrix {
 	var d, w, v float64
 	rtn := cr.Copy()
-	n := cr.size
+	n := cr.Size
 	for row := 0; row < n; row++ {
+		if pass[row] {
+			continue
+		}
 		for c := rtn.row[row]; c < rtn.row[row+1]; c++ {
 			tmpcol := rtn.column[c]
+			if pass[tmpcol] {
+				continue
+			}
 			if tmpcol < row {
 				continue
 			} else if tmpcol == row {
@@ -453,17 +471,30 @@ func (cr *CRSMatrix) LDLT() *CRSMatrix {
 			}
 		}
 		for c := rtn.row[row]; c < rtn.row[row+1]; c++ {
-			if rtn.column[c] <= row {
+			tmpcol := rtn.column[c]
+			if tmpcol <= row {
+				continue
+			}
+			if pass[tmpcol] {
 				continue
 			}
 			v = d * rtn.value[c]
 			for cc := c; cc < rtn.row[row+1]; cc++ {
+				if pass[cc] {
+					continue
+				}
 				rtn.Add(rtn.column[c], rtn.column[cc], -v*rtn.value[cc])
 			}
 		}
 	}
 	for row := 0; row < n; row++ {
+		if pass[row] {
+			continue
+		}
 		for col := 0; col < row; col++ {
+			if pass[col] {
+				continue
+			}
 			rtn.Set(row, col, rtn.Query(col, row))
 		}
 	}
@@ -472,7 +503,7 @@ func (cr *CRSMatrix) LDLT() *CRSMatrix {
 
 func (cr *CRSMatrix) Chol() *CRSMatrix {
 	rtn := cr.Copy()
-	n := cr.size
+	n := cr.Size
 	for k := 0; k < n; k++ {
 		val := rtn.Sqrt(k, k)
 		w := 1.0 / val
@@ -488,26 +519,29 @@ func (cr *CRSMatrix) Chol() *CRSMatrix {
 	return rtn
 }
 
-func (cr *CRSMatrix) Solve(vecs ...[]float64) [][]float64 {
-	size := cr.size
-	C := cr.LDLT()
+func (cr *CRSMatrix) Solve(pass []bool, vecs ...[]float64) [][]float64 {
+	size := cr.Size
+	C := cr.LDLT(pass)
 	rtn := make([][]float64, len(vecs))
 	for v, vec := range vecs {
 		tmp := make([]float64, size)
 		for i := 0; i < size; i++ {
 			tmp[i] = vec[i]
 		}
-		tmp = C.FELower(tmp)
+		tmp = C.FELower(pass, tmp)
 		for i := 0; i < size; i++ {
+			if pass[i] {
+				continue
+			}
 			tmp[i] /= C.Query(i, i)
 		}
-		rtn[v] = C.BSUpper(tmp)
+		rtn[v] = C.BSUpper(pass, tmp)
 	}
 	return rtn
 }
 
 func (cr *CRSMatrix) CG(vec []float64) []float64 {
-	size := cr.size
+	size := cr.Size
 	var alpha, beta float64
 	x := make([]float64, size)
 	r := make([]float64, size)
@@ -544,7 +578,7 @@ func (cr *CRSMatrix) CG(vec []float64) []float64 {
 }
 
 type LLSMatrix struct {
-	size int
+	Size int
 	diag []*LLSNode
 }
 
@@ -558,7 +592,7 @@ type LLSNode struct {
 
 func NewLLSMatrix(size int) *LLSMatrix {
 	rtn := new(LLSMatrix)
-	rtn.size = size
+	rtn.Size = size
 	rtn.diag = make([]*LLSNode, size)
 	for i := 0; i < size; i++ {
 		rtn.diag[i] = NewLLSNode(i, i, 0.0)
@@ -595,7 +629,7 @@ func (ln *LLSNode) After(n *LLSNode) {
 func (ll *LLSMatrix) String() string {
 	var rtn bytes.Buffer
 	var n *LLSNode
-	size := ll.size
+	size := ll.Size
 	for row := 0; row < size; row++ {
 		n = ll.diag[row]
 		for i := 0; i < row; i++ {
@@ -677,7 +711,7 @@ func (ll *LLSMatrix) Add(row, col int, val float64) float64 {
 
 func (ll *LLSMatrix) LDLT() *LLSMatrix { // TODO: Test
 	var n *LLSNode
-	size := ll.size
+	size := ll.Size
 	for row := 0; row < size; row++ {
 		n = ll.diag[row]
 		w := 1.0 / n.value
