@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/yofu/st/stlib/matrix"
+	"github.com/yofu/st/matrix"
 	"math"
 	"sort"
 	"strings"

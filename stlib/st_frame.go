@@ -12,7 +12,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"github.com/yofu/st/stlib/matrix"
+	"github.com/yofu/st/matrix"
+	"github.com/yofu/st/arclm"
 	"time"
 )
 
@@ -77,6 +78,8 @@ type Frame struct {
 	Sects  map[int]*Sect
 	Allows map[int]SectionRate
 	Piles  map[int]*Pile
+
+	Arclms map[string]*arclm.Frame
 
 	Eigenvalue map[int]float64
 
@@ -930,16 +933,19 @@ func (frame *Frame) ParseLevel(lis []string) (err error) {
 
 // ReadData// {{{
 func (frame *Frame) ReadData(filename string) error {
-	f, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return err
-	}
 	ext := filepath.Ext(filename)
 	var period string
 	if p, ok := PeriodExt[ext]; ok {
 		period = p
 	} else {
 		period = strings.ToUpper(ext[1:])
+	}
+	// af := arclm.NewFrame()
+	// af.ReadInput(filename)
+	// frame.Arclms[period] = af
+	f, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
 	}
 	var lis []string
 	if ok := strings.HasSuffix(string(f), "\r\n"); ok {
