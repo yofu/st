@@ -2065,6 +2065,14 @@ func (frame *Frame) Distance(n1, n2 *Node) (dx, dy, dz, d float64) {
 	return
 }
 
+func (frame *Frame) DeformedDistance(n1, n2 *Node) (dx, dy, dz, d float64) {
+	dx = n2.Coord[0] + n2.ReturnDisp(frame.Show.Period, 0) - n1.Coord[0] - n1.ReturnDisp(frame.Show.Period, 0)
+	dy = n2.Coord[1] + n2.ReturnDisp(frame.Show.Period, 1) - n1.Coord[1] - n1.ReturnDisp(frame.Show.Period, 1)
+	dz = n2.Coord[2] + n2.ReturnDisp(frame.Show.Period, 2) - n1.Coord[2] - n1.ReturnDisp(frame.Show.Period, 2)
+	d = math.Sqrt(math.Pow(dx, 2) + math.Pow(dy, 2) + math.Pow(dz, 2))
+	return
+}
+
 func (frame *Frame) Direction(n1, n2 *Node, normalize bool) []float64 {
 	var l float64
 	d := make([]float64, 3)

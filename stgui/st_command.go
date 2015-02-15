@@ -592,6 +592,8 @@ func dists(stw *Window) {
 		dx, dy, dz, d := stw.Frame.Distance(stw.SelectNode[0], n)
 		stw.addHistory(fmt.Sprintf("NODE: %d - %d", stw.SelectNode[0].Num, n.Num))
 		stw.addHistory(fmt.Sprintf("DX: %.3f DY: %.3f DZ: %.3f D: %.3f", dx, dy, dz, d))
+		dx, dy, dz, d = stw.Frame.DeformedDistance(stw.SelectNode[0], n)
+		stw.addHistory(fmt.Sprintf("DX: %.3f DY: %.3f DZ: %.3f D: %.3f", dx, dy, dz, d))
 		// stw.cdcanv.Foreground(cd.CD_WHITE)
 		// stw.cdcanv.WriteMode(cd.CD_REPLACE)
 		stw.EscapeAll()
