@@ -2388,7 +2388,7 @@ func nodeduplication(stw *Window) {
 // ELEMDUPLICATION// {{{
 func elemduplication(stw *Window) {
 	stw.Deselect()
-	els := stw.Frame.ElemDuplication()
+	els := stw.Frame.ElemDuplication(nil)
 	if len(els) != 0 {
 		for k := range els {
 			stw.SelectElem = append(stw.SelectElem, k)

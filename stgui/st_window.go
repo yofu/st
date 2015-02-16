@@ -4549,6 +4549,28 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.SelectElem = tmpels[:enum]
 			stw.Snapshot()
+		case abbrev.For("e/lem/dup/lication", cname):
+			if usage {
+				stw.addHistory(":elemduplication {-ignoresect=code}")
+				return nil
+			}
+			stw.Deselect()
+			var isect []int
+			if isec, ok := argdict["IGNORESECT"]; ok {
+				stw.addHistory(fmt.Sprintf("IGNORE SECT: %s", isec))
+				isect = SplitNums(isec)
+			} else {
+				isect = nil
+			}
+			els := stw.Frame.ElemDuplication(isect)
+			if len(els) != 0 {
+				enum := 0
+				for k := range els {
+					stw.SelectElem = append(stw.SelectElem, k)
+					enum++
+				}
+				stw.SelectElem = stw.SelectElem[:enum]
+			}
 		case abbrev.For("co/nf", cname):
 			if usage {
 				stw.addHistory(":conf [0,1]{6}")

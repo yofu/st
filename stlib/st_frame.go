@@ -2608,16 +2608,28 @@ func (frame *Frame) ReplaceNode(nmap map[*Node]*Node) {
 	}
 }
 
-func (frame *Frame) ElemDuplication() map[*Elem]*Elem {
+func (frame *Frame) ElemDuplication(ignoresect []int) map[*Elem]*Elem {
 	dups := make(map[*Elem]*Elem, 0)
 	elems := make([]*Elem, len(frame.Elems))
 	enum := 0
+	var add bool
 	for _, el := range frame.Elems {
 		if el.Etype == WBRACE || el.Etype == SBRACE {
 			continue
 		}
-		elems[enum] = el
-		enum++
+		add = true
+		if ignoresect != nil {
+			for _, sec := range ignoresect {
+				if el.Sect.Num == sec {
+					add = false
+					break
+				}
+			}
+		}
+		if add {
+			elems[enum] = el
+			enum++
+		}
 	}
 	elems = elems[:enum]
 	sort.Sort(ElemBySumEnod{elems})
