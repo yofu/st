@@ -3849,7 +3849,11 @@ func (view *View) SetVectorAngle(vec []float64) error {
 	l2 := math.Sqrt(vec[0]*vec[0] + vec[1]*vec[1])
 	if l2 != 0.0 {
 		view.Angle[0] = math.Atan2(vec[2], l1)
-		view.Angle[1] = math.Acos(vec[0]/l2)*180.0/math.Pi - 180.0
+		if vec[1] >= 0.0 {
+			view.Angle[1] = math.Acos(vec[0]/l2)*180.0/math.Pi - 180.0
+		} else {
+			view.Angle[1] = -math.Acos(vec[0]/l2)*180.0/math.Pi + 180.0
+		}
 	}
 	return nil
 }
