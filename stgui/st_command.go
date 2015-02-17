@@ -21,6 +21,7 @@ var (
 	Commands = make(map[string]*Command, 0)
 
 	DISTS               = &Command{"DISTANCE", "DISTS", "measure distance", dists}
+	DEFORMEDDISTS       = &Command{"DEFORMEDDISTANCE", "DEFORMED DISTS", "measure deformed distance", deformeddists}
 	MEASURE             = &Command{"MEASURE", "MEASURE", "create dimension line", measure}
 	TOGGLEBOND          = &Command{"TOGGLE", "TOGGLE BOND", "toggle bond of selected elem", togglebond}
 	COPYBOND            = &Command{"COPY", "COPY BOND", "copy bond of selected elem", copybond}
@@ -109,6 +110,7 @@ var (
 
 func init() {
 	Commands["DISTS"] = DISTS
+	Commands["DEFORMEDDISTS"] = DEFORMEDDISTS
 	Commands["MEASURE"] = MEASURE
 	Commands["TOGGLEBOND"] = TOGGLEBOND
 	Commands["COPYBOND"] = COPYBOND
@@ -592,8 +594,24 @@ func dists(stw *Window) {
 		dx, dy, dz, d := stw.Frame.Distance(stw.SelectNode[0], n)
 		stw.addHistory(fmt.Sprintf("NODE: %d - %d", stw.SelectNode[0].Num, n.Num))
 		stw.addHistory(fmt.Sprintf("DX: %.3f DY: %.3f DZ: %.3f D: %.3f", dx, dy, dz, d))
-		dx, dy, dz, d = stw.Frame.DeformedDistance(stw.SelectNode[0], n)
+		// stw.cdcanv.Foreground(cd.CD_WHITE)
+		// stw.cdcanv.WriteMode(cd.CD_REPLACE)
+		stw.EscapeAll()
+	},
+		func() {
+			stw.SelectNode = make([]*st.Node, 2)
+			stw.Redraw()
+		})
+}
+
+func deformeddists(stw *Window) {
+	get2nodes(stw, func(n *st.Node) {
+		stw.SelectNode[1] = n
+		dx, dy, dz, d := stw.Frame.Distance(stw.SelectNode[0], n)
+		stw.addHistory(fmt.Sprintf("NODE: %d - %d", stw.SelectNode[0].Num, n.Num))
 		stw.addHistory(fmt.Sprintf("DX: %.3f DY: %.3f DZ: %.3f D: %.3f", dx, dy, dz, d))
+		dx, dy, dz, d = stw.Frame.DeformedDistance(stw.SelectNode[0], n)
+		stw.addHistory(fmt.Sprintf("dx: %.3f dy: %.3f dz: %.3f d: %.3f", dx, dy, dz, d))
 		// stw.cdcanv.Foreground(cd.CD_WHITE)
 		// stw.cdcanv.WriteMode(cd.CD_REPLACE)
 		stw.EscapeAll()
