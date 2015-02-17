@@ -1579,9 +1579,10 @@ func (stw *Window) OpenDxf() {
 	}
 }
 
-func (stw *Window) OpenFile(fn string) error {
+func (stw *Window) OpenFile(filename string) error {
 	var err error
 	var s *st.Show
+	fn := st.Convert(filename)
 	frame := st.NewFrame()
 	if stw.Frame != nil {
 		s = stw.Frame.Show
