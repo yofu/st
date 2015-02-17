@@ -99,13 +99,13 @@ func (rf Reinforce) Vertices() [][]float64 {
 }
 
 type Wood struct {
-	Name float64
-	Fc   float64
-	Ft   float64
-	Fb   float64
-	Fs   float64
-	E    float64
-	Poi  float64
+	Name string
+	fc   float64
+	ft   float64
+	fb   float64
+	fs   float64
+	e    float64
+	poi  float64
 }
 
 var (
@@ -119,6 +119,11 @@ var (
 
 	SD295 = SD{"SD295", 2.0, 3.0, 2100.0, 0.3}
 	SD345 = SD{"SD345", 2.2, 3.5, 2100.0, 0.3}
+
+	S_E70 = Wood{"S-E70", 0.2386, 0.1774, 0.2997, 0.0183, 70.0, 6.5}
+	E70SUGI = S_E70
+	H_E90 = Wood{"H-E90", 0.2508, 0.1896, 0.3120, 0.0214, 90.0, 6.5}
+	E90HINOKI = H_E90
 )
 
 // Section
@@ -755,6 +760,91 @@ func (cp CPIPE) Vertices() [][]float64 {
 		theta += val
 	}
 	vertices[16] = nil
+	return vertices
+}
+
+// }}}
+
+// PLATE// {{{
+type PLATE struct {
+	H, B float64
+}
+
+func NewPLATE(lis []string) (PLATE, error) {
+	pl := PLATE{0.0, 0.0}
+	var val float64
+	var err error
+	val, err = strconv.ParseFloat(lis[0], 64)
+	if err != nil {
+		return pl, err
+	}
+	pl.H = val
+	val, err = strconv.ParseFloat(lis[1], 64)
+	if err != nil {
+		return pl, err
+	}
+	pl.B = val
+	return pl, nil
+}
+func (pl PLATE) String() string {
+	return fmt.Sprintf("PLATE %5.1f %5.1f", pl.H, pl.B)
+}
+func (pl PLATE) Description() string {
+	return fmt.Sprintf("%dx%d[mm]", int(pl.H*10), int(pl.B*10))
+}
+func (pl PLATE) A() float64 {
+	return pl.H*pl.B
+}
+func (pl PLATE) Asx() float64 {
+	return pl.H*pl.B / 1.5
+}
+func (pl PLATE) Asy() float64 {
+	return pl.H*pl.B / 1.5
+}
+func (pl PLATE) Ix() float64 {
+	return pl.B*math.Pow(pl.H, 3.0) / 12.0
+}
+func (pl PLATE) Iy() float64 {
+	return pl.H*math.Pow(pl.B, 3.0) / 12.0
+}
+func (pl PLATE) J() float64 {
+	if pl.H >= pl.B {
+		return pl.H*math.Pow(pl.B, 3.0) / 3.0
+	} else {
+		return pl.B*math.Pow(pl.H, 3.0) / 3.0
+	}
+}
+func (pl PLATE) Iw() float64 {
+	return 0.0
+}
+func (pl PLATE) Torsion() float64 {
+	if pl.H >= pl.B {
+		return pl.H*math.Pow(pl.B, 2.0) / 3.0
+	} else {
+		return pl.B*math.Pow(pl.H, 2.0) / 3.0
+	}
+}
+func (pl PLATE) Zx() float64 {
+	return pl.B*math.Pow(pl.H, 2.0) / 6.0
+}
+func (pl PLATE) Zy() float64 {
+	return pl.H*math.Pow(pl.B, 2.0) / 6.0
+}
+
+func (pl PLATE) Vertices() [][]float64 {
+	h := pl.H * 0.5
+	b := pl.B * 0.5
+	vertices := make([][]float64, 10)
+	vertices[0] = []float64{-b, -h}
+	vertices[1] = []float64{b, -h}
+	vertices[2] = []float64{b, h}
+	vertices[3] = []float64{-b, h}
+	vertices[4] = nil
+	vertices[5] = []float64{-b, -h}
+	vertices[6] = []float64{b, h}
+	vertices[7] = nil
+	vertices[8] = []float64{b, -h}
+	vertices[9] = []float64{-b, h}
 	return vertices
 }
 
@@ -1488,6 +1578,197 @@ func SetSD(name string) SD {
 	case "SD345":
 		return SD345
 	}
+}
+
+type WoodColumn struct {
+	Wood
+	Shape
+	num      int
+	Etype    string
+	Name     string
+	XFace    []float64
+	YFace    []float64
+	BBLength []float64
+	BTLength []float64
+	BBFactor []float64
+	BTFactor []float64
+}
+
+func NewWoodColumn(num int, shape Shape, material Wood) *WoodColumn {
+	wc := &WoodColumn{material, shape, num, "COLUMN", "", nil, nil, nil, nil, nil, nil}
+	return wc
+}
+func (wc *WoodColumn) Num() int {
+	return wc.num
+}
+func (wc *WoodColumn) TypeString() string {
+	return "木柱"
+}
+func (wc *WoodColumn) Snapshot() SectionRate {
+	w := NewWoodColumn(wc.num, wc.Shape, wc.Wood)
+	w.Etype = wc.Etype
+	w.Name = wc.Name
+	w.XFace = make([]float64, 2)
+	w.YFace = make([]float64, 2)
+	w.BBLength = make([]float64, 2)
+	w.BTLength = make([]float64, 2)
+	w.BBFactor = make([]float64, 2)
+	w.BTFactor = make([]float64, 2)
+	for i := 0; i < 2; i++ {
+		w.XFace[i] = wc.XFace[i]
+		w.YFace[i] = wc.YFace[i]
+		w.BBLength[i] = wc.BBLength[i]
+		w.BTLength[i] = wc.BTLength[i]
+		w.BBFactor[i] = wc.BBFactor[i]
+		w.BTFactor[i] = wc.BTFactor[i]
+	}
+	return w
+}
+func (wc *WoodColumn) SetName(name string) {
+	wc.Name = name
+}
+func (wc *WoodColumn) SetValue(name string, vals []float64) {
+	switch name {
+	case "XFACE":
+		wc.XFace = vals
+	case "YFACE":
+		wc.YFace = vals
+	case "BBLEN":
+		wc.BBLength = vals
+	case "BTLEN":
+		wc.BTLength = vals
+	case "BBFAC":
+		wc.BBFactor = vals
+	case "BTFAC":
+		wc.BTFactor = vals
+	}
+}
+func (wc *WoodColumn) String() string {
+	var rtn bytes.Buffer
+	rtn.WriteString(fmt.Sprintf("CODE %3d WOOD %s %54s\n", wc.num, wc.Etype, fmt.Sprintf("\"%s\"", wc.Name)))
+	line2 := fmt.Sprintf("         %%-29s %%s %%%ds\n", 35-len(wc.Wood.Name))
+	rtn.WriteString(fmt.Sprintf(line2, wc.Shape.String(), wc.Wood.Name, fmt.Sprintf("\"%s\"", wc.Shape.Description())))
+	if wc.XFace != nil {
+		rtn.WriteString(fmt.Sprintf("         XFACE %5.1f %5.1f %48s\n", wc.XFace[0], wc.XFace[1], fmt.Sprintf("\"FACE LENGTH Mx:HEAD= %.0f,TAIL= %.0f[cm]\"", wc.XFace[0], wc.XFace[1])))
+	} else {
+		rtn.WriteString("         XFACE   0.0   0.0             \"FACE LENGTH Mx:HEAD= 0,TAIL= 0[cm]\"\n")
+	}
+	if wc.YFace != nil {
+		rtn.WriteString(fmt.Sprintf("         YFACE %5.1f %5.1f %48s\n", wc.YFace[0], wc.YFace[1], fmt.Sprintf("\"FACE LENGTH My:HEAD= %.0f,TAIL= %.0f[cm]\"", wc.XFace[0], wc.XFace[1])))
+	} else {
+		rtn.WriteString("         YFACE   0.0   0.0             \"FACE LENGTH My:HEAD= 0,TAIL= 0[cm]\"\n")
+	}
+	if wc.BBLength != nil {
+		rtn.WriteString(fmt.Sprintf("         BBLEN %5.1f %5.1f\n", wc.BBLength[0], wc.BBLength[1]))
+	} else if wc.BBFactor != nil {
+		rtn.WriteString(fmt.Sprintf("         BBFAC %5.1f %5.1f\n", wc.BBFactor[0], wc.BBFactor[1]))
+	}
+	if wc.BTLength != nil {
+		rtn.WriteString(fmt.Sprintf("         BTLEN %5.1f %5.1f\n", wc.BTLength[0], wc.BTLength[1]))
+	} else if wc.BTFactor != nil {
+		rtn.WriteString(fmt.Sprintf("         BTFAC %5.1f %5.1f\n", wc.BTFactor[0], wc.BTFactor[1]))
+	}
+	return rtn.String()
+}
+func (wc *WoodColumn) Factor(p string) float64 {
+	switch p {
+	default:
+		return 0.0
+	case "L":
+		return 1.1 / 3.0
+	case "X", "Y", "S":
+		return 2.0 / 3.0
+	}
+}
+func (wc *WoodColumn) Lk(length float64, strong bool) float64 {
+	var ind int
+	if strong {
+		ind = 0
+	} else {
+		ind = 1
+	}
+	if wc.BBLength != nil && wc.BBLength[ind] > 0.0 {
+		return wc.BBLength[ind]
+	} else if wc.BBFactor != nil && wc.BBFactor[ind] > 0.0 {
+		return length * wc.BBFactor[ind]
+	} else {
+		return length
+	}
+}
+func (wc *WoodColumn) Lb(length float64, strong bool) float64 {
+	var ind int
+	if strong {
+		ind = 0
+	} else {
+		ind = 1
+	}
+	if wc.BTLength != nil && wc.BTLength[ind] > 0.0 {
+		return wc.BTLength[ind]
+	} else if wc.BTFactor != nil && wc.BTFactor[ind] > 0.0 {
+		return length * wc.BTFactor[ind]
+	} else {
+		return length
+	}
+}
+func (wc *WoodColumn) Fc(cond *Condition) float64 {
+	var rtn float64
+	var lambda float64
+	lx := wc.Lk(cond.Length, true)
+	ly := wc.Lk(cond.Length, false)
+	lambda_x := lx / math.Sqrt(wc.Ix()/wc.A())
+	lambda_y := ly / math.Sqrt(wc.Iy()/wc.A())
+	if lambda_x >= lambda_y {
+		lambda = lambda_x
+	} else {
+		lambda = lambda_y
+	}
+	if lambda < 30.0 {
+		rtn = 1.0
+	} else if lambda < 100.0 {
+		rtn = 1.3 - 0.01 * lambda
+	} else {
+		rtn = 3000.0 / (lambda * lambda)
+	}
+	return rtn * wc.Factor(cond.Period) * wc.fc
+}
+func (wc *WoodColumn) Ft(cond *Condition) float64 {
+	return wc.ft * wc.Factor(cond.Period)
+}
+func (wc *WoodColumn) Fs(cond *Condition) float64 {
+	return wc.fs * wc.Factor(cond.Period)
+}
+func (wc *WoodColumn) Fb(cond *Condition) float64 {
+	return wc.fb * wc.Factor(cond.Period)
+}
+func (wc *WoodColumn) Na(cond *Condition) float64 {
+	if cond.Compression {
+		return wc.Fc(cond) * wc.A()
+	} else {
+		return wc.Ft(cond) * wc.A()
+	}
+}
+func (wc *WoodColumn) Qa(cond *Condition) float64 {
+	f := wc.Fs(cond)
+	if cond.Strong {
+		return f * wc.Asx()
+	} else {
+		return f * wc.Asy()
+	}
+}
+func (sc *WoodColumn) Ma(cond *Condition) float64 {
+	f := sc.Fb(cond)
+	if cond.Strong {
+		return f * sc.Zx() * 0.01 // [tfm]
+	} else {
+		return f * sc.Zy() * 0.01 // [tfm]
+	}
+}
+func (wc *WoodColumn) Mza(cond *Condition) float64 {
+	return wc.Fs(cond) * wc.Torsion() * 0.01 // [tfm]
+}
+
+func (wc *WoodColumn) Vertices() [][]float64 {
+	return wc.Shape.Vertices()
 }
 
 // Condition

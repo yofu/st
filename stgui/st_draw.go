@@ -577,7 +577,7 @@ func DrawSection(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 		case *st.SColumn:
 			sh := al.(*st.SColumn).Shape
 			switch sh.(type) {
-			case st.HKYOU, st.HWEAK, st.RPIPE, st.CPIPE:
+			case st.HKYOU, st.HWEAK, st.RPIPE, st.CPIPE, st.PLATE:
 				vertices := sh.Vertices()
 				DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
 			}
@@ -595,6 +595,13 @@ func DrawSection(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 			DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
 			for _, reins := range rg.Reins {
 				vertices = reins.Vertices()
+				DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
+			}
+		case *st.WoodColumn:
+			sh := al.(*st.WoodColumn).Shape
+			switch sh.(type) {
+			case st.PLATE:
+				vertices := sh.Vertices()
 				DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
 			}
 		}

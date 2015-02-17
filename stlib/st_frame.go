@@ -1608,6 +1608,8 @@ func (frame *Frame) ParseLst(lis [][]string) error {
 			err = frame.ParseLstSteel(lis)
 		case "RC":
 			err = frame.ParseLstRC(lis)
+		case "WOOD":
+			err = frame.ParseLstWood(lis)
 		}
 	}
 	return err
@@ -1738,6 +1740,66 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 		return err
 	}
 	sr.SetName(lis[0][4])
+	frame.Allows[num] = sr
+	return nil
+}
+
+func (frame *Frame) ParseLstWood(lis [][]string) error {
+	fmt.Println(lis)
+	var num int
+	var sr SectionRate
+	var shape Shape
+	var material Wood
+	var err error
+	tmp, err := strconv.ParseInt(lis[0][1], 10, 64)
+	num = int(tmp)
+	var size int
+	switch lis[1][0] {
+	case "PLATE":
+		size = 2
+		shape, err = NewPLATE(lis[1][1 : 1+size])
+	default:
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	switch lis[1][1+size] {
+	default:
+		material = S_E70
+	case "S-E70", "E70SUGI":
+		material = S_E70
+	case "H-E90", "E90HINOKI":
+		material = H_E90
+	}
+	switch lis[0][3] {
+	case "COLUMN":
+		sr = NewWoodColumn(num, shape, material)
+	default:
+		return nil
+	}
+	for _, words := range lis[2:] {
+		first := strings.ToUpper(words[0])
+		switch first {
+		case "XFACE", "YFACE", "BBLEN", "BTLEN", "BBFAC", "BTFAC":
+			vals := make([]float64, 2)
+			for i := 0; i < 2; i++ {
+				val, err := strconv.ParseFloat(words[1+i], 64)
+				if err == nil {
+					vals[i] = val
+				}
+			}
+			sr.SetValue(first, vals)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	if err != nil {
+		return err
+	}
+	sr.SetName(strings.Trim(lis[0][4], "\""))
+	fmt.Println(num)
 	frame.Allows[num] = sr
 	return nil
 }
