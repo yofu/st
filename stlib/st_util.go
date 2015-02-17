@@ -574,7 +574,7 @@ func OnTheSamePlane(n1, n2, n3, n4 []float64, eps float64) bool {
 	return math.Abs(v1[0]*(v2[1]*v3[2]-v3[1]*v2[2])+v1[1]*(v2[2]*v3[0]-v3[2]*v2[0])+v1[2]*(v2[0]*v3[1]-v3[0]*v2[1])) < eps
 }
 
-func Convert(str string) string {
+func ToUtf8string(str string) string {
 	_, _, err := transform.String(encoding.UTF8Validator, str)
 	if err != nil {
 		for _, enc := range []encoding.Encoding{japanese.ShiftJIS, japanese.EUCJP, japanese.ISO2022JP} {
