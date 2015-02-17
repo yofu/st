@@ -1745,7 +1745,6 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 }
 
 func (frame *Frame) ParseLstWood(lis [][]string) error {
-	fmt.Println(lis)
 	var num int
 	var sr SectionRate
 	var shape Shape
@@ -1799,7 +1798,6 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 		return err
 	}
 	sr.SetName(strings.Trim(lis[0][4], "\""))
-	fmt.Println(num)
 	frame.Allows[num] = sr
 	return nil
 }
