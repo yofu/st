@@ -3595,6 +3595,20 @@ func (stw *Window) exmode(command string) error {
 				return nil
 			}
 			stw.Close(bang)
+		case cname == "eps":
+			if usage {
+				stw.addHistory(":eps val")
+				return nil
+			}
+			if narg < 2 {
+				return st.NotEnoughArgs(":eps")
+			}
+			val, err := strconv.ParseFloat(args[1], 64)
+			if err != nil {
+				return err
+			}
+			EPS = val
+			stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
 		case cname == "mkdir":
 			if usage {
 				stw.addHistory(":mkdir dirname")
