@@ -3502,6 +3502,7 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 	NFACT := 1.0
 	QFACT := 2.0
 	MFACT := 1.0
+	BFACT := 1.0
 	WFACT := 2.0
 	calc1 := func(allow SectionRate, st1, st2, fact []float64) ([]float64, error) {
 		stress := make([]float64, 12)
@@ -3676,6 +3677,12 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 				el.Rate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 			case BRACE, WBRACE, SBRACE:
 				var qlrate, qsrate, qurate float64
+				var fact float64
+				if el.Etype == BRACE {
+					fact = BFACT
+				} else {
+					fact = WFACT
+				}
 				nl = 0.0
 				nx1 = 0.0
 				nx2 = 0.0
@@ -3717,16 +3724,16 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 				qlrate = rate2
 				cond.Period = "S"
 				otp.WriteString("\n短期X正方向:")
-				rate2, err = calc2(al, nl, nx1, WFACT)
+				rate2, err = calc2(al, nl, nx1, fact)
 				qsrate = rate2
 				otp.WriteString("短期X負方向:")
-				rate2, err = calc2(al, nl, nx2, sign*WFACT)
+				rate2, err = calc2(al, nl, nx2, sign*fact)
 				qsrate = maxrate(qsrate, rate2)
 				otp.WriteString("\n短期Y正方向:")
-				rate2, err = calc2(al, nl, ny1, WFACT)
+				rate2, err = calc2(al, nl, ny1, fact)
 				qsrate = maxrate(qsrate, rate2)
 				otp.WriteString("短期Y負方向:")
-				rate2, err = calc2(al, nl, ny2, sign*WFACT)
+				rate2, err = calc2(al, nl, ny2, sign*fact)
 				qsrate = maxrate(qsrate, rate2)
 				otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
 				el.Rate = []float64{qlrate, qsrate, qurate}
