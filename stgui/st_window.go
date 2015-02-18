@@ -1799,7 +1799,7 @@ func (stw *Window) ReadAll() {
 				el.Children = make([]*st.Elem, 2)
 			}
 		}
-		exts := []string{".inl", ".ihx", ".ihy", ".otl", ".ohx", ".ohy", ".rat2", ".wgt", ".kjn"}
+		exts := []string{".inl", ".ihx", ".ihy", ".otl", ".ohx", ".ohy", ".rat2", ".wgt", ".lst", ".kjn"}
 		read := make([]string, 9)
 		nread := 0
 		for _, ext := range exts {
