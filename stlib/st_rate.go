@@ -186,19 +186,35 @@ func (sc *SColumn) Snapshot() SectionRate {
 	s := NewSColumn(sc.num, sc.Shape, sc.Steel)
 	s.Etype = sc.Etype
 	s.Name = sc.Name
-	s.XFace = make([]float64, 2)
-	s.YFace = make([]float64, 2)
-	s.BBLength = make([]float64, 2)
-	s.BTLength = make([]float64, 2)
-	s.BBFactor = make([]float64, 2)
-	s.BTFactor = make([]float64, 2)
-	for i := 0; i < 2; i++ {
-		s.XFace[i] = sc.XFace[i]
-		s.YFace[i] = sc.YFace[i]
-		s.BBLength[i] = sc.BBLength[i]
-		s.BTLength[i] = sc.BTLength[i]
-		s.BBFactor[i] = sc.BBFactor[i]
-		s.BTFactor[i] = sc.BTFactor[i]
+	if sc.XFace != nil {
+		s.XFace = make([]float64, 2)
+		s.XFace[0] = sc.XFace[0]
+		s.XFace[1] = sc.XFace[1]
+	}
+	if sc.YFace != nil {
+		s.YFace = make([]float64, 2)
+		s.YFace[0] = sc.YFace[0]
+		s.YFace[1] = sc.YFace[1]
+	}
+	if sc.BBLength != nil {
+		s.BBLength = make([]float64, 2)
+		s.BBLength[0] = sc.BBLength[0]
+		s.BBLength[1] = sc.BBLength[1]
+	}
+	if sc.BTLength != nil {
+		s.BTLength = make([]float64, 2)
+		s.BTLength[0] = sc.BTLength[0]
+		s.BTLength[1] = sc.BTLength[1]
+	}
+	if sc.BBFactor != nil {
+		s.BBFactor = make([]float64, 2)
+		s.BBFactor[0] = sc.BBFactor[0]
+		s.BBFactor[1] = sc.BBFactor[1]
+	}
+	if sc.BTFactor != nil {
+		s.BTFactor = make([]float64, 2)
+		s.BTFactor[0] = sc.BTFactor[0]
+		s.BTFactor[1] = sc.BTFactor[1]
 	}
 	return s
 }
@@ -1608,19 +1624,35 @@ func (wc *WoodColumn) Snapshot() SectionRate {
 	w := NewWoodColumn(wc.num, wc.Shape, wc.Wood)
 	w.Etype = wc.Etype
 	w.Name = wc.Name
-	w.XFace = make([]float64, 2)
-	w.YFace = make([]float64, 2)
-	w.BBLength = make([]float64, 2)
-	w.BTLength = make([]float64, 2)
-	w.BBFactor = make([]float64, 2)
-	w.BTFactor = make([]float64, 2)
-	for i := 0; i < 2; i++ {
-		w.XFace[i] = wc.XFace[i]
-		w.YFace[i] = wc.YFace[i]
-		w.BBLength[i] = wc.BBLength[i]
-		w.BTLength[i] = wc.BTLength[i]
-		w.BBFactor[i] = wc.BBFactor[i]
-		w.BTFactor[i] = wc.BTFactor[i]
+	if wc.XFace != nil {
+		w.XFace = make([]float64, 2)
+		w.XFace[0] = wc.XFace[0]
+		w.XFace[1] = wc.XFace[1]
+	}
+	if wc.YFace != nil {
+		w.YFace = make([]float64, 2)
+		w.YFace[0] = wc.YFace[0]
+		w.YFace[1] = wc.YFace[1]
+	}
+	if wc.BBLength != nil {
+		w.BBLength = make([]float64, 2)
+		w.BBLength[0] = wc.BBLength[0]
+		w.BBLength[1] = wc.BBLength[1]
+	}
+	if wc.BTLength != nil {
+		w.BTLength = make([]float64, 2)
+		w.BTLength[0] = wc.BTLength[0]
+		w.BTLength[1] = wc.BTLength[1]
+	}
+	if wc.BBFactor != nil {
+		w.BBFactor = make([]float64, 2)
+		w.BBFactor[0] = wc.BBFactor[0]
+		w.BBFactor[1] = wc.BBFactor[1]
+	}
+	if wc.BTFactor != nil {
+		w.BTFactor = make([]float64, 2)
+		w.BTFactor[0] = wc.BTFactor[0]
+		w.BTFactor[1] = wc.BTFactor[1]
 	}
 	return w
 }
