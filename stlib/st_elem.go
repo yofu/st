@@ -1715,7 +1715,11 @@ func (elem *Elem) ReturnStress(period string, nnum int, index int) float64 {
 	}
 	if val, ok := elem.Stress[period]; ok {
 		if nnum == 0 || nnum == 1 {
-			return val[elem.Enod[nnum].Num][index]
+			if rtn, ok := val[elem.Enod[nnum].Num]; ok {
+				return rtn[index]
+			} else {
+				return 0.0
+			}
 		} else {
 			for _, en := range elem.Enod {
 				if en.Num == nnum {
