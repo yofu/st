@@ -3431,7 +3431,7 @@ func (frame *Frame) SaveAsArclm(name string) error {
 // }}}
 
 // Analysis
-func (frame *Frame) AssemGlobalMatrix() (map[int]int, *matrix.CRSMatrix, error) { // TODO: UNDER CONSTRUCTION
+func (frame *Frame) AssemGlobalMatrix() (map[int]int, *matrix.COOMatrix, error) { // TODO: UNDER CONSTRUCTION
 	var err error
 	var tmatrix, estiff [][]float64
 	ind := make(map[int]int)
@@ -3484,10 +3484,7 @@ func (frame *Frame) AssemGlobalMatrix() (map[int]int, *matrix.CRSMatrix, error) 
 	}
 	end := time.Now()
 	fmt.Printf("ASSEM: %fsec\n", (end.Sub(start)).Seconds())
-	rtn := gmtx.ToCRS()
-	end = time.Now()
-	fmt.Printf("TOCRS: %fsec\n", (end.Sub(start)).Seconds())
-	return ind, rtn, nil
+	return ind, gmtx, nil
 }
 
 // SectionRate

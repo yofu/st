@@ -65,22 +65,52 @@ func (co *COOMatrix) Add(row, col int, val float64) {
 	}
 }
 
-func (co *COOMatrix) ToCRS() *CRSMatrix {
+// func (co *COOMatrix) ToCRS() *CRSMatrix {
+// 	nz := 0
+// 	rtn := NewCRSMatrix(co.Size, co.nz)
+// 	for row := 0; row < co.Size; row++ {
+// 		rtn.row[row] = nz
+// 		if rdata, rok := co.data[row]; rok {
+// 			for col := 0; col < co.Size; col++ {
+// 				if val, cok := rdata[col]; cok {
+// 					rtn.value[nz] = val
+// 					rtn.column[nz] = col
+// 					nz++
+// 				}
+// 			}
+// 		}
+// 	}
+// 	rtn.row[co.Size] = nz
+// 	return rtn
+// }
+
+func (co *COOMatrix) ToCRS(csize int, conf []bool) *CRSMatrix {
 	nz := 0
-	rtn := NewCRSMatrix(co.Size, co.nz)
+	size := co.Size - csize
+	rtn := NewCRSMatrix(size, co.nz)
+	rind := 0
 	for row := 0; row < co.Size; row++ {
-		rtn.row[row] = nz
+		if conf[row] {
+			rind++
+			continue
+		}
+		cind := 0
+		rtn.row[row-rind] = nz
 		if rdata, rok := co.data[row]; rok {
 			for col := 0; col < co.Size; col++ {
+				if conf[col] {
+					cind++
+					continue
+				}
 				if val, cok := rdata[col]; cok {
 					rtn.value[nz] = val
-					rtn.column[nz] = col
+					rtn.column[nz] = col-cind
 					nz++
 				}
 			}
 		}
 	}
-	rtn.row[co.Size] = nz
+	rtn.row[size] = nz
 	return rtn
 }
 
@@ -186,7 +216,8 @@ func ReadMtx(fn string) (*CRSMatrix, error) {
 			co.Add(int(col)-1, int(row)-1, val)
 		}
 	}
-	return co.ToCRS(), nil
+	conf := make([]bool, nums[0])
+	return co.ToCRS(0, conf), nil
 }
 
 func (cr *CRSMatrix) String() string {
@@ -342,11 +373,8 @@ func (cr *CRSMatrix) MulV(vec []float64) []float64 {
 //     return vec
 // }
 
-func (cr *CRSMatrix) FELower(pass []bool, vec []float64) []float64 {
+func (cr *CRSMatrix) FELower(vec []float64) []float64 {
 	for row := 0; row < cr.Size; row++ {
-		if pass[row] {
-			continue
-		}
 		if cr.column[cr.row[row]] > row {
 			continue
 		}
@@ -354,9 +382,6 @@ func (cr *CRSMatrix) FELower(pass []bool, vec []float64) []float64 {
 			tmpcol := cr.column[c]
 			if tmpcol >= row {
 				break
-			}
-			if pass[tmpcol] {
-				continue
 			}
 			vec[row] -= cr.value[c] * vec[tmpcol]
 		}
@@ -389,21 +414,15 @@ func (cr *CRSMatrix) FELower(pass []bool, vec []float64) []float64 {
 //     return vec
 // }
 
-func (cr *CRSMatrix) BSUpper(pass []bool, vec []float64) []float64 {
+func (cr *CRSMatrix) BSUpper(vec []float64) []float64 {
 	n := cr.Size
 	for row := n - 1; row >= 0; row-- {
-		if pass[row] {
-			continue
-		}
 		if cr.column[cr.row[row]] > row {
 			continue
 		}
 		for c := cr.row[row]; c < cr.row[row+1]; c++ {
 			tmpcol := cr.column[c]
 			if tmpcol <= row {
-				continue
-			}
-			if pass[tmpcol] {
 				continue
 			}
 			vec[row] -= cr.value[c] * vec[tmpcol]
@@ -448,19 +467,13 @@ func (cr *CRSMatrix) BSUpper(pass []bool, vec []float64) []float64 {
 //     return rtn
 // }
 
-func (cr *CRSMatrix) LDLT(pass []bool) *CRSMatrix {
+func (cr *CRSMatrix) LDLT() *CRSMatrix {
 	var d, w, v float64
 	rtn := cr.Copy()
 	n := cr.Size
 	for row := 0; row < n; row++ {
-		if pass[row] {
-			continue
-		}
 		for c := rtn.row[row]; c < rtn.row[row+1]; c++ {
 			tmpcol := rtn.column[c]
-			if pass[tmpcol] {
-				continue
-			}
 			if tmpcol < row {
 				continue
 			} else if tmpcol == row {
@@ -475,26 +488,14 @@ func (cr *CRSMatrix) LDLT(pass []bool) *CRSMatrix {
 			if tmpcol <= row {
 				continue
 			}
-			if pass[tmpcol] {
-				continue
-			}
 			v = d * rtn.value[c]
 			for cc := c; cc < rtn.row[row+1]; cc++ {
-				if pass[cc] {
-					continue
-				}
 				rtn.Add(rtn.column[c], rtn.column[cc], -v*rtn.value[cc])
 			}
 		}
 	}
 	for row := 0; row < n; row++ {
-		if pass[row] {
-			continue
-		}
 		for col := 0; col < row; col++ {
-			if pass[col] {
-				continue
-			}
 			rtn.Set(row, col, rtn.Query(col, row))
 		}
 	}
@@ -519,23 +520,20 @@ func (cr *CRSMatrix) Chol() *CRSMatrix {
 	return rtn
 }
 
-func (cr *CRSMatrix) Solve(pass []bool, vecs ...[]float64) [][]float64 {
+func (cr *CRSMatrix) Solve(vecs ...[]float64) [][]float64 {
 	size := cr.Size
-	C := cr.LDLT(pass)
+	C := cr.LDLT()
 	rtn := make([][]float64, len(vecs))
 	for v, vec := range vecs {
 		tmp := make([]float64, size)
 		for i := 0; i < size; i++ {
 			tmp[i] = vec[i]
 		}
-		tmp = C.FELower(pass, tmp)
+		tmp = C.FELower(tmp)
 		for i := 0; i < size; i++ {
-			if pass[i] {
-				continue
-			}
 			tmp[i] /= C.Query(i, i)
 		}
-		rtn[v] = C.BSUpper(pass, tmp)
+		rtn[v] = C.BSUpper(tmp)
 	}
 	return rtn
 }
