@@ -12,6 +12,15 @@ import (
 	"time"
 )
 
+const (
+	CRS = iota
+	LLS
+)
+
+const (
+	SOLVER = LLS
+)
+
 type Frame struct {
 	Sects []*Sect
 	Nodes []*Node
@@ -182,12 +191,23 @@ func (frame *Frame) Arclm001() error { // TODO: speed up
 	vecs[0] = vecs[0][:size-csize]
 	end = time.Now()
 	fmt.Printf("VEC: %fsec\n", (end.Sub(start)).Seconds())
-	mtx := gmtx.ToCRS(csize, conf)
-	end = time.Now()
-	fmt.Printf("ToCRS: %fsec\n", (end.Sub(start)).Seconds())
-	answers := mtx.Solve(vecs...)
-	end = time.Now()
-	fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
+	var answers [][]float64
+	switch SOLVER {
+	case CRS:
+		mtx := gmtx.ToCRS(csize, conf)
+		end = time.Now()
+		fmt.Printf("ToCRS: %fsec\n", (end.Sub(start)).Seconds())
+		answers = mtx.Solve(vecs...)
+		end = time.Now()
+		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
+	case LLS:
+		mtx := gmtx.ToLLS(csize, conf)
+		end = time.Now()
+		fmt.Printf("ToLLS: %fsec\n", (end.Sub(start)).Seconds())
+		answers = mtx.Solve(vecs...)
+		end = time.Now()
+		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
+	}
 	for nans, ans := range answers {
 		vec := make([]float64, size)
 		ind := 0

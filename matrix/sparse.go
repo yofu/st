@@ -61,6 +61,24 @@ func (co *COOMatrix) Query(row, col int) float64 {
 	return 0.0
 }
 
+func (co *COOMatrix) Set(row, col int, val float64) {
+	if row > co.Size || col > co.Size {
+		return
+	}
+	if rdata, rok := co.data[row]; rok {
+		if _, cok := rdata[col]; cok {
+			co.data[row][col] = val
+		} else {
+			co.data[row][col] = val
+			co.nz++
+		}
+	} else {
+		co.data[row] = make(map[int]float64)
+		co.data[row][col] = val
+		co.nz++
+	}
+}
+
 func (co *COOMatrix) Add(row, col int, val float64) {
 	if row > co.Size || col > co.Size {
 		return
@@ -126,6 +144,69 @@ func (co *COOMatrix) ToCRS(csize int, conf []bool) *CRSMatrix {
 	}
 	rtn.row[size] = nz
 	return rtn
+}
+
+func (co *COOMatrix) ToLLS(csize int, conf []bool) *LLSMatrix {
+	size := co.Size - csize
+	rtn := NewLLSMatrix(size)
+	rind := 0
+	for row := 0; row < co.Size; row++ {
+		if conf[row] {
+			rind++
+			continue
+		}
+		cind := 0
+		if rdata, rok := co.data[row]; rok {
+			for col := 0; col <= row; col++ {
+				if conf[col] {
+					cind++
+					continue
+				}
+				if val, cok := rdata[col]; cok {
+					rtn.Add(row-rind, col-cind, val)
+				}
+			}
+		}
+	}
+	return rtn
+}
+
+func (co *COOMatrix) FELower (vec []float64) []float64 {
+    for i:=0; i<co.Size; i++ {
+        for j:=0; j<i; j++ {
+            vec[i] -= co.Query(i, j) * vec[j]
+        }
+    }
+    return vec
+}
+
+func (co *COOMatrix) FEUpper (vec []float64) []float64 {
+    for i:=0; i<co.Size; i++ {
+        for j:=0; j<i; j++ {
+            vec[i] -= co.Query(j, i) * vec[j]
+        }
+    }
+    return vec
+}
+
+func (co *COOMatrix) BSUpper (vec []float64) []float64 {
+    n := co.Size
+    for i:=n-1; i>=0; i-- {
+        for j:=i+1; j<n; j++ {
+            vec[i] -= co.Query(i, j) * vec[j]
+        }
+    }
+    return vec
+}
+
+func (co *COOMatrix) BSLower (vec []float64) []float64 {
+    n := co.Size
+    for i:=n-1; i>=0; i-- {
+        for j:=i+1; j<n; j++ {
+            vec[i] -= co.Query(j, i) * vec[j]
+        }
+    }
+    return vec
 }
 
 type CRSMatrix struct {
@@ -234,7 +315,7 @@ func ReadMtx(fn string) (*CRSMatrix, error) {
 	return co.ToCRS(0, conf), nil
 }
 
-func (cr *CRSMatrix) String() string {
+func (cr *CRSMatrix) Print() string {
 	var rtn bytes.Buffer
 	for row := 0; row < cr.Size; row++ {
 		last := 0
@@ -249,6 +330,16 @@ func (cr *CRSMatrix) String() string {
 			rtn.WriteString(fmt.Sprintf("%8.3f ", 0.0))
 		}
 		rtn.WriteString("\n")
+	}
+	return rtn.String()
+}
+
+func (cr *CRSMatrix) String() string {
+	var rtn bytes.Buffer
+	for row := 0; row < cr.Size; row++ {
+		for col := cr.row[row]; col < cr.row[row+1]; col++ {
+			rtn.WriteString(fmt.Sprintf("%d %d %25.18f\n", row, cr.column[col], cr.value[col]))
+		}
 	}
 	return rtn.String()
 }
@@ -270,6 +361,14 @@ func (cr *CRSMatrix) Query(row, col int) float64 {
 		}
 	}
 	return 0.0
+}
+
+func (cr *CRSMatrix) ToCOO() *COOMatrix {
+	rtn := NewCOOMatrix(cr.Size)
+	for row, val := range cr.row {
+		rtn.Set(row, cr.column[val], cr.value[val])
+	}
+	return rtn
 }
 
 func (cr *CRSMatrix) SetFuncNZ(row, col int, val float64, f func(float64) float64) float64 {
@@ -538,6 +637,7 @@ func (cr *CRSMatrix) Solve(vecs ...[]float64) [][]float64 {
 	start := time.Now()
 	size := cr.Size
 	C := cr.LDLT()
+	fmt.Println(C)
 	end := time.Now()
 	fmt.Printf("LDLT: %fsec\n", (end.Sub(start)).Seconds())
 	rtn := make([][]float64, len(vecs))
@@ -620,11 +720,18 @@ func NewLLSMatrix(size int) *LLSMatrix {
 }
 
 func NewLLSNode(row, col int, val float64) *LLSNode {
+	if row < col {
+		row, col = col, row
+	}
 	rtn := new(LLSNode)
 	rtn.row = row
 	rtn.column = col
 	rtn.value = val
 	return rtn
+}
+
+func (ln *LLSNode) String() string {
+	return fmt.Sprintf("ROW: %d COL: %d VAL: %25.18f", ln.row, ln.column, ln.value)
 }
 
 func (ln *LLSNode) Before(n *LLSNode) { // TODO: Check
@@ -645,7 +752,7 @@ func (ln *LLSNode) After(n *LLSNode) {
 	n.down = ln
 }
 
-func (ll *LLSMatrix) String() string {
+func (ll *LLSMatrix) Print() string {
 	var rtn bytes.Buffer
 	var n *LLSNode
 	size := ll.Size
@@ -668,6 +775,24 @@ func (ll *LLSMatrix) String() string {
 			last = n.row
 		}
 		rtn.WriteString("\n")
+	}
+	return rtn.String()
+}
+
+func (ll *LLSMatrix) String() string {
+	var rtn bytes.Buffer
+	var n *LLSNode
+	size := ll.Size
+	for row := 0; row < size; row++ {
+		n = ll.diag[row]
+		rtn.WriteString(fmt.Sprintf("%d %d %25.18f\n", n.row, n.column, n.value))
+		for {
+			n = n.down
+			if n == nil {
+				break
+			}
+			rtn.WriteString(fmt.Sprintf("%d %d %25.18f\n", n.row, n.column, n.value))
+		}
 	}
 	return rtn.String()
 }
@@ -728,11 +853,11 @@ func (ll *LLSMatrix) Add(row, col int, val float64) float64 {
 	}
 }
 
-func (ll *LLSMatrix) LDLT() *LLSMatrix { // TODO: Test
+func (ll *LLSMatrix) LDLT() *LLSMatrix {
 	var n *LLSNode
 	size := ll.Size
-	for row := 0; row < size; row++ {
-		n = ll.diag[row]
+	for col := 0; col < size; col++ {
+		n = ll.diag[col]
 		w := 1.0 / n.value
 		for {
 			n = n.down
@@ -741,53 +866,97 @@ func (ll *LLSMatrix) LDLT() *LLSMatrix { // TODO: Test
 			}
 			n.value *= w
 		}
-		n = ll.diag[row]
+		n = ll.diag[col]
 		for {
 			n = n.down
 			if n == nil {
 				break
 			}
-			v := ll.diag[row].value * n.value
+			v := ll.diag[col].value * n.value
 			ni := n
-			nj := ll.diag[n.column]
-			for { // ni: (row, i) down to (row, size)
-				ci := ni.column
-				cj := nj.column
-				ni = ni.down
+			nj := ll.diag[n.row]
+			for {
 				if ni == nil {
 					break
 				}
+				ci := ni.row
 				val := -v * ni.value
-				if ci == cj {
+				if nj.row > ci {
+					newnode := NewLLSNode(n.row, ci, val)
+					newnode.Before(nj)
+				} else if nj.row == ci {
 					nj.value += val
-					nj = nj.down
-				} else if ci > cj {
+				} else {
 					for {
 						if nj.down == nil {
-							newnode := NewLLSNode(row, ci, val)
+							newnode := NewLLSNode(n.row, ci, val)
 							newnode.After(nj)
+							nj = newnode
+							break
 						}
-						cj = nj.down.column
-						if ci > cj {
+						if nj.down.row > ci {
+							newnode := NewLLSNode(n.row, ci, val)
+							newnode.After(nj)
 							nj = nj.down
-							continue
-						} else if ci == cj {
-							nj.down.value += val
 							break
-						} else {
-							newnode := NewLLSNode(row, ci, val)
-							newnode.After(nj)
+						} else if nj.down.row == ci {
+							nj.down.value += val
+							nj = nj.down
 							break
 						}
+						nj = nj.down
 					}
-				} else {
-					newnode := NewLLSNode(row, ci, val)
-					newnode.Before(nj)
 				}
+				ni = ni.down
 			}
 		}
 	}
 	return ll
+}
+
+// TODO: do not use Query
+func (ll *LLSMatrix) FELower (vec []float64) []float64 {
+    for i:=0; i<ll.Size; i++ {
+        for j:=0; j<i; j++ {
+            vec[i] -= ll.Query(i, j) * vec[j]
+        }
+    }
+    return vec
+}
+
+func (ll *LLSMatrix) BSUpper (vec []float64) []float64 {
+    n := ll.Size
+    for i:=n-1; i>=0; i-- {
+        for j:=i+1; j<n; j++ {
+            vec[i] -= ll.Query(i, j) * vec[j]
+        }
+    }
+    return vec
+}
+
+func (ll *LLSMatrix) Solve(vecs ...[]float64) [][]float64 {
+	start := time.Now()
+	size := ll.Size
+	C := ll.LDLT()
+	end := time.Now()
+	fmt.Printf("LDLT: %fsec\n", (end.Sub(start)).Seconds())
+	rtn := make([][]float64, len(vecs))
+	for v, vec := range vecs {
+		tmp := make([]float64, size)
+		for i := 0; i < size; i++ {
+			tmp[i] = vec[i]
+		}
+		tmp = C.FELower(tmp)
+		end = time.Now()
+		fmt.Printf("FE: %fsec\n", (end.Sub(start)).Seconds())
+		for i := 0; i < size; i++ {
+			tmp[i] /= C.Query(i, i)
+		}
+		rtn[v] = C.BSUpper(tmp)
+		end = time.Now()
+		fmt.Printf("BS: %fsec\n", (end.Sub(start)).Seconds())
+	}
+	return rtn
 }
 
 func Dot(x, y []float64, size int) float64 {
