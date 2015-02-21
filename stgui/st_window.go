@@ -1800,7 +1800,7 @@ func (stw *Window) ReadAll() {
 			}
 		}
 		exts := []string{".inl", ".ihx", ".ihy", ".otl", ".ohx", ".ohy", ".rat2", ".wgt", ".lst", ".kjn"}
-		read := make([]string, 9)
+		read := make([]string, 10)
 		nread := 0
 		for _, ext := range exts {
 			name := st.Ce(stw.Frame.Path, ext)
