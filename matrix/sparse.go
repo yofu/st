@@ -41,7 +41,7 @@ func (co *COOMatrix) String() string {
 		if rdata, rok := co.data[row]; rok {
 			for col := 0; col < co.Size; col++ {
 				if tmp, cok := rdata[col]; cok {
-					rtn.WriteString(fmt.Sprintf("%d %d %25.18f\n", row, col, tmp))
+					rtn.WriteString(fmt.Sprintf("%d %d %25.18f\n", row+1, col+1, tmp))
 				}
 			}
 		}

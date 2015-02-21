@@ -142,11 +142,9 @@ func (frame *Frame) AssemGlobalMatrix() (*matrix.COOMatrix, []float64, error) { 
 				for n2 := 0; n2 < 2; n2++ {
 					for j := 0; j < 6; j++ {
 						col := 6*el.Enod[n2].Index + j
-						if row >= col {
-							val := estiff[6*n1+i][6*n2+j]
-							if val != 0.0 {
-								gmtx.Add(row, col, val)
-							}
+						val := estiff[6*n1+i][6*n2+j]
+						if val != 0.0 {
+							gmtx.Add(row, col, val)
 						}
 					}
 				}
@@ -173,21 +171,16 @@ func (frame *Frame) Arclm001() error { // TODO: test
 	vecs[0] = make([]float64, size)
 	for i, n := range frame.Nodes {
 		for j:=0; j<6; j++ {
-			vecs[0][6*i+j] = gvct[6*i+j]
 			if n.Conf[j] {
 				conf[6*i+j] = true
 				csize++
 			} else {
-				vecs[0][6*i+j-csize] += n.Force[j]
+				vecs[0][6*i+j-csize] = gvct[6*i+j] + n.Force[j]
 			}
 		}
 	}
 	vecs[0] = vecs[0][:size-csize]
-	fmt.Println(len(vecs[0]))
 	mtx := gmtx.ToCRS(csize, conf)
-	fmt.Println(gmtx.Size, mtx.Size)
-	fmt.Println("MATRIX")
-	fmt.Println(mtx)
 	answers := mtx.Solve(vecs...)
 	for nans, ans := range answers {
 		vec := make([]float64, size)
@@ -225,7 +218,7 @@ func (frame *Frame) Arclm001() error { // TODO: test
 			for j := 0; j < 3; j++ {
 				otp.WriteString(fmt.Sprintf(" %10.6f", vec[6*i+j]))
 			}
-			for j := 0; j < 3; j++ {
+			for j := 3; j < 6; j++ {
 				otp.WriteString(fmt.Sprintf(" %11.7f", vec[6*i+j]))
 			}
 			otp.WriteString("\n")
@@ -233,18 +226,16 @@ func (frame *Frame) Arclm001() error { // TODO: test
 		fmt.Println("REACTION");
 		otp.WriteString("\n\n** REACTION\n\n")
 		otp.WriteString("  NO  DIRECTION              R    NC\n\n")
-		ind = 0
 		for i, n := range frame.Nodes {
 			for j:=0; j<6; j++ {
 				if n.Conf[j] {
 					val := 0.0
-					for k:=0; k<mtx.Size; k++ {
-						stiff := mtx.Query(6*i+j-ind, k)
-						val += stiff * vec[6*i+j]
+					for k:=0; k<gmtx.Size; k++ {
+						stiff := gmtx.Query(6*i+j, k)
+						val += stiff * vec[k]
 					}
 					n.Reaction[j] += val
 					otp.WriteString(fmt.Sprintf("%4d %10d %14.6f     1\n", n.Num, j+1, val))
-					ind++
 				}
 			}
 		}

@@ -159,7 +159,7 @@ type Elem struct {
 func NewElem() *Elem {
 	el := new(Elem)
 	el.Enod = make([]*Node, 2)
-	el.Bonds = make([]int, 6)
+	el.Bonds = make([]int, 12)
 	el.Stress = make([]float64, 12)
 	return el
 }
@@ -211,7 +211,11 @@ func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error)
 		if err != nil {
 			return el, err
 		}
-		el.Bonds[i] = int(tmp)
+		if i<3 {
+			el.Bonds[i+3] = int(tmp)
+		} else {
+			el.Bonds[i+6] = int(tmp)
+		}
 	}
 	for i := 0; i < 12; i++ {
 		val, err := strconv.ParseFloat(words[11+i], 64)
@@ -334,7 +338,7 @@ func (elem *Elem) StiffMatrix() ([][]float64, error) {
 	estiff[1][11] = estiff[1][5]
 	estiff[2][2] = 12.0 * E * IX * il * il * il
 	estiff[2][4] = -6.0 * E * IX * il * il
-	estiff[2][0] = -estiff[2][2]
+	estiff[2][8] = -estiff[2][2]
 	estiff[2][10] = estiff[2][4]
 	estiff[3][3] = G * J * il
 	estiff[3][9] = -estiff[3][3]
@@ -381,7 +385,7 @@ func (elem *Elem) ModifyHinge(estiff [][]float64) ([][]float64, error) {
 	}
 	for n := 0; n < 2; n++ {
 		for i := 0; i < 6; i++ {
-			if i >= 3 && elem.Bonds[3*n+i-3] == 1 {
+			if elem.Bonds[6*n+i] == 1 {
 				kk := 6*n + i
 				if rtn[kk][kk] == 0.0 {
 					return nil, errors.New(fmt.Sprintf("Modifyhinge: ELEM %d: Matrix Singular", elem.Num))
@@ -404,33 +408,33 @@ func (elem *Elem) ModifyHinge(estiff [][]float64) ([][]float64, error) {
 
 func (elem *Elem) ModifyCMQ() {
 	l := elem.Length()
-	if elem.Bonds[1] == 1 && elem.Bonds[4] == 1 {
+	if elem.Bonds[4] == 1 && elem.Bonds[10] == 1 {
 		elem.Stress[4] = 0.0
 		elem.Stress[10] = 0.0
 	}
-	if elem.Bonds[2] == 1 && elem.Bonds[5] == 1 {
+	if elem.Bonds[5] == 1 && elem.Bonds[11] == 1 {
 		elem.Stress[5] = 0.0
 		elem.Stress[11] = 0.0
 	}
-	if elem.Bonds[1] == 1 && elem.Bonds[4] == 0 {
+	if elem.Bonds[4] == 1 && elem.Bonds[10] == 0 {
 		elem.Stress[10] -= elem.Stress[4] * 0.5
 		elem.Stress[2] += elem.Stress[4] * 1.5 / l
 		elem.Stress[8] -= elem.Stress[4] * 1.5 / l
 		elem.Stress[4] = 0.0
 	}
-	if elem.Bonds[1] == 0 && elem.Bonds[4] == 1 {
+	if elem.Bonds[4] == 0 && elem.Bonds[10] == 1 {
 		elem.Stress[4] -= elem.Stress[10] * 0.5
 		elem.Stress[2] += elem.Stress[10] * 1.5 / l
 		elem.Stress[8] -= elem.Stress[10] * 1.5 / l
 		elem.Stress[10] = 0.0
 	}
-	if elem.Bonds[2] == 1 && elem.Bonds[5] == 0 {
+	if elem.Bonds[5] == 1 && elem.Bonds[11] == 0 {
 		elem.Stress[11] -= elem.Stress[5] * 0.5
 		elem.Stress[1] -= elem.Stress[5] * 1.5 / l
 		elem.Stress[7] += elem.Stress[5] * 1.5 / l
 		elem.Stress[5] = 0.0
 	}
-	if elem.Bonds[2] == 0 && elem.Bonds[5] == 1 {
+	if elem.Bonds[5] == 0 && elem.Bonds[11] == 1 {
 		elem.Stress[5] -= elem.Stress[11] * 0.5
 		elem.Stress[1] -= elem.Stress[11] * 1.5 / l
 		elem.Stress[7] += elem.Stress[11] * 1.5 / l
@@ -440,20 +444,24 @@ func (elem *Elem) ModifyCMQ() {
 
 func (elem *Elem) AssemCMQ(tmatrix[][]float64, vec []float64) []float64 {
 	tmp := make([]float64, 12)
+	rtn := make([]float64, len(vec))
 	for i:=0; i<12; i++ {
 		tmp[i] = elem.Stress[i]
 	}
+	for i:=0; i<len(vec); i++ {
+		rtn[i] = vec[i]
+	}
 	tt := matrix.MatrixTranspose(tmatrix)
 	load := matrix.MatrixVector(tt, tmp)
-	rtn := make([]float64, len(vec))
 	for i:=0; i<2; i++ {
 		for j:=0; j<6; j++ {
 			if !elem.Enod[i].Conf[j] {
-				rtn[elem.Enod[i].Index+j] -= load[6*i+j]
+				ind := 6*elem.Enod[i].Index+j
+				rtn[ind] -= load[6*i+j]
 			}
 		}
 	}
-	return vec
+	return rtn
 }
 
 func Transformation(estiff, tmatrix [][]float64) [][]float64 {
