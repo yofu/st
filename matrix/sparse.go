@@ -35,6 +35,20 @@ func NewCOOMatrix(size int) *COOMatrix {
 	return rtn
 }
 
+func (co *COOMatrix) String() string {
+	var rtn bytes.Buffer
+	for row := 0; row < co.Size; row++ {
+		if rdata, rok := co.data[row]; rok {
+			for col := 0; col < co.Size; col++ {
+				if tmp, cok := rdata[col]; cok {
+					rtn.WriteString(fmt.Sprintf("%d %d %25.18f\n", row, col, tmp))
+				}
+			}
+		}
+	}
+	return rtn.String()
+}
+
 func (co *COOMatrix) Query(row, col int) float64 {
 	if row > co.Size || col > co.Size {
 		return 0.0
