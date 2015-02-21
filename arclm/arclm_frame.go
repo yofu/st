@@ -121,7 +121,6 @@ func (frame *Frame) AssemGlobalMatrix() (*matrix.COOMatrix, []float64, error) { 
 	gmtx := matrix.NewCOOMatrix(size)
 	gvct := make([]float64, size)
 	fmt.Printf("MATRIX SIZE: %d\n", size)
-	start := time.Now()
 	for _, el := range frame.Elems {
 		tmatrix, err = el.TransMatrix()
 		if err != nil {
@@ -153,14 +152,15 @@ func (frame *Frame) AssemGlobalMatrix() (*matrix.COOMatrix, []float64, error) { 
 		el.ModifyCMQ()
 		gvct = el.AssemCMQ(tmatrix, gvct)
 	}
-	end := time.Now()
-	fmt.Printf("ASSEM: %fsec\n", (end.Sub(start)).Seconds())
 	return gmtx, gvct, nil
 }
 
-func (frame *Frame) Arclm001() error { // TODO: test
+func (frame *Frame) Arclm001() error { // TODO: speed up
 	var otp bytes.Buffer
+	start := time.Now()
 	gmtx, gvct, err := frame.AssemGlobalMatrix()
+	end := time.Now()
+	fmt.Printf("ASSEM: %fsec\n", (end.Sub(start)).Seconds())
 	if err != nil {
 		return err
 	}
@@ -180,8 +180,14 @@ func (frame *Frame) Arclm001() error { // TODO: test
 		}
 	}
 	vecs[0] = vecs[0][:size-csize]
+	end = time.Now()
+	fmt.Printf("VEC: %fsec\n", (end.Sub(start)).Seconds())
 	mtx := gmtx.ToCRS(csize, conf)
+	end = time.Now()
+	fmt.Printf("ToCRS: %fsec\n", (end.Sub(start)).Seconds())
 	answers := mtx.Solve(vecs...)
+	end = time.Now()
+	fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
 	for nans, ans := range answers {
 		vec := make([]float64, size)
 		ind := 0
