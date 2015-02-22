@@ -930,7 +930,6 @@ func (ll *LLSMatrix) DiagUp() {
 
 func (ll *LLSMatrix) FELower (vec []float64) []float64 {
 	var n *LLSNode
-	ll.DiagUp()
 	for i:=0; i<ll.Size; i++ {
 		n = ll.diag[i]
 		for {
@@ -967,6 +966,7 @@ func (ll *LLSMatrix) Solve(vecs ...[]float64) [][]float64 {
 	end := time.Now()
 	fmt.Printf("LDLT: %fsec\n", (end.Sub(start)).Seconds())
 	rtn := make([][]float64, len(vecs))
+	C.DiagUp()
 	for v, vec := range vecs {
 		tmp := make([]float64, size)
 		for i := 0; i < size; i++ {
