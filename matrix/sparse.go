@@ -637,7 +637,6 @@ func (cr *CRSMatrix) Solve(vecs ...[]float64) [][]float64 {
 	start := time.Now()
 	size := cr.Size
 	C := cr.LDLT()
-	fmt.Println(C)
 	end := time.Now()
 	fmt.Printf("LDLT: %fsec\n", (end.Sub(start)).Seconds())
 	rtn := make([][]float64, len(vecs))
@@ -914,24 +913,51 @@ func (ll *LLSMatrix) LDLT() *LLSMatrix {
 	return ll
 }
 
-// TODO: do not use Query
+func (ll *LLSMatrix) DiagUp() {
+	var n *LLSNode
+	for col:=0; col<ll.Size; col++ {
+		n = ll.diag[col]
+		for {
+			n = n.down
+			if n == nil {
+				break
+			}
+			n.up = ll.diag[n.row].up
+			ll.diag[n.row].up = n
+		}
+	}
+}
+
 func (ll *LLSMatrix) FELower (vec []float64) []float64 {
-    for i:=0; i<ll.Size; i++ {
-        for j:=0; j<i; j++ {
-            vec[i] -= ll.Query(i, j) * vec[j]
-        }
-    }
-    return vec
+	var n *LLSNode
+	ll.DiagUp()
+	for i:=0; i<ll.Size; i++ {
+		n = ll.diag[i]
+		for {
+			n = n.up
+			if n == nil {
+				break
+			}
+			vec[i] -= n.value * vec[n.column]
+		}
+	}
+	return vec
 }
 
 func (ll *LLSMatrix) BSUpper (vec []float64) []float64 {
-    n := ll.Size
-    for i:=n-1; i>=0; i-- {
-        for j:=i+1; j<n; j++ {
-            vec[i] -= ll.Query(i, j) * vec[j]
-        }
-    }
-    return vec
+	m := ll.Size
+	var n *LLSNode
+	for i:=m-1; i>=0; i-- {
+		n = ll.diag[i]
+		for {
+			n = n.down
+			if n == nil {
+				break
+			}
+			vec[i] -= n.value * vec[n.row]
+		}
+	}
+	return vec
 }
 
 func (ll *LLSMatrix) Solve(vecs ...[]float64) [][]float64 {
