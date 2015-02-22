@@ -136,7 +136,7 @@ func (co *COOMatrix) ToCRS(csize int, conf []bool) *CRSMatrix {
 				}
 				if val, cok := rdata[col]; cok {
 					rtn.value[nz] = val
-					rtn.column[nz] = col-cind
+					rtn.column[nz] = col - cind
 					nz++
 				}
 			}
@@ -171,42 +171,42 @@ func (co *COOMatrix) ToLLS(csize int, conf []bool) *LLSMatrix {
 	return rtn
 }
 
-func (co *COOMatrix) FELower (vec []float64) []float64 {
-    for i:=0; i<co.Size; i++ {
-        for j:=0; j<i; j++ {
-            vec[i] -= co.Query(i, j) * vec[j]
-        }
-    }
-    return vec
+func (co *COOMatrix) FELower(vec []float64) []float64 {
+	for i := 0; i < co.Size; i++ {
+		for j := 0; j < i; j++ {
+			vec[i] -= co.Query(i, j) * vec[j]
+		}
+	}
+	return vec
 }
 
-func (co *COOMatrix) FEUpper (vec []float64) []float64 {
-    for i:=0; i<co.Size; i++ {
-        for j:=0; j<i; j++ {
-            vec[i] -= co.Query(j, i) * vec[j]
-        }
-    }
-    return vec
+func (co *COOMatrix) FEUpper(vec []float64) []float64 {
+	for i := 0; i < co.Size; i++ {
+		for j := 0; j < i; j++ {
+			vec[i] -= co.Query(j, i) * vec[j]
+		}
+	}
+	return vec
 }
 
-func (co *COOMatrix) BSUpper (vec []float64) []float64 {
-    n := co.Size
-    for i:=n-1; i>=0; i-- {
-        for j:=i+1; j<n; j++ {
-            vec[i] -= co.Query(i, j) * vec[j]
-        }
-    }
-    return vec
+func (co *COOMatrix) BSUpper(vec []float64) []float64 {
+	n := co.Size
+	for i := n - 1; i >= 0; i-- {
+		for j := i + 1; j < n; j++ {
+			vec[i] -= co.Query(i, j) * vec[j]
+		}
+	}
+	return vec
 }
 
-func (co *COOMatrix) BSLower (vec []float64) []float64 {
-    n := co.Size
-    for i:=n-1; i>=0; i-- {
-        for j:=i+1; j<n; j++ {
-            vec[i] -= co.Query(j, i) * vec[j]
-        }
-    }
-    return vec
+func (co *COOMatrix) BSLower(vec []float64) []float64 {
+	n := co.Size
+	for i := n - 1; i >= 0; i-- {
+		for j := i + 1; j < n; j++ {
+			vec[i] -= co.Query(j, i) * vec[j]
+		}
+	}
+	return vec
 }
 
 type CRSMatrix struct {
@@ -915,7 +915,7 @@ func (ll *LLSMatrix) LDLT() *LLSMatrix {
 
 func (ll *LLSMatrix) DiagUp() {
 	var n *LLSNode
-	for col:=0; col<ll.Size; col++ {
+	for col := 0; col < ll.Size; col++ {
 		n = ll.diag[col]
 		for {
 			n = n.down
@@ -928,9 +928,9 @@ func (ll *LLSMatrix) DiagUp() {
 	}
 }
 
-func (ll *LLSMatrix) FELower (vec []float64) []float64 {
+func (ll *LLSMatrix) FELower(vec []float64) []float64 {
 	var n *LLSNode
-	for i:=0; i<ll.Size; i++ {
+	for i := 0; i < ll.Size; i++ {
 		n = ll.diag[i]
 		for {
 			n = n.up
@@ -943,10 +943,10 @@ func (ll *LLSMatrix) FELower (vec []float64) []float64 {
 	return vec
 }
 
-func (ll *LLSMatrix) BSUpper (vec []float64) []float64 {
+func (ll *LLSMatrix) BSUpper(vec []float64) []float64 {
 	m := ll.Size
 	var n *LLSNode
-	for i:=m-1; i>=0; i-- {
+	for i := m - 1; i >= 0; i-- {
 		n = ll.diag[i]
 		for {
 			n = n.down

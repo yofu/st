@@ -211,7 +211,7 @@ func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error)
 		if err != nil {
 			return el, err
 		}
-		if i<3 {
+		if i < 3 {
 			el.Bonds[i+3] = int(tmp)
 		} else {
 			el.Bonds[i+6] = int(tmp)
@@ -442,21 +442,21 @@ func (elem *Elem) ModifyCMQ() {
 	}
 }
 
-func (elem *Elem) AssemCMQ(tmatrix[][]float64, vec []float64) []float64 {
+func (elem *Elem) AssemCMQ(tmatrix [][]float64, vec []float64) []float64 {
 	tmp := make([]float64, 12)
 	rtn := make([]float64, len(vec))
-	for i:=0; i<12; i++ {
+	for i := 0; i < 12; i++ {
 		tmp[i] = elem.Stress[i]
 	}
-	for i:=0; i<len(vec); i++ {
+	for i := 0; i < len(vec); i++ {
 		rtn[i] = vec[i]
 	}
 	tt := matrix.MatrixTranspose(tmatrix)
 	load := matrix.MatrixVector(tt, tmp)
-	for i:=0; i<2; i++ {
-		for j:=0; j<6; j++ {
+	for i := 0; i < 2; i++ {
+		for j := 0; j < 6; j++ {
 			if !elem.Enod[i].Conf[j] {
-				ind := 6*elem.Enod[i].Index+j
+				ind := 6*elem.Enod[i].Index + j
 				rtn[ind] -= load[6*i+j]
 			}
 		}

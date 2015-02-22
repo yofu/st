@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/yofu/st/matrix"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
-	"github.com/yofu/st/matrix"
-	"os"
 	"time"
 )
 
@@ -126,7 +126,7 @@ func (af *Frame) ReadInput(filename string) error {
 func (frame *Frame) AssemGlobalMatrix() (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
 	var err error
 	var tmatrix, estiff [][]float64
-	size := 6*len(frame.Nodes)
+	size := 6 * len(frame.Nodes)
 	gmtx := matrix.NewCOOMatrix(size)
 	gvct := make([]float64, size)
 	fmt.Printf("MATRIX SIZE: %d\n", size)
@@ -173,13 +173,13 @@ func (frame *Frame) Arclm001() error { // TODO: speed up
 	if err != nil {
 		return err
 	}
-	size := 6*len(frame.Nodes)
+	size := 6 * len(frame.Nodes)
 	csize := 0
 	conf := make([]bool, size)
 	vecs := make([][]float64, 1)
 	vecs[0] = make([]float64, size)
 	for i, n := range frame.Nodes {
-		for j:=0; j<6; j++ {
+		for j := 0; j < 6; j++ {
 			if n.Conf[j] {
 				conf[6*i+j] = true
 				csize++
@@ -212,7 +212,7 @@ func (frame *Frame) Arclm001() error { // TODO: speed up
 		vec := make([]float64, size)
 		ind := 0
 		for i, n := range frame.Nodes {
-			for j:=0; j<6; j++ {
+			for j := 0; j < 6; j++ {
 				if n.Conf[j] {
 					ind++
 					continue
@@ -225,8 +225,8 @@ func (frame *Frame) Arclm001() error { // TODO: speed up
 		otp.WriteString("  NO   KT NODE         N        Q1        Q2        MT        M1        M2\n\n")
 		for _, el := range frame.Elems {
 			gdisp := make([]float64, 12)
-			for i:=0; i<2; i++ {
-				for j:=0; j<6; j++ {
+			for i := 0; i < 2; i++ {
+				for j := 0; j < 6; j++ {
 					gdisp[6*i+j] = vec[6*el.Enod[i].Index+j]
 				}
 			}
@@ -249,14 +249,14 @@ func (frame *Frame) Arclm001() error { // TODO: speed up
 			}
 			otp.WriteString("\n")
 		}
-		fmt.Println("REACTION");
+		fmt.Println("REACTION")
 		otp.WriteString("\n\n** REACTION\n\n")
 		otp.WriteString("  NO  DIRECTION              R    NC\n\n")
 		for i, n := range frame.Nodes {
-			for j:=0; j<6; j++ {
+			for j := 0; j < 6; j++ {
 				if n.Conf[j] {
 					val := 0.0
-					for k:=0; k<gmtx.Size; k++ {
+					for k := 0; k < gmtx.Size; k++ {
 						stiff := gmtx.Query(6*i+j, k)
 						val += stiff * vec[k]
 					}
@@ -267,7 +267,7 @@ func (frame *Frame) Arclm001() error { // TODO: speed up
 		}
 		fmt.Println("SET DISPLACEMENT")
 		for i, n := range frame.Nodes {
-			for j:=0; j<6; j++ {
+			for j := 0; j < 6; j++ {
 				n.Disp[j] += vec[6*i+j]
 			}
 		}
