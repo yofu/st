@@ -429,6 +429,9 @@ type HKYOU struct {
 
 func NewHKYOU(lis []string) (HKYOU, error) {
 	hk := HKYOU{0.0, 0.0, 0.0, 0.0}
+	if len(lis) < 4 {
+		return hk, NotEnoughArgs("NewHKYOU")
+	}
 	var val float64
 	var err error
 	val, err = strconv.ParseFloat(lis[0], 64)
@@ -524,6 +527,9 @@ type HWEAK struct {
 
 func NewHWEAK(lis []string) (HWEAK, error) {
 	hw := HWEAK{0.0, 0.0, 0.0, 0.0}
+	if len(lis) < 4 {
+		return hw, NotEnoughArgs("NewHWEAK")
+	}
 	var val float64
 	var err error
 	val, err = strconv.ParseFloat(lis[0], 64)
@@ -619,6 +625,9 @@ type RPIPE struct {
 
 func NewRPIPE(lis []string) (RPIPE, error) {
 	rp := RPIPE{0.0, 0.0, 0.0, 0.0}
+	if len(lis) < 4 {
+		return rp, NotEnoughArgs("NewRPIPE")
+	}
 	var val float64
 	var err error
 	val, err = strconv.ParseFloat(lis[0], 64)
@@ -711,6 +720,9 @@ type CPIPE struct {
 
 func NewCPIPE(lis []string) (CPIPE, error) {
 	cp := CPIPE{0.0, 0.0}
+	if len(lis) < 2 {
+		return cp, NotEnoughArgs("NewCPIPE")
+	}
 	var val float64
 	var err error
 	val, err = strconv.ParseFloat(lis[0], 64)
@@ -788,6 +800,9 @@ type PLATE struct {
 
 func NewPLATE(lis []string) (PLATE, error) {
 	pl := PLATE{0.0, 0.0}
+	if len(lis) < 2 {
+		return pl, NotEnoughArgs("NewPLATE")
+	}
 	var val float64
 	var err error
 	val, err = strconv.ParseFloat(lis[0], 64)

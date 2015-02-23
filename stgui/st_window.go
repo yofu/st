@@ -4078,6 +4078,71 @@ func (stw *Window) exmode(command string) error {
 			}
 			otp = st.AddCR(otp)
 			otp.WriteTo(w)
+		case abbrev.For("hk/you", cname):
+			if usage {
+				stw.addHistory(":hkyou h b tw tf")
+				return nil
+			}
+			if narg < 5 {
+				return st.NotEnoughArgs(":hkyou")
+			}
+			al, err := st.NewHKYOU(args[1:5])
+			if err != nil {
+				return err
+			}
+			stw.ShapeData(al)
+		case abbrev.For("hw/eak", cname):
+			if usage {
+				stw.addHistory(":hweak h b tw tf")
+				return nil
+			}
+			if narg < 5 {
+				return st.NotEnoughArgs(":hweak")
+			}
+			al, err := st.NewHWEAK(args[1:5])
+			if err != nil {
+				return err
+			}
+			stw.ShapeData(al)
+		case abbrev.For("rp/ipe", cname):
+			if usage {
+				stw.addHistory(":rpipe h b tw tf")
+				return nil
+			}
+			if narg < 5 {
+				return st.NotEnoughArgs(":rpipe")
+			}
+			al, err := st.NewRPIPE(args[1:5])
+			if err != nil {
+				return err
+			}
+			stw.ShapeData(al)
+		case abbrev.For("cp/ipe", cname):
+			if usage {
+				stw.addHistory(":cpipe d t")
+				return nil
+			}
+			if narg < 3 {
+				return st.NotEnoughArgs(":cpipe")
+			}
+			al, err := st.NewCPIPE(args[1:3])
+			if err != nil {
+				return err
+			}
+			stw.ShapeData(al)
+		case abbrev.For("pla/te", cname):
+			if usage {
+				stw.addHistory(":plate h b")
+				return nil
+			}
+			if narg < 3 {
+				return st.NotEnoughArgs(":plate")
+			}
+			al, err := st.NewPLATE(args[1:3])
+			if err != nil {
+				return err
+			}
+			stw.ShapeData(al)
 		case abbrev.For("el/em", cname):
 			if usage {
 				stw.addHistory(":elem [elemcode,sect sectcode,etype]")
@@ -4642,24 +4707,9 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory(":section sectcode")
 				return nil
 			}
-			show := func(sec *st.Sect) {
-				var tb *TextBox
-				if t, tok := stw.TextBox["SECTION"]; tok {
-					tb = t
-				} else {
-					tb = NewTextBox()
-					tb.Hide = false
-					tb.Position = []float64{stw.CanvasSize[0] - 400.0, stw.CanvasSize[1] - 30.0}
-					stw.TextBox["SECTION"] = tb
-				}
-				tb.Value = strings.Split(sec.InpString(), "\n")
-				if al, ok := stw.Frame.Allows[sec.Num]; ok {
-					tb.Value = append(tb.Value, strings.Split(al.String(), "\n")...)
-				}
-			}
 			if narg < 2 {
 				if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
-					show(stw.SelectElem[0].Sect)
+					stw.SectionData(stw.SelectElem[0].Sect)
 					return nil
 				}
 				if t, tok := stw.TextBox["SECTION"]; tok {
@@ -4679,7 +4729,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			snum := int(tmp)
 			if sec, ok := stw.Frame.Sects[snum]; ok {
-				show(sec)
+				stw.SectionData(sec)
 			} else {
 				return errors.New(fmt.Sprintf(":section SECT %d doesn't exist", snum))
 			}
@@ -5792,6 +5842,45 @@ func (stw *Window) PasteClipboard() error {
 		stw.EscapeCB()
 	})
 	return nil
+}
+
+func (stw *Window) ShapeData (sh st.Shape) {
+	var tb *TextBox
+	if t, tok := stw.TextBox["SHAPE"]; tok {
+		tb = t
+	} else {
+		tb = NewTextBox()
+		tb.Hide = false
+		tb.Position = []float64{stw.CanvasSize[0] - 300.0, 200.0}
+		stw.TextBox["SHAPE"] = tb
+	}
+	var otp bytes.Buffer
+	otp.WriteString(fmt.Sprintf("%s\n", sh.String()))
+	otp.WriteString(fmt.Sprintf("A   = %10.4f [cm2]\n", sh.A()))
+	otp.WriteString(fmt.Sprintf("Asx = %10.4f [cm2]\n", sh.Asx()))
+	otp.WriteString(fmt.Sprintf("Asy = %10.4f [cm2]\n", sh.Asy()))
+	otp.WriteString(fmt.Sprintf("Ix  = %10.4f [cm4]\n", sh.Ix()))
+	otp.WriteString(fmt.Sprintf("Iy  = %10.4f [cm4]\n", sh.Iy()))
+	otp.WriteString(fmt.Sprintf("J   = %10.4f [cm4]\n", sh.J()))
+	otp.WriteString(fmt.Sprintf("Zx  = %10.4f [cm3]\n", sh.Zx()))
+	otp.WriteString(fmt.Sprintf("Zy  = %10.4f [cm3]\n", sh.Zy()))
+	tb.Value = strings.Split(otp.String(), "\n")
+}
+
+func (stw *Window) SectionData (sec *st.Sect) {
+	var tb *TextBox
+	if t, tok := stw.TextBox["SECTION"]; tok {
+		tb = t
+	} else {
+		tb = NewTextBox()
+		tb.Hide = false
+		tb.Position = []float64{stw.CanvasSize[0] - 400.0, stw.CanvasSize[1] - 30.0}
+		stw.TextBox["SECTION"] = tb
+	}
+	tb.Value = strings.Split(sec.InpString(), "\n")
+	if al, ok := stw.Frame.Allows[sec.Num]; ok {
+		tb.Value = append(tb.Value, strings.Split(al.String(), "\n")...)
+	}
 }
 
 func SplitNums(nums string) []int {
