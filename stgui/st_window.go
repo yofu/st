@@ -5019,7 +5019,15 @@ func (stw *Window) exmode(command string) error {
 				return err
 			}
 		case abbrev.For("a/rclm/001/", cname):
-			stw.Frame.Arclms["L"].Arclm001()
+			var sol string
+			if s, ok := argdict["SOLVER"]; ok {
+				sol = s
+				stw.addHistory(fmt.Sprintf("SOLVER: %s", sol))
+			} else {
+				sol = "LLS"
+				stw.addHistory("SOLVER: LLS")
+			}
+			stw.Frame.Arclms["L"].Arclm001(sol)
 		}
 	} else {
 		switch {

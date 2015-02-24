@@ -1041,16 +1041,15 @@ func (ll *LLSMatrix) CG(vec []float64) []float64 {
 	x := make([]float64, size)
 	r := make([]float64, size)
 	p := make([]float64, size)
-	rand.Seed(int64(time.Now().Nanosecond()))
 	for i := 0; i < size; i++ {
-		x[i] = rand.Float64()
+		x[i] = 0.0
 		r[i] = vec[i]
 		p[i] = vec[i]
 	}
 	bnorm := Dot(vec, vec, size)
 	lnorm := 0.0
 	rnorm := Dot(r, r, size)
-	for k := 0; k < size; k++ {
+	for {
 		q := ll.MulV(p)
 		alpha = rnorm / Dot(p, q, size)
 		lnorm = rnorm
@@ -1059,9 +1058,8 @@ func (ll *LLSMatrix) CG(vec []float64) []float64 {
 			r[i] -= alpha * q[i]
 		}
 		rnorm = Dot(r, r, size)
-		fmt.Printf("%25.18f\n", rnorm/bnorm)
-		if rnorm/bnorm < 1e-12 {
-			fmt.Println(k)
+		// fmt.Printf("%25.18f\n", rnorm/bnorm)
+		if rnorm/bnorm < 1e-16 {
 			return x
 		}
 		beta = rnorm / lnorm

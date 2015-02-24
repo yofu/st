@@ -18,10 +18,6 @@ const (
 	LLS_CG
 )
 
-const (
-	SOLVER = LLS_CG
-)
-
 type Frame struct {
 	Sects []*Sect
 	Nodes []*Node
@@ -165,7 +161,18 @@ func (frame *Frame) AssemGlobalMatrix() (*matrix.COOMatrix, []float64, error) { 
 	return gmtx, gvct, nil
 }
 
-func (frame *Frame) Arclm001() error { // TODO: speed up
+func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
+	var solver int
+	switch strings.ToUpper(sol) {
+	default:
+		solver = LLS
+	case "CRS":
+		solver = CRS
+	case "LLS":
+		solver = LLS
+	case "CG":
+		solver = LLS_CG
+	}
 	var otp bytes.Buffer
 	start := time.Now()
 	gmtx, gvct, err := frame.AssemGlobalMatrix()
@@ -193,7 +200,7 @@ func (frame *Frame) Arclm001() error { // TODO: speed up
 	end = time.Now()
 	fmt.Printf("VEC: %fsec\n", (end.Sub(start)).Seconds())
 	var answers [][]float64
-	switch SOLVER {
+	switch solver {
 	case CRS:
 		mtx := gmtx.ToCRS(csize, conf)
 		end = time.Now()
@@ -209,8 +216,6 @@ func (frame *Frame) Arclm001() error { // TODO: speed up
 		end = time.Now()
 		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
 	case LLS_CG:
-		dbg, _ := os.Create("debug.txt")
-		os.Stdout = dbg
 		mtx := gmtx.ToLLS(csize, conf)
 		end = time.Now()
 		fmt.Printf("ToLLS: %fsec\n", (end.Sub(start)).Seconds())
