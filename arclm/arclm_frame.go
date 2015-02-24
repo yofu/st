@@ -210,8 +210,6 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 		end = time.Now()
 		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
 	case CRS_CG:
-		dbg, _ := os.Create("debug.txt")
-		os.Stdout = dbg
 		mtx := gmtx.ToCRS(csize, conf)
 		end = time.Now()
 		fmt.Printf("ToCRS: %fsec\n", (end.Sub(start)).Seconds())
@@ -229,6 +227,8 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 		end = time.Now()
 		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
 	case LLS_CG:
+		dbg, _ := os.Create("debug.txt")
+		os.Stdout = dbg
 		mtx := gmtx.ToLLS(csize, conf)
 		end = time.Now()
 		fmt.Printf("ToLLS: %fsec\n", (end.Sub(start)).Seconds())

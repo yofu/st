@@ -934,6 +934,59 @@ func (ll *LLSMatrix) LDLT() *LLSMatrix {
 	return ll
 }
 
+func (ll *LLSMatrix) ILDLT() *LLSMatrix {
+	var n *LLSNode
+	size := ll.Size
+	for col := 0; col < size; col++ {
+		n = ll.diag[col]
+		w := 1.0 / n.value
+		for {
+			n = n.down
+			if n == nil {
+				break
+			}
+			n.value *= w
+		}
+		n = ll.diag[col]
+		for {
+			n = n.down
+			if n == nil {
+				break
+			}
+			v := ll.diag[col].value * n.value
+			ni := n
+			nj := ll.diag[n.row]
+			for {
+				if ni == nil {
+					break
+				}
+				ci := ni.row
+				val := -v * ni.value
+				if nj.row == ci {
+					nj.value += val
+				} else if nj.row < ci {
+					for {
+						if nj.down == nil {
+							break
+						}
+						if nj.down.row == ci {
+							nj.down.value += val
+							nj = nj.down
+							break
+						} else {
+							nj = nj.down
+							break
+						}
+						nj = nj.down
+					}
+				}
+				ni = ni.down
+			}
+		}
+	}
+	return ll
+}
+
 func (ll *LLSMatrix) DiagUp() {
 	var n *LLSNode
 	for col := 0; col < ll.Size; col++ {
@@ -1006,7 +1059,6 @@ func (ll *LLSMatrix) Solve(vecs ...[]float64) [][]float64 {
 	return rtn
 }
 
-// TODO: test
 func (ll *LLSMatrix) MulV(vec []float64) []float64 {
 	var n *LLSNode
 	rtn := make([]float64, ll.Size)
@@ -1062,6 +1114,58 @@ func (ll *LLSMatrix) CG(vec []float64) []float64 {
 		beta = rnorm / lnorm
 		for i := 0; i < size; i++ {
 			p[i] = r[i] + beta*p[i]
+		}
+	}
+	return x
+}
+
+// TODO: test
+func (ll *LLSMatrix) PCG(vec []float64) []float64 {
+	size := ll.Size
+	C := ll.ILDLT()
+	C.DiagUp()
+	var mu, nu, alpha, beta float64
+	x := make([]float64, size)
+	r := make([]float64, size)
+	p := make([]float64, size)
+	for i := 0; i < size; i++ {
+		x[i] = 0.0
+		r[i] = vec[i]
+		p[i] = vec[i]
+	}
+	cct := func (mat *LLSMatrix, v []float64) []float64 {
+		v = mat.FELower(v)
+		for i := 0; i < size; i++ {
+			v[i] /= mat.Query(i, i)
+		}
+		v = mat.BSUpper(v)
+		return v
+	}
+	p = cct(C, p)
+	lo := Dot(r, p, size)
+	bnorm := Dot(vec, vec, size)
+	rnorm := Dot(r, r, size)
+	var q []float64
+	for {
+		q = ll.MulV(p)
+		nu = Dot(p, q, size)
+		alpha = rnorm / nu
+		for i := 0; i < size; i++ {
+			x[i] += alpha * p[i]
+			r[i] -= alpha * q[i]
+			q[i] = r[i]
+		}
+		rnorm = Dot(r, r, size)
+		// fmt.Printf("%25.18f\n", rnorm/bnorm)
+		if rnorm/bnorm < 1e-16 {
+			return x
+		}
+		q = cct(C, q)
+		mu = Dot(q, r, size)
+		beta = mu / lo
+		lo = mu
+		for i := 0; i < size; i++ {
+			p[i] = q[i] + beta*p[i]
 		}
 	}
 	return x
