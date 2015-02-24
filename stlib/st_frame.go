@@ -2692,7 +2692,8 @@ func (frame *Frame) ElemDuplication(ignoresect []int) map[*Elem]*Elem {
 		}
 	}
 	elems = elems[:enum]
-	sort.Sort(ElemBySumEnod{elems})
+	sort.Sort(ElemByNum{elems})
+	sort.Stable(ElemBySumEnod{elems})
 	for i, el := range elems {
 		if _, ok := dups[el]; ok {
 			continue
