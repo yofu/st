@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	CRS = iota
+	CRS    = iota
+	CRS_CG
 	LLS
 	LLS_CG
 )
@@ -167,7 +168,7 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 	default:
 		solver = LLS
 	case "CRS":
-		solver = CRS
+		solver = CRS_CG
 	case "LLS":
 		solver = LLS
 	case "CG":
@@ -206,6 +207,18 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 		end = time.Now()
 		fmt.Printf("ToCRS: %fsec\n", (end.Sub(start)).Seconds())
 		answers = mtx.Solve(vecs...)
+		end = time.Now()
+		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
+	case CRS_CG:
+		dbg, _ := os.Create("debug.txt")
+		os.Stdout = dbg
+		mtx := gmtx.ToCRS(csize, conf)
+		end = time.Now()
+		fmt.Printf("ToCRS: %fsec\n", (end.Sub(start)).Seconds())
+		answers = make([][]float64, len(vecs))
+		for i, vec := range vecs {
+			answers[i] = mtx.CG(vec)
+		}
 		end = time.Now()
 		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
 	case LLS:
