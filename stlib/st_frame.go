@@ -544,7 +544,7 @@ func (frame *Frame) ParseSect(lis []string) (*Sect, error) {
 			num, err = strconv.ParseInt(lis[i+1], 10, 64)
 			s.Num = int(num)
 		case "SNAME":
-			s.Name, err = lis[i+1], nil
+			s.Name = ToUtf8string(lis[i+1])
 		case "FIG":
 			err = s.ParseFig(frame, tmp)
 			tmp = lis[i : i+2]
