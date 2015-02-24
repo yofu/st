@@ -3792,6 +3792,7 @@ func (stw *Window) exmode(command string) error {
 			if usage {
 				stw.addHistory(":node nnum")
 				stw.addHistory(":node [x,y,z] [>,<,=] coord")
+				stw.addHistory(":node {confed/pinned/fixed/free}")
 				return nil
 			}
 			stw.Deselect()
@@ -3876,6 +3877,32 @@ func (stw *Window) exmode(command string) error {
 							}
 							return false
 						}
+					}
+				case abbrev.For("CONF/ED", condition):
+					f = func(n *st.Node) bool {
+						for i:=0; i<6; i++ {
+							if n.Conf[i] {
+								return true
+							}
+						}
+						return false
+					}
+				case condition == "FREE":
+					f = func(n *st.Node) bool {
+						for i:=0; i<6; i++ {
+							if n.Conf[i] {
+								return false
+							}
+						}
+						return true
+					}
+				case abbrev.For("PIN/NED", condition):
+					f = func(n *st.Node) bool {
+						return n.IsPinned()
+					}
+				case abbrev.For("FIX/ED", condition):
+					f = func(n *st.Node) bool {
+						return n.IsFixed()
 					}
 				}
 				stw.SelectNode = make([]*st.Node, len(stw.Frame.Nodes))
