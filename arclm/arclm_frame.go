@@ -15,10 +15,11 @@ import (
 const (
 	CRS = iota
 	LLS
+	LLS_CG
 )
 
 const (
-	SOLVER = LLS
+	SOLVER = LLS_CG
 )
 
 type Frame struct {
@@ -205,6 +206,19 @@ func (frame *Frame) Arclm001() error { // TODO: speed up
 		end = time.Now()
 		fmt.Printf("ToLLS: %fsec\n", (end.Sub(start)).Seconds())
 		answers = mtx.Solve(vecs...)
+		end = time.Now()
+		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
+	case LLS_CG:
+		dbg, _ := os.Create("debug.txt")
+		os.Stdout = dbg
+		mtx := gmtx.ToLLS(csize, conf)
+		end = time.Now()
+		fmt.Printf("ToLLS: %fsec\n", (end.Sub(start)).Seconds())
+		mtx.DiagUp()
+		answers = make([][]float64, len(vecs))
+		for i, vec := range vecs {
+			answers[i] = mtx.CG(vec)
+		}
 		end = time.Now()
 		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
 	}

@@ -97,6 +97,30 @@ func (co *COOMatrix) Add(row, col int, val float64) {
 	}
 }
 
+func (co *COOMatrix) MulV(csize int, conf []bool, vec []float64) []float64 {
+	size := co.Size - csize
+	rtn := make([]float64, size)
+	rind := 0
+	for row := 0; row < co.Size; row++ {
+		if conf[row] {
+			rind++
+			continue
+		}
+		cind := 0
+		if rdata, rok := co.data[row]; rok {
+			for col := 0; col < co.Size; col++ {
+				if conf[col] {
+					cind++
+					continue
+				}
+				if val, cok := rdata[col]; cok {
+					rtn[row-rind] += vec[col-cind] * val
+				}
+			}
+		}
+	}
+	return rtn
+}
 // func (co *COOMatrix) ToCRS() *CRSMatrix {
 // 	nz := 0
 // 	rtn := NewCRSMatrix(co.Size, co.nz)
@@ -996,7 +1020,7 @@ func (ll *LLSMatrix) MulV(vec []float64) []float64 {
 			if n == nil {
 				break
 			}
-			rtn[n.row] += vec[i] * n.value
+			rtn[i] += vec[n.column] * n.value
 		}
 		n = ll.diag[i]
 		rtn[i] += vec[i] * n.value
@@ -1005,7 +1029,7 @@ func (ll *LLSMatrix) MulV(vec []float64) []float64 {
 			if n == nil {
 				break
 			}
-			rtn[n.row] += vec[i] * n.value
+			rtn[i] += vec[n.row] * n.value
 		}
 	}
 	return rtn
@@ -1035,6 +1059,7 @@ func (ll *LLSMatrix) CG(vec []float64) []float64 {
 			r[i] -= alpha * q[i]
 		}
 		rnorm = Dot(r, r, size)
+		fmt.Printf("%25.18f\n", rnorm/bnorm)
 		if rnorm/bnorm < 1e-12 {
 			fmt.Println(k)
 			return x
