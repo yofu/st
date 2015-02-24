@@ -2560,18 +2560,41 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelFGColor)
 		}
 	case abbrev.For("st/ress", key):
+		if usage {
+			stw.addHistory("'stress [etype/sectcode] [period] [stressname]")
+			return nil
+		}
 		l := len(lis)
 		if l < 2 {
-			return st.NotEnoughArgs("STRESS")
+			if un {
+				for etype:=st.COLUMN; etype<=st.SLAB; etype++ {
+					for i := 0; i < 6; i++ {
+						stw.StressOff(etype, uint(i))
+					}
+				}
+				return nil
+			} else {
+				return st.NotEnoughArgs("STRESS")
+			}
 		}
 		etype := -1
 		var sects []int
-		et := strings.ToUpper(lis[1])
-		for i, e := range st.ETYPES {
-			if et == e {
-				etype = i
-				break
-			}
+		et := strings.ToLower(lis[1])
+		switch {
+		case abbrev.For("co/lumn", et):
+			etype = st.COLUMN
+		case abbrev.For("gi/rder", et):
+			etype = st.GIRDER
+		case abbrev.For("br/ace", et):
+			etype = st.BRACE
+		case abbrev.For("wb/race", et):
+			etype = st.WBRACE
+		case abbrev.For("sb/race", et):
+			etype = st.SBRACE
+		case abbrev.For("wa/ll", et):
+			etype = st.WALL
+		case abbrev.For("sl/ab", et):
+			etype = st.SLAB
 		}
 		if etype == -1 {
 			sectnum := regexp.MustCompile("^ *([0-9]+) *$")
