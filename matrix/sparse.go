@@ -985,6 +985,68 @@ func (ll *LLSMatrix) Solve(vecs ...[]float64) [][]float64 {
 	return rtn
 }
 
+// TODO: test
+func (ll *LLSMatrix) MulV(vec []float64) []float64 {
+	var n *LLSNode
+	rtn := make([]float64, ll.Size)
+	for i := 0; i < ll.Size; i++ {
+		n = ll.diag[i]
+		for {
+			n = n.up
+			if n == nil {
+				break
+			}
+			rtn[n.row] += vec[i] * n.value
+		}
+		n = ll.diag[i]
+		rtn[i] += vec[i] * n.value
+		for {
+			n = n.down
+			if n == nil {
+				break
+			}
+			rtn[n.row] += vec[i] * n.value
+		}
+	}
+	return rtn
+}
+
+func (ll *LLSMatrix) CG(vec []float64) []float64 {
+	size := ll.Size
+	var alpha, beta float64
+	x := make([]float64, size)
+	r := make([]float64, size)
+	p := make([]float64, size)
+	rand.Seed(int64(time.Now().Nanosecond()))
+	for i := 0; i < size; i++ {
+		x[i] = rand.Float64()
+		r[i] = vec[i]
+		p[i] = vec[i]
+	}
+	bnorm := Dot(vec, vec, size)
+	lnorm := 0.0
+	rnorm := Dot(r, r, size)
+	for k := 0; k < size; k++ {
+		q := ll.MulV(p)
+		alpha = rnorm / Dot(p, q, size)
+		lnorm = rnorm
+		for i := 0; i < size; i++ {
+			x[i] += alpha * p[i]
+			r[i] -= alpha * q[i]
+		}
+		rnorm = Dot(r, r, size)
+		if rnorm/bnorm < 1e-12 {
+			fmt.Println(k)
+			return x
+		}
+		beta = rnorm / lnorm
+		for i := 0; i < size; i++ {
+			p[i] = r[i] + beta*p[i]
+		}
+	}
+	return x
+}
+
 func Dot(x, y []float64, size int) float64 {
 	rtn := 0.0
 	for i := 0; i < size; i++ {
