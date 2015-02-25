@@ -1120,9 +1120,9 @@ func (ll *LLSMatrix) CG(vec []float64) []float64 {
 }
 
 // TODO: test
-func (ll *LLSMatrix) PCG(vec []float64) []float64 {
+func (ll *LLSMatrix) PCG(C *LLSMatrix, vec []float64) []float64 {
 	size := ll.Size
-	C = ll.ILDLT()
+	C = C.ILDLT()
 	C.DiagUp()
 	var mu, nu, alpha, beta float64
 	x := make([]float64, size)
@@ -1156,7 +1156,7 @@ func (ll *LLSMatrix) PCG(vec []float64) []float64 {
 			q[i] = r[i]
 		}
 		rnorm = Dot(r, r, size)
-		// fmt.Printf("%25.18f\n", rnorm/bnorm)
+		fmt.Printf("%25.18f\n", rnorm/bnorm)
 		if rnorm/bnorm < 1e-16 {
 			return x
 		}

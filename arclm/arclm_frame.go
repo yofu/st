@@ -17,6 +17,7 @@ const (
 	CRS_CG
 	LLS
 	LLS_CG
+	LLS_PCG
 )
 
 type Frame struct {
@@ -173,6 +174,8 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 		solver = LLS
 	case "CG":
 		solver = LLS_CG
+	case "PCG":
+		solver = LLS_PCG
 	}
 	var otp bytes.Buffer
 	start := time.Now()
@@ -236,6 +239,20 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 		answers = make([][]float64, len(vecs))
 		for i, vec := range vecs {
 			answers[i] = mtx.CG(vec)
+		}
+		end = time.Now()
+		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
+	case LLS_PCG:
+		dbg, _ := os.Create("debug.txt")
+		os.Stdout = dbg
+		mtx := gmtx.ToLLS(csize, conf)
+		C := gmtx.ToLLS(csize, conf)
+		end = time.Now()
+		fmt.Printf("ToLLS: %fsec\n", (end.Sub(start)).Seconds())
+		mtx.DiagUp()
+		answers = make([][]float64, len(vecs))
+		for i, vec := range vecs {
+			answers[i] = mtx.PCG(C,vec)
 		}
 		end = time.Now()
 		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
