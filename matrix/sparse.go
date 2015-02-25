@@ -1122,7 +1122,7 @@ func (ll *LLSMatrix) CG(vec []float64) []float64 {
 // TODO: test
 func (ll *LLSMatrix) PCG(vec []float64) []float64 {
 	size := ll.Size
-	C := ll.ILDLT()
+	C = ll.ILDLT()
 	C.DiagUp()
 	var mu, nu, alpha, beta float64
 	x := make([]float64, size)

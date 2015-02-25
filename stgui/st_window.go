@@ -4526,6 +4526,42 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 			stw.Snapshot()
+		case abbrev.For("resul/tant", cname):
+			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+				return errors.New(":resultant no selected elem")
+			}
+			vec := make([]float64, 3)
+			elems := make([]*st.Elem, len(stw.SelectElem))
+			enum := 0
+			for _, el := range stw.SelectElem {
+				if el == nil || el.Lock || !el.IsLineElem() {
+					continue
+				}
+				elems[enum] = el
+				enum++
+			}
+			elems = elems[:enum]
+			en, err := st.CommonEnod(elems...)
+			if err != nil {
+				return err
+			}
+			if en == nil || len(en) == 0 {
+				return errors.New(":resultant no common enod")
+			}
+			axis := [][]float64{st.XAXIS, st.YAXIS, st.ZAXIS}
+			per := stw.Frame.Show.Period
+			for _, el := range elems {
+				for i:=0; i<3; i++ {
+					vec[i] += el.VectorStress(per, en[0].Num, axis[i])
+				}
+			}
+			v := 0.0
+			for i:=0; i<3; i++ {
+				v += vec[i] * vec[i]
+			}
+			v = math.Sqrt(v)
+			stw.addHistory(fmt.Sprintf("NODE: %d", en[0].Num))
+			stw.addHistory(fmt.Sprintf("X: %.3f Y: %.3f Z: %.3f F: %.3f", vec[0], vec[1], vec[2], v))
 		case abbrev.For("prest/ress", cname):
 			if usage {
 				stw.addHistory(":prestress value")

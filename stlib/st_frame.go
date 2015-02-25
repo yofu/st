@@ -2829,6 +2829,37 @@ func (frame *Frame) Cat(e1, e2 *Elem, n *Node) error {
 	return nil
 }
 
+func CommonEnod(els ...*Elem) ([]*Node, error) {
+	if len(els) < 2 {
+		return nil, errors.New("too few elems")
+	}
+	num := len(els[0].Enod)
+	rtn := make([]*Node, num)
+	for i:=0; i<num; i++ {
+		rtn[i] = els[0].Enod[i]
+	}
+	for _, el := range els[1:] {
+		ok := make([]bool, len(rtn))
+		for _, en := range el.Enod {
+			for i, en2 := range rtn {
+				if en == en2 {
+					ok[i] = true
+				}
+			}
+		}
+		size := 0
+		tmp := make([]*Node, len(rtn))
+		for i:=0; i<len(rtn); i++ {
+			if ok[i] {
+				tmp[size] = rtn[i]
+				size++
+			}
+		}
+		rtn = tmp[:size]
+	}
+	return rtn, nil
+}
+
 func (frame *Frame) JoinLineElem(e1, e2 *Elem, parallel bool) error {
 	if !e1.IsLineElem() || !e2.IsLineElem() {
 		return NotLineElem("JoinLineElem")

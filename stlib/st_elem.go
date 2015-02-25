@@ -1760,7 +1760,7 @@ func (elem *Elem) VectorStress(period string, nnum int, vec []float64) float64 {
 		sign = 1 - nnum*2
 		nnum = elem.Enod[nnum].Num
 	} else {
-		ind, err = elem.RefNnum(nnum)
+		ind, err = elem.EnodIndex(nnum)
 		if err != nil {
 			return 0.0
 		}
