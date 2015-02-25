@@ -179,9 +179,12 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 	}
 	var otp bytes.Buffer
 	start := time.Now()
+	laptime := func (message string) {
+		end := time.Now()
+		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+	}
 	gmtx, gvct, err := frame.AssemGlobalMatrix()
-	end := time.Now()
-	fmt.Printf("ASSEM: %fsec\n", (end.Sub(start)).Seconds())
+	laptime("ASSEM")
 	if err != nil {
 		return err
 	}
@@ -201,61 +204,48 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 		}
 	}
 	vecs[0] = vecs[0][:size-csize]
-	end = time.Now()
-	fmt.Printf("VEC: %fsec\n", (end.Sub(start)).Seconds())
+	laptime("VEC")
 	var answers [][]float64
 	switch solver {
 	case CRS:
 		mtx := gmtx.ToCRS(csize, conf)
-		end = time.Now()
-		fmt.Printf("ToCRS: %fsec\n", (end.Sub(start)).Seconds())
+		laptime("ToCRS")
 		answers = mtx.Solve(vecs...)
-		end = time.Now()
-		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
+		laptime("Solve")
 	case CRS_CG:
 		mtx := gmtx.ToCRS(csize, conf)
-		end = time.Now()
-		fmt.Printf("ToCRS: %fsec\n", (end.Sub(start)).Seconds())
 		answers = make([][]float64, len(vecs))
 		for i, vec := range vecs {
 			answers[i] = mtx.CG(vec)
 		}
-		end = time.Now()
-		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
 	case LLS:
 		mtx := gmtx.ToLLS(csize, conf)
-		end = time.Now()
-		fmt.Printf("ToLLS: %fsec\n", (end.Sub(start)).Seconds())
+		laptime("ToLLS")
 		answers = mtx.Solve(vecs...)
-		end = time.Now()
-		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
+		laptime("Solve")
 	case LLS_CG:
 		dbg, _ := os.Create("debug.txt")
 		os.Stdout = dbg
 		mtx := gmtx.ToLLS(csize, conf)
-		end = time.Now()
-		fmt.Printf("ToLLS: %fsec\n", (end.Sub(start)).Seconds())
 		mtx.DiagUp()
+		laptime("ToLLS")
 		answers = make([][]float64, len(vecs))
 		for i, vec := range vecs {
 			answers[i] = mtx.CG(vec)
 		}
-		end = time.Now()
-		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
+		laptime("Solve")
 	case LLS_PCG:
 		dbg, _ := os.Create("debug.txt")
 		os.Stdout = dbg
 		mtx := gmtx.ToLLS(csize, conf)
 		C := gmtx.ToLLS(csize, conf)
-		end = time.Now()
-		fmt.Printf("ToLLS: %fsec\n", (end.Sub(start)).Seconds())
 		mtx.DiagUp()
+		laptime("ToLLS")
 		answers = make([][]float64, len(vecs))
 		for i, vec := range vecs {
 			answers[i] = mtx.PCG(C,vec)
 		}
-		end = time.Now()
-		fmt.Printf("Solve: %fsec\n", (end.Sub(start)).Seconds())
+		laptime("Solve")
 	}
 	for nans, ans := range answers {
 		vec := make([]float64, size)
