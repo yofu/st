@@ -3729,6 +3729,9 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 				if st, ok := el.Stress[y1]; ok {
 					ny1 = st[el.Enod[0].Num][0]
 				}
+				if st, ok := el.Stress[y2]; ok {
+					ny2 = st[el.Enod[0].Num][0]
+				}
 				cond.Length = el.Length() * 100.0 // [cm]
 				otp.WriteString(strings.Repeat("-", 202))
 				otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, al.TypeString(), cond.Length, cond.Length, cond.Length))

@@ -1975,6 +1975,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 
 func Rate2(sr SectionRate, stress float64, cond *Condition) (float64, string, error) {
 	var rate float64
+	cond.Compression = stress >= 0.0
 	na := sr.Na(cond)
 	if cond.Verbose {
 		fmt.Printf("# N= %.3f / Na= %.3f (COMPRESSION)\n", stress, na)
