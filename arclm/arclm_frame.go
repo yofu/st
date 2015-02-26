@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/yofu/st/matrix"
+	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -163,6 +164,115 @@ func (frame *Frame) AssemGlobalMatrix() (*matrix.COOMatrix, []float64, error) { 
 	return gmtx, gvct, nil
 }
 
+func (frame *Frame) AssemConf(gvct []float64, safety float64) (int, []bool, []float64) {
+	size := 6 * len(frame.Nodes)
+	csize := 0
+	conf := make([]bool, size)
+	vec := make([]float64, size)
+	for i, n := range frame.Nodes {
+		for j := 0; j < 6; j++ {
+			if n.Conf[j] {
+				conf[6*i+j] = true
+				csize++
+			} else {
+				vec[6*i+j-csize] = gvct[6*i+j] + safety * n.Force[j]
+			}
+		}
+	}
+	return csize, conf, vec[:size-csize]
+}
+
+func (frame *Frame) FillConf(vec []float64) []float64 {
+	ind := 0
+	rtn := make([]float64, 6 * len(frame.Nodes))
+	for i, n := range frame.Nodes {
+		for j := 0; j < 6; j++ {
+			if n.Conf[j] {
+				ind++
+				continue
+			}
+			rtn[6*i+j] = vec[6*i+j-ind]
+		}
+	}
+	return rtn
+}
+
+func (frame *Frame) UpdateStress(vec []float64) ([][]float64, error) {
+	rtn := make([][]float64, len(frame.Elems))
+	for enum, el := range frame.Elems {
+		gdisp := make([]float64, 12)
+		for i := 0; i < 2; i++ {
+			for j := 0; j < 6; j++ {
+				gdisp[6*i+j] = vec[6*el.Enod[i].Index+j]
+			}
+		}
+		df, err := el.ElemStress(gdisp)
+		if err != nil {
+			return nil, err
+		}
+		rtn[enum] = df
+	}
+	return rtn, nil
+}
+
+func (frame *Frame) UpdateReaction(gmtx *matrix.COOMatrix, vec []float64) []float64 {
+	rtn := make([]float64, 6 * len(frame.Nodes))
+	for i, n := range frame.Nodes {
+		for j := 0; j < 6; j++ {
+			if n.Conf[j] {
+				val := 0.0
+				for k := 0; k < gmtx.Size; k++ {
+					stiff := gmtx.Query(6*i+j, k)
+					val += stiff * vec[k]
+				}
+				n.Reaction[j] += val
+				rtn[6*i+j] = val
+			}
+		}
+	}
+	return rtn
+}
+
+func (frame *Frame) UpdateForm(vec []float64) {
+	for i, n := range frame.Nodes {
+		for j := 0; j < 6; j++ {
+			n.Disp[j] += vec[6*i+j]
+		}
+	}
+}
+
+func (frame *Frame) WriteTo(w io.Writer) {
+	var otp bytes.Buffer
+	var rea bytes.Buffer
+	otp.WriteString("\n\n** FORCES OF MEMBER\n\n")
+	otp.WriteString("  NO   KT NODE         N        Q1        Q2        MT        M1        M2\n\n")
+	for _, el := range frame.Elems {
+		otp.WriteString(el.OutputStress())
+	}
+	otp.WriteString("\n\n** DISPLACEMENT OF NODE\n\n")
+	otp.WriteString("  NO          U          V          W         KSI         ETA       OMEGA\n\n")
+	rea.WriteString("\n\n** REACTION\n\n")
+	rea.WriteString("  NO  DIRECTION              R    NC\n\n")
+	for _, n := range frame.Nodes {
+		otp.WriteString(fmt.Sprintf("%4d", n.Num))
+		for j := 0; j < 3; j++ {
+			otp.WriteString(fmt.Sprintf(" %10.6f", n.Disp[j]))
+			if n.Conf[j] {
+				rea.WriteString(fmt.Sprintf("%4d %10d %14.6f     1\n", n.Num, j+1, n.Reaction[j]))
+			}
+		}
+		for j := 3; j < 6; j++ {
+			otp.WriteString(fmt.Sprintf(" %11.7f", n.Disp[j]))
+			if n.Conf[j] {
+				rea.WriteString(fmt.Sprintf("%4d %10d %14.6f     1\n", n.Num, j+1, n.Reaction[j]))
+			}
+		}
+		otp.WriteString("\n")
+	}
+	otp.WriteTo(w)
+	rea.WriteTo(w)
+}
+
 func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 	var solver int
 	switch strings.ToUpper(sol) {
@@ -177,7 +287,6 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 	case "PCG":
 		solver = LLS_PCG
 	}
-	var otp bytes.Buffer
 	start := time.Now()
 	laptime := func (message string) {
 		end := time.Now()
@@ -188,22 +297,8 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 	if err != nil {
 		return err
 	}
-	size := 6 * len(frame.Nodes)
-	csize := 0
-	conf := make([]bool, size)
-	vecs := make([][]float64, 1)
-	vecs[0] = make([]float64, size)
-	for i, n := range frame.Nodes {
-		for j := 0; j < 6; j++ {
-			if n.Conf[j] {
-				conf[6*i+j] = true
-				csize++
-			} else {
-				vecs[0][6*i+j-csize] = gvct[6*i+j] + n.Force[j]
-			}
-		}
-	}
-	vecs[0] = vecs[0][:size-csize]
+	csize, conf, vec := frame.AssemConf(gvct, 1.0)
+	vecs := [][]float64{vec}
 	laptime("VEC")
 	var answers [][]float64
 	switch solver {
@@ -248,74 +343,19 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 		laptime("Solve")
 	}
 	for nans, ans := range answers {
-		vec := make([]float64, size)
-		ind := 0
-		for i, n := range frame.Nodes {
-			for j := 0; j < 6; j++ {
-				if n.Conf[j] {
-					ind++
-					continue
-				}
-				vec[6*i+j] = ans[6*i+j-ind]
-			}
+		vec := frame.FillConf(ans)
+		_, err := frame.UpdateStress(vec)
+		if err != nil {
+			return err
 		}
-		fmt.Println("STRESS")
-		otp.WriteString("\n\n** FORCES OF MEMBER\n\n")
-		otp.WriteString("  NO   KT NODE         N        Q1        Q2        MT        M1        M2\n\n")
-		for _, el := range frame.Elems {
-			gdisp := make([]float64, 12)
-			for i := 0; i < 2; i++ {
-				for j := 0; j < 6; j++ {
-					gdisp[6*i+j] = vec[6*el.Enod[i].Index+j]
-				}
-			}
-			_, err := el.ElemStress(gdisp)
-			if err != nil {
-				return err
-			}
-			otp.WriteString(el.OutputStress())
-		}
-		fmt.Println("DISPLACEMENT")
-		otp.WriteString("\n\n** DISPLACEMENT OF NODE\n\n")
-		otp.WriteString("  NO          U          V          W         KSI         ETA       OMEGA\n\n")
-		for i, n := range frame.Nodes {
-			otp.WriteString(fmt.Sprintf("%4d", n.Num))
-			for j := 0; j < 3; j++ {
-				otp.WriteString(fmt.Sprintf(" %10.6f", vec[6*i+j]))
-			}
-			for j := 3; j < 6; j++ {
-				otp.WriteString(fmt.Sprintf(" %11.7f", vec[6*i+j]))
-			}
-			otp.WriteString("\n")
-		}
-		fmt.Println("REACTION")
-		otp.WriteString("\n\n** REACTION\n\n")
-		otp.WriteString("  NO  DIRECTION              R    NC\n\n")
-		for i, n := range frame.Nodes {
-			for j := 0; j < 6; j++ {
-				if n.Conf[j] {
-					val := 0.0
-					for k := 0; k < gmtx.Size; k++ {
-						stiff := gmtx.Query(6*i+j, k)
-						val += stiff * vec[k]
-					}
-					n.Reaction[j] += val
-					otp.WriteString(fmt.Sprintf("%4d %10d %14.6f     1\n", n.Num, j+1, val))
-				}
-			}
-		}
-		fmt.Println("SET DISPLACEMENT")
-		for i, n := range frame.Nodes {
-			for j := 0; j < 6; j++ {
-				n.Disp[j] += vec[6*i+j]
-			}
-		}
+		frame.UpdateReaction(gmtx, vec)
+		frame.UpdateForm(vec)
 		w, err := os.Create(fmt.Sprintf("hogtxt_%02d.otp", nans))
 		if err != nil {
 			return err
 		}
 		defer w.Close()
-		otp.WriteTo(w)
+		frame.WriteTo(w)
 	}
 	return nil
 }
