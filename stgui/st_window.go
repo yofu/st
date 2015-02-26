@@ -5063,7 +5063,12 @@ func (stw *Window) exmode(command string) error {
 				sol = "LLS"
 				stw.addHistory("SOLVER: LLS")
 			}
-			stw.Frame.Arclms["L"].Arclm001(sol)
+			init := true
+			if _, ok := argdict["NOINIT"]; ok {
+				init = false
+				stw.addHistory("NO INITIALISATION")
+			}
+			stw.Frame.Arclms["L"].Arclm001(init, sol)
 		case abbrev.For("a/rclm/201/", cname):
 			var lap int
 			var safety float64
@@ -5086,7 +5091,12 @@ func (stw *Window) exmode(command string) error {
 				safety = 1.0
 			}
 			stw.addHistory(fmt.Sprintf("LAP: %d, SAFETY: %.3f", lap, safety))
-			stw.Frame.Arclms["L"].Arclm201(lap, safety)
+			init := true
+			if _, ok := argdict["NOINIT"]; ok {
+				init = false
+				stw.addHistory("NO INITIALISATION")
+			}
+			stw.Frame.Arclms["L"].Arclm201(init, lap, safety)
 		}
 	} else {
 		switch {

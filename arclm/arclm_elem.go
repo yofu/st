@@ -153,6 +153,7 @@ type Elem struct {
 	Bonds  []int
 	Strong []float64
 	Weak   []float64
+	Cmq    []float64
 	Stress []float64
 }
 
@@ -160,6 +161,7 @@ func NewElem() *Elem {
 	el := new(Elem)
 	el.Enod = make([]*Node, 2)
 	el.Bonds = make([]int, 12)
+	el.Cmq = make([]float64, 12)
 	el.Stress = make([]float64, 12)
 	return el
 }
@@ -222,6 +224,7 @@ func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error)
 		if err != nil {
 			return el, err
 		}
+		el.Cmq[i] = val
 		el.Stress[i] = val
 	}
 	return el, nil
@@ -230,8 +233,8 @@ func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error)
 func (elem *Elem) Length() float64 {
 	sum := 0.0
 	for i := 0; i < 3; i++ {
-		// sum += math.Pow((elem.Enod[1].Coord[i] + elem.Enod[1].Disp[i] - elem.Enod[0].Coord[i] - elem.Enod[0].Disp[i]), 2)
-		sum += math.Pow((elem.Enod[1].Coord[i] - elem.Enod[0].Coord[i]), 2)
+		sum += math.Pow((elem.Enod[1].Coord[i] + elem.Enod[1].Disp[i] - elem.Enod[0].Coord[i] - elem.Enod[0].Disp[i]), 2)
+		// sum += math.Pow((elem.Enod[1].Coord[i] - elem.Enod[0].Coord[i]), 2)
 	}
 	return math.Sqrt(sum)
 }
@@ -246,6 +249,7 @@ func (elem *Elem) Direction(normalize bool) []float64 {
 	}
 	for i := 0; i < 3; i++ {
 		vec[i] = (elem.Enod[1].Coord[i] + elem.Enod[1].Disp[i] - elem.Enod[0].Coord[i] - elem.Enod[0].Disp[i]) / l
+		// vec[i] = (elem.Enod[1].Coord[i] - elem.Enod[0].Coord[i]) / l
 	}
 	return vec
 }
@@ -495,6 +499,7 @@ func (elem *Elem) ModifyHinge(estiff [][]float64) ([][]float64, error) {
 	return rtn, nil
 }
 
+// TODO: Stress should be Cmq?
 func (elem *Elem) ModifyCMQ() {
 	l := elem.Length()
 	if elem.Bonds[4] == 1 && elem.Bonds[10] == 1 {
@@ -532,21 +537,35 @@ func (elem *Elem) ModifyCMQ() {
 }
 
 func (elem *Elem) AssemCMQ(tmatrix [][]float64, vec []float64, safety float64) []float64 {
-	tmp := make([]float64, 12)
 	rtn := make([]float64, len(vec))
-	for i := 0; i < 12; i++ {
-		tmp[i] = elem.Stress[i]
-	}
 	for i := 0; i < len(vec); i++ {
 		rtn[i] = vec[i]
 	}
 	tt := matrix.MatrixTranspose(tmatrix)
-	load := matrix.MatrixVector(tt, tmp)
+	load := matrix.MatrixVector(tt, elem.Cmq)
 	for i := 0; i < 2; i++ {
 		for j := 0; j < 6; j++ {
 			if !elem.Enod[i].Conf[j] {
 				ind := 6*elem.Enod[i].Index + j
 				rtn[ind] -= safety * load[6*i+j]
+			}
+		}
+	}
+	return rtn
+}
+
+func (elem *Elem) ModifyTrueForce(tmatrix [][]float64, vec []float64) []float64 {
+	rtn := make([]float64, len(vec))
+	for i := 0; i < len(vec); i++ {
+		rtn[i] = vec[i]
+	}
+	tt := matrix.MatrixTranspose(tmatrix)
+	tforce := matrix.MatrixVector(tt, elem.Stress)
+	for i := 0; i < 2; i++ {
+		for j := 0; j < 6; j++ {
+			if !elem.Enod[i].Conf[j] {
+				ind := 6*elem.Enod[i].Index + j
+				rtn[ind] -= tforce[6*i+j]
 			}
 		}
 	}

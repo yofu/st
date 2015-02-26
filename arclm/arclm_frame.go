@@ -7,6 +7,7 @@ import (
 	"github.com/yofu/st/matrix"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -123,6 +124,20 @@ func (af *Frame) ReadInput(filename string) error {
 	return nil
 }
 
+func (frame *Frame) Initialise() {
+	for _, n := range frame.Nodes {
+		for i:=0; i<6; i++ {
+			n.Disp[i] = 0.0
+			n.Reaction[i] = 0.0
+		}
+	}
+	for _, el := range frame.Elems {
+		for i:=0; i<12; i++ {
+			el.Stress[i] = el.Cmq[i]
+		}
+	}
+}
+
 func (frame *Frame) AssemGlobalMatrix(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
 	var err error
 	var tmatrix, estiff [][]float64
@@ -206,6 +221,7 @@ func (frame *Frame) AssemGlobalStiffness(safety float64) (*matrix.COOMatrix, []f
 		}
 		el.ModifyCMQ()
 		gvct = el.AssemCMQ(tmatrix, gvct, safety)
+		gvct = el.ModifyTrueForce(tmatrix, gvct)
 	}
 	return gmtx, gvct, nil
 }
@@ -319,7 +335,8 @@ func (frame *Frame) WriteTo(w io.Writer) {
 	rea.WriteTo(w)
 }
 
-func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
+func (frame *Frame) Arclm001(init bool, sol string) error { // TODO: speed up
+	frame.Initialise()
 	var solver int
 	switch strings.ToUpper(sol) {
 	default:
@@ -339,6 +356,7 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
 	gmtx, gvct, err := frame.AssemGlobalMatrix(1.0)
+	fmt.Println(gvct)
 	laptime("ASSEM")
 	if err != nil {
 		return err
@@ -406,7 +424,9 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 	return nil
 }
 
-func (frame *Frame) Arclm201(nlap int, dsafety float64) error { // TODO: speed up
+// TODO fix
+func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TODO: speed up
+	frame.Initialise()
 	start := time.Now()
 	laptime := func (message string) {
 		end := time.Now()
@@ -415,7 +435,10 @@ func (frame *Frame) Arclm201(nlap int, dsafety float64) error { // TODO: speed u
 	var err error
 	var answers [][]float64
 	var gmtx *matrix.COOMatrix
-	var gvct []float64
+	var gvct, vec []float64
+	var bnorm, rnorm float64
+	var csize int
+	var conf []bool
 	safety := 0.0
 	for lap:=0; lap<nlap; lap++ {
 		safety += dsafety
@@ -423,14 +446,18 @@ func (frame *Frame) Arclm201(nlap int, dsafety float64) error { // TODO: speed u
 			safety = 1.0
 		}
 		if lap == 0 { // K = KE
-			gmtx, gvct, err = frame.AssemGlobalMatrix(1.0)
+			gmtx, gvct, err = frame.AssemGlobalMatrix(safety)
+			csize, conf, vec = frame.AssemConf(gvct, safety)
+			bnorm = math.Sqrt(Dot(vec, vec, len(vec)))
 		} else {      // K = KE + KG
-			gmtx, gvct, err = frame.AssemGlobalStiffness(0.0)
+			gmtx, gvct, err = frame.AssemGlobalStiffness(safety)
+			csize, conf, vec = frame.AssemConf(gvct, safety)
+			rnorm = math.Sqrt(Dot(vec, vec, len(vec)))
+			fmt.Println(rnorm / bnorm)
 		}
 		if err != nil {
 			return err
 		}
-		csize, conf, vec := frame.AssemConf(gvct, safety)
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
@@ -443,7 +470,7 @@ func (frame *Frame) Arclm201(nlap int, dsafety float64) error { // TODO: speed u
 		}
 		frame.UpdateReaction(gmtx, tmp)
 		frame.UpdateForm(tmp)
-		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f", lap, nlap, safety))
+		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f", lap+1, nlap, safety))
 	}
 	w, err := os.Create("hogtxt.otp")
 	if err != nil {
