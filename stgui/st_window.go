@@ -5064,6 +5064,29 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory("SOLVER: LLS")
 			}
 			stw.Frame.Arclms["L"].Arclm001(sol)
+		case abbrev.For("a/rclm/201/", cname):
+			var lap int
+			var safety float64
+			if l, ok := argdict["LAP"]; ok {
+				tmp, err := strconv.ParseInt(l, 10, 64)
+				if err != nil {
+					return err
+				}
+				lap = int(tmp)
+			} else {
+				lap = 1
+			}
+			if s, ok := argdict["SAFETY"]; ok {
+				tmp, err := strconv.ParseFloat(s, 64)
+				if err != nil {
+					return err
+				}
+				safety = tmp
+			} else {
+				safety = 1.0
+			}
+			stw.addHistory(fmt.Sprintf("LAP: %d, SAFETY: %.3f", lap, safety))
+			stw.Frame.Arclms["L"].Arclm201(lap, safety)
 		}
 	} else {
 		switch {

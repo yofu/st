@@ -373,6 +373,95 @@ func (elem *Elem) StiffMatrix() ([][]float64, error) {
 	return estiff, nil
 }
 
+func (elem *Elem) GeoStiffMatrix() ([][]float64, error) {
+	l := elem.Length()
+	il := 1.0 / l
+	A := elem.Sect.Value[0]
+	IX := elem.Sect.Value[1]
+	IY := elem.Sect.Value[2]
+	G  := -(IX+IY)/A
+	N  := -elem.Stress[0]
+	Qx := elem.Stress[1]
+	Qy := elem.Stress[2]
+	Mxi := elem.Stress[4]
+	Myi := elem.Stress[5]
+	Mxj := elem.Stress[10]
+	Myj := elem.Stress[11]
+	estiff := make([][]float64, 12)
+	for i := 0; i < 12; i++ {
+		estiff[i] = make([]float64, 12)
+	}
+	estiff[1][1] = 1.2 * N * il
+	estiff[1][3] = -Mxi * il
+	estiff[3][1] = estiff[1][3]
+	estiff[1][5] = 0.1 * N
+	estiff[5][1] = estiff[1][5]
+	estiff[1][7] = -estiff[1][1]
+	estiff[7][1] = estiff[1][7]
+	estiff[1][9] = -Mxj * il
+	estiff[9][1] = estiff[1][9]
+	estiff[1][11] = estiff[1][5]
+	estiff[11][1] = estiff[1][11]
+	estiff[2][2] = estiff[1][1]
+	estiff[2][3] = Myi * il
+	estiff[3][2] = estiff[2][3]
+	estiff[2][4] = -estiff[1][5]
+	estiff[4][2] = estiff[2][4]
+	estiff[2][8] = -estiff[1][1]
+	estiff[8][2] = estiff[2][8]
+	estiff[2][9] = Myj * il
+	estiff[9][2] = estiff[2][9]
+	estiff[2][10] = -estiff[1][5]
+	estiff[10][2] = estiff[2][10]
+	estiff[3][3] = N * G * il
+	estiff[3][4] = Qx * l / 6.0
+	estiff[4][3] = estiff[3][4]
+	estiff[3][5] = Qy * l / 6.0
+	estiff[5][3] = estiff[3][5]
+	estiff[3][7] = -estiff[1][3]
+	estiff[7][3] = estiff[3][7]
+	estiff[3][8] = -estiff[2][3]
+	estiff[8][3] = estiff[3][8]
+	estiff[3][9] = -estiff[3][3]
+	estiff[9][3] = estiff[3][9]
+	estiff[3][10] = -estiff[3][4]
+	estiff[10][3] = estiff[3][10]
+	estiff[3][11] = -estiff[3][5]
+	estiff[11][3] = estiff[3][11]
+	estiff[4][4] = N * l / 7.5
+	estiff[4][8] = estiff[1][5]
+	estiff[8][4] = estiff[4][8]
+	estiff[4][9] = -estiff[3][4]
+	estiff[9][4] = estiff[4][9]
+	estiff[4][10] = -N * l / 30.0
+	estiff[10][4] = estiff[4][10]
+	estiff[5][5] = estiff[4][4]
+	estiff[5][7] = -estiff[1][5]
+	estiff[7][5] = estiff[5][7]
+	estiff[5][9] = -estiff[3][5]
+	estiff[9][5] = estiff[5][9]
+	estiff[5][11] = estiff[4][10]
+	estiff[11][5] = estiff[5][11]
+	estiff[7][7] = estiff[1][1]
+	estiff[7][9] = -estiff[1][9]
+	estiff[9][7] = estiff[7][9]
+	estiff[7][11] = -estiff[1][5]
+	estiff[11][7] = estiff[7][11]
+	estiff[8][8] = estiff[1][1]
+	estiff[8][9] = -estiff[2][9]
+	estiff[9][8] = estiff[8][9]
+	estiff[8][10] = estiff[1][5]
+	estiff[10][8] = estiff[8][10]
+	estiff[9][9] = estiff[3][3]
+	estiff[9][10] = estiff[3][4]
+	estiff[10][9] = estiff[9][10]
+	estiff[9][11] = estiff[3][5]
+	estiff[11][9] = estiff[9][11]
+	estiff[10][10] = estiff[4][4]
+	estiff[11][11] = estiff[4][4]
+	return estiff, nil
+}
+
 func (elem *Elem) ModifyHinge(estiff [][]float64) ([][]float64, error) {
 	h := make([][]float64, 12)
 	rtn := make([][]float64, 12)
@@ -442,7 +531,7 @@ func (elem *Elem) ModifyCMQ() {
 	}
 }
 
-func (elem *Elem) AssemCMQ(tmatrix [][]float64, vec []float64) []float64 {
+func (elem *Elem) AssemCMQ(tmatrix [][]float64, vec []float64, safety float64) []float64 {
 	tmp := make([]float64, 12)
 	rtn := make([]float64, len(vec))
 	for i := 0; i < 12; i++ {
@@ -457,7 +546,7 @@ func (elem *Elem) AssemCMQ(tmatrix [][]float64, vec []float64) []float64 {
 		for j := 0; j < 6; j++ {
 			if !elem.Enod[i].Conf[j] {
 				ind := 6*elem.Enod[i].Index + j
-				rtn[ind] -= load[6*i+j]
+				rtn[ind] -= safety * load[6*i+j]
 			}
 		}
 	}

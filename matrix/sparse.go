@@ -1034,11 +1034,8 @@ func (ll *LLSMatrix) BSUpper(vec []float64) []float64 {
 }
 
 func (ll *LLSMatrix) Solve(vecs ...[]float64) [][]float64 {
-	start := time.Now()
 	size := ll.Size
 	C := ll.LDLT()
-	end := time.Now()
-	fmt.Printf("LDLT: %fsec\n", (end.Sub(start)).Seconds())
 	rtn := make([][]float64, len(vecs))
 	C.DiagUp()
 	for v, vec := range vecs {
@@ -1047,14 +1044,10 @@ func (ll *LLSMatrix) Solve(vecs ...[]float64) [][]float64 {
 			tmp[i] = vec[i]
 		}
 		tmp = C.FELower(tmp)
-		end = time.Now()
-		fmt.Printf("FE: %fsec\n", (end.Sub(start)).Seconds())
 		for i := 0; i < size; i++ {
 			tmp[i] /= C.Query(i, i)
 		}
 		rtn[v] = C.BSUpper(tmp)
-		end = time.Now()
-		fmt.Printf("BS: %fsec\n", (end.Sub(start)).Seconds())
 	}
 	return rtn
 }

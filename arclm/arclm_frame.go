@@ -123,7 +123,7 @@ func (af *Frame) ReadInput(filename string) error {
 	return nil
 }
 
-func (frame *Frame) AssemGlobalMatrix() (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
+func (frame *Frame) AssemGlobalMatrix(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
 	var err error
 	var tmatrix, estiff [][]float64
 	size := 6 * len(frame.Nodes)
@@ -159,7 +159,53 @@ func (frame *Frame) AssemGlobalMatrix() (*matrix.COOMatrix, []float64, error) { 
 			}
 		}
 		el.ModifyCMQ()
-		gvct = el.AssemCMQ(tmatrix, gvct)
+		gvct = el.AssemCMQ(tmatrix, gvct, safety)
+	}
+	return gmtx, gvct, nil
+}
+
+func (frame *Frame) AssemGlobalStiffness(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
+	var err error
+	var tmatrix, estiff, gstiff [][]float64
+	size := 6 * len(frame.Nodes)
+	gmtx := matrix.NewCOOMatrix(size)
+	gvct := make([]float64, size)
+	for _, el := range frame.Elems {
+		tmatrix, err = el.TransMatrix()
+		if err != nil {
+			return nil, nil, err
+		}
+		estiff, err = el.StiffMatrix()
+		gstiff, err = el.GeoStiffMatrix()
+		if err != nil {
+			return nil, nil, err
+		}
+		estiff, err = el.ModifyHinge(estiff)
+		if err != nil {
+			return nil, nil, err
+		}
+		gstiff, err = el.ModifyHinge(gstiff)
+		if err != nil {
+			return nil, nil, err
+		}
+		estiff = Transformation(estiff, tmatrix)
+		gstiff = Transformation(gstiff, tmatrix)
+		for n1 := 0; n1 < 2; n1++ {
+			for i := 0; i < 6; i++ {
+				row := 6*el.Enod[n1].Index + i
+				for n2 := 0; n2 < 2; n2++ {
+					for j := 0; j < 6; j++ {
+						col := 6*el.Enod[n2].Index + j
+						val := estiff[6*n1+i][6*n2+j] + gstiff[6*n1+i][6*n2+j]
+						if val != 0.0 {
+							gmtx.Add(row, col, val)
+						}
+					}
+				}
+			}
+		}
+		el.ModifyCMQ()
+		gvct = el.AssemCMQ(tmatrix, gvct, safety)
 	}
 	return gmtx, gvct, nil
 }
@@ -292,7 +338,7 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 		end := time.Now()
 		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
-	gmtx, gvct, err := frame.AssemGlobalMatrix()
+	gmtx, gvct, err := frame.AssemGlobalMatrix(1.0)
 	laptime("ASSEM")
 	if err != nil {
 		return err
@@ -357,5 +403,53 @@ func (frame *Frame) Arclm001(sol string) error { // TODO: speed up
 		defer w.Close()
 		frame.WriteTo(w)
 	}
+	return nil
+}
+
+func (frame *Frame) Arclm201(nlap int, dsafety float64) error { // TODO: speed up
+	start := time.Now()
+	laptime := func (message string) {
+		end := time.Now()
+		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+	}
+	var err error
+	var answers [][]float64
+	var gmtx *matrix.COOMatrix
+	var gvct []float64
+	safety := 0.0
+	for lap:=0; lap<nlap; lap++ {
+		safety += dsafety
+		if safety > 1.0 {
+			safety = 1.0
+		}
+		if lap == 0 { // K = KE
+			gmtx, gvct, err = frame.AssemGlobalMatrix(1.0)
+		} else {      // K = KE + KG
+			gmtx, gvct, err = frame.AssemGlobalStiffness(0.0)
+		}
+		if err != nil {
+			return err
+		}
+		csize, conf, vec := frame.AssemConf(gvct, safety)
+		laptime("Assem")
+		mtx := gmtx.ToLLS(csize, conf)
+		laptime("ToLLS")
+		answers = mtx.Solve(vec)
+		laptime("Solve")
+		tmp := frame.FillConf(answers[0])
+		_, err = frame.UpdateStress(tmp)
+		if err != nil {
+			return err
+		}
+		frame.UpdateReaction(gmtx, tmp)
+		frame.UpdateForm(tmp)
+		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f", lap, nlap, safety))
+	}
+	w, err := os.Create("hogtxt.otp")
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+	frame.WriteTo(w)
 	return nil
 }
