@@ -361,21 +361,19 @@ func ProjectName(fn string) string {
 }
 
 func IsParallel(v1, v2 []float64, eps float64) bool {
-	var dot, l1, l2 float64
-	for i := 0; i < 3; i++ {
-		dot += v1[i] * v2[i]
-		l1 += v1[i] * v1[i]
-		l2 += v2[i] * v2[i]
+	j := 0
+	val := 0.0
+	for i:=0;i<3;i++ {
+		j=i+1
+		if j>=3 {
+			j-=3
+		}
+		val=v1[i]*v2[j]-v1[j]*v2[i];
+		if (val > 2*eps) || (val < -2*eps) {
+			return false
+		}
 	}
-	if l1 == 0 || l2 == 0 {
-		return false
-	}
-	sub := (dot * dot / (l1 * l2)) - 1.0
-	if math.Abs(sub) < eps {
-		return true
-	} else {
-		return false
-	}
+	return true
 }
 
 func IsOrthogonal(v1, v2 []float64, eps float64) bool {
