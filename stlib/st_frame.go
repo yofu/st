@@ -3106,6 +3106,26 @@ func (frame *Frame) CutByElem(cutter, cuttee *Elem, cross bool, sign int, del bo
 	}
 }
 
+func (frame *Frame) IntersectionPoint(cutter, cuttee *Elem, cross bool, eps float64) (*Node, error) {
+	if !cutter.IsLineElem() || !cuttee.IsLineElem() {
+		return nil, NotLineElem("IntersectionPoint")
+	}
+	k1, k2, d, err := DistLineLine(cutter.Enod[0].Coord, cutter.Direction(false), cuttee.Enod[0].Coord, cuttee.Direction(false))
+	if err != nil {
+		return nil, err
+	}
+	if d > eps {
+		return nil, errors.New(fmt.Sprintf("IntersectionPoint: Distance= %.5f", d))
+	}
+	if !cross || ((-eps <= k2 && k2 <= 1.0+eps)) {
+		d1 := cutter.Direction(false)
+		n, _ := frame.CoordNode(cutter.Enod[0].Coord[0]+k1*d1[0], cutter.Enod[0].Coord[1]+k1*d1[1], cutter.Enod[0].Coord[2]+k1*d1[2], eps)
+		return n, nil
+	} else {
+		return nil, errors.New(fmt.Sprintf("IntersectionPoint: Not Cross k1= %.5f, k2= %.5f", k1, k2))
+	}
+}
+
 func (frame *Frame) Trim(e1, e2 *Elem, sign int, eps float64) ([]*Node, []*Elem, error) {
 	return frame.CutByElem(e1, e2, true, sign, true, eps)
 }

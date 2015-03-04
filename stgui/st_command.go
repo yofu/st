@@ -2771,7 +2771,7 @@ func intersect(stw *Window) {
 
 // }}}
 
-// INTERSECTALL // {{{
+// INTERSECTALL
 func intersectall(stw *Window) {
 	l := len(stw.SelectElem)
 	if stw.SelectElem == nil || l <= 1 {
@@ -2815,6 +2815,44 @@ func intersectall(stw *Window) {
 			continue
 		}
 		checked = append(checked, els...)
+	}
+	stw.Snapshot()
+	stw.EscapeAll()
+}
+
+// INTERSECTALL2 // {{{
+func intersectall2(stw *Window) {
+	l := len(stw.SelectElem)
+	if stw.SelectElem == nil || l <= 1 {
+		stw.EscapeAll()
+		return
+	}
+	sort.Sort(st.ElemByNum{stw.SelectElem})
+	ind := 0
+	for {
+		if stw.SelectElem[ind].IsLineElem() {
+			break
+		}
+		ind++
+		if ind >= l-1 {
+			stw.EscapeAll()
+			return
+		}
+	}
+	for _, el1 := range stw.SelectElem[ind:] {
+		if !el1.IsLineElem() {
+			continue
+		}
+		for _, el2 := range stw.SelectElem[ind+1:] {
+			if !el2.IsLineElem() {
+				continue
+			}
+			stw.Frame.IntersectionPoint(el1, el2, true, EPS)
+		}
+		_, _, err := el1.DivideAtOns(EPS)
+		if err != nil {
+			continue
+		}
 	}
 	stw.Snapshot()
 	stw.EscapeAll()
