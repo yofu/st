@@ -501,6 +501,9 @@ func (frame *Frame) ParseProp(lis []string) (*Prop, error) {
 			return nil, err
 		}
 	}
+	if _, ok := frame.Props[p.Num]; ok {
+		return nil, nil
+	}
 	frame.Props[p.Num] = p
 	return p, nil
 }
@@ -576,6 +579,9 @@ func (frame *Frame) ParseSect(lis []string) (*Sect, error) {
 	}
 	err = s.ParseFig(frame, tmp)
 	s.Frame = frame
+	if _, ok := frame.Sects[s.Num]; ok {
+		return nil, nil
+	}
 	frame.Sects[s.Num] = s
 	frame.Show.Sect[s.Num] = true
 	return s, nil
