@@ -144,6 +144,9 @@ func DrawNode(node *st.Node, cvs *cd.Canvas, show *st.Show) {
 					val = node.ReturnReaction(show.Period, i)
 				}
 				ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), val))
+				if i >= 3 { // TODO: draw ellipse for Mx My Mz
+					continue
+				}
 				arrow := 0.3
 				rcoord := []float64{node.Coord[0], node.Coord[1], node.Coord[2]}
 				if val >= 0.0 {
