@@ -137,10 +137,23 @@ func DrawNode(node *st.Node, cvs *cd.Canvas, show *st.Show) {
 	for i, j := range []uint{st.NC_RX, st.NC_RY, st.NC_RZ, st.NC_MX, st.NC_MY, st.NC_MZ} {
 		if show.NodeCaption&j != 0 {
 			if node.Conf[i] {
+				var val float64
 				if i == 2 && show.NodeCaption&st.NC_WEIGHT != 0 {
-					ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), node.ReturnReaction(show.Period, i) + node.Weight[1]))
+					val = node.ReturnReaction(show.Period, i) + node.Weight[1]
 				} else {
-					ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), node.ReturnReaction(show.Period, i)))
+					val = node.ReturnReaction(show.Period, i)
+				}
+				ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), val))
+				arrow := 0.3
+				rcoord := []float64{node.Coord[0], node.Coord[1], node.Coord[2]}
+				if val >= 0.0 {
+					rcoord[i] -= show.Rfact * val
+					prcoord := node.Frame.View.ProjectCoord(rcoord)
+					Arrow(cvs, prcoord[0], prcoord[1], node.Pcoord[0], node.Pcoord[1], arrow, deg10)
+				} else {
+					rcoord[i] += show.Rfact * val
+					prcoord := node.Frame.View.ProjectCoord(rcoord)
+					Arrow(cvs, node.Pcoord[0], node.Pcoord[1], prcoord[0], prcoord[1], arrow, deg10)
 				}
 				oncap = true
 			}
@@ -228,9 +241,8 @@ func DrawNodeNormal(node *st.Node, canv *cd.Canvas, show *st.Show) {
 	}
 	vec := node.Frame.View.ProjectCoord(v)
 	arrow := 0.3
-	angle := 10.0 * math.Pi / 180.0
 	canv.LineStyle(cd.CD_CONTINUOUS)
-	Arrow(canv, node.Pcoord[0], node.Pcoord[1], vec[0], vec[1], arrow, angle)
+	Arrow(canv, node.Pcoord[0], node.Pcoord[1], vec[0], vec[1], arrow, deg10)
 }
 
 // ELEM
@@ -525,14 +537,13 @@ func DrawElementAxis(elem *st.Elem, canv *cd.Canvas, show *st.Show) {
 	yaxis := elem.Frame.View.ProjectCoord(y)
 	zaxis := elem.Frame.View.ProjectCoord(z)
 	arrow := 0.3
-	angle := 10.0 * math.Pi / 180.0
 	canv.LineStyle(cd.CD_CONTINUOUS)
 	canv.Foreground(cd.CD_RED)
-	Arrow(canv, origin[0], origin[1], xaxis[0], xaxis[1], arrow, angle)
+	Arrow(canv, origin[0], origin[1], xaxis[0], xaxis[1], arrow, deg10)
 	canv.Foreground(cd.CD_GREEN)
-	Arrow(canv, origin[0], origin[1], yaxis[0], yaxis[1], arrow, angle)
+	Arrow(canv, origin[0], origin[1], yaxis[0], yaxis[1], arrow, deg10)
 	canv.Foreground(cd.CD_BLUE)
-	Arrow(canv, origin[0], origin[1], zaxis[0], zaxis[1], arrow, angle)
+	Arrow(canv, origin[0], origin[1], zaxis[0], zaxis[1], arrow, deg10)
 	canv.Foreground(cd.CD_WHITE)
 }
 
@@ -546,9 +557,8 @@ func DrawElemNormal(elem *st.Elem, canv *cd.Canvas, show *st.Show) {
 	vec := elem.Frame.View.ProjectCoord(v)
 	mp := elem.Frame.View.ProjectCoord(mid)
 	arrow := 0.3
-	angle := 10.0 * math.Pi / 180.0
 	canv.LineStyle(cd.CD_CONTINUOUS)
-	Arrow(canv, mp[0], mp[1], vec[0], vec[1], arrow, angle)
+	Arrow(canv, mp[0], mp[1], vec[0], vec[1], arrow, deg10)
 }
 
 // SECT

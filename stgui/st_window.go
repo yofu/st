@@ -141,6 +141,7 @@ var (
 	BrittleTextColor        = defaultBrittleTextColor
 	fixRotate               = false
 	fixMove                 = false
+	deg10                   = 10.0 * math.Pi / 180.0
 )
 
 var (
@@ -2308,6 +2309,15 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		}
 		stw.Frame.Show.Dfact = val
 		stw.Labels["DFACT"].SetAttribute("VALUE", fmt.Sprintf("%f", val))
+	case abbrev.For("rf/act", key):
+		if len(lis) < 2 {
+			return st.NotEnoughArgs("RFACT")
+		}
+		val, err := strconv.ParseFloat(lis[1], 64)
+		if err != nil {
+			return err
+		}
+		stw.Frame.Show.Rfact = val
 	case abbrev.For("mf/act", key):
 		if len(lis) < 2 {
 			return st.NotEnoughArgs("MFACT")
@@ -5537,21 +5547,20 @@ func (stw *Window) DrawGlobalAxis(canv *cd.Canvas, color uint) {
 	yaxis := stw.Frame.View.ProjectCoord([]float64{0.0, stw.Frame.Show.GlobalAxisSize, 0.0})
 	zaxis := stw.Frame.View.ProjectCoord([]float64{0.0, 0.0, stw.Frame.Show.GlobalAxisSize})
 	size := 0.3
-	theta := 10.0 * math.Pi / 180.0
 	canv.LineStyle(cd.CD_CONTINUOUS)
 	switch color {
 	case st.ECOLOR_BLACK:
 		canv.Foreground(cd.CD_BLACK)
-		Arrow(canv, origin[0], origin[1], xaxis[0], xaxis[1], size, theta)
-		Arrow(canv, origin[0], origin[1], yaxis[0], yaxis[1], size, theta)
-		Arrow(canv, origin[0], origin[1], zaxis[0], zaxis[1], size, theta)
+		Arrow(canv, origin[0], origin[1], xaxis[0], xaxis[1], size, deg10)
+		Arrow(canv, origin[0], origin[1], yaxis[0], yaxis[1], size, deg10)
+		Arrow(canv, origin[0], origin[1], zaxis[0], zaxis[1], size, deg10)
 	default:
 		canv.Foreground(cd.CD_RED)
-		Arrow(canv, origin[0], origin[1], xaxis[0], xaxis[1], size, theta)
+		Arrow(canv, origin[0], origin[1], xaxis[0], xaxis[1], size, deg10)
 		canv.Foreground(cd.CD_GREEN)
-		Arrow(canv, origin[0], origin[1], yaxis[0], yaxis[1], size, theta)
+		Arrow(canv, origin[0], origin[1], yaxis[0], yaxis[1], size, deg10)
 		canv.Foreground(cd.CD_BLUE)
-		Arrow(canv, origin[0], origin[1], zaxis[0], zaxis[1], size, theta)
+		Arrow(canv, origin[0], origin[1], zaxis[0], zaxis[1], size, deg10)
 		canv.Foreground(cd.CD_WHITE)
 	}
 }

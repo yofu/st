@@ -101,6 +101,8 @@ type Show struct { // {{{
 	Deformation bool
 	Dfact       float64
 
+	Rfact float64
+
 	Stress        map[int]uint
 	NoMomentValue bool
 
@@ -163,6 +165,8 @@ func NewShow(frame *Frame) *Show {
 
 	s.Deformation = false
 	s.Dfact = 100.0
+
+	s.Rfact = 10.0
 
 	s.Stress = map[int]uint{COLUMN: 0, GIRDER: 0, BRACE: 0, WBRACE: 0, SBRACE: 0}
 	s.Mfact = 0.5
