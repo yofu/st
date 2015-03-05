@@ -138,34 +138,33 @@ func (frame *Frame) Initialise() {
 	}
 }
 
-func (frame *Frame) AssemGlobalMatrix(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
+func (frame *Frame) AssemGlobalMatrix(matf func(*Elem)([][]float64, error), vecf func(*Elem, [][]float64, []float64, float64)([]float64), safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
 	var err error
-	var tmatrix, estiff [][]float64
+	var tmatrix, stiff [][]float64
 	size := 6 * len(frame.Nodes)
 	gmtx := matrix.NewCOOMatrix(size)
 	gvct := make([]float64, size)
-	fmt.Printf("MATRIX SIZE: %d\n", size)
 	for _, el := range frame.Elems {
 		tmatrix, err = el.TransMatrix()
 		if err != nil {
 			return nil, nil, err
 		}
-		estiff, err = el.StiffMatrix()
+		stiff, err = matf(el)
 		if err != nil {
 			return nil, nil, err
 		}
-		estiff, err = el.ModifyHinge(estiff)
+		stiff, err = el.ModifyHinge(stiff)
 		if err != nil {
 			return nil, nil, err
 		}
-		estiff = Transformation(estiff, tmatrix)
+		stiff = Transformation(stiff, tmatrix)
 		for n1 := 0; n1 < 2; n1++ {
 			for i := 0; i < 6; i++ {
 				row := 6*el.Enod[n1].Index + i
 				for n2 := 0; n2 < 2; n2++ {
 					for j := 0; j < 6; j++ {
 						col := 6*el.Enod[n2].Index + j
-						val := estiff[6*n1+i][6*n2+j]
+						val := stiff[6*n1+i][6*n2+j]
 						if val != 0.0 {
 							gmtx.Add(row, col, val)
 						}
@@ -174,56 +173,48 @@ func (frame *Frame) AssemGlobalMatrix(safety float64) (*matrix.COOMatrix, []floa
 			}
 		}
 		el.ModifyCMQ()
-		gvct = el.AssemCMQ(tmatrix, gvct, safety)
+		gvct = vecf(el, tmatrix, gvct, safety)
 	}
 	return gmtx, gvct, nil
 }
 
-func (frame *Frame) AssemGlobalStiffness(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
-	var err error
-	var tmatrix, estiff, gstiff [][]float64
-	size := 6 * len(frame.Nodes)
-	gmtx := matrix.NewCOOMatrix(size)
-	gvct := make([]float64, size)
-	for _, el := range frame.Elems {
-		tmatrix, err = el.TransMatrix()
+func (frame *Frame) KE(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
+	matf := func(elem *Elem) ([][]float64, error) {
+		return elem.StiffMatrix()
+	}
+	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) ([]float64) {
+		return elem.AssemCMQ(tmatrix, gvct, safety)
+	}
+	return frame.AssemGlobalMatrix(matf, vecf, safety)
+}
+
+func (frame *Frame) KEKG(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
+	matf := func(elem *Elem) ([][]float64, error) {
+		estiff, err := elem.StiffMatrix()
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
-		estiff, err = el.StiffMatrix()
-		gstiff, err = el.GeoStiffMatrix()
+		gstiff, err := elem.GeoStiffMatrix()
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
-		estiff, err = el.ModifyHinge(estiff)
-		if err != nil {
-			return nil, nil, err
+		stiff := make([][]float64, 12)
+		for i := 0; i < 12; i++ {
+			stiff[i] = make([]float64, 12)
 		}
-		gstiff, err = el.ModifyHinge(gstiff)
-		if err != nil {
-			return nil, nil, err
-		}
-		estiff = Transformation(estiff, tmatrix)
-		gstiff = Transformation(gstiff, tmatrix)
-		for n1 := 0; n1 < 2; n1++ {
-			for i := 0; i < 6; i++ {
-				row := 6*el.Enod[n1].Index + i
-				for n2 := 0; n2 < 2; n2++ {
-					for j := 0; j < 6; j++ {
-						col := 6*el.Enod[n2].Index + j
-						val := estiff[6*n1+i][6*n2+j] + gstiff[6*n1+i][6*n2+j]
-						if val != 0.0 {
-							gmtx.Add(row, col, val)
-						}
-					}
-				}
+		for i:=0; i<12; i++ {
+			for j:=0; j<12; j++ {
+				stiff[i][j] = estiff[i][j] + gstiff[i][j]
 			}
 		}
-		el.ModifyCMQ()
-		gvct = el.AssemCMQ(tmatrix, gvct, safety)
-		gvct = el.ModifyTrueForce(tmatrix, gvct)
+		return stiff, nil
 	}
-	return gmtx, gvct, nil
+	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) ([]float64) {
+		gvct = elem.AssemCMQ(tmatrix, gvct, safety)
+		gvct = elem.ModifyTrueForce(tmatrix, gvct)
+		return gvct
+	}
+	return frame.AssemGlobalMatrix(matf, vecf, safety)
 }
 
 func (frame *Frame) AssemConf(gvct []float64, safety float64) (int, []bool, []float64) {
@@ -355,7 +346,7 @@ func (frame *Frame) Arclm001(init bool, sol string) error { // TODO: speed up
 		end := time.Now()
 		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
-	gmtx, gvct, err := frame.AssemGlobalMatrix(1.0)
+	gmtx, gvct, err := frame.KE(1.0)
 	laptime("ASSEM")
 	if err != nil {
 		return err
@@ -445,11 +436,11 @@ func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TO
 			safety = 1.0
 		}
 		if lap == 0 { // K = KE
-			gmtx, gvct, err = frame.AssemGlobalMatrix(safety)
+			gmtx, gvct, err = frame.KE(safety)
 			csize, conf, vec = frame.AssemConf(gvct, safety)
 			bnorm = math.Sqrt(Dot(vec, vec, len(vec)))
 		} else {      // K = KE + KG
-			gmtx, gvct, err = frame.AssemGlobalStiffness(safety)
+			gmtx, gvct, err = frame.KEKG(safety)
 			csize, conf, vec = frame.AssemConf(gvct, safety)
 			rnorm = math.Sqrt(Dot(vec, vec, len(vec)))
 			fmt.Println(rnorm / bnorm)
