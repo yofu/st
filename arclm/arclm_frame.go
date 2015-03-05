@@ -356,7 +356,6 @@ func (frame *Frame) Arclm001(init bool, sol string) error { // TODO: speed up
 		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
 	gmtx, gvct, err := frame.AssemGlobalMatrix(1.0)
-	fmt.Println(gvct)
 	laptime("ASSEM")
 	if err != nil {
 		return err
