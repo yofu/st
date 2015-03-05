@@ -7,6 +7,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -170,6 +171,7 @@ func (co *COOMatrix) ToCRS(csize int, conf []bool) *CRSMatrix {
 }
 
 func (co *COOMatrix) ToLLS(csize int, conf []bool) *LLSMatrix {
+	var wg sync.WaitGroup
 	size := co.Size - csize
 	rtn := NewLLSMatrix(size)
 	rind := 0
@@ -178,19 +180,30 @@ func (co *COOMatrix) ToLLS(csize int, conf []bool) *LLSMatrix {
 			rind++
 			continue
 		}
-		cind := 0
-		if rdata, rok := co.data[row]; rok {
-			for col := 0; col <= row; col++ {
-				if conf[col] {
-					cind++
-					continue
-				}
-				if val, cok := rdata[col]; cok {
-					rtn.Add(row-rind, col-cind, val)
+		wg.Add(1)
+		go func(r, ri int) {
+			var n *LLSNode
+			defer wg.Done()
+			cind := ri
+			if rdata, rok := co.data[r]; rok {
+				rtn.diag[r-ri].value=rdata[r]
+				n = rtn.diag[r-ri]
+				for col := r+1; col < co.Size; col++ {
+					if conf[col] {
+						cind++
+						continue
+					}
+					if val, cok := rdata[col]; cok {
+						newnode := NewLLSNode(col-cind, r-ri, val)
+						n.down = newnode
+						newnode.up = n
+						n = newnode
+					}
 				}
 			}
-		}
+		}(row, rind)
 	}
+	wg.Wait()
 	return rtn
 }
 
