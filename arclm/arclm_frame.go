@@ -430,6 +430,20 @@ func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TO
 	var csize int
 	var conf []bool
 	safety := 0.0
+	// TODO: implement drawing arclm.Frame
+	ch := make(chan int)
+	end := make(chan bool)
+	go func() {
+		for {
+			select {
+			case i := <-ch:
+				fmt.Printf("draw %d\n", i)
+			case <-end:
+				fmt.Println("end")
+				break
+			}
+		}
+	}()
 	for lap:=0; lap<nlap; lap++ {
 		safety += dsafety
 		if safety > 1.0 {
@@ -461,7 +475,9 @@ func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TO
 		frame.UpdateReaction(gmtx, tmp)
 		frame.UpdateForm(tmp)
 		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f", lap+1, nlap, safety))
+		ch <- lap+1
 	}
+	end <- true
 	w, err := os.Create("hogtxt.otp")
 	if err != nil {
 		return err
