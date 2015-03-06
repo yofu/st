@@ -462,7 +462,6 @@ func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TO
 			gmtx, gvct, err = frame.KEKG(safety)
 			csize, conf, vec = frame.AssemConf(gvct, safety)
 			rnorm = math.Sqrt(Dot(vec, vec, len(vec)))
-			fmt.Println(rnorm / bnorm)
 		}
 		if err != nil {
 			return err
@@ -479,7 +478,7 @@ func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TO
 		}
 		frame.UpdateReaction(gmtx, tmp)
 		frame.UpdateForm(tmp)
-		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f", lap+1, nlap, safety))
+		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, nlap, safety, rnorm / bnorm))
 		ch <- lap+1
 	}
 	end <- true

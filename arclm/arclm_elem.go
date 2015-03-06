@@ -593,9 +593,6 @@ func (elem *Elem) ElemStress(gdisp []float64) ([]float64, error) {
 	}
 	edisp := matrix.MatrixVector(tmatrix, gdisp)
 	estress := matrix.MatrixVector(estiff, edisp)
-	if elem.Num == 1015 {
-		fmt.Println(elem.Num, elem.Stress[0], edisp[6], gdisp[8], estress[0])
-	}
 	for i := 0; i < 12; i++ {
 		elem.Stress[i] += estress[i]
 	}
