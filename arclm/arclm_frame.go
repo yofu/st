@@ -453,6 +453,11 @@ func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TO
 			gmtx, gvct, err = frame.KE(safety)
 			csize, conf, vec = frame.AssemConf(gvct, safety)
 			bnorm = math.Sqrt(Dot(vec, vec, len(vec)))
+			for _, el := range frame.Elems {
+				for i:=0; i<12; i++ {
+					el.Stress[i] = 0.0 // TODO: add dsafety * el.Cmq[i] at each step while safety < 1.0 ?
+				}
+			}
 		} else {      // K = KE + KG
 			gmtx, gvct, err = frame.KEKG(safety)
 			csize, conf, vec = frame.AssemConf(gvct, safety)
