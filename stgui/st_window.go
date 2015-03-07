@@ -5078,7 +5078,10 @@ func (stw *Window) exmode(command string) error {
 				init = false
 				stw.addHistory("NO INITIALISATION")
 			}
-			stw.Frame.Arclms["L"].Arclm001(init, sol)
+			per := "L"
+			af := stw.Frame.Arclms[per]
+			af.Arclm001(init, sol)
+			stw.Frame.ReadArclmData(af, per)
 		case abbrev.For("a/rclm/201/", cname):
 			var lap int
 			var safety float64
@@ -5101,12 +5104,31 @@ func (stw *Window) exmode(command string) error {
 				safety = 1.0
 			}
 			stw.addHistory(fmt.Sprintf("LAP: %d, SAFETY: %.3f", lap, safety))
+			per := "L"
+			af := stw.Frame.Arclms[per]
 			init := true
 			if _, ok := argdict["NOINIT"]; ok {
 				init = false
 				stw.addHistory("NO INITIALISATION")
 			}
-			stw.Frame.Arclms["L"].Arclm201(init, lap, safety)
+			go func () {
+				af.Arclm201(init, lap, safety)
+			}()
+			go func () {
+				readloop:
+				for {
+					select {
+					case nlap := <-af.Lapch:
+						stw.Frame.ReadArclmData(af, per)
+						af.Lapch <- 1
+						stw.CurrentLap(nlap, lap)
+						stw.Redraw()
+						stw.dbuff.Flush()
+					case <-af.Endch:
+						break readloop
+					}
+				}
+			}()
 		}
 	} else {
 		switch {
@@ -6017,6 +6039,19 @@ func (stw *Window) SectionData (sec *st.Sect) {
 	if al, ok := stw.Frame.Allows[sec.Num]; ok {
 		tb.Value = append(tb.Value, strings.Split(al.String(), "\n")...)
 	}
+}
+
+func (stw *Window) CurrentLap (nlap, laps int) {
+	var tb *TextBox
+	if t, tok := stw.TextBox["LAP"]; tok {
+		tb = t
+	} else {
+		tb = NewTextBox()
+		tb.Hide = false
+		tb.Position = []float64{30.0, stw.CanvasSize[1] - 30.0}
+		stw.TextBox["LAP"] = tb
+	}
+	tb.Value = []string{fmt.Sprintf("%3d / %3d", nlap, laps)}
 }
 
 func SplitNums(nums string) []int {

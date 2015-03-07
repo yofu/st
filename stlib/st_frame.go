@@ -3486,6 +3486,33 @@ func (frame *Frame) SaveAsArclm(name string) error {
 	return nil
 }
 
+func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
+	for _, an := range af.Nodes {
+		if n, ok := frame.Nodes[an.Num]; ok {
+			disp := make([]float64, 6)
+			reaction := make([]float64, 6)
+			for i:=0; i<6; i++ {
+				disp[i] = an.Disp[i]
+				reaction[i] = an.Reaction[i]
+			}
+			n.Disp[per] = disp
+			n.Reaction[per] = reaction
+		}
+	}
+	for _, ael := range af.Elems {
+		if el, ok := frame.Elems[ael.Num]; ok {
+			stress := make(map[int][]float64, 2)
+			for i, n := range ael.Enod {
+				stress[n.Num] = make([]float64, 6)
+				for j:=0; j<6; j++ {
+					stress[n.Num][j] = ael.Stress[6*i+j]
+				}
+			}
+			el.Stress[per] = stress
+		}
+	}
+}
+
 // }}}
 
 // Analysis

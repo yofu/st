@@ -10,13 +10,13 @@ import (
 
 const (
 	version  = "0.1.0"
-	modified = "LAST CHANGE:06-Mar-2015."
+	modified = "LAST CHANGE:07-Mar-2015."
 	HOME     = "C:/D/CDOCS/Hogan/Debug"
 	HOGAN    = "C:/D/CDOCS/Hogan/Debug"
 )
 
 func main() {
-	runtime.GOMAXPROCS(2)
+	runtime.GOMAXPROCS(4)
 	iup.Open()
 	defer iup.Close()
 	sw := stgui.NewWindow(HOME)

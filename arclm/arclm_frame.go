@@ -26,6 +26,8 @@ type Frame struct {
 	Sects []*Sect
 	Nodes []*Node
 	Elems []*Elem
+	Lapch chan int
+	Endch chan error
 }
 
 func NewFrame() *Frame {
@@ -33,6 +35,8 @@ func NewFrame() *Frame {
 	af.Sects = make([]*Sect, 0)
 	af.Nodes = make([]*Node, 0)
 	af.Elems = make([]*Elem, 0)
+	af.Lapch = make(chan int)
+	af.Endch = make(chan error)
 	return af
 }
 
@@ -414,7 +418,6 @@ func (frame *Frame) Arclm001(init bool, sol string) error { // TODO: speed up
 	return nil
 }
 
-// TODO fix
 func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TODO: speed up
 	frame.Initialise()
 	start := time.Now()
@@ -430,20 +433,6 @@ func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TO
 	var csize int
 	var conf []bool
 	safety := 0.0
-	// TODO: implement drawing arclm.Frame
-	ch := make(chan int)
-	end := make(chan bool)
-	go func() {
-		for {
-			select {
-			case i := <-ch:
-				fmt.Printf("draw %d\n", i)
-			case <-end:
-				fmt.Println("end")
-				break
-			}
-		}
-	}()
 	for lap:=0; lap<nlap; lap++ {
 		safety += dsafety
 		if safety > 1.0 {
@@ -455,7 +444,7 @@ func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TO
 			bnorm = math.Sqrt(Dot(vec, vec, len(vec)))
 			for _, el := range frame.Elems {
 				for i:=0; i<12; i++ {
-					el.Stress[i] = 0.0 // TODO: add dsafety * el.Cmq[i] at each step while safety < 1.0 ?
+					el.Stress[i] = 0.0
 				}
 			}
 		} else {      // K = KE + KG
@@ -479,9 +468,10 @@ func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TO
 		frame.UpdateReaction(gmtx, tmp)
 		frame.UpdateForm(tmp)
 		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, nlap, safety, rnorm / bnorm))
-		ch <- lap+1
+		frame.Lapch <- lap+1
+		<-frame.Lapch
 	}
-	end <- true
+	frame.Endch <- nil
 	w, err := os.Create("hogtxt.otp")
 	if err != nil {
 		return err
