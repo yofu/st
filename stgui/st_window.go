@@ -5123,7 +5123,6 @@ func (stw *Window) exmode(command string) error {
 						af.Lapch <- 1
 						stw.CurrentLap(nlap, lap)
 						stw.Redraw()
-						stw.dbuff.Flush()
 					case <-af.Endch:
 						break readloop
 					}
