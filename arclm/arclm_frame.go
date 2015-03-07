@@ -331,7 +331,9 @@ func (frame *Frame) WriteTo(w io.Writer) {
 }
 
 func (frame *Frame) Arclm001(init bool, sol string) error { // TODO: speed up
-	frame.Initialise()
+	if init {
+		frame.Initialise()
+	}
 	var solver int
 	switch strings.ToUpper(sol) {
 	default:
@@ -419,7 +421,9 @@ func (frame *Frame) Arclm001(init bool, sol string) error { // TODO: speed up
 }
 
 func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TODO: speed up
-	frame.Initialise()
+	if init {
+		frame.Initialise()
+	}
 	start := time.Now()
 	laptime := func (message string) {
 		end := time.Now()
