@@ -1150,10 +1150,10 @@ func NewWindow(homedir string) *Window { // {{{
 			// buttons,
 			iup.Hbox(
 				stw.SideBar,
-				stw.canv,
+				iup.Vbox(stw.canv,
+					iup.Hbox(stw.hist),
+					iup.Hbox(stw.cname, stw.cline, stw.coord)),
 			),
-			iup.Hbox(stw.hist),
-			iup.Hbox(stw.cname, stw.cline, stw.coord),
 		),
 		func(arg *iup.DialogClose) {
 			if stw.Changed {
