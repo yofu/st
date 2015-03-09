@@ -1162,6 +1162,9 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 		}
 		break
 	}
+	if tmpline > len(lis)-1 {
+		return errors.New("ReadResult: no data")
+	}
 	for { // Reading Elem Stress
 		j := strings.Join([]string{lis[tmpline], lis[tmpline+1]}, " ")
 		tmpline += 2
