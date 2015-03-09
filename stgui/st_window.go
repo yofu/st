@@ -5109,7 +5109,14 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory(":arclm001 {-solver=name} {-noinit}")
 				return nil
 			}
+			var otp string
 			var sol string
+			if fn == "" {
+				otp = st.Ce(stw.Frame.Path, ".otp")
+			}
+			if o, ok := argdict["OTP"]; ok {
+				otp = o
+			}
 			if s, ok := argdict["SOLVER"]; ok {
 				if s == "" {
 					sol = "LLS"
@@ -5129,15 +5136,22 @@ func (stw *Window) exmode(command string) error {
 			}
 			per := "L"
 			af := stw.Frame.Arclms[per]
-			af.Arclm001(init, sol)
+			af.Arclm001(otp, init, sol)
 			stw.Frame.ReadArclmData(af, per)
 		case abbrev.For("a/rclm/201/", cname):
 			if usage {
 				stw.addHistory(":arclm201 {-lap=nlap} {-safety=val} {-noinit}")
 				return nil
 			}
+			var otp string
 			var lap int
 			var safety float64
+			if fn == "" {
+				otp = st.Ce(stw.Frame.Path, ".otp")
+			}
+			if o, ok := argdict["OTP"]; ok {
+				otp = o
+			}
 			if l, ok := argdict["LAP"]; ok {
 				tmp, err := strconv.ParseInt(l, 10, 64)
 				if err != nil {
@@ -5156,6 +5170,7 @@ func (stw *Window) exmode(command string) error {
 			} else {
 				safety = 1.0
 			}
+			stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
 			stw.addHistory(fmt.Sprintf("LAP: %d, SAFETY: %.3f", lap, safety))
 			per := "L"
 			af := stw.Frame.Arclms[per]
@@ -5165,7 +5180,7 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory("NO INITIALISATION")
 			}
 			go func () {
-				af.Arclm201(init, lap, safety)
+				af.Arclm201(otp, init, lap, safety)
 			}()
 			go func () {
 				readloop:

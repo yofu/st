@@ -330,7 +330,7 @@ func (frame *Frame) WriteTo(w io.Writer) {
 	rea.WriteTo(w)
 }
 
-func (frame *Frame) Arclm001(init bool, sol string) error { // TODO: speed up
+func (frame *Frame) Arclm001(otp string, init bool, sol string) error { // TODO: speed up
 	if init {
 		frame.Initialise()
 	}
@@ -410,7 +410,7 @@ func (frame *Frame) Arclm001(init bool, sol string) error { // TODO: speed up
 		}
 		frame.UpdateReaction(gmtx, vec)
 		frame.UpdateForm(vec)
-		w, err := os.Create(fmt.Sprintf("hogtxt_%02d.otp", nans))
+		w, err := os.Create(fmt.Sprintf("%s_%02d.otp", otp, nans))
 		if err != nil {
 			return err
 		}
@@ -420,7 +420,7 @@ func (frame *Frame) Arclm001(init bool, sol string) error { // TODO: speed up
 	return nil
 }
 
-func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TODO: speed up
+func (frame *Frame) Arclm201(otp string, init bool, nlap int, dsafety float64) error { // TODO: speed up
 	if init {
 		frame.Initialise()
 	}
@@ -476,7 +476,7 @@ func (frame *Frame) Arclm201(init bool, nlap int, dsafety float64) error { // TO
 		<-frame.Lapch
 	}
 	frame.Endch <- nil
-	w, err := os.Create("hogtxt.otp")
+	w, err := os.Create(otp)
 	if err != nil {
 		return err
 	}
