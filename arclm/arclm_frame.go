@@ -456,7 +456,6 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, dsafety, safety fl
 		if init && lap == 0 { // K = KE
 			gmtx, gvct, err = frame.KE(safety)
 			csize, conf, vec = frame.AssemConf(gvct, safety)
-			bnorm = math.Sqrt(Dot(vec, vec, len(vec)))
 			for _, el := range frame.Elems {
 				for i:=0; i<12; i++ {
 					el.Stress[i] = 0.0
@@ -465,10 +464,14 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, dsafety, safety fl
 		} else {      // K = KE + KG
 			gmtx, gvct, err = frame.KEKG(safety)
 			csize, conf, vec = frame.AssemConf(gvct, safety)
-			rnorm = math.Sqrt(Dot(vec, vec, len(vec)))
 		}
 		if err != nil {
 			return err
+		}
+		if lap == 0 {
+			bnorm = math.Sqrt(Dot(vec, vec, len(vec)))
+		} else {
+			rnorm = math.Sqrt(Dot(vec, vec, len(vec)))
 		}
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
