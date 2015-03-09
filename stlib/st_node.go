@@ -241,7 +241,7 @@ func (node *Node) OutputDisp(p string) string {
 
 func (node *Node) OutputReaction(p string, ind int) string {
 	if reaction, ok := node.Reaction[p]; ok {
-		return fmt.Sprintf(" %4d %10d %14.6f     1\n", node.Num, ind+1, reaction[ind])
+		return fmt.Sprintf("%4d %10d %14.6f     1\n", node.Num, ind+1, reaction[ind])
 	}
 	return ""
 }
