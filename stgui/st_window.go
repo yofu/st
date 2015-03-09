@@ -5182,6 +5182,7 @@ func (stw *Window) exmode(command string) error {
 			go func () {
 				af.Arclm201(otp, init, lap, safety)
 			}()
+			stw.CurrentLap("Calculating...", 0, lap)
 			go func () {
 				readloop:
 				for {
@@ -5189,9 +5190,11 @@ func (stw *Window) exmode(command string) error {
 					case nlap := <-af.Lapch:
 						stw.Frame.ReadArclmData(af, per)
 						af.Lapch <- 1
-						stw.CurrentLap(nlap, lap)
+						stw.CurrentLap("Calculating...", nlap, lap)
 						stw.Redraw()
 					case <-af.Endch:
+						stw.CurrentLap("Completed", lap, lap)
+						stw.Redraw()
 						break readloop
 					}
 				}
@@ -6108,7 +6111,7 @@ func (stw *Window) SectionData (sec *st.Sect) {
 	}
 }
 
-func (stw *Window) CurrentLap (nlap, laps int) {
+func (stw *Window) CurrentLap (comment string, nlap, laps int) {
 	var tb *TextBox
 	if t, tok := stw.TextBox["LAP"]; tok {
 		tb = t
@@ -6118,7 +6121,11 @@ func (stw *Window) CurrentLap (nlap, laps int) {
 		tb.Position = []float64{30.0, stw.CanvasSize[1] - 30.0}
 		stw.TextBox["LAP"] = tb
 	}
-	tb.Value = []string{fmt.Sprintf("%3d / %3d", nlap, laps)}
+	if comment == "" {
+		tb.Value = []string{fmt.Sprintf("LAP: %3d / %3d", nlap, laps)}
+	} else {
+		tb.Value = []string{comment, fmt.Sprintf("LAP: %3d / %3d", nlap, laps)}
+	}
 }
 
 func SplitNums(nums string) []int {
