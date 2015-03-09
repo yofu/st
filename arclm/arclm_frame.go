@@ -484,7 +484,6 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, dsafety float64) e
 		frame.Lapch <- lap+1
 		<-frame.Lapch
 	}
-	frame.Endch <- nil
 	if otp == "" {
 		otp = "hogtxt.otp"
 	}

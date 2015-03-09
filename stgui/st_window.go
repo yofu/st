@@ -4769,7 +4769,36 @@ func (stw *Window) exmode(command string) error {
 				stw.SelectElem = stw.SelectElem[:enum]
 			}
 		case abbrev.For("i/ntersect/a/ll", cname):
-			stw.Frame.IntersectAll(stw.SelectElem, EPS)
+			l := len(stw.SelectElem)
+			if l <= 1 {
+				return nil
+			}
+			go func () {
+				err := stw.Frame.IntersectAll(stw.SelectElem, EPS)
+				stw.Frame.Endch <-err
+			}()
+			stw.CurrentLap("Calculating...", 0, l)
+			go func () {
+				var err error
+				var nlap int
+				iallloop:
+				for {
+					select {
+					case nlap = <-stw.Frame.Lapch:
+						stw.CurrentLap("Calculating...", nlap, l)
+						stw.Redraw()
+					case err = <-stw.Frame.Endch:
+						if err != nil {
+							stw.CurrentLap("Error", nlap, l)
+							stw.errormessage(err, ERROR)
+						} else {
+							stw.CurrentLap("Completed", nlap, l)
+						}
+						stw.Redraw()
+						break iallloop
+					}
+				}
+			}()
 			stw.Snapshot()
 		case abbrev.For("co/nf", cname):
 			if usage {
@@ -5187,7 +5216,8 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory("NO INITIALISATION")
 			}
 			go func () {
-				af.Arclm201(otp, init, lap, safety)
+				err := af.Arclm201(otp, init, lap, safety)
+				af.Endch <-err
 			}()
 			stw.CurrentLap("Calculating...", 0, lap)
 			go func () {

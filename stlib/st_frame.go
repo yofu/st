@@ -98,6 +98,9 @@ type Frame struct {
 	DataFileName   map[string]string
 	ResultFileName map[string]string
 	LstFileName    string
+
+	Lapch chan int
+	Endch chan error
 }
 
 func NewFrame() *Frame {
@@ -122,6 +125,8 @@ func NewFrame() *Frame {
 	f.Show = NewShow(f)
 	f.DataFileName = make(map[string]string)
 	f.ResultFileName = make(map[string]string)
+	f.Lapch = make(chan int)
+	f.Endch = make(chan error)
 	return f
 }
 
@@ -3166,6 +3171,7 @@ func (frame *Frame) IntersectAll(elems []*Elem, eps float64) error {
 				return err
 			}
 			checked = els
+			frame.Lapch <-ind+1
 			break
 		}
 		ind++
@@ -3173,7 +3179,7 @@ func (frame *Frame) IntersectAll(elems []*Elem, eps float64) error {
 			return errors.New("Intersectall: no line elem")
 		}
 	}
-	for _, el := range elems[ind+1:] {
+	for i, el := range elems[ind+1:] {
 		if !el.IsLineElem() {
 			continue
 		}
@@ -3191,6 +3197,7 @@ func (frame *Frame) IntersectAll(elems []*Elem, eps float64) error {
 			continue
 		}
 		checked = append(checked, els...)
+		frame.Lapch <-ind+2+i
 	}
 	return nil
 }
