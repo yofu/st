@@ -3471,11 +3471,15 @@ func (stw *Window) exmode(command string) error {
 	args = args[:narg]
 	unnamed := make([]string, narg)
 	tmpnarg := 0
-	namedarg := regexp.MustCompile("^ *-{1,2}([^-]+)=(.+) *$")
+	namedarg := regexp.MustCompile("^ *-{1,2}([^-= ]+)(={0,1})([^ =]*) *$")
 	for _, a := range args {
 		if namedarg.MatchString(a) {
 			fs := namedarg.FindStringSubmatch(a)
-			argdict[strings.ToUpper(fs[1])] = fs[2]
+			if fs[2] == "" {
+				argdict[strings.ToUpper(fs[1])] = ""
+			} else {
+				argdict[strings.ToUpper(fs[1])] = fs[3]
+			}
 		} else {
 			unnamed[tmpnarg] = a
 			tmpnarg++
@@ -3764,7 +3768,12 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory(":srcal")
 				return nil
 			}
-			stw.Frame.SectionRateCalculation("L", "X", "X", "Y", "Y", -1.0)
+			cond := st.NewCondition()
+			if _, ok := argdict["FBOLD"]; ok {
+				stw.addHistory("Fb: old")
+				cond.FbOld = true
+			}
+			stw.Frame.SectionRateCalculation("L", "X", "X", "Y", "Y", -1.0, cond)
 		case abbrev.For("fi/g2", cname):
 			if usage {
 				stw.addHistory(":fig2 filename")
@@ -4087,14 +4096,22 @@ func (stw *Window) exmode(command string) error {
 			fn = st.Ce(stw.Frame.Path, ".fes")
 			var skipany, skipall []int
 			if sany, ok := argdict["SKIPANY"]; ok {
-				stw.addHistory(fmt.Sprintf("SKIP ANY: %s", sany))
-				skipany = SplitNums(sany)
+				if sany == "" {
+					skipany = nil
+				} else {
+					stw.addHistory(fmt.Sprintf("SKIP ANY: %s", sany))
+					skipany = SplitNums(sany)
+				}
 			} else {
 				skipany = nil
 			}
 			if sall, ok := argdict["SKIPALL"]; ok {
-				stw.addHistory(fmt.Sprintf("SKIP ALL: %s", sall))
-				skipall = SplitNums(sall)
+				if sall == "" {
+					skipall = nil
+				} else {
+					stw.addHistory(fmt.Sprintf("SKIP ALL: %s", sall))
+					skipall = SplitNums(sall)
+				}
 			} else {
 				skipall = nil
 			}
@@ -4733,8 +4750,12 @@ func (stw *Window) exmode(command string) error {
 			stw.Deselect()
 			var isect []int
 			if isec, ok := argdict["IGNORESECT"]; ok {
-				stw.addHistory(fmt.Sprintf("IGNORE SECT: %s", isec))
-				isect = SplitNums(isec)
+				if isec == "" {
+					isect = nil
+				} else {
+					stw.addHistory(fmt.Sprintf("IGNORE SECT: %s", isec))
+					isect = SplitNums(isec)
+				}
 			} else {
 				isect = nil
 			}
@@ -5067,8 +5088,13 @@ func (stw *Window) exmode(command string) error {
 		case abbrev.For("a/rclm/001/", cname):
 			var sol string
 			if s, ok := argdict["SOLVER"]; ok {
-				sol = s
-				stw.addHistory(fmt.Sprintf("SOLVER: %s", sol))
+				if s == "" {
+					sol = "LLS"
+					stw.addHistory("SOLVER: LLS")
+				} else {
+					sol = s
+					stw.addHistory(fmt.Sprintf("SOLVER: %s", sol))
+				}
 			} else {
 				sol = "LLS"
 				stw.addHistory("SOLVER: LLS")

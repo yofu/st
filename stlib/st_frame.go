@@ -3573,8 +3573,7 @@ func (frame *Frame) AssemGlobalMatrix() (map[int]int, *matrix.COOMatrix, error) 
 }
 
 // SectionRate
-func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign float64) error {
-	cond := NewCondition()
+func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign float64, cond *Condition) error {
 	var otp bytes.Buffer
 	var stl, stx1, stx2, sty1, sty2 []float64
 	var nl, nx1, nx2, ny1, ny2 float64
