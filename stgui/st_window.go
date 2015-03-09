@@ -5085,6 +5085,25 @@ func (stw *Window) exmode(command string) error {
 			if err != nil {
 				return err
 			}
+		case cname=="procs":
+			if usage {
+				stw.addHistory(":procs numcpu")
+				return nil
+			}
+			if narg < 2 {
+				current := runtime.GOMAXPROCS(-1)
+				stw.addHistory(fmt.Sprintf("PROCS: %d", current))
+				return nil
+			}
+			tmp, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return err
+			}
+			val := int(tmp)
+			if 1 <= val && val <= runtime.NumCPU() {
+				old := runtime.GOMAXPROCS(val)
+				stw.addHistory(fmt.Sprintf("PROCS: %d -> %d", old, val))
+			}
 		case abbrev.For("a/rclm/001/", cname):
 			if usage {
 				stw.addHistory(":arclm001 {-solver=name} {-noinit}")
