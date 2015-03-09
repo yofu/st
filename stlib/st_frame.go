@@ -3639,6 +3639,7 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 			switch el.Etype {
 			case COLUMN, GIRDER:
 				var qlrate, qsrate, qurate, mlrate, msrate, murate float64
+				var msrate1, msrate2, msrate3, msrate4 float64
 				stl = make([]float64, 12)
 				stx1 = make([]float64, 12)
 				stx2 = make([]float64, 12)
@@ -3736,24 +3737,25 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 				otp.WriteString("\n\n長期       :")
 				rate, err = calc1(al, stl, nil, nil)
 				qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
-				mlrate = maxrate(rate[4], rate[5], rate[10], rate[11])
+				mlrate = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
 				cond.Period = "S"
 				otp.WriteString("\n短期X正方向:")
 				rate, err = calc1(al, stl, stx1, plus)
 				qsrate = maxrate(rate[1], rate[2], rate[7], rate[8])
-				msrate = maxrate(rate[4], rate[5], rate[10], rate[11])
+				msrate1 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
 				otp.WriteString("短期X負方向:")
 				rate, err = calc1(al, stl, stx2, minus)
 				qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
-				msrate = maxrate(msrate, rate[4], rate[5], rate[10], rate[11])
+				msrate2 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
 				otp.WriteString("\n短期Y正方向:")
 				rate, err = calc1(al, stl, sty1, plus)
 				qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
-				msrate = maxrate(msrate, rate[4], rate[5], rate[10], rate[11])
+				msrate3 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
 				otp.WriteString("短期Y負方向:")
 				rate, err = calc1(al, stl, sty2, minus)
 				qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
-				msrate = maxrate(msrate, rate[4], rate[5], rate[10], rate[11])
+				msrate4 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+				msrate = maxrate(msrate1, msrate2, msrate3, msrate4)
 				otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
 				el.Rate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 			case BRACE, WBRACE, SBRACE:
