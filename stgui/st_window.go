@@ -5086,6 +5086,10 @@ func (stw *Window) exmode(command string) error {
 				return err
 			}
 		case abbrev.For("a/rclm/001/", cname):
+			if usage {
+				stw.addHistory(":arclm001 {-solver=name} {-noinit}")
+				return nil
+			}
 			var sol string
 			if s, ok := argdict["SOLVER"]; ok {
 				if s == "" {
@@ -5109,6 +5113,10 @@ func (stw *Window) exmode(command string) error {
 			af.Arclm001(init, sol)
 			stw.Frame.ReadArclmData(af, per)
 		case abbrev.For("a/rclm/201/", cname):
+			if usage {
+				stw.addHistory(":arclm201 {-lap=nlap} {-safety=val} {-noinit}")
+				return nil
+			}
 			var lap int
 			var safety float64
 			if l, ok := argdict["LAP"]; ok {
