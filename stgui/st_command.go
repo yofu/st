@@ -2551,13 +2551,10 @@ func extractarclm(stw *Window) {
 
 // ARCLM001 TODO: UNDER CONSTRUCTION // {{{
 func arclm001(stw *Window) {
-	ind, mtx, err := stw.Frame.AssemGlobalMatrix()
-	if err != nil {
-		stw.errormessage(err, ERROR)
-		stw.EscapeAll()
-		return
-	}
-	fmt.Println(ind, mtx)
+	per := "L"
+	af := stw.Frame.Arclms[per]
+	af.Arclm001(true, "LLS")
+	stw.Frame.ReadArclmData(af, per)
 	stw.EscapeAll()
 }
 

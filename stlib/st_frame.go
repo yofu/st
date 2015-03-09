@@ -12,9 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"github.com/yofu/st/matrix"
 	"github.com/yofu/st/arclm"
-	"time"
 )
 
 // Constants & Variables// {{{
@@ -3515,62 +3513,6 @@ func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
 
 // }}}
 
-// Analysis
-func (frame *Frame) AssemGlobalMatrix() (map[int]int, *matrix.COOMatrix, error) { // TODO: UNDER CONSTRUCTION
-	var err error
-	var tmatrix, estiff [][]float64
-	ind := make(map[int]int)
-	nodes := make([]*Node, len(frame.Nodes))
-	nnum := 0
-	for _, n := range frame.Nodes {
-		nodes[nnum] = n
-		nnum++
-	}
-	sort.Sort(NodeByNum{nodes})
-	for i, n := range nodes {
-		ind[n.Num] = i
-	}
-	gmtx := matrix.NewCOOMatrix(6 * len(frame.Nodes))
-	fmt.Printf("MATRIX SIZE: %d\n", 6*len(frame.Nodes))
-	start := time.Now()
-	for _, el := range frame.Elems {
-		if !el.IsLineElem() {
-			continue
-		}
-		tmatrix, err = el.TransMatrix()
-		if err != nil {
-			return nil, nil, err
-		}
-		estiff, err = el.StiffMatrix()
-		if err != nil {
-			return nil, nil, err
-		}
-		estiff, err = el.ModifyHinge(estiff)
-		if err != nil {
-			return nil, nil, err
-		}
-		estiff = Transformation(estiff, tmatrix)
-		for n1 := 0; n1 < 2; n1++ {
-			for i := 0; i < 6; i++ {
-				row := 6*ind[el.Enod[n1].Num] + i
-				for n2 := 0; n2 < 2; n2++ {
-					for j := 0; j < 6; j++ {
-						col := 6*ind[el.Enod[n2].Num] + j
-						if row >= col {
-							val := estiff[6*n1+i][6*n2+j]
-							if val != 0.0 {
-								gmtx.Add(row, col, val)
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	end := time.Now()
-	fmt.Printf("ASSEM: %fsec\n", (end.Sub(start)).Seconds())
-	return ind, gmtx, nil
-}
 
 // SectionRate
 func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign float64, cond *Condition) error {
