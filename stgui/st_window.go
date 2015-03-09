@@ -5106,7 +5106,7 @@ func (stw *Window) exmode(command string) error {
 			}
 		case abbrev.For("a/rclm/001/", cname):
 			if usage {
-				stw.addHistory(":arclm001 {-solver=name} {-noinit}")
+				stw.addHistory(":arclm001 {-solver=name} {-noinit} filename")
 				return nil
 			}
 			var otp string
@@ -5142,7 +5142,7 @@ func (stw *Window) exmode(command string) error {
 			stw.Frame.ReadArclmData(af, per)
 		case abbrev.For("a/rclm/201/", cname):
 			if usage {
-				stw.addHistory(":arclm201 {-lap=nlap} {-safety=val} {-noinit}")
+				stw.addHistory(":arclm201 {-lap=nlap} {-safety=val} {-noinit} filename")
 				return nil
 			}
 			var otp string
