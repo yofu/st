@@ -5179,7 +5179,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			var otp string
 			var lap int
-			var safety float64
+			var safety, start float64
 			if fn == "" {
 				otp = st.Ce(stw.Frame.Path, ".otp")
 			} else {
@@ -5206,8 +5206,17 @@ func (stw *Window) exmode(command string) error {
 			} else {
 				safety = 1.0
 			}
+			if s, ok := argdict["START"]; ok {
+				tmp, err := strconv.ParseFloat(s, 64)
+				if err != nil {
+					return err
+				}
+				start = tmp
+			} else {
+				start = 0.0
+			}
 			stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
-			stw.addHistory(fmt.Sprintf("LAP: %d, SAFETY: %.3f", lap, safety))
+			stw.addHistory(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f", lap, safety, start))
 			per := "L"
 			af := stw.Frame.Arclms[per]
 			init := true
@@ -5216,7 +5225,7 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory("NO INITIALISATION")
 			}
 			go func () {
-				err := af.Arclm201(otp, init, lap, safety)
+				err := af.Arclm201(otp, init, lap, safety, start)
 				af.Endch <-err
 			}()
 			stw.CurrentLap("Calculating...", 0, lap)
