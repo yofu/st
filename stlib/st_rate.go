@@ -379,10 +379,10 @@ func (sc *SColumn) Na(cond *Condition) float64 {
 }
 func (sc *SColumn) Qa(cond *Condition) float64 {
 	f := sc.Fs(cond)
-	if cond.Strong {
-		return f * sc.Asx()
-	} else {
+	if cond.Strong { // for Qy
 		return f * sc.Asy()
+	} else { // for Qx
+		return f * sc.Asx()
 	}
 }
 func (sc *SColumn) Me(length, Cb float64) float64 {
@@ -1796,10 +1796,10 @@ func (wc *WoodColumn) Na(cond *Condition) float64 {
 }
 func (wc *WoodColumn) Qa(cond *Condition) float64 {
 	f := wc.Fs(cond)
-	if cond.Strong {
-		return f * wc.Asx()
-	} else {
+	if cond.Strong { // for Qy
 		return f * wc.Asy()
+	} else { // for Qx
+		return f * wc.Asx()
 	}
 }
 func (sc *WoodColumn) Ma(cond *Condition) float64 {
