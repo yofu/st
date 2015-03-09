@@ -2771,48 +2771,11 @@ func intersect(stw *Window) {
 
 // INTERSECTALL
 func intersectall(stw *Window) {
-	l := len(stw.SelectElem)
-	if stw.SelectElem == nil || l <= 1 {
+	err := stw.Frame.IntersectAll(stw.SelectElem, EPS)
+	if err != nil {
+		stw.errormessage(err, ERROR)
 		stw.EscapeAll()
 		return
-	}
-	checked := make([]*st.Elem, 1)
-	sort.Sort(st.ElemByNum{stw.SelectElem})
-	ind := 0
-	for {
-		if stw.SelectElem[ind].IsLineElem() {
-			_, els, err := stw.SelectElem[ind].DivideAtOns(EPS)
-			if err != nil {
-				stw.EscapeAll()
-				return
-			}
-			checked = els
-			break
-		}
-		ind++
-		if ind >= l-1 {
-			stw.EscapeAll()
-			return
-		}
-	}
-	for _, el := range stw.SelectElem[ind+1:] {
-		if !el.IsLineElem() {
-			continue
-		}
-		for _, ce := range checked {
-			_, els, err := stw.Frame.CutByElem(el, ce, true, 1, false, EPS)
-			if err != nil {
-				continue
-			}
-			if len(els) >= 2 {
-				checked = append(checked, els[1])
-			}
-		}
-		_, els, err := el.DivideAtOns(EPS)
-		if err != nil {
-			continue
-		}
-		checked = append(checked, els...)
 	}
 	stw.Snapshot()
 	stw.EscapeAll()

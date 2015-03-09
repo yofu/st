@@ -4768,6 +4768,9 @@ func (stw *Window) exmode(command string) error {
 				}
 				stw.SelectElem = stw.SelectElem[:enum]
 			}
+		case abbrev.For("i/ntersect/a/ll", cname):
+			stw.Frame.IntersectAll(stw.SelectElem, EPS)
+			stw.Snapshot()
 		case abbrev.For("co/nf", cname):
 			if usage {
 				stw.addHistory(":conf [0,1]{6}")

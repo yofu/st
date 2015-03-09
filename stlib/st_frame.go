@@ -3151,6 +3151,50 @@ func (frame *Frame) Fillet(e1, e2 *Elem, sign1, sign2 int, eps float64) ([]*Node
 	return frame.Intersect(e1, e2, false, sign1, sign2, true, true, eps)
 }
 
+func (frame *Frame) IntersectAll(elems []*Elem, eps float64) error {
+	l := len(elems)
+	if elems == nil || l <= 1 {
+		return nil
+	}
+	checked := make([]*Elem, 1)
+	sort.Sort(ElemByNum{elems})
+	ind := 0
+	for {
+		if elems[ind].IsLineElem() {
+			_, els, err := elems[ind].DivideAtOns(eps)
+			if err != nil {
+				return err
+			}
+			checked = els
+			break
+		}
+		ind++
+		if ind >= l-1 {
+			return errors.New("Intersectall: no line elem")
+		}
+	}
+	for _, el := range elems[ind+1:] {
+		if !el.IsLineElem() {
+			continue
+		}
+		for _, ce := range checked {
+			_, els, err := frame.CutByElem(el, ce, true, 1, false, eps)
+			if err != nil {
+				continue
+			}
+			if len(els) >= 2 {
+				checked = append(checked, els[1])
+			}
+		}
+		_, els, err := el.DivideAtOns(eps)
+		if err != nil {
+			continue
+		}
+		checked = append(checked, els...)
+	}
+	return nil
+}
+
 func (frame *Frame) IsUpside() bool {
 	for _, el := range frame.Elems {
 		if !IsUpside(el.Enod) {
