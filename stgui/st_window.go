@@ -1594,7 +1594,7 @@ func (stw *Window) OpenFile(filename string) error {
 	frame.View.Center[1] = stw.CanvasSize[1] * 0.5
 	switch filepath.Ext(fn) {
 	case ".inp":
-		err = frame.ReadInp(fn, []float64{0.0, 0.0, 0.0}, 0.0)
+		err = frame.ReadInp(fn, []float64{0.0, 0.0, 0.0}, 0.0, false)
 		if err != nil {
 			return err
 		}
@@ -1836,7 +1836,7 @@ func (stw *Window) ReadFile(filename string) error {
 			y = 0.0
 			z = 0.0
 		}
-		err = stw.Frame.ReadInp(filename, []float64{x, y, z}, 0.0)
+		err = stw.Frame.ReadInp(filename, []float64{x, y, z}, 0.0, false)
 	case ".inl", ".ihx", ".ihy":
 		err = stw.Frame.ReadData(filename)
 	case ".otl", ".ohx", ".ohy":
@@ -1893,7 +1893,7 @@ func (stw *Window) AddResult(filename string, search bool) error {
 
 func (stw *Window) AddPropAndSect(filename string) error {
 	if stw.Frame != nil {
-		err := stw.Frame.AddPropAndSect(filename)
+		err := stw.Frame.AddPropAndSect(filename, true)
 		return err
 	} else {
 		return errors.New("NO FRAME")
@@ -3691,7 +3691,7 @@ func (stw *Window) exmode(command string) error {
 				if err != nil {
 					return err
 				}
-				err = stw.Frame.ReadInp(fn, stw.SelectNode[0].Coord, angle*math.Pi/180.0)
+				err = stw.Frame.ReadInp(fn, stw.SelectNode[0].Coord, angle*math.Pi/180.0, false)
 				stw.Snapshot()
 				if err != nil {
 					return err
@@ -6059,14 +6059,14 @@ func (stw *Window) PasteClipboard() error {
 			default:
 				tmp = append(tmp, words...)
 			case "NODE", "ELEM":
-				nodemap, err = stw.Frame.ParseInp(tmp, coord, angle, nodemap)
+				nodemap, err = stw.Frame.ParseInp(tmp, coord, angle, nodemap, false)
 				tmp = words
 			}
 			if err != nil {
 				break
 			}
 		}
-		nodemap, err = stw.Frame.ParseInp(tmp, coord, angle, nodemap)
+		nodemap, err = stw.Frame.ParseInp(tmp, coord, angle, nodemap, false)
 		stw.EscapeCB()
 	})
 	return nil

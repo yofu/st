@@ -1654,7 +1654,7 @@ func insert(stw *Window) {
 	if name, ok := iup.GetOpenFile("", ""); ok {
 		get1node(stw, func(n *st.Node) {
 			// TODO: 角度を指定
-			err := stw.Frame.ReadInp(name, n.Coord, 0.0)
+			err := stw.Frame.ReadInp(name, n.Coord, 0.0, false)
 			if err != nil {
 				stw.errormessage(err, ERROR)
 			}

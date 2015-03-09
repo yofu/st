@@ -330,7 +330,7 @@ func (frame *Frame) Bbox() (xmin, xmax, ymin, ymax, zmin, zmax float64) {
 
 // Read
 // ReadInp// {{{
-func (frame *Frame) ReadInp(filename string, coord []float64, angle float64) error {
+func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, overwrite bool) error {
 	tmp := make([]string, 0)
 	nodemap := make(map[int]int)
 	if len(coord) < 3 {
@@ -349,7 +349,7 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64) err
 		default:
 			tmp = append(tmp, words...)
 		case "PROP", "SECT", "PILE", "NODE", "ELEM":
-			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap)
+			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite)
 			tmp = words
 		case "BASE":
 			val, err := strconv.ParseFloat(words[1], 64)
@@ -415,7 +415,7 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64) err
 	if err != nil {
 		return err
 	}
-	nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap)
+	nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite)
 	if err != nil {
 		return err
 	}
@@ -445,7 +445,7 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64) err
 	return nil
 }
 
-func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodemap map[int]int) (map[int]int, error) {
+func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodemap map[int]int, overwrite bool) (map[int]int, error) {
 	var err error
 	var def int
 	var node *Node
@@ -460,16 +460,16 @@ func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodem
 		node, def, err = frame.ParseNode(lis, coord, angle)
 		nodemap[def] = node.Num
 	case "SECT":
-		_, err = frame.ParseSect(lis)
+		_, err = frame.ParseSect(lis, overwrite)
 	case "PROP":
-		_, err = frame.ParseProp(lis)
+		_, err = frame.ParseProp(lis, overwrite)
 	case "PILE":
-		_, err = frame.ParsePile(lis)
+		_, err = frame.ParsePile(lis, overwrite)
 	}
 	return nodemap, err
 }
 
-func (frame *Frame) ParseProp(lis []string) (*Prop, error) {
+func (frame *Frame) ParseProp(lis []string, overwrite bool) (*Prop, error) {
 	var num int64
 	var err error
 	p := new(Prop)
@@ -500,13 +500,15 @@ func (frame *Frame) ParseProp(lis []string) (*Prop, error) {
 		}
 	}
 	if _, ok := frame.Props[p.Num]; ok {
-		return nil, nil
+		if !overwrite {
+			return nil, nil
+		}
 	}
 	frame.Props[p.Num] = p
 	return p, nil
 }
 
-func (frame *Frame) ParsePile(lis []string) (*Pile, error) {
+func (frame *Frame) ParsePile(lis []string, overwrite bool) (*Pile, error) {
 	var num int64
 	var err error
 	p := new(Pile)
@@ -524,11 +526,16 @@ func (frame *Frame) ParsePile(lis []string) (*Pile, error) {
 			return nil, err
 		}
 	}
+	if _, ok := frame.Piles[p.Num]; ok {
+		if !overwrite {
+			return nil, nil
+		}
+	}
 	frame.Piles[p.Num] = p
 	return p, nil
 }
 
-func (frame *Frame) ParseSect(lis []string) (*Sect, error) {
+func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 	var num int64
 	var err error
 	s := NewSect()
@@ -578,7 +585,9 @@ func (frame *Frame) ParseSect(lis []string) (*Sect, error) {
 	err = s.ParseFig(frame, tmp)
 	s.Frame = frame
 	if _, ok := frame.Sects[s.Num]; ok {
-		return nil, nil
+		if !overwrite {
+			return nil, nil
+		}
 	}
 	frame.Sects[s.Num] = s
 	frame.Show.Sect[s.Num] = true
@@ -2218,7 +2227,7 @@ func (frame *Frame) AddSect(num int) *Sect {
 	return sec
 }
 
-func (frame *Frame) AddPropAndSect(filename string) error {
+func (frame *Frame) AddPropAndSect(filename string, overwrite bool) error {
 	newsects := make(map[int]*Sect)
 	tmp := make([]string, 0)
 	var sec *Sect
@@ -2235,7 +2244,7 @@ func (frame *Frame) AddPropAndSect(filename string) error {
 		default:
 			tmp = append(tmp, words...)
 		case "PROP", "SECT":
-			sec, err = frame.ParsePropAndSect(tmp)
+			sec, err = frame.ParsePropAndSect(tmp, overwrite)
 			tmp = words
 		}
 		if err != nil {
@@ -2249,7 +2258,7 @@ func (frame *Frame) AddPropAndSect(filename string) error {
 	if err != nil {
 		return err
 	}
-	sec, err = frame.ParsePropAndSect(tmp)
+	sec, err = frame.ParsePropAndSect(tmp, overwrite)
 	if err != nil {
 		return err
 	}
@@ -2266,7 +2275,7 @@ func (frame *Frame) AddPropAndSect(filename string) error {
 	return nil
 }
 
-func (frame *Frame) ParsePropAndSect(lis []string) (*Sect, error) {
+func (frame *Frame) ParsePropAndSect(lis []string, overwrite bool) (*Sect, error) {
 	var err error
 	var sec *Sect
 	if len(lis) == 0 {
@@ -2275,9 +2284,9 @@ func (frame *Frame) ParsePropAndSect(lis []string) (*Sect, error) {
 	first := lis[0]
 	switch first {
 	case "SECT":
-		sec, err = frame.ParseSect(lis)
+		sec, err = frame.ParseSect(lis, overwrite)
 	case "PROP":
-		_, err = frame.ParseProp(lis)
+		_, err = frame.ParseProp(lis, overwrite)
 	}
 	return sec, err
 }
