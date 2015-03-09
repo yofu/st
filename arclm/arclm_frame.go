@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -402,6 +403,14 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string) error { // TODO:
 		}
 		laptime("Solve")
 	}
+	var ext string
+	if otp == "" {
+		otp = "hogtxt"
+		ext = ".otp"
+	} else {
+		ext = filepath.Ext(otp)
+		otp = strings.Replace(otp, ext, "", 1)
+	}
 	for nans, ans := range answers {
 		vec := frame.FillConf(ans)
 		_, err := frame.UpdateStress(vec)
@@ -410,7 +419,7 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string) error { // TODO:
 		}
 		frame.UpdateReaction(gmtx, vec)
 		frame.UpdateForm(vec)
-		w, err := os.Create(fmt.Sprintf("%s_%02d.otp", otp, nans))
+		w, err := os.Create(fmt.Sprintf("%s_%02d%s", otp, nans, ext))
 		if err != nil {
 			return err
 		}
@@ -476,6 +485,9 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, dsafety float64) e
 		<-frame.Lapch
 	}
 	frame.Endch <- nil
+	if otp == "" {
+		otp = "hogtxt.otp"
+	}
 	w, err := os.Create(otp)
 	if err != nil {
 		return err
