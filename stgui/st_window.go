@@ -5113,6 +5113,8 @@ func (stw *Window) exmode(command string) error {
 			var sol string
 			if fn == "" {
 				otp = st.Ce(stw.Frame.Path, ".otp")
+			} else {
+				otp = fn
 			}
 			if o, ok := argdict["OTP"]; ok {
 				otp = o
@@ -5148,6 +5150,8 @@ func (stw *Window) exmode(command string) error {
 			var safety float64
 			if fn == "" {
 				otp = st.Ce(stw.Frame.Path, ".otp")
+			} else {
+				otp = fn
 			}
 			if o, ok := argdict["OTP"]; ok {
 				otp = o
