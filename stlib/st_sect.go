@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"github.com/yofu/st/arclm"
 )
 
 var (
@@ -49,8 +50,8 @@ func (s SectByNum) Less(i, j int) bool {
 func NewSect() *Sect {
 	s := new(Sect)
 	s.Figs = make([]*Fig, 0)
-	s.Exp = EXPONENT
-	s.Exq = EXPONENT
+	s.Exp = arclm.EXPONENT
+	s.Exq = arclm.EXPONENT
 	s.Lload = make([]float64, 3)
 	s.Yield = make([]float64, 12)
 	s.Color = 16777215

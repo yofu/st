@@ -22,15 +22,9 @@ var (
 
 const SI = 9.80665
 
-const (
-	RADIUS   = 0.95
-	EXPONENT = 1.5
-	QUFACT   = 1.25
-)
-
 var (
-	// PlasticThreshold = math.Pow(RADIUS, EXPONENT)
-	PlasticThreshold = RADIUS
+	// PlasticThreshold = math.Pow(arclm.RADIUS, arclm.EXPONENT)
+	PlasticThreshold = arclm.RADIUS
 )
 
 var (

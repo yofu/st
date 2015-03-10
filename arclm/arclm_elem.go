@@ -9,6 +9,12 @@ import (
 	"strconv"
 )
 
+const (
+	RADIUS   = 0.95
+	EXPONENT = 1.5
+	QUFACT   = 1.25
+)
+
 type Sect struct {
 	Num   int
 	E     float64
@@ -166,6 +172,14 @@ func NewElem() *Elem {
 	return el
 }
 
+func (elem *Elem) Number() int {
+	return elem.Num
+}
+
+func (elem *Elem) Enode(ind int) int {
+	return elem.Enod[ind].Num
+}
+
 func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error) {
 	el := NewElem()
 	num, err := strconv.ParseInt(words[0], 10, 64)
@@ -298,6 +312,43 @@ func (elem *Elem) SetPrincipalAxis() error {
 	elem.Strong = s
 	elem.Weak = w
 	return nil
+}
+
+func (elem *Elem) YieldFunction(period string) ([]float64, []error) {
+	err := make([]error, 2)
+	fc := make([]float64, 6)
+	fu := make([]float64, 6)
+	f := make([]float64, 2)
+	f1 := make([]float64, 2)
+	f2 := make([]float64, 2)
+	var value float64
+	for j := 0; j < 6; j++ {
+		fc[j] = 0.5 * (elem.Sect.Yield[2*j] + elem.Sect.Yield[2*j+1])
+		fu[j] = 0.5 * (elem.Sect.Yield[2*j] - elem.Sect.Yield[2*j+1])
+	}
+	for i := 0; i < 2; i++ {
+		for j := 0; j < 6; j++ {
+			switch j {
+			case 0, 3: // Nz, Mz
+				value = math.Abs(elem.Stress[2*i+j]-math.Pow(-1.0, float64(i))*fc[j]) / fu[j]
+				f1[i] += math.Pow(value, elem.Sect.Exp)
+			case 1, 2: // Qx, Qy
+				value = math.Abs(elem.Stress[2*i+j]-fc[j]) / fu[j]
+				if value*QUFACT > 1.0 {
+					err[i] = BrittleFailure(elem, i)
+				}
+				f2[i] += math.Pow(value, elem.Sect.Exp)
+			case 4, 5: // Mx, My
+				value = math.Abs(elem.Stress[2*i+j]-fc[j]) / fu[j]
+				f1[i] += math.Pow(value, elem.Sect.Exp)
+			}
+		}
+		f[i] = math.Pow(math.Pow(f1[i], elem.Sect.Exq/elem.Sect.Exp)+math.Pow(f2[i], elem.Sect.Exq/elem.Sect.Exp), 1.0/elem.Sect.Exq)
+		if f[i] > RADIUS && err[i] == nil {
+			err[i] = Yielded(elem, i)
+		}
+	}
+	return f, err
 }
 
 func (elem *Elem) TransMatrix() ([][]float64, error) {

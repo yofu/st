@@ -7,6 +7,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"github.com/yofu/st/arclm"
 )
 
 // Constants & Variables// {{{
@@ -121,6 +122,14 @@ func NewPlateElem(ns []*Node, sect *Sect, etype int) *Elem {
 }
 
 // }}}
+
+func (elem *Elem) Number() int {
+	return elem.Num
+}
+
+func (elem *Elem) Enode(ind int) int {
+	return elem.Enod[ind].Num
+}
 
 func (elem *Elem) Snapshot(frame *Frame) *Elem {
 	if elem == nil {
@@ -799,8 +808,8 @@ func (elem *Elem) YieldFunction(period string) ([]float64, []error) {
 				f1[i] += math.Pow(value, elem.Sect.Exp)
 			case 1, 2: // Qx, Qy
 				value = math.Abs(elem.ReturnStress(period, i, j)-fc[j]) / fu[j]
-				if value*QUFACT > 1.0 {
-					err[i] = BrittleFailure(elem, i)
+				if value*arclm.QUFACT > 1.0 {
+					err[i] = arclm.BrittleFailure(elem, i)
 				}
 				f2[i] += math.Pow(value, elem.Sect.Exp)
 			case 4, 5: // Mx, My
@@ -809,8 +818,8 @@ func (elem *Elem) YieldFunction(period string) ([]float64, []error) {
 			}
 		}
 		f[i] = math.Pow(math.Pow(f1[i], elem.Sect.Exq/elem.Sect.Exp)+math.Pow(f2[i], elem.Sect.Exq/elem.Sect.Exp), 1.0/elem.Sect.Exq)
-		if f[i] > RADIUS && err[i] == nil {
-			err[i] = Yielded(elem, i)
+		if f[i] > arclm.RADIUS && err[i] == nil {
+			err[i] = arclm.Yielded(elem, i)
 		}
 	}
 	return f, err

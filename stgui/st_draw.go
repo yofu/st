@@ -7,6 +7,7 @@ import (
 	"github.com/yofu/st/stlib"
 	"math"
 	"regexp"
+	"github.com/yofu/st/arclm"
 )
 
 func DrawPrintRange(stw *Window) {
@@ -431,9 +432,9 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 				switch err[j].(type) {
 				default:
 					cvs.Foreground(StressTextColor)
-				case st.YieldedError:
+				case arclm.YieldedError:
 					cvs.Foreground(YieldedTextColor)
-				case st.BrittleFailureError:
+				case arclm.BrittleFailureError:
 					cvs.Foreground(BrittleTextColor)
 				}
 				coord := make([]float64, 3)
