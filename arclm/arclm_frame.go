@@ -193,6 +193,17 @@ func (frame *Frame) KE(safety float64) (*matrix.COOMatrix, []float64, error) { /
 	return frame.AssemGlobalMatrix(matf, vecf, safety)
 }
 
+// TODO: implement
+func (frame *Frame) KP(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
+	matf := func(elem *Elem) ([][]float64, error) {
+		return elem.StiffMatrix()
+	}
+	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) ([]float64) {
+		return elem.AssemCMQ(tmatrix, gvct, safety)
+	}
+	return frame.AssemGlobalMatrix(matf, vecf, safety)
+}
+
 func (frame *Frame) KEKG(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
 	matf := func(elem *Elem) ([][]float64, error) {
 		estiff, err := elem.StiffMatrix()
@@ -426,6 +437,58 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string) error { // TODO:
 		defer w.Close()
 		frame.WriteTo(w)
 	}
+	return nil
+}
+
+// TODO: implement
+func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) error { // TODO: speed up
+	if init {
+		frame.Initialise()
+	}
+	start := time.Now()
+	laptime := func (message string) {
+		end := time.Now()
+		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+	}
+	var err error
+	var answers [][]float64
+	var gmtx *matrix.COOMatrix
+	var gvct, vec []float64
+	var csize int
+	var conf []bool
+	safety := 0.0
+	for lap:=0; lap<nlap; lap++ {
+		safety += dsafety
+		gmtx, gvct, err = frame.KP(safety)
+		csize, conf, vec = frame.AssemConf(gvct, safety)
+		if err != nil {
+			return err
+		}
+		laptime("Assem")
+		mtx := gmtx.ToLLS(csize, conf)
+		laptime("ToLLS")
+		answers = mtx.Solve(vec)
+		laptime("Solve")
+		tmp := frame.FillConf(answers[0])
+		_, err = frame.UpdateStress(tmp)
+		if err != nil {
+			return err
+		}
+		frame.UpdateReaction(gmtx, tmp)
+		frame.UpdateForm(tmp)
+		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f", lap+1, nlap, safety))
+		frame.Lapch <- lap+1
+		<-frame.Lapch
+	}
+	if otp == "" {
+		otp = "hogtxt.otp"
+	}
+	w, err := os.Create(otp)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+	frame.WriteTo(w)
 	return nil
 }
 
