@@ -793,6 +793,110 @@ func (cp CPIPE) Vertices() [][]float64 {
 
 // }}}
 
+// CKYOU// {{{
+type CKYOU struct {
+	H, B, Tw, Tf float64
+}
+
+func NewCKYOU(lis []string) (CKYOU, error) {
+	ck := CKYOU{0.0, 0.0, 0.0, 0.0}
+	if len(lis) < 4 {
+		return ck, NotEnoughArgs("NewCKYOU")
+	}
+	var val float64
+	var err error
+	val, err = strconv.ParseFloat(lis[0], 64)
+	if err != nil {
+		return ck, err
+	}
+	ck.H = val
+	val, err = strconv.ParseFloat(lis[1], 64)
+	if err != nil {
+		return ck, err
+	}
+	ck.B = val
+	val, err = strconv.ParseFloat(lis[2], 64)
+	if err != nil {
+		return ck, err
+	}
+	ck.Tw = val
+	val, err = strconv.ParseFloat(lis[3], 64)
+	if err != nil {
+		return ck, err
+	}
+	ck.Tf = val
+	return ck, nil
+}
+func (ck CKYOU) String() string {
+	return fmt.Sprintf("CKYOU %5.1f %5.1f %4.1f %4.1f", ck.H, ck.B, ck.Tw, ck.Tf)
+}
+func (ck CKYOU) Description() string {
+	return fmt.Sprintf("C-%dx%dx%dx%d(KYOU)[mm]", int(ck.H*10), int(ck.B*10), int(ck.Tw*10), int(ck.Tf*10))
+}
+func (ck CKYOU) A() float64 {
+	return ck.H*ck.B - (ck.H-2*ck.Tf)*(ck.B-ck.Tw)
+}
+func (ck CKYOU) Asx() float64 {
+	return 2.0 * ck.B * ck.Tf / 1.5
+}
+func (ck CKYOU) Asy() float64 {
+	return (ck.H - 2*ck.Tf) * ck.Tw
+}
+func (ck CKYOU) Ix() float64 {
+	return (ck.B*math.Pow(ck.H, 3.0) - (ck.B-ck.Tw)*math.Pow(ck.H-2*ck.Tf, 3.0)) / 12.0
+}
+func (ck CKYOU) Cx() float64 {
+	return (2.0 * ck.B * ck.Tf * 0.5 * ck.B + (ck.H - 2*ck.Tf) * ck.Tw * 0.5 * ck.Tw) / ck.A()
+}
+func (ck CKYOU) Iy() float64 {
+	cx := ck.Cx()
+	return 2.0*ck.Tf*math.Pow(ck.B, 3.0)/12.0 + (ck.H-2*ck.Tf)*math.Pow(ck.Tw, 3.0)/12.0 + 2.0 * ck.B * ck.Tf * math.Pow(0.5*ck.B - cx, 2.0) + (ck.H - 2*ck.Tf) * ck.Tw * math.Pow(cx - 0.5*ck.Tw, 2.0)
+}
+func (ck CKYOU) J() float64 {
+	return 2.0*ck.B*math.Pow(ck.Tf, 3.0)/3.0 + (ck.H-2*ck.Tf)*math.Pow(ck.Tw, 3.0)/3.0
+}
+func (ck CKYOU) Iw() float64 {
+	return math.Pow(ck.H, 2.0) * math.Pow(ck.B, 3.0) * ck.Tf * (3.0*ck.B*ck.Tf + 2.0*ck.H*ck.Tw) / (12.0*(6.0*ck.B*ck.Tf + ck.H*ck.Tw))
+}
+func (ck CKYOU) Torsion() float64 {
+	if ck.Tf >= ck.Tw {
+		return ck.J() / ck.Tf
+	} else {
+		return ck.J() / ck.Tw
+	}
+}
+func (ck CKYOU) Zx() float64 {
+	return ck.Ix() / ck.H * 2.0
+}
+func (ck CKYOU) Zy() float64 {
+	cx := ck.Cx()
+	if cx >= ck.B*0.5 {
+		return ck.Iy() / cx
+	} else {
+		return ck.Iy() / (ck.B - cx)
+	}
+}
+
+func (ck CKYOU) Vertices() [][]float64 {
+	h := ck.H * 0.5
+	c := ck.Cx()
+	b := ck.B - c
+	w := ck.Tw - c
+	f := ck.Tf
+	vertices := make([][]float64, 8)
+	vertices[0] = []float64{-c, -h}
+	vertices[1] = []float64{b, -h}
+	vertices[2] = []float64{b, -(h - f)}
+	vertices[3] = []float64{w, -(h - f)}
+	vertices[4] = []float64{w, h - f}
+	vertices[5] = []float64{b, h - f}
+	vertices[6] = []float64{b, h}
+	vertices[7] = []float64{-c, h}
+	return vertices
+}
+
+// }}}
+
 // PLATE// {{{
 type PLATE struct {
 	H, B float64

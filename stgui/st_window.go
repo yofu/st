@@ -4207,6 +4207,20 @@ func (stw *Window) exmode(command string) error {
 				return err
 			}
 			stw.ShapeData(al)
+		case abbrev.For("ck/you", cname):
+			if usage {
+				stw.addHistory(":ckyou h b tw tf")
+				return nil
+			}
+			if narg < 5 {
+				return st.NotEnoughArgs(":ckyou")
+			}
+			al, err := st.NewCKYOU(args[1:5])
+			if err != nil {
+				return err
+			}
+			stw.ShapeData(al)
+			fmt.Println(al.Cx())
 		case abbrev.For("pla/te", cname):
 			if usage {
 				stw.addHistory(":plate h b")
