@@ -431,10 +431,7 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string) error { // TODO:
 
 func (frame *Frame) Arclm201(otp string, init bool, nlap int, dsafety, safety float64) error { // TODO: speed up
 	if init {
-		fmt.Println("init")
 		frame.Initialise()
-	} else {
-		fmt.Println("no init")
 	}
 	start := time.Now()
 	laptime := func (message string) {
