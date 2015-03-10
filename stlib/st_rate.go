@@ -793,6 +793,110 @@ func (cp CPIPE) Vertices() [][]float64 {
 
 // }}}
 
+// TKYOU// {{{
+type TKYOU struct {
+	H, B, Tw, Tf float64
+}
+
+func NewTKYOU(lis []string) (TKYOU, error) {
+	tk := TKYOU{0.0, 0.0, 0.0, 0.0}
+	if len(lis) < 4 {
+		return tk, NotEnoughArgs("NewTKYOU")
+	}
+	var val float64
+	var err error
+	val, err = strconv.ParseFloat(lis[0], 64)
+	if err != nil {
+		return tk, err
+	}
+	tk.H = val
+	val, err = strconv.ParseFloat(lis[1], 64)
+	if err != nil {
+		return tk, err
+	}
+	tk.B = val
+	val, err = strconv.ParseFloat(lis[2], 64)
+	if err != nil {
+		return tk, err
+	}
+	tk.Tw = val
+	val, err = strconv.ParseFloat(lis[3], 64)
+	if err != nil {
+		return tk, err
+	}
+	tk.Tf = val
+	return tk, nil
+}
+func (tk TKYOU) String() string {
+	return fmt.Sprintf("TKYOU %5.1f %5.1f %4.1f %4.1f", tk.H, tk.B, tk.Tw, tk.Tf)
+}
+func (tk TKYOU) Description() string {
+	return fmt.Sprintf("T-%dx%dx%dx%d(KYOU)[mm]", int(tk.H*10), int(tk.B*10), int(tk.Tw*10), int(tk.Tf*10))
+}
+func (tk TKYOU) A() float64 {
+	return tk.H*tk.B - (tk.H-tk.Tf)*(tk.B-tk.Tw)
+}
+func (tk TKYOU) Asx() float64 {
+	return tk.B * tk.Tf / 1.5
+}
+func (tk TKYOU) Asy() float64 {
+	return (tk.H - tk.Tf) * tk.Tw / 1.5
+}
+func (tk TKYOU) Cy() float64 {
+	return ((tk.B - tk.Tw) * tk.Tf * 0.5 * tk.Tf + tk.H * tk.Tw * 0.5 * tk.H) / tk.A()
+}
+func (tk TKYOU) Ix() float64 {
+	cy := tk.Cy()
+	return (tk.B - tk.Tw)*math.Pow(tk.Tf, 3.0)/12.0 + tk.H*math.Pow(tk.Tw, 3.0)/12.0 + (tk.B - tk.Tw) * tk.Tf * math.Pow(cy - 0.5*tk.Tf, 2.0) + tk.H * tk.Tw * math.Pow(0.5 * tk.H - cy, 2.0)
+}
+func (tk TKYOU) Iy() float64 {
+	return tk.Tf*math.Pow(tk.B, 3.0)/12.0 + (tk.H-tk.Tf)*math.Pow(tk.Tw, 3.0)/12.0
+}
+func (tk TKYOU) J() float64 {
+	return tk.B*math.Pow(tk.Tf, 3.0)/3.0 + (tk.H-tk.Tf)*math.Pow(tk.Tw, 3.0)/3.0
+}
+func (tk TKYOU) Iw() float64 {
+	return 0.0
+}
+func (tk TKYOU) Torsion() float64 {
+	if tk.Tf >= tk.Tw {
+		return tk.J() / tk.Tf
+	} else {
+		return tk.J() / tk.Tw
+	}
+}
+func (tk TKYOU) Zx() float64 {
+	cy := tk.Cy()
+	if cy >= tk.H*0.5 {
+		return tk.Iy() / cy
+	} else {
+		return tk.Iy() / (tk.H - cy)
+	}
+}
+func (tk TKYOU) Zy() float64 {
+	return tk.Iy() / tk.B * 2.0
+}
+
+func (tk TKYOU) Vertices() [][]float64 {
+	c := tk.Cy()
+	h := tk.H - c
+	b := tk.B * 0.5
+	w := tk.Tw * 0.5
+	f := tk.Tf
+	vertices := make([][]float64, 8)
+	vertices[0] = []float64{-w, -h}
+	vertices[1] = []float64{w, -h}
+	vertices[2] = []float64{w, c - f}
+	vertices[3] = []float64{b, c - f}
+	vertices[4] = []float64{b, c}
+	vertices[5] = []float64{-b, c}
+	vertices[6] = []float64{-b, c - f}
+	vertices[7] = []float64{-w, c - f}
+	return vertices
+}
+
+// }}}
+
 // CKYOU// {{{
 type CKYOU struct {
 	H, B, Tw, Tf float64
