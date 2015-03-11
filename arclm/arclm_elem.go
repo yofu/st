@@ -244,11 +244,18 @@ func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error)
 	return el, nil
 }
 
+func (elem *Elem) Length0() float64 {
+	sum := 0.0
+	for i := 0; i < 3; i++ {
+		sum += math.Pow((elem.Enod[1].Coord[i] - elem.Enod[0].Coord[i]), 2)
+	}
+	return math.Sqrt(sum)
+}
+
 func (elem *Elem) Length() float64 {
 	sum := 0.0
 	for i := 0; i < 3; i++ {
 		sum += math.Pow((elem.Enod[1].Coord[i] + elem.Enod[1].Disp[i] - elem.Enod[0].Coord[i] - elem.Enod[0].Disp[i]), 2)
-		// sum += math.Pow((elem.Enod[1].Coord[i] - elem.Enod[0].Coord[i]), 2)
 	}
 	return math.Sqrt(sum)
 }
@@ -263,7 +270,6 @@ func (elem *Elem) Direction(normalize bool) []float64 {
 	}
 	for i := 0; i < 3; i++ {
 		vec[i] = (elem.Enod[1].Coord[i] + elem.Enod[1].Disp[i] - elem.Enod[0].Coord[i] - elem.Enod[0].Disp[i]) / l
-		// vec[i] = (elem.Enod[1].Coord[i] - elem.Enod[0].Coord[i]) / l
 	}
 	return vec
 }

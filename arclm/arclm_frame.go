@@ -41,6 +41,27 @@ func NewFrame() *Frame {
 	return af
 }
 
+type FrameState struct {
+	Disp [][]float64
+	Reaction [][]float64
+	Stress [][]float64
+}
+
+func NewFrameState(nnode, nelem int) *FrameState {
+	fs := new(FrameState)
+	fs.Disp = make([][]float64, nnode)
+	fs.Reaction = make([][]float64, nnode)
+	fs.Stress = make([][]float64, nelem)
+	for i:=0; i<nnode; i++ {
+		fs.Disp[i] = make([]float64, 6)
+		fs.Reaction[i] = make([]float64, 6)
+	}
+	for i:=0; i<nelem; i++ {
+		fs.Stress[i] = make([]float64, 12)
+	}
+	return fs
+}
+
 func (af *Frame) ReadInput(filename string) error {
 	f, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -139,6 +160,38 @@ func (frame *Frame) Initialise() {
 	for _, el := range frame.Elems {
 		for i:=0; i<12; i++ {
 			el.Stress[i] = el.Cmq[i]
+		}
+	}
+}
+
+func (frame *Frame) SaveState() *FrameState {
+	nnode := len(frame.Nodes)
+	nelem := len(frame.Elems)
+	fs := NewFrameState(nnode, nelem)
+	for i, n := range frame.Nodes {
+		for j:=0; j<6; j++ {
+			fs.Disp[i][j] = n.Disp[j]
+			fs.Reaction[i][j] = n.Reaction[j]
+		}
+	}
+	for i, el := range frame.Elems {
+		for j:=0; j<12; j++ {
+			fs.Stress[i][j] = el.Stress[j]
+		}
+	}
+	return fs
+}
+
+func (frame *Frame) RestoreState(fs *FrameState) {
+	for i, n := range frame.Nodes {
+		for j:=0; j<6; j++ {
+			n.Disp[j] = fs.Disp[i][j]
+			n.Reaction[j] = fs.Reaction[i][j]
+		}
+	}
+	for i, el := range frame.Elems {
+		for j:=0; j<12; j++ {
+			el.Stress[j] = fs.Stress[i][j]
 		}
 	}
 }
@@ -548,6 +601,151 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, dsafety, safety fl
 		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, nlap, safety, rnorm / bnorm))
 		frame.Lapch <- lap+1
 		<-frame.Lapch
+	}
+	if otp == "" {
+		otp = "hogtxt.otp"
+	}
+	w, err := os.Create(otp)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+	frame.WriteTo(w)
+	return nil
+}
+
+// ANALYSIS FOR PILES UNDER LATERAL LOAD
+// E: 70 * α * ξ [tf/m2]
+// A: 3.16 * B^(-0.75) * N * B/100 * L [m2]
+//    α: SAND=80 CLAY=60
+//    ξ: PILE GROUPE COEFFICIENT 1.0
+//    B : PILE DIAMETER[cm]
+//    N : N-VALUE
+//    L : SOIL SPRING PITFCH[m]
+func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) error { // TODO: speed up
+	if init {
+		frame.Initialise()
+	}
+	start := time.Now()
+	laptime := func (message string) {
+		end := time.Now()
+		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+	}
+	var err error
+	var answers [][]float64
+	var gmtx *matrix.COOMatrix
+	var gvct, vec []float64
+	var norm float64
+	var csize int
+	var conf []bool
+	size := 6 * len(frame.Nodes)
+	dlast := make([]float64, size)
+	dd := make([]float64, size)
+	kpile := func (safety float64, gdisp []float64) (*matrix.COOMatrix, []float64, error) {
+		matf := func(elem *Elem) ([][]float64, error) {
+			for _, sec := range sects {
+				if elem.Sect.Num == sec {
+					ld := 0.0
+					for i := 0; i < 3; i++ {
+						ld += math.Pow((elem.Enod[1].Coord[i] + gdisp[6*elem.Enod[1].Index+i] - elem.Enod[0].Coord[i] - gdisp[6*elem.Enod[0].Index+i]), 2)
+					}
+					y := math.Abs(math.Sqrt(ld) - elem.Length()) * 100
+					if y <= 0.1 {
+						return elem.StiffMatrix()
+					} else {
+						a := elem.Sect.Value[0]
+						elem.Sect.Value[0] = a / math.Sqrt(y) / 3.16
+						stiff, err := elem.StiffMatrix()
+						elem.Sect.Value[0] = a
+						return stiff, err
+					}
+				}
+			}
+			return elem.StiffMatrix()
+		}
+		vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) ([]float64) {
+			return elem.AssemCMQ(tmatrix, gvct, safety)
+		}
+		return frame.AssemGlobalMatrix(matf, vecf, safety)
+	}
+	kpilestress := func (f *Frame, vec []float64, sects []int) ([][]float64, error) {
+		rtn := make([][]float64, len(f.Elems))
+		for enum, el := range f.Elems {
+			gdisp := make([]float64, 12)
+			for i := 0; i < 2; i++ {
+				for j := 0; j < 6; j++ {
+					gdisp[6*i+j] = vec[6*el.Enod[i].Index+j]
+				}
+			}
+			var df []float64
+			var err error
+			soil := false
+			for _, sec := range sects {
+				if el.Sect.Num == sec {
+					ld := 0.0
+					for i := 0; i < 3; i++ {
+						ld += math.Pow((el.Enod[1].Coord[i] + gdisp[6+i] - el.Enod[0].Coord[i] - gdisp[i]), 2)
+					}
+					y := math.Abs(math.Sqrt(ld) - el.Length()) * 100
+					if y <= 0.1 {
+						df, err = el.ElemStress(gdisp)
+					} else {
+						a := el.Sect.Value[0]
+						el.Sect.Value[0] = a / math.Sqrt(y) / 3.16
+						df, err = el.ElemStress(gdisp)
+						el.Sect.Value[0] = a
+					}
+					soil = true
+				}
+			}
+			if !soil {
+				df, err = el.ElemStress(gdisp)
+			}
+			if err != nil {
+				return nil, err
+			}
+			rtn[enum] = df
+		}
+		return rtn, nil
+	}
+	lap := 0
+	for {
+		f := frame.SaveState()
+		if lap == 0 {
+			gmtx, gvct, err = frame.KE(1.0)
+			csize, conf, vec = frame.AssemConf(gvct, 1.0)
+		} else {
+			gmtx, gvct, err = kpile(1.0, dlast)
+			csize, conf, vec = frame.AssemConf(gvct, 1.0)
+		}
+		if err != nil {
+			return err
+		}
+		laptime("Assem")
+		mtx := gmtx.ToLLS(csize, conf)
+		laptime("ToLLS")
+		answers = mtx.Solve(vec)
+		laptime("Solve")
+		tmp := frame.FillConf(answers[0])
+		_, err = kpilestress(frame, tmp, sects)
+		if err != nil {
+			return err
+		}
+		frame.UpdateReaction(gmtx, tmp)
+		frame.UpdateForm(tmp)
+		for i:=0; i<size; i++ {
+			dd[i] = tmp[i] - dlast[i]
+			dlast[i] = tmp[i]
+		}
+		norm = math.Sqrt(Dot(dd, dd, len(dd)))
+		laptime(fmt.Sprintf("LAP = %d NORM = %.5E", lap+1, norm))
+		if norm < eps {
+			break
+		}
+		frame.Lapch <- lap+1
+		<-frame.Lapch
+		lap++
+		frame.RestoreState(f)
 	}
 	if otp == "" {
 		otp = "hogtxt.otp"

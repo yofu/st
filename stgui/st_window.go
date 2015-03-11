@@ -5256,7 +5256,7 @@ func (stw *Window) exmode(command string) error {
 			}()
 			stw.CurrentLap("Calculating...", 0, lap)
 			go func () {
-				readloop:
+				read201:
 				for {
 					select {
 					case nlap := <-af.Lapch:
@@ -5267,7 +5267,66 @@ func (stw *Window) exmode(command string) error {
 					case <-af.Endch:
 						stw.CurrentLap("Completed", lap, lap)
 						stw.Redraw()
-						break readloop
+						break read201
+					}
+				}
+			}()
+		case abbrev.For("a/rclm/301/", cname):
+			if usage {
+				stw.addHistory(":arclm301 {-sects=val} {-eps=val} {-noinit} filename")
+				return nil
+			}
+			var otp string
+			var sects []int
+			var eps float64
+			if fn == "" {
+				otp = st.Ce(stw.Frame.Path, ".otp")
+			} else {
+				otp = fn
+			}
+			if o, ok := argdict["OTP"]; ok {
+				otp = o
+			}
+			if s, ok := argdict["SECTS"]; ok {
+				stw.addHistory(fmt.Sprintf("SOIL SPRING: %s", s))
+				sects = SplitNums(s)
+			}
+			if s, ok := argdict["EPS"]; ok {
+				tmp, err := strconv.ParseFloat(s, 64)
+				if err != nil {
+					return err
+				}
+				eps = tmp
+			} else {
+				eps = 1E-3
+			}
+			stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
+			stw.addHistory(fmt.Sprintf("EPS: %.3E", eps))
+			per := "L"
+			af := stw.Frame.Arclms[per]
+			init := true
+			if _, ok := argdict["NOINIT"]; ok {
+				init = false
+				stw.addHistory("NO INITIALISATION")
+			}
+			go func () {
+				err := af.Arclm301(otp, init, sects, eps)
+				af.Endch <-err
+			}()
+			stw.CurrentLap("Calculating...", 0, 0)
+			go func () {
+				read301:
+				for {
+					select {
+					case nlap := <-af.Lapch:
+						stw.Frame.ReadArclmData(af, per)
+						af.Lapch <- 1
+						stw.CurrentLap("Calculating...", nlap, 0)
+						stw.Redraw()
+					case <-af.Endch:
+						stw.CurrentLap("Completed", 0, 0)
+						stw.Redraw()
+						break read301
 					}
 				}
 			}()
