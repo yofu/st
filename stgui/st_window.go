@@ -220,7 +220,7 @@ var (
 	re_brace      = regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
 	re_wall       = regexp.MustCompile("(?i)wa(l){0,2}$")
 	re_slab       = regexp.MustCompile("(?i)sl(a(b)?)?$")
-	re_sectnum    = regexp.MustCompile("(?i)^ *sect? *={0,2} *[[]?([0-9, ]+)[]]?")
+	re_sectnum    = regexp.MustCompile("(?i)^ *sect? *={0,2} *(range[(]{1}){0,1}[[]?([0-9, ]+)[]]?")
 	re_orgsectnum = regexp.MustCompile("(?i)^ *osect? *={0,2} *[[]?([0-9, ]+)[]]?")
 )
 
@@ -6296,11 +6296,13 @@ func SplitNums(nums string) []int {
 func SectFilter(str string) (func(*st.Elem) bool, string) {
 	var filterfunc func(el *st.Elem) bool
 	var hstr string
+	var snums []int
 	fs := re_sectnum.FindStringSubmatch(str)
-	if len(fs) < 2 {
-		return nil, ""
+	if fs[1] != "" {
+		snums = SplitNums(fmt.Sprintf("range(%s)", fs[2]))
+	} else {
+		snums = SplitNums(fs[2])
 	}
-	snums := SplitNums(fs[1])
 	filterfunc = func(el *st.Elem) bool {
 		for _, snum := range snums {
 			if el.Sect.Num == snum {
