@@ -6260,19 +6260,37 @@ func (stw *Window) CurrentLap (comment string, nlap, laps int) {
 }
 
 func SplitNums(nums string) []int {
-	splitter := regexp.MustCompile("[, ]")
-	tmp := splitter.Split(nums, -1)
-	rtn := make([]int, len(tmp))
-	i := 0
-	for _, numstr := range tmp {
-		val, err := strconv.ParseInt(strings.Trim(numstr, " "), 10, 64)
+	sectrange := regexp.MustCompile("(?i)^ *range *[(] *([0-9]+) *, *([0-9]+) *[)] *$")
+	if sectrange.MatchString(nums) {
+		fs := sectrange.FindStringSubmatch(nums)
+		start, err := strconv.ParseInt(fs[1], 10, 64)
+		end, err := strconv.ParseInt(fs[2], 10, 64)
 		if err != nil {
-			continue
+			return nil
 		}
-		rtn[i] = int(val)
-		i++
+		if start > end {
+			return nil
+		}
+		sects := make([]int, int(end-start))
+		for i:=0; i<int(end-start); i++ {
+			sects[i] = i + int(start)
+		}
+		return sects
+	} else {
+		splitter := regexp.MustCompile("[, ]")
+		tmp := splitter.Split(nums, -1)
+		rtn := make([]int, len(tmp))
+		i := 0
+		for _, numstr := range tmp {
+			val, err := strconv.ParseInt(strings.Trim(numstr, " "), 10, 64)
+			if err != nil {
+				continue
+			}
+			rtn[i] = int(val)
+			i++
+		}
+		return rtn[:i]
 	}
-	return rtn[:i]
 }
 
 func SectFilter(str string) (func(*st.Elem) bool, string) {
