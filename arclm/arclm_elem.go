@@ -320,41 +320,100 @@ func (elem *Elem) SetPrincipalAxis() error {
 	return nil
 }
 
-func (elem *Elem) YieldFunction(period string) ([]float64, []error) {
+func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]float64, [][]float64, []error) {
 	err := make([]error, 2)
 	fc := make([]float64, 6)
 	fu := make([]float64, 6)
 	f := make([]float64, 2)
 	f1 := make([]float64, 2)
 	f2 := make([]float64, 2)
-	var value float64
+	var v, value, unit float64
+	values := make([]float64, 6)
+	units := make([]float64, 6)
+	dfdp := make([][]float64, 2)
 	for j := 0; j < 6; j++ {
 		fc[j] = 0.5 * (elem.Sect.Yield[2*j] + elem.Sect.Yield[2*j+1])
 		fu[j] = 0.5 * (elem.Sect.Yield[2*j] - elem.Sect.Yield[2*j+1])
 	}
 	for i := 0; i < 2; i++ {
 		for j := 0; j < 6; j++ {
+			if elem.Bonds[6*i+j] == 1 {
+				continue
+			}
 			switch j {
 			case 0, 3: // Nz, Mz
-				value = math.Abs(elem.Stress[2*i+j]-math.Pow(-1.0, float64(i))*fc[j]) / fu[j]
+				v = elem.Stress[2*i+j]-math.Pow(-1.0, float64(i))*fc[j]
+				value = math.Abs(v) / fu[j]
+				values[j] = value
 				f1[i] += math.Pow(value, elem.Sect.Exp)
 			case 1, 2: // Qx, Qy
-				value = math.Abs(elem.Stress[2*i+j]-fc[j]) / fu[j]
+				v = elem.Stress[2*i+j]-fc[j]
+				value = math.Abs(v) / fu[j]
+				values[j] = value
 				if value*QUFACT > 1.0 {
 					err[i] = BrittleFailure(elem, i)
 				}
 				f2[i] += math.Pow(value, elem.Sect.Exp)
 			case 4, 5: // Mx, My
-				value = math.Abs(elem.Stress[2*i+j]-fc[j]) / fu[j]
+				v = elem.Stress[2*i+j]-fc[j]
+				value = math.Abs(v) / fu[j]
+				values[j] = value
 				f1[i] += math.Pow(value, elem.Sect.Exp)
 			}
+			if v == 0.0 {
+				unit = 0.0
+			} else {
+				unit = v / math.Abs(v)
+			}
+			units[j] = unit
 		}
 		f[i] = math.Pow(math.Pow(f1[i], elem.Sect.Exq/elem.Sect.Exp)+math.Pow(f2[i], elem.Sect.Exq/elem.Sect.Exp), 1.0/elem.Sect.Exq)
 		if f[i] > RADIUS && err[i] == nil {
 			err[i] = Yielded(elem, i)
 		}
+		dfdp[i] = make([]float64, 6)
+		for j := 0; j < 6; j++ {
+			if elem.Bonds[6*i+j] == 1 {
+				continue
+			}
+			if elem.Sect.Exp == elem.Sect.Exq {
+				dfdp[i][j] = unit / fu[j] * math.Pow(values[j], elem.Sect.Exp - 1.0)
+			} else {
+				if j == 1 || j == 2 { // Qx, Qy
+					dfdp[i][j] = unit / fu[j] * math.Pow(f2[i], elem.Sect.Exq/elem.Sect.Exp - 1.0) * math.Pow(values[j], elem.Sect.Exp - 1.0)
+				} else {
+					dfdp[i][j] = unit / fu[j] * math.Pow(f1[i], elem.Sect.Exq/elem.Sect.Exp - 1.0) * math.Pow(values[j], elem.Sect.Exp - 1.0)
+				}
+			}
+		}
 	}
-	return f, err
+	q := make([][]float64, 12)
+	for i:=0; i<12; i++ {
+		q[i] = make([]float64, 12)
+		if elem.Bonds[i] == 1 {
+			continue
+		}
+		for j:=0; j<2; j++ {
+			for k:=0; k<6; k++ {
+				if elem.Bonds[6*j+k] == 1 {
+					continue
+				}
+				q[i][j] += estiff[i][6*j+k] * dfdp[j][k]
+			}
+		}
+	}
+	a := make([][]float64, 2)
+	for i:=0; i<2; i++ {
+		a[i] = make([]float64, 2)
+		for j:=0; j<2; j++ {
+			for k:=0; k<6; k++ {
+				if elem.Bonds[6*i+k] == -1 && elem.Bonds[6*j+k] == -1 {
+					a[i][j] += dfdp[i][k] * q[6*i+k][j]
+				}
+			}
+		}
+	}
+	return f, dfdp, q, a, err
 }
 
 func (elem *Elem) TransMatrix() ([][]float64, error) {
@@ -431,6 +490,69 @@ func (elem *Elem) StiffMatrix() ([][]float64, error) {
 	estiff[11][5] = estiff[5][11]
 	estiff[11][7] = estiff[7][11]
 	estiff[11][11] = estiff[5][5]
+	return estiff, nil
+}
+
+func (elem *Elem) PlasticMatrix(estiff [][]float64) ([][]float64, error) {
+	_, _, q, a, _ := elem.Coefficients(estiff)
+	p := make([][]float64, 12)
+	for i:=0; i<12; i++ {
+		p[i] = make([]float64, 12)
+	}
+	switch {
+	case a[0][0] != 0.0 && a[1][1] == 0.0: // I=PLASTIC J=ELASTIC
+		for i:=0; i<12; i++ {
+			if elem.Bonds[i] == 1 || elem.Bonds[i] == -2 || elem.Bonds[i] == -3 {
+				continue
+			}
+			for j:=0; j<12; j++ {
+				if elem.Bonds[j] == 1 || elem.Bonds[j] == -2 || elem.Bonds[j] == -3 {
+					continue
+				}
+				p[i][j] = -1.0 / a[0][0] * q[i][0] * q[j][0]
+			}
+		}
+	case a[0][0] == 0.0 && a[1][1] != 0.0: // I=ELASTIC J=PLASTIC
+		for i:=0; i<12; i++ {
+			if elem.Bonds[i] == 1 || elem.Bonds[i] == -2 || elem.Bonds[i] == -3 {
+				continue
+			}
+			for j:=0; j<12; j++ {
+				if elem.Bonds[j] == 1 || elem.Bonds[j] == -2 || elem.Bonds[j] == -3 {
+					continue
+				}
+				p[i][j] = -1.0 / a[1][1] * q[i][1] * q[j][1]
+			}
+		}
+	case a[0][0] != 0.0 && a[1][1] != 0.0:
+		for i:=0; i<12; i++ {
+			if elem.Bonds[i] == 1 || elem.Bonds[i] == -2 || elem.Bonds[i] == -3 {
+				continue
+			}
+			for j:=0; j<12; j++ {
+				if elem.Bonds[j] == 1 || elem.Bonds[j] == -2 || elem.Bonds[j] == -3 {
+					continue
+				}
+				det := a[0][0] * a[1][1] - a[0][1] * a[1][0]
+				if det == 0.0 {
+					return nil, errors.New(fmt.Sprintf("ELEM %d: matrix singular", elem.Num))
+				} else {
+				  p[i][j] = -1.0 / det * (a[1][1]*q[i][0]*q[j][0] - a[0][1]*q[i][0]*q[j][1] - a[1][0]*q[i][1]*q[j][0] + a[0][0]*q[i][1]*q[j][1])
+				}
+			}
+		}
+	}
+	for i:=0; i<12; i++ {
+		if elem.Bonds[i] == 1 || elem.Bonds[i] == -2 || elem.Bonds[i] == -3 {
+			continue
+		}
+		for j:=0; j<12; j++ {
+			if elem.Bonds[j] == 1 || elem.Bonds[j] == -2 || elem.Bonds[j] == -3 {
+				continue
+			}
+			estiff[i][j] += p[i][j]
+		}
+	}
 	return estiff, nil
 }
 

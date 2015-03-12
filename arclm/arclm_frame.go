@@ -249,7 +249,15 @@ func (frame *Frame) KE(safety float64) (*matrix.COOMatrix, []float64, error) { /
 // TODO: implement
 func (frame *Frame) KP(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
 	matf := func(elem *Elem) ([][]float64, error) {
-		return elem.StiffMatrix()
+		estiff, err := elem.StiffMatrix()
+		if err != nil {
+			return nil, err
+		}
+		pstiff, err := elem.PlasticMatrix(estiff)
+		if err != nil {
+			return nil, err
+		}
+		return pstiff, nil
 	}
 	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) ([]float64) {
 		return elem.AssemCMQ(tmatrix, gvct, safety)
@@ -320,6 +328,25 @@ func (frame *Frame) FillConf(vec []float64) []float64 {
 }
 
 func (frame *Frame) UpdateStress(vec []float64) ([][]float64, error) {
+	rtn := make([][]float64, len(frame.Elems))
+	for enum, el := range frame.Elems {
+		gdisp := make([]float64, 12)
+		for i := 0; i < 2; i++ {
+			for j := 0; j < 6; j++ {
+				gdisp[6*i+j] = vec[6*el.Enod[i].Index+j]
+			}
+		}
+		df, err := el.ElemStress(gdisp)
+		if err != nil {
+			return nil, err
+		}
+		rtn[enum] = df
+	}
+	return rtn, nil
+}
+
+// TODO: implement
+func (frame *Frame) UpdateStressPlastic(vec []float64) ([][]float64, error) {
 	rtn := make([][]float64, len(frame.Elems))
 	for enum, el := range frame.Elems {
 		gdisp := make([]float64, 12)
@@ -523,7 +550,7 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 		answers = mtx.Solve(vec)
 		laptime("Solve")
 		tmp := frame.FillConf(answers[0])
-		_, err = frame.UpdateStress(tmp)
+		_, err = frame.UpdateStressPlastic(tmp)
 		if err != nil {
 			return err
 		}
