@@ -457,7 +457,9 @@ func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodem
 		_, err = frame.ParseElem(lis, nodemap)
 	case "NODE":
 		node, def, err = frame.ParseNode(lis, coord, angle)
-		nodemap[def] = node.Num
+		if err == nil {
+			nodemap[def] = node.Num
+		}
 	case "SECT":
 		_, err = frame.ParseSect(lis, overwrite)
 	case "PROP":
