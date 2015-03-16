@@ -1579,6 +1579,8 @@ func (rc *RCColumn) Ma(cond *Condition) float64 {
 	}
 	if xn >= h {
 		return (sigma/xn*(b*h*(3.0*math.Pow(xn, 2.0)-3.0*xn*h+math.Pow(h, 2.0))/3.0+NCS*(math.Pow(xn, 2.0)*rc.Ai()-2.0*xn*rc.LiAi(cond)+rc.Li2Ai(cond))) - cond.N*(xn-h/2.0)) * 0.01 // [tfm]
+	} else if xn <= 0 {
+		return -(NCS*sigma/xn*(math.Pow(xn, 2.0)*rc.Ai() - 2.0*xn*rc.LiAi(cond) + rc.Li2Ai(cond)) + cond.N*(xn-h/2.0)) * 0.01 // [tfm]
 	} else {
 		return (sigma*(b*math.Pow(xn, 2.0)/3.0+NCS*(xn*rc.Ai()-2.0*rc.LiAi(cond)+rc.Li2Ai(cond)/xn)) - cond.N*(xn-h/2.0)) * 0.01 // [tfm]
 	}
