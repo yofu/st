@@ -5245,9 +5245,55 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory("NO INITIALISATION")
 			}
 			per := "L"
+			if p, ok := argdict["PERIOD"]; ok {
+				if p == "" {
+					per = "L"
+					stw.addHistory("PERIOD: L")
+				} else {
+					per = p
+					stw.addHistory(fmt.Sprintf("SOLVER: %s", per))
+				}
+			}
+			var pers []string
+			pers = []string{per}
+			lap := 1
+			var extra [][]float64
+			if _, ok := argdict["ALL"]; ok {
+				extra = make([][]float64, 2)
+				pers = []string{"L", "X", "Y"}
+				per = "L"
+				lap = 3
+				for i, eper := range []string{"X", "Y"} {
+					eaf := stw.Frame.Arclms[eper]
+					_, _, vec, err := eaf.AssemGlobalVector(1.0)
+					if err != nil {
+						return err
+					}
+					extra[i] = vec
+				}
+			}
 			af := stw.Frame.Arclms[per]
-			af.Arclm001(otp, init, sol)
-			stw.Frame.ReadArclmData(af, per)
+			go func () {
+				err := af.Arclm001(otp, init, sol, extra...)
+				af.Endch <-err
+			}()
+			stw.CurrentLap("Calculating...", 0, lap)
+			go func () {
+				read001:
+				for {
+					select {
+					case nlap :=<-af.Lapch:
+						stw.Frame.ReadArclmData(af, pers[nlap])
+						af.Lapch <- 1
+						stw.CurrentLap("Calculating...", nlap, lap)
+						stw.Redraw()
+					case <-af.Endch:
+						stw.CurrentLap("Completed", lap, lap)
+						stw.Redraw()
+						break read001
+					}
+				}
+			}()
 		case abbrev.For("a/rclm/201/", cname):
 			if usage {
 				stw.addHistory(":arclm201 {-lap=nlap} {-safety=val} {-noinit} filename")

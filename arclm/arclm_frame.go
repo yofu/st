@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -194,6 +195,22 @@ func (frame *Frame) RestoreState(fs *FrameState) {
 			el.Stress[j] = fs.Stress[i][j]
 		}
 	}
+}
+
+func (frame *Frame) AssemGlobalVector(safety float64) (int, []bool, []float64, error) {
+	var err error
+	var tmatrix [][]float64
+	size := 6 * len(frame.Nodes)
+	gvct := make([]float64, size)
+	for _, el := range frame.Elems {
+		tmatrix, err = el.TransMatrix()
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		gvct = el.AssemCMQ(tmatrix, gvct, safety)
+	}
+	csize, conf, vec := frame.AssemConf(gvct, safety)
+	return csize, conf, vec, nil
 }
 
 func (frame *Frame) AssemGlobalMatrix(matf func(*Elem)([][]float64, error), vecf func(*Elem, [][]float64, []float64, float64)([]float64), safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
@@ -422,7 +439,7 @@ func (frame *Frame) WriteTo(w io.Writer) {
 	rea.WriteTo(w)
 }
 
-func (frame *Frame) Arclm001(otp string, init bool, sol string) error { // TODO: speed up
+func (frame *Frame) Arclm001(otp string, init bool, sol string, extra ...[]float64) error { // TODO: speed up
 	if init {
 		frame.Initialise()
 	}
@@ -450,7 +467,12 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string) error { // TODO:
 		return err
 	}
 	csize, conf, vec := frame.AssemConf(gvct, 1.0)
-	vecs := [][]float64{vec}
+	l := len(extra)
+	vecs := make([][]float64, len(extra)+1)
+	vecs[0] = vec
+	for i:=0; i<l; i++ {
+		vecs[i+1] = extra[i]
+	}
 	laptime("VEC")
 	var answers [][]float64
 	switch solver {
@@ -477,9 +499,15 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string) error { // TODO:
 		mtx.DiagUp()
 		laptime("ToLLS")
 		answers = make([][]float64, len(vecs))
+		var wg sync.WaitGroup
 		for i, vec := range vecs {
-			answers[i] = mtx.CG(vec)
+			wg.Add(1)
+			go func(ind int, v []float64) {
+				answers[ind] = mtx.CG(v)
+				wg.Done()
+			}(i, vec)
 		}
+		wg.Wait()
 		laptime("Solve")
 	case LLS_PCG:
 		mtx := gmtx.ToLLS(csize, conf)
@@ -501,6 +529,7 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string) error { // TODO:
 		otp = strings.Replace(otp, ext, "", 1)
 	}
 	for nans, ans := range answers {
+		f := frame.SaveState()
 		vec := frame.FillConf(ans)
 		_, err := frame.UpdateStress(vec)
 		if err != nil {
@@ -514,6 +543,9 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string) error { // TODO:
 		}
 		defer w.Close()
 		frame.WriteTo(w)
+		frame.Lapch <- nans
+		<-frame.Lapch
+		frame.RestoreState(f)
 	}
 	laptime("End")
 	return nil
