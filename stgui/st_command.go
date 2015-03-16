@@ -2554,7 +2554,7 @@ func arclm001(stw *Window) {
 	per := "L"
 	otp := st.Ce(stw.Frame.Path, ".otp")
 	af := stw.Frame.Arclms[per]
-	af.Arclm001(otp, true, "LLS")
+	af.Arclm001(otp, true, "LLS", 1e-16)
 	stw.Frame.ReadArclmData(af, per)
 	stw.EscapeAll()
 }

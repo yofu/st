@@ -5239,6 +5239,16 @@ func (stw *Window) exmode(command string) error {
 				sol = "LLS"
 				stw.addHistory("SOLVER: LLS")
 			}
+			eps := 1e-16
+			if e, ok := argdict["EPS"]; ok {
+				if e != "" {
+					tmp, err := strconv.ParseFloat(e, 64)
+					if err == nil {
+						eps = tmp
+					}
+				}
+			}
+			stw.addHistory(fmt.Sprintf("EPS: %.3E", eps))
 			init := true
 			if _, ok := argdict["NOINIT"]; ok {
 				init = false
@@ -5274,7 +5284,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			af := stw.Frame.Arclms[per]
 			go func () {
-				err := af.Arclm001(otp, init, sol, extra...)
+				err := af.Arclm001(otp, init, sol, eps, extra...)
 				af.Endch <-err
 			}()
 			stw.CurrentLap("Calculating...", 0, lap)

@@ -694,7 +694,7 @@ func (cr *CRSMatrix) Solve(vecs ...[]float64) [][]float64 {
 	return rtn
 }
 
-func (cr *CRSMatrix) CG(vec []float64) []float64 {
+func (cr *CRSMatrix) CG(vec []float64, eps float64) []float64 {
 	size := cr.Size
 	var alpha, beta float64
 	x := make([]float64, size)
@@ -718,7 +718,7 @@ func (cr *CRSMatrix) CG(vec []float64) []float64 {
 		}
 		rnorm = Dot(r, r, size)
 		// fmt.Printf("%25.18f\n", rnorm/bnorm)
-		if rnorm/bnorm < 1e-16 {
+		if rnorm/bnorm < eps {
 			return x
 		}
 		beta = rnorm / lnorm
@@ -1090,7 +1090,7 @@ func (ll *LLSMatrix) MulV(vec []float64) []float64 {
 	return rtn
 }
 
-func (ll *LLSMatrix) CG(vec []float64) []float64 {
+func (ll *LLSMatrix) CG(vec []float64, eps float64) []float64 {
 	size := ll.Size
 	var alpha, beta float64
 	x := make([]float64, size)
@@ -1114,7 +1114,7 @@ func (ll *LLSMatrix) CG(vec []float64) []float64 {
 		}
 		rnorm = Dot(r, r, size)
 		// fmt.Printf("%25.18f\n", rnorm/bnorm)
-		if rnorm/bnorm < 1e-16 {
+		if rnorm/bnorm < eps {
 			return x
 		}
 		beta = rnorm / lnorm

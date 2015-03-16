@@ -439,7 +439,7 @@ func (frame *Frame) WriteTo(w io.Writer) {
 	rea.WriteTo(w)
 }
 
-func (frame *Frame) Arclm001(otp string, init bool, sol string, extra ...[]float64) error { // TODO: speed up
+func (frame *Frame) Arclm001(otp string, init bool, sol string, eps float64, extra ...[]float64) error { // TODO: speed up
 	if init {
 		frame.Initialise()
 	}
@@ -486,7 +486,7 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string, extra ...[]float
 		laptime("ToCRS")
 		answers = make([][]float64, len(vecs))
 		for i, vec := range vecs {
-			answers[i] = mtx.CG(vec)
+			answers[i] = mtx.CG(vec, eps)
 		}
 		laptime("Solve")
 	case LLS:
@@ -503,7 +503,7 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string, extra ...[]float
 		for i, vec := range vecs {
 			wg.Add(1)
 			go func(ind int, v []float64) {
-				answers[ind] = mtx.CG(v)
+				answers[ind] = mtx.CG(v, eps)
 				wg.Done()
 			}(i, vec)
 		}
