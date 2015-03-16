@@ -3774,6 +3774,56 @@ func (stw *Window) exmode(command string) error {
 				cond.FbOld = true
 			}
 			stw.Frame.SectionRateCalculation("L", "X", "X", "Y", "Y", -1.0, cond)
+		case abbrev.For("nmi/nteraction", cname):
+			if usage {
+				stw.addHistory(":nminteraction sectcode")
+				return nil
+			}
+			if narg < 2 {
+				return st.NotEnoughArgs(":nminteraction")
+			}
+			tmp, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return err
+			}
+			if al, ok := stw.Frame.Allows[int(tmp)]; ok {
+				var otp bytes.Buffer
+				cond := st.NewCondition()
+				ndiv := 100
+				if nd, ok := argdict["NDIV"]; ok {
+					if nd != "" {
+						stw.addHistory(fmt.Sprintf("NDIV: %s", nd))
+						tmp, err := strconv.ParseInt(nd, 10, 64)
+						if err == nil {
+							ndiv = int(tmp)
+						}
+					}
+				}
+				filename := "nmi.txt"
+				if o, ok := argdict["OUTPUT"]; ok {
+					if o != "" {
+						stw.addHistory(fmt.Sprintf("OUTPUT: %s", o))
+						filename = o
+					}
+				}
+				switch al.(type) {
+				default:
+					return nil
+				case *st.RCColumn:
+					nmax := al.(*st.RCColumn).Nmax(cond)
+					nmin := al.(*st.RCColumn).Nmin(cond)
+					for i:=0; i<=ndiv; i++ {
+						cond.N = nmax - float64(i) * (nmax - nmin) / float64(ndiv)
+						otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.Ma(cond)))
+					}
+				}
+				w, err := os.Create(filename)
+				defer w.Close()
+				if err != nil {
+					return err
+				}
+				otp.WriteTo(w)
+			}
 		case abbrev.For("fi/g2", cname):
 			if usage {
 				stw.addHistory(":fig2 filename")

@@ -1511,6 +1511,19 @@ func (rc *RCColumn) NeutralAxis(cond *Condition) (float64, float64, error) {
 		return xn, -xn / (NCS * (ryt - xn)) * ft, nil
 	}
 }
+func (rc *RCColumn) Nmax(cond *Condition) float64 {
+	fc := rc.Fc(cond)
+	b := rc.Breadth(cond.Strong)
+	h := rc.Height(cond.Strong)
+	return fc*b*h + NCS*fc*rc.Ai()
+}
+func (rc *RCColumn) Nmin(cond *Condition) float64 {
+	if rc.Nreins == 0 {
+		return 0.0
+	}
+	ft := rc.Reins[0].Ft(cond)
+	return -ft*rc.Ai()
+}
 func (rc *RCColumn) Na(cond *Condition) float64 {
 	if cond.Compression {
 		if cond.Verbose {
