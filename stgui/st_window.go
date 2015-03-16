@@ -5250,8 +5250,8 @@ func (stw *Window) exmode(command string) error {
 					per = "L"
 					stw.addHistory("PERIOD: L")
 				} else {
-					per = p
-					stw.addHistory(fmt.Sprintf("SOLVER: %s", per))
+					per = strings.ToUpper(p)
+					stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
 				}
 			}
 			var pers []string
@@ -5289,6 +5289,7 @@ func (stw *Window) exmode(command string) error {
 						stw.Redraw()
 					case <-af.Endch:
 						stw.CurrentLap("Completed", lap, lap)
+						stw.SetPeriod(per)
 						stw.Redraw()
 						break read001
 					}
