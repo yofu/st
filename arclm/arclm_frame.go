@@ -461,18 +461,18 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string) error { // TODO:
 		laptime("Solve")
 	case CRS_CG:
 		mtx := gmtx.ToCRS(csize, conf)
+		laptime("ToCRS")
 		answers = make([][]float64, len(vecs))
 		for i, vec := range vecs {
 			answers[i] = mtx.CG(vec)
 		}
+		laptime("Solve")
 	case LLS:
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
 		answers = mtx.Solve(vecs...)
 		laptime("Solve")
 	case LLS_CG:
-		dbg, _ := os.Create("debug.txt")
-		os.Stdout = dbg
 		mtx := gmtx.ToLLS(csize, conf)
 		mtx.DiagUp()
 		laptime("ToLLS")
@@ -482,8 +482,6 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string) error { // TODO:
 		}
 		laptime("Solve")
 	case LLS_PCG:
-		dbg, _ := os.Create("debug.txt")
-		os.Stdout = dbg
 		mtx := gmtx.ToLLS(csize, conf)
 		C := gmtx.ToLLS(csize, conf)
 		mtx.DiagUp()
@@ -517,6 +515,7 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string) error { // TODO:
 		defer w.Close()
 		frame.WriteTo(w)
 	}
+	laptime("End")
 	return nil
 }
 
