@@ -5214,11 +5214,10 @@ func (stw *Window) exmode(command string) error {
 			}
 		case abbrev.For("a/rclm/001/", cname):
 			if usage {
-				stw.addHistory(":arclm001 {-solver=name} {-noinit} filename")
+				stw.addHistory(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} filename")
 				return nil
 			}
 			var otp string
-			var sol string
 			if fn == "" {
 				otp = st.Ce(stw.Frame.Path, ".otp")
 			} else {
@@ -5227,17 +5226,11 @@ func (stw *Window) exmode(command string) error {
 			if o, ok := argdict["OTP"]; ok {
 				otp = o
 			}
+			sol := "LLS"
 			if s, ok := argdict["SOLVER"]; ok {
-				if s == "" {
-					sol = "LLS"
-					stw.addHistory("SOLVER: LLS")
-				} else {
-					sol = s
-					stw.addHistory(fmt.Sprintf("SOLVER: %s", sol))
+				if s != "" {
+					sol = strings.ToUpper(s)
 				}
-			} else {
-				sol = "LLS"
-				stw.addHistory("SOLVER: LLS")
 			}
 			eps := 1e-16
 			if e, ok := argdict["EPS"]; ok {
@@ -5248,20 +5241,10 @@ func (stw *Window) exmode(command string) error {
 					}
 				}
 			}
-			stw.addHistory(fmt.Sprintf("EPS: %.3E", eps))
-			init := true
-			if _, ok := argdict["NOINIT"]; ok {
-				init = false
-				stw.addHistory("NO INITIALISATION")
-			}
 			per := "L"
 			if p, ok := argdict["PERIOD"]; ok {
-				if p == "" {
-					per = "L"
-					stw.addHistory("PERIOD: L")
-				} else {
+				if p != "" {
 					per = strings.ToUpper(p)
-					stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
 				}
 			}
 			var pers []string
@@ -5281,6 +5264,15 @@ func (stw *Window) exmode(command string) error {
 					}
 					extra[i] = vec
 				}
+			}
+			stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
+			stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
+			stw.addHistory(fmt.Sprintf("SOLVER: %s", sol))
+			stw.addHistory(fmt.Sprintf("EPS: %.3E", eps))
+			init := true
+			if _, ok := argdict["NOINIT"]; ok {
+				init = false
+				stw.addHistory("NO INITIALISATION")
 			}
 			af := stw.Frame.Arclms[per]
 			go func () {
@@ -5307,12 +5299,10 @@ func (stw *Window) exmode(command string) error {
 			}()
 		case abbrev.For("a/rclm/201/", cname):
 			if usage {
-				stw.addHistory(":arclm201 {-lap=nlap} {-safety=val} {-noinit} filename")
+				stw.addHistory(":arclm201 {-period=name} {-lap=nlap} {-safety=val} {-start=val} {-noinit} filename")
 				return nil
 			}
 			var otp string
-			var lap int
-			var safety, start float64
 			if fn == "" {
 				otp = st.Ce(stw.Frame.Path, ".otp")
 			} else {
@@ -5321,42 +5311,42 @@ func (stw *Window) exmode(command string) error {
 			if o, ok := argdict["OTP"]; ok {
 				otp = o
 			}
+			lap := 1
 			if l, ok := argdict["LAP"]; ok {
 				tmp, err := strconv.ParseInt(l, 10, 64)
-				if err != nil {
-					return err
+				if err == nil {
+					lap = int(tmp)
 				}
-				lap = int(tmp)
-			} else {
-				lap = 1
 			}
+			safety := 1.0
 			if s, ok := argdict["SAFETY"]; ok {
 				tmp, err := strconv.ParseFloat(s, 64)
-				if err != nil {
-					return err
+				if err == nil {
+					safety = tmp
 				}
-				safety = tmp
-			} else {
-				safety = 1.0
 			}
+			start := 0.0
 			if s, ok := argdict["START"]; ok {
 				tmp, err := strconv.ParseFloat(s, 64)
-				if err != nil {
-					return err
+				if err == nil {
+					start = tmp
 				}
-				start = tmp
-			} else {
-				start = 0.0
 			}
+			per := "L"
+			if p, ok := argdict["PERIOD"]; ok {
+				if p != "" {
+					per = strings.ToUpper(p)
+				}
+			}
+			stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
 			stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
 			stw.addHistory(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f", lap, safety, start))
-			per := "L"
-			af := stw.Frame.Arclms[per]
 			init := true
 			if _, ok := argdict["NOINIT"]; ok {
 				init = false
 				stw.addHistory("NO INITIALISATION")
 			}
+			af := stw.Frame.Arclms[per]
 			go func () {
 				err := af.Arclm201(otp, init, lap, safety, start)
 				af.Endch <-err
@@ -5380,12 +5370,11 @@ func (stw *Window) exmode(command string) error {
 			}()
 		case abbrev.For("a/rclm/301/", cname):
 			if usage {
-				stw.addHistory(":arclm301 {-sects=val} {-eps=val} {-noinit} filename")
+				stw.addHistory(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
 				return nil
 			}
 			var otp string
 			var sects []int
-			var eps float64
 			if fn == "" {
 				otp = st.Ce(stw.Frame.Path, ".otp")
 			} else {
@@ -5398,18 +5387,22 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory(fmt.Sprintf("SOIL SPRING: %s", s))
 				sects = SplitNums(s)
 			}
+			eps := 1E-3
 			if s, ok := argdict["EPS"]; ok {
 				tmp, err := strconv.ParseFloat(s, 64)
-				if err != nil {
-					return err
+				if err == nil {
+					eps = tmp
 				}
-				eps = tmp
-			} else {
-				eps = 1E-3
 			}
+			per := "L"
+			if p, ok := argdict["PERIOD"]; ok {
+				if p != "" {
+					per = strings.ToUpper(p)
+				}
+			}
+			stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
 			stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
 			stw.addHistory(fmt.Sprintf("EPS: %.3E", eps))
-			per := "L"
 			af := stw.Frame.Arclms[per]
 			init := true
 			if _, ok := argdict["NOINIT"]; ok {

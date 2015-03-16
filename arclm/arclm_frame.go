@@ -444,7 +444,7 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string, eps float64, ext
 		frame.Initialise()
 	}
 	var solver int
-	switch strings.ToUpper(sol) {
+	switch sol {
 	default:
 		solver = LLS
 	case "CRS":
