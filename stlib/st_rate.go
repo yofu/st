@@ -1717,6 +1717,15 @@ func NewRCWall(num int) *RCWall {
 	rw.YFace = make([]float64, 2)
 	return rw
 }
+func (rw *RCWall) SetSrein(lis []string) error {
+	val, err := strconv.ParseFloat(lis[0], 64)
+	if err != nil {
+		return err
+	}
+	rw.Srein = val
+	rw.Material = SetSD(lis[1])
+	return nil
+}
 func (rw *RCWall) SetConcrete(lis []string) error {
 	switch lis[0] {
 	case "THICK":
@@ -1806,12 +1815,16 @@ func (rw *RCWall) Na(cond *Condition) float64 {
 		Qa = Qc
 	case "X", "Y", "S":
 		Qa = Qc
-		Qw = r * rw.Thick * rw.Srein * cond.Length * fs
-		if Qw > Qc {
-			Qa = Qw
+		le := cond.Width - (rw.XFace[0] + rw.XFace[1])
+		if le >= 0.0 {
+			l0 := cond.Width
+			Qw = r * rw.Thick * rw.Srein * cond.Length * le/l0 * rw.Material.Fs
+			if Qw > Qc {
+				Qa = Qw
+			}
 		}
 	}
-	return Qa
+	return 0.5 * Qa
 }
 func (rw *RCWall) Qa(cond *Condition) float64 {
 	return 0.0
@@ -2045,6 +2058,7 @@ func (wc *WoodColumn) Vertices() [][]float64 {
 type Condition struct {
 	Period      string
 	Length      float64
+	Width       float64
 	Compression bool
 	Strong      bool
 	Positive    bool
@@ -2060,6 +2074,7 @@ func NewCondition() *Condition {
 	c := new(Condition)
 	c.Period = "L"
 	c.Length = 0.0
+	c.Width  = 0.0
 	c.Compression = false
 	c.Strong = true
 	c.Positive = true

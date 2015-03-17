@@ -648,9 +648,12 @@ func (elem *Elem) Distribute() error {
 	return nil
 }
 
-// TODO: implement Width
 func (elem *Elem) Width() float64 {
-	return 0.0
+	sum := 0.0
+	for i := 0; i < 2; i++ {
+		sum += math.Pow((elem.Enod[1].Coord[i] - elem.Enod[0].Coord[i]), 2)
+	}
+	return math.Sqrt(sum)
 }
 
 // TODO: implement Height

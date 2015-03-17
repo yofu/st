@@ -1712,6 +1712,8 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 		sr = NewRCColumn(num)
 	case "GIRDER":
 		sr = NewRCGirder(num)
+	case "WALL":
+		sr = NewRCWall(num)
 	default:
 		return nil
 	}
@@ -1725,6 +1727,11 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 			case *RCGirder:
 				err = sr.(*RCGirder).AddReins(words[1:])
 			}
+		case "SREIN":
+			switch sr.(type) {
+			case *RCWall:
+				err = sr.(*RCWall).SetSrein(words[1:])
+			}
 		case "HOOPS":
 			switch sr.(type) {
 			case *RCColumn:
@@ -1732,14 +1739,16 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 			case *RCGirder:
 				err = sr.(*RCGirder).SetHoops(words[1:])
 			}
-		case "CRECT":
+		case "CRECT", "THICK":
 			switch sr.(type) {
 			case *RCColumn:
 				err = sr.(*RCColumn).SetConcrete(words)
 			case *RCGirder:
 				err = sr.(*RCGirder).SetConcrete(words)
+			case *RCWall:
+				err = sr.(*RCWall).SetConcrete(words)
 			}
-		case "XFACE", "YFACE", "BBLEN", "BTLEN", "BBFAC", "BTFAC":
+		case "XFACE", "YFACE", "BBLEN", "BTLEN", "BBFAC", "BTFAC", "WRECT":
 			vals := make([]float64, 2)
 			for i := 0; i < 2; i++ {
 				val, err := strconv.ParseFloat(words[1+i], 64)
@@ -3815,6 +3824,7 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 					ny2 = st[el.Enod[0].Num][0]
 				}
 				cond.Length = el.Length() * 100.0 // [cm]
+				cond.Width  = el.Width() * 100.0 // [cm]
 				otp.WriteString(strings.Repeat("-", 202))
 				otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, al.TypeString(), cond.Length, cond.Length, cond.Length))
 				otp.WriteString("応力       :        N\n")
