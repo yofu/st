@@ -5223,6 +5223,7 @@ func (stw *Window) exmode(command string) error {
 			} else {
 				otp = fn
 			}
+			otps := []string{otp}
 			if o, ok := argdict["OTP"]; ok {
 				otp = o
 			}
@@ -5254,6 +5255,7 @@ func (stw *Window) exmode(command string) error {
 			if _, ok := argdict["ALL"]; ok {
 				extra = make([][]float64, 2)
 				pers = []string{"L", "X", "Y"}
+				otps = []string{st.Ce(otp, ".otl"), st.Ce(otp, ".ohx"), st.Ce(otp, ".ohy")}
 				per = "L"
 				lap = 3
 				for i, eper := range []string{"X", "Y"} {
@@ -5276,7 +5278,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			af := stw.Frame.Arclms[per]
 			go func () {
-				err := af.Arclm001(otp, init, sol, eps, extra...)
+				err := af.Arclm001(otps, init, sol, eps, extra...)
 				af.Endch <-err
 			}()
 			stw.CurrentLap("Calculating...", 0, lap)

@@ -2552,9 +2552,8 @@ func extractarclm(stw *Window) {
 // ARCLM001 TODO: UNDER CONSTRUCTION // {{{
 func arclm001(stw *Window) {
 	per := "L"
-	otp := st.Ce(stw.Frame.Path, ".otp")
 	af := stw.Frame.Arclms[per]
-	af.Arclm001(otp, true, "LLS", 1e-16)
+	af.Arclm001([]string{st.Ce(stw.Frame.Path, ".otp")}, true, "LLS", 1e-16)
 	stw.Frame.ReadArclmData(af, per)
 	stw.EscapeAll()
 }

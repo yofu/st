@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -439,7 +438,7 @@ func (frame *Frame) WriteTo(w io.Writer) {
 	rea.WriteTo(w)
 }
 
-func (frame *Frame) Arclm001(otp string, init bool, sol string, eps float64, extra ...[]float64) error { // TODO: speed up
+func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, extra ...[]float64) error { // TODO: speed up
 	if init {
 		frame.Initialise()
 	}
@@ -468,7 +467,7 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string, eps float64, ext
 	}
 	csize, conf, vec := frame.AssemConf(gvct, 1.0)
 	l := len(extra)
-	vecs := make([][]float64, len(extra)+1)
+	vecs := make([][]float64, l+1)
 	vecs[0] = vec
 	for i:=0; i<l; i++ {
 		vecs[i+1] = extra[i]
@@ -520,13 +519,11 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string, eps float64, ext
 		}
 		laptime("Solve")
 	}
-	var ext string
-	if otp == "" {
-		otp = "hogtxt"
-		ext = ".otp"
-	} else {
-		ext = filepath.Ext(otp)
-		otp = strings.Replace(otp, ext, "", 1)
+	if otp == nil || len(otp) < l+1 {
+		otp = make([]string, l+1)
+		for i:=0; i<l+1; i++ {
+			otp[i] = fmt.Sprintf("hogtxt_%02d.otp", i)
+		}
 	}
 	for nans, ans := range answers {
 		f := frame.SaveState()
@@ -537,7 +534,7 @@ func (frame *Frame) Arclm001(otp string, init bool, sol string, eps float64, ext
 		}
 		frame.UpdateReaction(gmtx, vec)
 		frame.UpdateForm(vec)
-		w, err := os.Create(fmt.Sprintf("%s_%02d%s", otp, nans, ext))
+		w, err := os.Create(otp[nans])
 		if err != nil {
 			return err
 		}
