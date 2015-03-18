@@ -3773,6 +3773,9 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory("Fb: old")
 				cond.FbOld = true
 			}
+			if _, ok := argdict["RELOAD"]; ok {
+				stw.ReadFile(st.Ce(stw.Frame.Path, ".lst"))
+			}
 			stw.Frame.SectionRateCalculation("L", "X", "X", "Y", "Y", -1.0, cond)
 		case abbrev.For("nmi/nteraction", cname):
 			if usage {
