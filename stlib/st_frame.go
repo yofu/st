@@ -2943,11 +2943,11 @@ func (frame *Frame) JoinPlateElem(e1, e2 *Elem) error {
 						case -1, e2.Enods - 1:
 							for k := 0; k < 2; k++ {
 								num1 := i + k
-								if num1 > e1.Enods {
+								if num1 >= e1.Enods {
 									num1 -= e1.Enods
 								}
 								num2 := j + k + 1
-								if num2 > e2.Enods {
+								if num2 >= e2.Enods {
 									num2 -= e2.Enods
 								}
 								e1.Enod[num1] = e2.Enod[num2]
