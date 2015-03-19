@@ -76,7 +76,7 @@ const (
 const (
 	windowSize   = "FULLxFULL"
 	nRecentFiles = 3
-	nUndo        = 5
+	nUndo        = 10
 )
 
 // Font
@@ -1218,10 +1218,11 @@ func (stw *Window) Snapshot() {
 	}
 	tmp := make([]*st.Frame, nUndo)
 	tmp[0] = stw.Frame.Snapshot()
-	for i := 0; i < nUndo-1; i++ {
-		tmp[i+1] = stw.undostack[i]
+	for i := 0; i < nUndo-1-undopos; i++ {
+		tmp[i+1] = stw.undostack[i+undopos]
 	}
 	stw.undostack = tmp
+	undopos = 0
 }
 
 func (stw *Window) Redo() {
@@ -1235,7 +1236,7 @@ func (stw *Window) Redo() {
 		undopos = 0
 		return
 	}
-	stw.Frame = stw.undostack[undopos]
+	stw.Frame = stw.undostack[undopos].Snapshot()
 	stw.Redraw()
 }
 
@@ -1252,9 +1253,10 @@ func (stw *Window) Undo() {
 	}
 	if stw.undostack[undopos] == nil {
 		stw.addHistory("cannot undo any more")
+		undopos--
 		return
 	}
-	stw.Frame = stw.undostack[undopos]
+	stw.Frame = stw.undostack[undopos].Snapshot()
 	stw.Redraw()
 }
 
