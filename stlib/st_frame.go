@@ -258,7 +258,7 @@ func (frame *Frame) Snapshot() *Frame {
 	f.Project = frame.Project
 	f.Path = frame.Path
 	f.Home = frame.Home
-	f.View = frame.View.Copy()
+	f.View = frame.View
 	for _, p := range frame.Props {
 		f.Props[p.Num] = p.Snapshot()
 	}
@@ -290,7 +290,7 @@ func (frame *Frame) Snapshot() *Frame {
 		f.Nlap[k] = v
 	}
 	f.Ai = frame.Ai.Snapshot()
-	f.Show = frame.Show.Copy()
+	f.Show = frame.Show
 	for k, v := range frame.DataFileName {
 		f.DataFileName[k] = v
 	}
