@@ -1561,8 +1561,8 @@ func (stw *Window) Insert() {
 func (stw *Window) Reload() {
 	if stw.Frame != nil {
 		stw.Deselect()
-		v := stw.Frame.View.Copy()
-		s := stw.Frame.Show.Copy()
+		v := stw.Frame.View
+		s := stw.Frame.Show
 		stw.OpenFile(stw.Frame.Path)
 		stw.Frame.View = v
 		stw.Frame.Show = s
