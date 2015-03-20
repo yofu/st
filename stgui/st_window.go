@@ -2561,6 +2561,18 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		} else {
 			stw.ElemCaptionOn("EC_SECT")
 		}
+	case key == "width":
+		if un {
+			stw.ElemCaptionOff("EC_WIDTH")
+		} else {
+			stw.ElemCaptionOn("EC_WIDTH")
+		}
+	case key == "height":
+		if un {
+			stw.ElemCaptionOff("EC_HEIGHT")
+		} else {
+			stw.ElemCaptionOn("EC_HEIGHT")
+		}
 	case abbrev.For("sr/can/col/or", key):
 		if un {
 			stw.SetColorMode(st.ECOLOR_WHITE)

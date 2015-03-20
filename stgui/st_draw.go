@@ -265,6 +265,14 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 		}
 		oncap = true
 	}
+	if show.ElemCaption&st.EC_WIDTH != 0 {
+		ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Width()))
+		oncap = true
+	}
+	if show.ElemCaption&st.EC_HEIGHT != 0 {
+		ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Height()))
+		oncap = true
+	}
 	if show.ElemCaption&st.EC_RATE_L != 0 || show.ElemCaption&st.EC_RATE_S != 0 {
 		val, err := elem.RateMax(show)
 		if err == nil {

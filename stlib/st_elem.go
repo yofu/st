@@ -650,15 +650,36 @@ func (elem *Elem) Distribute() error {
 
 func (elem *Elem) Width() float64 {
 	sum := 0.0
-	for i := 0; i < 2; i++ {
-		sum += math.Pow((elem.Enod[1].Coord[i] - elem.Enod[0].Coord[i]), 2)
+	if elem.IsLineElem() {
+		for i := 0; i < 2; i++ {
+			sum += math.Pow((elem.Enod[1].Coord[i] - elem.Enod[0].Coord[i]), 2)
+		}
+	} else {
+		ns := elem.LowerEnod()
+		for i := 0; i < 2; i++ {
+			sum += math.Pow((ns[1].Coord[i] - ns[0].Coord[i]), 2)
+		}
 	}
 	return math.Sqrt(sum)
 }
 
 // TODO: implement Height
 func (elem *Elem) Height() float64 {
-	return 0.0
+	if elem.IsLineElem() {
+		return math.Abs(elem.Enod[1].Coord[2] - elem.Enod[0].Coord[2])
+	} else {
+		max := -1e+16
+		min :=  1e+16
+		for _, en := range elem.Enod {
+			if en.Coord[2] > max {
+				max = en.Coord[2]
+			}
+			if en.Coord[2] < min {
+				min = en.Coord[2]
+			}
+		}
+		return max - min
+	}
 }
 
 // TODO: implement
@@ -865,13 +886,13 @@ func (elem *Elem) LowerEnod() []*Node {
 			return []*Node{elem.Enod[0], elem.Enod[1]}
 		}
 	case elem.Enods - 1:
-		if elem.Enod[elem.Enods-2].Coord[2] < elem.Enod[1].Coord[0] {
+		if elem.Enod[elem.Enods-2].Coord[2] < elem.Enod[1].Coord[2] {
 			return []*Node{elem.Enod[elem.Enods-2], elem.Enod[elem.Enods-1]}
 		} else {
 			return []*Node{elem.Enod[elem.Enods-1], elem.Enod[0]}
 		}
 	default:
-		if elem.Enod[ind-1].Coord[2] < elem.Enod[ind+1].Coord[0] {
+		if elem.Enod[ind-1].Coord[2] < elem.Enod[ind+1].Coord[2] {
 			return []*Node{elem.Enod[ind-1], elem.Enod[ind]}
 		} else {
 			return []*Node{elem.Enod[ind], elem.Enod[ind+1]}
@@ -1960,6 +1981,12 @@ func (elem *Elem) CurrentValue(show *Show, max bool) float64 {
 	}
 	if show.ElemCaption&EC_SECT != 0 {
 		return float64(elem.Sect.Num)
+	}
+	if show.ElemCaption&EC_WIDTH != 0 {
+		return elem.Width()
+	}
+	if show.ElemCaption&EC_HEIGHT != 0 {
+		return elem.Height()
 	}
 	if show.ElemCaption&EC_RATE_L != 0 || show.ElemCaption&EC_RATE_S != 0 {
 		val, err := elem.RateMax(show)
