@@ -726,7 +726,6 @@ func (cr *CRSMatrix) CG(vec []float64, eps float64) []float64 {
 			p[i] = r[i] + beta*p[i]
 		}
 	}
-	return x
 }
 
 type LLSMatrix struct {
@@ -990,7 +989,6 @@ func (ll *LLSMatrix) ILDLT() *LLSMatrix {
 							nj = nj.down
 							break
 						}
-						nj = nj.down
 					}
 				}
 				ni = ni.down
@@ -1122,7 +1120,6 @@ func (ll *LLSMatrix) CG(vec []float64, eps float64) []float64 {
 			p[i] = r[i] + beta*p[i]
 		}
 	}
-	return x
 }
 
 // TODO: test
@@ -1174,7 +1171,6 @@ func (ll *LLSMatrix) PCG(C *LLSMatrix, vec []float64) []float64 {
 			p[i] = q[i] + beta*p[i]
 		}
 	}
-	return x
 }
 
 func Dot(x, y []float64, size int) float64 {

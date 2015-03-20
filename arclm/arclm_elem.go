@@ -199,7 +199,7 @@ func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error)
 		}
 	}
 	if el.Sect == nil {
-		return el, errors.New(fmt.Sprintf("ELEM :%d : sect not found", el.Num, sec))
+		return el, errors.New(fmt.Sprintf("ELEM :%d : sect %d not found", el.Num, sec))
 	}
 	for i := 0; i < 2; i++ {
 		tmp, err := strconv.ParseInt(words[2+i], 10, 64)

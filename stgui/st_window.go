@@ -5125,7 +5125,7 @@ func (stw *Window) exmode(command string) error {
 			case "ON", "TRUE", "YES":
 				showprintrange = true
 				if narg >= 3 {
-					err := stw.exmode(fmt.Sprintf(":paper %d", strings.Join(args[2:], " ")))
+					err := stw.exmode(fmt.Sprintf(":paper %s", strings.Join(args[2:], " ")))
 					if err != nil {
 						return err
 					}
@@ -5133,7 +5133,7 @@ func (stw *Window) exmode(command string) error {
 			case "OFF", "FALSE", "NO":
 				showprintrange = false
 			default:
-				err := stw.exmode(fmt.Sprintf(":paper %d", strings.Join(args[1:], " ")))
+				err := stw.exmode(fmt.Sprintf(":paper %s", strings.Join(args[1:], " ")))
 				if err != nil {
 					return err
 				}

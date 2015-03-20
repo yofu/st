@@ -1225,7 +1225,7 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 							if !el.IsLineElem() {
 								continue
 							}
-							fmt.Println("ReadResult: ELEM %d -> ELEM %d", enum, el.Num)
+							fmt.Printf("ReadResult: ELEM %d -> ELEM %d\n", enum, el.Num)
 							for i := 0; i < 2; i++ {
 								for j := 0; j < 6; j++ {
 									el.Stress[period][enod[i]][j] += stress[i][j]
@@ -2341,7 +2341,7 @@ func (frame *Frame) AddElem(enum int, el *Elem) {
 		frame.Elems[el.Num] = el
 	} else {
 		if _, exist := frame.Elems[enum]; exist {
-			fmt.Printf("AddElem: Elem %d already exists\n")
+			fmt.Printf("AddElem: Elem %d already exists\n", enum)
 			frame.AddElem(-1, el)
 		} else {
 			el.Num = enum

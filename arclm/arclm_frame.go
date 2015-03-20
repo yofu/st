@@ -406,7 +406,7 @@ func (frame *Frame) UpdateForm(vec []float64) {
 	}
 }
 
-func (frame *Frame) WriteTo(w io.Writer) {
+func (frame *Frame) WriteTo(w io.Writer) (int64, error) {
 	var otp bytes.Buffer
 	var rea bytes.Buffer
 	otp.WriteString("\n\n** FORCES OF MEMBER\n\n")
@@ -434,8 +434,14 @@ func (frame *Frame) WriteTo(w io.Writer) {
 		}
 		otp.WriteString("\n")
 	}
-	otp.WriteTo(w)
-	rea.WriteTo(w)
+	var rtn, tmp int64
+	var err error
+	rtn, err = otp.WriteTo(w)
+	if err != nil {
+		return rtn, err
+	}
+	tmp, err = rea.WriteTo(w)
+	return rtn + tmp, err
 }
 
 func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, extra ...[]float64) error { // TODO: speed up
