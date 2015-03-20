@@ -3,9 +3,9 @@ package st
 import (
 	"bufio"
 	"bytes"
-	"code.google.com/p/go.text/encoding"
-	"code.google.com/p/go.text/encoding/japanese"
-	"code.google.com/p/go.text/transform"
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/transform"
 	"errors"
 	"fmt"
 	"io"
