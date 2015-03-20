@@ -2406,6 +2406,14 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			}
 			stw.ShowSection(int(val))
 		}
+	case abbrev.For("sec/tion/+/", key):
+		for _, tmp := range lis[1:] {
+			val, err := strconv.ParseInt(tmp, 10, 64)
+			if err != nil {
+				continue
+			}
+			stw.ShowSection(int(val))
+		}
 	case abbrev.For("sec/tion/-/", key):
 		for _, tmp := range lis[1:] {
 			val, err := strconv.ParseInt(tmp, 10, 64)
