@@ -2580,16 +2580,37 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.SetColorMode(st.ECOLOR_RATE)
 		}
 	case abbrev.For("sr/can/ra/te", key):
+		if usage {
+			stw.addHistory("'srcanrate [long/short]")
+			return nil
+		}
+		long := true
+		short := true
+		if len(lis) > 2 {
+			if strings.EqualFold(lis[1], "long") {
+				short = false
+			} else if strings.EqualFold(lis[1], "short") {
+				long = false
+			}
+		}
 		if un {
-			stw.ElemCaptionOff("EC_RATE_L")
-			stw.ElemCaptionOff("EC_RATE_S")
-			stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelOFFColor)
-			stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelOFFColor)
+			if long {
+				stw.ElemCaptionOff("EC_RATE_L")
+				stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelOFFColor)
+			}
+			if short {
+				stw.ElemCaptionOff("EC_RATE_S")
+				stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelOFFColor)
+			}
 		} else {
-			stw.ElemCaptionOn("EC_RATE_L")
-			stw.ElemCaptionOn("EC_RATE_S")
-			stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelFGColor)
-			stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelFGColor)
+			if long {
+				stw.ElemCaptionOn("EC_RATE_L")
+				stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelFGColor)
+			}
+			if short {
+				stw.ElemCaptionOn("EC_RATE_S")
+				stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelFGColor)
+			}
 		}
 	case abbrev.For("st/ress", key):
 		if usage {
