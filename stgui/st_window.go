@@ -3908,6 +3908,7 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory(":node nnum")
 				stw.addHistory(":node [x,y,z] [>,<,=] coord")
 				stw.addHistory(":node {confed/pinned/fixed/free}")
+				stw.addHistory(":node pile num")
 				return nil
 			}
 			stw.Deselect()
@@ -3918,6 +3919,7 @@ func (stw *Window) exmode(command string) error {
 				condition := strings.ToUpper(strings.Join(args[1:], " "))
 				coordstr := regexp.MustCompile("^ *([XYZ]) *([<!=>]{0,2}) *([0-9.]+)")
 				numstr := regexp.MustCompile("^[0-9, ]+$")
+				pilestr := regexp.MustCompile("^ *PILE *([0-9, ]+)$")
 				switch {
 				default:
 					return errors.New(":node: unknown format")
@@ -3992,6 +3994,20 @@ func (stw *Window) exmode(command string) error {
 							}
 							return false
 						}
+					}
+				case pilestr.MatchString(condition):
+					fs := pilestr.FindStringSubmatch(condition)
+					pnums := SplitNums(fs[1])
+					f = func(n *st.Node) bool {
+						if n.Pile == nil {
+							return false
+						}
+						for _, pnum := range pnums {
+							if n.Pile.Num == pnum {
+								return true
+							}
+						}
+						return false
 					}
 				case abbrev.For("CONF/ED", condition):
 					f = func(n *st.Node) bool {
