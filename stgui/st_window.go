@@ -1862,37 +1862,6 @@ func (stw *Window) ReadFile(filename string) error {
 	return nil
 }
 
-func (stw *Window) ReadBucklingFile(filename string) error {
-	var err error
-	err = stw.Frame.ReadBuckling(filename)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (stw *Window) ReadZoubunFile(filename string) error {
-	var err error
-	err = stw.Frame.ReadZoubun(filename)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (stw *Window) AddResult(filename string, search bool) error {
-	var err error
-	if search {
-		err = stw.Frame.ReadResult(filename, st.ADDSEARCH_RESULT)
-	} else {
-		err = stw.Frame.ReadResult(filename, st.ADD_RESULT)
-	}
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (stw *Window) AddPropAndSect(filename string) error {
 	if stw.Frame != nil {
 		err := stw.Frame.AddPropAndSect(filename, true)
@@ -3718,11 +3687,69 @@ func (stw *Window) exmode(command string) error {
 		case abbrev.For("r/ead", cname):
 			if usage {
 				stw.addHistory(":read filename")
+				stw.addHistory(":read type filename")
 				return nil
 			}
-			err := stw.ReadFile(fn)
-			if err != nil {
-				return err
+			if narg < 3 {
+				err := stw.ReadFile(fn)
+				if err != nil {
+					return err
+				}
+				return nil
+			}
+			fn = stw.Complete(args[2])
+			if filepath.Dir(fn) == "." {
+				fn = filepath.Join(stw.Cwd, fn)
+			}
+			t := strings.ToLower(args[1])
+			switch {
+			case abbrev.For("d/ata", t):
+				err := stw.Frame.ReadData(fn)
+				if err != nil {
+					return err
+				}
+			case abbrev.For("r/esult", t):
+				mode := st.UPDATE_RESULT
+				if _, ok := argdict["ADD"]; ok {
+					mode = st.ADD_RESULT
+					if _, ok2 := argdict["SEARCH"]; ok2 {
+						mode = st.ADDSEARCH_RESULT
+					}
+				}
+				err := stw.Frame.ReadResult(fn, uint(mode))
+				if err != nil {
+					return err
+				}
+			case abbrev.For("s/rcan", t):
+				err := stw.Frame.ReadRat(fn)
+				if err != nil {
+					return err
+				}
+			case abbrev.For("l/ist", t):
+				err := stw.Frame.ReadLst(fn)
+				if err != nil {
+					return err
+				}
+			case abbrev.For("w/eight", t):
+				err := stw.Frame.ReadWgt(fn)
+				if err != nil {
+					return err
+				}
+			case abbrev.For("k/ijun", t):
+				err := stw.Frame.ReadKjn(fn)
+				if err != nil {
+					return err
+				}
+			case abbrev.For("b/uckling", t):
+				err := stw.Frame.ReadBuckling(fn)
+				if err != nil {
+					return err
+				}
+			case abbrev.For("z/oubun", t):
+				err := stw.Frame.ReadZoubun(fn)
+				if err != nil {
+					return err
+				}
 			}
 		case abbrev.For("ins/ert", cname):
 			if usage {
@@ -3751,42 +3778,6 @@ func (stw *Window) exmode(command string) error {
 			if err != nil {
 				return err
 			}
-		case abbrev.For("r/ead/b/uckling", cname):
-			if usage {
-				stw.addHistory(":readbuckling filename")
-				return nil
-			}
-			err := stw.ReadBucklingFile(fn)
-			if err != nil {
-				return err
-			}
-		case abbrev.For("r/ead/z/oubun", cname):
-			if usage {
-				stw.addHistory(":readzoubun filename")
-				return nil
-			}
-			err := stw.ReadZoubunFile(fn)
-			if err != nil {
-				return err
-			}
-		case cname == "add":
-			if usage {
-				stw.addHistory(":add filename")
-				return nil
-			}
-			err := stw.AddResult(fn, false)
-			if err != nil {
-				return err
-			}
-		case cname == "adds":
-			if usage {
-				stw.addHistory(":adds filename")
-				return nil
-			}
-			err := stw.AddResult(fn, true)
-			if err != nil {
-				return err
-			}
 		case abbrev.For("w/rite/o/utput", cname):
 			if usage {
 				stw.addHistory(":writeoutput filename period")
@@ -3805,7 +3796,7 @@ func (stw *Window) exmode(command string) error {
 			if err != nil {
 				return err
 			}
-		case abbrev.For("w/rite/r/eaction", cname):
+		case abbrev.For("w/rite/rea/ction", cname):
 			if usage {
 				stw.addHistory(":writereaction filename direction")
 				return nil
