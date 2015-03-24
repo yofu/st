@@ -3794,17 +3794,16 @@ func (stw *Window) exmode(command string) error {
 			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":wo")
+			}
+			var err error
+			period := strings.ToUpper(args[2])
+			if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
+				err = st.WriteOutput(fn, period, stw.SelectElem)
 			} else {
-				var err error
-				period := strings.ToUpper(args[2])
-				if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
-					err = st.WriteOutput(fn, period, stw.SelectElem)
-				} else {
-					err = stw.Frame.WriteOutput(fn, period)
-				}
-				if err != nil {
-					return err
-				}
+				err = stw.Frame.WriteOutput(fn, period)
+			}
+			if err != nil {
+				return err
 			}
 		case abbrev.For("w/rite/r/eaction", cname):
 			if usage {
