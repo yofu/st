@@ -7496,6 +7496,7 @@ func (stw *Window) CB_MouseButton() {
 							if isShift(arg.Status) {
 								if stw.lastexcommand != "" {
 									stw.exmode(stw.lastexcommand)
+									stw.Redraw()
 								}
 							} else {
 								if stw.lastcommand != nil {
