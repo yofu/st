@@ -2051,6 +2051,15 @@ func (frame *Frame) WriteOutput(fn string, p string) error {
 	return nil
 }
 
+func (frame *Frame) WriteReaction(fn string, direction int) error {
+	ns := make([]*Node, len(frame.Nodes))
+	for nnum, n := range frame.Nodes {
+		ns[nnum] = n
+	}
+	sort.Sort(NodeByNum{ns})
+	return WriteReaction(fn, ns, direction)
+}
+
 func (frame *Frame) ReportZoubunDisp(fn string, ns []*Node, pers []string, direction int) error {
 	var otp bytes.Buffer
 	sort.Sort(NodeByZCoord{ns})
@@ -4363,6 +4372,39 @@ func WriteOutput(fn string, p string, els []*Elem) error {
 		return err
 	}
 	otp = AddCR(otp)
+	otp.WriteTo(w)
+	return nil
+}
+
+func WriteReaction (fn string, ns []*Node, direction int) error {
+	var otp bytes.Buffer
+	r := make([]float64, 3)
+	otp.WriteString("NODE   XCOORD   YCOORD   ZCOORD     WEIGHT       LONG      XSEIS      YSEIS        W+L      W+L+X      W+L-X      W+L+Y      W+L-Y PILE\n")
+	for _, n := range ns {
+		if n == nil {
+			continue
+		}
+		otp.WriteString(fmt.Sprintf("%4d %8.3f %8.3f %8.3f", n.Num, n.Coord[0], n.Coord[1], n.Coord[2]))
+		wgt := n.Weight[1]
+		for i, per := range []string{"L", "X", "Y"} {
+			if rea, ok := n.Reaction[per]; ok {
+				r[i] = rea[direction]
+			} else {
+				r[i] = 0.0
+			}
+		}
+		otp.WriteString(fmt.Sprintf(" %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f", wgt, r[0], r[1], r[2], wgt+r[0], wgt+r[0]+r[1], wgt+r[0]-r[1], wgt+r[0]+r[2], wgt+r[0]-r[2]))
+		if n.Pile != nil {
+			otp.WriteString(fmt.Sprintf(" %4d\n", n.Pile.Num))
+		} else {
+			otp.WriteString("\n")
+		}
+	}
+	w, err := os.Create(fn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
 	otp.WriteTo(w)
 	return nil
 }

@@ -3806,6 +3806,29 @@ func (stw *Window) exmode(command string) error {
 					return err
 				}
 			}
+		case abbrev.For("w/rite/r/eaction", cname):
+			if usage {
+				stw.addHistory(":writereaction filename direction")
+				return nil
+			}
+			if narg < 3 {
+				return st.NotEnoughArgs(":wr")
+			}
+			tmp, err := strconv.ParseInt(args[2], 10, 64)
+			if err != nil {
+				return err
+			}
+			if _, ok := argdict["CONFED"]; ok {
+				selectconfed(stw)
+			}
+			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+				return errors.New(":writereaction: no selected node")
+			}
+			sort.Sort(st.NodeByNum{stw.SelectNode})
+			err = st.WriteReaction(fn, stw.SelectNode, int(tmp))
+			if err != nil {
+				return err
+			}
 		case cname == "srcal":
 			if usage {
 				stw.addHistory(":srcal")

@@ -3319,43 +3319,26 @@ func reaction(stw *Window) {
 	if err != nil {
 		stw.errormessage(err, ERROR)
 		stw.EscapeCB()
+		return
 	}
 	val, err := strconv.ParseInt(tmp, 10, 64)
 	if err != nil {
 		stw.errormessage(err, ERROR)
 		stw.EscapeCB()
+		return
 	}
 	d := int(val)
-	var otp bytes.Buffer
 	if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
 		selectconfed(stw)
 	}
 	sort.Sort(st.NodeByNum{stw.SelectNode})
-	r := make([]float64, 3)
-	otp.WriteString("NODE   XCOORD   YCOORD   ZCOORD     WEIGHT       LONG      XSEIS      YSEIS        W+L      W+L+X      W+L-X      W+L+Y      W+L-Y\n")
-	for _, n := range stw.SelectNode {
-		if n == nil {
-			continue
-		}
-		otp.WriteString(fmt.Sprintf("%4d %8.3f %8.3f %8.3f", n.Num, n.Coord[0], n.Coord[1], n.Coord[2]))
-		wgt := n.Weight[1]
-		for i, per := range []string{"L", "X", "Y"} {
-			if rea, ok := n.Reaction[per]; ok {
-				r[i] = rea[d]
-			} else {
-				r[i] = 0.0
-			}
-		}
-		otp.WriteString(fmt.Sprintf(" %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f\n", wgt, r[0], r[1], r[2], wgt+r[0], wgt+r[0]+r[1], wgt+r[0]-r[1], wgt+r[0]+r[2], wgt+r[0]-r[2]))
-	}
 	fn := st.Ce(stw.Frame.Path, ".rct")
-	w, err := os.Create(fn)
-	defer w.Close()
+	err = st.WriteReaction(fn, stw.SelectNode, d)
 	if err != nil {
 		stw.errormessage(err, ERROR)
 		stw.EscapeCB()
+		return
 	}
-	otp.WriteTo(w)
 	stw.addHistory(fmt.Sprintf("OUTPUT: %s", fn))
 	stw.EscapeCB()
 }
