@@ -3750,6 +3750,15 @@ func (stw *Window) exmode(command string) error {
 				if err != nil {
 					return err
 				}
+			case t == "all":
+				stw.ReadAll()
+			case t == "pgp":
+				al := make(map[string]*Command, 0)
+				err := ReadPgp(fn, al)
+				if err != nil {
+					return err
+				}
+				aliases = al
 			}
 		case abbrev.For("ins/ert", cname):
 			if usage {
