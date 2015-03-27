@@ -3575,10 +3575,13 @@ func (stw *Window) exmode(command string) error {
 				return nil
 			}
 			if !bang && stw.Changed {
-				if stw.Yn("CHANGED", "変更を保存しますか") {
+				switch stw.Yna("CHANGED", "変更を保存しますか", "キャンセル") {
+				case 1:
 					stw.SaveAS()
-				} else {
-					return errors.New("not saved")
+				case 2:
+					stw.addHistory("not saved")
+				case 3:
+					return errors.New(":inc cancelled")
 				}
 			}
 			var times int
