@@ -223,7 +223,7 @@ func NewView() *View {
 	v.Angle = make([]float64, 2)
 	v.Dists = make([]float64, 2)
 	v.Dists[0] = 1000
-	v.Dists[1] = 5000
+	v.Dists[1] = 60000
 	v.Viewpoint = make([][]float64, 3)
 	for i := 0; i < 3; i++ {
 		v.Viewpoint[i] = make([]float64, 3)
