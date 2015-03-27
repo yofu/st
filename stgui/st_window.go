@@ -5652,146 +5652,90 @@ func axisrange(stw *Window, axis int, min, max float64, any bool) {
 
 // Draw// {{{
 func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
-	if stw.Frame != nil {
-		// stw.UpdateShowRange() // TODO: ShowRange
-		canv.Hatch(cd.CD_FDIAGONAL)
-		canv.Clear()
-		stw.Frame.View.Set(0)
-		if stw.Frame.Show.GlobalAxis {
-			stw.DrawGlobalAxis(canv, color)
-		}
-		if stw.Frame.Show.Kijun {
-			canv.Foreground(KijunColor)
-			for _, k := range stw.Frame.Kijuns {
-				if k.Hide {
-					continue
-				}
-				k.Pstart = stw.Frame.View.ProjectCoord(k.Start)
-				k.Pend = stw.Frame.View.ProjectCoord(k.End)
-				DrawKijun(k, canv, stw.Frame.Show)
-			}
-		}
-		if stw.Frame.Show.Measure {
-			canv.TextAlignment(cd.CD_SOUTH)
-			canv.InteriorStyle(cd.CD_SOLID)
-			canv.Foreground(MeasureColor)
-			for _, m := range stw.Frame.Measures {
-				if m.Hide {
-					continue
-				}
-				DrawMeasure(m, canv, stw.Frame.Show)
-			}
-			canv.TextAlignment(DefaultTextAlignment)
-			canv.InteriorStyle(cd.CD_HATCH)
-		}
-		canv.Foreground(cd.CD_WHITE)
-		for _, n := range stw.Frame.Nodes {
-			stw.Frame.View.ProjectNode(n)
-			if stw.Frame.Show.Deformation {
-				stw.Frame.View.ProjectDeformation(n, stw.Frame.Show)
-			}
-			if n.Hide {
+	if stw.Frame == nil {
+		return
+	}
+	// stw.UpdateShowRange() // TODO: ShowRange
+	canv.Hatch(cd.CD_FDIAGONAL)
+	canv.Clear()
+	stw.Frame.View.Set(0)
+	if stw.Frame.Show.GlobalAxis {
+		stw.DrawGlobalAxis(canv, color)
+	}
+	if stw.Frame.Show.Kijun {
+		canv.Foreground(KijunColor)
+		for _, k := range stw.Frame.Kijuns {
+			if k.Hide {
 				continue
 			}
-			if color == st.ECOLOR_BLACK {
-				canv.Foreground(cd.CD_BLACK)
+			k.Pstart = stw.Frame.View.ProjectCoord(k.Start)
+			k.Pend = stw.Frame.View.ProjectCoord(k.End)
+			DrawKijun(k, canv, stw.Frame.Show)
+		}
+	}
+	if stw.Frame.Show.Measure {
+		canv.TextAlignment(cd.CD_SOUTH)
+		canv.InteriorStyle(cd.CD_SOLID)
+		canv.Foreground(MeasureColor)
+		for _, m := range stw.Frame.Measures {
+			if m.Hide {
+				continue
+			}
+			DrawMeasure(m, canv, stw.Frame.Show)
+		}
+		canv.TextAlignment(DefaultTextAlignment)
+		canv.InteriorStyle(cd.CD_HATCH)
+	}
+	canv.Foreground(cd.CD_WHITE)
+	for _, n := range stw.Frame.Nodes {
+		stw.Frame.View.ProjectNode(n)
+		if stw.Frame.Show.Deformation {
+			stw.Frame.View.ProjectDeformation(n, stw.Frame.Show)
+		}
+		if n.Hide {
+			continue
+		}
+		if color == st.ECOLOR_BLACK {
+			canv.Foreground(cd.CD_BLACK)
+		} else {
+			if n.Lock {
+				canv.Foreground(LOCKED_NODE_COLOR)
 			} else {
-				if n.Lock {
-					canv.Foreground(LOCKED_NODE_COLOR)
-				} else {
-					switch n.ConfState() {
-					case st.CONF_FREE:
-						canv.Foreground(canvasFontColor)
-					case st.CONF_PIN:
-						canv.Foreground(cd.CD_GREEN)
-					case st.CONF_FIX:
-						canv.Foreground(cd.CD_DARK_GREEN)
-					default:
-						canv.Foreground(cd.CD_CYAN)
-					}
-				}
-				for _, j := range stw.SelectNode {
-					if j == n {
-						canv.Foreground(cd.CD_RED)
-						break
-					}
+				switch n.ConfState() {
+				case st.CONF_FREE:
+					canv.Foreground(canvasFontColor)
+				case st.CONF_PIN:
+					canv.Foreground(cd.CD_GREEN)
+				case st.CONF_FIX:
+					canv.Foreground(cd.CD_DARK_GREEN)
+				default:
+					canv.Foreground(cd.CD_CYAN)
 				}
 			}
-			DrawNode(n, canv, stw.Frame.Show)
-		}
-		canv.LineStyle(cd.CD_CONTINUOUS)
-		canv.Hatch(cd.CD_FDIAGONAL)
-		if !stw.Frame.Show.Select {
-			els := st.SortedElem(stw.Frame.Elems, func(e *st.Elem) float64 { return -e.DistFromProjection() })
-		loop:
-			for _, el := range els {
-				if el.IsHide(stw.Frame.Show) {
-					continue
+			for _, j := range stw.SelectNode {
+				if j == n {
+					canv.Foreground(cd.CD_RED)
+					break
 				}
-				canv.LineStyle(cd.CD_CONTINUOUS)
-				canv.Hatch(cd.CD_FDIAGONAL)
-				for _, j := range stw.SelectElem {
-					if j == el {
-						continue loop
-					}
-				}
-				if el.Lock {
-					canv.Foreground(LOCKED_ELEM_COLOR)
-				} else {
-					switch color {
-					case st.ECOLOR_WHITE:
-						canv.Foreground(cd.CD_WHITE)
-					case st.ECOLOR_BLACK:
-						canv.Foreground(cd.CD_BLACK)
-					case st.ECOLOR_SECT:
-						canv.Foreground(el.Sect.Color)
-					case st.ECOLOR_RATE:
-						val, err := el.RateMax(stw.Frame.Show)
-						if err != nil {
-							canv.Foreground(cd.CD_DARK_GRAY)
-						} else {
-							canv.Foreground(st.Rainbow(val, st.RateBoundary))
-						}
-					// case st.ECOLOR_HEIGHT:
-					//     canv.Foreground(st.Rainbow(el.MidPoint()[2], st.HeightBoundary))
-					case st.ECOLOR_N:
-						if el.N(stw.Frame.Show.Period, 0) >= 0.0 {
-							canv.Foreground(st.RainbowColor[0]) // Compression: Blue
-						} else {
-							canv.Foreground(st.RainbowColor[6]) // Tension: Red
-						}
-					case st.ECOLOR_STRONG:
-						if el.IsLineElem() {
-							Ix, err := el.Sect.Ix()
-							if err != nil {
-								canv.Foreground(cd.CD_WHITE)
-							}
-							Iy, err := el.Sect.Iy()
-							if err != nil {
-								canv.Foreground(cd.CD_WHITE)
-							}
-							if Ix > Iy {
-								canv.Foreground(st.RainbowColor[0]) // Strong: Blue
-							} else if Ix == Iy {
-								canv.Foreground(st.RainbowColor[4]) // Same: Yellow
-							} else {
-								canv.Foreground(st.RainbowColor[6]) // Weak: Red
-							}
-						} else {
-							canv.Foreground(el.Sect.Color)
-						}
-					}
-				}
-				DrawElem(el, canv, stw.Frame.Show)
 			}
 		}
-		canv.Hatch(cd.CD_DIAGCROSS)
-		nomv := stw.Frame.Show.NoMomentValue
-		stw.Frame.Show.NoMomentValue = false
-		for _, el := range stw.SelectElem {
-			canv.LineStyle(cd.CD_DOTTED)
-			if el == nil || el.IsHide(stw.Frame.Show) {
+		DrawNode(n, canv, stw.Frame.Show)
+	}
+	canv.LineStyle(cd.CD_CONTINUOUS)
+	canv.Hatch(cd.CD_FDIAGONAL)
+	if !stw.Frame.Show.Select {
+		els := st.SortedElem(stw.Frame.Elems, func(e *st.Elem) float64 { return -e.DistFromProjection() })
+	loop:
+		for _, el := range els {
+			if el.IsHide(stw.Frame.Show) {
 				continue
+			}
+			canv.LineStyle(cd.CD_CONTINUOUS)
+			canv.Hatch(cd.CD_FDIAGONAL)
+			for _, j := range stw.SelectElem {
+				if j == el {
+					continue loop
+				}
 			}
 			if el.Lock {
 				canv.Foreground(LOCKED_ELEM_COLOR)
@@ -5818,27 +5762,84 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 					} else {
 						canv.Foreground(st.RainbowColor[6]) // Tension: Red
 					}
+				case st.ECOLOR_STRONG:
+					if el.IsLineElem() {
+						Ix, err := el.Sect.Ix()
+						if err != nil {
+							canv.Foreground(cd.CD_WHITE)
+						}
+						Iy, err := el.Sect.Iy()
+						if err != nil {
+							canv.Foreground(cd.CD_WHITE)
+						}
+						if Ix > Iy {
+							canv.Foreground(st.RainbowColor[0]) // Strong: Blue
+						} else if Ix == Iy {
+							canv.Foreground(st.RainbowColor[4]) // Same: Yellow
+						} else {
+							canv.Foreground(st.RainbowColor[6]) // Weak: Red
+						}
+					} else {
+						canv.Foreground(el.Sect.Color)
+					}
 				}
 			}
 			DrawElem(el, canv, stw.Frame.Show)
 		}
-		stw.Frame.Show.NoMomentValue = nomv
-		if stw.Frame.Fes != nil {
-			DrawEccentric(stw.Frame, canv, stw.Frame.Show)
-		}
-		if showprintrange {
-			if color == st.ECOLOR_BLACK {
-				canv.Foreground(cd.CD_BLACK)
-			} else {
-				canv.Foreground(cd.CD_GRAY)
-			}
-			DrawPrintRange(stw)
-		}
-		if flush {
-			canv.Flush()
-		}
-		stw.SetViewData()
 	}
+	canv.Hatch(cd.CD_DIAGCROSS)
+	nomv := stw.Frame.Show.NoMomentValue
+	stw.Frame.Show.NoMomentValue = false
+	for _, el := range stw.SelectElem {
+		canv.LineStyle(cd.CD_DOTTED)
+		if el == nil || el.IsHide(stw.Frame.Show) {
+			continue
+		}
+		if el.Lock {
+			canv.Foreground(LOCKED_ELEM_COLOR)
+		} else {
+			switch color {
+			case st.ECOLOR_WHITE:
+				canv.Foreground(cd.CD_WHITE)
+			case st.ECOLOR_BLACK:
+				canv.Foreground(cd.CD_BLACK)
+			case st.ECOLOR_SECT:
+				canv.Foreground(el.Sect.Color)
+			case st.ECOLOR_RATE:
+				val, err := el.RateMax(stw.Frame.Show)
+				if err != nil {
+					canv.Foreground(cd.CD_DARK_GRAY)
+				} else {
+					canv.Foreground(st.Rainbow(val, st.RateBoundary))
+				}
+			// case st.ECOLOR_HEIGHT:
+			//     canv.Foreground(st.Rainbow(el.MidPoint()[2], st.HeightBoundary))
+			case st.ECOLOR_N:
+				if el.N(stw.Frame.Show.Period, 0) >= 0.0 {
+					canv.Foreground(st.RainbowColor[0]) // Compression: Blue
+				} else {
+					canv.Foreground(st.RainbowColor[6]) // Tension: Red
+				}
+			}
+		}
+		DrawElem(el, canv, stw.Frame.Show)
+	}
+	stw.Frame.Show.NoMomentValue = nomv
+	if stw.Frame.Fes != nil {
+		DrawEccentric(stw.Frame, canv, stw.Frame.Show)
+	}
+	if showprintrange {
+		if color == st.ECOLOR_BLACK {
+			canv.Foreground(cd.CD_BLACK)
+		} else {
+			canv.Foreground(cd.CD_GRAY)
+		}
+		DrawPrintRange(stw)
+	}
+	if flush {
+		canv.Flush()
+	}
+	stw.SetViewData()
 }
 
 func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
