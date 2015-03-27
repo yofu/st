@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	// "github.com/visualfc/go-iup/iupim"
 	"github.com/atotto/clipboard"
 	"github.com/visualfc/go-iup/cd"
 	"github.com/yofu/abbrev"
