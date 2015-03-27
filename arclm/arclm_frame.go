@@ -801,6 +801,7 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 		norm = math.Sqrt(Dot(dd, dd, len(dd)))
 		laptime(fmt.Sprintf("LAP = %d NORM = %.5E", lap+1, norm))
 		if norm < eps {
+			frame.Lapch <- lap+1
 			break
 		}
 		frame.Lapch <- lap+1
