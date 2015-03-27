@@ -1202,6 +1202,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.undostack = make([]*st.Frame, nUndo)
 	undopos = 0
 	StartLogging()
+	stw.New()
 	return stw
 }
 
