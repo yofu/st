@@ -5897,49 +5897,50 @@ func (stw *Window) Redraw() {
 }
 
 func (stw *Window) DrawFrameNode() {
-	if stw.Frame != nil {
-		stw.dbuff.Clear()
-		stw.Frame.View.Set(0)
-		if stw.Frame.Show.GlobalAxis {
-			stw.DrawGlobalAxis(stw.dbuff, stw.Frame.Show.ColorMode)
-		}
-		for _, n := range stw.Frame.Nodes {
-			stw.Frame.View.ProjectNode(n)
-			if n.Lock {
-				stw.dbuff.Foreground(LOCKED_NODE_COLOR)
-			} else {
-				stw.dbuff.Foreground(canvasFontColor)
-			}
-			for _, j := range stw.SelectNode {
-				if j == n {
-					stw.dbuff.Foreground(cd.CD_RED)
-					break
-				}
-			}
-			DrawNode(n, stw.dbuff, stw.Frame.Show)
-		}
-		if len(stw.SelectElem) > 0 && stw.SelectElem[0] != nil {
-			nomv := stw.Frame.Show.NoMomentValue
-			stw.Frame.Show.NoMomentValue = false
-			stw.dbuff.Hatch(cd.CD_DIAGCROSS)
-			for _, el := range stw.SelectElem {
-				stw.dbuff.LineStyle(cd.CD_DOTTED)
-				if el == nil || el.IsHide(stw.Frame.Show) {
-					continue
-				}
-				if el.Lock {
-					stw.dbuff.Foreground(LOCKED_ELEM_COLOR)
-				} else {
-					stw.dbuff.Foreground(cd.CD_WHITE)
-				}
-				DrawElem(el, stw.dbuff, stw.Frame.Show)
-			}
-			stw.Frame.Show.NoMomentValue = nomv
-			stw.dbuff.LineStyle(cd.CD_CONTINUOUS)
-			stw.dbuff.Hatch(cd.CD_FDIAGONAL)
-		}
-		stw.dbuff.Flush()
+	if stw.Frame == nil {
+		return
 	}
+	stw.dbuff.Clear()
+	stw.Frame.View.Set(0)
+	if stw.Frame.Show.GlobalAxis {
+		stw.DrawGlobalAxis(stw.dbuff, stw.Frame.Show.ColorMode)
+	}
+	for _, n := range stw.Frame.Nodes {
+		stw.Frame.View.ProjectNode(n)
+		if n.Lock {
+			stw.dbuff.Foreground(LOCKED_NODE_COLOR)
+		} else {
+			stw.dbuff.Foreground(canvasFontColor)
+		}
+		for _, j := range stw.SelectNode {
+			if j == n {
+				stw.dbuff.Foreground(cd.CD_RED)
+				break
+			}
+		}
+		DrawNode(n, stw.dbuff, stw.Frame.Show)
+	}
+	if len(stw.SelectElem) > 0 && stw.SelectElem[0] != nil {
+		nomv := stw.Frame.Show.NoMomentValue
+		stw.Frame.Show.NoMomentValue = false
+		stw.dbuff.Hatch(cd.CD_DIAGCROSS)
+		for _, el := range stw.SelectElem {
+			stw.dbuff.LineStyle(cd.CD_DOTTED)
+			if el == nil || el.IsHide(stw.Frame.Show) {
+				continue
+			}
+			if el.Lock {
+				stw.dbuff.Foreground(LOCKED_ELEM_COLOR)
+			} else {
+				stw.dbuff.Foreground(cd.CD_WHITE)
+			}
+			DrawElem(el, stw.dbuff, stw.Frame.Show)
+		}
+		stw.Frame.Show.NoMomentValue = nomv
+		stw.dbuff.LineStyle(cd.CD_CONTINUOUS)
+		stw.dbuff.Hatch(cd.CD_FDIAGONAL)
+	}
+	stw.dbuff.Flush()
 }
 
 func (stw *Window) DrawGlobalAxis(canv *cd.Canvas, color uint) {
