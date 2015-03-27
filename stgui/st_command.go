@@ -2326,6 +2326,7 @@ func elemsamenode(stw *Window) {
 	els := stw.Frame.ElemSameNode()
 	if len(els) != 0 {
 		stw.SelectNode = stw.Frame.ElemToNode(els...)
+		stw.SelectElem = els
 		stw.Redraw()
 		if stw.Yn("ELEM SAME NODE", "部材を削除しますか?") {
 			for _, el := range els {
@@ -2335,9 +2336,12 @@ func elemsamenode(stw *Window) {
 				stw.Frame.DeleteElem(el.Num)
 			}
 			stw.Snapshot()
+		} else {
+			stw.EscapeCB()
 		}
+	} else {
+		stw.EscapeAll()
 	}
-	stw.EscapeAll()
 }
 
 // }}}
@@ -2395,10 +2399,13 @@ func nodeduplication(stw *Window) {
 		stw.Redraw()
 		if stw.Yn("NODE DUPLICATION", "重なった節点を削除しますか?") {
 			stw.Frame.ReplaceNode(nm)
+			stw.Snapshot()
+		} else {
+			stw.EscapeCB()
 		}
-		stw.Snapshot()
+	} else {
+		stw.EscapeAll()
 	}
-	stw.EscapeAll()
 }
 
 // }}}
