@@ -144,6 +144,16 @@ var (
 )
 
 var (
+	STLOGO = &TextBox{
+		Value: []string{"         software", "     forstructural", "   analysisthename", "  ofwhichstandsfor", "", " sigmatau  stress", "structure  steel", "andsometh  ing", " likethat"},
+		Position: []float64{100.0, 100.0},
+		Angle: 0.0,
+		Font: NewFont(),
+		Hide: false,
+	}
+)
+
+var (
 	LOCKED_ELEM_COLOR = cd.CD_DARK_GRAY
 	LOCKED_NODE_COLOR = cd.CD_DARK_YELLOW
 )
@@ -1202,6 +1212,7 @@ func NewWindow(homedir string) *Window { // {{{
 	undopos = 0
 	StartLogging()
 	stw.New()
+	stw.ShowLogo()
 	return stw
 }
 
@@ -1624,6 +1635,7 @@ func (stw *Window) OpenFile(filename string) error {
 	stw.AddRecently(fn)
 	stw.Snapshot()
 	stw.Changed = false
+	stw.HideLogo()
 	return nil
 }
 
@@ -3055,6 +3067,16 @@ func (stw *Window) SearchFile(fn string) (string, error) {
 func ShowReleaseNote() {
 	cmd := exec.Command("cmd", "/C", "start", releasenote)
 	cmd.Start()
+}
+
+func (stw *Window) ShowLogo() {
+	w, h := stw.dbuff.GetSize()
+	STLOGO.Position = []float64{float64(w) * 0.5, float64(h) * 0.5}
+	STLOGO.Hide = false
+}
+
+func (stw *Window) HideLogo() {
+	STLOGO.Hide = true
 }
 
 func (stw *Window) ShowAbout() {
@@ -5931,6 +5953,9 @@ func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
 				DrawText(t, canv)
 			}
 		}
+	}
+	if !STLOGO.Hide {
+		DrawText(STLOGO, canv)
 	}
 }
 
