@@ -3510,94 +3510,229 @@ func (stw *Window) exmode(command string) error {
 	}
 	bang := strings.HasSuffix(args[0], "!")
 	cname := strings.ToLower(strings.TrimSuffix(strings.TrimPrefix(args[0], ":"), "!"))
-	if stw.Frame != nil {
-		switch {
-		default:
-			stw.errormessage(errors.New(fmt.Sprintf("no exmode command: %s", cname)), INFO)
+	evaluated := true
+	switch {
+	default:
+		evaluated = false
+	case abbrev.For("e/dit", cname):
+		if usage {
+			stw.addHistory(":edit [filename]")
 			return nil
-		case abbrev.For("w/rite", cname):
-			if usage {
-				stw.addHistory(":write")
-				return nil
-			}
-			if fn == "" {
-				stw.SaveFile(stw.Frame.Path)
+		}
+		if !bang && stw.Changed {
+			if stw.Yn("CHANGED", "変更を保存しますか") {
+				stw.SaveAS()
 			} else {
-				if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
-					err := stw.SaveFile(fn)
-					if err != nil {
-						return err
-					}
-					if fn != stw.Frame.Path {
-						stw.Copylsts(fn)
-					}
-				}
+				return errors.New("not saved")
 			}
-		case abbrev.For("sav/e", cname):
-			if usage {
-				stw.addHistory(":save filename")
-				return nil
-			}
-			if fn == "" {
-				return st.NotEnoughArgs(":save")
-			} else {
-				if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
-					if narg > 2 && strings.EqualFold(args[2], "mkdir") {
-						os.MkdirAll(filepath.Dir(fn), 0644)
-					}
-					var err error
-					if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
-						err = stw.SaveFileSelected(fn, stw.SelectElem)
-						if err != nil {
-							return err
-						}
-						stw.Deselect()
-						err = stw.OpenFile(fn)
-						if err != nil {
-							return err
-						}
-						stw.Copylsts(fn)
-					} else {
-						err = stw.SaveFile(fn)
-					}
-					if err != nil {
-						return err
-					}
-					if fn != stw.Frame.Path {
-						stw.Copylsts(fn)
-					}
-					stw.Rebase(fn)
-				}
-			}
-		case abbrev.For("inc/rement", cname):
-			if usage {
-				stw.addHistory(":increment {times:1}")
-				return nil
-			}
-			if !bang && stw.Changed {
-				switch stw.Yna("CHANGED", "変更を保存しますか", "キャンセル") {
-				case 1:
-					stw.SaveAS()
-				case 2:
-					stw.addHistory("not saved")
-				case 3:
-					return errors.New(":inc cancelled")
-				}
-			}
-			var times int
-			if narg >= 2 {
-				val, err := strconv.ParseInt(args[1], 10, 64)
+		}
+		if fn != "" {
+			if !st.FileExists(fn) {
+				sfn, err := stw.SearchFile(args[1])
 				if err != nil {
 					return err
 				}
-				times = int(val)
+				err = stw.OpenFile(sfn)
+				if err != nil {
+					return err
+				}
+				stw.Redraw()
 			} else {
-				times = 1
+				err := stw.OpenFile(fn)
+				if err != nil {
+					return err
+				}
+				stw.Redraw()
 			}
-			fn, err := st.Increment(stw.Frame.Path, "_", 1, times)
-			if err != nil {
-				return err
-			}
+		} else {
+			stw.Reload()
+		}
+	case abbrev.For("q/uit", cname):
+		if usage {
+			stw.addHistory(":quit")
+			return nil
+		}
+		stw.Close(bang)
+	case cname == "eps":
+		if usage {
+			stw.addHistory(":eps val")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":eps")
+		}
+		val, err := strconv.ParseFloat(args[1], 64)
+		if err != nil {
+			return err
+		}
+		EPS = val
+		stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
+	case cname == "mkdir":
+		if usage {
+			stw.addHistory(":mkdir dirname")
+			return nil
+		}
+		os.MkdirAll(fn, 0644)
+	case cname == "#":
+		if usage {
+			stw.addHistory(":#")
+			return nil
+		}
+		stw.ShowRecently()
+	case abbrev.For("vi/m", cname):
+		if usage {
+			stw.addHistory(":vim filename")
+			return nil
+		}
+		stw.Vim(fn)
+	case abbrev.For("hk/you", cname):
+		if usage {
+			stw.addHistory(":hkyou h b tw tf")
+			return nil
+		}
+		if narg < 5 {
+			return st.NotEnoughArgs(":hkyou")
+		}
+		al, err := st.NewHKYOU(args[1:5])
+		if err != nil {
+			return err
+		}
+		stw.ShapeData(al)
+	case abbrev.For("hw/eak", cname):
+		if usage {
+			stw.addHistory(":hweak h b tw tf")
+			return nil
+		}
+		if narg < 5 {
+			return st.NotEnoughArgs(":hweak")
+		}
+		al, err := st.NewHWEAK(args[1:5])
+		if err != nil {
+			return err
+		}
+		stw.ShapeData(al)
+	case abbrev.For("rp/ipe", cname):
+		if usage {
+			stw.addHistory(":rpipe h b tw tf")
+			return nil
+		}
+		if narg < 5 {
+			return st.NotEnoughArgs(":rpipe")
+		}
+		al, err := st.NewRPIPE(args[1:5])
+		if err != nil {
+			return err
+		}
+		stw.ShapeData(al)
+	case abbrev.For("cp/ipe", cname):
+		if usage {
+			stw.addHistory(":cpipe d t")
+			return nil
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":cpipe")
+		}
+		al, err := st.NewCPIPE(args[1:3])
+		if err != nil {
+			return err
+		}
+		stw.ShapeData(al)
+	case abbrev.For("tk/you", cname):
+		if usage {
+			stw.addHistory(":tkyou h b tw tf")
+			return nil
+		}
+		if narg < 5 {
+			return st.NotEnoughArgs(":tkyou")
+		}
+		al, err := st.NewTKYOU(args[1:5])
+		if err != nil {
+			return err
+		}
+		stw.ShapeData(al)
+	case abbrev.For("ck/you", cname):
+		if usage {
+			stw.addHistory(":ckyou h b tw tf")
+			return nil
+		}
+		if narg < 5 {
+			return st.NotEnoughArgs(":ckyou")
+		}
+		al, err := st.NewCKYOU(args[1:5])
+		if err != nil {
+			return err
+		}
+		stw.ShapeData(al)
+	case abbrev.For("pla/te", cname):
+		if usage {
+			stw.addHistory(":plate h b")
+			return nil
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":plate")
+		}
+		al, err := st.NewPLATE(args[1:3])
+		if err != nil {
+			return err
+		}
+		stw.ShapeData(al)
+	case abbrev.For("fixr/otate", cname):
+		fixRotate = !fixRotate
+	case abbrev.For("fixm/ove", cname):
+		fixMove = !fixMove
+	case abbrev.For("noun/do", cname):
+		NOUNDO = true
+		stw.addHistory("undo/redo is off")
+	case abbrev.For("un/do", cname):
+		NOUNDO = false
+		stw.Snapshot()
+		stw.addHistory("undo/redo is on")
+	case cname == "alt":
+		ALTSELECTNODE = !ALTSELECTNODE
+		if ALTSELECTNODE {
+			stw.addHistory("select node with Alt key")
+		} else {
+			stw.addHistory("select elem with Alt key")
+		}
+	case cname=="procs":
+		if usage {
+			stw.addHistory(":procs numcpu")
+			return nil
+		}
+		if narg < 2 {
+			current := runtime.GOMAXPROCS(-1)
+			stw.addHistory(fmt.Sprintf("PROCS: %d", current))
+			return nil
+		}
+		tmp, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		val := int(tmp)
+		if 1 <= val && val <= runtime.NumCPU() {
+			old := runtime.GOMAXPROCS(val)
+			stw.addHistory(fmt.Sprintf("PROCS: %d -> %d", old, val))
+		}
+	}
+	if evaluated {
+		return nil
+	}
+	if stw.Frame == nil {
+		stw.errormessage(errors.New("frame is nil"), INFO)
+		return nil
+	}
+	switch {
+	default:
+		stw.errormessage(errors.New(fmt.Sprintf("no exmode command: %s", cname)), INFO)
+		return nil
+	case abbrev.For("w/rite", cname):
+		if usage {
+			stw.addHistory(":write")
+			return nil
+		}
+		if fn == "" {
+			stw.SaveFile(stw.Frame.Path)
+		} else {
 			if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
 				err := stw.SaveFile(fn)
 				if err != nil {
@@ -3606,138 +3741,110 @@ func (stw *Window) exmode(command string) error {
 				if fn != stw.Frame.Path {
 					stw.Copylsts(fn)
 				}
-				stw.Rebase(fn)
-				stw.EditReadme(filepath.Dir(fn))
 			}
-		case abbrev.For("e/dit", cname):
-			if usage {
-				stw.addHistory(":edit [filename]")
-				return nil
-			}
-			if !bang && stw.Changed {
-				if stw.Yn("CHANGED", "変更を保存しますか") {
-					stw.SaveAS()
+		}
+	case abbrev.For("sav/e", cname):
+		if usage {
+			stw.addHistory(":save filename")
+			return nil
+		}
+		if fn == "" {
+			return st.NotEnoughArgs(":save")
+		} else {
+			if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
+				if narg > 2 && strings.EqualFold(args[2], "mkdir") {
+					os.MkdirAll(filepath.Dir(fn), 0644)
+				}
+				var err error
+				if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
+					err = stw.SaveFileSelected(fn, stw.SelectElem)
+					if err != nil {
+						return err
+					}
+					stw.Deselect()
+					err = stw.OpenFile(fn)
+					if err != nil {
+						return err
+					}
+					stw.Copylsts(fn)
 				} else {
-					return errors.New("not saved")
+					err = stw.SaveFile(fn)
 				}
-			}
-			if fn != "" {
-				if !st.FileExists(fn) {
-					sfn, err := stw.SearchFile(args[1])
-					if err != nil {
-						return err
-					}
-					err = stw.OpenFile(sfn)
-					if err != nil {
-						return err
-					}
-					stw.Redraw()
-				} else {
-					err := stw.OpenFile(fn)
-					if err != nil {
-						return err
-					}
-					stw.Redraw()
-				}
-			} else {
-				stw.Reload()
-			}
-		case abbrev.For("q/uit", cname):
-			if usage {
-				stw.addHistory(":quit")
-				return nil
-			}
-			stw.Close(bang)
-		case cname == "eps":
-			if usage {
-				stw.addHistory(":eps val")
-				return nil
-			}
-			if narg < 2 {
-				return st.NotEnoughArgs(":eps")
-			}
-			val, err := strconv.ParseFloat(args[1], 64)
-			if err != nil {
-				return err
-			}
-			EPS = val
-			stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
-		case cname == "mkdir":
-			if usage {
-				stw.addHistory(":mkdir dirname")
-				return nil
-			}
-			os.MkdirAll(fn, 0644)
-		case abbrev.For("c/heck", cname):
-			if usage {
-				stw.addHistory(":check")
-				return nil
-			}
-			checkframe(stw)
-			stw.addHistory("CHECKED")
-		case cname == "#":
-			if usage {
-				stw.addHistory(":#")
-				return nil
-			}
-			stw.ShowRecently()
-		case abbrev.For("vi/m", cname):
-			if usage {
-				stw.addHistory(":vim filename")
-				return nil
-			}
-			stw.Vim(fn)
-		case abbrev.For("r/ead", cname):
-			if usage {
-				stw.addHistory(":read filename")
-				stw.addHistory(":read type filename")
-				return nil
-			}
-			t := strings.ToLower(args[1])
-			if narg < 3 {
-				switch t {
-				case "$all":
-					stw.ReadAll()
-				case "$data":
-					for _, ext := range []string{".inl", ".ihx", ".ihy"} {
-						err := stw.Frame.ReadData(st.Ce(stw.Frame.Path, ext))
-						if err != nil {
-							stw.errormessage(err, ERROR)
-						}
-					}
-				case "$results":
-					mode := st.UPDATE_RESULT
-					if _, ok := argdict["ADD"]; ok {
-						mode = st.ADD_RESULT
-						if _, ok2 := argdict["SEARCH"]; ok2 {
-							mode = st.ADDSEARCH_RESULT
-						}
-					}
-					for _, ext := range []string{".otl", ".ohx", ".ohy"} {
-						err := stw.Frame.ReadResult(st.Ce(stw.Frame.Path, ext), uint(mode))
-						if err != nil {
-							stw.errormessage(err, ERROR)
-						}
-					}
-				default:
-					err := stw.ReadFile(fn)
-					if err != nil {
-						return err
-					}
-				}
-				return nil
-			}
-			fn = stw.Complete(args[2])
-			if filepath.Dir(fn) == "." {
-				fn = filepath.Join(stw.Cwd, fn)
-			}
-			switch {
-			case abbrev.For("d/ata", t):
-				err := stw.Frame.ReadData(fn)
 				if err != nil {
 					return err
 				}
-			case abbrev.For("r/esult", t):
+				if fn != stw.Frame.Path {
+					stw.Copylsts(fn)
+				}
+				stw.Rebase(fn)
+			}
+		}
+	case abbrev.For("inc/rement", cname):
+		if usage {
+			stw.addHistory(":increment {times:1}")
+			return nil
+		}
+		if !bang && stw.Changed {
+			switch stw.Yna("CHANGED", "変更を保存しますか", "キャンセル") {
+			case 1:
+				stw.SaveAS()
+			case 2:
+				stw.addHistory("not saved")
+			case 3:
+				return errors.New(":inc cancelled")
+			}
+		}
+		var times int
+		if narg >= 2 {
+			val, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return err
+			}
+			times = int(val)
+		} else {
+			times = 1
+		}
+		fn, err := st.Increment(stw.Frame.Path, "_", 1, times)
+		if err != nil {
+			return err
+		}
+		if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
+			err := stw.SaveFile(fn)
+			if err != nil {
+				return err
+			}
+			if fn != stw.Frame.Path {
+				stw.Copylsts(fn)
+			}
+			stw.Rebase(fn)
+			stw.EditReadme(filepath.Dir(fn))
+		}
+	case abbrev.For("c/heck", cname):
+		if usage {
+			stw.addHistory(":check")
+			return nil
+		}
+		checkframe(stw)
+		stw.addHistory("CHECKED")
+	case abbrev.For("r/ead", cname):
+		if usage {
+			stw.addHistory(":read filename")
+			stw.addHistory(":read type filename")
+			return nil
+		}
+		t := strings.ToLower(args[1])
+		if narg < 3 {
+			switch t {
+			case "$all":
+				stw.ReadAll()
+			case "$data":
+				for _, ext := range []string{".inl", ".ihx", ".ihy"} {
+					err := stw.Frame.ReadData(st.Ce(stw.Frame.Path, ext))
+					if err != nil {
+						stw.errormessage(err, ERROR)
+					}
+				}
+			case "$results":
 				mode := st.UPDATE_RESULT
 				if _, ok := argdict["ADD"]; ok {
 					mode = st.ADD_RESULT
@@ -3745,1852 +3852,1708 @@ func (stw *Window) exmode(command string) error {
 						mode = st.ADDSEARCH_RESULT
 					}
 				}
-				err := stw.Frame.ReadResult(fn, uint(mode))
-				if err != nil {
-					return err
-				}
-			case abbrev.For("s/rcan", t):
-				err := stw.Frame.ReadRat(fn)
-				if err != nil {
-					return err
-				}
-			case abbrev.For("l/ist", t):
-				err := stw.Frame.ReadLst(fn)
-				if err != nil {
-					return err
-				}
-			case abbrev.For("w/eight", t):
-				err := stw.Frame.ReadWgt(fn)
-				if err != nil {
-					return err
-				}
-			case abbrev.For("k/ijun", t):
-				err := stw.Frame.ReadKjn(fn)
-				if err != nil {
-					return err
-				}
-			case abbrev.For("b/uckling", t):
-				err := stw.Frame.ReadBuckling(fn)
-				if err != nil {
-					return err
-				}
-			case abbrev.For("z/oubun", t):
-				err := stw.Frame.ReadZoubun(fn)
-				if err != nil {
-					return err
-				}
-			case t == "pgp":
-				al := make(map[string]*Command, 0)
-				err := ReadPgp(fn, al)
-				if err != nil {
-					return err
-				}
-				aliases = al
-			}
-		case abbrev.For("ins/ert", cname):
-			if usage {
-				stw.addHistory(":insert filename angle(deg)")
-				return nil
-			}
-			if narg > 2 && len(stw.SelectNode) >= 1 {
-				angle, err := strconv.ParseFloat(args[2], 64)
-				if err != nil {
-					return err
-				}
-				err = stw.Frame.ReadInp(fn, stw.SelectNode[0].Coord, angle*math.Pi/180.0, false)
-				stw.Snapshot()
-				if err != nil {
-					return err
-				}
-				stw.EscapeAll()
-			}
-		case abbrev.For("p/rop/s/ect", cname):
-			if usage {
-				stw.addHistory(":propsect filename")
-				return nil
-			}
-			err := stw.AddPropAndSect(fn)
-			stw.Snapshot()
-			if err != nil {
-				return err
-			}
-		case abbrev.For("w/rite/o/utput", cname):
-			if usage {
-				stw.addHistory(":writeoutput filename period")
-				return nil
-			}
-			if narg < 3 {
-				return st.NotEnoughArgs(":wo")
-			}
-			var err error
-			period := strings.ToUpper(args[2])
-			if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
-				err = st.WriteOutput(fn, period, stw.SelectElem)
-			} else {
-				err = stw.Frame.WriteOutput(fn, period)
-			}
-			if err != nil {
-				return err
-			}
-		case abbrev.For("w/rite/rea/ction", cname):
-			if usage {
-				stw.addHistory(":writereaction filename direction")
-				return nil
-			}
-			if narg < 3 {
-				return st.NotEnoughArgs(":wr")
-			}
-			tmp, err := strconv.ParseInt(args[2], 10, 64)
-			if err != nil {
-				return err
-			}
-			if _, ok := argdict["CONFED"]; ok {
-				selectconfed(stw)
-			}
-			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
-				return errors.New(":writereaction: no selected node")
-			}
-			sort.Sort(st.NodeByNum{stw.SelectNode})
-			err = st.WriteReaction(fn, stw.SelectNode, int(tmp))
-			if err != nil {
-				return err
-			}
-		case cname == "srcal":
-			if usage {
-				stw.addHistory(":srcal")
-				return nil
-			}
-			cond := st.NewCondition()
-			if _, ok := argdict["FBOLD"]; ok {
-				stw.addHistory("Fb: old")
-				cond.FbOld = true
-			}
-			if _, ok := argdict["RELOAD"]; ok {
-				stw.ReadFile(st.Ce(stw.Frame.Path, ".lst"))
-			}
-			stw.Frame.SectionRateCalculation("L", "X", "X", "Y", "Y", -1.0, cond)
-		case abbrev.For("nmi/nteraction", cname):
-			if usage {
-				stw.addHistory(":nminteraction sectcode")
-				return nil
-			}
-			if narg < 2 {
-				return st.NotEnoughArgs(":nminteraction")
-			}
-			tmp, err := strconv.ParseInt(args[1], 10, 64)
-			if err != nil {
-				return err
-			}
-			if al, ok := stw.Frame.Allows[int(tmp)]; ok {
-				var otp bytes.Buffer
-				cond := st.NewCondition()
-				ndiv := 100
-				if nd, ok := argdict["NDIV"]; ok {
-					if nd != "" {
-						stw.addHistory(fmt.Sprintf("NDIV: %s", nd))
-						tmp, err := strconv.ParseInt(nd, 10, 64)
-						if err == nil {
-							ndiv = int(tmp)
-						}
-					}
-				}
-				filename := "nmi.txt"
-				if o, ok := argdict["OUTPUT"]; ok {
-					if o != "" {
-						stw.addHistory(fmt.Sprintf("OUTPUT: %s", o))
-						filename = o
-					}
-				}
-				switch al.(type) {
-				default:
-					return nil
-				case *st.RCColumn:
-					nmax := al.(*st.RCColumn).Nmax(cond)
-					nmin := al.(*st.RCColumn).Nmin(cond)
-					for i:=0; i<=ndiv; i++ {
-						cond.N = nmax - float64(i) * (nmax - nmin) / float64(ndiv)
-						otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.Ma(cond)))
-					}
-				}
-				w, err := os.Create(filename)
-				defer w.Close()
-				if err != nil {
-					return err
-				}
-				otp.WriteTo(w)
-			}
-		case abbrev.For("fi/g2", cname):
-			if usage {
-				stw.addHistory(":fig2 filename")
-				return nil
-			}
-			err := stw.ReadFig2(fn)
-			if err != nil {
-				return err
-			}
-		case abbrev.For("fe/nce", cname):
-			if usage {
-				stw.addHistory(":fence axis coord")
-				return nil
-			}
-			if narg < 3 {
-				return st.NotEnoughArgs(":fence")
-			}
-			var axis int
-			switch strings.ToUpper(args[1]) {
-			default:
-				return errors.New(":fence unknown direction")
-			case "X":
-				axis = 0
-			case "Y":
-				axis = 1
-			case "Z":
-				axis = 2
-			}
-			val, err := strconv.ParseFloat(args[2], 64)
-			if err != nil {
-				return err
-			}
-			stw.SelectElem = stw.Frame.Fence(axis, val, false)
-		case abbrev.For("no/de", cname):
-			if usage {
-				stw.addHistory(":node nnum")
-				stw.addHistory(":node [x,y,z] [>,<,=] coord")
-				stw.addHistory(":node {confed/pinned/fixed/free}")
-				stw.addHistory(":node pile num")
-				return nil
-			}
-			stw.Deselect()
-			f := func(n *st.Node) bool {
-				return true
-			}
-			if narg >= 2 {
-				condition := strings.ToUpper(strings.Join(args[1:], " "))
-				coordstr := regexp.MustCompile("^ *([XYZ]) *([<!=>]{0,2}) *([0-9.]+)")
-				numstr := regexp.MustCompile("^[0-9, ]+$")
-				pilestr := regexp.MustCompile("^ *PILE *([0-9, ]+)$")
-				switch {
-				default:
-					return errors.New(":node: unknown format")
-				case numstr.MatchString(condition):
-					nnums := SplitNums(condition)
-					f = func(n *st.Node) bool {
-						for _, nnum := range nnums {
-							if n.Num == nnum {
-								return true
-							}
-						}
-						return false
-					}
-				case coordstr.MatchString(condition):
-					fs := coordstr.FindStringSubmatch(condition)
-					if len(fs) < 4 {
-						return errors.New(":node invalid input")
-					}
-					var ind int
-					switch fs[1] {
-					case "X":
-						ind = 0
-					case "Y":
-						ind = 1
-					case "Z":
-						ind = 2
-					}
-					val, err := strconv.ParseFloat(fs[3], 64)
+				for _, ext := range []string{".otl", ".ohx", ".ohy"} {
+					err := stw.Frame.ReadResult(st.Ce(stw.Frame.Path, ext), uint(mode))
 					if err != nil {
-						return err
-					}
-					switch fs[2] {
-					case "", "=", "==":
-						f = func(n *st.Node) bool {
-							if n.Coord[ind] == val {
-								return true
-							}
-							return false
-						}
-					case "!=":
-						f = func(n *st.Node) bool {
-							if n.Coord[ind] != val {
-								return true
-							}
-							return false
-						}
-					case ">":
-						f = func(n *st.Node) bool {
-							if n.Coord[ind] > val {
-								return true
-							}
-							return false
-						}
-					case ">=":
-						f = func(n *st.Node) bool {
-							if n.Coord[ind] >= val {
-								return true
-							}
-							return false
-						}
-					case "<":
-						f = func(n *st.Node) bool {
-							if n.Coord[ind] < val {
-								return true
-							}
-							return false
-						}
-					case "<=":
-						f = func(n *st.Node) bool {
-							if n.Coord[ind] <= val {
-								return true
-							}
-							return false
-						}
-					}
-				case pilestr.MatchString(condition):
-					fs := pilestr.FindStringSubmatch(condition)
-					pnums := SplitNums(fs[1])
-					f = func(n *st.Node) bool {
-						if n.Pile == nil {
-							return false
-						}
-						for _, pnum := range pnums {
-							if n.Pile.Num == pnum {
-								return true
-							}
-						}
-						return false
-					}
-				case abbrev.For("CONF/ED", condition):
-					f = func(n *st.Node) bool {
-						for i:=0; i<6; i++ {
-							if n.Conf[i] {
-								return true
-							}
-						}
-						return false
-					}
-				case condition == "FREE":
-					f = func(n *st.Node) bool {
-						for i:=0; i<6; i++ {
-							if n.Conf[i] {
-								return false
-							}
-						}
-						return true
-					}
-				case abbrev.For("PIN/NED", condition):
-					f = func(n *st.Node) bool {
-						return n.IsPinned()
-					}
-				case abbrev.For("FIX/ED", condition):
-					f = func(n *st.Node) bool {
-						return n.IsFixed()
+						stw.errormessage(err, ERROR)
 					}
 				}
-				stw.SelectNode = make([]*st.Node, len(stw.Frame.Nodes))
-				num := 0
-				for _, n := range stw.Frame.Nodes {
-					if f(n) {
-						stw.SelectNode[num] = n
-						num++
-					}
+			default:
+				err := stw.ReadFile(fn)
+				if err != nil {
+					return err
 				}
-				stw.SelectNode = stw.SelectNode[:num]
 			}
-		case abbrev.For("xsc/ale", cname):
-			if usage {
-				stw.addHistory(":xscale factor coord")
-				return nil
-			}
-			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
-				return errors.New(":xscale no selected node")
-			}
-			if narg < 3 {
-				return st.NotEnoughArgs(":xscale")
-			}
-			factor, err := strconv.ParseFloat(args[1], 64)
+			return nil
+		}
+		fn = stw.Complete(args[2])
+		if filepath.Dir(fn) == "." {
+			fn = filepath.Join(stw.Cwd, fn)
+		}
+		switch {
+		case abbrev.For("d/ata", t):
+			err := stw.Frame.ReadData(fn)
 			if err != nil {
 				return err
 			}
-			coord, err := strconv.ParseFloat(args[2], 64)
+		case abbrev.For("r/esult", t):
+			mode := st.UPDATE_RESULT
+			if _, ok := argdict["ADD"]; ok {
+				mode = st.ADD_RESULT
+				if _, ok2 := argdict["SEARCH"]; ok2 {
+					mode = st.ADDSEARCH_RESULT
+				}
+			}
+			err := stw.Frame.ReadResult(fn, uint(mode))
 			if err != nil {
 				return err
 			}
-			for _, n := range stw.SelectNode {
-				if n == nil {
-					continue
-				}
-				n.Scale([]float64{coord, 0.0, 0.0}, factor, 1.0, 1.0)
+		case abbrev.For("s/rcan", t):
+			err := stw.Frame.ReadRat(fn)
+			if err != nil {
+				return err
 			}
+		case abbrev.For("l/ist", t):
+			err := stw.Frame.ReadLst(fn)
+			if err != nil {
+				return err
+			}
+		case abbrev.For("w/eight", t):
+			err := stw.Frame.ReadWgt(fn)
+			if err != nil {
+				return err
+			}
+		case abbrev.For("k/ijun", t):
+			err := stw.Frame.ReadKjn(fn)
+			if err != nil {
+				return err
+			}
+		case abbrev.For("b/uckling", t):
+			err := stw.Frame.ReadBuckling(fn)
+			if err != nil {
+				return err
+			}
+		case abbrev.For("z/oubun", t):
+			err := stw.Frame.ReadZoubun(fn)
+			if err != nil {
+				return err
+			}
+		case t == "pgp":
+			al := make(map[string]*Command, 0)
+			err := ReadPgp(fn, al)
+			if err != nil {
+				return err
+			}
+			aliases = al
+		}
+	case abbrev.For("ins/ert", cname):
+		if usage {
+			stw.addHistory(":insert filename angle(deg)")
+			return nil
+		}
+		if narg > 2 && len(stw.SelectNode) >= 1 {
+			angle, err := strconv.ParseFloat(args[2], 64)
+			if err != nil {
+				return err
+			}
+			err = stw.Frame.ReadInp(fn, stw.SelectNode[0].Coord, angle*math.Pi/180.0, false)
 			stw.Snapshot()
-		case abbrev.For("ysc/ale", cname):
-			if usage {
-				stw.addHistory(":yscale factor coord")
-				return nil
-			}
-			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
-				return errors.New(":yscale no selected node")
-			}
-			if narg < 3 {
-				return st.NotEnoughArgs(":yscale")
-			}
-			factor, err := strconv.ParseFloat(args[1], 64)
 			if err != nil {
 				return err
 			}
-			coord, err := strconv.ParseFloat(args[2], 64)
-			if err != nil {
-				return err
-			}
-			for _, n := range stw.SelectNode {
-				if n == nil {
-					continue
-				}
-				n.Scale([]float64{0.0, coord, 0.0}, 1.0, factor, 1.0)
-			}
-			stw.Snapshot()
-		case abbrev.For("zsc/ale", cname):
-			if usage {
-				stw.addHistory(":zscale factor coord")
-				return nil
-			}
-			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
-				return errors.New(":zscale no selected node")
-			}
-			if narg < 3 {
-				return st.NotEnoughArgs(":zscale")
-			}
-			factor, err := strconv.ParseFloat(args[1], 64)
-			if err != nil {
-				return err
-			}
-			coord, err := strconv.ParseFloat(args[2], 64)
-			if err != nil {
-				return err
-			}
-			for _, n := range stw.SelectNode {
-				if n == nil {
-					continue
-				}
-				n.Scale([]float64{0.0, 0.0, coord}, 1.0, 1.0, factor)
-			}
-			stw.Snapshot()
-		case abbrev.For("pl/oad", cname):
-			if usage {
-				stw.addHistory(":pload position value")
-				return nil
-			}
-			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
-				return errors.New(":pload no selected node")
-			}
-			if narg < 3 {
-				return st.NotEnoughArgs(":pload")
-			}
-			ind, err := strconv.ParseInt(args[1], 10, 64)
-			if err != nil {
-				return err
-			}
-			val, err := strconv.ParseFloat(args[2], 64)
-			if err != nil {
-				return err
-			}
-			for _, n := range stw.SelectNode {
-				if n == nil {
-					continue
-				}
-				n.Load[int(ind)] = val
-			}
-			stw.Snapshot()
-		case abbrev.For("z/oubun/d/isp", cname):
-			if usage {
-				stw.addHistory(":zoubundisp period direction")
-				return nil
-			}
-			if narg < 3 {
-				return st.NotEnoughArgs(":zoubundisp")
-			}
-			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
-				return st.NotEnoughArgs(":zoubundisp no selected node")
-			}
-			pers := []string{args[1]}
-			val, err := strconv.ParseInt(args[2], 10, 64)
-			if err != nil {
-				return errors.New(":zoubundisp unknown direction")
-			}
-			d := int(val)
-			if d < 0 || d > 5 {
-				return errors.New(":zoubundisp direction should be between 0 ~ 6")
-			}
-			fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
-			err = stw.Frame.ReportZoubunDisp(fn, stw.SelectNode, pers, d)
-			if err != nil {
-				return err
-			}
-		case abbrev.For("z/oubun/r/eaction", cname):
-			if usage {
-				stw.addHistory(":zoubunreaction period direction")
-				return nil
-			}
-			if narg < 3 {
-				return st.NotEnoughArgs(":zoubunreaction")
-			}
-			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
-				return st.NotEnoughArgs(":zoubunreaction no selected node")
-			}
-			pers := []string{args[1]}
-			val, err := strconv.ParseInt(args[2], 10, 64)
-			if err != nil {
-				return errors.New(":zoubunreaction unknown direction")
-			}
-			d := int(val)
-			if d < 0 || d > 5 {
-				return errors.New(":zoubunreaction direction should be between 0 ~ 6")
-			}
-			fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
-			err = stw.Frame.ReportZoubunReaction(fn, stw.SelectNode, pers, d)
-			if err != nil {
-				return err
-			}
-		case abbrev.For("fac/ts", cname):
-			if usage {
-				stw.addHistory(":facts {-skipany=code} {-skipall=code}")
-				return nil
-			}
-			fn = st.Ce(stw.Frame.Path, ".fes")
-			var skipany, skipall []int
-			if sany, ok := argdict["SKIPANY"]; ok {
-				if sany == "" {
-					skipany = nil
-				} else {
-					stw.addHistory(fmt.Sprintf("SKIP ANY: %s", sany))
-					skipany = SplitNums(sany)
-				}
-			} else {
-				skipany = nil
-			}
-			if sall, ok := argdict["SKIPALL"]; ok {
-				if sall == "" {
-					skipall = nil
-				} else {
-					stw.addHistory(fmt.Sprintf("SKIP ALL: %s", sall))
-					skipall = SplitNums(sall)
-				}
-			} else {
-				skipall = nil
-			}
-			err := stw.Frame.Facts(fn, []int{st.COLUMN, st.GIRDER, st.BRACE, st.WBRACE, st.SBRACE}, skipany, skipall)
-			if err != nil {
-				return err
-			}
-			stw.addHistory(fmt.Sprintf("Output: %s", fn))
-		case abbrev.For("go/han/l/st", cname):
-			if usage {
-				stw.addHistory(":gohanlst factor sectcode...")
-				return nil
-			}
-			if narg < 3 {
-				return st.NotEnoughArgs(":gohanlst")
-			}
-			val, err := strconv.ParseFloat(args[1], 64)
-			if err != nil {
-				return err
-			}
-			sects := SplitNums(strings.Join(args[2:], " "))
+			stw.EscapeAll()
+		}
+	case abbrev.For("p/rop/s/ect", cname):
+		if usage {
+			stw.addHistory(":propsect filename")
+			return nil
+		}
+		err := stw.AddPropAndSect(fn)
+		stw.Snapshot()
+		if err != nil {
+			return err
+		}
+	case abbrev.For("w/rite/o/utput", cname):
+		if usage {
+			stw.addHistory(":writeoutput filename period")
+			return nil
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":wo")
+		}
+		var err error
+		period := strings.ToUpper(args[2])
+		if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
+			err = st.WriteOutput(fn, period, stw.SelectElem)
+		} else {
+			err = stw.Frame.WriteOutput(fn, period)
+		}
+		if err != nil {
+			return err
+		}
+	case abbrev.For("w/rite/rea/ction", cname):
+		if usage {
+			stw.addHistory(":writereaction filename direction")
+			return nil
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":wr")
+		}
+		tmp, err := strconv.ParseInt(args[2], 10, 64)
+		if err != nil {
+			return err
+		}
+		if _, ok := argdict["CONFED"]; ok {
+			selectconfed(stw)
+		}
+		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+			return errors.New(":writereaction: no selected node")
+		}
+		sort.Sort(st.NodeByNum{stw.SelectNode})
+		err = st.WriteReaction(fn, stw.SelectNode, int(tmp))
+		if err != nil {
+			return err
+		}
+	case cname == "srcal":
+		if usage {
+			stw.addHistory(":srcal")
+			return nil
+		}
+		cond := st.NewCondition()
+		if _, ok := argdict["FBOLD"]; ok {
+			stw.addHistory("Fb: old")
+			cond.FbOld = true
+		}
+		if _, ok := argdict["RELOAD"]; ok {
+			stw.ReadFile(st.Ce(stw.Frame.Path, ".lst"))
+		}
+		stw.Frame.SectionRateCalculation("L", "X", "X", "Y", "Y", -1.0, cond)
+	case abbrev.For("nmi/nteraction", cname):
+		if usage {
+			stw.addHistory(":nminteraction sectcode")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":nminteraction")
+		}
+		tmp, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		if al, ok := stw.Frame.Allows[int(tmp)]; ok {
 			var otp bytes.Buffer
-			var etype string
-			for _, snum := range sects {
-				if sec, ok := stw.Frame.Sects[snum]; ok {
-					for _, s := range sec.BraceSection() {
-						if s.Type == 5 {
-							etype = "WALL"
-						} else if s.Type == 6 {
-							etype = "SLAB"
-						}
-						otp.WriteString(fmt.Sprintf("CODE %4d WOOD %s                                                \"%s(%3d)\"\n", s.Num, etype, etype[:1], snum))
-						otp.WriteString(fmt.Sprintf("         THICK %5.3f       GOHAN                                     \"x%3.1f\"\n\n", val/12.0, val)) // 2[kgf/cm] / 24[kgf/cm2] = 1/12[cm]
+			cond := st.NewCondition()
+			ndiv := 100
+			if nd, ok := argdict["NDIV"]; ok {
+				if nd != "" {
+					stw.addHistory(fmt.Sprintf("NDIV: %s", nd))
+					tmp, err := strconv.ParseInt(nd, 10, 64)
+					if err == nil {
+						ndiv = int(tmp)
 					}
 				}
 			}
-			w, err := os.Create(filepath.Join(stw.Cwd, "gohan.lst"))
+			filename := "nmi.txt"
+			if o, ok := argdict["OUTPUT"]; ok {
+				if o != "" {
+					stw.addHistory(fmt.Sprintf("OUTPUT: %s", o))
+					filename = o
+				}
+			}
+			switch al.(type) {
+			default:
+				return nil
+			case *st.RCColumn:
+				nmax := al.(*st.RCColumn).Nmax(cond)
+				nmin := al.(*st.RCColumn).Nmin(cond)
+				for i:=0; i<=ndiv; i++ {
+					cond.N = nmax - float64(i) * (nmax - nmin) / float64(ndiv)
+					otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.Ma(cond)))
+				}
+			}
+			w, err := os.Create(filename)
 			defer w.Close()
 			if err != nil {
 				return err
 			}
-			otp = st.AddCR(otp)
 			otp.WriteTo(w)
-		case abbrev.For("hk/you", cname):
-			if usage {
-				stw.addHistory(":hkyou h b tw tf")
-				return nil
-			}
-			if narg < 5 {
-				return st.NotEnoughArgs(":hkyou")
-			}
-			al, err := st.NewHKYOU(args[1:5])
-			if err != nil {
-				return err
-			}
-			stw.ShapeData(al)
-		case abbrev.For("hw/eak", cname):
-			if usage {
-				stw.addHistory(":hweak h b tw tf")
-				return nil
-			}
-			if narg < 5 {
-				return st.NotEnoughArgs(":hweak")
-			}
-			al, err := st.NewHWEAK(args[1:5])
-			if err != nil {
-				return err
-			}
-			stw.ShapeData(al)
-		case abbrev.For("rp/ipe", cname):
-			if usage {
-				stw.addHistory(":rpipe h b tw tf")
-				return nil
-			}
-			if narg < 5 {
-				return st.NotEnoughArgs(":rpipe")
-			}
-			al, err := st.NewRPIPE(args[1:5])
-			if err != nil {
-				return err
-			}
-			stw.ShapeData(al)
-		case abbrev.For("cp/ipe", cname):
-			if usage {
-				stw.addHistory(":cpipe d t")
-				return nil
-			}
-			if narg < 3 {
-				return st.NotEnoughArgs(":cpipe")
-			}
-			al, err := st.NewCPIPE(args[1:3])
-			if err != nil {
-				return err
-			}
-			stw.ShapeData(al)
-		case abbrev.For("tk/you", cname):
-			if usage {
-				stw.addHistory(":tkyou h b tw tf")
-				return nil
-			}
-			if narg < 5 {
-				return st.NotEnoughArgs(":tkyou")
-			}
-			al, err := st.NewTKYOU(args[1:5])
-			if err != nil {
-				return err
-			}
-			stw.ShapeData(al)
-		case abbrev.For("ck/you", cname):
-			if usage {
-				stw.addHistory(":ckyou h b tw tf")
-				return nil
-			}
-			if narg < 5 {
-				return st.NotEnoughArgs(":ckyou")
-			}
-			al, err := st.NewCKYOU(args[1:5])
-			if err != nil {
-				return err
-			}
-			stw.ShapeData(al)
-		case abbrev.For("pla/te", cname):
-			if usage {
-				stw.addHistory(":plate h b")
-				return nil
-			}
-			if narg < 3 {
-				return st.NotEnoughArgs(":plate")
-			}
-			al, err := st.NewPLATE(args[1:3])
-			if err != nil {
-				return err
-			}
-			stw.ShapeData(al)
-		case abbrev.For("el/em", cname):
-			if usage {
-				stw.addHistory(":elem [elemcode,sect sectcode,etype]")
-				return nil
-			}
-			stw.Deselect()
-			f := func(el *st.Elem) bool {
-				return true
-			}
-			if narg >= 2 {
-				condition := strings.ToUpper(strings.Join(args[1:], " "))
-				numstr := regexp.MustCompile("^[0-9, ]+$")
-				switch {
-				default:
-					return errors.New(":elem: unknown format")
-				case numstr.MatchString(condition):
-					enums := SplitNums(condition)
-					f = func(el *st.Elem) bool {
-						for _, enum := range enums {
-							if el.Num == enum {
-								return true
-							}
+		}
+	case abbrev.For("fi/g2", cname):
+		if usage {
+			stw.addHistory(":fig2 filename")
+			return nil
+		}
+		err := stw.ReadFig2(fn)
+		if err != nil {
+			return err
+		}
+	case abbrev.For("fe/nce", cname):
+		if usage {
+			stw.addHistory(":fence axis coord")
+			return nil
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":fence")
+		}
+		var axis int
+		switch strings.ToUpper(args[1]) {
+		default:
+			return errors.New(":fence unknown direction")
+		case "X":
+			axis = 0
+		case "Y":
+			axis = 1
+		case "Z":
+			axis = 2
+		}
+		val, err := strconv.ParseFloat(args[2], 64)
+		if err != nil {
+			return err
+		}
+		stw.SelectElem = stw.Frame.Fence(axis, val, false)
+	case abbrev.For("no/de", cname):
+		if usage {
+			stw.addHistory(":node nnum")
+			stw.addHistory(":node [x,y,z] [>,<,=] coord")
+			stw.addHistory(":node {confed/pinned/fixed/free}")
+			stw.addHistory(":node pile num")
+			return nil
+		}
+		stw.Deselect()
+		f := func(n *st.Node) bool {
+			return true
+		}
+		if narg >= 2 {
+			condition := strings.ToUpper(strings.Join(args[1:], " "))
+			coordstr := regexp.MustCompile("^ *([XYZ]) *([<!=>]{0,2}) *([0-9.]+)")
+			numstr := regexp.MustCompile("^[0-9, ]+$")
+			pilestr := regexp.MustCompile("^ *PILE *([0-9, ]+)$")
+			switch {
+			default:
+				return errors.New(":node: unknown format")
+			case numstr.MatchString(condition):
+				nnums := SplitNums(condition)
+				f = func(n *st.Node) bool {
+					for _, nnum := range nnums {
+						if n.Num == nnum {
+							return true
+						}
+					}
+					return false
+				}
+			case coordstr.MatchString(condition):
+				fs := coordstr.FindStringSubmatch(condition)
+				if len(fs) < 4 {
+					return errors.New(":node invalid input")
+				}
+				var ind int
+				switch fs[1] {
+				case "X":
+					ind = 0
+				case "Y":
+					ind = 1
+				case "Z":
+					ind = 2
+				}
+				val, err := strconv.ParseFloat(fs[3], 64)
+				if err != nil {
+					return err
+				}
+				switch fs[2] {
+				case "", "=", "==":
+					f = func(n *st.Node) bool {
+						if n.Coord[ind] == val {
+							return true
 						}
 						return false
 					}
-				case re_sectnum.MatchString(condition):
-					f, _ = SectFilter(condition)
-					if f == nil {
-						return errors.New(":elem sect: format error")
+				case "!=":
+					f = func(n *st.Node) bool {
+						if n.Coord[ind] != val {
+							return true
+						}
+						return false
 					}
-				case re_orgsectnum.MatchString(condition):
-					f, _ = OriginalSectFilter(condition)
-					if f == nil {
-						return errors.New(":elem sect: format error")
+				case ">":
+					f = func(n *st.Node) bool {
+						if n.Coord[ind] > val {
+							return true
+						}
+						return false
 					}
-				case re_etype.MatchString(condition):
-					f, _ = EtypeFilter(condition)
-					if f == nil {
-						return errors.New(":elem etype: format error")
+				case ">=":
+					f = func(n *st.Node) bool {
+						if n.Coord[ind] >= val {
+							return true
+						}
+						return false
 					}
-				case strings.EqualFold(condition, "isgohan"):
-					f = func(el *st.Elem) bool {
-						return el.Sect.IsGohan(EPS)
+				case "<":
+					f = func(n *st.Node) bool {
+						if n.Coord[ind] < val {
+							return true
+						}
+						return false
+					}
+				case "<=":
+					f = func(n *st.Node) bool {
+						if n.Coord[ind] <= val {
+							return true
+						}
+						return false
 					}
 				}
-				stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
-				num := 0
-				for _, el := range stw.Frame.Elems {
-					if f(el) {
-						stw.SelectElem[num] = el
-						num++
+			case pilestr.MatchString(condition):
+				fs := pilestr.FindStringSubmatch(condition)
+				pnums := SplitNums(fs[1])
+				f = func(n *st.Node) bool {
+					if n.Pile == nil {
+						return false
 					}
+					for _, pnum := range pnums {
+						if n.Pile.Num == pnum {
+							return true
+						}
+					}
+					return false
 				}
-				stw.SelectElem = stw.SelectElem[:num]
+			case abbrev.For("CONF/ED", condition):
+				f = func(n *st.Node) bool {
+					for i:=0; i<6; i++ {
+						if n.Conf[i] {
+							return true
+						}
+					}
+					return false
+				}
+			case condition == "FREE":
+				f = func(n *st.Node) bool {
+					for i:=0; i<6; i++ {
+						if n.Conf[i] {
+							return false
+						}
+					}
+					return true
+				}
+			case abbrev.For("PIN/NED", condition):
+				f = func(n *st.Node) bool {
+					return n.IsPinned()
+				}
+			case abbrev.For("FIX/ED", condition):
+				f = func(n *st.Node) bool {
+					return n.IsFixed()
+				}
+			}
+			stw.SelectNode = make([]*st.Node, len(stw.Frame.Nodes))
+			num := 0
+			for _, n := range stw.Frame.Nodes {
+				if f(n) {
+					stw.SelectNode[num] = n
+					num++
+				}
+			}
+			stw.SelectNode = stw.SelectNode[:num]
+		}
+	case abbrev.For("xsc/ale", cname):
+		if usage {
+			stw.addHistory(":xscale factor coord")
+			return nil
+		}
+		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+			return errors.New(":xscale no selected node")
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":xscale")
+		}
+		factor, err := strconv.ParseFloat(args[1], 64)
+		if err != nil {
+			return err
+		}
+		coord, err := strconv.ParseFloat(args[2], 64)
+		if err != nil {
+			return err
+		}
+		for _, n := range stw.SelectNode {
+			if n == nil {
+				continue
+			}
+			n.Scale([]float64{coord, 0.0, 0.0}, factor, 1.0, 1.0)
+		}
+		stw.Snapshot()
+	case abbrev.For("ysc/ale", cname):
+		if usage {
+			stw.addHistory(":yscale factor coord")
+			return nil
+		}
+		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+			return errors.New(":yscale no selected node")
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":yscale")
+		}
+		factor, err := strconv.ParseFloat(args[1], 64)
+		if err != nil {
+			return err
+		}
+		coord, err := strconv.ParseFloat(args[2], 64)
+		if err != nil {
+			return err
+		}
+		for _, n := range stw.SelectNode {
+			if n == nil {
+				continue
+			}
+			n.Scale([]float64{0.0, coord, 0.0}, 1.0, factor, 1.0)
+		}
+		stw.Snapshot()
+	case abbrev.For("zsc/ale", cname):
+		if usage {
+			stw.addHistory(":zscale factor coord")
+			return nil
+		}
+		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+			return errors.New(":zscale no selected node")
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":zscale")
+		}
+		factor, err := strconv.ParseFloat(args[1], 64)
+		if err != nil {
+			return err
+		}
+		coord, err := strconv.ParseFloat(args[2], 64)
+		if err != nil {
+			return err
+		}
+		for _, n := range stw.SelectNode {
+			if n == nil {
+				continue
+			}
+			n.Scale([]float64{0.0, 0.0, coord}, 1.0, 1.0, factor)
+		}
+		stw.Snapshot()
+	case abbrev.For("pl/oad", cname):
+		if usage {
+			stw.addHistory(":pload position value")
+			return nil
+		}
+		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+			return errors.New(":pload no selected node")
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":pload")
+		}
+		ind, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		val, err := strconv.ParseFloat(args[2], 64)
+		if err != nil {
+			return err
+		}
+		for _, n := range stw.SelectNode {
+			if n == nil {
+				continue
+			}
+			n.Load[int(ind)] = val
+		}
+		stw.Snapshot()
+	case abbrev.For("z/oubun/d/isp", cname):
+		if usage {
+			stw.addHistory(":zoubundisp period direction")
+			return nil
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":zoubundisp")
+		}
+		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+			return st.NotEnoughArgs(":zoubundisp no selected node")
+		}
+		pers := []string{args[1]}
+		val, err := strconv.ParseInt(args[2], 10, 64)
+		if err != nil {
+			return errors.New(":zoubundisp unknown direction")
+		}
+		d := int(val)
+		if d < 0 || d > 5 {
+			return errors.New(":zoubundisp direction should be between 0 ~ 6")
+		}
+		fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
+		err = stw.Frame.ReportZoubunDisp(fn, stw.SelectNode, pers, d)
+		if err != nil {
+			return err
+		}
+	case abbrev.For("z/oubun/r/eaction", cname):
+		if usage {
+			stw.addHistory(":zoubunreaction period direction")
+			return nil
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":zoubunreaction")
+		}
+		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+			return st.NotEnoughArgs(":zoubunreaction no selected node")
+		}
+		pers := []string{args[1]}
+		val, err := strconv.ParseInt(args[2], 10, 64)
+		if err != nil {
+			return errors.New(":zoubunreaction unknown direction")
+		}
+		d := int(val)
+		if d < 0 || d > 5 {
+			return errors.New(":zoubunreaction direction should be between 0 ~ 6")
+		}
+		fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
+		err = stw.Frame.ReportZoubunReaction(fn, stw.SelectNode, pers, d)
+		if err != nil {
+			return err
+		}
+	case abbrev.For("fac/ts", cname):
+		if usage {
+			stw.addHistory(":facts {-skipany=code} {-skipall=code}")
+			return nil
+		}
+		fn = st.Ce(stw.Frame.Path, ".fes")
+		var skipany, skipall []int
+		if sany, ok := argdict["SKIPANY"]; ok {
+			if sany == "" {
+				skipany = nil
 			} else {
-				stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
-				num := 0
-				for _, el := range stw.Frame.Elems {
+				stw.addHistory(fmt.Sprintf("SKIP ANY: %s", sany))
+				skipany = SplitNums(sany)
+			}
+		} else {
+			skipany = nil
+		}
+		if sall, ok := argdict["SKIPALL"]; ok {
+			if sall == "" {
+				skipall = nil
+			} else {
+				stw.addHistory(fmt.Sprintf("SKIP ALL: %s", sall))
+				skipall = SplitNums(sall)
+			}
+		} else {
+			skipall = nil
+		}
+		err := stw.Frame.Facts(fn, []int{st.COLUMN, st.GIRDER, st.BRACE, st.WBRACE, st.SBRACE}, skipany, skipall)
+		if err != nil {
+			return err
+		}
+		stw.addHistory(fmt.Sprintf("Output: %s", fn))
+	case abbrev.For("go/han/l/st", cname):
+		if usage {
+			stw.addHistory(":gohanlst factor sectcode...")
+			return nil
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":gohanlst")
+		}
+		val, err := strconv.ParseFloat(args[1], 64)
+		if err != nil {
+			return err
+		}
+		sects := SplitNums(strings.Join(args[2:], " "))
+		var otp bytes.Buffer
+		var etype string
+		for _, snum := range sects {
+			if sec, ok := stw.Frame.Sects[snum]; ok {
+				for _, s := range sec.BraceSection() {
+					if s.Type == 5 {
+						etype = "WALL"
+					} else if s.Type == 6 {
+						etype = "SLAB"
+					}
+					otp.WriteString(fmt.Sprintf("CODE %4d WOOD %s                                                \"%s(%3d)\"\n", s.Num, etype, etype[:1], snum))
+					otp.WriteString(fmt.Sprintf("         THICK %5.3f       GOHAN                                     \"x%3.1f\"\n\n", val/12.0, val)) // 2[kgf/cm] / 24[kgf/cm2] = 1/12[cm]
+				}
+			}
+		}
+		w, err := os.Create(filepath.Join(stw.Cwd, "gohan.lst"))
+		defer w.Close()
+		if err != nil {
+			return err
+		}
+		otp = st.AddCR(otp)
+		otp.WriteTo(w)
+	case abbrev.For("el/em", cname):
+		if usage {
+			stw.addHistory(":elem [elemcode,sect sectcode,etype]")
+			return nil
+		}
+		stw.Deselect()
+		f := func(el *st.Elem) bool {
+			return true
+		}
+		if narg >= 2 {
+			condition := strings.ToUpper(strings.Join(args[1:], " "))
+			numstr := regexp.MustCompile("^[0-9, ]+$")
+			switch {
+			default:
+				return errors.New(":elem: unknown format")
+			case numstr.MatchString(condition):
+				enums := SplitNums(condition)
+				f = func(el *st.Elem) bool {
+					for _, enum := range enums {
+						if el.Num == enum {
+							return true
+						}
+					}
+					return false
+				}
+			case re_sectnum.MatchString(condition):
+				f, _ = SectFilter(condition)
+				if f == nil {
+					return errors.New(":elem sect: format error")
+				}
+			case re_orgsectnum.MatchString(condition):
+				f, _ = OriginalSectFilter(condition)
+				if f == nil {
+					return errors.New(":elem sect: format error")
+				}
+			case re_etype.MatchString(condition):
+				f, _ = EtypeFilter(condition)
+				if f == nil {
+					return errors.New(":elem etype: format error")
+				}
+			case strings.EqualFold(condition, "isgohan"):
+				f = func(el *st.Elem) bool {
+					return el.Sect.IsGohan(EPS)
+				}
+			}
+			stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
+			num := 0
+			for _, el := range stw.Frame.Elems {
+				if f(el) {
 					stw.SelectElem[num] = el
 					num++
 				}
-				stw.SelectElem = stw.SelectElem[:num]
 			}
-		case cname == "max":
-			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
-				maxval := -1e16
-				var valfunc func(*st.Elem) float64
-				var sel *st.Elem
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, true)
-				}
-				for _, el := range stw.SelectElem {
-					if el == nil {
-						continue
-					}
-					if tmpval := valfunc(el); tmpval > maxval {
-						sel = el
-						maxval = tmpval
-					}
-				}
-				if sel != nil {
-					stw.SelectElem = []*st.Elem{sel}
-					stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, true)))
-				}
-			} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
-				maxval := -1e16
-				var valfunc func(*st.Node) float64
-				var sn *st.Node
-				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, true)
-				}
-				for _, n := range stw.SelectNode {
-					if n == nil {
-						continue
-					}
-					if tmpval := valfunc(n); tmpval > maxval {
-						sn = n
-						maxval = tmpval
-					}
-				}
-				if sn != nil {
-					stw.SelectNode = []*st.Node{sn}
-					stw.addHistory(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, true)))
-				}
-			} else {
-				return errors.New(":max no selected elem/node")
+			stw.SelectElem = stw.SelectElem[:num]
+		} else {
+			stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
+			num := 0
+			for _, el := range stw.Frame.Elems {
+				stw.SelectElem[num] = el
+				num++
 			}
-		case cname == "min":
-			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
-				minval := 1e16
-				var valfunc func(*st.Elem) float64
-				var sel *st.Elem
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, true)
-				}
-				for _, el := range stw.SelectElem {
-					if el == nil {
-						continue
-					}
-					if tmpval := valfunc(el); tmpval < minval {
-						sel = el
-						minval = tmpval
-					}
-				}
-				if sel != nil {
-					stw.SelectElem = []*st.Elem{sel}
-					stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, false)))
-				}
-			} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
-				minval := 1e16
-				var valfunc func(*st.Node) float64
-				var sn *st.Node
-				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, true)
-				}
-				for _, n := range stw.SelectNode {
-					if n == nil {
-						continue
-					}
-					if tmpval := valfunc(n); tmpval < minval {
-						sn = n
-						minval = tmpval
-					}
-				}
-				if sn != nil {
-					stw.SelectNode = []*st.Node{sn}
-					stw.addHistory(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, false)))
-				}
-			} else {
-				return errors.New(":min no selected elem/node")
+			stw.SelectElem = stw.SelectElem[:num]
+		}
+	case cname == "max":
+		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+			maxval := -1e16
+			var valfunc func(*st.Elem) float64
+			var sel *st.Elem
+			valfunc = func(elem *st.Elem) float64 {
+				return elem.CurrentValue(stw.Frame.Show, true)
 			}
-		case abbrev.For("ave/rage", cname):
-			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
-				var valfunc func(*st.Elem) float64
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, true)
-				}
-				val := 0.0
-				num := 0
-				for _, el := range stw.SelectElem {
-					if el == nil {
-						continue
-					}
-					val += valfunc(el)
-					num++
-				}
-				if num >= 1 {
-					stw.addHistory(fmt.Sprintf("%d ELEMs : %.5f", num, val/float64(num)))
-				}
-			} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
-				var valfunc func(*st.Node) float64
-				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, true)
-				}
-				val := 0.0
-				num := 0
-				for _, n := range stw.SelectNode {
-					if n == nil {
-						continue
-					}
-					val += valfunc(n)
-					num++
-				}
-				if num >= 1 {
-					stw.addHistory(fmt.Sprintf("%d NODEs: %.5f", num, val/float64(num)))
-				}
-			} else {
-				return errors.New(":average no selected elem/node")
-			}
-		case cname=="sum":
-			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
-				var valfunc func(*st.Elem) float64
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, true)
-				}
-				val := 0.0
-				num := 0
-				for _, el := range stw.SelectElem {
-					if el == nil {
-						continue
-					}
-					val += valfunc(el)
-					num++
-				}
-				if num >= 1 {
-					stw.addHistory(fmt.Sprintf("%d ELEMs : %.5f", num, val))
-				}
-			} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
-				var valfunc func(*st.Node) float64
-				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, true)
-				}
-				val := 0.0
-				num := 0
-				for _, n := range stw.SelectNode {
-					if n == nil {
-						continue
-					}
-					val += valfunc(n)
-					num++
-				}
-				if num >= 1 {
-					stw.addHistory(fmt.Sprintf("%d NODEs: %.5f", num, val))
-				}
-			} else {
-				return errors.New(":sum no selected elem/node")
-			}
-		case abbrev.For("bo/nd", cname):
-			if usage {
-				stw.addHistory(":bond [pin,rigid] [upper,lower,sect sectcode]")
-				return nil
-			}
-			if narg < 2 {
-				return st.NotEnoughArgs(":bond")
-			}
-			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-				return errors.New(":bond no selected elem")
-			}
-			lis := make([]bool, 6)
-			switch strings.ToUpper(args[1]) {
-			case "PIN":
-				lis[4] = true
-				lis[5] = true
-			}
-			f := func(el *st.Elem, ind int) bool {
-				return true
-			}
-			if narg >= 3 {
-				condition := strings.ToLower(strings.Join(args[2:], " "))
-				switch {
-				case abbrev.For("up/per", condition):
-					f = func(el *st.Elem, ind int) bool {
-						return el.Enod[ind].Coord[2] > el.Enod[1-ind].Coord[2]
-					}
-				case abbrev.For("lo/wer", condition):
-					f = func(el *st.Elem, ind int) bool {
-						return el.Enod[ind].Coord[2] < el.Enod[1-ind].Coord[2]
-					}
-				case re_sectnum.MatchString(condition):
-					tmpf, _ := SectFilter(condition)
-					f = func(el *st.Elem, ind int) bool {
-						for _, sel := range el.Frame.SearchElem(el.Enod[ind]) {
-							if sel.Num == el.Num {
-								continue
-							}
-							if tmpf(sel) {
-								return true
-							}
-						}
-						return false
-					}
-				}
-			}
-			for _, el := range stw.SelectElem {
-				if !el.IsLineElem() {
-					continue
-				}
-				for i := 0; i < 2; i++ {
-					if !f(el, i) {
-						continue
-					}
-					for j := 0; j < 6; j++ {
-						el.Bonds[6*i+j] = lis[j]
-					}
-				}
-			}
-			stw.Snapshot()
-		case abbrev.For("ax/is/2//c/ang", cname):
-			if usage {
-				stw.addHistory(":axis2cang n1 n2 [strong,weak]")
-				return nil
-			}
-			if narg < 4 {
-				return st.NotEnoughArgs(":axis2cang")
-			}
-			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-				return errors.New(":axis2cang no selected elem")
-			}
-			nnum1, err := strconv.ParseInt(args[1], 10, 64)
-			if err != nil {
-				return err
-			}
-			nnum2, err := strconv.ParseInt(args[2], 10, 64)
-			if err != nil {
-				return err
-			}
-			var strong bool
-			if strings.EqualFold(args[3], "strong") {
-				strong = true
-			} else if strings.EqualFold(args[3], "weak") {
-				strong = false
-			} else {
-				return errors.New(":axis2cang: last argument must be strong or weak")
-			}
-			var n1, n2 *st.Node
-			var found bool
-			if n1, found = stw.Frame.Nodes[int(nnum1)]; !found {
-				return errors.New(fmt.Sprintf(":axis2cang: NODE %d not found", nnum1))
-			}
-			if n2, found = stw.Frame.Nodes[int(nnum2)]; !found {
-				return errors.New(fmt.Sprintf(":axis2cang: NODE %d not found", nnum2))
-			}
-			vec := []float64{n2.Coord[0] - n1.Coord[0], n2.Coord[1] - n1.Coord[1], n2.Coord[2] - n1.Coord[2]}
-			for _, el := range stw.SelectElem {
-				if el == nil || el.IsHide(stw.Frame.Show) || el.Lock || !el.IsLineElem() {
-					continue
-				}
-				_, err := el.AxisToCang(vec, strong)
-				if err != nil {
-					return err
-				}
-			}
-			stw.Snapshot()
-		case abbrev.For("resul/tant", cname):
-			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-				return errors.New(":resultant no selected elem")
-			}
-			vec := make([]float64, 3)
-			elems := make([]*st.Elem, len(stw.SelectElem))
-			enum := 0
-			for _, el := range stw.SelectElem {
-				if el == nil || el.Lock || !el.IsLineElem() {
-					continue
-				}
-				elems[enum] = el
-				enum++
-			}
-			elems = elems[:enum]
-			en, err := st.CommonEnod(elems...)
-			if err != nil {
-				return err
-			}
-			if en == nil || len(en) == 0 {
-				return errors.New(":resultant no common enod")
-			}
-			axis := [][]float64{st.XAXIS, st.YAXIS, st.ZAXIS}
-			per := stw.Frame.Show.Period
-			for _, el := range elems {
-				for i:=0; i<3; i++ {
-					vec[i] += el.VectorStress(per, en[0].Num, axis[i])
-				}
-			}
-			v := 0.0
-			for i:=0; i<3; i++ {
-				v += vec[i] * vec[i]
-			}
-			v = math.Sqrt(v)
-			stw.addHistory(fmt.Sprintf("NODE: %d", en[0].Num))
-			stw.addHistory(fmt.Sprintf("X: %.3f Y: %.3f Z: %.3f F: %.3f", vec[0], vec[1], vec[2], v))
-		case abbrev.For("prest/ress", cname):
-			if usage {
-				stw.addHistory(":prestress value")
-				return nil
-			}
-			if narg < 2 {
-				return st.NotEnoughArgs(":prestress")
-			}
-			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-				return errors.New(":prestress no selected elem")
-			}
-			val, err := strconv.ParseFloat(args[1], 64)
-			if err != nil {
-				return err
-			}
-			for _, el := range stw.SelectElem {
-				if el == nil || el.Lock || !el.IsLineElem() {
-					continue
-				}
-				el.Prestress = val
-			}
-			stw.Snapshot()
-		case abbrev.For("div/ide", cname):
-			if usage {
-				stw.addHistory(":divide [mid, n, elem, ons, axis, length]")
-				return nil
-			}
-			if narg < 2 {
-				return st.NotEnoughArgs(":divide")
-			}
-			if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-				return errors.New(":divide: no selected elem")
-			}
-			var divfunc func(*st.Elem) ([]*st.Node, []*st.Elem, error)
-			switch strings.ToLower(args[1]) {
-			case "mid":
-				if usage {
-					stw.addHistory(":divide mid")
-					return nil
-				}
-				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
-					return el.DivideAtMid(EPS)
-				}
-			case "n":
-				if usage {
-					stw.addHistory(":divide n div")
-					return nil
-				}
-				if narg < 3 {
-					return st.NotEnoughArgs(":divide n")
-				}
-				val, err := strconv.ParseInt(args[2], 10, 64)
-				if err != nil {
-					return err
-				}
-				ndiv := int(val)
-				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
-					return el.DivideInN(ndiv, EPS)
-				}
-			case "elem":
-				if usage {
-					stw.addHistory(":divide elem (eps)")
-					return nil
-				}
-				eps := EPS
-				if narg >= 3 {
-					val, err := strconv.ParseFloat(args[2], 64)
-					if err == nil {
-						eps = val
-					}
-				}
-				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
-					els, err := el.DivideAtElem(eps)
-					return nil, els, err
-				}
-			case "ons":
-				if usage {
-					stw.addHistory(":divide ons (eps)")
-					return nil
-				}
-				eps := EPS
-				if narg >= 3 {
-					val, err := strconv.ParseFloat(args[2], 64)
-					if err == nil {
-						eps = val
-					}
-				}
-				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
-					return el.DivideAtOns(eps)
-				}
-			case "axis":
-				if usage {
-					stw.addHistory(":divide axis [x, y, z] coord")
-					return nil
-				}
-				if narg < 4 {
-					return st.NotEnoughArgs(":divide axis")
-				}
-				var axis int
-				switch args[2] {
-				default:
-					return errors.New(":divide axis: unknown axis")
-				case "x", "X":
-					axis = 0
-				case "y", "Y":
-					axis = 1
-				case "z", "Z":
-					axis = 2
-				}
-				val, err := strconv.ParseFloat(args[3], 64)
-				if err != nil {
-					return err
-				}
-				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
-					return el.DivideAtAxis(axis, val, EPS)
-				}
-			case "length":
-				if usage {
-					stw.addHistory(":divide length l")
-					return nil
-				}
-				if narg < 3 {
-					return st.NotEnoughArgs(":divide length")
-				}
-				val, err := strconv.ParseFloat(args[2], 64)
-				if err != nil {
-					return err
-				}
-				divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
-					return el.DivideAtLength(val, EPS)
-				}
-			}
-			if divfunc == nil {
-				return errors.New(":divide: unknown format")
-			}
-			tmpels := make([]*st.Elem, 0)
-			enum := 0
 			for _, el := range stw.SelectElem {
 				if el == nil {
 					continue
 				}
-				_, els, err := divfunc(el)
-				if err != nil {
-					stw.errormessage(err, ERROR)
+				if tmpval := valfunc(el); tmpval > maxval {
+					sel = el
+					maxval = tmpval
+				}
+			}
+			if sel != nil {
+				stw.SelectElem = []*st.Elem{sel}
+				stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, true)))
+			}
+		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
+			maxval := -1e16
+			var valfunc func(*st.Node) float64
+			var sn *st.Node
+			valfunc = func(node *st.Node) float64 {
+				return node.CurrentValue(stw.Frame.Show, true)
+			}
+			for _, n := range stw.SelectNode {
+				if n == nil {
 					continue
 				}
-				if err == nil && len(els) > 1 {
-					tmpels = append(tmpels, els...)
-					enum += len(els)
+				if tmpval := valfunc(n); tmpval > maxval {
+					sn = n
+					maxval = tmpval
 				}
 			}
-			stw.SelectElem = tmpels[:enum]
-			stw.Snapshot()
-		case abbrev.For("e/lem/dup/lication", cname):
-			if usage {
-				stw.addHistory(":elemduplication {-ignoresect=code}")
-				return nil
+			if sn != nil {
+				stw.SelectNode = []*st.Node{sn}
+				stw.addHistory(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, true)))
 			}
-			stw.Deselect()
-			var isect []int
-			if isec, ok := argdict["IGNORESECT"]; ok {
-				if isec == "" {
-					isect = nil
-				} else {
-					stw.addHistory(fmt.Sprintf("IGNORE SECT: %s", isec))
-					isect = SplitNums(isec)
+		} else {
+			return errors.New(":max no selected elem/node")
+		}
+	case cname == "min":
+		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+			minval := 1e16
+			var valfunc func(*st.Elem) float64
+			var sel *st.Elem
+			valfunc = func(elem *st.Elem) float64 {
+				return elem.CurrentValue(stw.Frame.Show, true)
+			}
+			for _, el := range stw.SelectElem {
+				if el == nil {
+					continue
 				}
-			} else {
-				isect = nil
-			}
-			els := stw.Frame.ElemDuplication(isect)
-			if len(els) != 0 {
-				enum := 0
-				for k := range els {
-					stw.SelectElem = append(stw.SelectElem, k)
-					enum++
+				if tmpval := valfunc(el); tmpval < minval {
+					sel = el
+					minval = tmpval
 				}
-				stw.SelectElem = stw.SelectElem[:enum]
 			}
-		case abbrev.For("i/ntersect/a/ll", cname):
-			l := len(stw.SelectElem)
-			if l <= 1 {
-				return nil
+			if sel != nil {
+				stw.SelectElem = []*st.Elem{sel}
+				stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, false)))
 			}
-			go func () {
-				err := stw.Frame.IntersectAll(stw.SelectElem, EPS)
-				stw.Frame.Endch <-err
-			}()
-			stw.CurrentLap("Calculating...", 0, l)
-			go func () {
-				var err error
-				var nlap int
-				iallloop:
-				for {
-					select {
-					case nlap = <-stw.Frame.Lapch:
-						stw.CurrentLap("Calculating...", nlap, l)
-						stw.Redraw()
-					case err = <-stw.Frame.Endch:
-						if err != nil {
-							stw.CurrentLap("Error", nlap, l)
-							stw.errormessage(err, ERROR)
-						} else {
-							stw.CurrentLap("Completed", nlap, l)
+		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
+			minval := 1e16
+			var valfunc func(*st.Node) float64
+			var sn *st.Node
+			valfunc = func(node *st.Node) float64 {
+				return node.CurrentValue(stw.Frame.Show, true)
+			}
+			for _, n := range stw.SelectNode {
+				if n == nil {
+					continue
+				}
+				if tmpval := valfunc(n); tmpval < minval {
+					sn = n
+					minval = tmpval
+				}
+			}
+			if sn != nil {
+				stw.SelectNode = []*st.Node{sn}
+				stw.addHistory(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, false)))
+			}
+		} else {
+			return errors.New(":min no selected elem/node")
+		}
+	case abbrev.For("ave/rage", cname):
+		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+			var valfunc func(*st.Elem) float64
+			valfunc = func(elem *st.Elem) float64 {
+				return elem.CurrentValue(stw.Frame.Show, true)
+			}
+			val := 0.0
+			num := 0
+			for _, el := range stw.SelectElem {
+				if el == nil {
+					continue
+				}
+				val += valfunc(el)
+				num++
+			}
+			if num >= 1 {
+				stw.addHistory(fmt.Sprintf("%d ELEMs : %.5f", num, val/float64(num)))
+			}
+		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
+			var valfunc func(*st.Node) float64
+			valfunc = func(node *st.Node) float64 {
+				return node.CurrentValue(stw.Frame.Show, true)
+			}
+			val := 0.0
+			num := 0
+			for _, n := range stw.SelectNode {
+				if n == nil {
+					continue
+				}
+				val += valfunc(n)
+				num++
+			}
+			if num >= 1 {
+				stw.addHistory(fmt.Sprintf("%d NODEs: %.5f", num, val/float64(num)))
+			}
+		} else {
+			return errors.New(":average no selected elem/node")
+		}
+	case cname=="sum":
+		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+			var valfunc func(*st.Elem) float64
+			valfunc = func(elem *st.Elem) float64 {
+				return elem.CurrentValue(stw.Frame.Show, true)
+			}
+			val := 0.0
+			num := 0
+			for _, el := range stw.SelectElem {
+				if el == nil {
+					continue
+				}
+				val += valfunc(el)
+				num++
+			}
+			if num >= 1 {
+				stw.addHistory(fmt.Sprintf("%d ELEMs : %.5f", num, val))
+			}
+		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
+			var valfunc func(*st.Node) float64
+			valfunc = func(node *st.Node) float64 {
+				return node.CurrentValue(stw.Frame.Show, true)
+			}
+			val := 0.0
+			num := 0
+			for _, n := range stw.SelectNode {
+				if n == nil {
+					continue
+				}
+				val += valfunc(n)
+				num++
+			}
+			if num >= 1 {
+				stw.addHistory(fmt.Sprintf("%d NODEs: %.5f", num, val))
+			}
+		} else {
+			return errors.New(":sum no selected elem/node")
+		}
+	case abbrev.For("bo/nd", cname):
+		if usage {
+			stw.addHistory(":bond [pin,rigid] [upper,lower,sect sectcode]")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":bond")
+		}
+		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+			return errors.New(":bond no selected elem")
+		}
+		lis := make([]bool, 6)
+		switch strings.ToUpper(args[1]) {
+		case "PIN":
+			lis[4] = true
+			lis[5] = true
+		}
+		f := func(el *st.Elem, ind int) bool {
+			return true
+		}
+		if narg >= 3 {
+			condition := strings.ToLower(strings.Join(args[2:], " "))
+			switch {
+			case abbrev.For("up/per", condition):
+				f = func(el *st.Elem, ind int) bool {
+					return el.Enod[ind].Coord[2] > el.Enod[1-ind].Coord[2]
+				}
+			case abbrev.For("lo/wer", condition):
+				f = func(el *st.Elem, ind int) bool {
+					return el.Enod[ind].Coord[2] < el.Enod[1-ind].Coord[2]
+				}
+			case re_sectnum.MatchString(condition):
+				tmpf, _ := SectFilter(condition)
+				f = func(el *st.Elem, ind int) bool {
+					for _, sel := range el.Frame.SearchElem(el.Enod[ind]) {
+						if sel.Num == el.Num {
+							continue
 						}
-						stw.Redraw()
-						break iallloop
+						if tmpf(sel) {
+							return true
+						}
 					}
+					return false
 				}
-			}()
-			stw.Snapshot()
-		case abbrev.For("co/nf", cname):
-			if usage {
-				stw.addHistory(":conf [0,1]{6}")
-				return nil
 			}
-			lis := make([]bool, 6)
-			if len(args[1]) >= 6 {
-				for i := 0; i < 6; i++ {
-					switch args[1][i] {
-					default:
-						lis[i] = false
-					case '0':
-						lis[i] = false
-					case '1':
-						lis[i] = true
-					case '_':
-						continue
-					case 't':
-						lis[i] = !lis[i]
-					}
+		}
+		for _, el := range stw.SelectElem {
+			if !el.IsLineElem() {
+				continue
+			}
+			for i := 0; i < 2; i++ {
+				if !f(el, i) {
+					continue
 				}
-				setconf(stw, lis)
-			} else {
-				return st.NotEnoughArgs(":conf")
-			}
-		case abbrev.For("pi/le", cname):
-			if usage {
-				stw.addHistory(":pile pilecode")
-				return nil
-			}
-			if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
-				return errors.New(":pile no selected node")
-			}
-			if narg < 2 {
-				for _, n := range stw.SelectNode {
-					n.Pile = nil
+				for j := 0; j < 6; j++ {
+					el.Bonds[6*i+j] = lis[j]
 				}
-				break
 			}
-			val, err := strconv.ParseInt(args[1], 10, 64)
+		}
+		stw.Snapshot()
+	case abbrev.For("ax/is/2//c/ang", cname):
+		if usage {
+			stw.addHistory(":axis2cang n1 n2 [strong,weak]")
+			return nil
+		}
+		if narg < 4 {
+			return st.NotEnoughArgs(":axis2cang")
+		}
+		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+			return errors.New(":axis2cang no selected elem")
+		}
+		nnum1, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		nnum2, err := strconv.ParseInt(args[2], 10, 64)
+		if err != nil {
+			return err
+		}
+		var strong bool
+		if strings.EqualFold(args[3], "strong") {
+			strong = true
+		} else if strings.EqualFold(args[3], "weak") {
+			strong = false
+		} else {
+			return errors.New(":axis2cang: last argument must be strong or weak")
+		}
+		var n1, n2 *st.Node
+		var found bool
+		if n1, found = stw.Frame.Nodes[int(nnum1)]; !found {
+			return errors.New(fmt.Sprintf(":axis2cang: NODE %d not found", nnum1))
+		}
+		if n2, found = stw.Frame.Nodes[int(nnum2)]; !found {
+			return errors.New(fmt.Sprintf(":axis2cang: NODE %d not found", nnum2))
+		}
+		vec := []float64{n2.Coord[0] - n1.Coord[0], n2.Coord[1] - n1.Coord[1], n2.Coord[2] - n1.Coord[2]}
+		for _, el := range stw.SelectElem {
+			if el == nil || el.IsHide(stw.Frame.Show) || el.Lock || !el.IsLineElem() {
+				continue
+			}
+			_, err := el.AxisToCang(vec, strong)
 			if err != nil {
 				return err
 			}
-			if p, ok := stw.Frame.Piles[int(val)]; ok {
-				for _, n := range stw.SelectNode {
-					n.Pile = p
-				}
-				stw.Snapshot()
-			} else {
-				return errors.New(fmt.Sprintf(":pile PILE %d doesn't exist", val))
+		}
+		stw.Snapshot()
+	case abbrev.For("resul/tant", cname):
+		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+			return errors.New(":resultant no selected elem")
+		}
+		vec := make([]float64, 3)
+		elems := make([]*st.Elem, len(stw.SelectElem))
+		enum := 0
+		for _, el := range stw.SelectElem {
+			if el == nil || el.Lock || !el.IsLineElem() {
+				continue
 			}
-		case abbrev.For("sec/tion", cname):
+			elems[enum] = el
+			enum++
+		}
+		elems = elems[:enum]
+		en, err := st.CommonEnod(elems...)
+		if err != nil {
+			return err
+		}
+		if en == nil || len(en) == 0 {
+			return errors.New(":resultant no common enod")
+		}
+		axis := [][]float64{st.XAXIS, st.YAXIS, st.ZAXIS}
+		per := stw.Frame.Show.Period
+		for _, el := range elems {
+			for i:=0; i<3; i++ {
+				vec[i] += el.VectorStress(per, en[0].Num, axis[i])
+			}
+		}
+		v := 0.0
+		for i:=0; i<3; i++ {
+			v += vec[i] * vec[i]
+		}
+		v = math.Sqrt(v)
+		stw.addHistory(fmt.Sprintf("NODE: %d", en[0].Num))
+		stw.addHistory(fmt.Sprintf("X: %.3f Y: %.3f Z: %.3f F: %.3f", vec[0], vec[1], vec[2], v))
+	case abbrev.For("prest/ress", cname):
+		if usage {
+			stw.addHistory(":prestress value")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":prestress")
+		}
+		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+			return errors.New(":prestress no selected elem")
+		}
+		val, err := strconv.ParseFloat(args[1], 64)
+		if err != nil {
+			return err
+		}
+		for _, el := range stw.SelectElem {
+			if el == nil || el.Lock || !el.IsLineElem() {
+				continue
+			}
+			el.Prestress = val
+		}
+		stw.Snapshot()
+	case abbrev.For("div/ide", cname):
+		if usage {
+			stw.addHistory(":divide [mid, n, elem, ons, axis, length]")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":divide")
+		}
+		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+			return errors.New(":divide: no selected elem")
+		}
+		var divfunc func(*st.Elem) ([]*st.Node, []*st.Elem, error)
+		switch strings.ToLower(args[1]) {
+		case "mid":
 			if usage {
-				stw.addHistory(":section sectcode")
+				stw.addHistory(":divide mid")
 				return nil
 			}
-			if narg < 2 {
-				if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
-					stw.SectionData(stw.SelectElem[0].Sect)
-					return nil
-				}
-				if t, tok := stw.TextBox["SECTION"]; tok {
-					t.Value = make([]string, 0)
-				}
-				return nil
+			divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+				return el.DivideAtMid(EPS)
 			}
-			if strings.EqualFold(args[1], "off") {
-				if t, tok := stw.TextBox["SECTION"]; tok {
-					t.Value = make([]string, 0)
-				}
-				return nil
-			}
-			tmp, err := strconv.ParseInt(args[1], 10, 64)
-			if err != nil {
-				return err
-			}
-			snum := int(tmp)
-			if sec, ok := stw.Frame.Sects[snum]; ok {
-				stw.SectionData(sec)
-			} else {
-				return errors.New(fmt.Sprintf(":section SECT %d doesn't exist", snum))
-			}
-		case abbrev.For("an/alysis", cname):
+		case "n":
 			if usage {
-				stw.addHistory(":analysis")
-				return nil
-			}
-			err := stw.SaveFile(stw.Frame.Path)
-			if err != nil {
-				return err
-			}
-			var anarg string
-			if narg >= 3 {
-				anarg = args[2]
-			} else {
-				anarg = "-a"
-			}
-			err = stw.Analysis(filepath.ToSlash(stw.Frame.Path), anarg)
-			if err != nil {
-				return err
-			}
-			stw.Reload()
-			stw.ReadAll()
-			stw.Redraw()
-		case abbrev.For("f/ilter", cname):
-			if usage {
-				stw.addHistory(":filter condition")
-				return nil
-			}
-			stw.FilterSelectedElem(strings.Join(args[1:], " "))
-		case abbrev.For("h/eigh/t/", cname):
-			if usage {
-				stw.addHistory(":height f1 f2")
-				return nil
-			}
-			if narg == 1 {
-				axisrange(stw, 2, -100.0, 1000.0, false)
+				stw.addHistory(":divide n div")
 				return nil
 			}
 			if narg < 3 {
-				return st.NotEnoughArgs(":ht")
+				return st.NotEnoughArgs(":divide n")
 			}
-			var min, max int
-			if strings.EqualFold(args[1], "n") {
-				min = stw.Frame.Ai.Nfloor
-			} else {
-				tmp, err := strconv.ParseInt(args[1], 10, 64)
-				if err != nil {
-					return err
-				}
-				min = int(tmp)
-			}
-			if strings.EqualFold(args[2], "n") {
-				max = stw.Frame.Ai.Nfloor
-			} else {
-				tmp, err := strconv.ParseInt(args[2], 10, 64)
-				if err != nil {
-					return err
-				}
-				max = int(tmp)
-			}
-			l := len(stw.Frame.Ai.Boundary)
-			if min < 0 || min >= l || max < 0 || max >= l {
-				return errors.New(":ht out of boundary")
-			}
-			axisrange(stw, 2, stw.Frame.Ai.Boundary[min], stw.Frame.Ai.Boundary[max], false)
-		case abbrev.For("h/eigh/t+/", cname):
-			stw.NextFloor()
-		case abbrev.For("h/eigh/t-/", cname):
-			stw.PrevFloor()
-		case abbrev.For("sec/tion/+/", cname):
-			if usage {
-				stw.addHistory(":section+ value")
-				return nil
-			}
-			if narg < 2 {
-				return st.NotEnoughArgs(":section+")
-			}
-			tmp, err := strconv.ParseInt(args[1], 10, 64)
+			val, err := strconv.ParseInt(args[2], 10, 64)
 			if err != nil {
 				return err
 			}
-			if tmp == 0 {
-				break
+			ndiv := int(val)
+			divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+				return el.DivideInN(ndiv, EPS)
 			}
-			val := int(tmp)
-			for _, el := range stw.SelectElem {
-				if el == nil {
+		case "elem":
+			if usage {
+				stw.addHistory(":divide elem (eps)")
+				return nil
+			}
+			eps := EPS
+			if narg >= 3 {
+				val, err := strconv.ParseFloat(args[2], 64)
+				if err == nil {
+					eps = val
+				}
+			}
+			divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+				els, err := el.DivideAtElem(eps)
+				return nil, els, err
+			}
+		case "ons":
+			if usage {
+				stw.addHistory(":divide ons (eps)")
+				return nil
+			}
+			eps := EPS
+			if narg >= 3 {
+				val, err := strconv.ParseFloat(args[2], 64)
+				if err == nil {
+					eps = val
+				}
+			}
+			divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+				return el.DivideAtOns(eps)
+			}
+		case "axis":
+			if usage {
+				stw.addHistory(":divide axis [x, y, z] coord")
+				return nil
+			}
+			if narg < 4 {
+				return st.NotEnoughArgs(":divide axis")
+			}
+			var axis int
+			switch args[2] {
+			default:
+				return errors.New(":divide axis: unknown axis")
+			case "x", "X":
+				axis = 0
+			case "y", "Y":
+				axis = 1
+			case "z", "Z":
+				axis = 2
+			}
+			val, err := strconv.ParseFloat(args[3], 64)
+			if err != nil {
+				return err
+			}
+			divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+				return el.DivideAtAxis(axis, val, EPS)
+			}
+		case "length":
+			if usage {
+				stw.addHistory(":divide length l")
+				return nil
+			}
+			if narg < 3 {
+				return st.NotEnoughArgs(":divide length")
+			}
+			val, err := strconv.ParseFloat(args[2], 64)
+			if err != nil {
+				return err
+			}
+			divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+				return el.DivideAtLength(val, EPS)
+			}
+		}
+		if divfunc == nil {
+			return errors.New(":divide: unknown format")
+		}
+		tmpels := make([]*st.Elem, 0)
+		enum := 0
+		for _, el := range stw.SelectElem {
+			if el == nil {
+				continue
+			}
+			_, els, err := divfunc(el)
+			if err != nil {
+				stw.errormessage(err, ERROR)
+				continue
+			}
+			if err == nil && len(els) > 1 {
+				tmpels = append(tmpels, els...)
+				enum += len(els)
+			}
+		}
+		stw.SelectElem = tmpels[:enum]
+		stw.Snapshot()
+	case abbrev.For("e/lem/dup/lication", cname):
+		if usage {
+			stw.addHistory(":elemduplication {-ignoresect=code}")
+			return nil
+		}
+		stw.Deselect()
+		var isect []int
+		if isec, ok := argdict["IGNORESECT"]; ok {
+			if isec == "" {
+				isect = nil
+			} else {
+				stw.addHistory(fmt.Sprintf("IGNORE SECT: %s", isec))
+				isect = SplitNums(isec)
+			}
+		} else {
+			isect = nil
+		}
+		els := stw.Frame.ElemDuplication(isect)
+		if len(els) != 0 {
+			enum := 0
+			for k := range els {
+				stw.SelectElem = append(stw.SelectElem, k)
+				enum++
+			}
+			stw.SelectElem = stw.SelectElem[:enum]
+		}
+	case abbrev.For("i/ntersect/a/ll", cname):
+		l := len(stw.SelectElem)
+		if l <= 1 {
+			return nil
+		}
+		go func () {
+			err := stw.Frame.IntersectAll(stw.SelectElem, EPS)
+			stw.Frame.Endch <-err
+		}()
+		stw.CurrentLap("Calculating...", 0, l)
+		go func () {
+			var err error
+			var nlap int
+			iallloop:
+			for {
+				select {
+				case nlap = <-stw.Frame.Lapch:
+					stw.CurrentLap("Calculating...", nlap, l)
+					stw.Redraw()
+				case err = <-stw.Frame.Endch:
+					if err != nil {
+						stw.CurrentLap("Error", nlap, l)
+						stw.errormessage(err, ERROR)
+					} else {
+						stw.CurrentLap("Completed", nlap, l)
+					}
+					stw.Redraw()
+					break iallloop
+				}
+			}
+		}()
+		stw.Snapshot()
+	case abbrev.For("co/nf", cname):
+		if usage {
+			stw.addHistory(":conf [0,1]{6}")
+			return nil
+		}
+		lis := make([]bool, 6)
+		if len(args[1]) >= 6 {
+			for i := 0; i < 6; i++ {
+				switch args[1][i] {
+				default:
+					lis[i] = false
+				case '0':
+					lis[i] = false
+				case '1':
+					lis[i] = true
+				case '_':
 					continue
+				case 't':
+					lis[i] = !lis[i]
 				}
-				if sec, ok := stw.Frame.Sects[el.Sect.Num+val]; ok {
-					el.Sect = sec
-				}
+			}
+			setconf(stw, lis)
+		} else {
+			return st.NotEnoughArgs(":conf")
+		}
+	case abbrev.For("pi/le", cname):
+		if usage {
+			stw.addHistory(":pile pilecode")
+			return nil
+		}
+		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+			return errors.New(":pile no selected node")
+		}
+		if narg < 2 {
+			for _, n := range stw.SelectNode {
+				n.Pile = nil
+			}
+			break
+		}
+		val, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		if p, ok := stw.Frame.Piles[int(val)]; ok {
+			for _, n := range stw.SelectNode {
+				n.Pile = p
 			}
 			stw.Snapshot()
-		case cname == "view":
-			if usage {
-				stw.addHistory(":view [top,front,back,right,left]")
+		} else {
+			return errors.New(fmt.Sprintf(":pile PILE %d doesn't exist", val))
+		}
+	case abbrev.For("sec/tion", cname):
+		if usage {
+			stw.addHistory(":section sectcode")
+			return nil
+		}
+		if narg < 2 {
+			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+				stw.SectionData(stw.SelectElem[0].Sect)
 				return nil
 			}
-			switch strings.ToUpper(args[1]) {
-			case "TOP":
-				stw.SetAngle(90.0, -90.0)
-			case "FRONT":
-				stw.SetAngle(0.0, -90.0)
-			case "BACK":
-				stw.SetAngle(0.0, 90.0)
-			case "RIGHT":
-				stw.SetAngle(0.0, 0.0)
-			case "LEFT":
-				stw.SetAngle(0.0, 180.0)
+			if t, tok := stw.TextBox["SECTION"]; tok {
+				t.Value = make([]string, 0)
 			}
-		case abbrev.For("fixr/otate", cname):
-			fixRotate = !fixRotate
-		case abbrev.For("fixm/ove", cname):
-			fixMove = !fixMove
-		case abbrev.For("noun/do", cname):
-			NOUNDO = true
-			stw.addHistory("undo/redo is off")
-		case abbrev.For("un/do", cname):
-			NOUNDO = false
-			stw.Snapshot()
-			stw.addHistory("undo/redo is on")
-		case cname == "alt":
-			ALTSELECTNODE = !ALTSELECTNODE
-			if ALTSELECTNODE {
-				stw.addHistory("select node with Alt key")
-			} else {
-				stw.addHistory("select elem with Alt key")
+			return nil
+		}
+		if strings.EqualFold(args[1], "off") {
+			if t, tok := stw.TextBox["SECTION"]; tok {
+				t.Value = make([]string, 0)
 			}
-		case cname == "printrange":
-			if usage {
-				stw.addHistory(":printrange [on,true,yes] [a3tate,a3yoko,a4tate,a4yoko]")
-				stw.addHistory(":printrange [off,false,no]")
-				return nil
-			}
-			if narg < 2 {
-				showprintrange = !showprintrange
-				break
-			}
-			switch strings.ToUpper(args[1]) {
-			case "ON", "TRUE", "YES":
-				showprintrange = true
-				if narg >= 3 {
-					err := stw.exmode(fmt.Sprintf(":paper %s", strings.Join(args[2:], " ")))
-					if err != nil {
-						return err
-					}
-				}
-			case "OFF", "FALSE", "NO":
-				showprintrange = false
-			default:
-				err := stw.exmode(fmt.Sprintf(":paper %s", strings.Join(args[1:], " ")))
-				if err != nil {
-					return err
-				}
-				showprintrange = true
-			}
-		case cname == "paper":
-			if usage {
-				stw.addHistory(":paper [a3tate,a3yoko,a4tate,a4yoko]")
-				return nil
-			}
-			if narg < 2 {
-				return st.NotEnoughArgs(":paper")
-			}
-			tate := regexp.MustCompile("(?i)a([0-9]+) *t(a(t(e?)?)?)?")
-			yoko := regexp.MustCompile("(?i)a([0-9]+) *y(o(k(o?)?)?)?")
-			name := strings.Join(args[1:], " ")
-			switch {
-			case tate.MatchString(name):
-				fs := tate.FindStringSubmatch(name)
-				switch fs[1] {
-				case "3":
-					stw.papersize = A3_TATE
-				case "4":
-					stw.papersize = A4_TATE
-				}
-			case yoko.MatchString(name):
-				fs := yoko.FindStringSubmatch(name)
-				switch fs[1] {
-				case "3":
-					stw.papersize = A3_YOKO
-				case "4":
-					stw.papersize = A4_YOKO
-				}
-			default:
-				return errors.New(":paper unknown papersize")
-			}
-		case abbrev.For("col/or", cname):
-			if usage {
-				stw.addHistory(":color [n,sect,rate,white,mono,strong]")
-				return nil
-			}
-			if narg < 2 {
-				stw.SetColorMode(st.ECOLOR_SECT)
-				break
-			}
-			switch strings.ToUpper(args[1]) {
-			case "N":
-				stw.SetColorMode(st.ECOLOR_N)
-			case "SECT":
-				stw.SetColorMode(st.ECOLOR_SECT)
-			case "RATE":
-				stw.SetColorMode(st.ECOLOR_RATE)
-			case "WHIHTE", "MONO", "MONOCHROME":
-				stw.SetColorMode(st.ECOLOR_WHITE)
-			case "STRONG":
-				stw.SetColorMode(st.ECOLOR_STRONG)
-			}
-		case cname == "mono":
-			stw.SetColorMode(st.ECOLOR_WHITE)
-		case cname == "postscript":
-			if fn == "" {
-				fn = filepath.Join(stw.Cwd, "test.ps")
-			}
-			var paper ps.Paper
-			switch stw.papersize {
-			default:
-				paper = ps.A4Portrait
-			case A4_TATE:
-				paper = ps.A4Portrait
-			case A4_YOKO:
-				paper = ps.A4Landscape
-			case A3_TATE:
-				paper = ps.A3Portrait
-			case A3_YOKO:
-				paper = ps.A3Landscape
-			}
-			v := stw.Frame.View.Copy()
-			stw.Frame.SetFocus(nil)
-			stw.Frame.CentringTo(paper)
-			err := stw.Frame.PrintPostScript(fn, paper)
-			stw.Frame.View = v
-			if err != nil {
-				return err
-			}
-		case cname=="procs":
-			if usage {
-				stw.addHistory(":procs numcpu")
-				return nil
-			}
-			if narg < 2 {
-				current := runtime.GOMAXPROCS(-1)
-				stw.addHistory(fmt.Sprintf("PROCS: %d", current))
-				return nil
-			}
+			return nil
+		}
+		tmp, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		snum := int(tmp)
+		if sec, ok := stw.Frame.Sects[snum]; ok {
+			stw.SectionData(sec)
+		} else {
+			return errors.New(fmt.Sprintf(":section SECT %d doesn't exist", snum))
+		}
+	case abbrev.For("an/alysis", cname):
+		if usage {
+			stw.addHistory(":analysis")
+			return nil
+		}
+		err := stw.SaveFile(stw.Frame.Path)
+		if err != nil {
+			return err
+		}
+		var anarg string
+		if narg >= 3 {
+			anarg = args[2]
+		} else {
+			anarg = "-a"
+		}
+		err = stw.Analysis(filepath.ToSlash(stw.Frame.Path), anarg)
+		if err != nil {
+			return err
+		}
+		stw.Reload()
+		stw.ReadAll()
+		stw.Redraw()
+	case abbrev.For("f/ilter", cname):
+		if usage {
+			stw.addHistory(":filter condition")
+			return nil
+		}
+		stw.FilterSelectedElem(strings.Join(args[1:], " "))
+	case abbrev.For("h/eigh/t/", cname):
+		if usage {
+			stw.addHistory(":height f1 f2")
+			return nil
+		}
+		if narg == 1 {
+			axisrange(stw, 2, -100.0, 1000.0, false)
+			return nil
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":ht")
+		}
+		var min, max int
+		if strings.EqualFold(args[1], "n") {
+			min = stw.Frame.Ai.Nfloor
+		} else {
 			tmp, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
 				return err
 			}
-			val := int(tmp)
-			if 1 <= val && val <= runtime.NumCPU() {
-				old := runtime.GOMAXPROCS(val)
-				stw.addHistory(fmt.Sprintf("PROCS: %d -> %d", old, val))
+			min = int(tmp)
+		}
+		if strings.EqualFold(args[2], "n") {
+			max = stw.Frame.Ai.Nfloor
+		} else {
+			tmp, err := strconv.ParseInt(args[2], 10, 64)
+			if err != nil {
+				return err
 			}
-		case abbrev.For("a/rclm/001/", cname):
-			if usage {
-				stw.addHistory(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} filename")
-				return nil
+			max = int(tmp)
+		}
+		l := len(stw.Frame.Ai.Boundary)
+		if min < 0 || min >= l || max < 0 || max >= l {
+			return errors.New(":ht out of boundary")
+		}
+		axisrange(stw, 2, stw.Frame.Ai.Boundary[min], stw.Frame.Ai.Boundary[max], false)
+	case abbrev.For("h/eigh/t+/", cname):
+		stw.NextFloor()
+	case abbrev.For("h/eigh/t-/", cname):
+		stw.PrevFloor()
+	case abbrev.For("sec/tion/+/", cname):
+		if usage {
+			stw.addHistory(":section+ value")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":section+")
+		}
+		tmp, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		if tmp == 0 {
+			break
+		}
+		val := int(tmp)
+		for _, el := range stw.SelectElem {
+			if el == nil {
+				continue
 			}
-			var otp string
-			if fn == "" {
-				otp = st.Ce(stw.Frame.Path, ".otp")
-			} else {
-				otp = fn
+			if sec, ok := stw.Frame.Sects[el.Sect.Num+val]; ok {
+				el.Sect = sec
 			}
-			otps := []string{otp}
-			if o, ok := argdict["OTP"]; ok {
-				otp = o
-			}
-			sol := "LLS"
-			if s, ok := argdict["SOLVER"]; ok {
-				if s != "" {
-					sol = strings.ToUpper(s)
+		}
+		stw.Snapshot()
+	case cname == "view":
+		if usage {
+			stw.addHistory(":view [top,front,back,right,left]")
+			return nil
+		}
+		switch strings.ToUpper(args[1]) {
+		case "TOP":
+			stw.SetAngle(90.0, -90.0)
+		case "FRONT":
+			stw.SetAngle(0.0, -90.0)
+		case "BACK":
+			stw.SetAngle(0.0, 90.0)
+		case "RIGHT":
+			stw.SetAngle(0.0, 0.0)
+		case "LEFT":
+			stw.SetAngle(0.0, 180.0)
+		}
+	case cname == "printrange":
+		if usage {
+			stw.addHistory(":printrange [on,true,yes] [a3tate,a3yoko,a4tate,a4yoko]")
+			stw.addHistory(":printrange [off,false,no]")
+			return nil
+		}
+		if narg < 2 {
+			showprintrange = !showprintrange
+			break
+		}
+		switch strings.ToUpper(args[1]) {
+		case "ON", "TRUE", "YES":
+			showprintrange = true
+			if narg >= 3 {
+				err := stw.exmode(fmt.Sprintf(":paper %s", strings.Join(args[2:], " ")))
+				if err != nil {
+					return err
 				}
 			}
-			eps := 1e-16
-			if e, ok := argdict["EPS"]; ok {
-				if e != "" {
-					tmp, err := strconv.ParseFloat(e, 64)
-					if err == nil {
-						eps = tmp
-					}
-				}
+		case "OFF", "FALSE", "NO":
+			showprintrange = false
+		default:
+			err := stw.exmode(fmt.Sprintf(":paper %s", strings.Join(args[1:], " ")))
+			if err != nil {
+				return err
 			}
-			per := "L"
-			if p, ok := argdict["PERIOD"]; ok {
-				if p != "" {
-					per = strings.ToUpper(p)
-				}
+			showprintrange = true
+		}
+	case cname == "paper":
+		if usage {
+			stw.addHistory(":paper [a3tate,a3yoko,a4tate,a4yoko]")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":paper")
+		}
+		tate := regexp.MustCompile("(?i)a([0-9]+) *t(a(t(e?)?)?)?")
+		yoko := regexp.MustCompile("(?i)a([0-9]+) *y(o(k(o?)?)?)?")
+		name := strings.Join(args[1:], " ")
+		switch {
+		case tate.MatchString(name):
+			fs := tate.FindStringSubmatch(name)
+			switch fs[1] {
+			case "3":
+				stw.papersize = A3_TATE
+			case "4":
+				stw.papersize = A4_TATE
 			}
-			var pers []string
-			pers = []string{per}
-			lap := 1
-			var extra [][]float64
-			if _, ok := argdict["ALL"]; ok {
-				extra = make([][]float64, 2)
-				pers = []string{"L", "X", "Y"}
-				otps = []string{st.Ce(otp, ".otl"), st.Ce(otp, ".ohx"), st.Ce(otp, ".ohy")}
-				per = "L"
-				lap = 3
-				for i, eper := range []string{"X", "Y"} {
-					eaf := stw.Frame.Arclms[eper]
-					_, _, vec, err := eaf.AssemGlobalVector(1.0)
-					if err != nil {
-						return err
-					}
-					extra[i] = vec
-				}
+		case yoko.MatchString(name):
+			fs := yoko.FindStringSubmatch(name)
+			switch fs[1] {
+			case "3":
+				stw.papersize = A3_YOKO
+			case "4":
+				stw.papersize = A4_YOKO
 			}
-			stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
-			stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
-			stw.addHistory(fmt.Sprintf("SOLVER: %s", sol))
-			stw.addHistory(fmt.Sprintf("EPS: %.3E", eps))
-			init := true
-			if _, ok := argdict["NOINIT"]; ok {
-				init = false
-				stw.addHistory("NO INITIALISATION")
+		default:
+			return errors.New(":paper unknown papersize")
+		}
+	case abbrev.For("col/or", cname):
+		if usage {
+			stw.addHistory(":color [n,sect,rate,white,mono,strong]")
+			return nil
+		}
+		if narg < 2 {
+			stw.SetColorMode(st.ECOLOR_SECT)
+			break
+		}
+		switch strings.ToUpper(args[1]) {
+		case "N":
+			stw.SetColorMode(st.ECOLOR_N)
+		case "SECT":
+			stw.SetColorMode(st.ECOLOR_SECT)
+		case "RATE":
+			stw.SetColorMode(st.ECOLOR_RATE)
+		case "WHIHTE", "MONO", "MONOCHROME":
+			stw.SetColorMode(st.ECOLOR_WHITE)
+		case "STRONG":
+			stw.SetColorMode(st.ECOLOR_STRONG)
+		}
+	case cname == "mono":
+		stw.SetColorMode(st.ECOLOR_WHITE)
+	case cname == "postscript":
+		if fn == "" {
+			fn = filepath.Join(stw.Cwd, "test.ps")
+		}
+		var paper ps.Paper
+		switch stw.papersize {
+		default:
+			paper = ps.A4Portrait
+		case A4_TATE:
+			paper = ps.A4Portrait
+		case A4_YOKO:
+			paper = ps.A4Landscape
+		case A3_TATE:
+			paper = ps.A3Portrait
+		case A3_YOKO:
+			paper = ps.A3Landscape
+		}
+		v := stw.Frame.View.Copy()
+		stw.Frame.SetFocus(nil)
+		stw.Frame.CentringTo(paper)
+		err := stw.Frame.PrintPostScript(fn, paper)
+		stw.Frame.View = v
+		if err != nil {
+			return err
+		}
+	case abbrev.For("a/rclm/001/", cname):
+		if usage {
+			stw.addHistory(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} filename")
+			return nil
+		}
+		var otp string
+		if fn == "" {
+			otp = st.Ce(stw.Frame.Path, ".otp")
+		} else {
+			otp = fn
+		}
+		otps := []string{otp}
+		if o, ok := argdict["OTP"]; ok {
+			otp = o
+		}
+		sol := "LLS"
+		if s, ok := argdict["SOLVER"]; ok {
+			if s != "" {
+				sol = strings.ToUpper(s)
 			}
-			af := stw.Frame.Arclms[per]
-			go func () {
-				err := af.Arclm001(otps, init, sol, eps, extra...)
-				af.Endch <-err
-			}()
-			stw.CurrentLap("Calculating...", 0, lap)
-			go func () {
-				read001:
-				for {
-					select {
-					case nlap :=<-af.Lapch:
-						stw.Frame.ReadArclmData(af, pers[nlap])
-						af.Lapch <- 1
-						stw.CurrentLap("Calculating...", nlap, lap)
-						stw.Redraw()
-					case <-af.Endch:
-						stw.CurrentLap("Completed", lap, lap)
-						stw.SetPeriod(per)
-						stw.Redraw()
-						break read001
-					}
-				}
-			}()
-		case abbrev.For("a/rclm/201/", cname):
-			if usage {
-				stw.addHistory(":arclm201 {-period=name} {-lap=nlap} {-safety=val} {-start=val} {-noinit} filename")
-				return nil
-			}
-			var otp string
-			if fn == "" {
-				otp = st.Ce(stw.Frame.Path, ".otp")
-			} else {
-				otp = fn
-			}
-			if o, ok := argdict["OTP"]; ok {
-				otp = o
-			}
-			lap := 1
-			if l, ok := argdict["LAP"]; ok {
-				tmp, err := strconv.ParseInt(l, 10, 64)
-				if err == nil {
-					lap = int(tmp)
-				}
-			}
-			safety := 1.0
-			if s, ok := argdict["SAFETY"]; ok {
-				tmp, err := strconv.ParseFloat(s, 64)
-				if err == nil {
-					safety = tmp
-				}
-			}
-			start := 0.0
-			if s, ok := argdict["START"]; ok {
-				tmp, err := strconv.ParseFloat(s, 64)
-				if err == nil {
-					start = tmp
-				}
-			}
-			per := "L"
-			if p, ok := argdict["PERIOD"]; ok {
-				if p != "" {
-					per = strings.ToUpper(p)
-				}
-			}
-			stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
-			stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
-			stw.addHistory(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f", lap, safety, start))
-			init := true
-			if _, ok := argdict["NOINIT"]; ok {
-				init = false
-				stw.addHistory("NO INITIALISATION")
-			}
-			af := stw.Frame.Arclms[per]
-			go func () {
-				err := af.Arclm201(otp, init, lap, safety, start)
-				af.Endch <-err
-			}()
-			stw.CurrentLap("Calculating...", 0, lap)
-			go func () {
-				read201:
-				for {
-					select {
-					case nlap := <-af.Lapch:
-						stw.Frame.ReadArclmData(af, per)
-						af.Lapch <- 1
-						stw.CurrentLap("Calculating...", nlap, lap)
-						stw.Redraw()
-					case <-af.Endch:
-						stw.CurrentLap("Completed", lap, lap)
-						stw.Redraw()
-						break read201
-					}
-				}
-			}()
-		case abbrev.For("a/rclm/301/", cname):
-			if usage {
-				stw.addHistory(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
-				return nil
-			}
-			var otp string
-			var sects []int
-			if fn == "" {
-				otp = st.Ce(stw.Frame.Path, ".otp")
-			} else {
-				otp = fn
-			}
-			if o, ok := argdict["OTP"]; ok {
-				otp = o
-			}
-			if s, ok := argdict["SECTS"]; ok {
-				stw.addHistory(fmt.Sprintf("SOIL SPRING: %s", s))
-				sects = SplitNums(s)
-			}
-			eps := 1E-3
-			if s, ok := argdict["EPS"]; ok {
-				tmp, err := strconv.ParseFloat(s, 64)
+		}
+		eps := 1e-16
+		if e, ok := argdict["EPS"]; ok {
+			if e != "" {
+				tmp, err := strconv.ParseFloat(e, 64)
 				if err == nil {
 					eps = tmp
 				}
 			}
-			per := "L"
-			if p, ok := argdict["PERIOD"]; ok {
-				if p != "" {
-					per = strings.ToUpper(p)
-				}
-			}
-			stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
-			stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
-			stw.addHistory(fmt.Sprintf("EPS: %.3E", eps))
-			af := stw.Frame.Arclms[per]
-			init := true
-			if _, ok := argdict["NOINIT"]; ok {
-				init = false
-				stw.addHistory("NO INITIALISATION")
-			}
-			go func () {
-				err := af.Arclm301(otp, init, sects, eps)
-				af.Endch <-err
-			}()
-			stw.CurrentLap("Calculating...", 0, 0)
-			go func () {
-				read301:
-				for {
-					select {
-					case nlap := <-af.Lapch:
-						stw.Frame.ReadArclmData(af, per)
-						af.Lapch <- 1
-						stw.CurrentLap("Calculating...", nlap, 0)
-						stw.Redraw()
-					case <-af.Endch:
-						stw.CurrentLap("Completed", 0, 0)
-						stw.Redraw()
-						break read301
-					}
-				}
-			}()
 		}
-	} else {
-		switch {
-		default:
-			stw.errormessage(errors.New(fmt.Sprintf("no exmode command: %s", cname)), INFO)
+		per := "L"
+		if p, ok := argdict["PERIOD"]; ok {
+			if p != "" {
+				per = strings.ToUpper(p)
+			}
+		}
+		var pers []string
+		pers = []string{per}
+		lap := 1
+		var extra [][]float64
+		if _, ok := argdict["ALL"]; ok {
+			extra = make([][]float64, 2)
+			pers = []string{"L", "X", "Y"}
+			otps = []string{st.Ce(otp, ".otl"), st.Ce(otp, ".ohx"), st.Ce(otp, ".ohy")}
+			per = "L"
+			lap = 3
+			for i, eper := range []string{"X", "Y"} {
+				eaf := stw.Frame.Arclms[eper]
+				_, _, vec, err := eaf.AssemGlobalVector(1.0)
+				if err != nil {
+					return err
+				}
+				extra[i] = vec
+			}
+		}
+		stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
+		stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
+		stw.addHistory(fmt.Sprintf("SOLVER: %s", sol))
+		stw.addHistory(fmt.Sprintf("EPS: %.3E", eps))
+		init := true
+		if _, ok := argdict["NOINIT"]; ok {
+			init = false
+			stw.addHistory("NO INITIALISATION")
+		}
+		af := stw.Frame.Arclms[per]
+		go func () {
+			err := af.Arclm001(otps, init, sol, eps, extra...)
+			af.Endch <-err
+		}()
+		stw.CurrentLap("Calculating...", 0, lap)
+		go func () {
+			read001:
+			for {
+				select {
+				case nlap :=<-af.Lapch:
+					stw.Frame.ReadArclmData(af, pers[nlap])
+					af.Lapch <- 1
+					stw.CurrentLap("Calculating...", nlap, lap)
+					stw.Redraw()
+				case <-af.Endch:
+					stw.CurrentLap("Completed", lap, lap)
+					stw.SetPeriod(per)
+					stw.Redraw()
+					break read001
+				}
+			}
+		}()
+	case abbrev.For("a/rclm/201/", cname):
+		if usage {
+			stw.addHistory(":arclm201 {-period=name} {-lap=nlap} {-safety=val} {-start=val} {-noinit} filename")
 			return nil
-		case abbrev.For("q/uit", cname):
-			stw.Close(bang)
-		case abbrev.For("e/dit", cname):
-			if fn != "" {
-				if !st.FileExists(fn) {
-					sfn, err := stw.SearchFile(args[1])
-					if err != nil {
-						return err
-					}
-					err = stw.OpenFile(sfn)
-					if err != nil {
-						return err
-					}
-					stw.Redraw()
-				} else {
-					err := stw.OpenFile(fn)
-					if err != nil {
-						return err
-					}
-					stw.Redraw()
-				}
-			} else {
-				stw.Open()
-			}
-		case cname == "mkdir":
-			os.MkdirAll(fn, 0644)
-		case abbrev.For("vi/m", cname):
-			stw.Vim(fn)
-		case abbrev.For("noun/do", cname):
-			NOUNDO = true
-			stw.addHistory("undo/redo is off")
-		case abbrev.For("un/do", cname):
-			NOUNDO = false
-			stw.addHistory("undo/redo is on")
-		case cname == "alt":
-			ALTSELECTNODE = !ALTSELECTNODE
-			if ALTSELECTNODE {
-				stw.addHistory("select node with Alt key")
-			} else {
-				stw.addHistory("select elem with Alt key")
+		}
+		var otp string
+		if fn == "" {
+			otp = st.Ce(stw.Frame.Path, ".otp")
+		} else {
+			otp = fn
+		}
+		if o, ok := argdict["OTP"]; ok {
+			otp = o
+		}
+		lap := 1
+		if l, ok := argdict["LAP"]; ok {
+			tmp, err := strconv.ParseInt(l, 10, 64)
+			if err == nil {
+				lap = int(tmp)
 			}
 		}
+		safety := 1.0
+		if s, ok := argdict["SAFETY"]; ok {
+			tmp, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				safety = tmp
+			}
+		}
+		start := 0.0
+		if s, ok := argdict["START"]; ok {
+			tmp, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				start = tmp
+			}
+		}
+		per := "L"
+		if p, ok := argdict["PERIOD"]; ok {
+			if p != "" {
+				per = strings.ToUpper(p)
+			}
+		}
+		stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
+		stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
+		stw.addHistory(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f", lap, safety, start))
+		init := true
+		if _, ok := argdict["NOINIT"]; ok {
+			init = false
+			stw.addHistory("NO INITIALISATION")
+		}
+		af := stw.Frame.Arclms[per]
+		go func () {
+			err := af.Arclm201(otp, init, lap, safety, start)
+			af.Endch <-err
+		}()
+		stw.CurrentLap("Calculating...", 0, lap)
+		go func () {
+			read201:
+			for {
+				select {
+				case nlap := <-af.Lapch:
+					stw.Frame.ReadArclmData(af, per)
+					af.Lapch <- 1
+					stw.CurrentLap("Calculating...", nlap, lap)
+					stw.Redraw()
+				case <-af.Endch:
+					stw.CurrentLap("Completed", lap, lap)
+					stw.Redraw()
+					break read201
+				}
+			}
+		}()
+	case abbrev.For("a/rclm/301/", cname):
+		if usage {
+			stw.addHistory(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
+			return nil
+		}
+		var otp string
+		var sects []int
+		if fn == "" {
+			otp = st.Ce(stw.Frame.Path, ".otp")
+		} else {
+			otp = fn
+		}
+		if o, ok := argdict["OTP"]; ok {
+			otp = o
+		}
+		if s, ok := argdict["SECTS"]; ok {
+			stw.addHistory(fmt.Sprintf("SOIL SPRING: %s", s))
+			sects = SplitNums(s)
+		}
+		eps := 1E-3
+		if s, ok := argdict["EPS"]; ok {
+			tmp, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				eps = tmp
+			}
+		}
+		per := "L"
+		if p, ok := argdict["PERIOD"]; ok {
+			if p != "" {
+				per = strings.ToUpper(p)
+			}
+		}
+		stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
+		stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
+		stw.addHistory(fmt.Sprintf("EPS: %.3E", eps))
+		af := stw.Frame.Arclms[per]
+		init := true
+		if _, ok := argdict["NOINIT"]; ok {
+			init = false
+			stw.addHistory("NO INITIALISATION")
+		}
+		go func () {
+			err := af.Arclm301(otp, init, sects, eps)
+			af.Endch <-err
+		}()
+		stw.CurrentLap("Calculating...", 0, 0)
+		go func () {
+			read301:
+			for {
+				select {
+				case nlap := <-af.Lapch:
+					stw.Frame.ReadArclmData(af, per)
+					af.Lapch <- 1
+					stw.CurrentLap("Calculating...", nlap, 0)
+					stw.Redraw()
+				case <-af.Endch:
+					stw.CurrentLap("Completed", 0, 0)
+					stw.Redraw()
+					break read301
+				}
+			}
+		}()
 	}
 	return nil
 }
