@@ -52,20 +52,20 @@ func (prop *Prop) InpString() string {
 }
 
 func (prop *Prop) IsSteel(eps float64) bool {
-	if val := prop.E / 2.1e7 - 1.0; val < -eps || val > eps {
+	if val := prop.E/2.1e7 - 1.0; val < -eps || val > eps {
 		return false
 	}
-	if val := prop.Poi * 3.0 - 1.0; val < -eps || val > eps {
+	if val := prop.Poi*3.0 - 1.0; val < -eps || val > eps {
 		return false
 	}
 	return true
 }
 
 func (prop *Prop) IsGohan(eps float64) bool {
-	if val := prop.E / 4.5e5 - 1.0; val < -eps || val > eps {
+	if val := prop.E/4.5e5 - 1.0; val < -eps || val > eps {
 		return false
 	}
-	if val := prop.Poi / 4.625 - 1.0; val < -eps || val > eps {
+	if val := prop.Poi/4.625 - 1.0; val < -eps || val > eps {
 		return false
 	}
 	return true

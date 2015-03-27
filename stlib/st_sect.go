@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"sort"
 	"github.com/yofu/st/arclm"
+	"sort"
 )
 
 var (

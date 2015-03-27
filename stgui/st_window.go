@@ -5,7 +5,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/atotto/clipboard"
+	"github.com/visualfc/go-iup/cd"
 	"github.com/visualfc/go-iup/iup"
+	"github.com/yofu/abbrev"
+	"github.com/yofu/ps"
+	"github.com/yofu/st/stlib"
+	"gopkg.in/fsnotify.v1"
+	"log"
 	"math"
 	"os"
 	"os/exec"
@@ -16,13 +23,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"github.com/atotto/clipboard"
-	"github.com/visualfc/go-iup/cd"
-	"github.com/yofu/abbrev"
-	"github.com/yofu/ps"
-	"github.com/yofu/st/stlib"
-	"gopkg.in/fsnotify.v1"
-	"log"
 )
 
 // Constants & Variables// {{{
@@ -145,11 +145,11 @@ var (
 
 var (
 	STLOGO = &TextBox{
-		Value: []string{"         software", "     forstructural", "   analysisthename", "  ofwhichstandsfor", "", " sigmatau  stress", "structure  steel", "andsometh  ing", " likethat"},
+		Value:    []string{"         software", "     forstructural", "   analysisthename", "  ofwhichstandsfor", "", " sigmatau  stress", "structure  steel", "andsometh  ing", " likethat"},
 		Position: []float64{100.0, 100.0},
-		Angle: 0.0,
-		Font: NewFont(),
-		Hide: false,
+		Angle:    0.0,
+		Font:     NewFont(),
+		Hide:     false,
 	}
 )
 
@@ -292,7 +292,7 @@ type Window struct { // {{{
 	InpModified bool
 	Changed     bool
 
-	exmodech    chan(interface{})
+	exmodech chan (interface{})
 
 	comhist     []string
 	recentfiles []string
@@ -2604,7 +2604,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		l := len(lis)
 		if l < 2 {
 			if un {
-				for etype:=st.COLUMN; etype<=st.SLAB; etype++ {
+				for etype := st.COLUMN; etype <= st.SLAB; etype++ {
 					for i := 0; i < 6; i++ {
 						stw.StressOff(etype, uint(i))
 					}
@@ -3624,7 +3624,7 @@ func (stw *Window) exmode(command string) error {
 		}
 		stw.ShapeData(al)
 		go func(a interface{}) {
-			stw.exmodech <-a
+			stw.exmodech <- a
 		}(al)
 	case abbrev.For("hw/eak", cname):
 		if usage {
@@ -3640,7 +3640,7 @@ func (stw *Window) exmode(command string) error {
 		}
 		stw.ShapeData(al)
 		go func(a interface{}) {
-			stw.exmodech <-a
+			stw.exmodech <- a
 		}(al)
 	case abbrev.For("rp/ipe", cname):
 		if usage {
@@ -3656,7 +3656,7 @@ func (stw *Window) exmode(command string) error {
 		}
 		stw.ShapeData(al)
 		go func(a interface{}) {
-			stw.exmodech <-a
+			stw.exmodech <- a
 		}(al)
 	case abbrev.For("cp/ipe", cname):
 		if usage {
@@ -3672,7 +3672,7 @@ func (stw *Window) exmode(command string) error {
 		}
 		stw.ShapeData(al)
 		go func(a interface{}) {
-			stw.exmodech <-a
+			stw.exmodech <- a
 		}(al)
 	case abbrev.For("tk/you", cname):
 		if usage {
@@ -3731,7 +3731,7 @@ func (stw *Window) exmode(command string) error {
 		} else {
 			stw.addHistory("select elem with Alt key")
 		}
-	case cname=="procs":
+	case cname == "procs":
 		if usage {
 			stw.addHistory(":procs numcpu")
 			return nil
@@ -4083,8 +4083,8 @@ func (stw *Window) exmode(command string) error {
 			case *st.RCColumn:
 				nmax := al.(*st.RCColumn).Nmax(cond)
 				nmin := al.(*st.RCColumn).Nmin(cond)
-				for i:=0; i<=ndiv; i++ {
-					cond.N = nmax - float64(i) * (nmax - nmin) / float64(ndiv)
+				for i := 0; i <= ndiv; i++ {
+					cond.N = nmax - float64(i)*(nmax-nmin)/float64(ndiv)
 					otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.Ma(cond)))
 				}
 			}
@@ -4236,7 +4236,7 @@ func (stw *Window) exmode(command string) error {
 				}
 			case abbrev.For("CONF/ED", condition):
 				f = func(n *st.Node) bool {
-					for i:=0; i<6; i++ {
+					for i := 0; i < 6; i++ {
 						if n.Conf[i] {
 							return true
 						}
@@ -4245,7 +4245,7 @@ func (stw *Window) exmode(command string) error {
 				}
 			case condition == "FREE":
 				f = func(n *st.Node) bool {
-					for i:=0; i<6; i++ {
+					for i := 0; i < 6; i++ {
 						if n.Conf[i] {
 							return false
 						}
@@ -4717,7 +4717,7 @@ func (stw *Window) exmode(command string) error {
 		} else {
 			return errors.New(":average no selected elem/node")
 		}
-	case cname=="sum":
+	case cname == "sum":
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			var valfunc func(*st.Elem) float64
 			if _, ok := argdict["ABS"]; ok {
@@ -4898,12 +4898,12 @@ func (stw *Window) exmode(command string) error {
 		axis := [][]float64{st.XAXIS, st.YAXIS, st.ZAXIS}
 		per := stw.Frame.Show.Period
 		for _, el := range elems {
-			for i:=0; i<3; i++ {
+			for i := 0; i < 3; i++ {
 				vec[i] += el.VectorStress(per, en[0].Num, axis[i])
 			}
 		}
 		v := 0.0
-		for i:=0; i<3; i++ {
+		for i := 0; i < 3; i++ {
 			v += vec[i] * vec[i]
 		}
 		v = math.Sqrt(v)
@@ -5130,15 +5130,15 @@ func (stw *Window) exmode(command string) error {
 		if l <= 1 {
 			return nil
 		}
-		go func () {
+		go func() {
 			err := stw.Frame.IntersectAll(stw.SelectElem, EPS)
-			stw.Frame.Endch <-err
+			stw.Frame.Endch <- err
 		}()
 		stw.CurrentLap("Calculating...", 0, l)
-		go func () {
+		go func() {
 			var err error
 			var nlap int
-			iallloop:
+		iallloop:
 			for {
 				select {
 				case nlap = <-stw.Frame.Lapch:
@@ -5244,9 +5244,9 @@ func (stw *Window) exmode(command string) error {
 					case st.Shape:
 						if sec.HasArea() {
 							sec.Figs[0].Value["AREA"] = al.(st.Shape).A() * 0.0001
-							sec.Figs[0].Value["IXX"]  = al.(st.Shape).Ix() * 1e-8
-							sec.Figs[0].Value["IYY"]  = al.(st.Shape).Iy() * 1e-8
-							sec.Figs[0].Value["VEN"]  = al.(st.Shape).J() * 1e-8
+							sec.Figs[0].Value["IXX"] = al.(st.Shape).Ix() * 1e-8
+							sec.Figs[0].Value["IYY"] = al.(st.Shape).Iy() * 1e-8
+							sec.Figs[0].Value["VEN"] = al.(st.Shape).J() * 1e-8
 							sec.Name = al.(st.Shape).Description()
 						}
 					}
@@ -5538,16 +5538,16 @@ func (stw *Window) exmode(command string) error {
 			stw.addHistory("NO INITIALISATION")
 		}
 		af := stw.Frame.Arclms[per]
-		go func () {
+		go func() {
 			err := af.Arclm001(otps, init, sol, eps, extra...)
-			af.Endch <-err
+			af.Endch <- err
 		}()
 		stw.CurrentLap("Calculating...", 0, lap)
-		go func () {
-			read001:
+		go func() {
+		read001:
 			for {
 				select {
-				case nlap :=<-af.Lapch:
+				case nlap := <-af.Lapch:
 					stw.Frame.ReadArclmData(af, pers[nlap])
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, lap)
@@ -5610,13 +5610,13 @@ func (stw *Window) exmode(command string) error {
 			stw.addHistory("NO INITIALISATION")
 		}
 		af := stw.Frame.Arclms[per]
-		go func () {
+		go func() {
 			err := af.Arclm201(otp, init, lap, safety, start)
-			af.Endch <-err
+			af.Endch <- err
 		}()
 		stw.CurrentLap("Calculating...", 0, lap)
-		go func () {
-			read201:
+		go func() {
+		read201:
 			for {
 				select {
 				case nlap := <-af.Lapch:
@@ -5672,13 +5672,13 @@ func (stw *Window) exmode(command string) error {
 			init = false
 			stw.addHistory("NO INITIALISATION")
 		}
-		go func () {
+		go func() {
 			err := af.Arclm301(otp, init, sects, eps)
-			af.Endch <-err
+			af.Endch <- err
 		}()
 		stw.CurrentLap("Calculating...", 0, 0)
-		go func () {
-			read301:
+		go func() {
+		read301:
 			for {
 				select {
 				case nlap := <-af.Lapch:
@@ -6526,7 +6526,7 @@ func (stw *Window) PasteClipboard() error {
 	return nil
 }
 
-func (stw *Window) ShapeData (sh st.Shape) {
+func (stw *Window) ShapeData(sh st.Shape) {
 	var tb *TextBox
 	if t, tok := stw.TextBox["SHAPE"]; tok {
 		tb = t
@@ -6549,7 +6549,7 @@ func (stw *Window) ShapeData (sh st.Shape) {
 	tb.Value = strings.Split(otp.String(), "\n")
 }
 
-func (stw *Window) SectionData (sec *st.Sect) {
+func (stw *Window) SectionData(sec *st.Sect) {
 	var tb *TextBox
 	if t, tok := stw.TextBox["SECTION"]; tok {
 		tb = t
@@ -6565,7 +6565,7 @@ func (stw *Window) SectionData (sec *st.Sect) {
 	}
 }
 
-func (stw *Window) CurrentLap (comment string, nlap, laps int) {
+func (stw *Window) CurrentLap(comment string, nlap, laps int) {
 	var tb *TextBox
 	if t, tok := stw.TextBox["LAP"]; tok {
 		tb = t
@@ -6595,7 +6595,7 @@ func SplitNums(nums string) []int {
 			return nil
 		}
 		sects := make([]int, int(end-start))
-		for i:=0; i<int(end-start); i++ {
+		for i := 0; i < int(end-start); i++ {
 			sects[i] = i + int(start)
 		}
 		return sects
@@ -9821,7 +9821,7 @@ func init() {
 		aliases["ZY"] = ZOUBUNYIELD
 		aliases["ZR"] = ZOUBUNREACTION
 		aliases["AMT"] = AMOUNTPROP
-		aliases["EPS"] = SETEPS
+		aliases["EPS"] = SETEPS
 	}
 }
 

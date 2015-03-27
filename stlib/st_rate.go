@@ -120,9 +120,9 @@ var (
 	SD295 = SD{"SD295", 2.0, 3.0, 2100.0, 0.3}
 	SD345 = SD{"SD345", 2.2, 3.5, 2100.0, 0.3}
 
-	S_E70 = Wood{"S-E70", 0.2386, 0.1774, 0.2997, 0.0183, 70.0, 6.5}
-	E70SUGI = S_E70
-	H_E90 = Wood{"H-E90", 0.2508, 0.1896, 0.3120, 0.0214, 90.0, 6.5}
+	S_E70     = Wood{"S-E70", 0.2386, 0.1774, 0.2997, 0.0183, 70.0, 6.5}
+	E70SUGI   = S_E70
+	H_E90     = Wood{"H-E90", 0.2508, 0.1896, 0.3120, 0.0214, 90.0, 6.5}
 	E90HINOKI = H_E90
 )
 
@@ -843,11 +843,11 @@ func (tk TKYOU) Asy() float64 {
 	return (tk.H - tk.Tf) * tk.Tw / 1.5
 }
 func (tk TKYOU) Cy() float64 {
-	return ((tk.B - tk.Tw) * tk.Tf * 0.5 * tk.Tf + tk.H * tk.Tw * 0.5 * tk.H) / tk.A()
+	return ((tk.B-tk.Tw)*tk.Tf*0.5*tk.Tf + tk.H*tk.Tw*0.5*tk.H) / tk.A()
 }
 func (tk TKYOU) Ix() float64 {
 	cy := tk.Cy()
-	return (tk.B - tk.Tw)*math.Pow(tk.Tf, 3.0)/12.0 + tk.H*math.Pow(tk.Tw, 3.0)/12.0 + (tk.B - tk.Tw) * tk.Tf * math.Pow(cy - 0.5*tk.Tf, 2.0) + tk.H * tk.Tw * math.Pow(0.5 * tk.H - cy, 2.0)
+	return (tk.B-tk.Tw)*math.Pow(tk.Tf, 3.0)/12.0 + tk.H*math.Pow(tk.Tw, 3.0)/12.0 + (tk.B-tk.Tw)*tk.Tf*math.Pow(cy-0.5*tk.Tf, 2.0) + tk.H*tk.Tw*math.Pow(0.5*tk.H-cy, 2.0)
 }
 func (tk TKYOU) Iy() float64 {
 	return tk.Tf*math.Pow(tk.B, 3.0)/12.0 + (tk.H-tk.Tf)*math.Pow(tk.Tw, 3.0)/12.0
@@ -950,17 +950,17 @@ func (ck CKYOU) Ix() float64 {
 	return (ck.B*math.Pow(ck.H, 3.0) - (ck.B-ck.Tw)*math.Pow(ck.H-2*ck.Tf, 3.0)) / 12.0
 }
 func (ck CKYOU) Cx() float64 {
-	return (2.0 * ck.B * ck.Tf * 0.5 * ck.B + (ck.H - 2*ck.Tf) * ck.Tw * 0.5 * ck.Tw) / ck.A()
+	return (2.0*ck.B*ck.Tf*0.5*ck.B + (ck.H-2*ck.Tf)*ck.Tw*0.5*ck.Tw) / ck.A()
 }
 func (ck CKYOU) Iy() float64 {
 	cx := ck.Cx()
-	return 2.0*ck.Tf*math.Pow(ck.B, 3.0)/12.0 + (ck.H-2*ck.Tf)*math.Pow(ck.Tw, 3.0)/12.0 + 2.0 * ck.B * ck.Tf * math.Pow(0.5*ck.B - cx, 2.0) + (ck.H - 2*ck.Tf) * ck.Tw * math.Pow(cx - 0.5*ck.Tw, 2.0)
+	return 2.0*ck.Tf*math.Pow(ck.B, 3.0)/12.0 + (ck.H-2*ck.Tf)*math.Pow(ck.Tw, 3.0)/12.0 + 2.0*ck.B*ck.Tf*math.Pow(0.5*ck.B-cx, 2.0) + (ck.H-2*ck.Tf)*ck.Tw*math.Pow(cx-0.5*ck.Tw, 2.0)
 }
 func (ck CKYOU) J() float64 {
 	return 2.0*ck.B*math.Pow(ck.Tf, 3.0)/3.0 + (ck.H-2*ck.Tf)*math.Pow(ck.Tw, 3.0)/3.0
 }
 func (ck CKYOU) Iw() float64 {
-	return math.Pow(ck.H, 2.0) * math.Pow(ck.B, 3.0) * ck.Tf * (3.0*ck.B*ck.Tf + 2.0*ck.H*ck.Tw) / (12.0*(6.0*ck.B*ck.Tf + ck.H*ck.Tw))
+	return math.Pow(ck.H, 2.0) * math.Pow(ck.B, 3.0) * ck.Tf * (3.0*ck.B*ck.Tf + 2.0*ck.H*ck.Tw) / (12.0 * (6.0*ck.B*ck.Tf + ck.H*ck.Tw))
 }
 func (ck CKYOU) Torsion() float64 {
 	if ck.Tf >= ck.Tw {
@@ -1032,25 +1032,25 @@ func (pl PLATE) Description() string {
 	return fmt.Sprintf("%dx%d[mm]", int(pl.H*10), int(pl.B*10))
 }
 func (pl PLATE) A() float64 {
-	return pl.H*pl.B
+	return pl.H * pl.B
 }
 func (pl PLATE) Asx() float64 {
-	return pl.H*pl.B / 1.5
+	return pl.H * pl.B / 1.5
 }
 func (pl PLATE) Asy() float64 {
-	return pl.H*pl.B / 1.5
+	return pl.H * pl.B / 1.5
 }
 func (pl PLATE) Ix() float64 {
-	return pl.B*math.Pow(pl.H, 3.0) / 12.0
+	return pl.B * math.Pow(pl.H, 3.0) / 12.0
 }
 func (pl PLATE) Iy() float64 {
-	return pl.H*math.Pow(pl.B, 3.0) / 12.0
+	return pl.H * math.Pow(pl.B, 3.0) / 12.0
 }
 func (pl PLATE) J() float64 {
 	if pl.H >= pl.B {
-		return pl.H*math.Pow(pl.B, 3.0) / 3.0
+		return pl.H * math.Pow(pl.B, 3.0) / 3.0
 	} else {
-		return pl.B*math.Pow(pl.H, 3.0) / 3.0
+		return pl.B * math.Pow(pl.H, 3.0) / 3.0
 	}
 }
 func (pl PLATE) Iw() float64 {
@@ -1058,16 +1058,16 @@ func (pl PLATE) Iw() float64 {
 }
 func (pl PLATE) Torsion() float64 {
 	if pl.H >= pl.B {
-		return pl.H*math.Pow(pl.B, 2.0) / 3.0
+		return pl.H * math.Pow(pl.B, 2.0) / 3.0
 	} else {
-		return pl.B*math.Pow(pl.H, 2.0) / 3.0
+		return pl.B * math.Pow(pl.H, 2.0) / 3.0
 	}
 }
 func (pl PLATE) Zx() float64 {
-	return pl.B*math.Pow(pl.H, 2.0) / 6.0
+	return pl.B * math.Pow(pl.H, 2.0) / 6.0
 }
 func (pl PLATE) Zy() float64 {
-	return pl.H*math.Pow(pl.B, 2.0) / 6.0
+	return pl.H * math.Pow(pl.B, 2.0) / 6.0
 }
 
 func (pl PLATE) Vertices() [][]float64 {
@@ -1522,7 +1522,7 @@ func (rc *RCColumn) Nmin(cond *Condition) float64 {
 		return 0.0
 	}
 	ft := rc.Reins[0].Ft(cond)
-	return -ft*rc.Ai()
+	return -ft * rc.Ai()
 }
 func (rc *RCColumn) Na(cond *Condition) float64 {
 	if cond.Compression {
@@ -1593,7 +1593,7 @@ func (rc *RCColumn) Ma(cond *Condition) float64 {
 	if xn >= h {
 		return (sigma/xn*(b*h*(3.0*math.Pow(xn, 2.0)-3.0*xn*h+math.Pow(h, 2.0))/3.0+NCS*(math.Pow(xn, 2.0)*rc.Ai()-2.0*xn*rc.LiAi(cond)+rc.Li2Ai(cond))) - cond.N*(xn-h/2.0)) * 0.01 // [tfm]
 	} else if xn <= 0 {
-		return -(NCS*sigma/xn*(math.Pow(xn, 2.0)*rc.Ai() - 2.0*xn*rc.LiAi(cond) + rc.Li2Ai(cond)) + cond.N*(xn-h/2.0)) * 0.01 // [tfm]
+		return -(NCS*sigma/xn*(math.Pow(xn, 2.0)*rc.Ai()-2.0*xn*rc.LiAi(cond)+rc.Li2Ai(cond)) + cond.N*(xn-h/2.0)) * 0.01 // [tfm]
 	} else {
 		return (sigma*(b*math.Pow(xn, 2.0)/3.0+NCS*(xn*rc.Ai()-2.0*rc.LiAi(cond)+rc.Li2Ai(cond)/xn)) - cond.N*(xn-h/2.0)) * 0.01 // [tfm]
 	}
@@ -1818,7 +1818,7 @@ func (rw *RCWall) Na(cond *Condition) float64 {
 		le := cond.Width - (rw.XFace[0] + rw.XFace[1])
 		if le >= 0.0 {
 			l0 := cond.Width
-			Qw = r * rw.Thick * rw.Srein * cond.Length * le/l0 * rw.Material.Fs
+			Qw = r * rw.Thick * rw.Srein * cond.Length * le / l0 * rw.Material.Fs
 			if Qw > Qc {
 				Qa = Qw
 			}
@@ -2008,7 +2008,7 @@ func (wc *WoodColumn) Fc(cond *Condition) float64 {
 	if lambda < 30.0 {
 		rtn = 1.0
 	} else if lambda < 100.0 {
-		rtn = 1.3 - 0.01 * lambda
+		rtn = 1.3 - 0.01*lambda
 	} else {
 		rtn = 3000.0 / (lambda * lambda)
 	}
@@ -2074,7 +2074,7 @@ func NewCondition() *Condition {
 	c := new(Condition)
 	c.Period = "L"
 	c.Length = 0.0
-	c.Width  = 0.0
+	c.Width = 0.0
 	c.Compression = false
 	c.Strong = true
 	c.Positive = true

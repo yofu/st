@@ -342,12 +342,12 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 			}
 			switch j {
 			case 0, 3: // Nz, Mz
-				v = elem.Stress[2*i+j]-math.Pow(-1.0, float64(i))*fc[j]
+				v = elem.Stress[2*i+j] - math.Pow(-1.0, float64(i))*fc[j]
 				value = math.Abs(v) / fu[j]
 				values[j] = value
 				f1[i] += math.Pow(value, elem.Sect.Exp)
 			case 1, 2: // Qx, Qy
-				v = elem.Stress[2*i+j]-fc[j]
+				v = elem.Stress[2*i+j] - fc[j]
 				value = math.Abs(v) / fu[j]
 				values[j] = value
 				if value*QUFACT > 1.0 {
@@ -355,7 +355,7 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 				}
 				f2[i] += math.Pow(value, elem.Sect.Exp)
 			case 4, 5: // Mx, My
-				v = elem.Stress[2*i+j]-fc[j]
+				v = elem.Stress[2*i+j] - fc[j]
 				value = math.Abs(v) / fu[j]
 				values[j] = value
 				f1[i] += math.Pow(value, elem.Sect.Exp)
@@ -377,24 +377,24 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 				continue
 			}
 			if elem.Sect.Exp == elem.Sect.Exq {
-				dfdp[i][j] = unit / fu[j] * math.Pow(values[j], elem.Sect.Exp - 1.0)
+				dfdp[i][j] = unit / fu[j] * math.Pow(values[j], elem.Sect.Exp-1.0)
 			} else {
 				if j == 1 || j == 2 { // Qx, Qy
-					dfdp[i][j] = unit / fu[j] * math.Pow(f2[i], elem.Sect.Exq/elem.Sect.Exp - 1.0) * math.Pow(values[j], elem.Sect.Exp - 1.0)
+					dfdp[i][j] = unit / fu[j] * math.Pow(f2[i], elem.Sect.Exq/elem.Sect.Exp-1.0) * math.Pow(values[j], elem.Sect.Exp-1.0)
 				} else {
-					dfdp[i][j] = unit / fu[j] * math.Pow(f1[i], elem.Sect.Exq/elem.Sect.Exp - 1.0) * math.Pow(values[j], elem.Sect.Exp - 1.0)
+					dfdp[i][j] = unit / fu[j] * math.Pow(f1[i], elem.Sect.Exq/elem.Sect.Exp-1.0) * math.Pow(values[j], elem.Sect.Exp-1.0)
 				}
 			}
 		}
 	}
 	q := make([][]float64, 12)
-	for i:=0; i<12; i++ {
+	for i := 0; i < 12; i++ {
 		q[i] = make([]float64, 12)
 		if elem.Bonds[i] == 1 {
 			continue
 		}
-		for j:=0; j<2; j++ {
-			for k:=0; k<6; k++ {
+		for j := 0; j < 2; j++ {
+			for k := 0; k < 6; k++ {
 				if elem.Bonds[6*j+k] == 1 {
 					continue
 				}
@@ -403,10 +403,10 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 		}
 	}
 	a := make([][]float64, 2)
-	for i:=0; i<2; i++ {
+	for i := 0; i < 2; i++ {
 		a[i] = make([]float64, 2)
-		for j:=0; j<2; j++ {
-			for k:=0; k<6; k++ {
+		for j := 0; j < 2; j++ {
+			for k := 0; k < 6; k++ {
 				if elem.Bonds[6*i+k] == -1 && elem.Bonds[6*j+k] == -1 {
 					a[i][j] += dfdp[i][k] * q[6*i+k][j]
 				}
@@ -496,16 +496,16 @@ func (elem *Elem) StiffMatrix() ([][]float64, error) {
 func (elem *Elem) PlasticMatrix(estiff [][]float64) ([][]float64, error) {
 	_, _, q, a, _ := elem.Coefficients(estiff)
 	p := make([][]float64, 12)
-	for i:=0; i<12; i++ {
+	for i := 0; i < 12; i++ {
 		p[i] = make([]float64, 12)
 	}
 	switch {
 	case a[0][0] != 0.0 && a[1][1] == 0.0: // I=PLASTIC J=ELASTIC
-		for i:=0; i<12; i++ {
+		for i := 0; i < 12; i++ {
 			if elem.Bonds[i] == 1 || elem.Bonds[i] == -2 || elem.Bonds[i] == -3 {
 				continue
 			}
-			for j:=0; j<12; j++ {
+			for j := 0; j < 12; j++ {
 				if elem.Bonds[j] == 1 || elem.Bonds[j] == -2 || elem.Bonds[j] == -3 {
 					continue
 				}
@@ -513,11 +513,11 @@ func (elem *Elem) PlasticMatrix(estiff [][]float64) ([][]float64, error) {
 			}
 		}
 	case a[0][0] == 0.0 && a[1][1] != 0.0: // I=ELASTIC J=PLASTIC
-		for i:=0; i<12; i++ {
+		for i := 0; i < 12; i++ {
 			if elem.Bonds[i] == 1 || elem.Bonds[i] == -2 || elem.Bonds[i] == -3 {
 				continue
 			}
-			for j:=0; j<12; j++ {
+			for j := 0; j < 12; j++ {
 				if elem.Bonds[j] == 1 || elem.Bonds[j] == -2 || elem.Bonds[j] == -3 {
 					continue
 				}
@@ -525,28 +525,28 @@ func (elem *Elem) PlasticMatrix(estiff [][]float64) ([][]float64, error) {
 			}
 		}
 	case a[0][0] != 0.0 && a[1][1] != 0.0:
-		for i:=0; i<12; i++ {
+		for i := 0; i < 12; i++ {
 			if elem.Bonds[i] == 1 || elem.Bonds[i] == -2 || elem.Bonds[i] == -3 {
 				continue
 			}
-			for j:=0; j<12; j++ {
+			for j := 0; j < 12; j++ {
 				if elem.Bonds[j] == 1 || elem.Bonds[j] == -2 || elem.Bonds[j] == -3 {
 					continue
 				}
-				det := a[0][0] * a[1][1] - a[0][1] * a[1][0]
+				det := a[0][0]*a[1][1] - a[0][1]*a[1][0]
 				if det == 0.0 {
 					return nil, errors.New(fmt.Sprintf("ELEM %d: matrix singular", elem.Num))
 				} else {
-				  p[i][j] = -1.0 / det * (a[1][1]*q[i][0]*q[j][0] - a[0][1]*q[i][0]*q[j][1] - a[1][0]*q[i][1]*q[j][0] + a[0][0]*q[i][1]*q[j][1])
+					p[i][j] = -1.0 / det * (a[1][1]*q[i][0]*q[j][0] - a[0][1]*q[i][0]*q[j][1] - a[1][0]*q[i][1]*q[j][0] + a[0][0]*q[i][1]*q[j][1])
 				}
 			}
 		}
 	}
-	for i:=0; i<12; i++ {
+	for i := 0; i < 12; i++ {
 		if elem.Bonds[i] == 1 || elem.Bonds[i] == -2 || elem.Bonds[i] == -3 {
 			continue
 		}
-		for j:=0; j<12; j++ {
+		for j := 0; j < 12; j++ {
 			if elem.Bonds[j] == 1 || elem.Bonds[j] == -2 || elem.Bonds[j] == -3 {
 				continue
 			}
@@ -562,8 +562,8 @@ func (elem *Elem) GeoStiffMatrix() ([][]float64, error) {
 	A := elem.Sect.Value[0]
 	IX := elem.Sect.Value[1]
 	IY := elem.Sect.Value[2]
-	G  := -(IX+IY)/A
-	N  := -elem.Stress[0]
+	G := -(IX + IY) / A
+	N := -elem.Stress[0]
 	Qx := elem.Stress[1]
 	Qy := elem.Stress[2]
 	Mxi := elem.Stress[4]

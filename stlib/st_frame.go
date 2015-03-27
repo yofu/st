@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/yofu/st/arclm"
 	"io/ioutil"
 	"math"
 	"os"
@@ -12,7 +13,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"github.com/yofu/st/arclm"
 )
 
 // Constants & Variables// {{{
@@ -2870,7 +2870,7 @@ func CommonEnod(els ...*Elem) ([]*Node, error) {
 	}
 	num := len(els[0].Enod)
 	rtn := make([]*Node, num)
-	for i:=0; i<num; i++ {
+	for i := 0; i < num; i++ {
 		rtn[i] = els[0].Enod[i]
 	}
 	for _, el := range els[1:] {
@@ -2884,7 +2884,7 @@ func CommonEnod(els ...*Elem) ([]*Node, error) {
 		}
 		size := 0
 		tmp := make([]*Node, len(rtn))
-		for i:=0; i<len(rtn); i++ {
+		for i := 0; i < len(rtn); i++ {
 			if ok[i] {
 				tmp[size] = rtn[i]
 				size++
@@ -3152,7 +3152,7 @@ func (frame *Frame) IntersectionPoint(cutter, cuttee *Elem, cross bool, eps floa
 	if d > eps {
 		return nil, errors.New(fmt.Sprintf("IntersectionPoint: Distance= %.5f", d))
 	}
-	if !cross || ((-eps <= k2 && k2 <= 1.0+eps)) {
+	if !cross || (-eps <= k2 && k2 <= 1.0+eps) {
 		d1 := cutter.Direction(false)
 		n, _ := frame.CoordNode(cutter.Enod[0].Coord[0]+k1*d1[0], cutter.Enod[0].Coord[1]+k1*d1[1], cutter.Enod[0].Coord[2]+k1*d1[2], eps)
 		return n, nil
@@ -3188,7 +3188,7 @@ func (frame *Frame) IntersectAll(elems []*Elem, eps float64) error {
 				return err
 			}
 			checked = els
-			frame.Lapch <-ind+1
+			frame.Lapch <- ind + 1
 			break
 		}
 		ind++
@@ -3214,7 +3214,7 @@ func (frame *Frame) IntersectAll(elems []*Elem, eps float64) error {
 			continue
 		}
 		checked = append(checked, els...)
-		frame.Lapch <-ind+2+i
+		frame.Lapch <- ind + 2 + i
 	}
 	return nil
 }
@@ -3566,7 +3566,7 @@ func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
 		if n, ok := frame.Nodes[an.Num]; ok {
 			disp := make([]float64, 6)
 			reaction := make([]float64, 6)
-			for i:=0; i<6; i++ {
+			for i := 0; i < 6; i++ {
 				disp[i] = an.Disp[i]
 				reaction[i] = an.Reaction[i]
 			}
@@ -3579,7 +3579,7 @@ func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
 			stress := make(map[int][]float64, 2)
 			for i, n := range ael.Enod {
 				stress[n.Num] = make([]float64, 6)
-				for j:=0; j<6; j++ {
+				for j := 0; j < 6; j++ {
 					stress[n.Num][j] = ael.Stress[6*i+j]
 				}
 			}
@@ -3589,7 +3589,6 @@ func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
 }
 
 // }}}
-
 
 // SectionRate
 func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign float64, cond *Condition) error {
@@ -3833,7 +3832,7 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 					ny2 = st[el.Enod[0].Num][0]
 				}
 				cond.Length = el.Length() * 100.0 // [cm]
-				cond.Width  = el.Width() * 100.0 // [cm]
+				cond.Width = el.Width() * 100.0   // [cm]
 				otp.WriteString(strings.Repeat("-", 202))
 				otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, al.TypeString(), cond.Length, cond.Length, cond.Length))
 				otp.WriteString("応力       :        N\n")
@@ -4376,7 +4375,7 @@ func WriteOutput(fn string, p string, els []*Elem) error {
 	return nil
 }
 
-func WriteReaction (fn string, ns []*Node, direction int) error {
+func WriteReaction(fn string, ns []*Node, direction int) error {
 	var otp bytes.Buffer
 	r := make([]float64, 3)
 	otp.WriteString("NODE   XCOORD   YCOORD   ZCOORD     WEIGHT       LONG      XSEIS      YSEIS        W+L      W+L+X      W+L-X      W+L+Y      W+L-Y PILE\n")

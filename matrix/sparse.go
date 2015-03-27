@@ -121,6 +121,7 @@ func (co *COOMatrix) MulV(csize int, conf []bool, vec []float64) []float64 {
 	}
 	return rtn
 }
+
 // func (co *COOMatrix) ToCRS() *CRSMatrix {
 // 	nz := 0
 // 	rtn := NewCRSMatrix(co.Size, co.nz)
@@ -186,9 +187,9 @@ func (co *COOMatrix) ToLLS(csize int, conf []bool) *LLSMatrix {
 			defer wg.Done()
 			cind := ri
 			if rdata, rok := co.data[r]; rok {
-				rtn.diag[r-ri].value=rdata[r]
+				rtn.diag[r-ri].value = rdata[r]
 				n = rtn.diag[r-ri]
-				for col := r+1; col < co.Size; col++ {
+				for col := r + 1; col < co.Size; col++ {
 					if conf[col] {
 						cind++
 						continue
@@ -1136,7 +1137,7 @@ func (ll *LLSMatrix) PCG(C *LLSMatrix, vec []float64) []float64 {
 		r[i] = vec[i]
 		p[i] = vec[i]
 	}
-	cct := func (mat *LLSMatrix, v []float64) []float64 {
+	cct := func(mat *LLSMatrix, v []float64) []float64 {
 		v = mat.FELower(v)
 		for i := 0; i < size; i++ {
 			v[i] /= mat.Query(i, i)

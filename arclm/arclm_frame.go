@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	CRS    = iota
+	CRS = iota
 	CRS_CG
 	LLS
 	LLS_CG
@@ -42,9 +42,9 @@ func NewFrame() *Frame {
 }
 
 type FrameState struct {
-	Disp [][]float64
+	Disp     [][]float64
 	Reaction [][]float64
-	Stress [][]float64
+	Stress   [][]float64
 }
 
 func NewFrameState(nnode, nelem int) *FrameState {
@@ -52,11 +52,11 @@ func NewFrameState(nnode, nelem int) *FrameState {
 	fs.Disp = make([][]float64, nnode)
 	fs.Reaction = make([][]float64, nnode)
 	fs.Stress = make([][]float64, nelem)
-	for i:=0; i<nnode; i++ {
+	for i := 0; i < nnode; i++ {
 		fs.Disp[i] = make([]float64, 6)
 		fs.Reaction[i] = make([]float64, 6)
 	}
-	for i:=0; i<nelem; i++ {
+	for i := 0; i < nelem; i++ {
 		fs.Stress[i] = make([]float64, 12)
 	}
 	return fs
@@ -152,13 +152,13 @@ func (af *Frame) ReadInput(filename string) error {
 
 func (frame *Frame) Initialise() {
 	for _, n := range frame.Nodes {
-		for i:=0; i<6; i++ {
+		for i := 0; i < 6; i++ {
 			n.Disp[i] = 0.0
 			n.Reaction[i] = 0.0
 		}
 	}
 	for _, el := range frame.Elems {
-		for i:=0; i<12; i++ {
+		for i := 0; i < 12; i++ {
 			el.Stress[i] = el.Cmq[i]
 		}
 	}
@@ -169,13 +169,13 @@ func (frame *Frame) SaveState() *FrameState {
 	nelem := len(frame.Elems)
 	fs := NewFrameState(nnode, nelem)
 	for i, n := range frame.Nodes {
-		for j:=0; j<6; j++ {
+		for j := 0; j < 6; j++ {
 			fs.Disp[i][j] = n.Disp[j]
 			fs.Reaction[i][j] = n.Reaction[j]
 		}
 	}
 	for i, el := range frame.Elems {
-		for j:=0; j<12; j++ {
+		for j := 0; j < 12; j++ {
 			fs.Stress[i][j] = el.Stress[j]
 		}
 	}
@@ -184,13 +184,13 @@ func (frame *Frame) SaveState() *FrameState {
 
 func (frame *Frame) RestoreState(fs *FrameState) {
 	for i, n := range frame.Nodes {
-		for j:=0; j<6; j++ {
+		for j := 0; j < 6; j++ {
 			n.Disp[j] = fs.Disp[i][j]
 			n.Reaction[j] = fs.Reaction[i][j]
 		}
 	}
 	for i, el := range frame.Elems {
-		for j:=0; j<12; j++ {
+		for j := 0; j < 12; j++ {
 			el.Stress[j] = fs.Stress[i][j]
 		}
 	}
@@ -212,7 +212,7 @@ func (frame *Frame) AssemGlobalVector(safety float64) (int, []bool, []float64, e
 	return csize, conf, vec, nil
 }
 
-func (frame *Frame) AssemGlobalMatrix(matf func(*Elem)([][]float64, error), vecf func(*Elem, [][]float64, []float64, float64)([]float64), safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
+func (frame *Frame) AssemGlobalMatrix(matf func(*Elem) ([][]float64, error), vecf func(*Elem, [][]float64, []float64, float64) []float64, safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
 	var err error
 	var tmatrix, stiff [][]float64
 	size := 6 * len(frame.Nodes)
@@ -256,7 +256,7 @@ func (frame *Frame) KE(safety float64) (*matrix.COOMatrix, []float64, error) { /
 	matf := func(elem *Elem) ([][]float64, error) {
 		return elem.StiffMatrix()
 	}
-	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) ([]float64) {
+	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
 		return elem.AssemCMQ(tmatrix, gvct, safety)
 	}
 	return frame.AssemGlobalMatrix(matf, vecf, safety)
@@ -275,7 +275,7 @@ func (frame *Frame) KP(safety float64) (*matrix.COOMatrix, []float64, error) { /
 		}
 		return pstiff, nil
 	}
-	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) ([]float64) {
+	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
 		return elem.AssemCMQ(tmatrix, gvct, safety)
 	}
 	return frame.AssemGlobalMatrix(matf, vecf, safety)
@@ -295,14 +295,14 @@ func (frame *Frame) KEKG(safety float64) (*matrix.COOMatrix, []float64, error) {
 		for i := 0; i < 12; i++ {
 			stiff[i] = make([]float64, 12)
 		}
-		for i:=0; i<12; i++ {
-			for j:=0; j<12; j++ {
+		for i := 0; i < 12; i++ {
+			for j := 0; j < 12; j++ {
 				stiff[i][j] = estiff[i][j] + gstiff[i][j]
 			}
 		}
 		return stiff, nil
 	}
-	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) ([]float64) {
+	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
 		gvct = elem.AssemCMQ(tmatrix, gvct, safety)
 		gvct = elem.ModifyTrueForce(tmatrix, gvct)
 		return gvct
@@ -321,7 +321,7 @@ func (frame *Frame) AssemConf(gvct []float64, safety float64) (int, []bool, []fl
 				conf[6*i+j] = true
 				csize++
 			} else {
-				vec[6*i+j-csize] = gvct[6*i+j] + safety * n.Force[j]
+				vec[6*i+j-csize] = gvct[6*i+j] + safety*n.Force[j]
 			}
 		}
 	}
@@ -330,7 +330,7 @@ func (frame *Frame) AssemConf(gvct []float64, safety float64) (int, []bool, []fl
 
 func (frame *Frame) FillConf(vec []float64) []float64 {
 	ind := 0
-	rtn := make([]float64, 6 * len(frame.Nodes))
+	rtn := make([]float64, 6*len(frame.Nodes))
 	for i, n := range frame.Nodes {
 		for j := 0; j < 6; j++ {
 			if n.Conf[j] {
@@ -381,7 +381,7 @@ func (frame *Frame) UpdateStressPlastic(vec []float64) ([][]float64, error) {
 }
 
 func (frame *Frame) UpdateReaction(gmtx *matrix.COOMatrix, vec []float64) []float64 {
-	rtn := make([]float64, 6 * len(frame.Nodes))
+	rtn := make([]float64, 6*len(frame.Nodes))
 	for i, n := range frame.Nodes {
 		for j := 0; j < 6; j++ {
 			if n.Conf[j] {
@@ -462,7 +462,7 @@ func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, e
 		solver = LLS_PCG
 	}
 	start := time.Now()
-	laptime := func (message string) {
+	laptime := func(message string) {
 		end := time.Now()
 		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
@@ -475,7 +475,7 @@ func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, e
 	l := len(extra)
 	vecs := make([][]float64, l+1)
 	vecs[0] = vec
-	for i:=0; i<l; i++ {
+	for i := 0; i < l; i++ {
 		vecs[i+1] = extra[i]
 	}
 	laptime("VEC")
@@ -521,13 +521,13 @@ func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, e
 		laptime("ToLLS")
 		answers = make([][]float64, len(vecs))
 		for i, vec := range vecs {
-			answers[i] = mtx.PCG(C,vec)
+			answers[i] = mtx.PCG(C, vec)
 		}
 		laptime("Solve")
 	}
 	if otp == nil || len(otp) < l+1 {
 		otp = make([]string, l+1)
-		for i:=0; i<l+1; i++ {
+		for i := 0; i < l+1; i++ {
 			otp[i] = fmt.Sprintf("hogtxt_%02d.otp", i)
 		}
 	}
@@ -560,7 +560,7 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 		frame.Initialise()
 	}
 	start := time.Now()
-	laptime := func (message string) {
+	laptime := func(message string) {
 		end := time.Now()
 		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
@@ -571,7 +571,7 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 	var csize int
 	var conf []bool
 	safety := 0.0
-	for lap:=0; lap<nlap; lap++ {
+	for lap := 0; lap < nlap; lap++ {
 		safety += dsafety
 		gmtx, gvct, err = frame.KP(safety)
 		csize, conf, vec = frame.AssemConf(gvct, safety)
@@ -591,7 +591,7 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 		frame.UpdateReaction(gmtx, tmp)
 		frame.UpdateForm(tmp)
 		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f", lap+1, nlap, safety))
-		frame.Lapch <- lap+1
+		frame.Lapch <- lap + 1
 		<-frame.Lapch
 	}
 	if otp == "" {
@@ -611,7 +611,7 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, dsafety, safety fl
 		frame.Initialise()
 	}
 	start := time.Now()
-	laptime := func (message string) {
+	laptime := func(message string) {
 		end := time.Now()
 		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
@@ -622,7 +622,7 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, dsafety, safety fl
 	var bnorm, rnorm float64
 	var csize int
 	var conf []bool
-	for lap:=0; lap<nlap; lap++ {
+	for lap := 0; lap < nlap; lap++ {
 		safety += dsafety
 		if safety > 1.0 {
 			safety = 1.0
@@ -631,11 +631,11 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, dsafety, safety fl
 			gmtx, gvct, err = frame.KE(safety)
 			csize, conf, vec = frame.AssemConf(gvct, safety)
 			for _, el := range frame.Elems {
-				for i:=0; i<12; i++ {
+				for i := 0; i < 12; i++ {
 					el.Stress[i] = 0.0
 				}
 			}
-		} else {      // K = KE + KG
+		} else { // K = KE + KG
 			gmtx, gvct, err = frame.KEKG(safety)
 			csize, conf, vec = frame.AssemConf(gvct, safety)
 		}
@@ -659,8 +659,8 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, dsafety, safety fl
 		}
 		frame.UpdateReaction(gmtx, tmp)
 		frame.UpdateForm(tmp)
-		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, nlap, safety, rnorm / bnorm))
-		frame.Lapch <- lap+1
+		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, nlap, safety, rnorm/bnorm))
+		frame.Lapch <- lap + 1
 		<-frame.Lapch
 	}
 	if otp == "" {
@@ -688,7 +688,7 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 		frame.Initialise()
 	}
 	start := time.Now()
-	laptime := func (message string) {
+	laptime := func(message string) {
 		end := time.Now()
 		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
@@ -702,7 +702,7 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 	size := 6 * len(frame.Nodes)
 	dlast := make([]float64, size)
 	dd := make([]float64, size)
-	kpile := func (safety float64, gdisp []float64) (*matrix.COOMatrix, []float64, error) {
+	kpile := func(safety float64, gdisp []float64) (*matrix.COOMatrix, []float64, error) {
 		matf := func(elem *Elem) ([][]float64, error) {
 			for _, sec := range sects {
 				if elem.Sect.Num == sec {
@@ -710,7 +710,7 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 					for i := 0; i < 3; i++ {
 						ld += math.Pow((elem.Enod[1].Coord[i] + gdisp[6*elem.Enod[1].Index+i] - elem.Enod[0].Coord[i] - gdisp[6*elem.Enod[0].Index+i]), 2)
 					}
-					y := math.Abs(math.Sqrt(ld) - elem.Length()) * 100
+					y := math.Abs(math.Sqrt(ld)-elem.Length()) * 100
 					if y <= 0.1 {
 						return elem.StiffMatrix()
 					} else {
@@ -724,12 +724,12 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 			}
 			return elem.StiffMatrix()
 		}
-		vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) ([]float64) {
+		vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
 			return elem.AssemCMQ(tmatrix, gvct, safety)
 		}
 		return frame.AssemGlobalMatrix(matf, vecf, safety)
 	}
-	kpilestress := func (f *Frame, vec []float64, sects []int) ([][]float64, error) {
+	kpilestress := func(f *Frame, vec []float64, sects []int) ([][]float64, error) {
 		rtn := make([][]float64, len(f.Elems))
 		for enum, el := range f.Elems {
 			gdisp := make([]float64, 12)
@@ -747,7 +747,7 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 					for i := 0; i < 3; i++ {
 						ld += math.Pow((el.Enod[1].Coord[i] + gdisp[6+i] - el.Enod[0].Coord[i] - gdisp[i]), 2)
 					}
-					y := math.Abs(math.Sqrt(ld) - el.Length()) * 100
+					y := math.Abs(math.Sqrt(ld)-el.Length()) * 100
 					if y <= 0.1 {
 						df, err = el.ElemStress(gdisp)
 					} else {
@@ -794,17 +794,17 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 		}
 		frame.UpdateReaction(gmtx, tmp)
 		frame.UpdateForm(tmp)
-		for i:=0; i<size; i++ {
+		for i := 0; i < size; i++ {
 			dd[i] = tmp[i] - dlast[i]
 			dlast[i] = tmp[i]
 		}
 		norm = math.Sqrt(Dot(dd, dd, len(dd)))
 		laptime(fmt.Sprintf("LAP = %d NORM = %.5E", lap+1, norm))
 		if norm < eps {
-			frame.Lapch <- lap+1
+			frame.Lapch <- lap + 1
 			break
 		}
-		frame.Lapch <- lap+1
+		frame.Lapch <- lap + 1
 		<-frame.Lapch
 		lap++
 		frame.RestoreState(f)

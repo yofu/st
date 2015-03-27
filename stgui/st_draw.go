@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/visualfc/go-iup/cd"
+	"github.com/yofu/st/arclm"
 	"github.com/yofu/st/stlib"
 	"math"
 	"regexp"
-	"github.com/yofu/st/arclm"
 )
 
 func DrawPrintRange(stw *Window) {
 	stw.dbuff.Begin(cd.CD_CLOSED_LINES)
-	centrex := 0.5*stw.CanvasSize[0]
-	centrey := 0.5*stw.CanvasSize[1]
+	centrex := 0.5 * stw.CanvasSize[0]
+	centrey := 0.5 * stw.CanvasSize[1]
 	width, height, err := stw.PaperSize(stw.dbuff)
 	if err != nil {
 		stw.errormessage(err, ERROR)
@@ -21,10 +21,10 @@ func DrawPrintRange(stw *Window) {
 	}
 	width *= 0.5
 	height *= 0.5
-	stw.dbuff.FVertex(centrex - width, centrey - height)
-	stw.dbuff.FVertex(centrex + width, centrey - height)
-	stw.dbuff.FVertex(centrex + width, centrey + height)
-	stw.dbuff.FVertex(centrex - width, centrey + height)
+	stw.dbuff.FVertex(centrex-width, centrey-height)
+	stw.dbuff.FVertex(centrex+width, centrey-height)
+	stw.dbuff.FVertex(centrex+width, centrey+height)
+	stw.dbuff.FVertex(centrex-width, centrey+height)
 	stw.dbuff.End()
 }
 
@@ -59,7 +59,7 @@ func DrawEccentric(frame *st.Frame, cvs *cd.Canvas, show *st.Show) {
 					if show.ColorMode == st.ECOLOR_BLACK {
 						cvs.Foreground(cd.CD_BLACK)
 					} else {
-						val := frame.Fes.Factor/frame.Fes.AverageDrift[i][0]
+						val := frame.Fes.Factor / frame.Fes.AverageDrift[i][0]
 						switch {
 						case val < 120:
 							cvs.Foreground(cd.CD_RED)
@@ -69,13 +69,13 @@ func DrawEccentric(frame *st.Frame, cvs *cd.Canvas, show *st.Show) {
 							cvs.Foreground(cd.CD_WHITE)
 						}
 					}
-					dcoord1[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0]+show.Dfact*frame.Fes.AverageDisp[i][0], frame.Fes.CentreOfRigid[i][1], frame.Fes.AverageLevel[i]})
-					dcoord2[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0]+show.Dfact*frame.Fes.AverageDisp[i+1][0], frame.Fes.CentreOfRigid[i][1], frame.Fes.AverageLevel[i+1]})
+					dcoord1[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0] + show.Dfact*frame.Fes.AverageDisp[i][0], frame.Fes.CentreOfRigid[i][1], frame.Fes.AverageLevel[i]})
+					dcoord2[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0] + show.Dfact*frame.Fes.AverageDisp[i+1][0], frame.Fes.CentreOfRigid[i][1], frame.Fes.AverageLevel[i+1]})
 				case "Y":
 					if show.ColorMode == st.ECOLOR_BLACK {
 						cvs.Foreground(cd.CD_BLACK)
 					} else {
-						val := frame.Fes.Factor/frame.Fes.AverageDrift[i][1]
+						val := frame.Fes.Factor / frame.Fes.AverageDrift[i][1]
 						switch {
 						case val < 120:
 							cvs.Foreground(cd.CD_RED)
@@ -85,10 +85,12 @@ func DrawEccentric(frame *st.Frame, cvs *cd.Canvas, show *st.Show) {
 							cvs.Foreground(cd.CD_WHITE)
 						}
 					}
-					dcoord1[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0], frame.Fes.CentreOfRigid[i][1]+show.Dfact*frame.Fes.AverageDisp[i][1], frame.Fes.AverageLevel[i]})
-					dcoord2[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0], frame.Fes.CentreOfRigid[i][1]+show.Dfact*frame.Fes.AverageDisp[i+1][1], frame.Fes.AverageLevel[i+1]})
+					dcoord1[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0], frame.Fes.CentreOfRigid[i][1] + show.Dfact*frame.Fes.AverageDisp[i][1], frame.Fes.AverageLevel[i]})
+					dcoord2[i] = frame.View.ProjectCoord([]float64{frame.Fes.CentreOfRigid[i][0], frame.Fes.CentreOfRigid[i][1] + show.Dfact*frame.Fes.AverageDisp[i+1][1], frame.Fes.AverageLevel[i+1]})
 				}
-				if i>=1 { cvs.FLine(dcoord2[i-1][0], dcoord2[i-1][1], dcoord1[i][0], dcoord1[i][1]) }
+				if i >= 1 {
+					cvs.FLine(dcoord2[i-1][0], dcoord2[i-1][1], dcoord1[i][0], dcoord1[i][1])
+				}
 				cvs.FLine(dcoord1[i][0], dcoord1[i][1], dcoord2[i][0], dcoord2[i][1])
 				cvs.LineStyle(cd.CD_CONTINUOUS)
 			}
@@ -98,7 +100,9 @@ func DrawEccentric(frame *st.Frame, cvs *cd.Canvas, show *st.Show) {
 				cvs.FFilledCircle(wcoord[i][0], wcoord[i][1], show.MassSize*frame.Fes.TotalWeight[i+1])
 			} else {
 				cvs.Foreground(cd.CD_BLUE)
-				if i>=1 { cvs.FLine(rcoord2[i-1][0], rcoord2[i-1][1], rcoord1[i][0], rcoord1[i][1]) }
+				if i >= 1 {
+					cvs.FLine(rcoord2[i-1][0], rcoord2[i-1][1], rcoord1[i][0], rcoord1[i][1])
+				}
 				cvs.FLine(rcoord1[i][0], rcoord1[i][1], rcoord2[i][0], rcoord2[i][1])
 				cvs.Foreground(cd.CD_DARK_RED)
 				cvs.FFilledCircle(wcoord[i][0], wcoord[i][1], show.MassSize*frame.Fes.TotalWeight[i+1])
@@ -583,9 +587,9 @@ func DrawClosedLine(elem *st.Elem, cvs *cd.Canvas, position []float64, scale flo
 			cvs.Begin(cd.CD_CLOSED_LINES)
 			continue
 		}
-		coord[0] = position[0] + (v[0]*elem.Strong[0] + v[1]*elem.Weak[0]) * 0.01 * scale
-		coord[1] = position[1] + (v[0]*elem.Strong[1] + v[1]*elem.Weak[1]) * 0.01 * scale
-		coord[2] = position[2] + (v[0]*elem.Strong[2] + v[1]*elem.Weak[2]) * 0.01 * scale
+		coord[0] = position[0] + (v[0]*elem.Strong[0]+v[1]*elem.Weak[0])*0.01*scale
+		coord[1] = position[1] + (v[0]*elem.Strong[1]+v[1]*elem.Weak[1])*0.01*scale
+		coord[2] = position[2] + (v[0]*elem.Strong[2]+v[1]*elem.Weak[2])*0.01*scale
 		pc := elem.Frame.View.ProjectCoord(coord)
 		cvs.FVertex(pc[0], pc[1])
 	}
@@ -629,7 +633,6 @@ func DrawSection(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 		}
 	}
 }
-
 
 // KIJUN
 var fl = regexp.MustCompile("FL$")
@@ -677,7 +680,7 @@ func DrawMeasure(m *st.Measure, cvs *cd.Canvas, show *st.Show) {
 	n2 := make([]float64, 3)
 	n3 := make([]float64, 3)
 	n4 := make([]float64, 3)
-	for i:=0; i<3; i++ {
+	for i := 0; i < 3; i++ {
 		d1 := m.Direction[i] * m.Gap
 		d2 := m.Direction[i] * (m.Gap + m.Extension)
 		n1[i] = m.Start[i] + d1
@@ -694,17 +697,17 @@ func DrawMeasure(m *st.Measure, cvs *cd.Canvas, show *st.Show) {
 	cvs.FLine(pn3[0], pn3[1], pn4[0], pn4[1])
 	cvs.FFilledCircle(pn2[0], pn2[1], m.ArrowSize)
 	cvs.FFilledCircle(pn3[0], pn3[1], m.ArrowSize)
-	xpos := 0.5*(pn2[0] + pn3[0])
-	ypos := 0.5*(pn2[1] + pn3[1])
+	xpos := 0.5 * (pn2[0] + pn3[0])
+	ypos := 0.5 * (pn2[1] + pn3[1])
 	pd := make([]float64, 2)
 	pd[0] = pn3[0] - pn2[0]
 	pd[1] = pn3[1] - pn2[1]
-	l := math.Sqrt(pd[0] * pd[0] + pd[1] * pd[1])
+	l := math.Sqrt(pd[0]*pd[0] + pd[1]*pd[1])
 	if l != 0.0 {
 		pd[0] /= l
 		pd[1] /= l
 	}
-	deg := math.Atan2(pd[1], pd[0]) * 180.0 / math.Pi + m.Rotate
+	deg := math.Atan2(pd[1], pd[0])*180.0/math.Pi + m.Rotate
 	if deg > 90.0 {
 		deg -= 180.0
 	} else if deg < -90.0 {

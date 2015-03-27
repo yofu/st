@@ -440,7 +440,7 @@ func (node *Node) CurrentValue(show *Show, max bool) float64 {
 		if show.NodeCaption&j != 0 {
 			if !node.Conf[i] {
 				if i < 3 {
-					return node.ReturnDisp(show.Period, i)*100.0
+					return node.ReturnDisp(show.Period, i) * 100.0
 				} else {
 					return node.ReturnDisp(show.Period, i)
 				}

@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/yofu/st/arclm"
 	"math"
 	"sort"
 	"strings"
-	"github.com/yofu/st/arclm"
 )
 
 // Constants & Variables// {{{
@@ -669,7 +669,7 @@ func (elem *Elem) Height() float64 {
 		return math.Abs(elem.Enod[1].Coord[2] - elem.Enod[0].Coord[2])
 	} else {
 		max := -1e+16
-		min :=  1e+16
+		min := 1e+16
 		for _, en := range elem.Enod {
 			if en.Coord[2] > max {
 				max = en.Coord[2]

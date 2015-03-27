@@ -3,11 +3,11 @@ package st
 import (
 	"bufio"
 	"bytes"
+	"errors"
+	"fmt"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/japanese"
 	"golang.org/x/text/transform"
-	"errors"
-	"fmt"
 	"io"
 	"math"
 	"os"
@@ -363,12 +363,12 @@ func ProjectName(fn string) string {
 func IsParallel(v1, v2 []float64, eps float64) bool {
 	j := 0
 	val := 0.0
-	for i:=0;i<3;i++ {
-		j=i+1
-		if j>=3 {
-			j-=3
+	for i := 0; i < 3; i++ {
+		j = i + 1
+		if j >= 3 {
+			j -= 3
 		}
-		val=v1[i]*v2[j]-v1[j]*v2[i];
+		val = v1[i]*v2[j] - v1[j]*v2[i]
 		if (val > 2*eps) || (val < -2*eps) {
 			return false
 		}
