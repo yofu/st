@@ -3693,10 +3693,37 @@ func (stw *Window) exmode(command string) error {
 				stw.addHistory(":read type filename")
 				return nil
 			}
+			t := strings.ToLower(args[1])
 			if narg < 3 {
-				err := stw.ReadFile(fn)
-				if err != nil {
-					return err
+				switch t {
+				case "$all":
+					stw.ReadAll()
+				case "$data":
+					for _, ext := range []string{".inl", ".ihx", ".ihy"} {
+						err := stw.Frame.ReadData(st.Ce(stw.Frame.Path, ext))
+						if err != nil {
+							stw.errormessage(err, ERROR)
+						}
+					}
+				case "$results":
+					mode := st.UPDATE_RESULT
+					if _, ok := argdict["ADD"]; ok {
+						mode = st.ADD_RESULT
+						if _, ok2 := argdict["SEARCH"]; ok2 {
+							mode = st.ADDSEARCH_RESULT
+						}
+					}
+					for _, ext := range []string{".otl", ".ohx", ".ohy"} {
+						err := stw.Frame.ReadResult(st.Ce(stw.Frame.Path, ext), uint(mode))
+						if err != nil {
+							stw.errormessage(err, ERROR)
+						}
+					}
+				default:
+					err := stw.ReadFile(fn)
+					if err != nil {
+						return err
+					}
 				}
 				return nil
 			}
@@ -3704,7 +3731,6 @@ func (stw *Window) exmode(command string) error {
 			if filepath.Dir(fn) == "." {
 				fn = filepath.Join(stw.Cwd, fn)
 			}
-			t := strings.ToLower(args[1])
 			switch {
 			case abbrev.For("d/ata", t):
 				err := stw.Frame.ReadData(fn)
@@ -3753,8 +3779,6 @@ func (stw *Window) exmode(command string) error {
 				if err != nil {
 					return err
 				}
-			case t == "all":
-				stw.ReadAll()
 			case t == "pgp":
 				al := make(map[string]*Command, 0)
 				err := ReadPgp(fn, al)
