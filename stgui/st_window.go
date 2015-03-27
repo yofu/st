@@ -6147,6 +6147,9 @@ func (stw *Window) SetViewData() {
 }
 
 func (stw *Window) Bbox() (xmin, xmax, ymin, ymax float64) {
+	if stw.Frame == nil || len(stw.Frame.Nodes) == 0 {
+		return 0.0, 0.0, 0.0, 0.0
+	}
 	var mins, maxs [2]float64
 	first := true
 	for _, j := range stw.Frame.Nodes {
@@ -6715,6 +6718,9 @@ func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
 		stw.Frame.View.ProjectNode(n)
 	}
 	xmin, xmax, ymin, ymax := stw.Bbox()
+	if xmax == xmin && ymax == ymin {
+		return
+	}
 	w, h, err := stw.PaperSize(canv)
 	if err != nil {
 		stw.errormessage(err, ERROR)
@@ -6736,6 +6742,9 @@ func (stw *Window) ShowAtCanvasCenter(canv *cd.Canvas) {
 		stw.Frame.View.ProjectNode(n)
 	}
 	xmin, xmax, ymin, ymax := stw.Bbox()
+	if xmax == xmin && ymax == ymin {
+		return
+	}
 	w, h := canv.GetSize()
 	scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * 0.9
 	if stw.Frame.View.Perspective {
