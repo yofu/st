@@ -419,6 +419,14 @@ func (node *Node) ConfState() int {
 	return rtn
 }
 
+func (node *Node) DistFromProjection(v *View) float64 {
+	vec := make([]float64, 3)
+	for i := 0; i < 3; i++ {
+		vec[i] = node.Coord[i] - v.Focus[i]
+	}
+	return v.Dists[0] - Dot(vec, v.Viewpoint[0], 3)
+}
+
 func (node *Node) CurrentValue(show *Show, max bool) float64 {
 	if show.NodeCaption&NC_NUM != 0 {
 		return float64(node.Num)

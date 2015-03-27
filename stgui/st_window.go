@@ -6787,6 +6787,10 @@ func (stw *Window) PickNode(x, y int) (rtn *st.Node) {
 		if dist < mindist {
 			mindist = dist
 			rtn = v
+		} else if dist == mindist {
+			if rtn.DistFromProjection(stw.Frame.View) > v.DistFromProjection(stw.Frame.View) {
+				rtn = v
+			}
 		}
 	}
 	if stw.Frame.Show.Kijun {
