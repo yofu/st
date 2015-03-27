@@ -4523,8 +4523,14 @@ func (stw *Window) exmode(command string) error {
 			maxval := -1e16
 			var valfunc func(*st.Elem) float64
 			var sel *st.Elem
-			valfunc = func(elem *st.Elem) float64 {
-				return elem.CurrentValue(stw.Frame.Show, true)
+			if _, ok := argdict["ABS"]; ok {
+				valfunc = func(elem *st.Elem) float64 {
+					return math.Abs(elem.CurrentValue(stw.Frame.Show, true))
+				}
+			} else {
+				valfunc = func(elem *st.Elem) float64 {
+					return elem.CurrentValue(stw.Frame.Show, true)
+				}
 			}
 			for _, el := range stw.SelectElem {
 				if el == nil {
@@ -4543,8 +4549,14 @@ func (stw *Window) exmode(command string) error {
 			maxval := -1e16
 			var valfunc func(*st.Node) float64
 			var sn *st.Node
-			valfunc = func(node *st.Node) float64 {
-				return node.CurrentValue(stw.Frame.Show, true)
+			if _, ok := argdict["ABS"]; ok {
+				valfunc = func(node *st.Node) float64 {
+					return math.Abs(node.CurrentValue(stw.Frame.Show, true))
+				}
+			} else {
+				valfunc = func(node *st.Node) float64 {
+					return node.CurrentValue(stw.Frame.Show, true)
+				}
 			}
 			for _, n := range stw.SelectNode {
 				if n == nil {
@@ -4567,8 +4579,14 @@ func (stw *Window) exmode(command string) error {
 			minval := 1e16
 			var valfunc func(*st.Elem) float64
 			var sel *st.Elem
-			valfunc = func(elem *st.Elem) float64 {
-				return elem.CurrentValue(stw.Frame.Show, true)
+			if _, ok := argdict["ABS"]; ok {
+				valfunc = func(elem *st.Elem) float64 {
+					return math.Abs(elem.CurrentValue(stw.Frame.Show, false))
+				}
+			} else {
+				valfunc = func(elem *st.Elem) float64 {
+					return elem.CurrentValue(stw.Frame.Show, false)
+				}
 			}
 			for _, el := range stw.SelectElem {
 				if el == nil {
@@ -4587,8 +4605,14 @@ func (stw *Window) exmode(command string) error {
 			minval := 1e16
 			var valfunc func(*st.Node) float64
 			var sn *st.Node
-			valfunc = func(node *st.Node) float64 {
-				return node.CurrentValue(stw.Frame.Show, true)
+			if _, ok := argdict["ABS"]; ok {
+				valfunc = func(node *st.Node) float64 {
+					return math.Abs(node.CurrentValue(stw.Frame.Show, false))
+				}
+			} else {
+				valfunc = func(node *st.Node) float64 {
+					return node.CurrentValue(stw.Frame.Show, false)
+				}
 			}
 			for _, n := range stw.SelectNode {
 				if n == nil {
@@ -4609,8 +4633,14 @@ func (stw *Window) exmode(command string) error {
 	case abbrev.For("ave/rage", cname):
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			var valfunc func(*st.Elem) float64
-			valfunc = func(elem *st.Elem) float64 {
-				return elem.CurrentValue(stw.Frame.Show, true)
+			if _, ok := argdict["ABS"]; ok {
+				valfunc = func(elem *st.Elem) float64 {
+					return math.Abs(elem.CurrentValue(stw.Frame.Show, false))
+				}
+			} else {
+				valfunc = func(elem *st.Elem) float64 {
+					return elem.CurrentValue(stw.Frame.Show, false)
+				}
 			}
 			val := 0.0
 			num := 0
@@ -4626,8 +4656,14 @@ func (stw *Window) exmode(command string) error {
 			}
 		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
 			var valfunc func(*st.Node) float64
-			valfunc = func(node *st.Node) float64 {
-				return node.CurrentValue(stw.Frame.Show, true)
+			if _, ok := argdict["ABS"]; ok {
+				valfunc = func(node *st.Node) float64 {
+					return math.Abs(node.CurrentValue(stw.Frame.Show, false))
+				}
+			} else {
+				valfunc = func(node *st.Node) float64 {
+					return node.CurrentValue(stw.Frame.Show, false)
+				}
 			}
 			val := 0.0
 			num := 0
@@ -4647,8 +4683,14 @@ func (stw *Window) exmode(command string) error {
 	case cname=="sum":
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			var valfunc func(*st.Elem) float64
-			valfunc = func(elem *st.Elem) float64 {
-				return elem.CurrentValue(stw.Frame.Show, true)
+			if _, ok := argdict["ABS"]; ok {
+				valfunc = func(elem *st.Elem) float64 {
+					return math.Abs(elem.CurrentValue(stw.Frame.Show, false))
+				}
+			} else {
+				valfunc = func(elem *st.Elem) float64 {
+					return elem.CurrentValue(stw.Frame.Show, false)
+				}
 			}
 			val := 0.0
 			num := 0
@@ -4664,8 +4706,14 @@ func (stw *Window) exmode(command string) error {
 			}
 		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
 			var valfunc func(*st.Node) float64
-			valfunc = func(node *st.Node) float64 {
-				return node.CurrentValue(stw.Frame.Show, true)
+			if _, ok := argdict["ABS"]; ok {
+				valfunc = func(node *st.Node) float64 {
+					return math.Abs(node.CurrentValue(stw.Frame.Show, false))
+				}
+			} else {
+				valfunc = func(node *st.Node) float64 {
+					return node.CurrentValue(stw.Frame.Show, false)
+				}
 			}
 			val := 0.0
 			num := 0
