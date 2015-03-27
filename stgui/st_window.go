@@ -292,6 +292,8 @@ type Window struct { // {{{
 	InpModified bool
 	Changed     bool
 
+	exmodech    chan(interface{})
+
 	comhist     []string
 	recentfiles []string
 	undostack   []*st.Frame
@@ -1213,6 +1215,7 @@ func NewWindow(homedir string) *Window { // {{{
 	StartLogging()
 	stw.New()
 	stw.ShowLogo()
+	stw.exmodech = make(chan interface{})
 	return stw
 }
 
@@ -3620,6 +3623,9 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.ShapeData(al)
+		go func(a interface{}) {
+			stw.exmodech <-a
+		}(al)
 	case abbrev.For("hw/eak", cname):
 		if usage {
 			stw.addHistory(":hweak h b tw tf")
@@ -3633,6 +3639,9 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.ShapeData(al)
+		go func(a interface{}) {
+			stw.exmodech <-a
+		}(al)
 	case abbrev.For("rp/ipe", cname):
 		if usage {
 			stw.addHistory(":rpipe h b tw tf")
@@ -3646,6 +3655,9 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.ShapeData(al)
+		go func(a interface{}) {
+			stw.exmodech <-a
+		}(al)
 	case abbrev.For("cp/ipe", cname):
 		if usage {
 			stw.addHistory(":cpipe d t")
@@ -3659,6 +3671,9 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.ShapeData(al)
+		go func(a interface{}) {
+			stw.exmodech <-a
+		}(al)
 	case abbrev.For("tk/you", cname):
 		if usage {
 			stw.addHistory(":tkyou h b tw tf")
@@ -5220,6 +5235,23 @@ func (stw *Window) exmode(command string) error {
 		}
 		snum := int(tmp)
 		if sec, ok := stw.Frame.Sects[snum]; ok {
+			if narg >= 3 && args[2] == "<-" {
+				select {
+				default:
+					break
+				case al := <-stw.exmodech:
+					switch al.(type) {
+					case st.Shape:
+						if sec.HasArea() {
+							sec.Figs[0].Value["AREA"] = al.(st.Shape).A() * 0.0001
+							sec.Figs[0].Value["IXX"]  = al.(st.Shape).Ix() * 1e-8
+							sec.Figs[0].Value["IYY"]  = al.(st.Shape).Iy() * 1e-8
+							sec.Figs[0].Value["VEN"]  = al.(st.Shape).J() * 1e-8
+							sec.Name = al.(st.Shape).Description()
+						}
+					}
+				}
+			}
 			stw.SectionData(sec)
 		} else {
 			return errors.New(fmt.Sprintf(":section SECT %d doesn't exist", snum))
