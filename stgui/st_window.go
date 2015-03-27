@@ -4916,6 +4916,43 @@ func (stw *Window) exmode(command string) error {
 			el.Prestress = val
 		}
 		stw.Snapshot()
+	case abbrev.For("therm/al", cname):
+		if usage {
+			stw.addHistory(":thermal tmp[℃]")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":thermal")
+		}
+		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+			return errors.New(":thermal no selected elem")
+		}
+		tmp, err := strconv.ParseFloat(args[1], 64)
+		if err != nil {
+			return err
+		}
+		alpha := 12.0 * 1e-6
+		if al, ok := argdict["ALPHA"]; ok {
+			tmpal, err := strconv.ParseFloat(al, 64)
+			if err == nil {
+				alpha = tmpal
+			}
+		}
+		stw.addHistory(fmt.Sprintf("ALPHA: %.3E", alpha))
+		for _, el := range stw.SelectElem {
+			if el == nil || el.Lock || !el.IsLineElem() {
+				continue
+			}
+			if len(el.Sect.Figs) == 0 {
+				continue
+			}
+			if a, ok := el.Sect.Figs[0].Value["AREA"]; ok {
+				val := el.Sect.Figs[0].Prop.E * a * alpha * tmp
+				el.Cmq[0] = val
+				el.Cmq[6] = -val
+			}
+		}
+		stw.Snapshot()
 	case abbrev.For("div/ide", cname):
 		if usage {
 			stw.addHistory(":divide [mid, n, elem, ons, axis, length]")
