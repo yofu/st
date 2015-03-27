@@ -5723,7 +5723,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 	canv.LineStyle(cd.CD_CONTINUOUS)
 	canv.Hatch(cd.CD_FDIAGONAL)
 	if !stw.Frame.Show.Select {
-		els := st.SortedElem(stw.Frame.Elems, func(e *st.Elem) float64 { return -e.DistFromProjection() })
+		els := st.SortedElem(stw.Frame.Elems, func(e *st.Elem) float64 { return -e.DistFromProjection(stw.Frame.View) })
 	loop:
 		for _, el := range els {
 			if el.IsHide(stw.Frame.Show) {
@@ -6932,7 +6932,7 @@ func (stw *Window) PickPlateElem(x, y int) []*st.Elem {
 			}
 		}
 	}
-	return st.SortedElem(rtn, func(e *st.Elem) float64 { return e.DistFromProjection() })
+	return st.SortedElem(rtn, func(e *st.Elem) float64 { return e.DistFromProjection(stw.Frame.View) })
 }
 
 func (stw *Window) SelectElemStart(arg *iup.MouseButton) {

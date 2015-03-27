@@ -1965,8 +1965,7 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 	}
 }
 
-func (elem *Elem) DistFromProjection() float64 {
-	v := elem.Frame.View
+func (elem *Elem) DistFromProjection(v *View) float64 {
 	vec := make([]float64, 3)
 	coord := elem.MidPoint()
 	for i := 0; i < 3; i++ {
