@@ -3869,6 +3869,9 @@ func (stw *Window) exmode(command string) error {
 			stw.addHistory(":read type filename")
 			return nil
 		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":read")
+		}
 		t := strings.ToLower(args[1])
 		if narg < 3 {
 			switch t {
