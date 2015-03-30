@@ -4866,8 +4866,28 @@ func (stw *Window) exmode(command string) error {
 		if narg < 2 {
 			return st.NotEnoughArgs(":bond")
 		}
+		var els []*st.Elem
 		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-			return errors.New(":bond no selected elem")
+			enum := 0
+			els = make([]*st.Elem, 0)
+			ex_bond:
+			for {
+				select {
+				default:
+					break ex_bond
+				case el :=<-stw.exmodech:
+					if el, ok := el.(*st.Elem); ok {
+						els = append(els, el)
+						enum++
+					}
+				}
+			}
+			if enum == 0 {
+				return errors.New(":bond no selected elem")
+			}
+			els = els[:enum]
+		} else {
+			els = stw.SelectElem
 		}
 		lis := make([]bool, 6)
 		switch strings.ToUpper(args[1]) {
@@ -4904,7 +4924,7 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 		}
-		for _, el := range stw.SelectElem {
+		for _, el := range els {
 			if !el.IsLineElem() {
 				continue
 			}
