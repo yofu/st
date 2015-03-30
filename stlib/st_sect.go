@@ -215,7 +215,7 @@ func (sect *Sect) HasBrace() bool {
 }
 
 func (sect *Sect) HasArea(ind int) bool {
-	if len(sect.Figs) < ind {
+	if len(sect.Figs) < ind+1 {
 		return false
 	}
 	if _, ok := sect.Figs[ind].Value["AREA"]; ok {
@@ -226,7 +226,7 @@ func (sect *Sect) HasArea(ind int) bool {
 }
 
 func (sect *Sect) HasThick(ind int) bool {
-	if len(sect.Figs) < ind {
+	if len(sect.Figs) < ind+1 {
 		return false
 	}
 	if _, ok := sect.Figs[ind].Value["THICK"]; ok {
