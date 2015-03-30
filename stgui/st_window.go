@@ -4344,6 +4344,23 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.addHistory(fmt.Sprintf("Output: %s", fn))
+	case "amountprop":
+		if usage {
+			stw.addHistory(":amountprop propcode")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":amountprop")
+		}
+		props := SplitNums(strings.Join(args[1:], " "))
+		if len(props) == 0 {
+			return errors.New(":amountprop: no selected prop")
+		}
+		fn := filepath.Join(filepath.Dir(stw.Frame.Path), "amount.txt")
+		err := stw.Frame.AmountProp(fn, props...)
+		if err != nil {
+			return err
+		}
 	case "node":
 		if usage {
 			stw.addHistory(":node nnum")

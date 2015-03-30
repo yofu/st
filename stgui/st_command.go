@@ -3968,41 +3968,13 @@ func amountprop(stw *Window) {
 		}
 		props[i] = int(val)
 	}
-	total := 0.0
-	sects := make([]*st.Sect, len(stw.Frame.Sects))
-	snum := 0
-	for _, sec := range stw.Frame.Sects {
-		if sec.Num > 900 {
-			continue
-		}
-		sects[snum] = sec
-		snum++
-	}
-	sects = sects[:snum]
-	sort.Sort(st.SectByNum{sects})
-	var otp bytes.Buffer
-	otp.WriteString("断面 名前                                     長さ     断面積   単位重量 重量\n")
-	otp.WriteString("                                              面積     板厚\n")
-	for _, sec := range sects {
-		size := sec.PropSize(props)
-		if size == 0.0 {
-			continue
-		}
-		amount := sec.TotalAmount()
-		weight := sec.PropWeight(props)
-		totalweight := amount * weight
-		otp.WriteString(fmt.Sprintf("%4d %-40s %8.3f %8.4f %8.4f %8.3f\n", sec.Num, sec.Name, amount, size, weight, totalweight))
-		total += totalweight
-	}
-	otp.WriteString(fmt.Sprintf("%79s\n", fmt.Sprintf("合計: %8.3f", total)))
 	fn := filepath.Join(filepath.Dir(stw.Frame.Path), "amount.txt")
-	w, err := os.Create(fn)
-	defer w.Close()
+	err = stw.Frame.AmountProp(fn, props...)
 	if err != nil {
 		stw.errormessage(err, ERROR)
 		stw.EscapeCB()
+		return
 	}
-	otp.WriteTo(w)
 	stw.addHistory(fmt.Sprintf("OUTPUT: %s", fn))
 	stw.EscapeAll()
 }

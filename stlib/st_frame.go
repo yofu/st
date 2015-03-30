@@ -3980,6 +3980,43 @@ fact_node:
 	return nil
 }
 
+func (frame *Frame) AmountProp(fn string, props ...int) error {
+	total := 0.0
+	sects := make([]*Sect, len(frame.Sects))
+	snum := 0
+	for _, sec := range frame.Sects {
+		if sec.Num > 900 {
+			continue
+		}
+		sects[snum] = sec
+		snum++
+	}
+	sects = sects[:snum]
+	sort.Sort(SectByNum{sects})
+	var otp bytes.Buffer
+	otp.WriteString("断面 名前                                     長さ     断面積   単位重量 重量\n")
+	otp.WriteString("                                              面積     板厚\n")
+	for _, sec := range sects {
+		size := sec.PropSize(props)
+		if size == 0.0 {
+			continue
+		}
+		amount := sec.TotalAmount()
+		weight := sec.PropWeight(props)
+		totalweight := amount * weight
+		otp.WriteString(fmt.Sprintf("%4d %-40s %8.3f %8.4f %8.4f %8.3f\n", sec.Num, sec.Name, amount, size, weight, totalweight))
+		total += totalweight
+	}
+	otp.WriteString(fmt.Sprintf("%79s\n", fmt.Sprintf("合計: %8.3f", total)))
+	w, err := os.Create(fn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
+	otp.WriteTo(w)
+	return nil
+}
+
 func (view *View) SetVectorAngle(vec []float64) error {
 	if len(vec) < 3 {
 		return errors.New("SetVectorAngle: vector size error")
