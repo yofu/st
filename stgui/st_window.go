@@ -186,6 +186,7 @@ const (
 	KEY_LEFTARROW  = 132
 	KEY_RIGHTARROW = 134
 	KEY_DOWNARROW  = 136
+	KEY_SPACE      = 32
 	KEY_F4         = 146
 
 	BUTTON_LEFT   = 49
@@ -854,6 +855,15 @@ func NewWindow(homedir string) *Window { // {{{
 					clineinput = stw.cline.GetAttribute("VALUE")
 				}
 				stw.NextCommand(clineinput)
+				arg.Return = int32(iup.IGNORE)
+			case KEY_SPACE:
+				val := stw.cline.GetAttribute("VALUE")
+				if strings.HasPrefix(val, ":") {
+					stw.cline.SetAttribute("VALUE", exmodecomplete(val))
+					stw.cline.SetAttribute("CARETPOS", "100")
+				} else {
+					stw.cline.SetAttribute("INSERT", " ")
+				}
 				arg.Return = int32(iup.IGNORE)
 			case ':':
 				val := stw.cline.GetAttribute("VALUE")
@@ -3485,6 +3495,36 @@ func NextComplete(str string) string {
 		completepos = 0
 	}
 	return completes[completepos]
+}
+
+func exmodecomplete(command string) string {
+	usage := strings.HasSuffix(command, "?")
+	cname := strings.TrimSuffix(command, "?")
+	bang := strings.HasSuffix(cname, "!")
+	cname = strings.TrimSuffix(cname, "!")
+	cname = strings.ToLower(strings.TrimPrefix(cname, ":"))
+	var rtn, b, u string
+	if bang {
+		b = "!"
+	} else {
+		b = ""
+	}
+	if usage {
+		u = "?"
+	} else {
+		u = ""
+	}
+	switch cname {
+	default:
+		return command + " "
+	case "e":
+		rtn = "edit"
+	case "w":
+		rtn = "write"
+	case "sav":
+		rtn = "save"
+	}
+	return fmt.Sprintf(":%s%s%s ", rtn, b, u)
 }
 
 func (stw *Window) exmode(command string) error {
