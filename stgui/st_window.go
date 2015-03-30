@@ -5260,6 +5260,45 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 		}
+	case "add":
+		if usage {
+			stw.addHistory(":add sect sectcode")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":add")
+		}
+		switch strings.ToLower(args[1]) {
+		case "sec", "sect":
+			if narg < 3 {
+				return st.NotEnoughArgs(":add sect")
+			}
+			val, err := strconv.ParseInt(args[2], 10, 64)
+			if err != nil {
+				return err
+			}
+			sec := stw.Frame.AddSect(int(val))
+			select {
+			default:
+				break
+			case al := <-stw.exmodech:
+				if a, ok := al.(st.Shape); ok {
+					sec.Figs = make([]*st.Fig, 1)
+					f := st.NewFig()
+					if p, ok := stw.Frame.Props[101]; ok {
+						f.Prop = p
+					} else {
+						f.Prop = stw.Frame.DefaultProp()
+					}
+					sec.Figs[0] = f
+					sec.Figs[0].Value["AREA"] = a.A() * 0.0001
+					sec.Figs[0].Value["IXX"] = a.Ix() * 1e-8
+					sec.Figs[0].Value["IYY"] = a.Iy() * 1e-8
+					sec.Figs[0].Value["VEN"] = a.J() * 1e-8
+					sec.Name = a.Description()
+				}
+			}
+		}
 	case "max":
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			maxval := -1e16
