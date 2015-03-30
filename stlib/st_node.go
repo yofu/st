@@ -427,7 +427,7 @@ func (node *Node) DistFromProjection(v *View) float64 {
 	return v.Dists[0] - Dot(vec, v.Viewpoint[0], 3)
 }
 
-func (node *Node) CurrentValue(show *Show, max bool) float64 {
+func (node *Node) CurrentValue(show *Show, max, abs bool) float64 {
 	if show.NodeCaption&NC_NUM != 0 {
 		return float64(node.Num)
 	}
@@ -440,9 +440,17 @@ func (node *Node) CurrentValue(show *Show, max bool) float64 {
 		if show.NodeCaption&j != 0 {
 			if !node.Conf[i] {
 				if i < 3 {
-					return node.ReturnDisp(show.Period, i) * 100.0
+					if abs {
+						return math.Abs(node.ReturnDisp(show.Period, i)) * 100.0
+					} else {
+						return node.ReturnDisp(show.Period, i) * 100.0
+					}
 				} else {
-					return node.ReturnDisp(show.Period, i)
+					if abs {
+						return math.Abs(node.ReturnDisp(show.Period, i))
+					} else {
+						return node.ReturnDisp(show.Period, i)
+					}
 				}
 			}
 		}
@@ -451,15 +459,27 @@ func (node *Node) CurrentValue(show *Show, max bool) float64 {
 		if show.NodeCaption&j != 0 {
 			if node.Conf[i] {
 				if i == 2 && show.NodeCaption&NC_WEIGHT != 0 {
-					return node.ReturnReaction(show.Period, i) + node.Weight[1]
+					if abs {
+						return math.Abs(node.ReturnReaction(show.Period, i) + node.Weight[1])
+					} else {
+						return node.ReturnReaction(show.Period, i) + node.Weight[1]
+					}
 				} else {
-					return node.ReturnReaction(show.Period, i)
+					if abs {
+						return math.Abs(node.ReturnReaction(show.Period, i))
+					} else {
+						return node.ReturnReaction(show.Period, i)
+					}
 				}
 			}
 		}
 	}
 	if show.NodeCaption&NC_ZCOORD != 0 {
-		return node.Coord[2]
+		if abs {
+			return math.Abs(node.Coord[2])
+		} else {
+			return node.Coord[2]
+		}
 	}
 	if show.NodeCaption&NC_PILE != 0 {
 		return float64(node.Pile.Num)

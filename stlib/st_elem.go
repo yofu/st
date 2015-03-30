@@ -1974,7 +1974,7 @@ func (elem *Elem) DistFromProjection(v *View) float64 {
 	return v.Dists[0] - Dot(vec, v.Viewpoint[0], 3)
 }
 
-func (elem *Elem) CurrentValue(show *Show, max bool) float64 {
+func (elem *Elem) CurrentValue(show *Show, max, abs bool) float64 {
 	if show.ElemCaption&EC_NUM != 0 {
 		return float64(elem.Num)
 	}
@@ -1995,13 +1995,25 @@ func (elem *Elem) CurrentValue(show *Show, max bool) float64 {
 		return val
 	}
 	if show.ElemCaption&EC_PREST != 0 {
-		return elem.Prestress
+		if abs {
+			return math.Abs(elem.Prestress)
+		} else {
+			return elem.Prestress
+		}
 	}
 	if show.ElemCaption&EC_STIFF_X != 0 {
-		return elem.LateralStiffness("X", false)
+		if abs {
+			return math.Abs(elem.LateralStiffness("X", false))
+		} else {
+			return elem.LateralStiffness("X", false)
+		}
 	}
 	if show.ElemCaption&EC_STIFF_Y != 0 {
-		return elem.LateralStiffness("Y", false)
+		if abs {
+			return math.Abs(elem.LateralStiffness("Y", false))
+		} else {
+			return elem.LateralStiffness("Y", false)
+		}
 	}
 	if show.YieldFunction {
 		f, err := elem.YieldFunction(show.Period)
@@ -2029,6 +2041,10 @@ func (elem *Elem) CurrentValue(show *Show, max bool) float64 {
 				case 1, 2, 3:
 					v1 := elem.ReturnStress(show.Period, 0, i)
 					v2 := elem.ReturnStress(show.Period, 1, i)
+					if abs {
+						v1 = math.Abs(v1)
+						v2 = math.Abs(v2)
+					}
 					if max {
 						if v1 >= v2 {
 							return v1
@@ -2045,6 +2061,10 @@ func (elem *Elem) CurrentValue(show *Show, max bool) float64 {
 				case 4, 5:
 					v1 := elem.ReturnStress(show.Period, 0, i)
 					v2 := elem.ReturnStress(show.Period, 1, i)
+					if abs {
+						v1 = math.Abs(v1)
+						v2 = math.Abs(v2)
+					}
 					if max {
 						if v1 >= v2 {
 							return v1

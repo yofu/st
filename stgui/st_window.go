@@ -4563,13 +4563,15 @@ func (stw *Window) exmode(command string) error {
 			maxval := -1e16
 			var valfunc func(*st.Elem) float64
 			var sel *st.Elem
+			abs := false
 			if _, ok := argdict["ABS"]; ok {
 				valfunc = func(elem *st.Elem) float64 {
-					return math.Abs(elem.CurrentValue(stw.Frame.Show, true))
+					return elem.CurrentValue(stw.Frame.Show, true, true)
 				}
+				abs = true
 			} else {
 				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, true)
+					return elem.CurrentValue(stw.Frame.Show, true, false)
 				}
 			}
 			for _, el := range stw.SelectElem {
@@ -4583,19 +4585,21 @@ func (stw *Window) exmode(command string) error {
 			}
 			if sel != nil {
 				stw.SelectElem = []*st.Elem{sel}
-				stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, true)))
+				stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, true, abs)))
 			}
 		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
 			maxval := -1e16
 			var valfunc func(*st.Node) float64
 			var sn *st.Node
+			abs := false
 			if _, ok := argdict["ABS"]; ok {
 				valfunc = func(node *st.Node) float64 {
-					return math.Abs(node.CurrentValue(stw.Frame.Show, true))
+					return node.CurrentValue(stw.Frame.Show, true, true)
 				}
+				abs = true
 			} else {
 				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, true)
+					return node.CurrentValue(stw.Frame.Show, true, false)
 				}
 			}
 			for _, n := range stw.SelectNode {
@@ -4609,7 +4613,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			if sn != nil {
 				stw.SelectNode = []*st.Node{sn}
-				stw.addHistory(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, true)))
+				stw.addHistory(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, true, abs)))
 			}
 		} else {
 			return errors.New(":max no selected elem/node")
@@ -4619,13 +4623,15 @@ func (stw *Window) exmode(command string) error {
 			minval := 1e16
 			var valfunc func(*st.Elem) float64
 			var sel *st.Elem
+			abs := false
 			if _, ok := argdict["ABS"]; ok {
 				valfunc = func(elem *st.Elem) float64 {
-					return math.Abs(elem.CurrentValue(stw.Frame.Show, false))
+					return elem.CurrentValue(stw.Frame.Show, false, true)
 				}
+				abs = true
 			} else {
 				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, false)
+					return elem.CurrentValue(stw.Frame.Show, false, false)
 				}
 			}
 			for _, el := range stw.SelectElem {
@@ -4639,19 +4645,21 @@ func (stw *Window) exmode(command string) error {
 			}
 			if sel != nil {
 				stw.SelectElem = []*st.Elem{sel}
-				stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, false)))
+				stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, false, abs)))
 			}
 		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
 			minval := 1e16
 			var valfunc func(*st.Node) float64
 			var sn *st.Node
+			abs := false
 			if _, ok := argdict["ABS"]; ok {
 				valfunc = func(node *st.Node) float64 {
-					return math.Abs(node.CurrentValue(stw.Frame.Show, false))
+					return node.CurrentValue(stw.Frame.Show, false, true)
 				}
+				abs = true
 			} else {
 				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, false)
+					return node.CurrentValue(stw.Frame.Show, false, false)
 				}
 			}
 			for _, n := range stw.SelectNode {
@@ -4665,7 +4673,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			if sn != nil {
 				stw.SelectNode = []*st.Node{sn}
-				stw.addHistory(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, false)))
+				stw.addHistory(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, false, abs)))
 			}
 		} else {
 			return errors.New(":min no selected elem/node")
@@ -4675,11 +4683,11 @@ func (stw *Window) exmode(command string) error {
 			var valfunc func(*st.Elem) float64
 			if _, ok := argdict["ABS"]; ok {
 				valfunc = func(elem *st.Elem) float64 {
-					return math.Abs(elem.CurrentValue(stw.Frame.Show, false))
+					return elem.CurrentValue(stw.Frame.Show, false, true)
 				}
 			} else {
 				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, false)
+					return elem.CurrentValue(stw.Frame.Show, false, false)
 				}
 			}
 			val := 0.0
@@ -4698,11 +4706,11 @@ func (stw *Window) exmode(command string) error {
 			var valfunc func(*st.Node) float64
 			if _, ok := argdict["ABS"]; ok {
 				valfunc = func(node *st.Node) float64 {
-					return math.Abs(node.CurrentValue(stw.Frame.Show, false))
+					return node.CurrentValue(stw.Frame.Show, false, true)
 				}
 			} else {
 				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, false)
+					return node.CurrentValue(stw.Frame.Show, false, false)
 				}
 			}
 			val := 0.0
@@ -4725,11 +4733,11 @@ func (stw *Window) exmode(command string) error {
 			var valfunc func(*st.Elem) float64
 			if _, ok := argdict["ABS"]; ok {
 				valfunc = func(elem *st.Elem) float64 {
-					return math.Abs(elem.CurrentValue(stw.Frame.Show, false))
+					return elem.CurrentValue(stw.Frame.Show, false, true)
 				}
 			} else {
 				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, false)
+					return elem.CurrentValue(stw.Frame.Show, false, false)
 				}
 			}
 			val := 0.0
@@ -4748,11 +4756,11 @@ func (stw *Window) exmode(command string) error {
 			var valfunc func(*st.Node) float64
 			if _, ok := argdict["ABS"]; ok {
 				valfunc = func(node *st.Node) float64 {
-					return math.Abs(node.CurrentValue(stw.Frame.Show, false))
+					return node.CurrentValue(stw.Frame.Show, false, true)
 				}
 			} else {
 				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, false)
+					return node.CurrentValue(stw.Frame.Show, false, false)
 				}
 			}
 			val := 0.0
