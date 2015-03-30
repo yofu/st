@@ -1980,6 +1980,9 @@ func conffree(stw *Window) {
 			n.Conf[i] = false
 			n.Conf[i+3] = false
 		}
+		if n.Pile != nil {
+			n.Pile = nil
+		}
 	}
 	stw.Snapshot()
 	stw.EscapeCB()
