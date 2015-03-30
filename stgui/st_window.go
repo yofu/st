@@ -1628,6 +1628,11 @@ func (stw *Window) OpenFile(filename string) error {
 	}
 	if s != nil {
 		stw.Frame.Show = s
+		for snum := range stw.Frame.Sects {
+			if _, ok := stw.Frame.Show.Sect[snum]; !ok {
+				stw.Frame.Show.Sect[snum] = true
+			}
+		}
 	}
 	openstr := fmt.Sprintf("OPEN: %s", fn)
 	stw.addHistory(openstr)
