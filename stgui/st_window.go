@@ -5210,6 +5210,33 @@ func (stw *Window) exmode(command string) error {
 		}
 		stw.SelectElem = tmpels[:enum]
 		stw.Snapshot()
+	case "thick":
+		if usage {
+			stw.addHistory(":thick nfig val")
+			return nil
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":thick")
+		}
+		tmp, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		val, err := strconv.ParseFloat(args[2], 64)
+		if err != nil {
+			return err
+		}
+		ind := int(tmp) - 1
+		select {
+		default:
+			break
+		case sec :=<-stw.exmodech:
+			if sec, ok := sec.(*st.Sect); ok {
+				if sec.HasThick(ind) {
+					sec.Figs[ind].Value["THICK"] = val
+				}
+			}
+		}
 	case "elemduplication":
 		if usage {
 			stw.addHistory(":elemduplication {-ignoresect=code}")

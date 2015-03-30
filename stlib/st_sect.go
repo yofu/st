@@ -226,6 +226,17 @@ func (sect *Sect) HasArea() bool {
 	return false
 }
 
+func (sect *Sect) HasThick(ind int) bool {
+	if len(sect.Figs) < ind {
+		return false
+	}
+	if _, ok := sect.Figs[ind].Value["THICK"]; ok {
+		return true
+	} else {
+		return false
+	}
+}
+
 func (sect *Sect) Area() (float64, error) {
 	if len(sect.Figs) == 0 {
 		return 0.0, errors.New(fmt.Sprintf("Area: SECT %d has no Fig", sect.Num))
