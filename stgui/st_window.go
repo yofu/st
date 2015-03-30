@@ -8109,10 +8109,16 @@ func (stw *Window) UpdatePropertyDialog() {
 		if lines > 0 {
 			stw.Selected[0].SetAttribute("VALUE", fmt.Sprintf("%d", lines))
 			stw.Selected[1].SetAttribute("VALUE", fmt.Sprintf("%.3f", length))
+		} else {
+			stw.Selected[0].SetAttribute("VALUE", "-")
+			stw.Selected[1].SetAttribute("VALUE", "-")
 		}
 		if plates > 0 {
 			stw.Selected[2].SetAttribute("VALUE", fmt.Sprintf("%d", plates))
 			stw.Selected[3].SetAttribute("VALUE", fmt.Sprintf("%.3f", area))
+		} else {
+			stw.Selected[0].SetAttribute("VALUE", "-")
+			stw.Selected[1].SetAttribute("VALUE", "-")
 		}
 	} else {
 		for i := 0; i < 4; i++ {
