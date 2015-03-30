@@ -5344,7 +5344,11 @@ func (stw *Window) exmode(command string) error {
 			stw.addHistory(":filter condition")
 			return nil
 		}
-		stw.FilterSelectedElem(strings.Join(args[1:], " "))
+		tmpels, err := stw.FilterElem(stw.SelectElem, strings.Join(args[1:], " "))
+		if err != nil {
+			return err
+		}
+		stw.SelectElem = tmpels
 	case "height":
 		if usage {
 			stw.addHistory(":height f1 f2")
@@ -6749,10 +6753,10 @@ func EtypeFilter(str string) (func(*st.Elem) bool, string) {
 	return filterfunc, hstr
 }
 
-func (stw *Window) FilterSelectedElem(str string) {
-	l := len(stw.SelectElem)
-	if stw.SelectElem == nil || l == 0 {
-		return
+func (stw *Window) FilterElem(els []*st.Elem, str string) ([]*st.Elem, error) {
+	l := len(els)
+	if els == nil || l == 0 {
+		return nil, errors.New("number of input elems is zero")
 	}
 	parallel := regexp.MustCompile("(?i)^ *// *([xyz]{1})")
 	ortho := regexp.MustCompile("^ *TT *([xyzXYZ]{1})")
@@ -6867,7 +6871,7 @@ func (stw *Window) FilterSelectedElem(str string) {
 	if filterfunc != nil {
 		tmpels := make([]*st.Elem, l)
 		enum := 0
-		for _, el := range stw.SelectElem {
+		for _, el := range els {
 			if el == nil {
 				continue
 			}
@@ -6876,9 +6880,11 @@ func (stw *Window) FilterSelectedElem(str string) {
 				enum++
 			}
 		}
-		stw.SelectElem = tmpels[:enum]
+		rtn := tmpels[:enum]
 		stw.addHistory(fmt.Sprintf("FILTER: %s", hstr))
-		stw.Redraw()
+		return rtn, nil
+	} else {
+		return els, errors.New("no filtering")
 	}
 }
 
