@@ -234,6 +234,15 @@ var (
 	re_orgsectnum = regexp.MustCompile("(?i)^ *osect? *={0,2} *[[]?([0-9, ]+)[]]?")
 )
 
+var (
+	exabbrev = []string {
+		"e/dit", "q/uit", "vi/m", "hk/you", "hw/eak", "rp/ipe", "cp/ipe", "tk/you", "ck/you", "pla/te", "fixr/otate", "fixm/ove", "noun/do", "un/do", "w/rite", "sav/e", "inc/rement", "c/heck", "r/ead",
+		"ins/ert", "p/rop/s/ect", "w/rite/o/utput", "w/rite/rea/ction", "nmi/nteraction", "fi/g2", "fe/nce", "no/de", "xsc/ale", "ysc/ale", "zsc/ale", "pl/oad", "z/oubun/d/isp", "z/oubun/r/eaction",
+		"fac/ts", "go/han/l/st", "el/em", "ave/rage", "bo/nd", "ax/is/2//c/ang", "resul/tant", "prest/ress", "therm/al", "div/ide", "e/lem/dup/lication", "i/ntersect/a/ll", "co/nf",
+		"pi/le", "sec/tion", "an/alysis", "f/ilter", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "sec/tion/+/", "col/or", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
+	}
+)
+
 // }}}
 
 type Window struct { // {{{
@@ -859,7 +868,19 @@ func NewWindow(homedir string) *Window { // {{{
 			case KEY_SPACE:
 				val := stw.cline.GetAttribute("VALUE")
 				if strings.HasPrefix(val, ":") {
-					stw.cline.SetAttribute("VALUE", exmodecomplete(val))
+					c, bang, usage := exmodecomplete(val)
+					var b, u string
+					if bang {
+						b = "!"
+					} else {
+						b = ""
+					}
+					if usage {
+						u = "?"
+					} else {
+						u = ""
+					}
+					stw.cline.SetAttribute("VALUE", fmt.Sprintf(":%s%s%s ", c, b, u))
 					stw.cline.SetAttribute("CARETPOS", "100")
 				} else {
 					stw.cline.SetAttribute("INSERT", " ")
@@ -3497,34 +3518,24 @@ func NextComplete(str string) string {
 	return completes[completepos]
 }
 
-func exmodecomplete(command string) string {
+func exmodecomplete(command string) (string, bool, bool) {
 	usage := strings.HasSuffix(command, "?")
 	cname := strings.TrimSuffix(command, "?")
 	bang := strings.HasSuffix(cname, "!")
 	cname = strings.TrimSuffix(cname, "!")
 	cname = strings.ToLower(strings.TrimPrefix(cname, ":"))
-	var rtn, b, u string
-	if bang {
-		b = "!"
-	} else {
-		b = ""
+	var rtn string
+	for _, ab := range exabbrev {
+		pat := abbrev.MustCompile(ab)
+		if pat.MatchString(cname) {
+			rtn = pat.Longest()
+			break
+		}
 	}
-	if usage {
-		u = "?"
-	} else {
-		u = ""
+	if rtn == "" {
+		rtn = cname
 	}
-	switch cname {
-	default:
-		return command + " "
-	case "e":
-		rtn = "edit"
-	case "w":
-		rtn = "write"
-	case "sav":
-		rtn = "save"
-	}
-	return fmt.Sprintf(":%s%s%s ", rtn, b, u)
+	return rtn, bang, usage
 }
 
 func (stw *Window) exmode(command string) error {
@@ -3535,11 +3546,6 @@ func (stw *Window) exmode(command string) error {
 		return stw.exmode(stw.lastexcommand)
 	}
 	stw.lastexcommand = command
-	var usage bool
-	if strings.HasSuffix(command, "?") {
-		usage = true
-		command = strings.TrimSuffix(command, "?")
-	}
 	tmpargs := strings.Split(command, " ")
 	args := make([]string, len(tmpargs))
 	argdict := make(map[string]string, 0)
@@ -3578,13 +3584,12 @@ func (stw *Window) exmode(command string) error {
 			fn = filepath.Join(stw.Cwd, fn)
 		}
 	}
-	bang := strings.HasSuffix(args[0], "!")
-	cname := strings.ToLower(strings.TrimSuffix(strings.TrimPrefix(args[0], ":"), "!"))
+	cname, bang, usage := exmodecomplete(args[0])
 	evaluated := true
-	switch {
+	switch cname {
 	default:
 		evaluated = false
-	case abbrev.For("e/dit", cname):
+	case "edit":
 		if usage {
 			stw.addHistory(":edit [filename]")
 			return nil
@@ -3617,13 +3622,13 @@ func (stw *Window) exmode(command string) error {
 		} else {
 			stw.Reload()
 		}
-	case abbrev.For("q/uit", cname):
+	case "quit":
 		if usage {
 			stw.addHistory(":quit")
 			return nil
 		}
 		stw.Close(bang)
-	case cname == "eps":
+	case "eps":
 		if usage {
 			stw.addHistory(":eps val")
 			return nil
@@ -3637,25 +3642,25 @@ func (stw *Window) exmode(command string) error {
 		}
 		EPS = val
 		stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
-	case cname == "mkdir":
+	case "mkdir":
 		if usage {
 			stw.addHistory(":mkdir dirname")
 			return nil
 		}
 		os.MkdirAll(fn, 0644)
-	case cname == "#":
+	case "#":
 		if usage {
 			stw.addHistory(":#")
 			return nil
 		}
 		stw.ShowRecently()
-	case abbrev.For("vi/m", cname):
+	case "vim":
 		if usage {
 			stw.addHistory(":vim filename")
 			return nil
 		}
 		stw.Vim(fn)
-	case abbrev.For("hk/you", cname):
+	case "hkyou":
 		if usage {
 			stw.addHistory(":hkyou h b tw tf")
 			return nil
@@ -3671,7 +3676,7 @@ func (stw *Window) exmode(command string) error {
 		go func(a interface{}) {
 			stw.exmodech <- a
 		}(al)
-	case abbrev.For("hw/eak", cname):
+	case "hweak":
 		if usage {
 			stw.addHistory(":hweak h b tw tf")
 			return nil
@@ -3687,7 +3692,7 @@ func (stw *Window) exmode(command string) error {
 		go func(a interface{}) {
 			stw.exmodech <- a
 		}(al)
-	case abbrev.For("rp/ipe", cname):
+	case "rpipe":
 		if usage {
 			stw.addHistory(":rpipe h b tw tf")
 			return nil
@@ -3703,7 +3708,7 @@ func (stw *Window) exmode(command string) error {
 		go func(a interface{}) {
 			stw.exmodech <- a
 		}(al)
-	case abbrev.For("cp/ipe", cname):
+	case "cpipe":
 		if usage {
 			stw.addHistory(":cpipe d t")
 			return nil
@@ -3719,7 +3724,7 @@ func (stw *Window) exmode(command string) error {
 		go func(a interface{}) {
 			stw.exmodech <- a
 		}(al)
-	case abbrev.For("tk/you", cname):
+	case "tkyou":
 		if usage {
 			stw.addHistory(":tkyou h b tw tf")
 			return nil
@@ -3732,7 +3737,7 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.ShapeData(al)
-	case abbrev.For("ck/you", cname):
+	case "ckyou":
 		if usage {
 			stw.addHistory(":ckyou h b tw tf")
 			return nil
@@ -3745,7 +3750,7 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.ShapeData(al)
-	case abbrev.For("pla/te", cname):
+	case "plate":
 		if usage {
 			stw.addHistory(":plate h b")
 			return nil
@@ -3758,25 +3763,25 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.ShapeData(al)
-	case abbrev.For("fixr/otate", cname):
+	case "fixrotate":
 		fixRotate = !fixRotate
-	case abbrev.For("fixm/ove", cname):
+	case "fixmove":
 		fixMove = !fixMove
-	case abbrev.For("noun/do", cname):
+	case "noundo":
 		NOUNDO = true
 		stw.addHistory("undo/redo is off")
-	case abbrev.For("un/do", cname):
+	case "undo":
 		NOUNDO = false
 		stw.Snapshot()
 		stw.addHistory("undo/redo is on")
-	case cname == "alt":
+	case "alt":
 		ALTSELECTNODE = !ALTSELECTNODE
 		if ALTSELECTNODE {
 			stw.addHistory("select node with Alt key")
 		} else {
 			stw.addHistory("select elem with Alt key")
 		}
-	case cname == "procs":
+	case "procs":
 		if usage {
 			stw.addHistory(":procs numcpu")
 			return nil
@@ -3803,11 +3808,11 @@ func (stw *Window) exmode(command string) error {
 		stw.errormessage(errors.New("frame is nil"), INFO)
 		return nil
 	}
-	switch {
+	switch cname {
 	default:
 		stw.errormessage(errors.New(fmt.Sprintf("no exmode command: %s", cname)), INFO)
 		return nil
-	case abbrev.For("w/rite", cname):
+	case "write":
 		if usage {
 			stw.addHistory(":write")
 			return nil
@@ -3825,7 +3830,7 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 		}
-	case abbrev.For("sav/e", cname):
+	case "save":
 		if usage {
 			stw.addHistory(":save filename")
 			return nil
@@ -3861,7 +3866,7 @@ func (stw *Window) exmode(command string) error {
 				stw.Rebase(fn)
 			}
 		}
-	case abbrev.For("inc/rement", cname):
+	case "increment":
 		if usage {
 			stw.addHistory(":increment {times:1}")
 			return nil
@@ -3901,14 +3906,14 @@ func (stw *Window) exmode(command string) error {
 			stw.Rebase(fn)
 			stw.EditReadme(filepath.Dir(fn))
 		}
-	case abbrev.For("c/heck", cname):
+	case "check":
 		if usage {
 			stw.addHistory(":check")
 			return nil
 		}
 		checkframe(stw)
 		stw.addHistory("CHECKED")
-	case abbrev.For("r/ead", cname):
+	case "read":
 		if usage {
 			stw.addHistory(":read filename")
 			stw.addHistory(":read type filename")
@@ -4011,7 +4016,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			aliases = al
 		}
-	case abbrev.For("ins/ert", cname):
+	case "insert":
 		if usage {
 			stw.addHistory(":insert filename angle(deg)")
 			return nil
@@ -4028,7 +4033,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.EscapeAll()
 		}
-	case abbrev.For("p/rop/s/ect", cname):
+	case "propsect":
 		if usage {
 			stw.addHistory(":propsect filename")
 			return nil
@@ -4038,7 +4043,7 @@ func (stw *Window) exmode(command string) error {
 		if err != nil {
 			return err
 		}
-	case abbrev.For("w/rite/o/utput", cname):
+	case "writeoutput":
 		if usage {
 			stw.addHistory(":writeoutput filename period")
 			return nil
@@ -4056,7 +4061,7 @@ func (stw *Window) exmode(command string) error {
 		if err != nil {
 			return err
 		}
-	case abbrev.For("w/rite/rea/ction", cname):
+	case "writereaction":
 		if usage {
 			stw.addHistory(":writereaction filename direction")
 			return nil
@@ -4079,7 +4084,7 @@ func (stw *Window) exmode(command string) error {
 		if err != nil {
 			return err
 		}
-	case cname == "srcal":
+	case "srcal":
 		if usage {
 			stw.addHistory(":srcal")
 			return nil
@@ -4093,7 +4098,7 @@ func (stw *Window) exmode(command string) error {
 			stw.ReadFile(st.Ce(stw.Frame.Path, ".lst"))
 		}
 		stw.Frame.SectionRateCalculation("L", "X", "X", "Y", "Y", -1.0, cond)
-	case abbrev.For("nmi/nteraction", cname):
+	case "nminteraction":
 		if usage {
 			stw.addHistory(":nminteraction sectcode")
 			return nil
@@ -4143,7 +4148,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			otp.WriteTo(w)
 		}
-	case abbrev.For("fi/g2", cname):
+	case "fig2":
 		if usage {
 			stw.addHistory(":fig2 filename")
 			return nil
@@ -4152,7 +4157,7 @@ func (stw *Window) exmode(command string) error {
 		if err != nil {
 			return err
 		}
-	case abbrev.For("fe/nce", cname):
+	case "fence":
 		if usage {
 			stw.addHistory(":fence axis coord")
 			return nil
@@ -4176,7 +4181,7 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.SelectElem = stw.Frame.Fence(axis, val, false)
-	case abbrev.For("no/de", cname):
+	case "node":
 		if usage {
 			stw.addHistory(":node nnum")
 			stw.addHistory(":node [x,y,z] [>,<,=] coord")
@@ -4319,7 +4324,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.SelectNode = stw.SelectNode[:num]
 		}
-	case abbrev.For("xsc/ale", cname):
+	case "xscale":
 		if usage {
 			stw.addHistory(":xscale factor coord")
 			return nil
@@ -4345,7 +4350,7 @@ func (stw *Window) exmode(command string) error {
 			n.Scale([]float64{coord, 0.0, 0.0}, factor, 1.0, 1.0)
 		}
 		stw.Snapshot()
-	case abbrev.For("ysc/ale", cname):
+	case "yscale":
 		if usage {
 			stw.addHistory(":yscale factor coord")
 			return nil
@@ -4371,7 +4376,7 @@ func (stw *Window) exmode(command string) error {
 			n.Scale([]float64{0.0, coord, 0.0}, 1.0, factor, 1.0)
 		}
 		stw.Snapshot()
-	case abbrev.For("zsc/ale", cname):
+	case "zscale":
 		if usage {
 			stw.addHistory(":zscale factor coord")
 			return nil
@@ -4397,7 +4402,7 @@ func (stw *Window) exmode(command string) error {
 			n.Scale([]float64{0.0, 0.0, coord}, 1.0, 1.0, factor)
 		}
 		stw.Snapshot()
-	case abbrev.For("pl/oad", cname):
+	case "pload":
 		if usage {
 			stw.addHistory(":pload position value")
 			return nil
@@ -4423,7 +4428,7 @@ func (stw *Window) exmode(command string) error {
 			n.Load[int(ind)] = val
 		}
 		stw.Snapshot()
-	case abbrev.For("z/oubun/d/isp", cname):
+	case "zoubundisp":
 		if usage {
 			stw.addHistory(":zoubundisp period direction")
 			return nil
@@ -4448,7 +4453,7 @@ func (stw *Window) exmode(command string) error {
 		if err != nil {
 			return err
 		}
-	case abbrev.For("z/oubun/r/eaction", cname):
+	case "zoubunreaction":
 		if usage {
 			stw.addHistory(":zoubunreaction period direction")
 			return nil
@@ -4473,7 +4478,7 @@ func (stw *Window) exmode(command string) error {
 		if err != nil {
 			return err
 		}
-	case abbrev.For("fac/ts", cname):
+	case "facts":
 		if usage {
 			stw.addHistory(":facts {-skipany=code} {-skipall=code}")
 			return nil
@@ -4505,7 +4510,7 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.addHistory(fmt.Sprintf("Output: %s", fn))
-	case abbrev.For("go/han/l/st", cname):
+	case "gohanlst":
 		if usage {
 			stw.addHistory(":gohanlst factor sectcode...")
 			return nil
@@ -4540,7 +4545,7 @@ func (stw *Window) exmode(command string) error {
 		}
 		otp = st.AddCR(otp)
 		otp.WriteTo(w)
-	case abbrev.For("el/em", cname):
+	case "elem":
 		if usage {
 			stw.addHistory(":elem [elemcode,sect sectcode,etype]")
 			return nil
@@ -4603,7 +4608,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.SelectElem = stw.SelectElem[:num]
 		}
-	case cname == "max":
+	case "max":
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			maxval := -1e16
 			var valfunc func(*st.Elem) float64
@@ -4663,7 +4668,7 @@ func (stw *Window) exmode(command string) error {
 		} else {
 			return errors.New(":max no selected elem/node")
 		}
-	case cname == "min":
+	case "min":
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			minval := 1e16
 			var valfunc func(*st.Elem) float64
@@ -4723,7 +4728,7 @@ func (stw *Window) exmode(command string) error {
 		} else {
 			return errors.New(":min no selected elem/node")
 		}
-	case abbrev.For("ave/rage", cname):
+	case "average":
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			var valfunc func(*st.Elem) float64
 			if _, ok := argdict["ABS"]; ok {
@@ -4773,7 +4778,7 @@ func (stw *Window) exmode(command string) error {
 		} else {
 			return errors.New(":average no selected elem/node")
 		}
-	case cname == "sum":
+	case "sum":
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			var valfunc func(*st.Elem) float64
 			if _, ok := argdict["ABS"]; ok {
@@ -4823,7 +4828,7 @@ func (stw *Window) exmode(command string) error {
 		} else {
 			return errors.New(":sum no selected elem/node")
 		}
-	case abbrev.For("bo/nd", cname):
+	case "bond":
 		if usage {
 			stw.addHistory(":bond [pin,rigid] [upper,lower,sect sectcode]")
 			return nil
@@ -4883,7 +4888,7 @@ func (stw *Window) exmode(command string) error {
 			}
 		}
 		stw.Snapshot()
-	case abbrev.For("ax/is/2//c/ang", cname):
+	case "axis2cang":
 		if usage {
 			stw.addHistory(":axis2cang n1 n2 [strong,weak]")
 			return nil
@@ -4929,7 +4934,7 @@ func (stw *Window) exmode(command string) error {
 			}
 		}
 		stw.Snapshot()
-	case abbrev.For("resul/tant", cname):
+	case "resultant":
 		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
 			return errors.New(":resultant no selected elem")
 		}
@@ -4965,7 +4970,7 @@ func (stw *Window) exmode(command string) error {
 		v = math.Sqrt(v)
 		stw.addHistory(fmt.Sprintf("NODE: %d", en[0].Num))
 		stw.addHistory(fmt.Sprintf("X: %.3f Y: %.3f Z: %.3f F: %.3f", vec[0], vec[1], vec[2], v))
-	case abbrev.For("prest/ress", cname):
+	case "prestress":
 		if usage {
 			stw.addHistory(":prestress value")
 			return nil
@@ -4987,7 +4992,7 @@ func (stw *Window) exmode(command string) error {
 			el.Prestress = val
 		}
 		stw.Snapshot()
-	case abbrev.For("therm/al", cname):
+	case "thermal":
 		if usage {
 			stw.addHistory(":thermal tmp[℃]")
 			return nil
@@ -5024,7 +5029,7 @@ func (stw *Window) exmode(command string) error {
 			}
 		}
 		stw.Snapshot()
-	case abbrev.For("div/ide", cname):
+	case "divide":
 		if usage {
 			stw.addHistory(":divide [mid, n, elem, ons, axis, length]")
 			return nil
@@ -5155,7 +5160,7 @@ func (stw *Window) exmode(command string) error {
 		}
 		stw.SelectElem = tmpels[:enum]
 		stw.Snapshot()
-	case abbrev.For("e/lem/dup/lication", cname):
+	case "elemduplication":
 		if usage {
 			stw.addHistory(":elemduplication {-ignoresect=code}")
 			return nil
@@ -5181,7 +5186,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.SelectElem = stw.SelectElem[:enum]
 		}
-	case abbrev.For("i/ntersect/a/ll", cname):
+	case "intersectall":
 		l := len(stw.SelectElem)
 		if l <= 1 {
 			return nil
@@ -5213,7 +5218,7 @@ func (stw *Window) exmode(command string) error {
 			}
 		}()
 		stw.Snapshot()
-	case abbrev.For("co/nf", cname):
+	case "conf":
 		if usage {
 			stw.addHistory(":conf [0,1]{6}")
 			return nil
@@ -5238,7 +5243,7 @@ func (stw *Window) exmode(command string) error {
 		} else {
 			return st.NotEnoughArgs(":conf")
 		}
-	case abbrev.For("pi/le", cname):
+	case "pile":
 		if usage {
 			stw.addHistory(":pile pilecode")
 			return nil
@@ -5264,7 +5269,7 @@ func (stw *Window) exmode(command string) error {
 		} else {
 			return errors.New(fmt.Sprintf(":pile PILE %d doesn't exist", val))
 		}
-	case abbrev.For("sec/tion", cname):
+	case "section":
 		if usage {
 			stw.addHistory(":section sectcode")
 			return nil
@@ -5312,7 +5317,7 @@ func (stw *Window) exmode(command string) error {
 		} else {
 			return errors.New(fmt.Sprintf(":section SECT %d doesn't exist", snum))
 		}
-	case abbrev.For("an/alysis", cname):
+	case "analysis":
 		if usage {
 			stw.addHistory(":analysis")
 			return nil
@@ -5334,13 +5339,13 @@ func (stw *Window) exmode(command string) error {
 		stw.Reload()
 		stw.ReadAll()
 		stw.Redraw()
-	case abbrev.For("f/ilter", cname):
+	case "filter":
 		if usage {
 			stw.addHistory(":filter condition")
 			return nil
 		}
 		stw.FilterSelectedElem(strings.Join(args[1:], " "))
-	case abbrev.For("h/eigh/t/", cname):
+	case "height":
 		if usage {
 			stw.addHistory(":height f1 f2")
 			return nil
@@ -5376,11 +5381,11 @@ func (stw *Window) exmode(command string) error {
 			return errors.New(":ht out of boundary")
 		}
 		axisrange(stw, 2, stw.Frame.Ai.Boundary[min], stw.Frame.Ai.Boundary[max], false)
-	case abbrev.For("h/eigh/t+/", cname):
+	case "height+":
 		stw.NextFloor()
-	case abbrev.For("h/eigh/t-/", cname):
+	case "height-":
 		stw.PrevFloor()
-	case abbrev.For("sec/tion/+/", cname):
+	case "section+":
 		if usage {
 			stw.addHistory(":section+ value")
 			return nil
@@ -5405,7 +5410,7 @@ func (stw *Window) exmode(command string) error {
 			}
 		}
 		stw.Snapshot()
-	case cname == "view":
+	case "view":
 		if usage {
 			stw.addHistory(":view [top,front,back,right,left]")
 			return nil
@@ -5422,7 +5427,7 @@ func (stw *Window) exmode(command string) error {
 		case "LEFT":
 			stw.SetAngle(0.0, 180.0)
 		}
-	case cname == "printrange":
+	case "printrange":
 		if usage {
 			stw.addHistory(":printrange [on,true,yes] [a3tate,a3yoko,a4tate,a4yoko]")
 			stw.addHistory(":printrange [off,false,no]")
@@ -5450,7 +5455,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			showprintrange = true
 		}
-	case cname == "paper":
+	case "paper":
 		if usage {
 			stw.addHistory(":paper [a3tate,a3yoko,a4tate,a4yoko]")
 			return nil
@@ -5481,7 +5486,7 @@ func (stw *Window) exmode(command string) error {
 		default:
 			return errors.New(":paper unknown papersize")
 		}
-	case abbrev.For("col/or", cname):
+	case "color":
 		if usage {
 			stw.addHistory(":color [n,sect,rate,white,mono,strong]")
 			return nil
@@ -5502,9 +5507,9 @@ func (stw *Window) exmode(command string) error {
 		case "STRONG":
 			stw.SetColorMode(st.ECOLOR_STRONG)
 		}
-	case cname == "mono":
+	case "mono":
 		stw.SetColorMode(st.ECOLOR_WHITE)
-	case cname == "postscript":
+	case "postscript":
 		if fn == "" {
 			fn = filepath.Join(stw.Cwd, "test.ps")
 		}
@@ -5529,7 +5534,7 @@ func (stw *Window) exmode(command string) error {
 		if err != nil {
 			return err
 		}
-	case abbrev.For("a/rclm/001/", cname):
+	case "arclm001":
 		if usage {
 			stw.addHistory(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} filename")
 			return nil
@@ -5616,7 +5621,7 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 		}()
-	case abbrev.For("a/rclm/201/", cname):
+	case "arclm201":
 		if usage {
 			stw.addHistory(":arclm201 {-period=name} {-lap=nlap} {-safety=val} {-start=val} {-noinit} filename")
 			return nil
@@ -5687,7 +5692,7 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 		}()
-	case abbrev.For("a/rclm/301/", cname):
+	case "arclm301":
 		if usage {
 			stw.addHistory(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
 			return nil
