@@ -3538,6 +3538,18 @@ func exmodecomplete(command string) (string, bool, bool) {
 	return rtn, bang, usage
 }
 
+func (stw *Window) emptyexmodech() {
+	emptyloop:
+	for {
+		select {
+		default:
+			return
+		case <-stw.exmodech:
+			continue emptyloop
+		}
+	}
+}
+
 func (stw *Window) exmode(command string) error {
 	if len(command) == 1 {
 		return st.NotEnoughArgs("exmode")
@@ -4323,7 +4335,20 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 			stw.SelectNode = stw.SelectNode[:num]
+		} else {
+			stw.SelectNode = make([]*st.Node, len(stw.Frame.Nodes))
+			num := 0
+			for _, n := range stw.Frame.Nodes {
+				stw.SelectNode[num] = n
+				num++
+			}
+			stw.SelectNode = stw.SelectNode[:num]
 		}
+		go func(ns []*st.Node) {
+			for _, n := range ns {
+				stw.exmodech <-n
+			}
+		}(stw.SelectNode)
 	case "xscale":
 		if usage {
 			stw.addHistory(":xscale factor coord")
@@ -4608,6 +4633,11 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.SelectElem = stw.SelectElem[:num]
 		}
+		go func(els []*st.Elem) {
+			for _, el := range els {
+				stw.exmodech <-el
+			}
+		}(stw.SelectElem)
 	case "max":
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			maxval := -1e16
@@ -5277,6 +5307,9 @@ func (stw *Window) exmode(command string) error {
 		if narg < 2 {
 			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 				stw.SectionData(stw.SelectElem[0].Sect)
+				go func(sec *st.Sect) {
+					stw.exmodech <-sec
+				}(stw.SelectElem[0].Sect)
 				return nil
 			}
 			if t, tok := stw.TextBox["SECTION"]; tok {
@@ -5314,6 +5347,9 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 			stw.SectionData(sec)
+			go func(s *st.Sect) {
+				stw.exmodech <-s
+			}(sec)
 		} else {
 			return errors.New(fmt.Sprintf(":section SECT %d doesn't exist", snum))
 		}
@@ -5349,6 +5385,11 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.SelectElem = tmpels
+		go func(els []*st.Elem) {
+			for _, el := range els {
+				stw.exmodech <-el
+			}
+		}(stw.SelectElem)
 	case "height":
 		if usage {
 			stw.addHistory(":height f1 f2")
