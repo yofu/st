@@ -214,16 +214,15 @@ func (sect *Sect) HasBrace() bool {
 	}
 }
 
-func (sect *Sect) HasArea() bool {
-	if len(sect.Figs) == 0 {
+func (sect *Sect) HasArea(ind int) bool {
+	if len(sect.Figs) < ind {
 		return false
 	}
-	for _, fig := range sect.Figs {
-		if _, ok := fig.Value["AREA"]; ok {
-			return true
-		}
+	if _, ok := sect.Figs[ind].Value["AREA"]; ok {
+		return true
+	} else {
+		return false
 	}
-	return false
 }
 
 func (sect *Sect) HasThick(ind int) bool {

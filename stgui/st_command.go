@@ -2260,7 +2260,7 @@ func hidecurtainwall(stw *Window) {
 		if sec.Num > 900 {
 			continue
 		}
-		if sec.HasArea() {
+		if sec.HasArea(0) {
 			continue
 		}
 		if !sec.HasBrace() {

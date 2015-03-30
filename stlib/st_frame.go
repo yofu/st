@@ -3253,7 +3253,7 @@ func (frame *Frame) ExtractArclm() {
 	var ekeys []int
 	snum := 0
 	for _, sect := range frame.Sects {
-		if sect.HasArea() {
+		if sect.HasArea(0) {
 			snum++
 		}
 	}
@@ -3506,7 +3506,7 @@ func (frame *Frame) SaveAsArclm(name string) error {
 	}
 	sort.Ints(skeys)
 	for _, k := range skeys {
-		if frame.Sects[k].HasArea() {
+		if frame.Sects[k].HasArea(0) {
 			str := frame.Sects[k].InlString()
 			nums[2]++
 			for i := 0; i < 3; i++ {

@@ -5050,8 +5050,28 @@ func (stw *Window) exmode(command string) error {
 		if narg < 2 {
 			return st.NotEnoughArgs(":thermal")
 		}
+		var els []*st.Elem
 		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-			return errors.New(":thermal no selected elem")
+			enum := 0
+			els = make([]*st.Elem, 0)
+			ex_bond:
+			for {
+				select {
+				default:
+					break ex_bond
+				case el :=<-stw.exmodech:
+					if el, ok := el.(*st.Elem); ok {
+						els = append(els, el)
+						enum++
+					}
+				}
+			}
+			if enum == 0 {
+				return errors.New(":thermal no selected elem")
+			}
+			els = els[:enum]
+		} else {
+			els = stw.SelectElem
 		}
 		tmp, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
@@ -5065,7 +5085,7 @@ func (stw *Window) exmode(command string) error {
 			}
 		}
 		stw.addHistory(fmt.Sprintf("ALPHA: %.3E", alpha))
-		for _, el := range stw.SelectElem {
+		for _, el := range els {
 			if el == nil || el.Lock || !el.IsLineElem() {
 				continue
 			}
@@ -5383,7 +5403,7 @@ func (stw *Window) exmode(command string) error {
 				case al := <-stw.exmodech:
 					switch al.(type) {
 					case st.Shape:
-						if sec.HasArea() {
+						if sec.HasArea(0) {
 							sec.Figs[0].Value["AREA"] = al.(st.Shape).A() * 0.0001
 							sec.Figs[0].Value["IXX"] = al.(st.Shape).Ix() * 1e-8
 							sec.Figs[0].Value["IYY"] = al.(st.Shape).Iy() * 1e-8
