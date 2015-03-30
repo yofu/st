@@ -4749,21 +4749,46 @@ func (stw *Window) exmode(command string) error {
 			return st.NotEnoughArgs(":fence")
 		}
 		var axis int
+		var err error
+		var val float64
 		switch strings.ToUpper(args[1]) {
 		default:
 			return errors.New(":fence unknown direction")
 		case "X":
 			axis = 0
+			val, err = strconv.ParseFloat(args[2], 64)
+			if err != nil {
+				return err
+			}
 		case "Y":
 			axis = 1
+			val, err = strconv.ParseFloat(args[2], 64)
+			if err != nil {
+				return err
+			}
 		case "Z":
 			axis = 2
-		}
-		val, err := strconv.ParseFloat(args[2], 64)
-		if err != nil {
-			return err
+			val, err = strconv.ParseFloat(args[2], 64)
+			if err != nil {
+				return err
+			}
+		case "HEIGHT":
+			axis = 2
+			ind, err := strconv.ParseInt(args[2], 10, 64)
+			if err != nil {
+				return err
+			}
+			if int(ind) > stw.Frame.Ai.Nfloor-1 {
+				return errors.New(":fence height: index error")
+			}
+			val = stw.Frame.Ai.Boundary[int(ind)]
 		}
 		stw.SelectElem = stw.Frame.Fence(axis, val, false)
+		go func(els []*st.Elem) {
+			for _, el := range els {
+				stw.exmodech <-el
+			}
+		}(stw.SelectElem)
 	case "filter":
 		if usage {
 			stw.addHistory(":filter condition")
