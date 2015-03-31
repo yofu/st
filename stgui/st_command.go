@@ -2355,7 +2355,9 @@ func suspicious(stw *Window) {
 	if err != nil {
 		stw.SelectNode = ns
 		stw.SelectElem = els
-		stw.errormessage(err, ERROR)
+		for _, str := range strings.Split(strings.TrimSuffix(err.Error(), "\n"), "\n") {
+			stw.errormessage(errors.New(str), ERROR)
+		}
 	}
 	stw.EscapeCB()
 }
