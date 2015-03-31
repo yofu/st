@@ -2324,6 +2324,8 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 	case key == "unit":
 		if usage {
 			stw.addHistory("'unit force,length")
+			stw.addHistory(fmt.Sprintf("CURRENT FORCE UNIT: %s %.3f", stw.Frame.Show.UnitName[0], stw.Frame.Show.Unit[0]))
+			stw.addHistory(fmt.Sprintf("CURRENT LENGTH UNIT: %s %.3f", stw.Frame.Show.UnitName[1], stw.Frame.Show.Unit[1]))
 			showhtml("UNIT.html")
 			return nil
 		}
