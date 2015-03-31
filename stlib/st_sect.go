@@ -97,6 +97,13 @@ func (fig *Fig) Snapshot(frame *Frame) *Fig {
 	return f
 }
 
+func (fig *Fig) SetShapeProperty(s Shape) {
+	fig.Value["AREA"] = s.A() * 0.0001
+	fig.Value["IXX"] = s.Ix() * 1e-8
+	fig.Value["IYY"] = s.Iy() * 1e-8
+	fig.Value["VEN"] = s.J() * 1e-8
+}
+
 func (sect *Sect) InpString() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("SECT %3d SNAME %s\n", sect.Num, sect.Name))

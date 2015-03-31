@@ -5259,10 +5259,7 @@ func (stw *Window) exmode(command string) error {
 					switch al := al.(type) {
 					case st.Shape:
 						if sec.HasArea(0) {
-							sec.Figs[0].Value["AREA"] = al.A() * 0.0001
-							sec.Figs[0].Value["IXX"] = al.Ix() * 1e-8
-							sec.Figs[0].Value["IYY"] = al.Iy() * 1e-8
-							sec.Figs[0].Value["VEN"] = al.J() * 1e-8
+							sec.Figs[0].SetShapeProperty(al)
 							sec.Name = al.Description()
 						}
 					}
@@ -5337,10 +5334,7 @@ func (stw *Window) exmode(command string) error {
 						f.Prop = stw.Frame.DefaultProp()
 					}
 					sec.Figs[0] = f
-					sec.Figs[0].Value["AREA"] = a.A() * 0.0001
-					sec.Figs[0].Value["IXX"] = a.Ix() * 1e-8
-					sec.Figs[0].Value["IYY"] = a.Iy() * 1e-8
-					sec.Figs[0].Value["VEN"] = a.J() * 1e-8
+					sec.Figs[0].SetShapeProperty(a)
 					sec.Name = a.Description()
 				}
 			}
