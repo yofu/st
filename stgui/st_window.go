@@ -5341,6 +5341,38 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 		}
+	case "copy":
+		if usage {
+			stw.addHistory(":copy sect sectcode")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":copy")
+		}
+		switch strings.ToLower(args[1]) {
+		case "sec", "sect":
+			if narg < 3 {
+				return st.NotEnoughArgs(":copy sect")
+			}
+			val, err := strconv.ParseInt(args[2], 10, 64)
+			if err != nil {
+				return err
+			}
+			snum := int(val)
+			if _, ok := stw.Frame.Sects[snum]; ok && !bang {
+				return errors.New(fmt.Sprintf(":copy sect: SECT %d already exists", snum))
+			}
+			select {
+			default:
+				break
+			case s := <-stw.exmodech:
+				if sec, ok := s.(*st.Sect); ok {
+					as := sec.Snapshot(stw.Frame)
+					as.Num = snum
+					stw.Frame.Sects[snum] = as
+				}
+			}
+		}
 	case "max":
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			maxval := -1e16
