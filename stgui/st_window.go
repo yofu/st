@@ -2332,6 +2332,9 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Frame.Show.UnitName = []string{"tf", "m"}
 			return nil
 		}
+		if len(lis) < 2 {
+			return st.NotEnoughArgs("UNIT")
+		}
 		ustr := strings.Split(strings.ToLower(lis[1]), ",")
 		if len(ustr) < 2 {
 			return errors.New("'unit: incorrect format")
