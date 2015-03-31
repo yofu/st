@@ -2489,8 +2489,8 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		}
 	case abbrev.For("mea/sure", key):
 		if usage {
-			stw.addHistory(":measure kijun x1 x2 offset dotsize rotate overwrite")
-			stw.addHistory(":measure nnum1 nnum2 direction offset dotsize rotate overwrite")
+			stw.addHistory("'measure kijun x1 x2 offset dotsize rotate overwrite")
+			stw.addHistory("'measure nnum1 nnum2 direction offset dotsize rotate overwrite")
 			showhtml("MEASURE.html")
 			return nil
 		}
