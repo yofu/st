@@ -5319,7 +5319,11 @@ func (stw *Window) exmode(command string) error {
 			if err != nil {
 				return err
 			}
-			sec := stw.Frame.AddSect(int(val))
+			snum := int(val)
+			if _, ok := stw.Frame.Sects[snum]; ok && !bang {
+				return errors.New(fmt.Sprintf(":add sect: SECT %d already exists", snum))
+			}
+			sec := stw.Frame.AddSect(snum)
 			select {
 			default:
 				break
