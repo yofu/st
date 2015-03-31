@@ -433,7 +433,7 @@ func (node *Node) CurrentValue(show *Show, max, abs bool) float64 {
 	}
 	if show.NodeCaption&NC_WEIGHT != 0 {
 		if !node.Conf[2] || show.NodeCaption&NC_RZ == 0 {
-			return node.Weight[1]
+			return node.Weight[1] * show.Unit[0]
 		}
 	}
 	for i, j := range []uint{NC_DX, NC_DY, NC_DZ, NC_TX, NC_TY, NC_TZ} {
@@ -458,19 +458,22 @@ func (node *Node) CurrentValue(show *Show, max, abs bool) float64 {
 	for i, j := range []uint{NC_RX, NC_RY, NC_RZ, NC_MX, NC_MY, NC_MZ} {
 		if show.NodeCaption&j != 0 {
 			if node.Conf[i] {
+				var val float64
 				if i == 2 && show.NodeCaption&NC_WEIGHT != 0 {
-					if abs {
-						return math.Abs(node.ReturnReaction(show.Period, i) + node.Weight[1])
-					} else {
-						return node.ReturnReaction(show.Period, i) + node.Weight[1]
-					}
+					val = node.ReturnReaction(show.Period, i) + node.Weight[1]
 				} else {
-					if abs {
-						return math.Abs(node.ReturnReaction(show.Period, i))
-					} else {
-						return node.ReturnReaction(show.Period, i)
-					}
+					val = node.ReturnReaction(show.Period, i)
 				}
+				if abs {
+					val = math.Abs(val)
+				}
+				switch i {
+				case 0, 1, 2:
+					val *= show.Unit[0]
+				case 3, 4, 5:
+					val *= show.Unit[0] * show.Unit[1]
+				}
+				return val
 			}
 		}
 	}

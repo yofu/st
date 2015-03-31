@@ -1996,23 +1996,23 @@ func (elem *Elem) CurrentValue(show *Show, max, abs bool) float64 {
 	}
 	if show.ElemCaption&EC_PREST != 0 {
 		if abs {
-			return math.Abs(elem.Prestress)
+			return math.Abs(elem.Prestress) * show.Unit[0]
 		} else {
-			return elem.Prestress
+			return elem.Prestress * show.Unit[0]
 		}
 	}
 	if show.ElemCaption&EC_STIFF_X != 0 {
 		if abs {
-			return math.Abs(elem.LateralStiffness("X", false))
+			return math.Abs(elem.LateralStiffness("X", false)) * show.Unit[0] / show.Unit[1]
 		} else {
-			return elem.LateralStiffness("X", false)
+			return elem.LateralStiffness("X", false) * show.Unit[0] / show.Unit[1]
 		}
 	}
 	if show.ElemCaption&EC_STIFF_Y != 0 {
 		if abs {
-			return math.Abs(elem.LateralStiffness("Y", false))
+			return math.Abs(elem.LateralStiffness("Y", false)) * show.Unit[0] / show.Unit[1]
 		} else {
-			return elem.LateralStiffness("Y", false)
+			return elem.LateralStiffness("Y", false) * show.Unit[0] / show.Unit[1]
 		}
 	}
 	if show.YieldFunction {
@@ -2037,10 +2037,10 @@ func (elem *Elem) CurrentValue(show *Show, max, abs bool) float64 {
 			if flag&st != 0 {
 				switch i {
 				case 0:
-					return elem.ReturnStress(show.Period, 0, i)
-				case 1, 2, 3:
-					v1 := elem.ReturnStress(show.Period, 0, i)
-					v2 := elem.ReturnStress(show.Period, 1, i)
+					return elem.ReturnStress(show.Period, 0, i) * show.Unit[0]
+				case 1, 2:
+					v1 := elem.ReturnStress(show.Period, 0, i) * show.Unit[0]
+					v2 := elem.ReturnStress(show.Period, 1, i) * show.Unit[0]
 					if abs {
 						v1 = math.Abs(v1)
 						v2 = math.Abs(v2)
@@ -2058,9 +2058,9 @@ func (elem *Elem) CurrentValue(show *Show, max, abs bool) float64 {
 							return v1
 						}
 					}
-				case 4, 5:
-					v1 := elem.ReturnStress(show.Period, 0, i)
-					v2 := elem.ReturnStress(show.Period, 1, i)
+				case 3, 4, 5:
+					v1 := elem.ReturnStress(show.Period, 0, i) * show.Unit[0] * show.Unit[1]
+					v2 := elem.ReturnStress(show.Period, 1, i) * show.Unit[0] * show.Unit[1]
 					if abs {
 						v1 = math.Abs(v1)
 						v2 = math.Abs(v2)

@@ -123,7 +123,7 @@ func DrawNode(node *st.Node, cvs *cd.Canvas, show *st.Show) {
 	}
 	if show.NodeCaption&st.NC_WEIGHT != 0 {
 		if !node.Conf[2] || show.NodeCaption&st.NC_RZ == 0 {
-			ncap.WriteString(fmt.Sprintf("%.3f\n", node.Weight[1]))
+			ncap.WriteString(fmt.Sprintf("%.3f\n", node.Weight[1] * show.Unit[0]))
 			oncap = true
 		}
 	}
@@ -148,20 +148,24 @@ func DrawNode(node *st.Node, cvs *cd.Canvas, show *st.Show) {
 				} else {
 					val = node.ReturnReaction(show.Period, i)
 				}
-				ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), val))
-				if i >= 3 { // TODO: draw ellipse for Mx My Mz
-					continue
-				}
-				arrow := 0.3
-				rcoord := []float64{node.Coord[0], node.Coord[1], node.Coord[2]}
-				if val >= 0.0 {
-					rcoord[i] -= show.Rfact * val
-					prcoord := node.Frame.View.ProjectCoord(rcoord)
-					Arrow(cvs, prcoord[0], prcoord[1], node.Pcoord[0], node.Pcoord[1], arrow, deg10)
-				} else {
-					rcoord[i] += show.Rfact * val
-					prcoord := node.Frame.View.ProjectCoord(rcoord)
-					Arrow(cvs, node.Pcoord[0], node.Pcoord[1], prcoord[0], prcoord[1], arrow, deg10)
+				switch i {
+				case 0, 1, 2:
+					val *= show.Unit[0]
+					ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), val))
+					arrow := 0.3
+					rcoord := []float64{node.Coord[0], node.Coord[1], node.Coord[2]}
+					if val >= 0.0 {
+						rcoord[i] -= show.Rfact * val
+						prcoord := node.Frame.View.ProjectCoord(rcoord)
+						Arrow(cvs, prcoord[0], prcoord[1], node.Pcoord[0], node.Pcoord[1], arrow, deg10)
+					} else {
+						rcoord[i] += show.Rfact * val
+						prcoord := node.Frame.View.ProjectCoord(rcoord)
+						Arrow(cvs, node.Pcoord[0], node.Pcoord[1], prcoord[0], prcoord[1], arrow, deg10)
+					}
+				case 3, 4, 5:
+					val *= show.Unit[0] * show.Unit[1]
+					ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), val))
 				}
 				oncap = true
 			}
@@ -286,12 +290,12 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 	}
 	if show.ElemCaption&st.EC_PREST != 0 {
 		if elem.Prestress != 0.0 {
-			ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Prestress))
+			ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Prestress * show.Unit[0]))
 			oncap = true
 		}
 	}
 	if show.ElemCaption&st.EC_STIFF_X != 0 {
-		stiff := elem.LateralStiffness("X", false)
+		stiff := elem.LateralStiffness("X", false) * show.Unit[0] / show.Unit[1]
 		if stiff != 0.0 {
 			if stiff == 1e16 {
 				ecap.WriteString("∞")
@@ -302,7 +306,7 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 		}
 	}
 	if show.ElemCaption&st.EC_STIFF_Y != 0 {
-		stiff := elem.LateralStiffness("Y", false)
+		stiff := elem.LateralStiffness("Y", false) * show.Unit[0] / show.Unit[1]
 		if stiff != 0.0 {
 			if stiff == 1e16 {
 				ecap.WriteString("∞")
@@ -388,14 +392,17 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 				if flag&st != 0 {
 					switch i {
 					case 0:
-						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)))
-					case 1, 2, 3:
-						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)))
-						sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i)))
+						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i) * show.Unit[0]))
+					case 1, 2:
+						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i) * show.Unit[0]))
+						sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i) * show.Unit[0]))
+					case 3:
+						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i) * show.Unit[0] * show.Unit[1]))
+						sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i) * show.Unit[0] * show.Unit[1]))
 					case 4, 5:
 						if !show.NoMomentValue {
-							sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)))
-							sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i)))
+							sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i) * show.Unit[0] * show.Unit[1]))
+							sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i) * show.Unit[0] * show.Unit[1]))
 						}
 						mcoord := elem.MomentCoord(show, i)
 						cvs.Foreground(MomentColor)

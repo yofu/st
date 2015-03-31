@@ -2321,6 +2321,43 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		stw.Frame.View.Perspective = true
 	case abbrev.For("ax/onometric", key):
 		stw.Frame.View.Perspective = false
+	case key == "unit":
+		if usage {
+			stw.addHistory("'unit force,length")
+			showhtml("UNIT.html")
+			return nil
+		}
+		if un {
+			stw.Frame.Show.Unit = []float64{1.0, 1.0}
+			stw.Frame.Show.UnitName = []string{"tf", "m"}
+			return nil
+		}
+		ustr := strings.Split(strings.ToLower(lis[1]), ",")
+		if len(ustr) < 2 {
+			return errors.New("'unit: incorrect format")
+		}
+		switch ustr[0] {
+		case "tf":
+			stw.Frame.Show.Unit[0] = 1.0
+			stw.Frame.Show.UnitName[0] = "tf"
+		case "kgf":
+			stw.Frame.Show.Unit[0] = 1000.0
+			stw.Frame.Show.UnitName[0] = "kgf"
+		case "kn":
+			stw.Frame.Show.Unit[0] = st.SI
+			stw.Frame.Show.UnitName[0] = "kN"
+		}
+		switch ustr[1] {
+		case "m":
+			stw.Frame.Show.Unit[1] = 1.0
+			stw.Frame.Show.UnitName[1] = "m"
+		case "cm":
+			stw.Frame.Show.Unit[0] = 100.0
+			stw.Frame.Show.UnitName[0] = "cm"
+		case "mm":
+			stw.Frame.Show.Unit[0] = 1000.0
+			stw.Frame.Show.UnitName[0] = "mm"
+		}
 	case abbrev.For("df/act", key):
 		if len(lis) < 2 {
 			return st.NotEnoughArgs("DFACT")
