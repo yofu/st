@@ -4417,9 +4417,7 @@ func (stw *Window) exmode(command string) error {
 			return nil
 		}
 		stw.Deselect()
-		f := func(n *st.Node) bool {
-			return true
-		}
+		var f func(*st.Node) bool
 		if narg >= 2 {
 			condition := strings.ToUpper(strings.Join(args[1:], " "))
 			coordstr := regexp.MustCompile("^ *([XYZ]) *([<!=>]{0,2}) *([0-9.]+)")
@@ -4430,14 +4428,15 @@ func (stw *Window) exmode(command string) error {
 				return errors.New(":node: unknown format")
 			case numstr.MatchString(condition):
 				nnums := SplitNums(condition)
-				f = func(n *st.Node) bool {
-					for _, nnum := range nnums {
-						if n.Num == nnum {
-							return true
-						}
+				stw.SelectNode = make([]*st.Node, len(nnums))
+				nods := 0
+				for i, nnum := range nnums {
+					if n, ok := stw.Frame.Nodes[nnum]; ok {
+						stw.SelectNode[i] = n
+						nods++
 					}
-					return false
 				}
+				stw.SelectNode = stw.SelectNode[:nods]
 			case coordstr.MatchString(condition):
 				fs := coordstr.FindStringSubmatch(condition)
 				if len(fs) < 4 {
@@ -4541,15 +4540,17 @@ func (stw *Window) exmode(command string) error {
 					return n.IsFixed()
 				}
 			}
-			stw.SelectNode = make([]*st.Node, len(stw.Frame.Nodes))
-			num := 0
-			for _, n := range stw.Frame.Nodes {
-				if f(n) {
-					stw.SelectNode[num] = n
-					num++
+			if f != nil {
+				stw.SelectNode = make([]*st.Node, len(stw.Frame.Nodes))
+				num := 0
+				for _, n := range stw.Frame.Nodes {
+					if f(n) {
+						stw.SelectNode[num] = n
+						num++
+					}
 				}
+				stw.SelectNode = stw.SelectNode[:num]
 			}
-			stw.SelectNode = stw.SelectNode[:num]
 		} else {
 			stw.SelectNode = make([]*st.Node, len(stw.Frame.Nodes))
 			num := 0
@@ -4726,9 +4727,7 @@ func (stw *Window) exmode(command string) error {
 			return nil
 		}
 		stw.Deselect()
-		f := func(el *st.Elem) bool {
-			return true
-		}
+		var f func(*st.Elem) bool
 		if narg >= 2 {
 			condition := strings.ToUpper(strings.Join(args[1:], " "))
 			numstr := regexp.MustCompile("^[0-9, ]+$")
@@ -4737,14 +4736,15 @@ func (stw *Window) exmode(command string) error {
 				return errors.New(":elem: unknown format")
 			case numstr.MatchString(condition):
 				enums := SplitNums(condition)
-				f = func(el *st.Elem) bool {
-					for _, enum := range enums {
-						if el.Num == enum {
-							return true
-						}
+				stw.SelectElem = make([]*st.Elem, len(enums))
+				els := 0
+				for i, enum := range enums {
+					if el, ok := stw.Frame.Elems[enum]; ok {
+						stw.SelectElem[i] = el
+						els++
 					}
-					return false
 				}
+				stw.SelectElem = stw.SelectElem[:els]
 			case re_sectnum.MatchString(condition):
 				f, _ = SectFilter(condition)
 				if f == nil {
@@ -4765,15 +4765,17 @@ func (stw *Window) exmode(command string) error {
 					return el.Sect.IsGohan(EPS)
 				}
 			}
-			stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
-			num := 0
-			for _, el := range stw.Frame.Elems {
-				if f(el) {
-					stw.SelectElem[num] = el
-					num++
+			if f != nil {
+				stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
+				num := 0
+				for _, el := range stw.Frame.Elems {
+					if f(el) {
+						stw.SelectElem[num] = el
+						num++
+					}
 				}
+				stw.SelectElem = stw.SelectElem[:num]
 			}
-			stw.SelectElem = stw.SelectElem[:num]
 		} else {
 			stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
 			num := 0
