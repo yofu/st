@@ -5377,6 +5377,70 @@ func (stw *Window) exmode(command string) error {
 			return st.NotEnoughArgs(":add")
 		}
 		switch strings.ToLower(args[1]) {
+		case "elem":
+			var etype int
+			if et, ok := argdict["ETYPE"]; ok {
+				switch {
+				case re_column.MatchString(et):
+					etype = st.COLUMN
+				case re_girder.MatchString(et):
+					etype = st.GIRDER
+				case re_slab.MatchString(et):
+					etype = st.BRACE
+				case re_wall.MatchString(et):
+					etype = st.WALL
+				case re_slab.MatchString(et):
+					etype = st.SLAB
+				default:
+					tmp, err := strconv.ParseInt(et, 10, 64)
+					if err != nil {
+						return err
+					}
+					etype = int(tmp)
+				}
+			} else {
+				return errors.New(":add elem: no etype selected")
+			}
+			var sect *st.Sect
+			if sc, ok := argdict["SECT"]; ok {
+				tmp, err := strconv.ParseInt(sc, 10, 64)
+				if err != nil {
+					return err
+				}
+				if sec, ok := stw.Frame.Sects[int(tmp)]; ok {
+					sect = sec
+				} else {
+					return errors.New(fmt.Sprintf(":add elem: SECT %d doesn't exist", tmp))
+				}
+			} else {
+				return errors.New(":add elem: no sectcode selected")
+			}
+			enod := make([]*st.Node, 0)
+			enods := 0
+			ex_addelem:
+			for {
+				select {
+				case <-time.After(time.Second):
+					break ex_addelem
+				case <-stw.exmodeend:
+					break ex_addelem
+				case ent := <-stw.exmodech:
+					if n, ok := ent.(*st.Node); ok {
+						enod = append(enod, n)
+						enods++
+					}
+				}
+			}
+			enod = enod[:enods]
+			switch etype {
+			case st.COLUMN, st.GIRDER, st.BRACE:
+				stw.Frame.AddLineElem(-1, enod[:2], sect, etype)
+			case st.WALL, st.SLAB:
+				if enods > 4 {
+					enod = enod[:4]
+				}
+				stw.Frame.AddPlateElem(-1, enod, sect, etype)
+			}
 		case "sec", "sect":
 			if narg < 3 {
 				return st.NotEnoughArgs(":add sect")
