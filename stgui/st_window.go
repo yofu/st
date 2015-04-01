@@ -3584,9 +3584,10 @@ func (stw *Window) emptyexmodech() {
 	emptyloop:
 	for {
 		select {
-		default:
-			return
-		case <-stw.exmodech:
+		case ent := <-stw.exmodech:
+			if ent == nil {
+				return
+			}
 			continue emptyloop
 		}
 	}
@@ -3729,6 +3730,7 @@ func (stw *Window) exmode(command string) error {
 		stw.ShapeData(al)
 		go func(a interface{}) {
 			stw.exmodech <- a
+			stw.exmodech <-nil
 		}(al)
 	case "hweak":
 		if usage {
@@ -3745,6 +3747,7 @@ func (stw *Window) exmode(command string) error {
 		stw.ShapeData(al)
 		go func(a interface{}) {
 			stw.exmodech <- a
+			stw.exmodech <-nil
 		}(al)
 	case "rpipe":
 		if usage {
@@ -3761,6 +3764,7 @@ func (stw *Window) exmode(command string) error {
 		stw.ShapeData(al)
 		go func(a interface{}) {
 			stw.exmodech <- a
+			stw.exmodech <-nil
 		}(al)
 	case "cpipe":
 		if usage {
@@ -3777,6 +3781,7 @@ func (stw *Window) exmode(command string) error {
 		stw.ShapeData(al)
 		go func(a interface{}) {
 			stw.exmodech <- a
+			stw.exmodech <-nil
 		}(al)
 	case "tkyou":
 		if usage {
@@ -4558,6 +4563,7 @@ func (stw *Window) exmode(command string) error {
 			for _, n := range ns {
 				stw.exmodech <-n
 			}
+			stw.exmodech <-nil
 		}(stw.SelectNode)
 	case "conf":
 		if usage {
@@ -4781,6 +4787,7 @@ func (stw *Window) exmode(command string) error {
 			for _, el := range els {
 				stw.exmodech <-el
 			}
+			stw.exmodech <-nil
 		}(stw.SelectElem)
 	case "fence":
 		if usage {
@@ -4830,6 +4837,7 @@ func (stw *Window) exmode(command string) error {
 			for _, el := range els {
 				stw.exmodech <-el
 			}
+			stw.exmodech <-nil
 		}(stw.SelectElem)
 	case "filter":
 		if usage {
@@ -4845,6 +4853,7 @@ func (stw *Window) exmode(command string) error {
 			for _, el := range els {
 				stw.exmodech <-el
 			}
+			stw.exmodech <-nil
 		}(stw.SelectElem)
 	case "bond":
 		if usage {
@@ -4861,9 +4870,10 @@ func (stw *Window) exmode(command string) error {
 			ex_bond:
 			for {
 				select {
-				default:
-					break ex_bond
 				case el :=<-stw.exmodech:
+					if el == nil {
+						break ex_bond
+					}
 					if el, ok := el.(*st.Elem); ok {
 						els = append(els, el)
 						enum++
@@ -5048,9 +5058,10 @@ func (stw *Window) exmode(command string) error {
 			ex_prestress:
 			for {
 				select {
-				default:
-					break ex_prestress
 				case el :=<-stw.exmodech:
+					if el == nil {
+						break ex_prestress
+					}
 					if el, ok := el.(*st.Elem); ok {
 						els = append(els, el)
 						enum++
@@ -5090,9 +5101,10 @@ func (stw *Window) exmode(command string) error {
 			ex_thermal:
 			for {
 				select {
-				default:
-					break ex_thermal
 				case el :=<-stw.exmodech:
+					if el == nil {
+						break ex_thermal
+					}
 					if el, ok := el.(*st.Elem); ok {
 						els = append(els, el)
 						enum++
@@ -5273,6 +5285,7 @@ func (stw *Window) exmode(command string) error {
 				stw.SectionData(stw.SelectElem[0].Sect)
 				go func(sec *st.Sect) {
 					stw.exmodech <-sec
+					stw.exmodech <-nil
 				}(stw.SelectElem[0].Sect)
 				return nil
 			}
@@ -5295,9 +5308,10 @@ func (stw *Window) exmode(command string) error {
 		if sec, ok := stw.Frame.Sects[snum]; ok {
 			if narg >= 3 && args[2] == "<-" {
 				select {
-				default:
-					break
 				case al := <-stw.exmodech:
+					if al == nil {
+						break
+					}
 					switch al := al.(type) {
 					case st.Shape:
 						if sec.HasArea(0) {
@@ -5310,6 +5324,7 @@ func (stw *Window) exmode(command string) error {
 			stw.SectionData(sec)
 			go func(s *st.Sect) {
 				stw.exmodech <-s
+				stw.exmodech <-nil
 			}(sec)
 		} else {
 			return errors.New(fmt.Sprintf(":section SECT %d doesn't exist", snum))
@@ -5332,9 +5347,10 @@ func (stw *Window) exmode(command string) error {
 		}
 		ind := int(tmp) - 1
 		select {
-		default:
-			break
 		case sec :=<-stw.exmodech:
+			if sec == nil {
+				break
+			}
 			if sec, ok := sec.(*st.Sect); ok {
 				if sec.HasThick(ind) {
 					sec.Figs[ind].Value["THICK"] = val
@@ -5364,9 +5380,10 @@ func (stw *Window) exmode(command string) error {
 			}
 			sec := stw.Frame.AddSect(snum)
 			select {
-			default:
-				break
 			case al := <-stw.exmodech:
+				if al == nil {
+					break
+				}
 				if a, ok := al.(st.Shape); ok {
 					sec.Figs = make([]*st.Fig, 1)
 					f := st.NewFig()
@@ -5403,9 +5420,10 @@ func (stw *Window) exmode(command string) error {
 				return errors.New(fmt.Sprintf(":copy sect: SECT %d already exists", snum))
 			}
 			select {
-			default:
-				break
 			case s := <-stw.exmodech:
+				if s == nil {
+					break
+				}
 				if sec, ok := s.(*st.Sect); ok {
 					as := sec.Snapshot(stw.Frame)
 					as.Num = snum
