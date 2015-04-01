@@ -152,7 +152,17 @@ func (node *Node) Show() {
 }
 
 func (node *Node) IsHidden(show *Show) bool {
-	return node.hide
+	if node.hide {
+		return true
+	}
+	if node.Coord[0] < show.Xrange[0] || show.Xrange[1] < node.Coord[0] {
+		return true
+	} else if node.Coord[1] < show.Yrange[0] || show.Yrange[1] < node.Coord[1] {
+		return true
+	} else if node.Coord[2] < show.Zrange[0] || show.Zrange[1] < node.Coord[2] {
+		return true
+	}
+	return false
 }
 
 func (node *Node) InpString() string {

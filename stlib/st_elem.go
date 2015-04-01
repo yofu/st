@@ -373,14 +373,17 @@ func (elem *Elem) IsHidden(show *Show) bool {
 	if elem.hide {
 		return true
 	}
-	if show != nil {
-		if !show.Etype[elem.Etype] {
+	for _, en := range elem.Enod {
+		if en.IsHidden(show) {
 			return true
 		}
-		if b, ok := show.Sect[elem.Sect.Num]; ok {
-			if !b {
-				return true
-			}
+	}
+	if !show.Etype[elem.Etype] {
+		return true
+	}
+	if b, ok := show.Sect[elem.Sect.Num]; ok {
+		if !b {
+			return true
 		}
 	}
 	return false

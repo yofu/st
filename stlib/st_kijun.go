@@ -47,7 +47,35 @@ func (k *Kijun) Show() {
 }
 
 func (k *Kijun) IsHidden(show *Show) bool {
-	return k.hide
+	if k.hide {
+		return true
+	}
+	d := k.Direction()
+	if math.Abs(d[0]) < 1e-4 {
+		if k.Start[0] < show.Xrange[0] || show.Xrange[1] < k.Start[0] {
+			return true
+		}
+		if k.End[0] < show.Xrange[0] || show.Xrange[1] < k.End[0] {
+			return true
+		}
+	}
+	if math.Abs(d[1]) < 1e-4 {
+		if k.Start[1] < show.Yrange[0] || show.Yrange[1] < k.Start[1] {
+			return true
+		}
+		if k.End[1] < show.Yrange[0] || show.Yrange[1] < k.End[1] {
+			return true
+		}
+	}
+	if math.Abs(d[2]) < 1e-4 {
+		if k.Start[2] < show.Zrange[0] || show.Zrange[1] < k.Start[2] {
+			return true
+		}
+		if k.End[2] < show.Zrange[0] || show.Zrange[1] < k.End[2] {
+			return true
+		}
+	}
+	return false
 }
 
 func (k *Kijun) Length() float64 {

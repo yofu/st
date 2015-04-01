@@ -6094,7 +6094,6 @@ func (stw *Window) NextFloor() {
 		stw.Frame.Show.Zrange[i] = val
 		stw.Labels[z].SetAttribute("VALUE", fmt.Sprintf("%.3f", val))
 	}
-	stw.UpdateShowRange()
 	stw.Redraw()
 }
 
@@ -6117,7 +6116,6 @@ func (stw *Window) PrevFloor() {
 		stw.Frame.Show.Zrange[i] = val
 		stw.Labels[z].SetAttribute("VALUE", fmt.Sprintf("%.3f", val))
 	}
-	stw.UpdateShowRange()
 	stw.Redraw()
 }
 
@@ -6170,7 +6168,6 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 	if stw.Frame == nil {
 		return
 	}
-	// stw.UpdateShowRange() // TODO: ShowRange
 	canv.Hatch(cd.CD_FDIAGONAL)
 	canv.Clear()
 	stw.Frame.View.Set(0)
@@ -7221,6 +7218,12 @@ func (stw *Window) ShowAll() {
 	}
 	stw.ShowAllSection()
 	stw.Frame.Show.All()
+	stw.Labels["XMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.Frame.Show.Xrange[0]))
+	stw.Labels["XMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.Frame.Show.Xrange[1]))
+	stw.Labels["YMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.Frame.Show.Yrange[0]))
+	stw.Labels["YMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.Frame.Show.Yrange[1]))
+	stw.Labels["ZMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.Frame.Show.Zrange[0]))
+	stw.Labels["ZMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.Frame.Show.Zrange[1]))
 	stw.Redraw()
 }
 
@@ -9354,7 +9357,6 @@ func (stw *Window) ShowEtype(etype int) {
 		return
 	}
 	stw.Frame.Show.Etype[etype] = true
-	stw.UpdateShowRange() // TODO: ShowRange
 	if lbl, ok := stw.Labels[st.ETYPES[etype]]; ok {
 		lbl.SetAttribute("FGCOLOR", labelFGColor)
 	}
@@ -9465,7 +9467,6 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 							}
 						}
 					}
-					stw.UpdateShowRange()
 					stw.HideNodes()
 					stw.Redraw()
 					iup.SetFocus(stw.canv)
@@ -9484,7 +9485,6 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 							el.Hide()
 						}
 					}
-					stw.UpdateShowRange()
 					stw.HideNodes()
 					stw.Redraw()
 					iup.SetFocus(stw.canv)
@@ -9854,7 +9854,6 @@ func (stw *Window) CB_RangeValue(h *iup.Handle, valptr *float64) {
 			if err == nil {
 				*valptr = val
 			}
-			stw.UpdateShowRange()
 			stw.Redraw()
 		}
 	})
@@ -9867,7 +9866,6 @@ func (stw *Window) CB_RangeValue(h *iup.Handle, valptr *float64) {
 				if err == nil {
 					*valptr = val
 				}
-				stw.UpdateShowRange()
 				stw.Redraw()
 				iup.SetFocus(h)
 			}
@@ -9878,59 +9876,6 @@ func (stw *Window) CB_RangeValue(h *iup.Handle, valptr *float64) {
 func (stw *Window) SetColorMode(mode uint) {
 	stw.Labels["COLORMODE"].SetAttribute("VALUE", fmt.Sprintf("  %s", st.ECOLORS[mode]))
 	stw.Frame.Show.ColorMode = mode
-}
-
-func (stw *Window) UpdateShowRange() {
-	for _, n := range stw.Frame.Nodes {
-		// if n.Hide { continue }
-		n.Show()
-		if n.Coord[0] < stw.Frame.Show.Xrange[0] || stw.Frame.Show.Xrange[1] < n.Coord[0] {
-			n.Hide()
-		} else if n.Coord[1] < stw.Frame.Show.Yrange[0] || stw.Frame.Show.Yrange[1] < n.Coord[1] {
-			n.Hide()
-		} else if n.Coord[2] < stw.Frame.Show.Zrange[0] || stw.Frame.Show.Zrange[1] < n.Coord[2] {
-			n.Hide()
-		}
-	}
-	for _, el := range stw.Frame.Elems {
-		// if el.Hide { continue }
-		el.Show()
-		for _, en := range el.Enod {
-			if en.IsHidden(stw.Frame.Show) {
-				el.Hide()
-				break
-			}
-		}
-	}
-	for _, k := range stw.Frame.Kijuns {
-		// if k.Hide { continue }
-		k.Show()
-		d := k.Direction()
-		if math.Abs(d[0]) < 1e-4 {
-			if k.Start[0] < stw.Frame.Show.Xrange[0] || stw.Frame.Show.Xrange[1] < k.Start[0] {
-				k.Hide()
-			}
-			if k.End[0] < stw.Frame.Show.Xrange[0] || stw.Frame.Show.Xrange[1] < k.End[0] {
-				k.Hide()
-			}
-		}
-		if math.Abs(d[1]) < 1e-4 {
-			if k.Start[1] < stw.Frame.Show.Yrange[0] || stw.Frame.Show.Yrange[1] < k.Start[1] {
-				k.Hide()
-			}
-			if k.End[1] < stw.Frame.Show.Yrange[0] || stw.Frame.Show.Yrange[1] < k.End[1] {
-				k.Hide()
-			}
-		}
-		if math.Abs(d[2]) < 1e-4 {
-			if k.Start[2] < stw.Frame.Show.Zrange[0] || stw.Frame.Show.Zrange[1] < k.Start[2] {
-				k.Hide()
-			}
-			if k.End[2] < stw.Frame.Show.Zrange[0] || stw.Frame.Show.Zrange[1] < k.End[2] {
-				k.Hide()
-			}
-		}
-	}
 }
 
 func (stw *Window) CB_Period(h *iup.Handle, valptr *string) {
