@@ -151,7 +151,7 @@ func (node *Node) Show() {
 	node.hide = false
 }
 
-func (node *Node) IsHide() bool {
+func (node *Node) IsHidden(show *Show) bool {
 	return node.hide
 }
 

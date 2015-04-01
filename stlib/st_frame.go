@@ -305,7 +305,7 @@ func (frame *Frame) Bbox() (xmin, xmax, ymin, ymax, zmin, zmax float64) {
 	var mins, maxs [3]float64
 	first := true
 	for _, j := range frame.Nodes {
-		if j.IsHide() {
+		if j.IsHidden(frame.Show) {
 			continue
 		}
 		if first {
@@ -2520,7 +2520,7 @@ func abs(val int) int {
 func (frame *Frame) Fence(axis int, coord float64, plate bool) []*Elem {
 	rtn := make([]*Elem, 0)
 	for _, el := range frame.Elems {
-		if el.IsHide(frame.Show) {
+		if el.IsHidden(frame.Show) {
 			continue
 		}
 		if plate || el.IsLineElem() {

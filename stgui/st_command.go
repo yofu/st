@@ -1147,7 +1147,7 @@ func copyelem(stw *Window) {
 	getvector(stw, func(x, y, z float64) {
 		if !(x == 0.0 && y == 0.0 && z == 0.0) {
 			for _, el := range stw.SelectElem {
-				if el == nil || el.IsHide(stw.Frame.Show) || el.Lock {
+				if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock {
 					continue
 				}
 				el.Copy(x, y, z, EPS)
@@ -1168,7 +1168,7 @@ func duplicateelem(stw *Window) {
 	newels := make([]*st.Elem, len(stw.SelectElem))
 	enum := 0
 	for _, el := range stw.SelectElem {
-		if el == nil || el.IsHide(stw.Frame.Show) || el.Lock {
+		if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock {
 			continue
 		}
 		newel := el.Snapshot(stw.Frame)
@@ -1196,7 +1196,7 @@ func moveelem(stw *Window) {
 	stw.addHistory("移動距離を指定[ダイアログ(D)]")
 	getvector(stw, func(x, y, z float64) {
 		for _, el := range stw.SelectElem {
-			if el == nil || el.IsHide(stw.Frame.Show) || el.Lock {
+			if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock {
 				continue
 			}
 			el.Move(x, y, z, EPS)
@@ -1243,7 +1243,7 @@ func movenode(stw *Window) {
 	stw.addHistory("移動距離を指定[ダイアログ(D)]")
 	getvector(stw, func(x, y, z float64) {
 		for _, n := range ns {
-			if n == nil || n.IsHide() || n.Lock {
+			if n == nil || n.IsHidden(stw.Frame.Show) || n.Lock {
 				continue
 			}
 			n.Move(x, y, z)
@@ -1408,7 +1408,7 @@ func rotate(stw *Window) {
 				stw.addHistory("回転角を指定[参照(R)]")
 				rot := func(angle float64) {
 					for _, n := range ns {
-						if n == nil || n.IsHide() || n.Lock {
+						if n == nil || n.IsHidden(stw.Frame.Show) || n.Lock {
 							continue
 						}
 						n.Rotate(n0.Coord, []float64{x, y, z}, angle)
@@ -1582,7 +1582,7 @@ func scale(stw *Window) {
 			stw.EscapeCB()
 		}
 		for _, n := range ns {
-			if n == nil || n.IsHide() || n.Lock {
+			if n == nil || n.IsHidden(stw.Frame.Show) || n.Lock {
 				continue
 			}
 			n.Scale(n0.Coord, val, val, val)
@@ -1794,7 +1794,7 @@ func axistocang(stw *Window) {
 	axisfunc := func(x, y, z float64) {
 		if !(x == 0.0 && y == 0.0 && z == 0.0) {
 			for _, el := range stw.SelectElem {
-				if el == nil || el.IsHide(stw.Frame.Show) || el.Lock {
+				if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock {
 					continue
 				}
 				_, err := el.AxisToCang([]float64{x, y, z}, strong)
@@ -2100,7 +2100,7 @@ func selectcolumnbase(stw *Window) {
 		max = 0.0
 	}
 	for _, el := range stw.Frame.Elems {
-		if el.Etype != st.COLUMN || el.IsHide(stw.Frame.Show) {
+		if el.Etype != st.COLUMN || el.IsHidden(stw.Frame.Show) {
 			continue
 		}
 		for _, n := range el.Enod {
@@ -2121,7 +2121,7 @@ func selectconfed(stw *Window) {
 	stw.Deselect()
 	num := 0
 	for _, n := range stw.Frame.Nodes {
-		if n.IsHide() {
+		if n.IsHidden(stw.Frame.Show) {
 			continue
 		}
 		for i := 0; i < 6; i++ {
@@ -2189,7 +2189,7 @@ func selectsect(stw *Window) {
 				stw.addHistory(fmt.Sprintf("SECT %d Selected", snum))
 				stw.SelectElem = make([]*st.Elem, 0)
 				for _, el := range stw.Frame.Elems {
-					if el.IsHide(stw.Frame.Show) {
+					if el.IsHidden(stw.Frame.Show) {
 						continue
 					}
 					if el.Sect.Num == snum {
@@ -2839,7 +2839,7 @@ func (stw *Window) BoundedArea(arg *iup.MouseButton, f func(ns []*st.Node, els [
 		var cand *st.Elem
 		xmin := 100000.0
 		for _, el := range stw.Frame.Elems {
-			if el.IsHide(stw.Frame.Show) || !el.IsLineElem() {
+			if el.IsHidden(stw.Frame.Show) || !el.IsLineElem() {
 				continue
 			}
 			if el.Enod[0].Pcoord[1] == el.Enod[1].Pcoord[1] {
@@ -2883,7 +2883,7 @@ func (stw *Window) Chain(x, y float64, el *st.Elem, maxdepth int) ([]*st.Node, [
 			if cand == nil {
 				continue
 			}
-			if cand.IsHide(stw.Frame.Show) || !cand.IsLineElem() || cand == tmpel {
+			if cand.IsHidden(stw.Frame.Show) || !cand.IsLineElem() || cand == tmpel {
 				continue
 			}
 			var otherside *st.Node

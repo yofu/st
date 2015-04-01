@@ -24,6 +24,7 @@ var (
 type Hider interface {
 	Hide()
 	Show()
+	IsHidden(*Show) bool
 }
 
 func Input(question string) string {

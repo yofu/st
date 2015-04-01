@@ -4998,7 +4998,7 @@ func (stw *Window) exmode(command string) error {
 		}
 		vec := []float64{n2.Coord[0] - n1.Coord[0], n2.Coord[1] - n1.Coord[1], n2.Coord[2] - n1.Coord[2]}
 		for _, el := range stw.SelectElem {
-			if el == nil || el.IsHide(stw.Frame.Show) || el.Lock || !el.IsLineElem() {
+			if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock || !el.IsLineElem() {
 				continue
 			}
 			_, err := el.AxisToCang(vec, strong)
@@ -6207,7 +6207,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		if stw.Frame.Show.Deformation {
 			stw.Frame.View.ProjectDeformation(n, stw.Frame.Show)
 		}
-		if n.IsHide() {
+		if n.IsHidden(stw.Frame.Show) {
 			continue
 		}
 		if color == st.ECOLOR_BLACK {
@@ -6242,7 +6242,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		els := st.SortedElem(stw.Frame.Elems, func(e *st.Elem) float64 { return -e.DistFromProjection(stw.Frame.View) })
 	loop:
 		for _, el := range els {
-			if el.IsHide(stw.Frame.Show) {
+			if el.IsHidden(stw.Frame.Show) {
 				continue
 			}
 			canv.LineStyle(cd.CD_CONTINUOUS)
@@ -6307,7 +6307,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 	stw.Frame.Show.NoMomentValue = false
 	for _, el := range stw.SelectElem {
 		canv.LineStyle(cd.CD_DOTTED)
-		if el == nil || el.IsHide(stw.Frame.Show) {
+		if el == nil || el.IsHidden(stw.Frame.Show) {
 			continue
 		}
 		if el.Lock {
@@ -6444,7 +6444,7 @@ func (stw *Window) DrawFrameNode() {
 		stw.dbuff.Hatch(cd.CD_DIAGCROSS)
 		for _, el := range stw.SelectElem {
 			stw.dbuff.LineStyle(cd.CD_DOTTED)
-			if el == nil || el.IsHide(stw.Frame.Show) {
+			if el == nil || el.IsHidden(stw.Frame.Show) {
 				continue
 			}
 			if el.Lock {
@@ -6672,7 +6672,7 @@ func (stw *Window) Bbox() (xmin, xmax, ymin, ymax float64) {
 	var mins, maxs [2]float64
 	first := true
 	for _, j := range stw.Frame.Nodes {
-		if j.IsHide() {
+		if j.IsHidden(stw.Frame.Show) {
 			continue
 		}
 		if first {
@@ -6715,7 +6715,7 @@ func (stw *Window) HideNodes() {
 		n.Hide()
 	}
 	for _, el := range stw.Frame.Elems {
-		if el.IsHide(stw.Frame.Show) {
+		if el.IsHidden(stw.Frame.Show) {
 			continue
 		}
 		for _, en := range el.Enod {
@@ -6757,7 +6757,7 @@ func (stw *Window) HideSelected() {
 			}
 		}
 		for _, el := range stw.Frame.Elems {
-			if !el.IsHide(stw.Frame.Show) {
+			if !el.IsHidden(stw.Frame.Show) {
 				for _, en := range el.Enod {
 					en.Show()
 				}
@@ -6823,7 +6823,7 @@ func (stw *Window) SelectNotHidden() {
 	stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
 	num := 0
 	for _, el := range stw.Frame.Elems {
-		if el.IsHide(stw.Frame.Show) {
+		if el.IsHidden(stw.Frame.Show) {
 			continue
 		}
 		stw.SelectElem[num] = el
@@ -7301,7 +7301,7 @@ func (stw *Window) SetAngle(phi, theta float64) {
 func (stw *Window) PickNode(x, y int) (rtn *st.Node) {
 	mindist := float64(nodeSelectPixel)
 	for _, v := range stw.Frame.Nodes {
-		if v.IsHide() {
+		if v.IsHidden(stw.Frame.Show) {
 			continue
 		}
 		dist := math.Hypot(float64(x)-v.Pcoord[0], float64(y)-v.Pcoord[1])
@@ -7352,7 +7352,7 @@ func (stw *Window) SelectNodeStart(arg *iup.MouseButton) {
 			tmpselect := make([]*st.Node, len(stw.Frame.Nodes))
 			i := 0
 			for _, v := range stw.Frame.Nodes {
-				if v.IsHide() {
+				if v.IsHidden(stw.Frame.Show) {
 					continue
 				}
 				if float64(left) <= v.Pcoord[0] && v.Pcoord[0] <= float64(right) && float64(bottom) <= v.Pcoord[1] && v.Pcoord[1] <= float64(top) {
@@ -7402,7 +7402,7 @@ func (stw *Window) PickElem(x, y int) (rtn *st.Elem) {
 func (stw *Window) PickLineElem(x, y int) (rtn *st.Elem) {
 	mindist := float64(dotSelectPixel)
 	for _, v := range stw.Frame.Elems {
-		if v.IsHide(stw.Frame.Show) {
+		if v.IsHidden(stw.Frame.Show) {
 			continue
 		}
 		if v.IsLineElem() && (math.Min(v.Enod[0].Pcoord[0], v.Enod[1].Pcoord[0]) <= float64(x+dotSelectPixel) && math.Max(v.Enod[0].Pcoord[0], v.Enod[1].Pcoord[0]) >= float64(x-dotSelectPixel)) && (math.Min(v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[1]) <= float64(y+dotSelectPixel) && math.Max(v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[1]) >= float64(y-dotSelectPixel)) {
@@ -7429,7 +7429,7 @@ func abs(val int) int {
 func (stw *Window) PickPlateElem(x, y int) []*st.Elem {
 	rtn := make(map[int]*st.Elem)
 	for _, el := range stw.Frame.Elems {
-		if el.IsHide(stw.Frame.Show) {
+		if el.IsHidden(stw.Frame.Show) {
 			continue
 		}
 		if !el.IsLineElem() {
@@ -7494,7 +7494,7 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 			switch selectDirection {
 			case SD_FROMLEFT:
 				for _, el := range stw.Frame.Elems {
-					if el.IsHide(stw.Frame.Show) {
+					if el.IsHidden(stw.Frame.Show) {
 						continue
 					}
 					add := true
@@ -7517,7 +7517,7 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 				}
 			case SD_FROMRIGHT:
 				for _, el := range stw.Frame.Elems {
-					if el.IsHide(stw.Frame.Show) {
+					if el.IsHidden(stw.Frame.Show) {
 						continue
 					}
 					add := false
@@ -7562,7 +7562,7 @@ func (stw *Window) SelectElemFenceStart(arg *iup.MouseButton) {
 		tmpselectelem := make([]*st.Elem, len(stw.Frame.Elems))
 		k := 0
 		for _, el := range stw.Frame.Elems {
-			if el.IsHide(stw.Frame.Show) {
+			if el.IsHidden(stw.Frame.Show) {
 				continue
 			}
 			add := false
@@ -9896,7 +9896,7 @@ func (stw *Window) UpdateShowRange() {
 		// if el.Hide { continue }
 		el.Show()
 		for _, en := range el.Enod {
-			if en.IsHide() {
+			if en.IsHidden(stw.Frame.Show) {
 				el.Hide()
 				break
 			}

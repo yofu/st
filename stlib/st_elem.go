@@ -369,7 +369,7 @@ func (elem *Elem) Show() {
 	elem.hide = false
 }
 
-func (elem *Elem) IsHide(show *Show) bool {
+func (elem *Elem) IsHidden(show *Show) bool {
 	if elem.hide {
 		return true
 	}
