@@ -11,7 +11,7 @@ type Kijun struct {
 	Pstart []float64
 	Pend   []float64
 
-	Hide bool
+	hide bool
 }
 
 func NewKijun() *Kijun {
@@ -34,8 +34,20 @@ func (k *Kijun) Snapshot() *Kijun {
 		rtn.Pstart[i] = k.Pstart[i]
 		rtn.Pend[i] = k.Pend[i]
 	}
-	rtn.Hide = k.Hide
+	rtn.hide = k.hide
 	return rtn
+}
+
+func (k *Kijun) Hide() {
+	k.hide = true
+}
+
+func (k *Kijun) Show() {
+	k.hide = false
+}
+
+func (k *Kijun) IsHidden(show *Show) bool {
+	return k.hide
 }
 
 func (k *Kijun) Length() float64 {

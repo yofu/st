@@ -6180,7 +6180,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 	if stw.Frame.Show.Kijun {
 		canv.Foreground(KijunColor)
 		for _, k := range stw.Frame.Kijuns {
-			if k.Hide {
+			if k.IsHidden(stw.Frame.Show) {
 				continue
 			}
 			k.Pstart = stw.Frame.View.ProjectCoord(k.Start)
@@ -6193,7 +6193,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		canv.InteriorStyle(cd.CD_SOLID)
 		canv.Foreground(MeasureColor)
 		for _, m := range stw.Frame.Measures {
-			if m.Hide {
+			if m.IsHidden(stw.Frame.Show) {
 				continue
 			}
 			DrawMeasure(m, canv, stw.Frame.Show)
@@ -7208,7 +7208,7 @@ func (stw *Window) ShowAll() {
 		n.Show()
 	}
 	for _, k := range stw.Frame.Kijuns {
-		k.Hide = false
+		k.Show()
 	}
 	for i, et := range st.ETYPES {
 		if i == st.WBRACE || i == st.SBRACE {
@@ -7316,7 +7316,7 @@ func (stw *Window) PickNode(x, y int) (rtn *st.Node) {
 	}
 	if stw.Frame.Show.Kijun {
 		for _, k := range stw.Frame.Kijuns {
-			if k.Hide {
+			if k.IsHidden(stw.Frame.Show) {
 				continue
 			}
 			for _, n := range [][]float64{k.Start, k.End} {
@@ -9904,30 +9904,30 @@ func (stw *Window) UpdateShowRange() {
 	}
 	for _, k := range stw.Frame.Kijuns {
 		// if k.Hide { continue }
-		k.Hide = false
+		k.Show()
 		d := k.Direction()
 		if math.Abs(d[0]) < 1e-4 {
 			if k.Start[0] < stw.Frame.Show.Xrange[0] || stw.Frame.Show.Xrange[1] < k.Start[0] {
-				k.Hide = true
+				k.Hide()
 			}
 			if k.End[0] < stw.Frame.Show.Xrange[0] || stw.Frame.Show.Xrange[1] < k.End[0] {
-				k.Hide = true
+				k.Hide()
 			}
 		}
 		if math.Abs(d[1]) < 1e-4 {
 			if k.Start[1] < stw.Frame.Show.Yrange[0] || stw.Frame.Show.Yrange[1] < k.Start[1] {
-				k.Hide = true
+				k.Hide()
 			}
 			if k.End[1] < stw.Frame.Show.Yrange[0] || stw.Frame.Show.Yrange[1] < k.End[1] {
-				k.Hide = true
+				k.Hide()
 			}
 		}
 		if math.Abs(d[2]) < 1e-4 {
 			if k.Start[2] < stw.Frame.Show.Zrange[0] || stw.Frame.Show.Zrange[1] < k.Start[2] {
-				k.Hide = true
+				k.Hide()
 			}
 			if k.End[2] < stw.Frame.Show.Zrange[0] || stw.Frame.Show.Zrange[1] < k.End[2] {
-				k.Hide = true
+				k.Hide()
 			}
 		}
 	}
