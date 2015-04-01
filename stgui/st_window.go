@@ -1681,10 +1681,11 @@ func (stw *Window) OpenFile(filename string) error {
 }
 
 func (stw *Window) WatchFile(fn string) {
+	var err error
 	if watcher != nil {
 		watcher.Close()
 	}
-	watcher, err := fsnotify.NewWatcher()
+	watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		stw.errormessage(err, ERROR)
 	}
