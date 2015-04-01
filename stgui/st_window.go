@@ -6716,21 +6716,6 @@ func (stw *Window) SetShowRange() {
 	stw.Labels["ZMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", zmin))
 }
 
-func (stw *Window) HideNodes() {
-	for _, n := range stw.Frame.Nodes {
-		n.Hide()
-	}
-	for _, el := range stw.Frame.Elems {
-		if el.IsHidden(stw.Frame.Show) {
-			continue
-		}
-		for _, en := range el.Enod {
-			en.Show()
-		}
-	}
-	stw.SetShowRange()
-}
-
 func (stw *Window) HideNotSelected() {
 	if stw.SelectElem != nil {
 		for _, n := range stw.Frame.Nodes {
@@ -9476,7 +9461,6 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 							}
 						}
 					}
-					stw.HideNodes()
 					stw.Redraw()
 					iup.SetFocus(stw.canv)
 				}
@@ -9494,7 +9478,6 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 							el.Hide()
 						}
 					}
-					stw.HideNodes()
 					stw.Redraw()
 					iup.SetFocus(stw.canv)
 				}
