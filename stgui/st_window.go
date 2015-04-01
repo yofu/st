@@ -3590,7 +3590,7 @@ func (stw *Window) emptyexmodech() {
 			break emptyloop
 		case <-stw.exmodeend:
 			break emptyloop
-		case ent := <-stw.exmodech:
+		case <-stw.exmodech:
 			continue emptyloop
 		}
 	}
@@ -5390,7 +5390,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			sec := stw.Frame.AddSect(snum)
 			select {
-			case time.After(time.Second):
+			case <-time.After(time.Second):
 				break
 			case al := <-stw.exmodech:
 				if a, ok := al.(st.Shape); ok {
