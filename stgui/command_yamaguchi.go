@@ -39,7 +39,7 @@ func gravity(stw *Window) {
 	sag := func(x, y, r, m float64) {
 		var dx, dy, d float64
 		for _, n := range stw.Frame.Nodes {
-			if n.Conf[2] || n.Hide || n.Lock {
+			if n.Conf[2] || n.IsHide() || n.Lock {
 				continue
 			}
 			dx = math.Abs(n.Coord[0] - x)
@@ -174,7 +174,7 @@ func smooth(stw *Window) {
 	stw.Redraw()
 	ratio := 0.5
 	flatten := func(n *st.Node) {
-		if n.Conf[2] || n.Hide || n.Lock {
+		if n.Conf[2] || n.IsHide() || n.Lock {
 			return
 		}
 		z0 := n.Coord[2]
@@ -273,7 +273,7 @@ func hanging(stw *Window) {
 			if n == nil {
 				continue
 			}
-			if n.Conf[2] || n.Hide || n.Lock {
+			if n.Conf[2] || n.IsHide() || n.Lock {
 				continue
 			}
 			n.Coord[2] = height

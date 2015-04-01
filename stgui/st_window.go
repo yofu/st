@@ -5633,6 +5633,19 @@ func (stw *Window) exmode(command string) error {
 		} else {
 			return errors.New(":sum no selected elem/node")
 		}
+	case "hide":
+		ex_hide:
+		for {
+			select {
+			case ent := <-stw.exmodech:
+				if ent == nil {
+					break ex_hide
+				}
+				if h, ok := ent.(st.Hider); ok {
+					h.Hide()
+				}
+			}
+		}
 	case "height":
 		if usage {
 			stw.addHistory(":height f1 f2")
@@ -6095,9 +6108,9 @@ func axisrange(stw *Window, axis int, min, max float64, any bool) {
 	for _, n := range stw.Frame.Nodes {
 		if !(min <= n.Coord[axis] && n.Coord[axis] <= max) {
 			tmpnodes = append(tmpnodes, n)
-			n.Hide = true
+			n.Hide()
 		} else {
-			n.Hide = false
+			n.Show()
 		}
 	}
 	var tmpelems []*st.Elem
@@ -6107,10 +6120,10 @@ func axisrange(stw *Window, axis int, min, max float64, any bool) {
 		tmpelems = stw.Frame.NodeToElemAll(tmpnodes...)
 	}
 	for _, el := range stw.Frame.Elems {
-		el.Hide = false
+		el.Show()
 	}
 	for _, el := range tmpelems {
-		el.Hide = true
+		el.Hide()
 	}
 	switch axis {
 	case 0:
@@ -6176,7 +6189,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		if stw.Frame.Show.Deformation {
 			stw.Frame.View.ProjectDeformation(n, stw.Frame.Show)
 		}
-		if n.Hide {
+		if n.IsHide() {
 			continue
 		}
 		if color == st.ECOLOR_BLACK {
@@ -6641,7 +6654,7 @@ func (stw *Window) Bbox() (xmin, xmax, ymin, ymax float64) {
 	var mins, maxs [2]float64
 	first := true
 	for _, j := range stw.Frame.Nodes {
-		if j.Hide {
+		if j.IsHide() {
 			continue
 		}
 		if first {
@@ -6681,14 +6694,14 @@ func (stw *Window) SetShowRange() {
 
 func (stw *Window) HideNodes() {
 	for _, n := range stw.Frame.Nodes {
-		n.Hide = true
+		n.Hide()
 	}
 	for _, el := range stw.Frame.Elems {
-		if el.Hide {
+		if el.IsHide(stw.Frame.Show) {
 			continue
 		}
 		for _, en := range el.Enod {
-			en.Hide = false
+			en.Show()
 		}
 	}
 	stw.SetShowRange()
@@ -6697,16 +6710,16 @@ func (stw *Window) HideNodes() {
 func (stw *Window) HideNotSelected() {
 	if stw.SelectElem != nil {
 		for _, n := range stw.Frame.Nodes {
-			n.Hide = true
+			n.Hide()
 		}
 		for _, el := range stw.Frame.Elems {
-			el.Hide = true
+			el.Hide()
 		}
 		for _, el := range stw.SelectElem {
 			if el != nil {
-				el.Hide = false
+				el.Show()
 				for _, en := range el.Enod {
-					en.Hide = false
+					en.Show()
 				}
 			}
 		}
@@ -6718,17 +6731,17 @@ func (stw *Window) HideNotSelected() {
 func (stw *Window) HideSelected() {
 	if stw.SelectElem != nil {
 		for _, n := range stw.Frame.Nodes {
-			n.Hide = true
+			n.Hide()
 		}
 		for _, el := range stw.SelectElem {
 			if el != nil {
-				el.Hide = true
+				el.Hide()
 			}
 		}
 		for _, el := range stw.Frame.Elems {
-			if !el.Hide {
+			if !el.IsHide(stw.Frame.Show) {
 				for _, en := range el.Enod {
-					en.Hide = false
+					en.Show()
 				}
 			}
 		}
@@ -7171,10 +7184,10 @@ func (stw *Window) FilterElem(els []*st.Elem, str string) ([]*st.Elem, error) {
 
 func (stw *Window) ShowAll() {
 	for _, el := range stw.Frame.Elems {
-		el.Hide = false
+		el.Show()
 	}
 	for _, n := range stw.Frame.Nodes {
-		n.Hide = false
+		n.Show()
 	}
 	for _, k := range stw.Frame.Kijuns {
 		k.Hide = false
@@ -7270,7 +7283,7 @@ func (stw *Window) SetAngle(phi, theta float64) {
 func (stw *Window) PickNode(x, y int) (rtn *st.Node) {
 	mindist := float64(nodeSelectPixel)
 	for _, v := range stw.Frame.Nodes {
-		if v.Hide {
+		if v.IsHide() {
 			continue
 		}
 		dist := math.Hypot(float64(x)-v.Pcoord[0], float64(y)-v.Pcoord[1])
@@ -7321,7 +7334,7 @@ func (stw *Window) SelectNodeStart(arg *iup.MouseButton) {
 			tmpselect := make([]*st.Node, len(stw.Frame.Nodes))
 			i := 0
 			for _, v := range stw.Frame.Nodes {
-				if v.Hide {
+				if v.IsHide() {
 					continue
 				}
 				if float64(left) <= v.Pcoord[0] && v.Pcoord[0] <= float64(right) && float64(bottom) <= v.Pcoord[1] && v.Pcoord[1] <= float64(top) {
@@ -9395,10 +9408,10 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 							stw.Labels[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelFGColor)
 							for _, el := range stw.Frame.Elems {
 								if el.Etype == etype {
-									el.Hide = true
+									el.Hide()
 								}
 								if el.Etype == etype-2 {
-									el.Hide = false
+									el.Show()
 								}
 							}
 						} else {
@@ -9406,7 +9419,7 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 							stw.Labels[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelOFFColor)
 							for _, el := range stw.Frame.Elems {
 								if el.Etype == etype-2 {
-									el.Hide = true
+									el.Hide()
 								}
 							}
 						}
@@ -9418,10 +9431,10 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 							stw.Labels[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelOFFColor)
 							for _, el := range stw.Frame.Elems {
 								if el.Etype == etype {
-									el.Hide = false
+									el.Show()
 								}
 								if el.Etype == etype-2 {
-									el.Hide = true
+									el.Hide()
 								}
 							}
 						} else {
@@ -9429,7 +9442,7 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 							stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelFGColor)
 							for _, el := range stw.Frame.Elems {
 								if el.Etype == etype {
-									el.Hide = false
+									el.Show()
 								}
 							}
 						}
@@ -9447,10 +9460,10 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 					stw.Labels[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelOFFColor)
 					for _, el := range stw.Frame.Elems {
 						if el.Etype == etype {
-							el.Hide = true
+							el.Hide()
 						}
 						if el.Etype == etype-2 {
-							el.Hide = true
+							el.Hide()
 						}
 					}
 					stw.UpdateShowRange()
@@ -9852,21 +9865,21 @@ func (stw *Window) SetColorMode(mode uint) {
 func (stw *Window) UpdateShowRange() {
 	for _, n := range stw.Frame.Nodes {
 		// if n.Hide { continue }
-		n.Hide = false
+		n.Show()
 		if n.Coord[0] < stw.Frame.Show.Xrange[0] || stw.Frame.Show.Xrange[1] < n.Coord[0] {
-			n.Hide = true
+			n.Hide()
 		} else if n.Coord[1] < stw.Frame.Show.Yrange[0] || stw.Frame.Show.Yrange[1] < n.Coord[1] {
-			n.Hide = true
+			n.Hide()
 		} else if n.Coord[2] < stw.Frame.Show.Zrange[0] || stw.Frame.Show.Zrange[1] < n.Coord[2] {
-			n.Hide = true
+			n.Hide()
 		}
 	}
 	for _, el := range stw.Frame.Elems {
 		// if el.Hide { continue }
-		el.Hide = false
+		el.Show()
 		for _, en := range el.Enod {
-			if en.Hide {
-				el.Hide = true
+			if en.IsHide() {
+				el.Hide()
 				break
 			}
 		}

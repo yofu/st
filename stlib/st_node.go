@@ -40,7 +40,7 @@ type Node struct {
 	Pcoord []float64
 	Dcoord []float64
 
-	Hide bool
+	hide bool
 	Lock bool
 }
 
@@ -108,7 +108,7 @@ func (node *Node) Snapshot(frame *Frame) *Node {
 	if node.Pile != nil {
 		n.Pile = frame.Piles[node.Pile.Num]
 	}
-	n.Hide = node.Hide
+	n.hide = node.hide
 	n.Lock = node.Lock
 	for i := 0; i < 3; i++ {
 		n.Coord[i] = node.Coord[i]
@@ -141,6 +141,18 @@ func (node *Node) Snapshot(frame *Frame) *Node {
 		}
 	}
 	return n
+}
+
+func (node *Node) Hide() {
+	node.hide = true
+}
+
+func (node *Node) Show() {
+	node.hide = false
+}
+
+func (node *Node) IsHide() bool {
+	return node.hide
 }
 
 func (node *Node) InpString() string {

@@ -21,6 +21,11 @@ var (
 	RainbowColor = []int{38655, 65430, 65280, 9895680, 16507473, 16750130, 16711830} //  "BLUE", "BLUEGREEN", "GREEN", "YELLOWGREEN", "YELLOW", "ORANGE", "RED"
 )
 
+type Hider interface {
+	Hide()
+	Show()
+}
+
 func Input(question string) string {
 	fmt.Print(question)
 	var answer string

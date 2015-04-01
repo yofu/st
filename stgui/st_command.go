@@ -1243,7 +1243,7 @@ func movenode(stw *Window) {
 	stw.addHistory("移動距離を指定[ダイアログ(D)]")
 	getvector(stw, func(x, y, z float64) {
 		for _, n := range ns {
-			if n == nil || n.Hide || n.Lock {
+			if n == nil || n.IsHide() || n.Lock {
 				continue
 			}
 			n.Move(x, y, z)
@@ -1408,7 +1408,7 @@ func rotate(stw *Window) {
 				stw.addHistory("回転角を指定[参照(R)]")
 				rot := func(angle float64) {
 					for _, n := range ns {
-						if n == nil || n.Hide || n.Lock {
+						if n == nil || n.IsHide() || n.Lock {
 							continue
 						}
 						n.Rotate(n0.Coord, []float64{x, y, z}, angle)
@@ -1582,7 +1582,7 @@ func scale(stw *Window) {
 			stw.EscapeCB()
 		}
 		for _, n := range ns {
-			if n == nil || n.Hide || n.Lock {
+			if n == nil || n.IsHide() || n.Lock {
 				continue
 			}
 			n.Scale(n0.Coord, val, val, val)
@@ -2121,7 +2121,7 @@ func selectconfed(stw *Window) {
 	stw.Deselect()
 	num := 0
 	for _, n := range stw.Frame.Nodes {
-		if n.Hide {
+		if n.IsHide() {
 			continue
 		}
 		for i := 0; i < 6; i++ {

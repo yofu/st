@@ -77,7 +77,7 @@ type Elem struct {
 	Parent   *Elem
 	Eldest   bool
 
-	Hide bool
+	hide bool
 	Lock bool
 }
 
@@ -172,7 +172,7 @@ func (elem *Elem) Snapshot(frame *Frame) *Elem {
 	}
 	el.Num = elem.Num
 	el.Frame = frame
-	el.Hide = elem.Hide
+	el.hide = elem.hide
 	el.Lock = elem.Lock
 	return el
 }
@@ -361,8 +361,16 @@ func (elem *Elem) IsLineElem() bool {
 
 // }}}
 
+func (elem *Elem) Hide() {
+	elem.hide = true
+}
+
+func (elem *Elem) Show() {
+	elem.hide = false
+}
+
 func (elem *Elem) IsHide(show *Show) bool {
-	if elem.Hide {
+	if elem.hide {
 		return true
 	}
 	if show != nil {
@@ -1462,7 +1470,7 @@ func (elem *Elem) BetweenNode(index, size int) []*Node {
 	maxlen := 1000.0
 	cand := 0
 	for _, n := range elem.Frame.Nodes {
-		if n.Hide {
+		if n.hide {
 			continue
 		}
 		if n == elem.Enod[0] || n == elem.Enod[1] {
