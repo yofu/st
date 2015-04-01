@@ -5069,7 +5069,7 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 			if enum == 0 {
-				return errors.New(":thermal no selected elem")
+				return errors.New(":prestress no selected elem")
 			}
 			els = els[:enum]
 		} else {
