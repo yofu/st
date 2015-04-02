@@ -4216,6 +4216,15 @@ func (stw *Window) exmode(command string) error {
 		if err != nil {
 			return err
 		}
+	case "svg":
+		if usage {
+			stw.addHistory(":svg filename")
+			return nil
+		}
+		err := stw.PrintSVG(fn)
+		if err != nil {
+			return err
+		}
 	case "check":
 		if usage {
 			stw.addHistory(":check")
