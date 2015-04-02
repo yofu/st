@@ -674,6 +674,18 @@ func (elem *Elem) Width() float64 {
 	return math.Sqrt(sum)
 }
 
+func (elem *Elem) EffectiveWidth() float64 {
+	if elem.IsLineElem() {
+		return elem.Width()
+	} else {
+		x1, x2, err := elem.Sect.Xface(0)
+		if err != nil {
+			return elem.Width()
+		}
+		return elem.Width() - (x1 + x2)
+	}
+}
+
 // TODO: implement Height
 func (elem *Elem) Height() float64 {
 	if elem.IsLineElem() {

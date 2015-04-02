@@ -291,6 +291,17 @@ func (sect *Sect) Iy() (float64, error) {
 	return 0.0, errors.New(fmt.Sprintf("Iy: SECT %d doesn't have IYY", sect.Num))
 }
 
+func (sect *Sect) Xface(ind int) (float64, float64, error) {
+	if len(sect.Figs) < ind+1 {
+		return 0.0, 0.0, errors.New(fmt.Sprintf("Xface: SECT %d has no Fig %d", sect.Num, ind))
+	}
+	if val, ok := sect.Figs[ind].Value["XFACE"]; ok {
+		return val, sect.Figs[ind].Value["XFACE_H"], nil
+	} else {
+		return 0.0, 0.0, nil
+	}
+}
+
 func (sect *Sect) PropSize(props []int) float64 {
 	if len(sect.Figs) == 0 {
 		return 0.0
