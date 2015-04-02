@@ -11,7 +11,7 @@ import (
 	"github.com/yofu/abbrev"
 	"github.com/yofu/ps"
 	"github.com/yofu/st/stlib"
-	"github.com/yofu/st/stpdf"
+	"github.com/yofu/st/stsvg"
 	"gopkg.in/fsnotify.v1"
 	"log"
 	"math"
@@ -2059,7 +2059,7 @@ func (stw *Window) Print() {
 }
 
 func (stw *Window) PrintSVG(filename string) error {
-	err := stpdf.Print(stw.Frame, filename)
+	err := stsvg.Print(stw.Frame, filename)
 	if err != nil {
 		return err
 	}

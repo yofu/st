@@ -1,4 +1,4 @@
-package stpdf
+package stsvg
 
 import (
 	"bytes"
