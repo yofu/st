@@ -868,6 +868,9 @@ func NewWindow(homedir string) *Window { // {{{
 				arg.Return = int32(iup.IGNORE)
 			case KEY_SPACE:
 				val := stw.cline.GetAttribute("VALUE")
+				if strings.Contains(val, " ") {
+					break
+				}
 				if strings.HasPrefix(val, ":") {
 					c, bang, usage := exmodecomplete(val)
 					var b, u string
