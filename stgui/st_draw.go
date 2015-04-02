@@ -56,21 +56,21 @@ func DrawLegend(cvs *cd.Canvas, show *st.Show) {
 			cvs.Vertex(ox+sz, oy+sz)
 			cvs.Vertex(ox+sz, oy)
 			cvs.End()
-			oy += int(1.5 * float64(sz))
+			oy += int(show.LegendLineSep * float64(sz))
 		}
 		cvs.Foreground(cd.CD_GRAY)
 		cvs.TextAlignment(cd.CD_WEST)
 		ox += 2 * sz
-		oy = show.LegendPosition[1] - int(0.25*float64(sz))
+		oy = show.LegendPosition[1] - int(0.5*(show.LegendLineSep-1.0)*float64(sz))
 		cvs.Text(ox, oy, "0.0")
-		oy += int(1.5 * float64(sz))
+		oy += int(show.LegendLineSep * float64(sz))
 		for i, val := range st.RateBoundary {
 			if i == 3 {
 				cvs.Text(ox, oy, fmt.Sprintf("%.5f", val))
 			} else {
 				cvs.Text(ox, oy, fmt.Sprintf("%.1f", val))
 			}
-			oy += int(1.5 * float64(sz))
+			oy += int(show.LegendLineSep * float64(sz))
 		}
 		cvs.Text(ox - 2*sz, oy + sz, "安全率の凡例")
 		cvs.TextAlignment(DefaultTextAlignment)

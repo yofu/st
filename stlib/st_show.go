@@ -111,6 +111,7 @@ type Show struct { // {{{
 	NoLegend bool
 	LegendPosition []int
 	LegendSize int
+	LegendLineSep float64
 
 	YieldFunction bool
 
@@ -180,6 +181,7 @@ func NewShow(frame *Frame) *Show {
 	s.NoLegend = false
 	s.LegendPosition = []int{30, 30}
 	s.LegendSize = 10
+	s.LegendLineSep = 1.3
 
 	s.Fes = false
 	s.MassSize = 0.5
