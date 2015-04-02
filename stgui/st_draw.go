@@ -217,6 +217,7 @@ func DrawNode(node *st.Node, cvs *cd.Canvas, show *st.Show) {
 				}
 				switch i {
 				case 0, 1, 2:
+					cvs.LineStyle(cd.CD_CONTINUOUS)
 					val *= show.Unit[0]
 					ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), val))
 					arrow := 0.3
