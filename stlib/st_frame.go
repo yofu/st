@@ -4415,12 +4415,12 @@ func WriteOutput(fn string, p string, els []*Elem) error {
 func WriteReaction(fn string, ns []*Node, direction int) error {
 	var otp bytes.Buffer
 	r := make([]float64, 3)
-	otp.WriteString("NODE   XCOORD   YCOORD   ZCOORD     WEIGHT       LONG      XSEIS      YSEIS        W+L      W+L+X      W+L-X      W+L+Y      W+L-Y PILE\n")
+	otp.WriteString(" NODE   XCOORD   YCOORD   ZCOORD     WEIGHT       LONG      XSEIS      YSEIS        W+L      W+L+X      W+L-X      W+L+Y      W+L-Y PILE\n")
 	for _, n := range ns {
 		if n == nil {
 			continue
 		}
-		otp.WriteString(fmt.Sprintf("%4d %8.3f %8.3f %8.3f", n.Num, n.Coord[0], n.Coord[1], n.Coord[2]))
+		otp.WriteString(fmt.Sprintf(" %4d %8.3f %8.3f %8.3f", n.Num, n.Coord[0], n.Coord[1], n.Coord[2]))
 		wgt := n.Weight[1]
 		for i, per := range []string{"L", "X", "Y"} {
 			if rea, ok := n.Reaction[per]; ok {
