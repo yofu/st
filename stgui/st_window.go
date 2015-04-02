@@ -4769,6 +4769,16 @@ func (stw *Window) exmode(command string) error {
 				if f == nil {
 					return errors.New(":elem etype: format error")
 				}
+			case strings.EqualFold(condition, "curtain"):
+				f = func(el *st.Elem) bool {
+					if el.Sect.HasArea(0) {
+						return false
+					}
+					if !el.Sect.HasBrace() {
+						return true
+					}
+					return false
+				}
 			case strings.EqualFold(condition, "isgohan"):
 				f = func(el *st.Elem) bool {
 					return el.Sect.IsGohan(EPS)
