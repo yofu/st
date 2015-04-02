@@ -61,6 +61,16 @@ func (prop *Prop) IsSteel(eps float64) bool {
 	return true
 }
 
+func (prop *Prop) IsRc(eps float64) bool {
+	if val := prop.E/2.1e6 - 1.0; val < -eps || val > eps {
+		return false
+	}
+	if val := prop.Poi*6.0 - 1.0; val < -eps || val > eps {
+		return false
+	}
+	return true
+}
+
 func (prop *Prop) IsGohan(eps float64) bool {
 	if val := prop.E/4.5e5 - 1.0; val < -eps || val > eps {
 		return false

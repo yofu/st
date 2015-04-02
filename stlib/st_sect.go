@@ -285,6 +285,16 @@ func (sect *Sect) Iy(ind int) (float64, error) {
 	return 0.0, errors.New(fmt.Sprintf("Iy: SECT %d Fig %d doesn't have IYY", ind, sect.Num))
 }
 
+func (sect *Sect) Thick(ind int) (float64, error) {
+	if len(sect.Figs) < ind+1 {
+		return 0.0, errors.New(fmt.Sprintf("Thick: SECT %d has no Fig %d", sect.Num, ind))
+	}
+	if val, ok := sect.Figs[ind].Value["THICK"]; ok {
+		return val, nil
+	}
+	return 0.0, errors.New(fmt.Sprintf("Thick: SECT %d Fig %d doesn't have THICK", ind, sect.Num))
+}
+
 func (sect *Sect) Xface(ind int) (float64, float64, error) {
 	if len(sect.Figs) < ind+1 {
 		return 0.0, 0.0, errors.New(fmt.Sprintf("Xface: SECT %d has no Fig %d", sect.Num, ind))
@@ -388,6 +398,13 @@ func (sect *Sect) BraceSection() []*Sect {
 	rtn = rtn[:enum]
 	sort.Sort(SectByNum{rtn})
 	return rtn
+}
+
+func (sect *Sect) IsRc(eps float64) bool {
+	if sect.Figs == nil || len(sect.Figs) < 1 {
+		return false
+	}
+	return sect.Figs[0].Prop.IsRc(eps)
 }
 
 func (sect *Sect) IsGohan(eps float64) bool {

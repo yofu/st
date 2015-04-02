@@ -4389,6 +4389,85 @@ func (stw *Window) exmode(command string) error {
 		}
 		otp = st.AddCR(otp)
 		otp.WriteTo(w)
+	case "kaberyo":
+		if usage {
+			stw.addHistory(":kaberyo")
+			return nil
+		}
+		var els []*st.Elem
+		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+			enum := 0
+			els = make([]*st.Elem, 0)
+			ex_kaberyo:
+			for {
+				select {
+				case <-time.After(time.Second):
+					break ex_kaberyo
+				case <-stw.exmodeend:
+					break ex_kaberyo
+				case el := <-stw.exmodech:
+					if el, ok := el.(*st.Elem); ok {
+						els = append(els, el)
+						enum++
+					}
+				}
+			}
+			if enum == 0 {
+				return errors.New(":kaberyo no selected elem")
+			}
+			els = els[:enum]
+		} else {
+			els = stw.SelectElem
+		}
+		alpha := math.Sqrt(24.0 / 18.0)
+		if val, ok := argdict["FC"]; ok {
+			fc, err := strconv.ParseFloat(val, 64)
+			if err == nil {
+				alpha = math.Min(math.Sqrt2, math.Sqrt(fc / 18.0))
+			}
+		}
+		if val, ok := argdict["ALPHA"]; ok {
+			a, err := strconv.ParseFloat(val, 64)
+			if err == nil {
+				alpha = math.Min(math.Sqrt2, a)
+			}
+		}
+		stw.addHistory(fmt.Sprintf("ALPHA: %.3f", alpha))
+		ccol := 7.0
+		cwall := 25.0
+		if r, ok := argdict["ROUTE"]; ok {
+			switch strings.ToLower(r) {
+			case "1", "2-1", "2_1", "2.1":
+				ccol = 7.0
+				cwall = 25.0
+			case "2-2", "2_2", "2.2":
+				ccol = 18.0
+				cwall = 18.0
+			}
+		}
+		stw.addHistory(fmt.Sprintf("COEFFICIENT: COLUMN=%.1f WALL=%.1f", ccol, cwall))
+		sumcol := 0.0
+		sumwall := 0.0
+		for _, el := range els {
+			if !el.Sect.IsRc(EPS) {
+				continue
+			}
+			if el.IsLineElem() {
+				a, err := el.Sect.Area(0)
+				if err != nil {
+					continue
+				}
+				sumcol += a
+			} else {
+				t, err := el.Sect.Thick(0)
+				if err != nil {
+					continue
+				}
+				sumwall += t * el.EffectiveWidth()
+			}
+		}
+		total := ccol * sumcol + cwall * sumwall
+		stw.addHistory(fmt.Sprintf("COLUMN: %.3f WALL: %.3f TOTAL: %.3f", sumcol, sumwall, total))
 	case "facts":
 		if usage {
 			stw.addHistory(":facts {-skipany=code} {-skipall=code}")
