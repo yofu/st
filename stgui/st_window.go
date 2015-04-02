@@ -4773,6 +4773,28 @@ func (stw *Window) exmode(command string) error {
 				f = func(el *st.Elem) bool {
 					return el.Sect.IsGohan(EPS)
 				}
+			case strings.EqualFold(condition, "error"):
+				threshold := 1.0
+				if v, ok := argdict["THRESHOLD"]; ok {
+					val, err := strconv.ParseFloat(v, 64)
+					if err == nil {
+						threshold = val
+					}
+				}
+				stw.addHistory(fmt.Sprintf("THRESHOLD: %.3f", threshold))
+				f = func(el *st.Elem) bool {
+					switch el.Etype {
+					case st.COLUMN, st.GIRDER, st.BRACE, st.WALL, st.SLAB:
+						val, err := el.RateMax(stw.Frame.Show)
+						if err != nil {
+							return false
+						}
+						if val > threshold {
+							return true
+						}
+					}
+					return false
+				}
 			}
 			if f != nil {
 				stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
