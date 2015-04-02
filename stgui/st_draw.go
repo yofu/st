@@ -10,6 +10,38 @@ import (
 	"regexp"
 )
 
+func Arrow(cvs *cd.Canvas, x1, y1, x2, y2, size, theta float64) {
+	c := size * math.Cos(theta)
+	s := size * math.Sin(theta)
+	cvs.FLine(x1, y1, x2, y2)
+	cvs.FLine(x2, y2, x2+((x1-x2)*c-(y1-y2)*s), y2+((x1-x2)*s+(y1-y2)*c))
+	cvs.FLine(x2, y2, x2+((x1-x2)*c+(y1-y2)*s), y2+(-(x1-x2)*s+(y1-y2)*c))
+}
+
+func (stw *Window) DrawGlobalAxis(canv *cd.Canvas, color uint) {
+	origin := stw.Frame.View.ProjectCoord([]float64{0.0, 0.0, 0.0})
+	xaxis := stw.Frame.View.ProjectCoord([]float64{stw.Frame.Show.GlobalAxisSize, 0.0, 0.0})
+	yaxis := stw.Frame.View.ProjectCoord([]float64{0.0, stw.Frame.Show.GlobalAxisSize, 0.0})
+	zaxis := stw.Frame.View.ProjectCoord([]float64{0.0, 0.0, stw.Frame.Show.GlobalAxisSize})
+	size := 0.3
+	canv.LineStyle(cd.CD_CONTINUOUS)
+	switch color {
+	case st.ECOLOR_BLACK:
+		canv.Foreground(cd.CD_BLACK)
+		Arrow(canv, origin[0], origin[1], xaxis[0], xaxis[1], size, deg10)
+		Arrow(canv, origin[0], origin[1], yaxis[0], yaxis[1], size, deg10)
+		Arrow(canv, origin[0], origin[1], zaxis[0], zaxis[1], size, deg10)
+	default:
+		canv.Foreground(cd.CD_RED)
+		Arrow(canv, origin[0], origin[1], xaxis[0], xaxis[1], size, deg10)
+		canv.Foreground(cd.CD_GREEN)
+		Arrow(canv, origin[0], origin[1], yaxis[0], yaxis[1], size, deg10)
+		canv.Foreground(cd.CD_BLUE)
+		Arrow(canv, origin[0], origin[1], zaxis[0], zaxis[1], size, deg10)
+		canv.Foreground(cd.CD_WHITE)
+	}
+}
+
 func DrawPrintRange(stw *Window) {
 	stw.dbuff.Begin(cd.CD_CLOSED_LINES)
 	centrex := 0.5 * stw.CanvasSize[0]
