@@ -4771,6 +4771,9 @@ func (stw *Window) exmode(command string) error {
 				}
 			case strings.EqualFold(condition, "curtain"):
 				f = func(el *st.Elem) bool {
+					if el.Sect.Num > 900 {
+						return false
+					}
 					if el.Sect.HasArea(0) {
 						return false
 					}
@@ -5355,6 +5358,9 @@ func (stw *Window) exmode(command string) error {
 			sects := make([]*st.Sect, len(stw.Frame.Sects))
 			num := 0
 			for _, sec := range stw.Frame.Sects {
+				if sec.Num > 900 {
+					continue
+				}
 				if sec.HasArea(0) {
 					continue
 				}
