@@ -42,6 +42,41 @@ func (stw *Window) DrawGlobalAxis(canv *cd.Canvas, color uint) {
 	}
 }
 
+func DrawLegend(cvs *cd.Canvas, show *st.Show) {
+	if !show.NoLegend && show.ColorMode == st.ECOLOR_RATE {
+		ox := show.LegendPosition[0]
+		oy := show.LegendPosition[1]
+		sz := show.LegendSize
+		cvs.InteriorStyle(cd.CD_SOLID)
+		for _, col := range st.RainbowColor {
+			cvs.Foreground(col)
+			cvs.Begin(cd.CD_FILL)
+			cvs.Vertex(ox, oy)
+			cvs.Vertex(ox, oy+sz)
+			cvs.Vertex(ox+sz, oy+sz)
+			cvs.Vertex(ox+sz, oy)
+			cvs.End()
+			oy += int(1.5 * float64(sz))
+		}
+		cvs.Foreground(cd.CD_GRAY)
+		cvs.TextAlignment(cd.CD_WEST)
+		ox += 2 * sz
+		oy = show.LegendPosition[1] - int(0.25*float64(sz))
+		cvs.Text(ox, oy, "0.0")
+		oy += int(1.5 * float64(sz))
+		for i, val := range st.RateBoundary {
+			if i == 3 {
+				cvs.Text(ox, oy, fmt.Sprintf("%.5f", val))
+			} else {
+				cvs.Text(ox, oy, fmt.Sprintf("%.1f", val))
+			}
+			oy += int(1.5 * float64(sz))
+		}
+		cvs.Text(ox - 2*sz, oy + sz, "安全率の凡例")
+		cvs.TextAlignment(DefaultTextAlignment)
+	}
+}
+
 func DrawPrintRange(stw *Window) {
 	stw.dbuff.Begin(cd.CD_CLOSED_LINES)
 	centrex := 0.5 * stw.CanvasSize[0]

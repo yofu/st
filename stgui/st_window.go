@@ -3040,6 +3040,12 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.StressOff(etype, uint(i))
 			}
 		}
+	case abbrev.For("noleg/end", key):
+		if un {
+			stw.Frame.Show.NoLegend = false
+		} else {
+			stw.Frame.Show.NoLegend = true
+		}
 	case abbrev.For("nom/oment/v/alue", key):
 		if un {
 			stw.Frame.Show.NoMomentValue = false
@@ -3094,6 +3100,9 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		case "TEXT":
 			stw.Text.Position[0] = xpos
 			stw.Text.Position[1] = ypos
+		case "LEGEND":
+			stw.Frame.Show.LegendPosition[0] = int(xpos)
+			stw.Frame.Show.LegendPosition[1] = int(ypos)
 		}
 	}
 	return nil
@@ -6424,6 +6433,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		}
 		DrawPrintRange(stw)
 	}
+	DrawLegend(canv, stw.Frame.Show)
 	if flush {
 		canv.Flush()
 	}
