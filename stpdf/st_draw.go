@@ -20,12 +20,13 @@ var (
 )
 
 func Print(frame *st.Frame, otp string) error {
-	// s := frame.Show.Copy()
-	// v := frame.View.Copy()
+	s := frame.Show.Copy()
+	v := frame.View.Copy()
 	w, err := os.Create(otp)
 	if err != nil {
 		return err
 	}
+	defer w.Close()
 	cvs := svg.New(w)
 	cvs.Start(1000, 1000)
 	w.WriteString(`<style>
@@ -51,8 +52,8 @@ func Print(frame *st.Frame, otp string) error {
 `)
 	err = PrintToCanvas(frame, cvs)
 	cvs.End()
-	// frame.Show = s
-	// frame.View = v
+	frame.Show = s
+	frame.View = v
 	if err != nil {
 		return err
 	}

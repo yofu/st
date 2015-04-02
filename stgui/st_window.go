@@ -2058,14 +2058,12 @@ func (stw *Window) Print() {
 	stw.Redraw()
 }
 
-func (stw *Window) PrintSVG() {
-	if inp, ok := iup.GetOpenFile("", "*.fig2"); ok {
-		err := stpdf.Print(stw.Frame, st.Ce(inp, ".svg"))
-		if err != nil {
-			fmt.Println(err)
-		}
-		stw.Redraw()
+func (stw *Window) PrintSVG(filename string) error {
+	err := stpdf.Print(stw.Frame, filename)
+	if err != nil {
+		return err
 	}
+	return nil
 }
 
 func (stw *Window) PrintFig2(filename string) error {
