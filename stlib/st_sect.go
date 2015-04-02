@@ -104,6 +104,18 @@ func (fig *Fig) SetShapeProperty(s Shape) {
 	fig.Value["VEN"] = s.J() * 1e-8
 }
 
+func (sect *Sect) Hide() {
+	sect.Frame.Show.Sect[sect.Num] = false
+}
+
+func (sect *Sect) Show() {
+	sect.Frame.Show.Sect[sect.Num] = true
+}
+
+func (sect *Sect) IsHidden(show *Show) bool {
+	return !show.Sect[sect.Num]
+}
+
 func (sect *Sect) InpString() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("SECT %3d SNAME %s\n", sect.Num, sect.Name))
