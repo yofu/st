@@ -20,6 +20,9 @@ import (
 var (
 	RainbowColor = []int{38655, 65430, 65280, 9895680, 16507473, 16750130, 16711830} //  "BLUE", "BLUEGREEN", "GREEN", "YELLOWGREEN", "YELLOW", "ORANGE", "RED"
 )
+const (
+    hextable = "0123456789abcdef"
+)
 
 type Hider interface {
 	Hide()
@@ -215,6 +218,26 @@ func IntColor(col int) string {
 		val >>= 8
 	}
 	return strings.Join(rtn, " ")
+}
+
+func IntHexColor(col int) string {
+    var rtn bytes.Buffer
+    val := 1048576
+    rtn.WriteString("#")
+    for i:=0; i<6; i++ {
+        tmp := 0
+        for {
+            if col>=val {
+                col -= val
+                tmp += 1
+            } else {
+                rtn.WriteByte(hextable[tmp])
+                break
+            }
+        }
+        val >>= 4
+    }
+    return rtn.String()
 }
 
 func Rainbow(val float64, boundary []float64) int {

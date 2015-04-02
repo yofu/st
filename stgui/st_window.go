@@ -11,6 +11,7 @@ import (
 	"github.com/yofu/abbrev"
 	"github.com/yofu/ps"
 	"github.com/yofu/st/stlib"
+	"github.com/yofu/st/stpdf"
 	"gopkg.in/fsnotify.v1"
 	"log"
 	"math"
@@ -235,7 +236,7 @@ var (
 )
 
 var (
-	exabbrev = []string {
+	exabbrev = []string{
 		"e/dit", "q/uit", "vi/m", "hk/you", "hw/eak", "rp/ipe", "cp/ipe", "tk/you", "ck/you", "pla/te", "fixr/otate", "fixm/ove", "noun/do", "un/do", "w/rite", "sav/e", "inc/rement", "c/heck", "r/ead",
 		"ins/ert", "p/rop/s/ect", "w/rite/o/utput", "w/rite/rea/ction", "nmi/nteraction", "fi/g2", "fe/nce", "no/de", "xsc/ale", "ysc/ale", "zsc/ale", "pl/oad", "z/oubun/d/isp", "z/oubun/r/eaction",
 		"fac/ts", "go/han/l/st", "el/em", "ave/rage", "bo/nd", "ax/is/2//c/ang", "resul/tant", "prest/ress", "therm/al", "div/ide", "e/lem/dup/lication", "i/ntersect/a/ll", "co/nf",
@@ -302,8 +303,8 @@ type Window struct { // {{{
 	InpModified bool
 	Changed     bool
 
-	exmodech    chan (interface{})
-	exmodeend   chan (int)
+	exmodech  chan (interface{})
+	exmodeend chan (int)
 
 	comhist     []string
 	recentfiles []string
@@ -2057,6 +2058,16 @@ func (stw *Window) Print() {
 	stw.Redraw()
 }
 
+func (stw *Window) PrintSVG() {
+	if inp, ok := iup.GetOpenFile("", "*.fig2"); ok {
+		err := stpdf.Print(stw.Frame, st.Ce(inp, ".svg"))
+		if err != nil {
+			fmt.Println(err)
+		}
+		stw.Redraw()
+	}
+}
+
 func (stw *Window) PrintFig2(filename string) error {
 	if stw.Frame == nil {
 		return errors.New("PrintFig2: no frame opened")
@@ -3596,7 +3607,7 @@ func exmodecomplete(command string) (string, bool, bool) {
 }
 
 func (stw *Window) emptyexmodech() {
-	emptyloop:
+emptyloop:
 	for {
 		select {
 		case <-time.After(time.Second):
@@ -4574,9 +4585,9 @@ func (stw *Window) exmode(command string) error {
 		}
 		go func(ns []*st.Node) {
 			for _, n := range ns {
-				stw.exmodech <-n
+				stw.exmodech <- n
 			}
-			stw.exmodeend <-1
+			stw.exmodeend <- 1
 		}(stw.SelectNode)
 	case "conf":
 		if usage {
@@ -4834,9 +4845,9 @@ func (stw *Window) exmode(command string) error {
 		}
 		go func(els []*st.Elem) {
 			for _, el := range els {
-				stw.exmodech <-el
+				stw.exmodech <- el
 			}
-			stw.exmodeend <-1
+			stw.exmodeend <- 1
 		}(stw.SelectElem)
 	case "fence":
 		if usage {
@@ -4884,9 +4895,9 @@ func (stw *Window) exmode(command string) error {
 		stw.SelectElem = stw.Frame.Fence(axis, val, false)
 		go func(els []*st.Elem) {
 			for _, el := range els {
-				stw.exmodech <-el
+				stw.exmodech <- el
 			}
-			stw.exmodeend <-1
+			stw.exmodeend <- 1
 		}(stw.SelectElem)
 	case "filter":
 		if usage {
@@ -4900,9 +4911,9 @@ func (stw *Window) exmode(command string) error {
 		stw.SelectElem = tmpels
 		go func(els []*st.Elem) {
 			for _, el := range els {
-				stw.exmodech <-el
+				stw.exmodech <- el
 			}
-			stw.exmodeend <-1
+			stw.exmodeend <- 1
 		}(stw.SelectElem)
 	case "bond":
 		if usage {
@@ -4916,14 +4927,14 @@ func (stw *Window) exmode(command string) error {
 		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
 			enum := 0
 			els = make([]*st.Elem, 0)
-			ex_bond:
+		ex_bond:
 			for {
 				select {
 				case <-time.After(time.Second):
 					break ex_bond
 				case <-stw.exmodeend:
 					break ex_bond
-				case el :=<-stw.exmodech:
+				case el := <-stw.exmodech:
 					if el, ok := el.(*st.Elem); ok {
 						els = append(els, el)
 						enum++
@@ -5105,14 +5116,14 @@ func (stw *Window) exmode(command string) error {
 		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
 			enum := 0
 			els = make([]*st.Elem, 0)
-			ex_prestress:
+		ex_prestress:
 			for {
 				select {
 				case <-time.After(time.Second):
 					break ex_prestress
 				case <-stw.exmodeend:
 					break ex_prestress
-				case el :=<-stw.exmodech:
+				case el := <-stw.exmodech:
 					if el == nil {
 						break ex_prestress
 					}
@@ -5152,14 +5163,14 @@ func (stw *Window) exmode(command string) error {
 		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
 			enum := 0
 			els = make([]*st.Elem, 0)
-			ex_thermal:
+		ex_thermal:
 			for {
 				select {
 				case <-time.After(time.Second):
 					break ex_thermal
 				case <-stw.exmodeend:
 					break ex_thermal
-				case el :=<-stw.exmodech:
+				case el := <-stw.exmodech:
 					if el == nil {
 						break ex_thermal
 					}
@@ -5342,7 +5353,7 @@ func (stw *Window) exmode(command string) error {
 			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 				stw.SectionData(stw.SelectElem[0].Sect)
 				go func(sec *st.Sect) {
-					stw.exmodech <-sec
+					stw.exmodech <- sec
 				}(stw.SelectElem[0].Sect)
 				return nil
 			}
@@ -5379,9 +5390,9 @@ func (stw *Window) exmode(command string) error {
 			stw.SectionData(sects[0])
 			go func(ss []*st.Sect) {
 				for _, sec := range ss {
-					stw.exmodech <-sec
+					stw.exmodech <- sec
 				}
-				stw.exmodeend <-1
+				stw.exmodeend <- 1
 			}(sects)
 		default:
 			tmp, err := strconv.ParseInt(args[1], 10, 64)
@@ -5409,7 +5420,7 @@ func (stw *Window) exmode(command string) error {
 				}
 				stw.SectionData(sec)
 				go func(s *st.Sect) {
-					stw.exmodech <-s
+					stw.exmodech <- s
 				}(sec)
 			} else {
 				return errors.New(fmt.Sprintf(":section SECT %d doesn't exist", snum))
@@ -5435,7 +5446,7 @@ func (stw *Window) exmode(command string) error {
 		select {
 		case <-time.After(time.Second):
 			break
-		case sec :=<-stw.exmodech:
+		case sec := <-stw.exmodech:
 			if sec == nil {
 				break
 			}
@@ -5494,7 +5505,7 @@ func (stw *Window) exmode(command string) error {
 			}
 			enod := make([]*st.Node, 0)
 			enods := 0
-			ex_addelem:
+		ex_addelem:
 			for {
 				select {
 				case <-time.After(time.Second):
@@ -5802,7 +5813,7 @@ func (stw *Window) exmode(command string) error {
 			return errors.New(":sum no selected elem/node")
 		}
 	case "hide":
-		ex_hide:
+	ex_hide:
 		for {
 			select {
 			case <-time.After(time.Second):
