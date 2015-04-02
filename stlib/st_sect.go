@@ -255,40 +255,34 @@ func (sect *Sect) HasThick(ind int) bool {
 	}
 }
 
-func (sect *Sect) Area() (float64, error) {
-	if len(sect.Figs) == 0 {
-		return 0.0, errors.New(fmt.Sprintf("Area: SECT %d has no Fig", sect.Num))
+func (sect *Sect) Area(ind int) (float64, error) {
+	if len(sect.Figs) < ind+1 {
+		return 0.0, errors.New(fmt.Sprintf("Area: SECT %d has no Fig %d", sect.Num, ind))
 	}
-	for _, fig := range sect.Figs {
-		if val, ok := fig.Value["AREA"]; ok {
-			return val, nil
-		}
+	if val, ok := sect.Figs[ind].Value["AREA"]; ok {
+		return val, nil
 	}
-	return 0.0, errors.New(fmt.Sprintf("Area: SECT %d doesn't have AREA", sect.Num))
+	return 0.0, errors.New(fmt.Sprintf("Area: SECT %d Fig %d doesn't have AREA", ind, sect.Num))
 }
 
-func (sect *Sect) Ix() (float64, error) {
-	if len(sect.Figs) == 0 {
-		return 0.0, errors.New(fmt.Sprintf("Ix: SECT %d has no Fig", sect.Num))
+func (sect *Sect) Ix(ind int) (float64, error) {
+	if len(sect.Figs) < ind+1 {
+		return 0.0, errors.New(fmt.Sprintf("Ix: SECT %d has no Fig %d", sect.Num, ind))
 	}
-	for _, fig := range sect.Figs {
-		if val, ok := fig.Value["IXX"]; ok {
-			return val, nil
-		}
+	if val, ok := sect.Figs[ind].Value["IXX"]; ok {
+		return val, nil
 	}
-	return 0.0, errors.New(fmt.Sprintf("Ix: SECT %d doesn't have IXX", sect.Num))
+	return 0.0, errors.New(fmt.Sprintf("Ix: SECT %d Fig %d doesn't have IXX", ind, sect.Num))
 }
 
-func (sect *Sect) Iy() (float64, error) {
-	if len(sect.Figs) == 0 {
-		return 0.0, errors.New(fmt.Sprintf("Iy: SECT %d has no Fig", sect.Num))
+func (sect *Sect) Iy(ind int) (float64, error) {
+	if len(sect.Figs) < ind+1 {
+		return 0.0, errors.New(fmt.Sprintf("Iy: SECT %d has no Fig %d", sect.Num, ind))
 	}
-	for _, fig := range sect.Figs {
-		if val, ok := fig.Value["IYY"]; ok {
-			return val, nil
-		}
+	if val, ok := sect.Figs[ind].Value["IYY"]; ok {
+		return val, nil
 	}
-	return 0.0, errors.New(fmt.Sprintf("Iy: SECT %d doesn't have IYY", sect.Num))
+	return 0.0, errors.New(fmt.Sprintf("Iy: SECT %d Fig %d doesn't have IYY", ind, sect.Num))
 }
 
 func (sect *Sect) Xface(ind int) (float64, float64, error) {
@@ -297,9 +291,8 @@ func (sect *Sect) Xface(ind int) (float64, float64, error) {
 	}
 	if val, ok := sect.Figs[ind].Value["XFACE"]; ok {
 		return val, sect.Figs[ind].Value["XFACE_H"], nil
-	} else {
-		return 0.0, 0.0, nil
 	}
+	return 0.0, 0.0, errors.New(fmt.Sprintf("Xface: SECT %d Fig %d doesn't have XFACE", ind, sect.Num))
 }
 
 func (sect *Sect) PropSize(props []int) float64 {

@@ -6445,11 +6445,11 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 					}
 				case st.ECOLOR_STRONG:
 					if el.IsLineElem() {
-						Ix, err := el.Sect.Ix()
+						Ix, err := el.Sect.Ix(0)
 						if err != nil {
 							canv.Foreground(cd.CD_WHITE)
 						}
-						Iy, err := el.Sect.Iy()
+						Iy, err := el.Sect.Iy(0)
 						if err != nil {
 							canv.Foreground(cd.CD_WHITE)
 						}
