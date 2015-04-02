@@ -5345,41 +5345,66 @@ func (stw *Window) exmode(command string) error {
 			}
 			return nil
 		}
-		if strings.EqualFold(args[1], "off") {
+		switch {
+		case strings.EqualFold(args[1], "off"):
 			if t, tok := stw.TextBox["SECTION"]; tok {
 				t.Value = make([]string, 0)
 			}
 			return nil
-		}
-		tmp, err := strconv.ParseInt(args[1], 10, 64)
-		if err != nil {
-			return err
-		}
-		snum := int(tmp)
-		if sec, ok := stw.Frame.Sects[snum]; ok {
-			if narg >= 3 && args[2] == "<-" {
-				select {
-				case <-time.After(time.Second):
-					break
-				case al := <-stw.exmodech:
-					if al == nil {
+		case strings.EqualFold(args[1], "curtain"):
+			sects := make([]*st.Sect, len(stw.Frame.Sects))
+			num := 0
+			for _, sec := range stw.Frame.Sects {
+				if sec.HasArea(0) {
+					continue
+				}
+				if !sec.HasBrace() {
+					sects[num] = sec
+					num++
+				}
+			}
+			if num == 0 {
+				return nil
+			}
+			sects = sects[:num]
+			stw.SectionData(sects[0])
+			go func(ss []*st.Sect) {
+				for _, sec := range ss {
+					stw.exmodech <-sec
+				}
+				stw.exmodeend <-1
+			}(sects)
+		default:
+			tmp, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return err
+			}
+			snum := int(tmp)
+			if sec, ok := stw.Frame.Sects[snum]; ok {
+				if narg >= 3 && args[2] == "<-" {
+					select {
+					case <-time.After(time.Second):
 						break
-					}
-					switch al := al.(type) {
-					case st.Shape:
-						if sec.HasArea(0) {
-							sec.Figs[0].SetShapeProperty(al)
-							sec.Name = al.Description()
+					case al := <-stw.exmodech:
+						if al == nil {
+							break
+						}
+						switch al := al.(type) {
+						case st.Shape:
+							if sec.HasArea(0) {
+								sec.Figs[0].SetShapeProperty(al)
+								sec.Name = al.Description()
+							}
 						}
 					}
 				}
+				stw.SectionData(sec)
+				go func(s *st.Sect) {
+					stw.exmodech <-s
+				}(sec)
+			} else {
+				return errors.New(fmt.Sprintf(":section SECT %d doesn't exist", snum))
 			}
-			stw.SectionData(sec)
-			go func(s *st.Sect) {
-				stw.exmodech <-s
-			}(sec)
-		} else {
-			return errors.New(fmt.Sprintf(":section SECT %d doesn't exist", snum))
 		}
 	case "thick":
 		if usage {
