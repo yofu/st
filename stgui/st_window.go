@@ -3605,15 +3605,15 @@ func exmodecomplete(command string) (string, bool, bool) {
 }
 
 func (stw *Window) emptyexmodech() {
-emptyloop:
+ex_empty:
 	for {
 		select {
 		case <-time.After(time.Second):
-			break emptyloop
+			break ex_empty
 		case <-stw.exmodeend:
-			break emptyloop
+			break ex_empty
 		case <-stw.exmodech:
-			continue emptyloop
+			continue ex_empty
 		}
 	}
 }
@@ -3880,6 +3880,12 @@ func (stw *Window) exmode(command string) error {
 			old := runtime.GOMAXPROCS(val)
 			stw.addHistory(fmt.Sprintf("PROCS: %d -> %d", old, val))
 		}
+	case "empty":
+		if usage {
+			stw.addHistory(":empty")
+			return nil
+		}
+		stw.emptyexmodech()
 	}
 	if evaluated {
 		return nil
