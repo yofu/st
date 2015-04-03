@@ -4464,9 +4464,7 @@ func (stw *Window) exmode(command string) error {
 				}
 				for _, p := range props {
 					if el.Sect.Figs[0].Prop.Num == p {
-						fmt.Println(a)
 						a *= 0.5
-						fmt.Println(a)
 						break
 					}
 				}
