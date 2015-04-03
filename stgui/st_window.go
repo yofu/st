@@ -4466,7 +4466,7 @@ func (stw *Window) exmode(command string) error {
 				sumwall += t * el.EffectiveWidth()
 			}
 		}
-		total := ccol * sumcol + cwall * sumwall
+		total := alpha * (ccol * sumcol + cwall * sumwall)
 		stw.addHistory(fmt.Sprintf("COLUMN: %.3f WALL: %.3f TOTAL: %.3f", sumcol, sumwall, total))
 	case "facts":
 		if usage {
