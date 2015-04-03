@@ -5692,6 +5692,7 @@ func (stw *Window) exmode(command string) error {
 					as := sec.Snapshot(stw.Frame)
 					as.Num = snum
 					stw.Frame.Sects[snum] = as
+					stw.Frame.Show.Sect[snum] = true
 				}
 			}
 		}
