@@ -2828,7 +2828,7 @@ susnode:
 		b, err := el.IsValidElem()
 		if !b {
 			els = append(els, el)
-			otp.WriteString(err.Error())
+			otp.WriteString(fmt.Sprintf("%s\n", err.Error()))
 		}
 	}
 	if len(ns) == 0 && len(els) == 0 {
