@@ -139,6 +139,7 @@ type SectionRate interface {
 	Qa(*Condition) float64
 	Ma(*Condition) float64
 	Mza(*Condition) float64
+	Amount() Amount
 }
 
 type Shape interface {
@@ -419,6 +420,13 @@ func (sc *SColumn) Mza(cond *Condition) float64 {
 func (sc *SColumn) Vertices() [][]float64 {
 	return sc.Shape.Vertices()
 }
+
+func (sc *SColumn) Amount() Amount {
+	a := NewAmount()
+	a["STEEL"] = sc.A() * 0.0001
+	return a
+}
+
 
 // }}}
 
@@ -1639,6 +1647,13 @@ func (rc *RCColumn) Mza(cond *Condition) float64 {
 		}
 	}
 }
+func (rc *RCColumn) Amount() Amount {
+	a := NewAmount()
+	area := rc.Area()
+	a["REINS"] = (rc.Ai() + area*(rc.Hoops.Ps[0] + rc.Hoops.Ps[1])) * 0.0001
+	a["CONCRETE"] = area * 0.0001
+	return a
+}
 
 type RCGirder struct {
 	RCColumn
@@ -1834,6 +1849,10 @@ func (rw *RCWall) Ma(cond *Condition) float64 {
 }
 func (rw *RCWall) Mza(cond *Condition) float64 {
 	return 0.0
+}
+
+func (rw *RCWall) Amount() Amount {
+	return nil
 }
 
 func SetSD(name string) SD {
@@ -2052,6 +2071,10 @@ func (wc *WoodColumn) Mza(cond *Condition) float64 {
 
 func (wc *WoodColumn) Vertices() [][]float64 {
 	return wc.Shape.Vertices()
+}
+
+func (wc *WoodColumn) Amount() Amount {
+	return nil
 }
 
 // Condition

@@ -4037,6 +4037,90 @@ func (frame *Frame) AmountProp(fn string, props ...int) error {
 	return nil
 }
 
+func (frame *Frame) AmountLst(fn string, sects ...int) error {
+	var otp bytes.Buffer
+	otp.WriteString("断面 名前                                    長さ/面積     鉄骨量     ＲＣ量     鉄筋量\n")
+	otp.WriteString("                                             [m/m2]          [tf]       [m3]       [tf]\n")
+	total := NewAmount()
+	total["REINS"] = 0.0
+	total["CONCRETE"] = 0.0
+	total["STEEL"] = 0.0
+	for _, s := range sects {
+		if sec, ok := frame.Sects[s]; ok {
+			var a Amount
+			tot := 0.0
+			if sec.HasArea(0) {
+				if al, ok := frame.Allows[sec.Num]; ok {
+					tot = sec.TotalAmount()
+					if tot == 0.0 {
+						continue
+					}
+					al := al.Amount()
+					a = NewAmount()
+					if val, ok := al["REINS"]; ok {
+						a["REINS"] = val * tot * 7.8
+					}
+					if val, ok := al["CONCRETE"]; ok {
+						a["CONCRETE"] = val * tot
+					}
+					if val, ok := al["STEEL"]; ok {
+						a["STEEL"] = val * tot * 7.8
+					}
+				}
+			} else if sec.HasThick(0) {
+				if !sec.HasBrace() {
+					continue
+				}
+				pw, err := sec.Srein(0)
+				if err != nil {
+					continue
+				}
+				t, err := sec.Thick(0)
+				if err != nil {
+					continue
+				}
+				var b, h, area float64
+				for _, el := range frame.Elems {
+					if el.Sect == sec {
+						switch el.Enods {
+						case 3:
+							ar := el.Area()
+							tmp := math.Sqrt(2*ar)
+							area += ar
+							b += tmp
+							h += tmp
+						case 4:
+							tmpb := Distance(el.Enod[0], el.Enod[1])
+							tmph := Distance(el.Enod[1], el.Enod[2])
+							area += tmpb * tmph
+							b += tmpb
+							h += tmph
+						}
+					}
+				}
+				a = NewAmount()
+				a["REINS"] = pw * t * (b + h) * 7.8
+				a["CONCRETE"] = t * area
+				tot = area
+			}
+			if a != nil {
+				total["REINS"] += a["REINS"]
+				total["CONCRETE"] += a["CONCRETE"]
+				total["STEEL"] += a["STEEL"]
+				otp.WriteString(fmt.Sprintf("%4d %-40s %8.3f %10.4f %10.4f %10.4f\n", sec.Num, sec.Name, tot, a["STEEL"], a["CONCRETE"], a["REINS"]))
+			}
+		}
+	}
+	otp.WriteString(fmt.Sprintf("                                                       %10.4f %10.4f %10.4f\n", total["STEEL"], total["CONCRETE"], total["REINS"]))
+	w, err := os.Create(fn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
+	otp.WriteTo(w)
+	return nil
+}
+
 func (view *View) SetVectorAngle(vec []float64) error {
 	if len(vec) < 3 {
 		return errors.New("SetVectorAngle: vector size error")

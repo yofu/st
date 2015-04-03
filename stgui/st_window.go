@@ -4534,6 +4534,40 @@ func (stw *Window) exmode(command string) error {
 		if err != nil {
 			return err
 		}
+	case "amountlst":
+		if usage {
+			stw.addHistory(":amountlst propcode")
+			return nil
+		}
+		var sects []int
+		if narg < 2 {
+			if _, ok := argdict["ALL"]; ok {
+				sects = make([]int, len(stw.Frame.Sects))
+				i := 0
+				for _, sec := range stw.Frame.Sects {
+					if sec.Num >= 900 {
+						continue
+					}
+					sects[i] = sec.Num
+					i++
+				}
+				sects = sects[:i]
+				sort.Ints(sects)
+			} else {
+				return st.NotEnoughArgs(":amountlst")
+			}
+		}
+		if sects == nil {
+			sects = SplitNums(strings.Join(args[1:], " "))
+		}
+		if len(sects) == 0 {
+			return errors.New(":amountlst: no selected sect")
+		}
+		fn := filepath.Join(filepath.Dir(stw.Frame.Path), "amountlst.txt")
+		err := stw.Frame.AmountLst(fn, sects...)
+		if err != nil {
+			return err
+		}
 	case "node":
 		if usage {
 			stw.addHistory(":node nnum")

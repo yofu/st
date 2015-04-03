@@ -295,6 +295,27 @@ func (sect *Sect) Thick(ind int) (float64, error) {
 	return 0.0, errors.New(fmt.Sprintf("Thick: SECT %d Fig %d doesn't have THICK", ind, sect.Num))
 }
 
+func (sect *Sect) Srein(ind int) (float64, error) {
+	if len(sect.Figs) < ind+1 {
+		return 0.0, errors.New(fmt.Sprintf("Srein: SECT %d has no Fig %d", sect.Num, ind))
+	}
+	if val, ok := sect.Figs[ind].Value["SREIN"]; ok {
+		return val, nil
+	}
+	t, err := sect.Thick(ind)
+	if err != nil {
+		return 0.0, err
+	}
+	if a, ok := sect.Figs[ind].Value["RA"]; ok {
+		if p, ok := sect.Figs[ind].Value["PITCH"]; ok {
+			if sd, ok := sect.Figs[ind].Value["SINDOU"]; ok {
+				return a * sd / (p*t*10.0), nil
+			}
+		}
+	}
+	return 0.0, errors.New(fmt.Sprintf("Srein: SECT %d Fig %d doesn't have SREIN", ind, sect.Num))
+}
+
 func (sect *Sect) Xface(ind int) (float64, float64, error) {
 	if len(sect.Figs) < ind+1 {
 		return 0.0, 0.0, errors.New(fmt.Sprintf("Xface: SECT %d has no Fig %d", sect.Num, ind))
