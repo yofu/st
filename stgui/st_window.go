@@ -4398,7 +4398,7 @@ func (stw *Window) exmode(command string) error {
 		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
 			enum := 0
 			els = make([]*st.Elem, 0)
-			ex_kaberyo:
+		ex_kaberyo:
 			for {
 				select {
 				case <-time.After(time.Second):
@@ -4423,7 +4423,7 @@ func (stw *Window) exmode(command string) error {
 		if val, ok := argdict["FC"]; ok {
 			fc, err := strconv.ParseFloat(val, 64)
 			if err == nil {
-				alpha = math.Min(math.Sqrt2, math.Sqrt(fc / 18.0))
+				alpha = math.Min(math.Sqrt2, math.Sqrt(fc/18.0))
 			}
 		}
 		if val, ok := argdict["ALPHA"]; ok {
@@ -4466,7 +4466,7 @@ func (stw *Window) exmode(command string) error {
 				sumwall += t * el.EffectiveWidth()
 			}
 		}
-		total := alpha * (ccol * sumcol + cwall * sumwall)
+		total := alpha * (ccol*sumcol + cwall*sumwall)
 		stw.addHistory(fmt.Sprintf("COLUMN: %.3f WALL: %.3f TOTAL: %.3f", sumcol, sumwall, total))
 	case "facts":
 		if usage {
