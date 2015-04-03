@@ -4419,6 +4419,11 @@ func (stw *Window) exmode(command string) error {
 		} else {
 			els = stw.SelectElem
 		}
+		var props []int
+		if val, ok := argdict["HALF"]; ok {
+			props = SplitNums(val)
+			stw.addHistory(fmt.Sprintf("HALF: %s", val))
+		}
 		alpha := math.Sqrt(24.0 / 18.0)
 		if val, ok := argdict["FC"]; ok {
 			fc, err := strconv.ParseFloat(val, 64)
@@ -4456,6 +4461,14 @@ func (stw *Window) exmode(command string) error {
 				a, err := el.Sect.Area(0)
 				if err != nil {
 					continue
+				}
+				for _, p := range props {
+					if el.Sect.Figs[0].Prop.Num == p {
+						fmt.Println(a)
+						a *= 0.5
+						fmt.Println(a)
+						break
+					}
 				}
 				sumcol += a
 			} else {
