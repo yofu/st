@@ -6602,6 +6602,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		DrawEccentric(stw.Frame, canv, stw.Frame.Show)
 	}
 	if showprintrange {
+		canv.LineStyle(cd.CD_CONTINUOUS)
 		if color == st.ECOLOR_BLACK {
 			canv.Foreground(cd.CD_BLACK)
 		} else {
