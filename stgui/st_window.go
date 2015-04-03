@@ -3611,7 +3611,7 @@ ex_empty:
 		case <-time.After(time.Second):
 			break ex_empty
 		case <-stw.exmodeend:
-			break ex_empty
+			continue ex_empty
 		case <-stw.exmodech:
 			continue ex_empty
 		}
