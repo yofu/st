@@ -3765,7 +3765,11 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 				if isrc {
 					mlrate = maxrate(rate[4], rate[5], rate[10], rate[11])
 				} else {
-					mlrate = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+					if rate[0] >= 1.0 {
+						mlrate = 10.0
+					} else {
+						mlrate = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+					}
 				}
 				cond.Period = "S"
 				otp.WriteString("\n短期X正方向:")
@@ -3774,7 +3778,11 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 				if isrc {
 					msrate1 = maxrate(rate[4], rate[5], rate[10], rate[11])
 				} else {
-					msrate1 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+					if rate[0] >= 1.0 {
+						msrate1 = 10.0
+					} else {
+						msrate1 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+					}
 				}
 				otp.WriteString("短期X負方向:")
 				rate, err = calc1(al, stl, stx2, minus)
@@ -3782,7 +3790,11 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 				if isrc {
 					msrate2 = maxrate(rate[4], rate[5], rate[10], rate[11])
 				} else {
-					msrate2 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+					if rate[0] >= 1.0 {
+						msrate2 = 10.0
+					} else {
+						msrate2 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+					}
 				}
 				otp.WriteString("\n短期Y正方向:")
 				rate, err = calc1(al, stl, sty1, plus)
@@ -3790,7 +3802,11 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 				if isrc {
 					msrate3 = maxrate(rate[4], rate[5], rate[10], rate[11])
 				} else {
-					msrate3 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+					if rate[0] >= 1.0 {
+						msrate3 = 10.0
+					} else {
+						msrate3 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+					}
 				}
 				otp.WriteString("短期Y負方向:")
 				rate, err = calc1(al, stl, sty2, minus)
@@ -3798,7 +3814,11 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 				if isrc {
 					msrate4 = maxrate(rate[4], rate[5], rate[10], rate[11])
 				} else {
-					msrate4 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+					if rate[0] >= 1.0 {
+						msrate4 = 10.0
+					} else {
+						msrate4 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+					}
 				}
 				msrate = maxrate(msrate1, msrate2, msrate3, msrate4)
 				otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))

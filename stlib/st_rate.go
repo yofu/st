@@ -2136,9 +2136,10 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 			fmt.Printf("# Mx= %.3f / Max= %.3f\n", stress[ind], max)
 		}
 		if max == 0.0 && stress[ind] != 0.0 {
-			return rate, "", ZeroAllowableError{"MaX"}
+			rate[ind] = 10.0
+		} else {
+			rate[ind] = math.Abs(stress[ind] / max)
 		}
-		rate[ind] = math.Abs(stress[ind] / max)
 		fa[ind] = max
 		cond.Strong = false
 		if i == 0 {
@@ -2165,9 +2166,10 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 			fmt.Printf("# My= %.3f / May= %.3f\n", stress[ind], may)
 		}
 		if may == 0.0 && stress[ind] != 0.0 {
-			return rate, "", ZeroAllowableError{"May"}
+			rate[ind] = 10.0
+		} else {
+			rate[ind] = math.Abs(stress[ind] / may)
 		}
-		rate[ind] = math.Abs(stress[ind] / may)
 		fa[ind] = may
 		ind = 6*i + 3
 		maz := sr.Mza(cond)
