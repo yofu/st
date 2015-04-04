@@ -4040,7 +4040,7 @@ func (frame *Frame) AmountProp(fn string, props ...int) error {
 func (frame *Frame) AmountLst(fn string, sects ...int) error {
 	var otp bytes.Buffer
 	otp.WriteString("断面 名前                                    長さ/面積     鉄骨量     ＲＣ量     鉄筋量\n")
-	otp.WriteString("                                             [m/m2]          [tf]       [m3]       [tf]\n")
+	otp.WriteString("                                                [m/m2]       [tf]       [m3]       [tf]\n")
 	total := NewAmount()
 	total["REINS"] = 0.0
 	total["CONCRETE"] = 0.0
