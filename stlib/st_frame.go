@@ -4060,8 +4060,11 @@ func (frame *Frame) AmountLst(fn string, sects ...int) error {
 					if val, ok := al["REINS"]; ok {
 						a["REINS"] = val * tot * 7.8
 					}
-					if val, ok := al["CONCRETE"]; ok {
-						a["CONCRETE"] = val * tot
+					h, err := sec.Hiju(0)
+					if err == nil {
+						if val, ok := al["CONCRETE"]; ok {
+							a["CONCRETE"] = val * tot * h / 2.4
+						}
 					}
 					if val, ok := al["STEEL"]; ok {
 						a["STEEL"] = val * tot * 7.8
@@ -4079,27 +4082,14 @@ func (frame *Frame) AmountLst(fn string, sects ...int) error {
 				if err != nil {
 					continue
 				}
-				var b, h, area float64
+				area := 0.0
 				for _, el := range frame.Elems {
 					if el.Sect == sec {
-						switch el.Enods {
-						case 3:
-							ar := el.Area()
-							tmp := math.Sqrt(2*ar)
-							area += ar
-							b += tmp
-							h += tmp
-						case 4:
-							tmpb := Distance(el.Enod[0], el.Enod[1])
-							tmph := Distance(el.Enod[1], el.Enod[2])
-							area += tmpb * tmph
-							b += tmpb
-							h += tmph
-						}
+						area += el.Area()
 					}
 				}
 				a = NewAmount()
-				a["REINS"] = pw * t * (b + h) * 7.8
+				a["REINS"] = pw * t * area * 2 * 7.8
 				a["CONCRETE"] = t * area
 				tot = area
 			}

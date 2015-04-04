@@ -255,6 +255,13 @@ func (sect *Sect) HasThick(ind int) bool {
 	}
 }
 
+func (sect *Sect) Hiju(ind int) (float64, error) {
+	if len(sect.Figs) < ind+1 {
+		return 0.0, errors.New(fmt.Sprintf("Hiju: SECT %d has no Fig %d", sect.Num, ind))
+	}
+	return sect.Figs[ind].Prop.Hiju, nil
+}
+
 func (sect *Sect) Area(ind int) (float64, error) {
 	if len(sect.Figs) < ind+1 {
 		return 0.0, errors.New(fmt.Sprintf("Area: SECT %d has no Fig %d", sect.Num, ind))
