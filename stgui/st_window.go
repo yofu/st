@@ -243,11 +243,11 @@ var (
 		"pi/le", "sec/tion", "an/alysis", "f/ilter", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "sec/tion/+/", "col/or", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
 	}
 	fig2abbrev = []string {
-		"gf/act", "foc/us", "fit", "ang/le", "dist/s", "pers/pective", "ax/onometric", "unit", "df/act", "rf/act", "mf/act", "gax/is", "eax/is",
+		"gf/act", "foc/us", "ang/le", "dist/s", "pers/pective", "ax/onometric", "df/act", "rf/act", "mf/act", "gax/is", "eax/is",
 		"noax/is", "el/em", "el/em/+/", "el/em/-/", "sec/tion", "sec/tion/+/", "sec/tion/-/", "k/ijun", "mea/sure", "el/em/c/ode", "sec/t/c/ode",
-		"width", "height", "sr/can/col/or", "sr/can/ra/te", "st/ress", "prest/ress", "stiff/", "def/ormation", "dis/p", "ecc/entric", "dr/aw",
+		"wid/th", "h/eigh/t/", "sr/can/col/or", "sr/can/ra/te", "st/ress", "prest/ress", "stiff/", "def/ormation", "dis/p", "ecc/entric", "dr/aw",
 		"al/ias", "anon/ymous", "no/de/c/ode", "wei/ght", "con/f", "pi/le", "fen/ce", "per/iod", "per/iod/++/", "per/iod/--/",
-		"nocap/tion", "noleg/end", "nom/oment/v/alue", "ncol/or", "p/age/tit/le", "tit/le", "text", "pos/ition",
+		"nocap/tion", "noleg/end", "nom/oment/v/alue", "ncol/or", "p/age/tit/le", "tit/le", "pos/ition",
 	}
 )
 
