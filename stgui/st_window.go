@@ -242,6 +242,13 @@ var (
 		"fac/ts", "go/han/l/st", "el/em", "ave/rage", "bo/nd", "ax/is/2//c/ang", "resul/tant", "prest/ress", "therm/al", "div/ide", "e/lem/dup/lication", "i/ntersect/a/ll", "co/nf",
 		"pi/le", "sec/tion", "an/alysis", "f/ilter", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "sec/tion/+/", "col/or", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
 	}
+	fig2abbrev = []string {
+		"gf/act", "foc/us", "fit", "ang/le", "dist/s", "pers/pective", "ax/onometric", "unit", "df/act", "rf/act", "mf/act", "gax/is", "eax/is",
+		"noax/is", "el/em", "el/em/+/", "el/em/-/", "sec/tion", "sec/tion/+/", "sec/tion/-/", "k/ijun", "mea/sure", "el/em/c/ode", "sec/t/c/ode",
+		"width", "height", "sr/can/col/or", "sr/can/ra/te", "st/ress", "prest/ress", "stiff/", "def/ormation", "dis/p", "ecc/entric", "dr/aw",
+		"al/ias", "anon/ymous", "no/de/c/ode", "wei/ght", "con/f", "pi/le", "fen/ce", "per/iod", "per/iod/++/", "per/iod/--/",
+		"nocap/tion", "noleg/end", "nom/oment/v/alue", "ncol/or", "p/age/tit/le", "tit/le", "text", "pos/ition",
+	}
 )
 
 // }}}
@@ -2214,15 +2221,27 @@ func (stw *Window) fig2mode(command string) error {
 	return stw.fig2keyword(args, un)
 }
 
+func fig2keywordcomplete(command string) (string, bool) {
+	usage := strings.HasSuffix(command, "?")
+	cname := strings.TrimSuffix(command, "?")
+	cname = strings.ToLower(strings.TrimPrefix(cname, "'"))
+	var rtn string
+	for _, ab := range fig2abbrev {
+		pat := abbrev.MustCompile(ab)
+		if pat.MatchString(cname) {
+			rtn = pat.Longest()
+			break
+		}
+	}
+	if rtn == "" {
+		rtn = cname
+	}
+	return rtn, usage
+}
+
 func (stw *Window) fig2keyword(lis []string, un bool) error {
 	if len(lis) < 1 {
 		return st.NotEnoughArgs("Fig2Keyword")
-	}
-	key := strings.ToLower(lis[0])
-	var usage bool
-	if strings.HasSuffix(key, "?") {
-		usage = true
-		key = strings.TrimSuffix(key, "?")
 	}
 	showhtml := func(fn string) {
 		f := filepath.Join(tooldir, "fig2/keywords", fn)
@@ -2231,7 +2250,8 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			cmd.Start()
 		}
 	}
-	switch {
+	key, usage := fig2keywordcomplete(strings.ToLower(lis[0]))
+	switch key {
 	default:
 		if k, ok := stw.Frame.Kijuns[key]; ok {
 			d := k.Direction()
@@ -2246,14 +2266,14 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		}
 		stw.errormessage(errors.New(fmt.Sprintf("no fig2 keyword: %s", key)), INFO)
 		return nil
-	case abbrev.For("gf/act", key):
+	case "gfact":
 		val, err := strconv.ParseFloat(lis[1], 64)
 		if err != nil {
 			return err
 		}
 		stw.Frame.View.Gfact = val
 		stw.Labels["GFACT"].SetAttribute("VALUE", fmt.Sprintf("%f", stw.Frame.View.Gfact))
-	case abbrev.For("foc/us", key):
+	case "focus":
 		if len(lis) < 2 {
 			return st.NotEnoughArgs("FOCUS")
 		}
@@ -2298,11 +2318,11 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.Labels[str].SetAttribute("VALUE", fmt.Sprintf("%f", stw.Frame.View.Focus[i]))
 			}
 		}
-	case key == "fit":
+	case "fit":
 		stw.Frame.SetFocus(nil)
 		stw.DrawFrameNode()
 		stw.ShowCenter()
-	case abbrev.For("ang/le", key):
+	case "angle":
 		if len(lis) < 3 {
 			return st.NotEnoughArgs("ANGLE")
 		}
@@ -2317,7 +2337,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Frame.View.Angle[i] = val
 			stw.Labels[str].SetAttribute("VALUE", fmt.Sprintf("%f", stw.Frame.View.Angle[i]))
 		}
-	case abbrev.For("dist/s", key):
+	case "dists":
 		if len(lis) < 3 {
 			return st.NotEnoughArgs("DISTS")
 		}
@@ -2332,11 +2352,11 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Frame.View.Dists[i] = val
 			stw.Labels[str].SetAttribute("VALUE", fmt.Sprintf("%f", stw.Frame.View.Dists[i]))
 		}
-	case abbrev.For("pers/pective", key):
+	case "perspective":
 		stw.Frame.View.Perspective = true
-	case abbrev.For("ax/onometric", key):
+	case "axonometric":
 		stw.Frame.View.Perspective = false
-	case key == "unit":
+	case "unit":
 		if usage {
 			stw.addHistory("'unit force,length")
 			stw.addHistory(fmt.Sprintf("CURRENT FORCE UNIT: %s %.3f", stw.Frame.Show.UnitName[0], stw.Frame.Show.Unit[0]))
@@ -2378,7 +2398,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Frame.Show.Unit[0] = 1000.0
 			stw.Frame.Show.UnitName[0] = "mm"
 		}
-	case abbrev.For("df/act", key):
+	case "dfact":
 		if len(lis) < 2 {
 			return st.NotEnoughArgs("DFACT")
 		}
@@ -2388,7 +2408,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		}
 		stw.Frame.Show.Dfact = val
 		stw.Labels["DFACT"].SetAttribute("VALUE", fmt.Sprintf("%f", val))
-	case abbrev.For("rf/act", key):
+	case "rfact":
 		if len(lis) < 2 {
 			return st.NotEnoughArgs("RFACT")
 		}
@@ -2397,7 +2417,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			return err
 		}
 		stw.Frame.Show.Rfact = val
-	case abbrev.For("mf/act", key):
+	case "mfact":
 		if len(lis) < 2 {
 			return st.NotEnoughArgs("MFACT")
 		}
@@ -2407,7 +2427,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		}
 		stw.Frame.Show.Mfact = val
 		stw.Labels["MFACT"].SetAttribute("VALUE", fmt.Sprintf("%f", val))
-	case abbrev.For("gax/is", key):
+	case "gaxis":
 		if un {
 			stw.Frame.Show.GlobalAxis = false
 			stw.Labels["GAXIS"].SetAttribute("FGCOLOR", labelOFFColor)
@@ -2423,7 +2443,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.Labels["GAXISSIZE"].SetAttribute("VALUE", fmt.Sprintf("%f", val))
 			}
 		}
-	case abbrev.For("eax/is", key):
+	case "eaxis":
 		if un {
 			stw.Frame.Show.ElementAxis = false
 			stw.Labels["EAXIS"].SetAttribute("FGCOLOR", labelOFFColor)
@@ -2439,12 +2459,12 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.Labels["EAXISSIZE"].SetAttribute("VALUE", fmt.Sprintf("%f", val))
 			}
 		}
-	case abbrev.For("noax/is", key):
+	case "noaxis":
 		stw.Frame.Show.GlobalAxis = false
 		stw.Labels["GAXIS"].SetAttribute("FGCOLOR", labelOFFColor)
 		stw.Frame.Show.ElementAxis = false
 		stw.Labels["EAXIS"].SetAttribute("FGCOLOR", labelOFFColor)
-	case abbrev.For("el/em", key):
+	case "elem":
 		for i, _ := range st.ETYPES {
 			stw.HideEtype(i)
 		}
@@ -2456,7 +2476,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				}
 			}
 		}
-	case abbrev.For("el/em/+/", key):
+	case "elem+":
 		for _, val := range lis[1:] {
 			et := strings.ToUpper(val)
 			for i, e := range st.ETYPES {
@@ -2465,7 +2485,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				}
 			}
 		}
-	case abbrev.For("el/em/-/", key):
+	case "elem-":
 		for _, val := range lis[1:] {
 			et := strings.ToUpper(val)
 			for i, e := range st.ETYPES {
@@ -2474,7 +2494,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				}
 			}
 		}
-	case abbrev.For("sec/tion", key):
+	case "section":
 		stw.HideAllSection()
 		for _, tmp := range lis[1:] {
 			val, err := strconv.ParseInt(tmp, 10, 64)
@@ -2483,7 +2503,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			}
 			stw.ShowSection(int(val))
 		}
-	case abbrev.For("sec/tion/+/", key):
+	case "section+":
 		for _, tmp := range lis[1:] {
 			val, err := strconv.ParseInt(tmp, 10, 64)
 			if err != nil {
@@ -2491,7 +2511,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			}
 			stw.ShowSection(int(val))
 		}
-	case abbrev.For("sec/tion/-/", key):
+	case "section-":
 		for _, tmp := range lis[1:] {
 			val, err := strconv.ParseInt(tmp, 10, 64)
 			if err != nil {
@@ -2499,7 +2519,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			}
 			stw.HideSection(int(val))
 		}
-	case abbrev.For("k/ijun", key):
+	case "kijun":
 		if un {
 			stw.Frame.Show.Kijun = false
 			stw.Labels["KIJUN"].SetAttribute("FGCOLOR", labelOFFColor)
@@ -2507,7 +2527,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Frame.Show.Kijun = true
 			stw.Labels["KIJUN"].SetAttribute("FGCOLOR", labelFGColor)
 		}
-	case abbrev.For("mea/sure", key):
+	case "measure":
 		if usage {
 			stw.addHistory("'measure kijun x1 x2 offset dotsize rotate overwrite")
 			stw.addHistory("'measure nnum1 nnum2 direction offset dotsize rotate overwrite")
@@ -2626,37 +2646,37 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				}
 			}
 		}
-	case abbrev.For("el/em/c/ode", key):
+	case "elemcode":
 		if un {
 			stw.ElemCaptionOff("EC_NUM")
 		} else {
 			stw.ElemCaptionOn("EC_NUM")
 		}
-	case abbrev.For("sec/t/c/ode", key):
+	case "sectcode":
 		if un {
 			stw.ElemCaptionOff("EC_SECT")
 		} else {
 			stw.ElemCaptionOn("EC_SECT")
 		}
-	case key == "width":
+	case "width":
 		if un {
 			stw.ElemCaptionOff("EC_WIDTH")
 		} else {
 			stw.ElemCaptionOn("EC_WIDTH")
 		}
-	case key == "height":
+	case "height":
 		if un {
 			stw.ElemCaptionOff("EC_HEIGHT")
 		} else {
 			stw.ElemCaptionOn("EC_HEIGHT")
 		}
-	case abbrev.For("sr/can/col/or", key):
+	case "srcancolor":
 		if un {
 			stw.SetColorMode(st.ECOLOR_WHITE)
 		} else {
 			stw.SetColorMode(st.ECOLOR_RATE)
 		}
-	case abbrev.For("sr/can/ra/te", key):
+	case "srcanrate":
 		if usage {
 			stw.addHistory("'srcanrate [long/short]")
 			return nil
@@ -2689,7 +2709,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelFGColor)
 			}
 		}
-	case abbrev.For("st/ress", key):
+	case "stress":
 		if usage {
 			stw.addHistory("'stress [etype/sectcode] [period] [stressname]")
 			return nil
@@ -2812,13 +2832,13 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.StressOn(etype, uint(index))
 			}
 		}
-	case abbrev.For("prest/ress", key):
+	case "prestress":
 		if un {
 			stw.ElemCaptionOff("EC_PREST")
 		} else {
 			stw.ElemCaptionOn("EC_PREST")
 		}
-	case abbrev.For("stiff/", key):
+	case "stiff":
 		if usage {
 			stw.addHistory("'stiff [x,y]")
 			return nil
@@ -2848,7 +2868,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.ElemCaptionOn("EC_STIFF_Y")
 			}
 		}
-	case abbrev.For("def/ormation", key):
+	case "deformation":
 		if un {
 			stw.DeformationOff()
 		} else {
@@ -2857,7 +2877,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			}
 			stw.DeformationOn()
 		}
-	case abbrev.For("dis/p", key):
+	case "disp":
 		if un {
 			if len(lis) < 2 {
 				for i := 0; i < 6; i++ {
@@ -2886,7 +2906,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				}
 			}
 		}
-	case abbrev.For("ecc/entric", key):
+	case "eccentric":
 		if un {
 			stw.Frame.Show.Fes = false
 		} else {
@@ -2899,7 +2919,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.Frame.Show.MassSize = val
 			}
 		}
-	case abbrev.For("dr/aw", key):
+	case "draw":
 		if un {
 			for k := range stw.Frame.Show.Draw {
 				stw.Frame.Show.Draw[k] = false
@@ -2938,7 +2958,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.Frame.Show.DrawSize = tmp
 			}
 		}
-	case abbrev.For("al/ias", key):
+	case "alias":
 		if un {
 			if len(lis) < 2 {
 				sectionaliases = make(map[int]string, 0)
@@ -2969,7 +2989,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				}
 			}
 		}
-	case abbrev.For("anon/ymous", key):
+	case "anonymous":
 		for _, str := range lis[1:] {
 			val, err := strconv.ParseInt(str, 10, 64)
 			if err != nil {
@@ -2979,19 +2999,19 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				sectionaliases[int(val)] = ""
 			}
 		}
-	case abbrev.For("no/de/c/ode", key):
+	case "nodecode":
 		if un {
 			stw.NodeCaptionOff("NC_NUM")
 		} else {
 			stw.NodeCaptionOn("NC_NUM")
 		}
-	case abbrev.For("wei/ght", key):
+	case "weight":
 		if un {
 			stw.NodeCaptionOff("NC_WEIGHT")
 		} else {
 			stw.NodeCaptionOn("NC_WEIGHT")
 		}
-	case abbrev.For("con/f", key):
+	case "conf":
 		if un {
 			stw.Frame.Show.Conf = false
 			stw.Labels["CONF"].SetAttribute("FGCOLOR", labelOFFColor)
@@ -3007,13 +3027,13 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.Labels["CONFSIZE"].SetAttribute("VALUE", fmt.Sprintf("%.1f", val))
 			}
 		}
-	case abbrev.For("pi/le", key):
+	case "pile":
 		if un {
 			stw.NodeCaptionOff("NC_PILE")
 		} else {
 			stw.NodeCaptionOn("NC_PILE")
 		}
-	case abbrev.For("fen/ce", key):
+	case "fence":
 		if len(lis) < 3 {
 			return st.NotEnoughArgs("FENCE")
 		}
@@ -3034,13 +3054,13 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		}
 		stw.SelectElem = stw.Frame.Fence(axis, val, false)
 		stw.HideNotSelected()
-	case abbrev.For("per/iod", key):
+	case "period":
 		stw.SetPeriod(strings.ToUpper(lis[1]))
-	case abbrev.For("per/iod/++/", key):
+	case "period++":
 		stw.IncrementPeriod(1)
-	case abbrev.For("per/iod/--/", key):
+	case "period--":
 		stw.IncrementPeriod(-1)
-	case abbrev.For("nocap/tion", key):
+	case "nocaption":
 		for _, nc := range st.NODECAPTIONS {
 			stw.NodeCaptionOff(nc)
 		}
@@ -3052,21 +3072,21 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.StressOff(etype, uint(i))
 			}
 		}
-	case abbrev.For("noleg/end", key):
+	case "nolegend":
 		if un {
 			stw.Frame.Show.NoLegend = false
 		} else {
 			stw.Frame.Show.NoLegend = true
 		}
-	case abbrev.For("nom/oment/v/alue", key):
+	case "nomomentvalue":
 		if un {
 			stw.Frame.Show.NoMomentValue = false
 		} else {
 			stw.Frame.Show.NoMomentValue = true
 		}
-	case abbrev.For("ncol/or", key):
+	case "ncolor":
 		stw.SetColorMode(st.ECOLOR_N)
-	case abbrev.For("p/age/tit/le", key):
+	case "pagetitle":
 		if un {
 			stw.PageTitle.Value = make([]string, 0)
 			stw.PageTitle.Hide = true
@@ -3074,7 +3094,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.PageTitle.Value = append(stw.PageTitle.Value, st.ToUtf8string(strings.Join(lis[1:], " ")))
 			stw.PageTitle.Hide = false
 		}
-	case abbrev.For("tit/le", key):
+	case "title":
 		if un {
 			stw.Title.Value = make([]string, 0)
 			stw.Title.Hide = true
@@ -3082,7 +3102,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Title.Value = append(stw.Title.Value, st.ToUtf8string(strings.Join(lis[1:], " ")))
 			stw.Title.Hide = false
 		}
-	case key == "text":
+	case "text":
 		if un {
 			stw.Text.Value = make([]string, 0)
 			stw.Text.Hide = true
@@ -3090,7 +3110,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.Text.Value = append(stw.Text.Value, st.ToUtf8string(strings.Join(lis[1:], " ")))
 			stw.Text.Hide = false
 		}
-	case abbrev.For("pos/ition", key):
+	case "position":
 		if len(lis) < 4 {
 			return st.NotEnoughArgs("POSITION")
 		}
