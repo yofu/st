@@ -2004,7 +2004,7 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 					val = tmp
 				}
 			}
-			return val, nil
+			return val / float64(len(els)), nil
 		} else {
 			vall := 0.0
 			vals := 0.0
