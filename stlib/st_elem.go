@@ -526,6 +526,21 @@ func (elem *Elem) Length() float64 {
 	return math.Sqrt(sum)
 }
 
+func (elem *Elem) EdgeLength(ind int) float64 {
+	if ind >= elem.Enods-1 {
+		return 0.0
+	}
+	jind := ind + 1
+	if jind >= elem.Enods {
+		jind -= elem.Enods
+	}
+	sum := 0.0
+	for i := 0; i < 3; i++ {
+		sum += math.Pow((elem.Enod[jind].Coord[i] - elem.Enod[ind].Coord[i]), 2)
+	}
+	return math.Sqrt(sum)
+}
+
 func (elem *Elem) Area() float64 {
 	if elem.Enods <= 2 {
 		return 0.0
@@ -575,12 +590,13 @@ func (elem *Elem) Distribute() error {
 		if elem.Enods < 3 {
 			return errors.New(fmt.Sprintf("Distribute: ELEM %d too few enods", elem.Num))
 		}
-		// for i:=0; i<3; i++ {
-		//     val := w[i] + elem.Sect.Lload[i]
-		//     for _, en := range elem.Enod {
-		//         en.Load[i] += val / float64(elem.Enods)
-		//     }
-		// }
+		for i:=0; i<3; i++ {
+			w[i] += elem.Sect.Lload[i]
+			// val := w[i] + elem.Sect.Lload[i]
+			// for _, en := range elem.Enod {
+			// 	en.Load[i] += val / float64(elem.Enods)
+			// }
+		}
 	case WALL:
 		if elem.Enods < 3 {
 			return errors.New(fmt.Sprintf("Distribute: ELEM %d too few enods", elem.Num))
@@ -707,6 +723,25 @@ func (elem *Elem) Height() float64 {
 
 // TODO: implement
 func (elem *Elem) PlateDivision() ([]*Elem, error) {
+	if elem.Enods < 3 {
+		return nil, errors.New(fmt.Sprintf("PlateDivision: ELEM %d too few enods", elem.Num))
+	}
+	var jinds []int
+	switch elem.Enods {
+	case 3:
+		jinds = []int{1, 2, 0}
+	case 4:
+		jinds = []int{1, 2, 3, 0}
+	}
+	var mid [][]float64
+	for i, j := range jinds {
+		d1 := elem.EdgeDirection(i, true)
+		d2 := elem.EdgeDirection(j, true)
+		mid[i] = make([]float64, 3)
+		for k:=0; k<3; k++ {
+			mid[i][k] = 0.5*(d1[k] + d2[k])
+		}
+	}
 	return nil, nil
 }
 
@@ -885,6 +920,27 @@ func (elem *Elem) Direction(normalize bool) []float64 {
 	}
 	for i := 0; i < 3; i++ {
 		vec[i] = (elem.Enod[1].Coord[i] - elem.Enod[0].Coord[i]) / l
+	}
+	return vec
+}
+
+func (elem *Elem) EdgeDirection(ind int, normalize bool) []float64 {
+	if ind >= elem.Enods-1 {
+		return nil
+	}
+	jind := ind + 1
+	if jind >= elem.Enods {
+		jind -= elem.Enods
+	}
+	vec := make([]float64, 3)
+	var l float64
+	if normalize {
+		l = elem.EdgeLength(ind)
+	} else {
+		l = 1.0
+	}
+	for i := 0; i < 3; i++ {
+		vec[i] = (elem.Enod[jind].Coord[i] - elem.Enod[ind].Coord[i]) / l
 	}
 	return vec
 }
