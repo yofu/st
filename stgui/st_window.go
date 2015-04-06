@@ -5008,7 +5008,7 @@ func (stw *Window) exmode(command string) error {
 		}(stw.SelectElem)
 	case "fence":
 		if usage {
-			stw.addHistory(":fence axis coord")
+			stw.addHistory(":fence axis coord {-plate}")
 			return nil
 		}
 		if narg < 3 {
@@ -5049,7 +5049,11 @@ func (stw *Window) exmode(command string) error {
 			}
 			val = stw.Frame.Ai.Boundary[int(ind)]
 		}
-		stw.SelectElem = stw.Frame.Fence(axis, val, false)
+		plate := false
+		if _, ok := argdict["PLATE"]; ok {
+			plate = true
+		}
+		stw.SelectElem = stw.Frame.Fence(axis, val, plate)
 		go func(els []*st.Elem) {
 			for _, el := range els {
 				stw.exmodech <- el
