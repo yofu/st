@@ -3702,6 +3702,17 @@ func (stw *Window) excommand(command string, pipe bool) error {
 	cname, bang, usage := exmodecomplete(args[0])
 	evaluated := true
 	var sender []interface{}
+	defer func() {
+		if pipe {
+			go func(ents []interface{}) {
+				for _, e := range ents {
+					fmt.Println(e)
+					stw.exmodech <- e
+				}
+				stw.exmodeend <- 1
+			}(sender)
+		}
+	}()
 	switch cname {
 	default:
 		evaluated = false
@@ -6415,14 +6426,6 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}()
-	}
-	if pipe {
-		go func(ents []interface{}) {
-			for _, e := range ents {
-				stw.exmodech <- e
-			}
-			stw.exmodeend <- 1
-		}(sender)
 	}
 	return nil
 }
