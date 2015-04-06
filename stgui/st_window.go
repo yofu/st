@@ -3631,7 +3631,7 @@ ex_empty:
 		case <-time.After(time.Second):
 			break ex_empty
 		case <-stw.exmodeend:
-			continue ex_empty
+			break ex_empty
 		case <-stw.exmodech:
 			continue ex_empty
 		}
@@ -3639,6 +3639,21 @@ ex_empty:
 }
 
 func (stw *Window) exmode(command string) error {
+	if !strings.Contains(command, "|") {
+		return stw.excommand(command, false)
+	}
+	excms := strings.Split(command, "|")
+	defer stw.emptyexmodech()
+	for _, com := range excms {
+		err := stw.excommand(com, true)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (stw *Window) excommand(command string, pipe bool) error {
 	if len(command) == 1 {
 		return st.NotEnoughArgs("exmode")
 	}
@@ -3686,6 +3701,7 @@ func (stw *Window) exmode(command string) error {
 	}
 	cname, bang, usage := exmodecomplete(args[0])
 	evaluated := true
+	var sender []interface{}
 	switch cname {
 	default:
 		evaluated = false
@@ -3773,9 +3789,9 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.ShapeData(al)
-		go func(a interface{}) {
-			stw.exmodech <- a
-		}(al)
+		if pipe {
+			sender = []interface{}{al}
+		}
 	case "hweak":
 		if usage {
 			stw.addHistory(":hweak h b tw tf")
@@ -3789,9 +3805,9 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.ShapeData(al)
-		go func(a interface{}) {
-			stw.exmodech <- a
-		}(al)
+		if pipe {
+			sender = []interface{}{al}
+		}
 	case "rpipe":
 		if usage {
 			stw.addHistory(":rpipe h b tw tf")
@@ -3805,9 +3821,9 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.ShapeData(al)
-		go func(a interface{}) {
-			stw.exmodech <- a
-		}(al)
+		if pipe {
+			sender = []interface{}{al}
+		}
 	case "cpipe":
 		if usage {
 			stw.addHistory(":cpipe d t")
@@ -3821,9 +3837,9 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.ShapeData(al)
-		go func(a interface{}) {
-			stw.exmodech <- a
-		}(al)
+		if pipe {
+			sender = []interface{}{al}
+		}
 	case "tkyou":
 		if usage {
 			stw.addHistory(":tkyou h b tw tf")
@@ -4740,12 +4756,13 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.SelectNode = stw.SelectNode[:num]
 		}
-		go func(ns []*st.Node) {
-			for _, n := range ns {
-				stw.exmodech <- n
+		if pipe {
+			num := len(stw.SelectNode)
+			sender = make([]interface{}, num)
+			for i:=0; i<num; i++ {
+				sender[i] = stw.SelectNode[i]
 			}
-			stw.exmodeend <- 1
-		}(stw.SelectNode)
+		}
 	case "conf":
 		if usage {
 			stw.addHistory(":conf [0,1]{6}")
@@ -5000,12 +5017,13 @@ func (stw *Window) exmode(command string) error {
 			}
 			stw.SelectElem = stw.SelectElem[:num]
 		}
-		go func(els []*st.Elem) {
-			for _, el := range els {
-				stw.exmodech <- el
+		if pipe {
+			num := len(stw.SelectElem)
+			sender = make([]interface{}, num)
+			for i:=0; i<num; i++ {
+				sender[i] = stw.SelectElem[i]
 			}
-			stw.exmodeend <- 1
-		}(stw.SelectElem)
+		}
 	case "fence":
 		if usage {
 			stw.addHistory(":fence axis coord {-plate}")
@@ -5054,12 +5072,13 @@ func (stw *Window) exmode(command string) error {
 			plate = true
 		}
 		stw.SelectElem = stw.Frame.Fence(axis, val, plate)
-		go func(els []*st.Elem) {
-			for _, el := range els {
-				stw.exmodech <- el
+		if pipe {
+			num := len(stw.SelectElem)
+			sender = make([]interface{}, num)
+			for i:=0; i<num; i++ {
+				sender[i] = stw.SelectElem[i]
 			}
-			stw.exmodeend <- 1
-		}(stw.SelectElem)
+		}
 	case "filter":
 		if usage {
 			stw.addHistory(":filter condition")
@@ -5070,12 +5089,13 @@ func (stw *Window) exmode(command string) error {
 			return err
 		}
 		stw.SelectElem = tmpels
-		go func(els []*st.Elem) {
-			for _, el := range els {
-				stw.exmodech <- el
+		if pipe {
+			num := len(stw.SelectElem)
+			sender = make([]interface{}, num)
+			for i:=0; i<num; i++ {
+				sender[i] = stw.SelectElem[i]
 			}
-			stw.exmodeend <- 1
-		}(stw.SelectElem)
+		}
 	case "bond":
 		if usage {
 			stw.addHistory(":bond [pin,rigid] [upper,lower,sect sectcode]")
@@ -5513,9 +5533,9 @@ func (stw *Window) exmode(command string) error {
 		if narg < 2 {
 			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 				stw.SectionData(stw.SelectElem[0].Sect)
-				go func(sec *st.Sect) {
-					stw.exmodech <- sec
-				}(stw.SelectElem[0].Sect)
+				if pipe {
+					sender = []interface{}{stw.SelectElem[0].Sect}
+				}
 				return nil
 			}
 			if t, tok := stw.TextBox["SECTION"]; tok {
@@ -5549,12 +5569,13 @@ func (stw *Window) exmode(command string) error {
 			}
 			sects = sects[:num]
 			stw.SectionData(sects[0])
-			go func(ss []*st.Sect) {
-				for _, sec := range ss {
-					stw.exmodech <- sec
+			if pipe {
+				num := len(sects)
+				sender = make([]interface{}, num)
+				for i:=0; i<num; i++ {
+					sender[i] = sects[i]
 				}
-				stw.exmodeend <- 1
-			}(sects)
+			}
 		default:
 			tmp, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
@@ -5580,9 +5601,9 @@ func (stw *Window) exmode(command string) error {
 					}
 				}
 				stw.SectionData(sec)
-				go func(s *st.Sect) {
-					stw.exmodech <- s
-				}(sec)
+				if pipe {
+					sender = []interface{}{sec}
+				}
 			} else {
 				return errors.New(fmt.Sprintf(":section SECT %d doesn't exist", snum))
 			}
@@ -6394,6 +6415,14 @@ func (stw *Window) exmode(command string) error {
 				}
 			}
 		}()
+	}
+	if pipe {
+		go func(ents []interface{}) {
+			for _, e := range ents {
+				stw.exmodech <- e
+			}
+			stw.exmodeend <- 1
+		}(sender)
 	}
 	return nil
 }
