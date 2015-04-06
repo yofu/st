@@ -246,7 +246,7 @@ var (
 		"gf/act", "foc/us", "ang/le", "dist/s", "pers/pective", "ax/onometric", "df/act", "rf/act", "mf/act", "gax/is", "eax/is",
 		"noax/is", "el/em", "el/em/+/", "el/em/-/", "sec/tion", "sec/tion/+/", "sec/tion/-/", "k/ijun", "mea/sure", "el/em/c/ode", "sec/t/c/ode",
 		"wid/th", "h/eigh/t/", "sr/can/col/or", "sr/can/ra/te", "st/ress", "prest/ress", "stiff/", "def/ormation", "dis/p", "ecc/entric", "dr/aw",
-		"al/ias", "anon/ymous", "no/de/c/ode", "wei/ght", "con/f", "pi/le", "fen/ce", "per/iod", "per/iod/++/", "per/iod/--/",
+		"al/ias", "anon/ymous", "no/de/c/ode", "wei/ght", "con/f", "pi/lecode", "fen/ce", "per/iod", "per/iod/++/", "per/iod/--/",
 		"nocap/tion", "noleg/end", "nom/oment/v/alue", "ncol/or", "p/age/tit/le", "tit/le", "pos/ition",
 	}
 )
@@ -3027,7 +3027,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.Labels["CONFSIZE"].SetAttribute("VALUE", fmt.Sprintf("%.1f", val))
 			}
 		}
-	case "pile":
+	case "pilecode":
 		if un {
 			stw.NodeCaptionOff("NC_PILE")
 		} else {
