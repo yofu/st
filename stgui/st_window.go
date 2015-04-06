@@ -6395,6 +6395,12 @@ func (stw *Window) exmode(command string) error {
 }
 
 func (stw *Window) NextFloor() {
+	for _, n := range stw.Frame.Nodes {
+		n.Show()
+	}
+	for _, el := range stw.Frame.Elems {
+		el.Show()
+	}
 	for i, z := range []string{"ZMIN", "ZMAX"} {
 		tmpval := stw.Frame.Show.Zrange[i]
 		ind := 0
@@ -6418,6 +6424,12 @@ func (stw *Window) NextFloor() {
 }
 
 func (stw *Window) PrevFloor() {
+	for _, n := range stw.Frame.Nodes {
+		n.Show()
+	}
+	for _, el := range stw.Frame.Elems {
+		el.Show()
+	}
 	for i, z := range []string{"ZMIN", "ZMAX"} {
 		tmpval := stw.Frame.Show.Zrange[i]
 		ind := 0
