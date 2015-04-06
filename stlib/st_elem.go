@@ -1977,13 +1977,29 @@ func (elem *Elem) MomentCoord(show *Show, index int) [][]float64 {
 // }
 
 func (elem *Elem) RateMax(show *Show) (float64, error) {
-	returnratemax := func(e *Elem) (float64, error) {
-		if e.Rate == nil {
+	returnratemax := func(els ...*Elem) (float64, error) {
+		if len(els) == 0 || els[0] == nil {
 			return 0.0, errors.New("RateMax: no value")
 		}
-		if len(e.Rate)%3 != 0 || (show.ElemCaption&EC_RATE_L == 0 && show.ElemCaption&EC_RATE_S == 0) {
+		if els[0].Rate == nil {
+			return 0.0, errors.New("RateMax: no value")
+		}
+		l := len(els[0].Rate)
+		for _, el := range els[1:] {
+			if el.Rate == nil {
+				return 0.0, errors.New("RateMax: no value")
+			}
+			if len(el.Rate) != l {
+				return 0.0, errors.New("RateMax: different size")
+			}
+		}
+		if l%3 != 0 || (show.ElemCaption&EC_RATE_L == 0 && show.ElemCaption&EC_RATE_S == 0) {
 			val := 0.0
-			for _, tmp := range e.Rate {
+			for i:=0; i<l; i++ {
+				tmp := 0.0
+				for _, el := range els {
+					tmp += el.Rate[i]
+				}
 				if tmp > val {
 					val = tmp
 				}
@@ -1992,18 +2008,24 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 		} else {
 			vall := 0.0
 			vals := 0.0
-			for i, tmp := range e.Rate {
-				switch i % 3 {
-				default:
-					continue
-				case 0:
-					if tmp > vall {
-						vall = tmp
+			for i:=0; i<l; i++ {
+				tmpl := 0.0
+				tmps := 0.0
+				for _, el := range els {
+					switch i % 3 {
+					default:
+						continue
+					case 0:
+						tmpl += el.Rate[i]
+					case 1:
+						tmps += el.Rate[i]
 					}
-				case 1:
-					if tmp > vals {
-						vals = tmp
-					}
+				}
+				if tmpl > vall {
+					vall = tmpl
+				}
+				if tmps > vals {
+					vals = tmps
 				}
 			}
 			if show.ElemCaption&EC_RATE_L == 0 {
@@ -2013,34 +2035,19 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 				vals = 0.0
 			}
 			if vall >= vals {
-				return vall, nil
+				return vall / float64(len(els)), nil
 			} else {
-				return vals, nil
+				return vals / float64(len(els)), nil
 			}
 		}
 	}
 	if elem.IsLineElem() {
 		return returnratemax(elem)
 	} else {
-		rtn := 0.0
-		num := 0
 		if elem.Children != nil {
-			for _, el := range elem.Children {
-				if el != nil {
-					val, err := returnratemax(el)
-					if err != nil {
-						return 0.0, err
-					}
-					rtn += val
-					num++
-				}
-			}
+			return returnratemax(elem.Children...)
 		}
-		if num > 0 {
-			return rtn / float64(num), nil
-		} else {
-			return 0.0, errors.New("RateMax: no value")
-		}
+		return 0.0, errors.New("RateMax: no value")
 	}
 }
 
