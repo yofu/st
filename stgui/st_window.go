@@ -3706,7 +3706,6 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if pipe {
 			go func(ents []interface{}) {
 				for _, e := range ents {
-					fmt.Println(e)
 					stw.exmodech <- e
 				}
 				stw.exmodeend <- 1
