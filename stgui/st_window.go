@@ -5540,9 +5540,15 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			stw.addHistory(":section sectcode")
 			return nil
 		}
+		nodisp := false
+		if _, ok := argdict["NODISP"]; ok {
+			nodisp = true
+		}
 		if narg < 2 {
 			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
-				stw.SectionData(stw.SelectElem[0].Sect)
+				if !nodisp {
+					stw.SectionData(stw.SelectElem[0].Sect)
+				}
 				if pipe {
 					sender = []interface{}{stw.SelectElem[0].Sect}
 				}
@@ -5578,7 +5584,9 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				return nil
 			}
 			sects = sects[:num]
-			stw.SectionData(sects[0])
+			if !nodisp{
+				stw.SectionData(sects[0])
+			}
 			if pipe {
 				num := len(sects)
 				sender = make([]interface{}, num)
@@ -5610,7 +5618,9 @@ func (stw *Window) excommand(command string, pipe bool) error {
 						}
 					}
 				}
-				stw.SectionData(sec)
+				if !nodisp {
+					stw.SectionData(sec)
+				}
 				if pipe {
 					sender = []interface{}{sec}
 				}
