@@ -6005,6 +6005,31 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		} else {
 			return errors.New(":sum no selected elem/node")
 		}
+	case "erase":
+		stw.Deselect()
+	ex_erase:
+		for {
+			select {
+			case <-time.After(time.Second):
+				break ex_erase
+			case <-stw.exmodeend:
+				break ex_erase
+			case ent := <-stw.exmodech:
+				switch ent := ent.(type) {
+				case *st.Node:
+					stw.Frame.DeleteNode(ent.Num)
+				case *st.Elem:
+					stw.Frame.DeleteElem(ent.Num)
+				}
+			}
+		}
+		ns := stw.Frame.NodeNoReference()
+		if len(ns) != 0 {
+			for _, n := range ns {
+				stw.Frame.DeleteNode(n.Num)
+			}
+		}
+		stw.Snapshot()
 	case "count":
 		var nnode, nelem int
 	ex_count:
