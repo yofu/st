@@ -6005,6 +6005,25 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		} else {
 			return errors.New(":sum no selected elem/node")
 		}
+	case "count":
+		var nnode, nelem int
+	ex_count:
+		for {
+			select {
+			case <-time.After(time.Second):
+				break ex_count
+			case <-stw.exmodeend:
+				break ex_count
+			case ent := <-stw.exmodech:
+				switch ent.(type) {
+				case *st.Node:
+					nnode++
+				case *st.Elem:
+					nelem++
+				}
+			}
+		}
+		stw.addHistory(fmt.Sprintf("NODES: %d, ELEMS: %d", nnode, nelem))
 	case "hide":
 	ex_hide:
 		for {
