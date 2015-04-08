@@ -5222,6 +5222,50 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}
 		stw.Snapshot()
+	case "cang":
+		if usage {
+			stw.addHistory(":cang val")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":cang")
+		}
+		val, err := strconv.ParseFloat(args[1], 64)
+		if err != nil {
+			return err
+		}
+		var els []*st.Elem
+		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+			enum := 0
+			els = make([]*st.Elem, 0)
+		ex_cang:
+			for {
+				select {
+				case <-time.After(time.Second):
+					break ex_cang
+				case <-stw.exmodeend:
+					break ex_cang
+				case el := <-stw.exmodech:
+					if el, ok := el.(*st.Elem); ok {
+						els = append(els, el)
+						enum++
+					}
+				}
+			}
+			if enum == 0 {
+				return errors.New(":cang no selected elem")
+			}
+			els = els[:enum]
+		} else {
+			els = stw.SelectElem
+		}
+		for _, el := range els {
+			if !el.IsLineElem() {
+				continue
+			}
+			el.Cang = val
+		}
+		stw.Snapshot()
 	case "axis2cang":
 		if usage {
 			stw.addHistory(":axis2cang n1 n2 [strong,weak]")
