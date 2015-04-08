@@ -3863,6 +3863,9 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return err
 		}
 		stw.ShapeData(al)
+		if pipe {
+			sender = []interface{}{al}
+		}
 	case "ckyou":
 		if usage {
 			stw.addHistory(":ckyou h b tw tf")
@@ -3876,6 +3879,9 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return err
 		}
 		stw.ShapeData(al)
+		if pipe {
+			sender = []interface{}{al}
+		}
 	case "plate":
 		if usage {
 			stw.addHistory(":plate h b")
@@ -3889,6 +3895,9 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return err
 		}
 		stw.ShapeData(al)
+		if pipe {
+			sender = []interface{}{al}
+		}
 	case "fixrotate":
 		fixRotate = !fixRotate
 	case "fixmove":
