@@ -5264,6 +5264,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				continue
 			}
 			el.Cang = val
+			el.SetPrincipalAxis()
 		}
 		stw.Snapshot()
 	case "axis2cang":
