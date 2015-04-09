@@ -6899,6 +6899,9 @@ func (stw *Window) DrawFrameNode() {
 	}
 	for _, n := range stw.Frame.Nodes {
 		stw.Frame.View.ProjectNode(n)
+		if stw.Frame.Show.Deformation {
+			stw.Frame.View.ProjectDeformation(n, stw.Frame.Show)
+		}
 		if n.Lock {
 			stw.dbuff.Foreground(LOCKED_NODE_COLOR)
 		} else {
