@@ -7175,19 +7175,9 @@ func (stw *Window) HideNotSelected() {
 
 func (stw *Window) HideSelected() {
 	if stw.SelectElem != nil {
-		for _, n := range stw.Frame.Nodes {
-			n.Hide()
-		}
 		for _, el := range stw.SelectElem {
 			if el != nil {
 				el.Hide()
-			}
-		}
-		for _, el := range stw.Frame.Elems {
-			if !el.IsHidden(stw.Frame.Show) {
-				for _, en := range el.Enod {
-					en.Show()
-				}
 			}
 		}
 	}
