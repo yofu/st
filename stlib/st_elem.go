@@ -1151,6 +1151,27 @@ func (elem *Elem) Mirror(coord, vec []float64, del bool, eps float64) *Elem {
 	}
 }
 
+func (elem *Elem) Invert() {
+	if len(elem.Enod) == 0 {
+		return
+	}
+	newenod := make([]*Node, elem.Enods)
+	newbonds := make([]bool, 6*elem.Enods)
+	newcmq := make([]float64, 6*elem.Enods)
+	ind := elem.Enods - 1
+	for i:=0; i<elem.Enods; i++ {
+		newenod[i] = elem.Enod[ind]
+		for j:=0; j<6; j++ {
+			newbonds[i] = elem.Bonds[6*ind+j]
+			newcmq[i] = elem.Cmq[6*ind+j]
+		}
+		ind--
+	}
+	elem.Enod = newenod
+	elem.Bonds = newbonds
+	elem.Cmq = newcmq
+}
+
 func (elem *Elem) Upside() {
 	if len(elem.Enod) == 0 {
 		return

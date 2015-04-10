@@ -5313,6 +5313,40 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}
 		stw.Snapshot()
+	case "invert":
+		if usage {
+			stw.addHistory(":invert")
+			return nil
+		}
+		var els []*st.Elem
+		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+			enum := 0
+			els = make([]*st.Elem, 0)
+		ex_invert:
+			for {
+				select {
+				case <-time.After(time.Second):
+					break ex_invert
+				case <-stw.exmodeend:
+					break ex_invert
+				case el := <-stw.exmodech:
+					if el, ok := el.(*st.Elem); ok {
+						els = append(els, el)
+						enum++
+					}
+				}
+			}
+			if enum == 0 {
+				return errors.New(":invert no selected elem")
+			}
+			els = els[:enum]
+		} else {
+			els = stw.SelectElem
+		}
+		for _, el := range els {
+			el.Invert()
+		}
+		stw.Snapshot()
 	case "resultant":
 		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
 			return errors.New(":resultant no selected elem")
