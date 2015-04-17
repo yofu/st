@@ -2741,6 +2741,8 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			etype = st.WBRACE
 		case abbrev.For("sb/race", et):
 			etype = st.SBRACE
+		case abbrev.For("tr/uss", et):
+			etype = st.TRUSS
 		case abbrev.For("wa/ll", et):
 			etype = st.WALL
 		case abbrev.For("sl/ab", et):
