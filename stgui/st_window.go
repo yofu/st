@@ -240,7 +240,7 @@ var (
 		"e/dit", "q/uit", "vi/m", "hk/you", "hw/eak", "rp/ipe", "cp/ipe", "tk/you", "ck/you", "pla/te", "fixr/otate", "fixm/ove", "noun/do", "un/do", "w/rite", "sav/e", "inc/rement", "c/heck", "r/ead",
 		"ins/ert", "p/rop/s/ect", "w/rite/o/utput", "w/rite/rea/ction", "nmi/nteraction", "fi/g2", "fe/nce", "no/de", "xsc/ale", "ysc/ale", "zsc/ale", "pl/oad", "z/oubun/d/isp", "z/oubun/r/eaction",
 		"fac/ts", "go/han/l/st", "el/em", "ave/rage", "bo/nd", "ax/is/2//c/ang", "resul/tant", "prest/ress", "therm/al", "div/ide", "e/lem/dup/lication", "i/ntersect/a/ll", "co/nf",
-		"pi/le", "sec/tion", "an/alysis", "f/ilter", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "sec/tion/+/", "col/or", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
+		"pi/le", "sec/tion", "an/alysis", "f/ilter", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "sec/tion/+/", "col/or", "ex/tractarclm", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
 	}
 	fig2abbrev = []string {
 		"gf/act", "foc/us", "ang/le", "dist/s", "pers/pective", "ax/onometric", "df/act", "rf/act", "mf/act", "gax/is", "eax/is",
@@ -6347,6 +6347,25 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Reload()
 		stw.ReadAll()
 		stw.Redraw()
+	case "extractarclm":
+		if usage {
+			stw.addHistory(":extractarclm")
+			return nil
+		}
+		err := stw.SaveFile(stw.Frame.Path)
+		if err != nil {
+			return err
+		}
+		err = stw.Analysis(filepath.ToSlash(stw.Frame.Path), "")
+		if err != nil {
+			return err
+		}
+		for _, ext := range []string{".inl", ".ihx", ".ihy"} {
+			err := stw.Frame.ReadData(st.Ce(stw.Frame.Path, ext))
+			if err != nil {
+				stw.errormessage(err, ERROR)
+			}
+		}
 	case "arclm001":
 		if usage {
 			stw.addHistory(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} filename")
@@ -10416,7 +10435,12 @@ func EditPgp() {
 
 func (stw *Window) Analysis(fn string, arg string) error {
 	var err error
-	cmd := exec.Command(analysiscommand, arg, fn)
+	var cmd *exec.Cmd
+	if arg == "" {
+		cmd = exec.Command(analysiscommand, fn)
+	} else {
+		cmd = exec.Command(analysiscommand, arg, fn)
+	}
 	err = cmd.Start()
 	if err != nil {
 		return err
