@@ -101,7 +101,7 @@ var (
 	DefaultTextAlignment  = cd.CD_BASE_LEFT
 	printFontColor        = cd.CD_BLACK
 	printFontFace         = "IPA明朝"
-	printFontSize         = 8
+	printFontSize         = 6
 	showprintrange        = false
 )
 
@@ -207,6 +207,9 @@ const (
 	CanvasMoveSpeedY   = 0.05
 	CanvasScaleSpeed   = 15
 )
+var (
+	CanvasFitScale     = 0.9
+)
 
 // Command
 const (
@@ -238,7 +241,7 @@ var (
 var (
 	exabbrev = []string{
 		"e/dit", "q/uit", "vi/m", "hk/you", "hw/eak", "rp/ipe", "cp/ipe", "tk/you", "ck/you", "pla/te", "fixr/otate", "fixm/ove", "noun/do", "un/do", "w/rite", "sav/e", "inc/rement", "c/heck", "r/ead",
-		"ins/ert", "p/rop/s/ect", "w/rite/o/utput", "w/rite/rea/ction", "nmi/nteraction", "fi/g2", "fe/nce", "no/de", "xsc/ale", "ysc/ale", "zsc/ale", "pl/oad", "z/oubun/d/isp", "z/oubun/r/eaction",
+		"ins/ert", "p/rop/s/ect", "w/rite/o/utput", "w/rite/rea/ction", "nmi/nteraction", "har/dcopy", "fi/g2", "fe/nce", "no/de", "xsc/ale", "ysc/ale", "zsc/ale", "pl/oad", "z/oubun/d/isp", "z/oubun/r/eaction",
 		"fac/ts", "go/han/l/st", "el/em", "ave/rage", "bo/nd", "ax/is/2//c/ang", "resul/tant", "prest/ress", "therm/al", "div/ide", "e/lem/dup/lication", "i/ntersect/a/ll", "co/nf",
 		"pi/le", "sec/tion", "an/alysis", "f/ilter", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "sec/tion/+/", "col/or", "ex/tractarclm", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
 	}
@@ -1788,7 +1791,7 @@ func (stw *Window) SaveFile(fn string) error {
 		}
 		xmin, xmax, ymin, ymax := stw.Bbox()
 		w, h := stw.cdcanv.GetSize()
-		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * 0.9
+		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * CanvasFitScale
 		stw.Frame.View.Dists[1] *= scale
 	}
 	passwatcher = true
@@ -1815,7 +1818,7 @@ func (stw *Window) SaveFileSelected(fn string, els []*st.Elem) error {
 		}
 		xmin, xmax, ymin, ymax := stw.Bbox()
 		w, h := stw.cdcanv.GetSize()
-		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * 0.9
+		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * CanvasFitScale
 		stw.Frame.View.Dists[1] *= scale
 	}
 	passwatcher = true
@@ -3770,6 +3773,20 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		EPS = val
 		stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
+	case "fitscale":
+		if usage {
+			stw.addHistory(":fitscale val")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":fitscale")
+		}
+		val, err := strconv.ParseFloat(args[1], 64)
+		if err != nil {
+			return err
+		}
+		CanvasFitScale = val
+		stw.addHistory(fmt.Sprintf("FITSCALE=%.3E", CanvasFitScale))
 	case "mkdir":
 		if usage {
 			stw.addHistory(":mkdir dirname")
@@ -4270,6 +4287,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if err != nil {
 			return err
 		}
+	case "hardcopy":
+		if usage {
+			stw.addHistory(":hardcopy")
+			return nil
+		}
+		stw.Print()
 	case "fig2":
 		if usage {
 			stw.addHistory(":fig2 filename")
@@ -7728,7 +7751,7 @@ func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
 		stw.errormessage(err, ERROR)
 		return
 	}
-	scale := math.Min(w/(xmax-xmin), h/(ymax-ymin)) * 0.9
+	scale := math.Min(w/(xmax-xmin), h/(ymax-ymin)) * CanvasFitScale
 	if stw.Frame.View.Perspective {
 		stw.Frame.View.Dists[1] *= scale
 	} else {
@@ -7748,7 +7771,7 @@ func (stw *Window) ShowAtCanvasCenter(canv *cd.Canvas) {
 		return
 	}
 	w, h := canv.GetSize()
-	scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * 0.9
+	scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * CanvasFitScale
 	if stw.Frame.View.Perspective {
 		stw.Frame.View.Dists[1] *= scale
 	} else {
