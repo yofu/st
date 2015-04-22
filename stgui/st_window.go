@@ -9923,49 +9923,17 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 				if arg.Pressed == 0 { // Released
 					if stw.Frame.Show.Etype[etype] {
 						if !stw.Frame.Show.Etype[etype-2] {
-							stw.Frame.Show.Etype[etype] = false
-							stw.Frame.Show.Etype[etype-2] = true
-							stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelOFFColor)
-							stw.Labels[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelFGColor)
-							for _, el := range stw.Frame.Elems {
-								if el.Etype == etype {
-									el.Hide()
-								}
-								if el.Etype == etype-2 {
-									el.Show()
-								}
-							}
+							stw.HideEtype(etype)
+							stw.ShowEtype(etype-2)
 						} else {
-							stw.Frame.Show.Etype[etype-2] = false
-							stw.Labels[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelOFFColor)
-							for _, el := range stw.Frame.Elems {
-								if el.Etype == etype-2 {
-									el.Hide()
-								}
-							}
+							stw.HideEtype(etype-2)
 						}
 					} else {
 						if stw.Frame.Show.Etype[etype-2] {
-							stw.Frame.Show.Etype[etype] = true
-							stw.Frame.Show.Etype[etype-2] = false
-							stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelFGColor)
-							stw.Labels[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelOFFColor)
-							for _, el := range stw.Frame.Elems {
-								if el.Etype == etype {
-									el.Show()
-								}
-								if el.Etype == etype-2 {
-									el.Hide()
-								}
-							}
+							stw.ShowEtype(etype)
+							stw.HideEtype(etype-2)
 						} else {
-							stw.Frame.Show.Etype[etype] = true
-							stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelFGColor)
-							for _, el := range stw.Frame.Elems {
-								if el.Etype == etype {
-									el.Show()
-								}
-							}
+							stw.ShowEtype(etype)
 						}
 					}
 					stw.Redraw()
@@ -9973,18 +9941,8 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 				}
 			case BUTTON_CENTER:
 				if arg.Pressed == 0 {
-					stw.Frame.Show.Etype[etype] = false
-					stw.Frame.Show.Etype[etype-2] = false
-					stw.Labels[st.ETYPES[etype]].SetAttribute("FGCOLOR", labelOFFColor)
-					stw.Labels[st.ETYPES[etype-2]].SetAttribute("FGCOLOR", labelOFFColor)
-					for _, el := range stw.Frame.Elems {
-						if el.Etype == etype {
-							el.Hide()
-						}
-						if el.Etype == etype-2 {
-							el.Hide()
-						}
-					}
+					stw.HideEtype(etype)
+					stw.HideEtype(etype-2)
 					stw.Redraw()
 					iup.SetFocus(stw.canv)
 				}
