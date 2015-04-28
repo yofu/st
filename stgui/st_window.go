@@ -10296,7 +10296,9 @@ func (stw *Window) CB_TextValue(h *iup.Handle, valptr *float64) {
 	h.SetCallback(func(arg *iup.CommonKillFocus) {
 		if stw.Frame != nil {
 			val, err := strconv.ParseFloat(h.GetAttribute("VALUE"), 64)
-			if err == nil {
+			if err != nil {
+				h.SetAttribute("VALUE", fmt.Sprintf("%.3f", *valptr))
+			} else {
 				*valptr = val
 			}
 			stw.Redraw()
@@ -10305,10 +10307,14 @@ func (stw *Window) CB_TextValue(h *iup.Handle, valptr *float64) {
 	h.SetCallback(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
+		case KEY_ESCAPE:
+			stw.FocusCanv()
 		case KEY_ENTER:
 			if stw.Frame != nil {
 				val, err := strconv.ParseFloat(h.GetAttribute("VALUE"), 64)
-				if err == nil {
+				if err != nil {
+					h.SetAttribute("VALUE", fmt.Sprintf("%.3f", *valptr))
+				} else {
 					*valptr = val
 				}
 				stw.Redraw()
