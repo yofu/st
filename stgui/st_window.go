@@ -6172,6 +6172,20 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}
 		stw.addHistory(fmt.Sprintf("NODES: %d, ELEMS: %d", nnode, nelem))
+	case "show":
+	ex_show:
+		for {
+			select {
+			case <-time.After(time.Second):
+				break ex_show
+			case <-stw.exmodeend:
+				break ex_show
+			case ent := <-stw.exmodech:
+				if h, ok := ent.(st.Hider); ok {
+					h.Show()
+				}
+			}
+		}
 	case "hide":
 	ex_hide:
 		for {
