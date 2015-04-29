@@ -22,6 +22,7 @@ type Sect struct {
 	Lload []float64
 	Yield []float64
 	Type  int
+	Original int
 	Color int
 }
 
@@ -62,6 +63,7 @@ func (sect *Sect) Snapshot(frame *Frame) *Sect {
 	s := NewSect()
 	s.Frame = frame
 	s.Num = sect.Num
+	s.Original = sect.Original
 	s.Name = sect.Name
 	s.Figs = make([]*Fig, len(sect.Figs))
 	for i, f := range sect.Figs {
@@ -210,11 +212,9 @@ func (sect *Sect) InlString() string {
 	for i := 0; i < 12; i++ {
 		rtn.WriteString(fmt.Sprintf(" %9.3f", sect.Yield[i]))
 	}
-	if sect.Type != 0 {
-		rtn.WriteString(fmt.Sprintf(" %5d\n", sect.Type))
-	} else {
-		rtn.WriteString("\n")
-	}
+	rtn.WriteString(fmt.Sprintf(" %5d", sect.Type))
+	rtn.WriteString(fmt.Sprintf(" %5d", sect.Original))
+	rtn.WriteString("\n")
 	return rtn.String()
 }
 

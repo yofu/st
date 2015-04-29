@@ -1014,6 +1014,13 @@ func (frame *Frame) ReadData(filename string) error {
 				}
 				sect.Type = int(tp)
 			}
+			if len(words) >= 21 {
+				oc, err := strconv.ParseInt(words[20], 10, 64)
+				if err != nil {
+					return err
+				}
+				sect.Original = int(oc)
+			}
 		}
 	}
 	// Node1
