@@ -20,6 +20,7 @@ var (
 	PeriodExt = map[string]string{".inl": "L", ".otl": "L", ".ihx": "X", ".ohx": "X", ".ihy": "Y", ".ohy": "Y"}
 )
 
+// SI unit
 const SI = 9.80665
 
 var (
@@ -27,26 +28,31 @@ var (
 	PlasticThreshold = arclm.RADIUS
 )
 
+// Data Extentions
 var (
 	InputExt  = []string{".inl", ".ihx", ".ihy"}
 	OutputExt = []string{".otl", ".ohx", ".ohy"}
 )
 
 const (
-	DEFAULT_WGT = "hogtxt.wgt"
+	// DefaultWgt is the name of default .wgt file
+	DefaultWgt = "hogtxt.wgt"
 )
 
+// Max/Min Coord
 const (
 	MINCOORD = -100.0
 	MAXCOORD = 1000.0
 )
 
+// ReadResult Mode
 const (
-	UPDATE_RESULT = iota
-	ADD_RESULT
-	ADDSEARCH_RESULT
+	UpdateResult = iota
+	AddResult
+	AddSearchResult
 )
 
+// Axis Vector
 var (
 	XAXIS = []float64{1.0, 0.0, 0.0}
 	YAXIS = []float64{0.0, 1.0, 0.0}
@@ -56,6 +62,8 @@ var (
 // }}}
 
 // type Frame// {{{
+
+// Frame : Analysis Frame
 type Frame struct {
 	Title   string
 	Name    string
@@ -97,6 +105,7 @@ type Frame struct {
 	Endch chan error
 }
 
+// NewFrame creates New Frame
 func NewFrame() *Frame {
 	f := new(Frame)
 	f.Title = "\"CREATED ORGAN FRAME.\""
@@ -126,6 +135,7 @@ func NewFrame() *Frame {
 
 // }}}
 
+// Aiparameter : Parameter for Ai Distribution
 type Aiparameter struct {
 	Base     float64
 	Locate   float64
@@ -144,6 +154,8 @@ type Aiparameter struct {
 	Hi       []float64
 }
 
+// NewAiparameter creates New Aiparameter
+// Default C0=0.2
 func NewAiparameter() *Aiparameter {
 	a := new(Aiparameter)
 	a.Base = 0.2
@@ -164,6 +176,7 @@ func NewAiparameter() *Aiparameter {
 	return a
 }
 
+// Snapshot takes a Snapshot of Aiparameter
 func (ai *Aiparameter) Snapshot() *Aiparameter {
 	a := NewAiparameter()
 	a.Base = ai.Base
@@ -206,6 +219,8 @@ func (ai *Aiparameter) Snapshot() *Aiparameter {
 }
 
 // type View// {{{
+
+// View : Parameter for Model View
 type View struct {
 	Gfact       float64
 	Focus       []float64
@@ -216,6 +231,7 @@ type View struct {
 	Center      []float64
 }
 
+// NewView creates New View
 func NewView() *View {
 	v := new(View)
 	v.Gfact = 1.0
@@ -233,6 +249,7 @@ func NewView() *View {
 	return v
 }
 
+// Copy returns a copy of View
 func (v *View) Copy() *View {
 	nv := NewView()
 	nv.Gfact = v.Gfact
@@ -251,6 +268,7 @@ func (v *View) Copy() *View {
 
 // }}}
 
+// Snapshot takes a Snapshot of Frame
 func (frame *Frame) Snapshot() *Frame {
 	f := NewFrame()
 	f.Title = frame.Title
@@ -1195,7 +1213,7 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 			if !elem.IsLineElem() {
 				continue
 			}
-			if mode == UPDATE_RESULT {
+			if mode == UpdateResult {
 				elem.Stress[period] = make(map[int][]float64)
 			}
 			var tmp []float64
@@ -1214,9 +1232,9 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 					tmp[k] = val
 				}
 				switch mode {
-				case UPDATE_RESULT:
+				case UpdateResult:
 					elem.Stress[period][int(num)] = tmp
-				case ADD_RESULT, ADDSEARCH_RESULT:
+				case AddResult, AddSearchResult:
 					if elem.Stress[period][int(num)] != nil {
 						for ind := 0; ind < 6; ind++ {
 							elem.Stress[period][int(num)][ind] += tmp[ind]
@@ -1226,7 +1244,7 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 				stress[i] = tmp
 			}
 		} else {
-			if mode == ADDSEARCH_RESULT {
+			if mode == AddSearchResult {
 				if _, ok := frame.Nodes[enod[0]]; ok {
 					if _, ok2 := frame.Nodes[enod[1]]; ok2 {
 						for _, el := range frame.SearchElem(frame.Nodes[0], frame.Nodes[1]) {
@@ -1293,9 +1311,9 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 				tmp[k] = val
 			}
 			switch mode {
-			case UPDATE_RESULT:
+			case UpdateResult:
 				node.Disp[period] = tmp
-			case ADD_RESULT, ADDSEARCH_RESULT:
+			case AddResult, AddSearchResult:
 				for ind := 0; ind < 6; ind++ {
 					node.Disp[period][ind] += tmp[ind]
 				}
@@ -1345,9 +1363,9 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 				return err
 			}
 			switch mode {
-			case UPDATE_RESULT:
+			case UpdateResult:
 				node.Reaction[period][ind-1] = val
-			case ADD_RESULT, ADDSEARCH_RESULT:
+			case AddResult, AddSearchResult:
 				node.Reaction[period][ind-1] += val
 			}
 		} else {
@@ -3345,7 +3363,7 @@ func (frame *Frame) WeightDistribution() {
 		otp.WriteString(fmt.Sprintf("Unit Factor  =%7.5f \"SI Units [%s]\"\n\n", frame.Show.Unit[0], frame.Show.UnitName[0]))
 	}
 	otp.WriteString(frame.AiDistribution())
-	w, err := os.Create(filepath.Join(frame.Home, DEFAULT_WGT))
+	w, err := os.Create(filepath.Join(frame.Home, DefaultWgt))
 	defer w.Close()
 	if err != nil {
 		return
