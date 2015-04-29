@@ -1017,7 +1017,8 @@ func (frame *Frame) ReadData(filename string) error {
 			if len(words) >= 21 {
 				oc, err := strconv.ParseInt(words[20], 10, 64)
 				if err != nil {
-					return err
+					// return err
+					continue // for backward compatibility
 				}
 				sect.Original = int(oc)
 			}
