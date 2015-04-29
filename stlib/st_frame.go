@@ -2419,7 +2419,7 @@ func (frame *Frame) NodeInBox(n1, n2 *Node, eps float64) []*Node {
 		minz = n2.Coord[2]
 		maxz = n1.Coord[2]
 	}
-	rtn := make([]*Node, 0)
+	rtn := make([]*Node, 0, len(frame.Nodes))
 	var i int
 	for _, n := range frame.Nodes {
 		if minx-eps <= n.Coord[0] && n.Coord[0] <= maxx+eps && miny-eps <= n.Coord[1] && n.Coord[1] <= maxy+eps && minz-eps <= n.Coord[2] && n.Coord[2] <= maxz+eps {
@@ -2431,7 +2431,7 @@ func (frame *Frame) NodeInBox(n1, n2 *Node, eps float64) []*Node {
 }
 
 func (frame *Frame) SearchElem(ns ...*Node) []*Elem {
-	els := make([]*Elem, 0)
+	els := make([]*Elem, 0, len(frame.Elems))
 	num := 0
 	l := len(ns)
 	for _, el := range frame.Elems {
@@ -2459,7 +2459,7 @@ func (frame *Frame) SearchElem(ns ...*Node) []*Elem {
 }
 
 func (frame *Frame) NodeToElemAny(ns ...*Node) []*Elem {
-	els := make([]*Elem, 0)
+	els := make([]*Elem, 0, len(frame.Elems))
 	num := 0
 	for _, el := range frame.Elems {
 	loop:
@@ -2479,7 +2479,7 @@ func (frame *Frame) NodeToElemAny(ns ...*Node) []*Elem {
 func (frame *Frame) NodeToElemAll(ns ...*Node) []*Elem {
 	var add, found bool
 	num := 0
-	els := make([]*Elem, 0)
+	els := make([]*Elem, 0, len(frame.Elems))
 	for _, el := range frame.Elems {
 		add = true
 		for _, en := range el.Enod {
@@ -2505,7 +2505,8 @@ func (frame *Frame) NodeToElemAll(ns ...*Node) []*Elem {
 
 func (frame *Frame) ElemToNode(els ...*Elem) []*Node {
 	var add bool
-	ns := make([]*Node, 0)
+	ns := make([]*Node, 0, len(frame.Nodes))
+	num := 0
 	for _, el := range els {
 		for _, en := range el.Enod {
 			add = true
@@ -2517,10 +2518,11 @@ func (frame *Frame) ElemToNode(els ...*Elem) []*Node {
 			}
 			if add {
 				ns = append(ns, en)
+				num++
 			}
 		}
 	}
-	return ns
+	return ns[:num]
 }
 
 func abs(val int) int {
@@ -2531,7 +2533,8 @@ func abs(val int) int {
 	}
 }
 func (frame *Frame) Fence(axis int, coord float64, plate bool) []*Elem {
-	rtn := make([]*Elem, 0)
+	rtn := make([]*Elem, 0, len(frame.Elems))
+	num := 0
 	for _, el := range frame.Elems {
 		if el.IsHidden(frame.Show) {
 			continue
@@ -2546,12 +2549,13 @@ func (frame *Frame) Fence(axis int, coord float64, plate bool) []*Elem {
 				}
 				if i+1 != abs(sign) {
 					rtn = append(rtn, el)
+					num++
 					break
 				}
 			}
 		}
 	}
-	return rtn
+	return rtn[:num]
 }
 
 func (frame *Frame) Cutter(axis int, coord float64, eps float64) error {
