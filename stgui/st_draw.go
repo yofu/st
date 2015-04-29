@@ -349,13 +349,6 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 		ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Height()))
 		oncap = true
 	}
-	if show.ElemCaption&st.EC_RATE_L != 0 || show.ElemCaption&st.EC_RATE_S != 0 {
-		val, err := elem.RateMax(show)
-		if err == nil {
-			ecap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["RATE"]), val))
-			oncap = true
-		}
-	}
 	if show.ElemCaption&st.EC_PREST != 0 {
 		if elem.Prestress != 0.0 {
 			ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Prestress * show.Unit[0]))
@@ -381,6 +374,13 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 			} else {
 				ecap.WriteString(fmt.Sprintf("%.3f\n", stiff))
 			}
+			oncap = true
+		}
+	}
+	if show.SrcanRate != 0 {
+		val, err := elem.RateMax(show)
+		if err == nil {
+			ecap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["RATE"]), val))
 			oncap = true
 		}
 	}

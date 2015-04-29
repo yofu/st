@@ -370,8 +370,11 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.Labels["NC_MZ"] = stw.captionLabel("NODE", " Mz", (datalabelwidth+datatextwidth)/6, st.NC_MZ, false)
 	stw.Labels["EC_NUM"] = stw.captionLabel("ELEM", "  CODE", datalabelwidth+datatextwidth, st.EC_NUM, false)
 	stw.Labels["EC_SECT"] = stw.captionLabel("ELEM", "  SECT", datalabelwidth+datatextwidth, st.EC_SECT, false)
-	stw.Labels["EC_RATE_L"] = stw.captionLabel("ELEM", "  RATE_L", datalabelwidth, st.EC_RATE_L, false)
-	stw.Labels["EC_RATE_S"] = stw.captionLabel("ELEM", "RATE_S", datatextwidth, st.EC_RATE_S, false)
+	stw.Labels["SRCAN_RATE"] = stw.displayLabel("RATE", false)
+	stw.Labels["SRCAN_L"] = stw.srcanLabel(" L", datatextwidth/4, st.SRCAN_L, false)
+	stw.Labels["SRCAN_S"] = stw.srcanLabel(" S", datatextwidth/4, st.SRCAN_S, false)
+	stw.Labels["SRCAN_Q"] = stw.srcanLabel(" Q", datatextwidth/4, st.SRCAN_Q, false)
+	stw.Labels["SRCAN_M"] = stw.srcanLabel(" M", datatextwidth/4, st.SRCAN_M, false)
 	stw.Labels["COLORMODE"] = stw.toggleLabel(2, st.ECOLORS)
 	stw.Labels["PERIOD"] = datatext("L")
 	stw.Labels["GAXISSIZE"] = datatext("1.0")
@@ -1105,48 +1108,11 @@ func NewWindow(homedir string) *Window { // {{{
 			stw.Labels["NC_MX"],
 			stw.Labels["NC_MY"],
 			stw.Labels["NC_MZ"]))
-	// ratel := iup.Toggle(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
-	//                  fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
-	//                  fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
-	//                  "TITLE=\"L\"",
-	//                  "VALUE=ON",
-	//                  "CANFOCUS=NO",
-	//                  fmt.Sprintf("SIZE=x%d",dataheight),)
-	// ratel.SetCallback(func (arg *iup.ToggleAction) {
-	//                       if stw.Frame != nil {
-	//                           if arg.State == 1 {
-	//                               stw.Frame.Show.Rate += 1
-	//                           } else {
-	//                               stw.Frame.Show.Rate -= 1
-	//                           }
-	//                       }
-	//                   })
-	// rates := iup.Toggle(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
-	//                  fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
-	//                  fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
-	//                  "TITLE=\"S\"",
-	//                  "VALUE=ON",
-	//                  "CANFOCUS=NO",
-	//                  fmt.Sprintf("SIZE=x%d",dataheight),)
-	// rateq := iup.Toggle(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
-	//                  fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
-	//                  fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
-	//                  "TITLE=\"Q\"",
-	//                  "VALUE=ON",
-	//                  "CANFOCUS=NO",
-	//                  fmt.Sprintf("SIZE=x%d",dataheight),)
-	// ratem := iup.Toggle(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
-	//                  fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
-	//                  fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
-	//                  "TITLE=\"M\"",
-	//                  "VALUE=ON",
-	//                  "CANFOCUS=NO",
-	//                  fmt.Sprintf("SIZE=x%d",dataheight),)
 	tgecap := iup.Vbox(datasectionlabel("ELEM CAPTION"),
 		stw.Labels["EC_NUM"],
 		stw.Labels["EC_SECT"],
-		iup.Hbox(stw.Labels["EC_RATE_L"], stw.Labels["EC_RATE_S"]))
-	// iup.Hbox(ratel, rates, rateq, ratem,),)
+		stw.Labels["SRCAN_RATE"],
+		iup.Hbox(stw.Labels["SRCAN_L"], stw.Labels["SRCAN_S"], stw.Labels["SRCAN_Q"], stw.Labels["SRCAN_M"]))
 	tgcolmode := iup.Vbox(datasectionlabel("COLOR MODE"), stw.Labels["COLORMODE"])
 	dlperiod := datalabel("PERIOD")
 	dlperiod.SetCallback(func(arg *iup.MouseButton) {
@@ -2684,33 +2650,42 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.addHistory("'srcanrate [long/short]")
 			return nil
 		}
-		long := true
-		short := true
-		if len(lis) > 2 {
-			if strings.EqualFold(lis[1], "long") {
-				short = false
-			} else if strings.EqualFold(lis[1], "short") {
-				long = false
+		onoff := []bool{false, false, false, false} // long, short, q, m
+		if len(lis) >= 2 {
+			for _, str := range lis[1:] {
+				switch {
+				case strings.EqualFold(str, "long"):
+					onoff[0] = true
+				case strings.EqualFold(str, "short"):
+					onoff[1] = true
+				case strings.EqualFold(str, "q"):
+					onoff[2] = true
+				case strings.EqualFold(str, "m"):
+					onoff[3] = true
+				}
 			}
 		}
+		if onoff[0] == false && onoff[1] == false {
+			onoff[0] = true
+			onoff[1] = true
+		}
+		if onoff[2] == false && onoff[3] == false {
+			onoff[2] = true
+			onoff[3] = true
+		}
+		names := make([]string, 4)
+		ind := 0
+		for i:=0; i<4; i++ {
+			if onoff[i] {
+				names[ind] = st.SRCANS[i]
+				ind++
+			}
+		}
+		names = names[:ind]
 		if un {
-			if long {
-				stw.ElemCaptionOff("EC_RATE_L")
-				stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelOFFColor)
-			}
-			if short {
-				stw.ElemCaptionOff("EC_RATE_S")
-				stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelOFFColor)
-			}
+			stw.SrcanRateOff(names...)
 		} else {
-			if long {
-				stw.ElemCaptionOn("EC_RATE_L")
-				stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelFGColor)
-			}
-			if short {
-				stw.ElemCaptionOn("EC_RATE_S")
-				stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelFGColor)
-			}
+			stw.SrcanRateOn(names...)
 		}
 	case "stress":
 		if usage {
@@ -10016,6 +9991,11 @@ func (stw *Window) displayLabel(name string, defval bool) *iup.Handle {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
+					if rtn.GetAttribute("FGCOLOR") == labelFGColor {
+						rtn.SetAttribute("FGCOLOR", labelOFFColor)
+					} else {
+						rtn.SetAttribute("FGCOLOR", labelFGColor)
+					}
 					switch name {
 					case "GAXIS":
 						stw.Frame.Show.GlobalAxis = !stw.Frame.Show.GlobalAxis
@@ -10033,11 +10013,12 @@ func (stw *Window) displayLabel(name string, defval bool) *iup.Handle {
 						stw.Frame.Show.Deformation = !stw.Frame.Show.Deformation
 					case "YIELD":
 						stw.Frame.Show.YieldFunction = !stw.Frame.Show.YieldFunction
-					}
-					if rtn.GetAttribute("FGCOLOR") == labelFGColor {
-						rtn.SetAttribute("FGCOLOR", labelOFFColor)
-					} else {
-						rtn.SetAttribute("FGCOLOR", labelFGColor)
+					case "RATE":
+						if stw.Frame.Show.SrcanRate != 0 {
+							stw.SrcanRateOff()
+						} else {
+							stw.SrcanRateOn()
+						}
 					}
 					stw.Redraw()
 					iup.SetFocus(stw.canv)
@@ -10118,6 +10099,68 @@ func (stw *Window) ElemCaptionOff(name string) {
 			}
 			if stw.Frame != nil {
 				stw.Frame.Show.ElemCaptionOff(1 << uint(i))
+			}
+		}
+	}
+}
+
+func (stw *Window) SrcanRateOn(names ...string) {
+	defer func() {
+		if stw.Frame.Show.SrcanRate != 0 {
+			stw.Labels["SRCAN_RATE"].SetAttribute("FGCOLOR", labelFGColor)
+		}
+	}()
+	if len(names) == 0 {
+		for i, j := range st.SRCANS {
+			if lbl, ok := stw.Labels[j]; ok {
+				lbl.SetAttribute("FGCOLOR", labelFGColor)
+			}
+			if stw.Frame != nil {
+				stw.Frame.Show.SrcanRateOn(1 << uint(i))
+			}
+		}
+		return
+	}
+	for _, name := range names {
+		for i, j := range st.SRCANS {
+			if j == name {
+				if lbl, ok := stw.Labels[name]; ok {
+					lbl.SetAttribute("FGCOLOR", labelFGColor)
+				}
+				if stw.Frame != nil {
+					stw.Frame.Show.SrcanRateOn(1 << uint(i))
+				}
+			}
+		}
+	}
+}
+
+func (stw *Window) SrcanRateOff(names ...string) {
+	defer func() {
+		if stw.Frame.Show.SrcanRate == 0 {
+			stw.Labels["SRCAN_RATE"].SetAttribute("FGCOLOR", labelOFFColor)
+		}
+	}()
+	if len(names) == 0 {
+		for i, j := range st.SRCANS {
+			if lbl, ok := stw.Labels[j]; ok {
+				lbl.SetAttribute("FGCOLOR", labelOFFColor)
+			}
+			if stw.Frame != nil {
+				stw.Frame.Show.SrcanRateOff(1 << uint(i))
+			}
+		}
+		return
+	}
+	for _, name := range names {
+		for i, j := range st.SRCANS {
+			if j == name {
+				if lbl, ok := stw.Labels[name]; ok {
+					lbl.SetAttribute("FGCOLOR", labelOFFColor)
+				}
+				if stw.Frame != nil {
+					stw.Frame.Show.SrcanRateOff(1 << uint(i))
+				}
 			}
 		}
 	}
@@ -10227,6 +10270,45 @@ func (stw *Window) captionLabel(ne string, name string, width int, val uint, on 
 			}
 		}
 	})
+	return rtn
+}
+
+func (stw *Window) srcanLabel(name string, width int, val uint, on bool) *iup.Handle {
+	var col string
+	if on {
+		col = labelFGColor
+	} else {
+		col = labelOFFColor
+	}
+	rtn := iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
+		fmt.Sprintf("FGCOLOR=\"%s\"", col),
+		fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
+		fmt.Sprintf("VALUE=\"%s\"", name),
+		"CANFOCUS=NO",
+		"READONLY=YES",
+		"BORDER=NO",
+		fmt.Sprintf("SIZE=%dx%d", width, dataheight))
+	rtn.SetCallback(func(arg *iup.MouseButton) {
+		if stw.Frame != nil {
+			switch arg.Button {
+			case BUTTON_LEFT:
+				if arg.Pressed == 0 { // Released
+					if stw.Frame.Show.SrcanRate&val != 0 {
+						stw.SrcanRateOff(fmt.Sprintf("SRCAN_%s", strings.TrimLeft(name, " ")))
+					} else {
+						stw.SrcanRateOn(fmt.Sprintf("SRCAN_%s", strings.TrimLeft(name, " ")))
+					}
+					stw.Redraw()
+					iup.SetFocus(stw.canv)
+				}
+			}
+		}
+	})
+	if stw.Frame != nil { // TODO: when stw.Frame is created, set value
+		if on {
+			stw.SrcanRateOn(st.SRCANS[val])
+		}
+	}
 	return rtn
 }
 

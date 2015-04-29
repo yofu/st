@@ -3,6 +3,7 @@ package st
 var (
 	NODECAPTIONS = []string{"NC_NUM", "NC_WEIGHT", "NC_ZCOORD", "NC_DX", "NC_DY", "NC_DZ", "NC_TX", "NC_TY", "NC_TZ", "NC_RX", "NC_RY", "NC_RZ", "NC_MX", "NC_MY", "NC_MZ", "NC_PILE"}
 	ELEMCAPTIONS = []string{"EC_NUM", "EC_SECT", "EC_RATE_L", "EC_RATE_S", "EC_PREST", "EC_STIFF_X", "EC_STIFF_Y", "EC_WIDTH", "EC_HEIGHT"}
+	SRCANS       = []string{"SRCAN_L", "SRCAN_S", "SRCAN_Q", "SRCAN_M"}
 )
 
 const ( // NodeCaption
@@ -33,6 +34,12 @@ const ( // ElemCaption
 	EC_STIFF_Y
 	EC_WIDTH
 	EC_HEIGHT
+)
+const (
+	SRCAN_L = 1 << iota
+	SRCAN_S
+	SRCAN_Q
+	SRCAN_M
 )
 
 const ( // Rate
@@ -73,6 +80,7 @@ type Show struct { // {{{
 
 	NodeCaption uint
 	ElemCaption uint
+	SrcanRate   uint
 
 	GlobalAxis      bool
 	GlobalAxisSize  float64
@@ -151,6 +159,7 @@ func NewShow(frame *Frame) *Show {
 
 	s.NodeCaption = NC_NUM
 	s.ElemCaption = 0
+	s.SrcanRate   = 0
 
 	s.GlobalAxis = true
 	s.GlobalAxisSize = 1.0
@@ -236,6 +245,7 @@ func (show *Show) Copy() *Show {
 	s.ColorMode = show.ColorMode
 	s.NodeCaption = show.NodeCaption
 	s.ElemCaption = show.ElemCaption
+	s.SrcanRate   = show.SrcanRate
 	s.GlobalAxis = show.GlobalAxis
 	s.GlobalAxisSize = show.GlobalAxisSize
 	s.ElementAxis = show.ElementAxis
@@ -307,6 +317,12 @@ func (show *Show) ElemCaptionOn(val uint) {
 }
 func (show *Show) ElemCaptionOff(val uint) {
 	show.ElemCaption &= ^val
+}
+func (show *Show) SrcanRateOn(val uint) {
+	show.SrcanRate |= val
+}
+func (show *Show) SrcanRateOff(val uint) {
+	show.SrcanRate &= ^val
 }
 
 // }}}

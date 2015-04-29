@@ -2617,10 +2617,7 @@ func errorelem(stw *Window) {
 	iup.SetFocus(stw.canv)
 	stw.Deselect()
 	stw.SetColorMode(st.ECOLOR_RATE)
-	stw.Frame.Show.ElemCaption |= st.EC_RATE_L
-	stw.Frame.Show.ElemCaption |= st.EC_RATE_S
-	stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelFGColor)
-	stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelFGColor)
+	stw.SrcanRateOn()
 	stw.Redraw()
 	tmpels := make([]*st.Elem, len(stw.Frame.Elems))
 	i := 0

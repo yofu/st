@@ -2014,7 +2014,7 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 				return 0.0, errors.New("RateMax: different size")
 			}
 		}
-		if l%3 != 0 || (show.ElemCaption&EC_RATE_L == 0 && show.ElemCaption&EC_RATE_S == 0) {
+		if show.SrcanRate == 0 {
 			val := 0.0
 			for i:=0; i<l; i++ {
 				tmp := 0.0
@@ -2026,33 +2026,49 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 				}
 			}
 			return val / float64(len(els)), nil
+		} else if l%3 != 0 {
+			val := 0.0
+			for i:=0; i<l; i++ {
+				if i<2 && (show.SrcanRate&SRCAN_Q != 0) || i>=2 && (show.SrcanRate&SRCAN_M != 0) {
+					tmp := 0.0
+					for _, el := range els {
+						tmp += el.Rate[i]
+					}
+					if tmp > val {
+						val = tmp
+					}
+				}
+			}
+			return val / float64(len(els)), nil
 		} else {
 			vall := 0.0
 			vals := 0.0
 			for i:=0; i<l; i++ {
-				tmpl := 0.0
-				tmps := 0.0
-				for _, el := range els {
-					switch i % 3 {
-					default:
-						continue
-					case 0:
-						tmpl += el.Rate[i]
-					case 1:
-						tmps += el.Rate[i]
+				if i<3 && (show.SrcanRate&SRCAN_Q != 0) || i>=3 && (show.SrcanRate&SRCAN_M != 0) {
+					tmpl := 0.0
+					tmps := 0.0
+					for _, el := range els {
+						switch i % 3 {
+						default:
+							continue
+						case 0:
+							tmpl += el.Rate[i]
+						case 1:
+							tmps += el.Rate[i]
+						}
+					}
+					if tmpl > vall {
+						vall = tmpl
+					}
+					if tmps > vals {
+						vals = tmps
 					}
 				}
-				if tmpl > vall {
-					vall = tmpl
-				}
-				if tmps > vals {
-					vals = tmps
-				}
 			}
-			if show.ElemCaption&EC_RATE_L == 0 {
+			if show.SrcanRate&SRCAN_L == 0 {
 				vall = 0.0
 			}
-			if show.ElemCaption&EC_RATE_S == 0 {
+			if show.SrcanRate&SRCAN_S == 0 {
 				vals = 0.0
 			}
 			if vall >= vals {
@@ -2094,13 +2110,6 @@ func (elem *Elem) CurrentValue(show *Show, max, abs bool) float64 {
 	if show.ElemCaption&EC_HEIGHT != 0 {
 		return elem.Height()
 	}
-	if show.ElemCaption&EC_RATE_L != 0 || show.ElemCaption&EC_RATE_S != 0 {
-		val, err := elem.RateMax(show)
-		if err != nil {
-			return 0.0
-		}
-		return val
-	}
 	if show.ElemCaption&EC_PREST != 0 {
 		if abs {
 			return math.Abs(elem.Prestress) * show.Unit[0]
@@ -2121,6 +2130,13 @@ func (elem *Elem) CurrentValue(show *Show, max, abs bool) float64 {
 		} else {
 			return elem.LateralStiffness("Y", false) * show.Unit[0] / show.Unit[1]
 		}
+	}
+	if show.SrcanRate != 0 {
+		val, err := elem.RateMax(show)
+		if err != nil {
+			return 0.0
+		}
+		return val
 	}
 	if show.YieldFunction {
 		f, err := elem.YieldFunction(show.Period)
