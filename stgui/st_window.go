@@ -2848,6 +2848,36 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 				stw.ElemCaptionOn("EC_STIFF_Y")
 			}
 		}
+	case "drift":
+		if usage {
+			stw.addHistory("'drift [x,y]")
+			return nil
+		}
+		if len(lis) < 2 {
+			if un {
+				stw.ElemCaptionOff("EC_DRIFT_X")
+				stw.ElemCaptionOff("EC_DRIFT_Y")
+				return nil
+			} else {
+				return st.NotEnoughArgs("drift")
+			}
+		}
+		switch strings.ToUpper(lis[1]) {
+		default:
+			return errors.New("unknown period")
+		case "X":
+			if un {
+				stw.ElemCaptionOff("EC_DRIFT_X")
+			} else {
+				stw.ElemCaptionOn("EC_DRIFT_X")
+			}
+		case "Y":
+			if un {
+				stw.ElemCaptionOff("EC_DRIFT_Y")
+			} else {
+				stw.ElemCaptionOn("EC_DRIFT_Y")
+			}
+		}
 	case "deformation":
 		if un {
 			stw.DeformationOff()

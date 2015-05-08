@@ -377,6 +377,20 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 			oncap = true
 		}
 	}
+	if show.ElemCaption&st.EC_DRIFT_X != 0 {
+		drift := elem.StoryDrift("X")
+		if drift != 0.0 && !math.IsNaN(drift) {
+			ecap.WriteString(fmt.Sprintf("1/%.0f\n", 1.0/math.Abs(drift)))
+			oncap = true
+		}
+	}
+	if show.ElemCaption&st.EC_DRIFT_Y != 0 {
+		drift := elem.StoryDrift("Y")
+		if drift != 0.0 && !math.IsNaN(drift) {
+			ecap.WriteString(fmt.Sprintf("1/%.0f\n", 1.0/math.Abs(drift)))
+			oncap = true
+		}
+	}
 	if show.SrcanRate != 0 {
 		val, err := elem.RateMax(show)
 		if err == nil {
