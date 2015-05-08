@@ -196,9 +196,6 @@ func (elem *Elem) PrincipalAxis(cang float64) ([]float64, []float64, error) {
 	dl2 = math.Sqrt(dl2)
 	if dl1 == 0 {
 		return strong, weak, errors.New("PrincipalAxis: Length = 0")
-	} else if dl2 == 0 {
-		strong = []float64{-s, c, 0.0}
-		weak = []float64{-c, -s, 0.0}
 	} else if dl2/dl1 < 0.1 {
 		strong = Cross(d, []float64{c, s, 0.0})
 		weak = Cross(d, []float64{-s, c, 0.0})
