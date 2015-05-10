@@ -1686,6 +1686,9 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 	case "CKYOU":
 		size = 4
 		shape, err = NewCKYOU(lis[1][1 : 1+size])
+	case "PLATE":
+		size = 2
+		shape, err = NewPLATE(lis[1][1 : 1+size])
 	default:
 		return nil
 	}
