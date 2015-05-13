@@ -2128,6 +2128,12 @@ func (elem *Elem) CurrentValue(show *Show, max, abs bool) float64 {
 			return elem.LateralStiffness("Y", false) * show.Unit[0] / show.Unit[1]
 		}
 	}
+	if show.ElemCaption&EC_DRIFT_X != 0 {
+		return elem.StoryDrift("X")
+	}
+	if show.ElemCaption&EC_DRIFT_Y != 0 {
+		return elem.StoryDrift("Y")
+	}
 	if show.SrcanRate != 0 {
 		val, err := elem.RateMax(show)
 		if err != nil {
