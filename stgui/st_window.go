@@ -6914,7 +6914,9 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 	}
 	canv.Hatch(cd.CD_DIAGCROSS)
 	nomv := stw.Frame.Show.NoMomentValue
+	nosv := stw.Frame.Show.NoShearValue
 	stw.Frame.Show.NoMomentValue = false
+	stw.Frame.Show.NoShearValue = false
 	for _, el := range stw.SelectElem {
 		canv.LineStyle(cd.CD_DOTTED)
 		if el == nil || el.IsHidden(stw.Frame.Show) {
@@ -6950,6 +6952,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		DrawElem(el, canv, stw.Frame.Show)
 	}
 	stw.Frame.Show.NoMomentValue = nomv
+	stw.Frame.Show.NoShearValue = nosv
 	if stw.Frame.Fes != nil {
 		DrawEccentric(stw.Frame, canv, stw.Frame.Show)
 	}
