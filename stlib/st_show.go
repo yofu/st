@@ -126,6 +126,7 @@ type Show struct { // {{{
 	YieldFunction bool
 
 	Mfact           float64
+	Qfact           float64
 	MomentColor     int
 	StressTextColor int
 

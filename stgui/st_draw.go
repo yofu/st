@@ -476,8 +476,38 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 					case 0:
 						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i) * show.Unit[0]))
 					case 1, 2:
-						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i) * show.Unit[0]))
-						sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i) * show.Unit[0]))
+						vali := elem.ReturnStress(show.Period, 0, i) * show.Unit[0]
+						valj := elem.ReturnStress(show.Period, 1, i) * show.Unit[0]
+						if !show.NoShearValue {
+							sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), vali))
+							sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), valj))
+						}
+						if show.ShearArrow {
+							arrow := 0.3
+							qcoord := elem.MidPoint()
+							rcoord := elem.MidPoint()
+							prcoord := elem.Frame.View.ProjectCoord(rcoord)
+							val := 0.5 * (vali - valj)
+							var vec []float64
+							if i == 1 {
+								vec = elem.Strong
+							} else {
+								vec = elem.Weak
+							}
+							if val >= 0.0 {
+								for j:=0; j<3; j++ {
+									qcoord[j] -= show.Qfact * val * vec[j]
+								}
+								pqcoord := elem.Frame.View.ProjectCoord(qcoord)
+								Arrow(cvs, pqcoord[0], pqcoord[1], prcoord[0], prcoord[1], arrow, deg10)
+							} else {
+								for j:=0; j<3; j++ {
+									qcoord[j] += show.Qfact * val * vec[j]
+								}
+								pqcoord := elem.Frame.View.ProjectCoord(qcoord)
+								Arrow(cvs, prcoord[0], prcoord[1], pqcoord[0], pqcoord[1], arrow, deg10)
+							}
+						}
 					case 3:
 						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i) * show.Unit[0] * show.Unit[1]))
 						sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i) * show.Unit[0] * show.Unit[1]))

@@ -382,6 +382,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.Labels["BONDSIZE"] = datatext("3.0")
 	stw.Labels["CONFSIZE"] = datatext("9.0")
 	stw.Labels["DFACT"] = datatext("100.0")
+	stw.Labels["QFACT"] = datatext("0.5")
 	stw.Labels["MFACT"] = datatext("0.5")
 	stw.Labels["XMAX"] = datatext("1000.0")
 	stw.Labels["XMIN"] = datatext("-100.0")
@@ -1127,6 +1128,7 @@ func NewWindow(homedir string) *Window { // {{{
 		iup.Hbox(datalabel("BOND"), stw.Labels["BONDSIZE"]),
 		iup.Hbox(datalabel("CONF"), stw.Labels["CONFSIZE"]),
 		iup.Hbox(datalabel("DFACT"), stw.Labels["DFACT"]),
+		iup.Hbox(datalabel("QFACT"), stw.Labels["QFACT"]),
 		iup.Hbox(datalabel("MFACT"), stw.Labels["MFACT"]))
 	tgshow := iup.Vbox(datasectionlabel("SHOW"),
 		stw.Labels["GAXIS"],
@@ -2386,6 +2388,16 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			return err
 		}
 		stw.Frame.Show.Rfact = val
+	case "qfact":
+		if len(lis) < 2 {
+			return st.NotEnoughArgs("QFACT")
+		}
+		val, err := strconv.ParseFloat(lis[1], 64)
+		if err != nil {
+			return err
+		}
+		stw.Frame.Show.Qfact = val
+		stw.Labels["QFACT"].SetAttribute("VALUE", fmt.Sprintf("%f", val))
 	case "mfact":
 		if len(lis) < 2 {
 			return st.NotEnoughArgs("MFACT")
@@ -10526,6 +10538,7 @@ func (stw *Window) LinkTextValue() {
 	stw.CB_TextValue(stw.Labels["BONDSIZE"], &stw.Frame.Show.BondSize)
 	stw.CB_TextValue(stw.Labels["CONFSIZE"], &stw.Frame.Show.ConfSize)
 	stw.CB_TextValue(stw.Labels["DFACT"], &stw.Frame.Show.Dfact)
+	stw.CB_TextValue(stw.Labels["QFACT"], &stw.Frame.Show.Qfact)
 	stw.CB_TextValue(stw.Labels["MFACT"], &stw.Frame.Show.Mfact)
 }
 
