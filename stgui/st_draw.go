@@ -632,6 +632,56 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 			cvs.FVertex(elem.Enod[i].Pcoord[0], elem.Enod[i].Pcoord[1])
 		}
 		cvs.End()
+		// Stress
+		var flag uint
+		if f, ok := show.Stress[elem.Sect.Num]; ok {
+			flag = f
+		} else if f, ok := show.Stress[elem.Etype-2]; ok {
+			flag = f
+		}
+		if flag != 0 {
+			var sttext bytes.Buffer
+			for i, st := range []uint{st.STRESS_NZ, st.STRESS_QX, st.STRESS_QY} {
+				if flag&st != 0 {
+					vec := []float64{0.0, 0.0, 0.0}
+					switch i {
+					case 0:
+						vec[2] = 1.0
+					case 1:
+						vec[0] = 1.0
+					case 2:
+						vec[1] = 1.0
+					}
+					val := elem.PlateStress(show.Period, vec) * show.Unit[0]
+					if val != 0.0 && !show.NoShearValue {
+						sttext.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), val))
+					}
+					if show.ShearArrow {
+						arrow := 0.3
+						qcoord := elem.MidPoint()
+						rcoord := elem.MidPoint()
+						prcoord := elem.Frame.View.ProjectCoord(rcoord)
+						if val >= 0.0 {
+							for j:=0; j<3; j++ {
+								qcoord[j] -= show.Qfact * val * vec[j]
+							}
+							pqcoord := elem.Frame.View.ProjectCoord(qcoord)
+							Arrow(cvs, pqcoord[0], pqcoord[1], prcoord[0], prcoord[1], arrow, deg10)
+						} else {
+							for j:=0; j<3; j++ {
+								qcoord[j] += show.Qfact * val * vec[j]
+							}
+							pqcoord := elem.Frame.View.ProjectCoord(qcoord)
+							Arrow(cvs, prcoord[0], prcoord[1], pqcoord[0], pqcoord[1], arrow, deg10)
+						}
+					}
+				}
+			}
+			if tex := sttext.String(); tex != "" {
+				tcoord := elem.Frame.View.ProjectCoord(elem.MidPoint())
+				cvs.FText(tcoord[0], tcoord[1], tex)
+			}
+		}
 		if elem.Wrect != nil && (elem.Wrect[0] != 0.0 || elem.Wrect[1] != 0.0) {
 			DrawWrect(elem, cvs, show)
 		}

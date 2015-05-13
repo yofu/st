@@ -1785,6 +1785,20 @@ func (elem *Elem) VectorStress(period string, nnum int, vec []float64) float64 {
 	return float64(sign) * rtn
 }
 
+func (elem *Elem) PlateStress(period string, vec []float64) float64 {
+	if !elem.IsBraced() || elem.Children == nil {
+		return 0.0
+	}
+	rtn := 0.0
+	for _, el := range elem.Children {
+		if el == nil {
+			return 0.0
+		}
+		rtn += el.VectorStress(period, 0, vec)
+	}
+	return rtn
+}
+
 // }}}
 
 func (elem *Elem) LateralStiffness(period string, abs bool) float64 {
