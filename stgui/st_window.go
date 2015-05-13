@@ -246,11 +246,11 @@ var (
 		"pi/le", "sec/tion", "an/alysis", "f/ilter", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "sec/tion/+/", "col/or", "ex/tractarclm", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
 	}
 	fig2abbrev = []string {
-		"gf/act", "foc/us", "ang/le", "dist/s", "pers/pective", "ax/onometric", "df/act", "rf/act", "mf/act", "gax/is", "eax/is",
+		"gf/act", "foc/us", "ang/le", "dist/s", "pers/pective", "ax/onometric", "df/act", "rf/act", "qf/act", "mf/act", "gax/is", "eax/is",
 		"noax/is", "el/em", "el/em/+/", "el/em/-/", "sec/tion", "sec/tion/+/", "sec/tion/-/", "k/ijun", "mea/sure", "el/em/c/ode", "sec/t/c/ode",
 		"wid/th", "h/eigh/t/", "sr/can/col/or", "sr/can/ra/te", "st/ress", "prest/ress", "stiff/", "def/ormation", "dis/p", "ecc/entric", "dr/aw",
 		"al/ias", "anon/ymous", "no/de/c/ode", "wei/ght", "con/f", "pi/lecode", "fen/ce", "per/iod", "per/iod/++/", "per/iod/--/",
-		"nocap/tion", "noleg/end", "nom/oment/v/alue", "ncol/or", "p/age/tit/le", "tit/le", "pos/ition",
+		"nocap/tion", "noleg/end", "nos/hear/v/alue", "nom/oment/v/alue", "s/hear/ar/row", "m/oment/fig/ure", "ncol/or", "p/age/tit/le", "tit/le", "pos/ition",
 	}
 )
 
@@ -3100,11 +3100,29 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		} else {
 			stw.Frame.Show.NoLegend = true
 		}
+	case "noshearvalue":
+		if un {
+			stw.Frame.Show.NoShearValue = false
+		} else {
+			stw.Frame.Show.NoShearValue = true
+		}
 	case "nomomentvalue":
 		if un {
 			stw.Frame.Show.NoMomentValue = false
 		} else {
 			stw.Frame.Show.NoMomentValue = true
+		}
+	case "sheararrow":
+		if un {
+			stw.Frame.Show.ShearArrow = false
+		} else {
+			stw.Frame.Show.ShearArrow = true
+		}
+	case "momentfigure":
+		if un {
+			stw.Frame.Show.MomentFigure = false
+		} else {
+			stw.Frame.Show.MomentFigure = true
 		}
 	case "ncolor":
 		stw.SetColorMode(st.ECOLOR_N)

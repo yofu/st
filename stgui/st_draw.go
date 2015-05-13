@@ -516,16 +516,18 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 							sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i) * show.Unit[0] * show.Unit[1]))
 							sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i) * show.Unit[0] * show.Unit[1]))
 						}
-						mcoord := elem.MomentCoord(show, i)
-						cvs.Foreground(MomentColor)
-						cvs.Begin(cd.CD_OPEN_LINES)
-						cvs.FVertex(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1])
-						for _, c := range mcoord {
-							tmp := elem.Frame.View.ProjectCoord(c)
-							cvs.FVertex(tmp[0], tmp[1])
+						if show.MomentFigure {
+							mcoord := elem.MomentCoord(show, i)
+							cvs.Foreground(MomentColor)
+							cvs.Begin(cd.CD_OPEN_LINES)
+							cvs.FVertex(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1])
+							for _, c := range mcoord {
+								tmp := elem.Frame.View.ProjectCoord(c)
+								cvs.FVertex(tmp[0], tmp[1])
+							}
+							cvs.FVertex(elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
+							cvs.End()
 						}
-						cvs.FVertex(elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
-						cvs.End()
 					}
 				}
 			}

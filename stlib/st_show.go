@@ -117,6 +117,9 @@ type Show struct { // {{{
 
 	Stress        map[int]uint
 	NoMomentValue bool
+	NoShearValue  bool
+	MomentFigure  bool
+	ShearArrow    bool
 
 	NoLegend bool
 	LegendPosition []int
@@ -188,7 +191,12 @@ func NewShow(frame *Frame) *Show {
 	s.Rfact = 10.0
 
 	s.Stress = map[int]uint{COLUMN: 0, GIRDER: 0, BRACE: 0, WBRACE: 0, SBRACE: 0}
+	s.NoMomentValue = false
+	s.NoShearValue = false
+	s.MomentFigure = true
+	s.ShearArrow = false
 	s.Mfact = 0.5
+	s.Qfact = 0.5
 
 	s.NoLegend = false
 	s.LegendPosition = []int{30, 30}
