@@ -319,6 +319,7 @@ type Window struct { // {{{
 	comhist     []string
 	recentfiles []string
 	undostack   []*st.Frame
+	taggedFrame map[string]*st.Frame
 }
 
 // }}}
@@ -1225,6 +1226,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.SetRecently()
 	stw.SetCommandHistory()
 	stw.undostack = make([]*st.Frame, nUndo)
+	stw.taggedFrame = make(map[string]*st.Frame)
 	undopos = 0
 	StartLogging()
 	stw.New()
@@ -4111,6 +4113,35 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 			stw.Rebase(fn)
 			stw.EditReadme(filepath.Dir(fn))
+		}
+	case "tag":
+		if usage {
+			stw.addHistory(":tag name")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":tag")
+		}
+		name := args[1]
+		if !bang {
+			if _, exists := stw.taggedFrame[name]; exists {
+				return errors.New(fmt.Sprintf("tag %s already exists", name))
+			}
+		}
+		stw.taggedFrame[name] = stw.Frame.Snapshot()
+	case "checkout":
+		if usage {
+			stw.addHistory(":checkout name")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":checkout")
+		}
+		name := args[1]
+		if f, exists := stw.taggedFrame[name]; exists {
+			stw.Frame = f
+		} else {
+			return errors.New(fmt.Sprintf("tag %s doesn't exist", name))
 		}
 	case "read":
 		if usage {
