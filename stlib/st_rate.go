@@ -1855,6 +1855,21 @@ func (rw *RCWall) Amount() Amount {
 	return nil
 }
 
+type RCSlab struct {
+	RCWall
+}
+func NewRCSlab(num int) *RCSlab {
+	rs := new(RCSlab)
+	rs.num = num
+	rs.Wrect = make([]float64, 2)
+	rs.XFace = make([]float64, 2)
+	rs.YFace = make([]float64, 2)
+	return rs
+}
+func (rs *RCSlab) TypeString() string {
+	return "ＲＣ床"
+}
+
 func SetSD(name string) SD {
 	switch name {
 	default:

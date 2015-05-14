@@ -1749,6 +1749,8 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 		sr = NewRCGirder(num)
 	case "WALL":
 		sr = NewRCWall(num)
+	case "SLAB":
+		sr = NewRCSlab(num)
 	default:
 		return nil
 	}
@@ -1766,6 +1768,8 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 			switch sr.(type) {
 			case *RCWall:
 				err = sr.(*RCWall).SetSrein(words[1:])
+			case *RCSlab:
+				err = sr.(*RCSlab).SetSrein(words[1:])
 			}
 		case "HOOPS":
 			switch sr.(type) {
@@ -1782,6 +1786,8 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 				err = sr.(*RCGirder).SetConcrete(words)
 			case *RCWall:
 				err = sr.(*RCWall).SetConcrete(words)
+			case *RCSlab:
+				err = sr.(*RCSlab).SetConcrete(words)
 			}
 		case "XFACE", "YFACE", "BBLEN", "BTLEN", "BBFAC", "BTFAC", "WRECT":
 			vals := make([]float64, 2)
