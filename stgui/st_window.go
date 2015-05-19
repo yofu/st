@@ -4112,6 +4112,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				stw.Copylsts(fn)
 			}
 			stw.Rebase(fn)
+			stw.Snapshot()
 			stw.EditReadme(filepath.Dir(fn))
 		}
 	case "tag":
