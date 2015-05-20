@@ -4456,7 +4456,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "srcal":
 		if usage {
-			stw.addHistory(":srcal")
+			stw.addHistory(":srcal [-fbold] [-noreload] [-tmp]")
 			return nil
 		}
 		cond := st.NewCondition()
@@ -4464,7 +4464,11 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			stw.addHistory("Fb: old")
 			cond.FbOld = true
 		}
-		if _, ok := argdict["RELOAD"]; ok {
+		reload := true
+		if _, ok := argdict["NORELOAD"]; ok {
+			reload = false
+		}
+		if reload {
 			stw.ReadFile(st.Ce(stw.Frame.Path, ".lst"))
 		}
 		stw.Frame.SectionRateCalculation("L", "X", "X", "Y", "Y", -1.0, cond)
