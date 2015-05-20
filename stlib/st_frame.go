@@ -3636,7 +3636,7 @@ func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
 // }}}
 
 // SectionRate
-func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign float64, cond *Condition) error {
+func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 string, sign float64, cond *Condition) error {
 	var otp bytes.Buffer
 	var stl, stx1, stx2, sty1, sty2 []float64
 	var nl, nx1, nx2, ny1, ny2 float64
@@ -3952,7 +3952,7 @@ func (frame *Frame) SectionRateCalculation(long, x1, x2, y1, y2 string, sign flo
 			el.Rate = []float64{qlrate, qsrate, qurate}
 		}
 	}
-	w, err := os.Create("tmp.tst")
+	w, err := os.Create(Ce(fn, ".tst"))
 	defer w.Close()
 	if err != nil {
 		return err

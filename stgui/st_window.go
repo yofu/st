@@ -4471,7 +4471,11 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if reload {
 			stw.ReadFile(st.Ce(stw.Frame.Path, ".lst"))
 		}
-		stw.Frame.SectionRateCalculation("L", "X", "X", "Y", "Y", -1.0, cond)
+		otp := stw.Frame.Path
+		if _, ok := argdict["TMP"]; ok {
+			otp = "tmp"
+		}
+		stw.Frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
 	case "nminteraction":
 		if usage {
 			stw.addHistory(":nminteraction sectcode")
