@@ -4407,8 +4407,8 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			if isec == "" {
 				isect = nil
 			} else {
-				stw.addHistory(fmt.Sprintf("IGNORE SECT: %s", isec))
 				isect = SplitNums(isec)
+				stw.addHistory(fmt.Sprintf("IGNORE SECT: %v", isect))
 			}
 		} else {
 			isect = nil
@@ -4594,7 +4594,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		var props []int
 		if val, ok := argdict["HALF"]; ok {
 			props = SplitNums(val)
-			stw.addHistory(fmt.Sprintf("HALF: %s", val))
+			stw.addHistory(fmt.Sprintf("HALF: %v", props))
 		}
 		alpha := math.Sqrt(24.0 / 18.0)
 		if val, ok := argdict["FC"]; ok {
@@ -4662,8 +4662,8 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			if sany == "" {
 				skipany = nil
 			} else {
-				stw.addHistory(fmt.Sprintf("SKIP ANY: %s", sany))
 				skipany = SplitNums(sany)
+				stw.addHistory(fmt.Sprintf("SKIP ANY: %v", skipany))
 			}
 		} else {
 			skipany = nil
@@ -4672,8 +4672,8 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			if sall == "" {
 				skipall = nil
 			} else {
-				stw.addHistory(fmt.Sprintf("SKIP ALL: %s", sall))
 				skipall = SplitNums(sall)
+				stw.addHistory(fmt.Sprintf("SKIP ALL: %v", skipall))
 			}
 		} else {
 			skipall = nil
@@ -6665,8 +6665,8 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			otp = o
 		}
 		if s, ok := argdict["SECTS"]; ok {
-			stw.addHistory(fmt.Sprintf("SOIL SPRING: %s", s))
 			sects = SplitNums(s)
+			stw.addHistory(fmt.Sprintf("SOIL SPRING: %v", sects))
 		}
 		eps := 1E-3
 		if s, ok := argdict["EPS"]; ok {
@@ -7612,7 +7612,7 @@ func SectFilter(str string) (func(*st.Elem) bool, string) {
 		}
 		return false
 	}
-	hstr = fmt.Sprintf("Sect == %s", fs[1])
+	hstr = fmt.Sprintf("Sect == %v", snums)
 	return filterfunc, hstr
 }
 
@@ -7635,7 +7635,7 @@ func OriginalSectFilter(str string) (func(*st.Elem) bool, string) {
 		}
 		return false
 	}
-	hstr = fmt.Sprintf("Sect == %s", fs[1])
+	hstr = fmt.Sprintf("Sect == %v", snums)
 	return filterfunc, hstr
 }
 
