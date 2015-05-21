@@ -504,6 +504,33 @@ func (elem *Elem) OutputStress(p string) string {
 	return rtn.String()
 }
 
+func (elem *Elem) OutputRate() string {
+	if elem.Rate == nil {
+		return ""
+	}
+	var rat bytes.Buffer
+	rat.WriteString(fmt.Sprintf("ELEM: %5d SECT: %4d", elem.Num, elem.Sect.Num))
+	for _, r := range elem.Rate {
+		rat.WriteString(fmt.Sprintf(" %8.5f", r))
+	}
+	rat.WriteString("\n")
+	return rat.String()
+}
+
+func (elem *Elem) OutputRateRlt() string {
+	if elem.Rate == nil {
+		return ""
+	}
+	var rlt bytes.Buffer
+	rlt.WriteString(fmt.Sprintf("ELEM: %5d SECT: %4d MAX:", elem.Num, elem.Sect.Num))
+	str := []string{"Q/QaL", "Q/QaS", "Q/Qu", "M/MaL", "M/MaS", "M/Mu"}
+	for i, r := range elem.Rate {
+		rlt.WriteString(fmt.Sprintf(" %s=%8.5f", str[i], r))
+	}
+	rlt.WriteString("\n")
+	return rlt.String()
+}
+
 // }}}
 
 // Amount// {{{

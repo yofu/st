@@ -3637,7 +3637,7 @@ func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
 
 // SectionRate
 func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 string, sign float64, cond *Condition) error {
-	var otp bytes.Buffer
+	var otp, rat, rlt bytes.Buffer
 	var stl, stx1, stx2, sty1, sty2 []float64
 	var nl, nx1, nx2, ny1, ny2 float64
 	var rate []float64
@@ -3951,6 +3951,13 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
 			el.Rate = []float64{qlrate, qsrate, qurate}
 		}
+		rat.WriteString(el.OutputRate())
+		for _, r := range el.Rate {
+			if r >= 1.0 {
+				rlt.WriteString(el.OutputRateRlt())
+				break
+			}
+		}
 	}
 	w, err := os.Create(Ce(fn, ".tst"))
 	defer w.Close()
@@ -3959,6 +3966,20 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	}
 	otp = AddCR(otp)
 	otp.WriteTo(w)
+	wrat, err := os.Create(Ce(fn, ".rat"))
+	defer wrat.Close()
+	if err != nil {
+		return err
+	}
+	rat = AddCR(rat)
+	rat.WriteTo(wrat)
+	wrlt, err := os.Create(Ce(fn, ".rlt"))
+	defer wrlt.Close()
+	if err != nil {
+		return err
+	}
+	rlt = AddCR(rlt)
+	rlt.WriteTo(wrlt)
 	return nil
 }
 
