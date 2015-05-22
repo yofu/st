@@ -3798,7 +3798,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		evaluated = false
 	case "edit":
 		if usage {
-			stw.addHistory(":edit [filename]")
+			stw.addHistory(":edit filename {-u=.strc}")
 			return nil
 		}
 		if !bang && stw.Changed {
@@ -4074,45 +4074,44 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "save":
 		if usage {
-			stw.addHistory(":save filename")
+			stw.addHistory(":save filename {-u=.strc}")
 			return nil
 		}
 		if fn == "" {
 			return st.NotEnoughArgs(":save")
-		} else {
-			if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
-				if _, ok := argdict["MKDIR"]; ok {
-					os.MkdirAll(filepath.Dir(fn), 0644)
+		}
+		if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
+			if _, ok := argdict["MKDIR"]; ok {
+				os.MkdirAll(filepath.Dir(fn), 0644)
+			}
+			var err error
+			readrc := true
+			if rc, ok := argdict["U"]; ok {
+				if rc == "NONE" || rc == "" {
+					readrc = false
 				}
-				var err error
-				readrc := true
-				if rc, ok := argdict["U"]; ok {
-					if rc == "NONE" || rc == "" {
-						readrc = false
-					}
-				}
-				if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
-					err = stw.SaveFileSelected(fn, stw.SelectElem)
-					if err != nil {
-						return err
-					}
-					stw.Deselect()
-					err = stw.OpenFile(fn, readrc)
-					if err != nil {
-						return err
-					}
-					stw.Copylsts(fn)
-				} else {
-					err = stw.SaveFile(fn)
-				}
+			}
+			if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
+				err = stw.SaveFileSelected(fn, stw.SelectElem)
 				if err != nil {
 					return err
 				}
-				if fn != stw.Frame.Path {
-					stw.Copylsts(fn)
+				stw.Deselect()
+				err = stw.OpenFile(fn, readrc)
+				if err != nil {
+					return err
 				}
-				stw.Rebase(fn)
+				stw.Copylsts(fn)
+			} else {
+				err = stw.SaveFile(fn)
 			}
+			if err != nil {
+				return err
+			}
+			if fn != stw.Frame.Path {
+				stw.Copylsts(fn)
+			}
+			stw.Rebase(fn)
 		}
 	case "increment":
 		if usage {
@@ -4463,6 +4462,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			stw.SelectElem = stw.SelectElem[:enum]
 		}
 	case "intersectall":
+		if usage {
+			stw.addHistory(":intersectall")
+			return nil
+		}
 		l := len(stw.SelectElem)
 		if l <= 1 {
 			return nil
@@ -4496,7 +4499,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "srcal":
 		if usage {
-			stw.addHistory(":srcal [-fbold] [-noreload] [-tmp]")
+			stw.addHistory(":srcal {-fbold} {-noreload} {-tmp}")
 			return nil
 		}
 		cond := st.NewCondition()
@@ -5644,15 +5647,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		stw.Snapshot()
 	case "divide":
-		if usage {
-			stw.addHistory(":divide [mid, n, elem, ons, axis, length]")
-			return nil
-		}
 		if narg < 2 {
+			if usage {
+				stw.addHistory(":divide [mid, n, elem, ons, axis, length]")
+				return nil
+			}
 			return st.NotEnoughArgs(":divide")
-		}
-		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-			return errors.New(":divide: no selected elem")
 		}
 		var divfunc func(*st.Elem) ([]*st.Node, []*st.Elem, error)
 		switch strings.ToLower(args[1]) {
@@ -5756,6 +5756,9 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if divfunc == nil {
 			return errors.New(":divide: unknown format")
 		}
+		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+			return errors.New(":divide: no selected elem")
+		}
 		tmpels := make([]*st.Elem, 0)
 		enum := 0
 		for _, el := range stw.SelectElem {
@@ -5776,7 +5779,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "section":
 		if usage {
-			stw.addHistory(":section sectcode")
+			stw.addHistory(":section sectcode {-nodisp}")
 			return nil
 		}
 		nodisp := false
@@ -5898,15 +5901,19 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}
 	case "add":
-		if usage {
-			stw.addHistory(":add sect sectcode")
-			return nil
-		}
 		if narg < 2 {
+			if usage {
+				stw.addHistory(":add [elem, sect]")
+				return nil
+			}
 			return st.NotEnoughArgs(":add")
 		}
 		switch strings.ToLower(args[1]) {
 		case "elem":
+			if usage {
+				stw.addHistory(":add elem {-sect=code} {-etype=type}")
+				return nil
+			}
 			var etype int
 			if et, ok := argdict["ETYPE"]; ok {
 				switch {
@@ -5971,6 +5978,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				stw.Frame.AddPlateElem(-1, enod, sect, etype)
 			}
 		case "sec", "sect":
+			if usage {
+				stw.addHistory(":add sect sectcode")
+				return nil
+			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":add sect")
 			}
@@ -6002,15 +6013,19 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}
 	case "copy":
-		if usage {
-			stw.addHistory(":copy sect sectcode")
-			return nil
-		}
 		if narg < 2 {
+			if usage {
+				stw.addHistory(":copy [sect]")
+				return nil
+			}
 			return st.NotEnoughArgs(":copy")
 		}
 		switch strings.ToLower(args[1]) {
 		case "sec", "sect":
+			if usage {
+				stw.addHistory(":copy sect sectcode")
+				return nil
+			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":copy sect")
 			}
@@ -6035,6 +6050,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}
 	case "max":
+		if usage {
+			stw.addHistory(":max {-abs}")
+			return nil
+		}
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			maxval := -1e16
 			var valfunc func(*st.Elem) float64
@@ -6095,6 +6114,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return errors.New(":max no selected elem/node")
 		}
 	case "min":
+		if usage {
+			stw.addHistory(":min {-abs}")
+			return nil
+		}
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			minval := 1e16
 			var valfunc func(*st.Elem) float64
@@ -6155,6 +6178,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return errors.New(":min no selected elem/node")
 		}
 	case "average":
+		if usage {
+			stw.addHistory(":average {-abs}")
+			return nil
+		}
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			var valfunc func(*st.Elem) float64
 			if _, ok := argdict["ABS"]; ok {
@@ -6205,6 +6232,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return errors.New(":average no selected elem/node")
 		}
 	case "sum":
+		if usage {
+			stw.addHistory(":sum {-abs}")
+			return nil
+		}
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			var valfunc func(*st.Elem) float64
 			if _, ok := argdict["ABS"]; ok {
@@ -6255,6 +6286,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return errors.New(":sum no selected elem/node")
 		}
 	case "erase":
+		if usage {
+			stw.addHistory(":erase")
+			return nil
+		}
 		stw.Deselect()
 	ex_erase:
 		for {
@@ -6280,6 +6315,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		stw.Snapshot()
 	case "count":
+		if usage {
+			stw.addHistory(":count")
+			return nil
+		}
 		var nnode, nelem int
 	ex_count:
 		for {
@@ -6299,6 +6338,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		stw.addHistory(fmt.Sprintf("NODES: %d, ELEMS: %d", nnode, nelem))
 	case "show":
+		if usage {
+			stw.addHistory(":show")
+			return nil
+		}
 	ex_show:
 		for {
 			select {
@@ -6313,6 +6356,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}
 	case "hide":
+		if usage {
+			stw.addHistory(":hide")
+			return nil
+		}
 	ex_hide:
 		for {
 			select {
@@ -6336,7 +6383,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return nil
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":ht")
+			return st.NotEnoughArgs(":height")
 		}
 		var min, max int
 		if strings.EqualFold(args[1], "n") {
@@ -6359,7 +6406,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		l := len(stw.Frame.Ai.Boundary)
 		if min < 0 || min >= l || max < 0 || max >= l {
-			return errors.New(":ht out of boundary")
+			return errors.New(":height out of boundary")
 		}
 		axisrange(stw, 2, stw.Frame.Ai.Boundary[min], stw.Frame.Ai.Boundary[max], false)
 	case "height+":
