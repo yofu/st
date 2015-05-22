@@ -3590,22 +3590,40 @@ func (stw *Window) Complete(str string) string {
 			}
 		}
 	}
-	if strings.Contains(str, "%") {
-		str = strings.Replace(str, "%:h", stw.Cwd, 1)
-		if stw.Frame != nil {
-			str = strings.Replace(str, "%<", st.PruneExt(stw.Frame.Path), 1)
-			str = strings.Replace(str, "%", stw.Frame.Path, 1)
-		}
-	}
-	sharp := regexp.MustCompile("#([0-9]+)")
-	if sharp.MatchString(str) {
-		sfs := sharp.FindStringSubmatch(str)
-		if len(sfs) >= 2 {
-			tmp, err := strconv.ParseInt(sfs[1], 10, 64)
+	pat := regexp.MustCompile("(%|#)([0-9]+)([-+=0-9]*)(<?)")
+	if pat.MatchString(str) {
+		repl := ""
+		fs := pat.FindStringSubmatch(str)
+		switch fs[1] {
+		case "%":
+			if stw.Frame != nil {
+				repl = stw.Frame.Path
+			}
+		case "#":
+			tmp, err := strconv.ParseInt(fs[2], 10, 64)
 			if err == nil && int(tmp) < nRecentFiles {
-				str = strings.Replace(str, sfs[0], stw.recentfiles[int(tmp)], 1)
+				repl = stw.recentfiles[int(tmp)]
 			}
 		}
+		if fs[3] != "" {
+			times := 0
+			switch fs[3] {
+			case "++":
+				times = 1
+			case "--":
+				times = -1
+			}
+			if times != 0 {
+				tmp, err := st.Increment(repl, "_", 1, times)
+				if err == nil {
+					repl = tmp
+				}
+			}
+		}
+		if fs[4] == "<" {
+			repl = st.PruneExt(repl)
+		}
+		str = strings.Replace(str, fs[0], repl, 1)
 	}
 	lis := strings.Split(str, " ")
 	path := lis[len(lis)-1]
