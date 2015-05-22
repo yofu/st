@@ -61,6 +61,8 @@ var (
 
 const LOGFILE = "_st.log"
 
+const ResourceFileName = ".strc"
+
 var (
 	LOGLEVEL = []string{"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 )
@@ -1233,6 +1235,9 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.ShowLogo(3*time.Second)
 	stw.exmodech = make(chan interface{})
 	stw.exmodeend = make(chan int)
+	if rcfn := filepath.Join(stw.Cwd, ResourceFileName); st.FileExists(rcfn) {
+		stw.ReadResource(rcfn)
+	}
 	return stw
 }
 
@@ -1661,6 +1666,9 @@ func (stw *Window) OpenFile(filename string) error {
 	stw.Snapshot()
 	stw.Changed = false
 	stw.HideLogo()
+	if rcfn := filepath.Join(stw.Cwd, ResourceFileName); st.FileExists(rcfn) {
+		stw.ReadResource(rcfn)
+	}
 	return nil
 }
 
@@ -10642,6 +10650,26 @@ func (stw *Window) EscapeCB() {
 func (stw *Window) EscapeAll() {
 	stw.Deselect()
 	stw.EscapeCB()
+}
+
+func (stw *Window) ReadResource(filename string) error {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		txt := s.Text()
+		if strings.HasPrefix(txt, "#") {
+			continue
+		}
+		stw.execAliasCommand(txt)
+	}
+	if err := s.Err(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // }}}
