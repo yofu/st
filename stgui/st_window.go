@@ -6409,6 +6409,48 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return errors.New(":height out of boundary")
 		}
 		axisrange(stw, 2, stw.Frame.Ai.Boundary[min], stw.Frame.Ai.Boundary[max], false)
+	case "story", "storey":
+		if usage {
+			stw.addHistory(":storey n")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":storey")
+		}
+		tmp, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		n := int(tmp)
+		if n <= 0 || n >= len(stw.Frame.Ai.Boundary) - 1 {
+			return errors.New(":storey out of boundary")
+		}
+		return stw.exmode(fmt.Sprintf("height %d %d", n-1, n+1))
+	case "floor":
+		if usage {
+			stw.addHistory(":floor n")
+			return nil
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":floor")
+		}
+		var n int
+		switch strings.ToLower(args[1]) {
+		case "g":
+			n = 1
+		case "r":
+			n = len(stw.Frame.Ai.Boundary) - 1
+		default:
+			tmp, err := strconv.ParseInt(args[1], 10, 64)
+			if err != nil {
+				return err
+			}
+			n = int(tmp)
+			if n <= 0 || n >= len(stw.Frame.Ai.Boundary) {
+				return errors.New(":floor out of boundary")
+			}
+		}
+		return stw.exmode(fmt.Sprintf("height %d %d", n-1, n))
 	case "height+":
 		stw.NextFloor()
 	case "height-":
