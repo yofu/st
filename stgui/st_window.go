@@ -831,7 +831,7 @@ func NewWindow(homedir string) *Window { // {{{
 		func(arg *iup.CanvasDropFiles) {
 			switch filepath.Ext(arg.FileName) {
 			case ".inp", ".dxf":
-				stw.OpenFile(arg.FileName)
+				stw.OpenFile(arg.FileName, true)
 				stw.Redraw()
 			default:
 				if stw.Frame != nil {
@@ -1332,7 +1332,7 @@ func (stw *Window) New() {
 // Open// {{{
 func (stw *Window) Open() {
 	if name, ok := iup.GetOpenFile(stw.Cwd, "*.inp"); ok {
-		err := stw.OpenFile(name)
+		err := stw.OpenFile(name, true)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -1486,7 +1486,7 @@ func (stw *Window) SearchInp() {
 		}
 	}
 	openfile := func(fn string) {
-		err := stw.OpenFile(fn)
+		err := stw.OpenFile(fn, true)
 		if err != nil {
 			stw.errormessage(err, ERROR)
 		}
@@ -1601,7 +1601,7 @@ func (stw *Window) Reload() {
 		stw.Deselect()
 		v := stw.Frame.View
 		s := stw.Frame.Show
-		stw.OpenFile(stw.Frame.Path)
+		stw.OpenFile(stw.Frame.Path, false)
 		stw.Frame.View = v
 		stw.Frame.Show = s
 		stw.Redraw()
@@ -1610,7 +1610,7 @@ func (stw *Window) Reload() {
 
 func (stw *Window) OpenDxf() {
 	if name, ok := iup.GetOpenFile(stw.Cwd, "*.dxf"); ok {
-		err := stw.OpenFile(name)
+		err := stw.OpenFile(name, true)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -1618,7 +1618,7 @@ func (stw *Window) OpenDxf() {
 	}
 }
 
-func (stw *Window) OpenFile(filename string) error {
+func (stw *Window) OpenFile(filename string, readrcfile bool) error {
 	var err error
 	var s *st.Show
 	fn := st.ToUtf8string(filename)
@@ -1666,8 +1666,10 @@ func (stw *Window) OpenFile(filename string) error {
 	stw.Snapshot()
 	stw.Changed = false
 	stw.HideLogo()
-	if rcfn := filepath.Join(stw.Cwd, ResourceFileName); st.FileExists(rcfn) {
-		stw.ReadResource(rcfn)
+	if readrcfile {
+		if rcfn := filepath.Join(stw.Cwd, ResourceFileName); st.FileExists(rcfn) {
+			stw.ReadResource(rcfn)
+		}
 	}
 	return nil
 }
@@ -3806,19 +3808,25 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				return errors.New("not saved")
 			}
 		}
+		readrc := true
+		if rc, ok := argdict["U"]; ok {
+			if rc == "NONE" || rc == "" {
+				readrc = false
+			}
+		}
 		if fn != "" {
 			if !st.FileExists(fn) {
 				sfn, err := stw.SearchFile(args[1])
 				if err != nil {
 					return err
 				}
-				err = stw.OpenFile(sfn)
+				err = stw.OpenFile(sfn, readrc)
 				if err != nil {
 					return err
 				}
 				stw.Redraw()
 			} else {
-				err := stw.OpenFile(fn)
+				err := stw.OpenFile(fn, readrc)
 				if err != nil {
 					return err
 				}
@@ -4077,13 +4085,19 @@ func (stw *Window) excommand(command string, pipe bool) error {
 					os.MkdirAll(filepath.Dir(fn), 0644)
 				}
 				var err error
+				readrc := true
+				if rc, ok := argdict["U"]; ok {
+					if rc == "NONE" || rc == "" {
+						readrc = false
+					}
+				}
 				if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
 					err = stw.SaveFileSelected(fn, stw.SelectElem)
 					if err != nil {
 						return err
 					}
 					stw.Deselect()
-					err = stw.OpenFile(fn)
+					err = stw.OpenFile(fn, readrc)
 					if err != nil {
 						return err
 					}
