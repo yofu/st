@@ -3600,24 +3600,26 @@ func (stw *Window) Complete(str string) string {
 			}
 		}
 	}
-	pat := regexp.MustCompile("(%|#)([0-9]+)([-+=0-9]*)(<?)")
+	pat := regexp.MustCompile("(%|#[0-9]+)([-+=0-9]*)(<?)")
 	if pat.MatchString(str) {
 		repl := ""
 		fs := pat.FindStringSubmatch(str)
 		switch fs[1] {
+		case "":
+			break
 		case "%":
 			if stw.Frame != nil {
 				repl = stw.Frame.Path
 			}
-		case "#":
-			tmp, err := strconv.ParseInt(fs[2], 10, 64)
+		default: // #[0-9]+
+			tmp, err := strconv.ParseInt(strings.TrimPrefix(fs[1], "#"), 10, 64)
 			if err == nil && int(tmp) < nRecentFiles {
 				repl = stw.recentfiles[int(tmp)]
 			}
 		}
-		if fs[3] != "" {
+		if fs[2] != "" {
 			times := 0
-			switch fs[3] {
+			switch fs[2] {
 			case "++":
 				times = 1
 			case "--":
@@ -3630,10 +3632,12 @@ func (stw *Window) Complete(str string) string {
 				}
 			}
 		}
-		if fs[4] == "<" {
+		if fs[3] == "<" {
 			repl = st.PruneExt(repl)
 		}
-		str = strings.Replace(str, fs[0], repl, 1)
+		if repl != "" {
+			str = strings.Replace(str, fs[0], repl, 1)
+		}
 	}
 	lis := strings.Split(str, " ")
 	path := lis[len(lis)-1]
