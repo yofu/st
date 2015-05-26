@@ -7354,6 +7354,7 @@ func (stw *Window) DrawFrameNode() {
 		stw.dbuff.LineStyle(cd.CD_CONTINUOUS)
 		stw.dbuff.Hatch(cd.CD_FDIAGONAL)
 	}
+	stw.DrawRange(stw.dbuff, RangeView)
 	stw.dbuff.Flush()
 }
 
@@ -8919,13 +8920,25 @@ func (stw *Window) CB_MouseButton() {
 
 func (stw *Window) MoveOrRotate(arg *iup.MouseMotion) {
 	if !fixMove && (isShift(arg.Status) || fixRotate) {
-		stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
-		stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
-		stw.DrawFrameNode()
+		if isAlt(arg.Status) {
+			RangeView.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
+			RangeView.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
+			stw.DrawRange(stw.dbuff, RangeView)
+		} else {
+			stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
+			stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
+			stw.DrawFrameNode()
+		}
 	} else if !fixRotate {
-		stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
-		stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
-		stw.DrawFrameNode()
+		if isAlt(arg.Status) {
+			RangeView.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
+			RangeView.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
+			stw.DrawRange(stw.dbuff, RangeView)
+		} else {
+			stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
+			stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
+			stw.DrawFrameNode()
+		}
 	}
 }
 
@@ -8956,17 +8969,23 @@ func (stw *Window) CB_CanvasWheel() {
 			if x > 65535 {
 				x -= 65535
 			}
-			stw.Frame.View.Center[0] += (val - 1.0) * (stw.Frame.View.Center[0] - float64(x))
-			stw.Frame.View.Center[1] += (val - 1.0) * (stw.Frame.View.Center[1] - float64(arg.Y))
-			if stw.Frame.View.Perspective {
-				stw.Frame.View.Dists[1] *= val
-				if stw.Frame.View.Dists[1] < 0.0 {
-					stw.Frame.View.Dists[1] = 0.0
+			var v *st.View
+			if isAlt(arg.Status) {
+				v = RangeView
+			} else {
+				v = stw.Frame.View
+			}
+			v.Center[0] += (val - 1.0) * (v.Center[0] - float64(x))
+			v.Center[1] += (val - 1.0) * (v.Center[1] - float64(arg.Y))
+			if v.Perspective {
+				v.Dists[1] *= val
+				if v.Dists[1] < 0.0 {
+					v.Dists[1] = 0.0
 				}
 			} else {
-				stw.Frame.View.Gfact *= val
-				if stw.Frame.View.Gfact < 0.0 {
-					stw.Frame.View.Gfact = 0.0
+				v.Gfact *= val
+				if v.Gfact < 0.0 {
+					v.Gfact = 0.0
 				}
 			}
 			stw.Redraw()
