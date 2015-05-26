@@ -55,7 +55,7 @@ func ven14cutter(stw *Window) {
 	axis := 0
 	compare := 1 - axis
 	pitch := 0.15
-	xmin, xmax, ymin, ymax, zmin, zmax := stw.Frame.Bbox()
+	xmin, xmax, ymin, ymax, zmin, zmax := stw.Frame.Bbox(true)
 	max := []float64{xmax, ymax, zmax}[axis]
 	min := []float64{xmin, ymin, zmin}[axis]
 	coord := 0.0

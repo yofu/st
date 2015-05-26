@@ -144,6 +144,10 @@ var (
 	fixRotate               = false
 	fixMove                 = false
 	deg10                   = 10.0 * math.Pi / 180.0
+	RangeView               = st.NewView()
+	RangeViewDists          = []float64{1000.0, 3000.0}
+	RangeViewAngle          = []float64{20.0, 225.0}
+	RangeViewCenter         = []float64{100.0, 100.0}
 )
 
 var (
@@ -7139,10 +7143,111 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 		DrawPrintRange(stw)
 	}
 	DrawLegend(canv, stw.Frame.Show)
+	stw.DrawRange(canv, RangeView)
 	if flush {
 		canv.Flush()
 	}
 	stw.SetViewData()
+}
+
+func (stw *Window) DrawRange(canv *cd.Canvas, view *st.View) {
+	if stw.Frame == nil {
+		return
+	}
+	view.Set(0)
+	mins := make([]float64, 3)
+	maxs := make([]float64, 3)
+	coord := make([][]float64, 8)
+	pcoord := make([][]float64, 8)
+	for i:=0; i<8; i++ {
+		coord[i] = make([]float64, 3)
+		pcoord[i] = make([]float64, 2)
+	}
+	mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2] = stw.Frame.Bbox(false)
+	for i := 0; i < 3; i++ {
+		view.Focus[i] = 0.5 * (mins[i] + maxs[i])
+	}
+	coord[0][0] = mins[0]
+	coord[0][1] = mins[1]
+	coord[0][2] = mins[2]
+	coord[1][0] = maxs[0]
+	coord[1][1] = mins[1]
+	coord[1][2] = mins[2]
+	coord[2][0] = maxs[0]
+	coord[2][1] = maxs[1]
+	coord[2][2] = mins[2]
+	coord[3][0] = mins[0]
+	coord[3][1] = maxs[1]
+	coord[3][2] = mins[2]
+	coord[4][0] = mins[0]
+	coord[4][1] = mins[1]
+	coord[4][2] = maxs[2]
+	coord[5][0] = maxs[0]
+	coord[5][1] = mins[1]
+	coord[5][2] = maxs[2]
+	coord[6][0] = maxs[0]
+	coord[6][1] = maxs[1]
+	coord[6][2] = maxs[2]
+	coord[7][0] = mins[0]
+	coord[7][1] = maxs[1]
+	coord[7][2] = maxs[2]
+	for i:=0; i<8; i++ {
+		pcoord[i] = view.ProjectCoord(coord[i])
+	}
+	canv.LineStyle(cd.CD_DOTTED)
+	canv.FLine(pcoord[0][0], pcoord[0][1], pcoord[1][0], pcoord[1][1])
+	canv.FLine(pcoord[1][0], pcoord[1][1], pcoord[2][0], pcoord[2][1])
+	canv.FLine(pcoord[2][0], pcoord[2][1], pcoord[3][0], pcoord[3][1])
+	canv.FLine(pcoord[3][0], pcoord[3][1], pcoord[0][0], pcoord[0][1])
+	canv.FLine(pcoord[4][0], pcoord[4][1], pcoord[5][0], pcoord[5][1])
+	canv.FLine(pcoord[5][0], pcoord[5][1], pcoord[6][0], pcoord[6][1])
+	canv.FLine(pcoord[6][0], pcoord[6][1], pcoord[7][0], pcoord[7][1])
+	canv.FLine(pcoord[7][0], pcoord[7][1], pcoord[4][0], pcoord[4][1])
+	canv.FLine(pcoord[0][0], pcoord[0][1], pcoord[4][0], pcoord[4][1])
+	canv.FLine(pcoord[1][0], pcoord[1][1], pcoord[5][0], pcoord[5][1])
+	canv.FLine(pcoord[2][0], pcoord[2][1], pcoord[6][0], pcoord[6][1])
+	canv.FLine(pcoord[3][0], pcoord[3][1], pcoord[7][0], pcoord[7][1])
+	mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2] = stw.Frame.Bbox(true)
+	coord[0][0] = mins[0]
+	coord[0][1] = mins[1]
+	coord[0][2] = mins[2]
+	coord[1][0] = maxs[0]
+	coord[1][1] = mins[1]
+	coord[1][2] = mins[2]
+	coord[2][0] = maxs[0]
+	coord[2][1] = maxs[1]
+	coord[2][2] = mins[2]
+	coord[3][0] = mins[0]
+	coord[3][1] = maxs[1]
+	coord[3][2] = mins[2]
+	coord[4][0] = mins[0]
+	coord[4][1] = mins[1]
+	coord[4][2] = maxs[2]
+	coord[5][0] = maxs[0]
+	coord[5][1] = mins[1]
+	coord[5][2] = maxs[2]
+	coord[6][0] = maxs[0]
+	coord[6][1] = maxs[1]
+	coord[6][2] = maxs[2]
+	coord[7][0] = mins[0]
+	coord[7][1] = maxs[1]
+	coord[7][2] = maxs[2]
+	for i:=0; i<8; i++ {
+		pcoord[i] = view.ProjectCoord(coord[i])
+	}
+	canv.LineStyle(cd.CD_CONTINUOUS)
+	canv.FLine(pcoord[0][0], pcoord[0][1], pcoord[1][0], pcoord[1][1])
+	canv.FLine(pcoord[1][0], pcoord[1][1], pcoord[2][0], pcoord[2][1])
+	canv.FLine(pcoord[2][0], pcoord[2][1], pcoord[3][0], pcoord[3][1])
+	canv.FLine(pcoord[3][0], pcoord[3][1], pcoord[0][0], pcoord[0][1])
+	canv.FLine(pcoord[4][0], pcoord[4][1], pcoord[5][0], pcoord[5][1])
+	canv.FLine(pcoord[5][0], pcoord[5][1], pcoord[6][0], pcoord[6][1])
+	canv.FLine(pcoord[6][0], pcoord[6][1], pcoord[7][0], pcoord[7][1])
+	canv.FLine(pcoord[7][0], pcoord[7][1], pcoord[4][0], pcoord[4][1])
+	canv.FLine(pcoord[0][0], pcoord[0][1], pcoord[4][0], pcoord[4][1])
+	canv.FLine(pcoord[1][0], pcoord[1][1], pcoord[5][0], pcoord[5][1])
+	canv.FLine(pcoord[2][0], pcoord[2][1], pcoord[6][0], pcoord[6][1])
+	canv.FLine(pcoord[3][0], pcoord[3][1], pcoord[7][0], pcoord[7][1])
 }
 
 func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
@@ -7454,7 +7559,7 @@ func (stw *Window) Bbox() (xmin, xmax, ymin, ymax float64) {
 }
 
 func (stw *Window) SetShowRange() {
-	xmin, xmax, ymin, ymax, zmin, zmax := stw.Frame.Bbox()
+	xmin, xmax, ymin, ymax, zmin, zmax := stw.Frame.Bbox(true)
 	stw.Frame.Show.Xrange[0] = xmin
 	stw.Frame.Show.Xrange[1] = xmax
 	stw.Frame.Show.Yrange[0] = ymin
@@ -10985,6 +11090,9 @@ func init() {
 		aliases["AMT"] = AMOUNTPROP
 		aliases["EPS"] = SETEPS
 	}
+	RangeView.Dists = RangeViewDists
+	RangeView.Angle = RangeViewAngle
+	RangeView.Center = RangeViewCenter
 }
 
 // Utility

@@ -319,11 +319,11 @@ func (frame *Frame) Snapshot() *Frame {
 	return f
 }
 
-func (frame *Frame) Bbox() (xmin, xmax, ymin, ymax, zmin, zmax float64) {
+func (frame *Frame) Bbox(hide bool) (xmin, xmax, ymin, ymax, zmin, zmax float64) {
 	var mins, maxs [3]float64
 	first := true
 	for _, j := range frame.Nodes {
-		if j.IsHidden(frame.Show) {
+		if hide && j.IsHidden(frame.Show) {
 			continue
 		}
 		if first {
@@ -4239,7 +4239,7 @@ func (frame *Frame) ShowPlane(n1, n2, n3 *Node, eps float64) error {
 // Modify View// {{{
 func (frame *Frame) SetFocus(coord []float64) {
 	if coord == nil {
-		xmin, xmax, ymin, ymax, zmin, zmax := frame.Bbox()
+		xmin, xmax, ymin, ymax, zmin, zmax := frame.Bbox(true)
 		mins := []float64{xmin, ymin, zmin}
 		maxs := []float64{xmax, ymax, zmax}
 		for i := 0; i < 3; i++ {
