@@ -8872,6 +8872,11 @@ func (stw *Window) CB_MouseButton() {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
+						if isAlt(arg.Status) {
+							for i:=0; i<2; i++ {
+								RangeView.Angle[i] = stw.Frame.View.Angle[i]
+							}
+						}
 						stw.Frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
