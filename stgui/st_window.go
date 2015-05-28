@@ -5279,7 +5279,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "bond":
 		if usage {
-			stw.addHistory(":bond [pin,rigid] [upper,lower,sect sectcode]")
+			stw.addHistory(":bond [pin,rigid,[01_t]{6}] [upper,lower,sect sectcode]")
 			return nil
 		}
 		if narg < 2 {
@@ -5311,10 +5311,26 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			els = stw.SelectElem
 		}
 		lis := make([]bool, 6)
-		switch strings.ToUpper(args[1]) {
-		case "PIN":
+		pat := regexp.MustCompile("[01_t]{6}")
+		switch {
+		case strings.EqualFold(args[1], "pin"):
 			lis[4] = true
 			lis[5] = true
+		case pat.MatchString(args[1]):
+			for i := 0; i < 6; i++ {
+				switch args[1][i] {
+				default:
+					lis[i] = false
+				case '0':
+					lis[i] = false
+				case '1':
+					lis[i] = true
+				case '_':
+					continue
+				case 't':
+					lis[i] = !lis[i]
+				}
+			}
 		}
 		f := func(el *st.Elem, ind int) bool {
 			return true
