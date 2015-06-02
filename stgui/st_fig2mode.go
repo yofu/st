@@ -936,6 +936,9 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		stw.SelectElem = stw.Frame.Fence(axis, val, false)
 		stw.HideNotSelected()
 	case "period":
+		if len(lis) < 2 {
+			return st.NotEnoughArgs("PERIOD")
+		}
 		stw.SetPeriod(strings.ToUpper(lis[1]))
 	case "period++":
 		stw.IncrementPeriod(1)
