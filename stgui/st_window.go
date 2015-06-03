@@ -4941,7 +4941,15 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		}
 	case 'U':
 		if key.IsCtrl() {
-			stw.UnlockAll()
+			if stw.Frame != nil {
+				if stw.Frame.Show.Unit[0] == 1.0 && stw.Frame.Show.Unit[1] == 1.0 {
+					stw.fig2keyword([]string{"unit", "kN,m"}, false)
+				} else {
+					stw.fig2keyword([]string{"unit", "tf,m"}, false)
+				}
+				stw.Redraw()
+			}
+			// stw.UnlockAll()
 		}
 	case 'A':
 		if key.IsCtrl() {
