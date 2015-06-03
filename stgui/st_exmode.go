@@ -23,7 +23,7 @@ var (
 		"e/dit", "q/uit", "vi/m", "hk/you", "hw/eak", "rp/ipe", "cp/ipe", "tk/you", "ck/you", "pla/te", "fixr/otate", "fixm/ove", "noun/do", "un/do", "w/rite", "sav/e", "inc/rement", "c/heck", "r/ead",
 		"ins/ert", "p/rop/s/ect", "w/rite/o/utput", "w/rite/rea/ction", "nmi/nteraction", "har/dcopy", "fi/g2", "fe/nce", "no/de", "xsc/ale", "ysc/ale", "zsc/ale", "pl/oad", "z/oubun/d/isp", "z/oubun/r/eaction",
 		"fac/ts", "go/han/l/st", "el/em", "ave/rage", "bo/nd", "ax/is/2//c/ang", "resul/tant", "prest/ress", "therm/al", "div/ide", "e/lem/dup/lication", "i/ntersect/a/ll", "co/nf",
-		"pi/le", "sec/tion", "an/alysis", "f/ilter", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "sec/tion/+/", "col/or", "ex/tractarclm", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
+		"pi/le", "sec/tion", "c/urrent/v/alue", "an/alysis", "f/ilter", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "sec/tion/+/", "col/or", "ex/tractarclm", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
 	}
 )
 
@@ -2405,6 +2405,29 @@ func (stw *Window) excommand(command string, pipe bool) error {
 					stw.Frame.Sects[snum] = as
 					stw.Frame.Show.Sect[snum] = true
 				}
+			}
+		}
+	case "currentvalue":
+		if usage {
+			stw.addHistory(":currentvalue {-abs}")
+			return nil
+		}
+		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+			var valfunc func(*st.Elem) float64
+			if _, ok := argdict["ABS"]; ok {
+				valfunc = func(elem *st.Elem) float64 {
+					return elem.CurrentValue(stw.Frame.Show, true, true)
+				}
+			} else {
+				valfunc = func(elem *st.Elem) float64 {
+					return elem.CurrentValue(stw.Frame.Show, true, false)
+				}
+			}
+			for _, el := range stw.SelectElem {
+				if el == nil {
+					continue
+				}
+				stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", el.Num, valfunc(el)))
 			}
 		}
 	case "max":
