@@ -2754,6 +2754,48 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}
+	case "range":
+		if usage {
+			stw.addHistory(":range [x,y,z] min max")
+			return nil
+		}
+		if narg == 1 {
+			for i:=0; i<3; i++ {
+				axisrange(stw, i, -100.0, 1000.0, false)
+			}
+			return nil
+		}
+		var axis int
+		switch strings.ToLower(args[1]) {
+		case "x":
+			axis = 0
+		case "y":
+			axis = 1
+		case "z":
+			axis = 2
+		default:
+			return errors.New(":range unknown axis")
+		}
+		if narg == 2 {
+			axisrange(stw, axis, -100.0, 1000.0, false)
+			return nil
+		}
+		var min, max float64
+		tmp, err := strconv.ParseFloat(args[2], 64)
+		if err != nil {
+			return err
+		}
+		min = tmp
+		if narg >= 4 {
+			tmp, err := strconv.ParseFloat(args[3], 64)
+			if err != nil {
+				return err
+			}
+			max = tmp
+		} else {
+			max = min
+		}
+		axisrange(stw, axis, min, max, false)
 	case "height":
 		if usage {
 			stw.addHistory(":height f1 f2")
