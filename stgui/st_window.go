@@ -2161,12 +2161,12 @@ func (stw *Window) ParseFig2Page(pcanv *cd.Canvas, lis [][]string) error {
 	return nil
 }
 
-func (stw *Window) Edit(fn string) {
+func Edit(fn string) {
 	cmd := exec.Command("cmd", "/C", "start", fn)
 	cmd.Start()
 }
 
-func (stw *Window) Vim(fn string) {
+func Vim(fn string) {
 	cmd := exec.Command("gvim", fn)
 	cmd.Start()
 }
@@ -2180,7 +2180,7 @@ func (stw *Window) EditInp() {
 
 func (stw *Window) EditReadme(dir string) {
 	fn := filepath.Join(dir, "readme.txt")
-	stw.Vim(fn)
+	Vim(fn)
 }
 
 func StartTool(fn string) {

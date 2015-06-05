@@ -231,7 +231,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if usage {
 			return st.Usage(":vim filename")
 		}
-		stw.Vim(fn)
+		Vim(fn)
 	case "hkyou":
 		if usage {
 			return st.Usage(":hkyou h b tw tf")
