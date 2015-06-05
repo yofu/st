@@ -63,14 +63,24 @@ ex_empty:
 
 func (stw *Window) exmode(command string) error {
 	if !strings.Contains(command, "|") {
-		return stw.excommand(command, false)
+		err := stw.excommand(command, false)
+		if u, ok := err.(st.Messager); ok {
+			stw.addHistory(u.Message())
+			return nil
+		} else {
+			return err
+		}
 	}
 	excms := strings.Split(command, "|")
 	defer stw.emptyexmodech()
 	for _, com := range excms {
 		err := stw.excommand(com, true)
 		if err != nil {
-			return err
+			if u, ok := err.(st.Messager); ok {
+				stw.addHistory(u.Message())
+			} else {
+				return err
+			}
 		}
 	}
 	return nil
@@ -140,8 +150,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		evaluated = false
 	case "edit":
 		if usage {
-			stw.addHistory(":edit filename {-u=.strc}")
-			return nil
+			return st.Message(":edit filename {-u=.strc}")
 		}
 		if !bang && stw.Changed {
 			if stw.Yn("CHANGED", "変更を保存しますか") {
@@ -179,14 +188,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "quit":
 		if usage {
-			stw.addHistory(":quit")
-			return nil
+			return st.Message(":quit")
 		}
 		stw.Close(bang)
 	case "eps":
 		if usage {
-			stw.addHistory(":eps val")
-			return nil
+			return st.Message(":eps val")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":eps")
@@ -199,8 +206,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
 	case "fitscale":
 		if usage {
-			stw.addHistory(":fitscale val")
-			return nil
+			return st.Message(":fitscale val")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":fitscale")
@@ -213,26 +219,22 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.addHistory(fmt.Sprintf("FITSCALE=%.3E", CanvasFitScale))
 	case "mkdir":
 		if usage {
-			stw.addHistory(":mkdir dirname")
-			return nil
+			return st.Message(":mkdir dirname")
 		}
 		os.MkdirAll(fn, 0644)
 	case "#":
 		if usage {
-			stw.addHistory(":#")
-			return nil
+			return st.Message(":#")
 		}
 		stw.ShowRecently()
 	case "vim":
 		if usage {
-			stw.addHistory(":vim filename")
-			return nil
+			return st.Message(":vim filename")
 		}
 		stw.Vim(fn)
 	case "hkyou":
 		if usage {
-			stw.addHistory(":hkyou h b tw tf")
-			return nil
+			return st.Message(":hkyou h b tw tf")
 		}
 		if narg < 5 {
 			return st.NotEnoughArgs(":hkyou")
@@ -247,8 +249,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "hweak":
 		if usage {
-			stw.addHistory(":hweak h b tw tf")
-			return nil
+			return st.Message(":hweak h b tw tf")
 		}
 		if narg < 5 {
 			return st.NotEnoughArgs(":hweak")
@@ -263,8 +264,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "rpipe":
 		if usage {
-			stw.addHistory(":rpipe h b tw tf")
-			return nil
+			return st.Message(":rpipe h b tw tf")
 		}
 		if narg < 5 {
 			return st.NotEnoughArgs(":rpipe")
@@ -279,8 +279,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "cpipe":
 		if usage {
-			stw.addHistory(":cpipe d t")
-			return nil
+			return st.Message(":cpipe d t")
 		}
 		if narg < 3 {
 			return st.NotEnoughArgs(":cpipe")
@@ -295,8 +294,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "tkyou":
 		if usage {
-			stw.addHistory(":tkyou h b tw tf")
-			return nil
+			return st.Message(":tkyou h b tw tf")
 		}
 		if narg < 5 {
 			return st.NotEnoughArgs(":tkyou")
@@ -311,8 +309,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "ckyou":
 		if usage {
-			stw.addHistory(":ckyou h b tw tf")
-			return nil
+			return st.Message(":ckyou h b tw tf")
 		}
 		if narg < 5 {
 			return st.NotEnoughArgs(":ckyou")
@@ -327,8 +324,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "plate":
 		if usage {
-			stw.addHistory(":plate h b")
-			return nil
+			return st.Message(":plate h b")
 		}
 		if narg < 3 {
 			return st.NotEnoughArgs(":plate")
@@ -361,8 +357,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "procs":
 		if usage {
-			stw.addHistory(":procs numcpu")
-			return nil
+			return st.Message(":procs numcpu")
 		}
 		if narg < 2 {
 			current := runtime.GOMAXPROCS(-1)
@@ -380,8 +375,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "empty":
 		if usage {
-			stw.addHistory(":empty")
-			return nil
+			return st.Message(":empty")
 		}
 		stw.emptyexmodech()
 	}
@@ -389,17 +383,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		return nil
 	}
 	if stw.Frame == nil {
-		stw.errormessage(errors.New("frame is nil"), INFO)
-		return nil
+		return st.Message("frame is nil")
 	}
 	switch cname {
 	default:
-		stw.errormessage(errors.New(fmt.Sprintf("no exmode command: %s", cname)), INFO)
-		return nil
+		return st.Message(fmt.Sprintf("no exmode command: %s", cname))
 	case "write":
 		if usage {
-			stw.addHistory(":write")
-			return nil
+			return st.Message(":write")
 		}
 		if fn == "" {
 			stw.SaveFile(stw.Frame.Path)
@@ -416,8 +407,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "save":
 		if usage {
-			stw.addHistory(":save filename {-u=.strc}")
-			return nil
+			return st.Message(":save filename {-u=.strc}")
 		}
 		if fn == "" {
 			return st.NotEnoughArgs(":save")
@@ -457,8 +447,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "increment":
 		if usage {
-			stw.addHistory(":increment {times:1}")
-			return nil
+			return st.Message(":increment {times:1}")
 		}
 		if !bang && stw.Changed {
 			switch stw.Yna("CHANGED", "変更を保存しますか", "キャンセル") {
@@ -498,8 +487,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "tag":
 		if usage {
-			stw.addHistory(":tag name")
-			return nil
+			return st.Message(":tag name")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":tag")
@@ -513,8 +501,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.taggedFrame[name] = stw.Frame.Snapshot()
 	case "checkout":
 		if usage {
-			stw.addHistory(":checkout name")
-			return nil
+			return st.Message(":checkout name")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":checkout")
@@ -527,9 +514,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "read":
 		if usage {
-			stw.addHistory(":read filename")
-			stw.addHistory(":read type filename")
-			return nil
+			return st.Message(":read {type} filename")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":read")
@@ -630,8 +615,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "insert":
 		if usage {
-			stw.addHistory(":insert filename angle(deg)")
-			return nil
+			return st.Message(":insert filename angle(deg)")
 		}
 		if narg > 2 && len(stw.SelectNode) >= 1 {
 			angle, err := strconv.ParseFloat(args[2], 64)
@@ -647,8 +631,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "propsect":
 		if usage {
-			stw.addHistory(":propsect filename")
-			return nil
+			return st.Message(":propsect filename")
 		}
 		err := stw.AddPropAndSect(fn)
 		stw.Snapshot()
@@ -657,8 +640,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "writeoutput":
 		if usage {
-			stw.addHistory(":writeoutput filename period")
-			return nil
+			return st.Message(":writeoutput filename period")
 		}
 		if narg < 3 {
 			return st.NotEnoughArgs(":wo")
@@ -675,8 +657,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "writereaction":
 		if usage {
-			stw.addHistory(":writereaction filename direction")
-			return nil
+			return st.Message(":writereaction filename direction")
 		}
 		if narg < 3 {
 			return st.NotEnoughArgs(":wr")
@@ -698,8 +679,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "zoubundisp":
 		if usage {
-			stw.addHistory(":zoubundisp period direction")
-			return nil
+			return st.Message(":zoubundisp period direction")
 		}
 		if narg < 3 {
 			return st.NotEnoughArgs(":zoubundisp")
@@ -723,8 +703,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "zoubunreaction":
 		if usage {
-			stw.addHistory(":zoubunreaction period direction")
-			return nil
+			return st.Message(":zoubunreaction period direction")
 		}
 		if narg < 3 {
 			return st.NotEnoughArgs(":zoubunreaction")
@@ -748,14 +727,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "hardcopy":
 		if usage {
-			stw.addHistory(":hardcopy")
-			return nil
+			return st.Message(":hardcopy")
 		}
 		stw.Print()
 	case "fig2":
 		if usage {
-			stw.addHistory(":fig2 filename")
-			return nil
+			return st.Message(":fig2 filename")
 		}
 		err := stw.ReadFig2(fn)
 		if err != nil {
@@ -763,8 +740,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "svg":
 		if usage {
-			stw.addHistory(":svg filename")
-			return nil
+			return st.Message(":svg filename")
 		}
 		err := stw.PrintSVG(fn)
 		if err != nil {
@@ -772,15 +748,13 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "check":
 		if usage {
-			stw.addHistory(":check")
-			return nil
+			return st.Message(":check")
 		}
 		checkframe(stw)
-		stw.addHistory("CHECKED")
+		return st.Message("CHECKED")
 	case "elemduplication":
 		if usage {
-			stw.addHistory(":elemduplication {-ignoresect=code}")
-			return nil
+			return st.Message(":elemduplication {-ignoresect=code}")
 		}
 		stw.Deselect()
 		var isect []int
@@ -805,8 +779,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "intersectall":
 		if usage {
-			stw.addHistory(":intersectall")
-			return nil
+			return st.Message(":intersectall")
 		}
 		l := len(stw.SelectElem)
 		if l <= 1 {
@@ -841,8 +814,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "srcal":
 		if usage {
-			stw.addHistory(":srcal {-fbold} {-noreload} {-tmp}")
-			return nil
+			return st.Message(":srcal {-fbold} {-noreload} {-tmp}")
 		}
 		cond := st.NewCondition()
 		if _, ok := argdict["FBOLD"]; ok {
@@ -863,8 +835,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
 	case "nminteraction":
 		if usage {
-			stw.addHistory(":nminteraction sectcode")
-			return nil
+			return st.Message(":nminteraction sectcode")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":nminteraction")
@@ -913,8 +884,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "gohanlst":
 		if usage {
-			stw.addHistory(":gohanlst factor sectcode...")
-			return nil
+			return st.Message(":gohanlst factor sectcode...")
 		}
 		if narg < 3 {
 			return st.NotEnoughArgs(":gohanlst")
@@ -948,8 +918,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		otp.WriteTo(w)
 	case "kaberyo":
 		if usage {
-			stw.addHistory(":kaberyo")
-			return nil
+			return st.Message(":kaberyo")
 		}
 		var els []*st.Elem
 		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
@@ -1038,8 +1007,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.addHistory(fmt.Sprintf("COLUMN: %.3f WALL: %.3f TOTAL: %.3f", sumcol, sumwall, total))
 	case "facts":
 		if usage {
-			stw.addHistory(":facts {-skipany=code} {-skipall=code}")
-			return nil
+			return st.Message(":facts {-skipany=code} {-skipall=code}")
 		}
 		fn = st.Ce(stw.Frame.Path, ".fes")
 		var skipany, skipall []int
@@ -1070,8 +1038,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.addHistory(fmt.Sprintf("Output: %s", fn))
 	case "amountprop":
 		if usage {
-			stw.addHistory(":amountprop propcode")
-			return nil
+			return st.Message(":amountprop propcode")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":amountprop")
@@ -1087,8 +1054,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "amountlst":
 		if usage {
-			stw.addHistory(":amountlst propcode")
-			return nil
+			return st.Message(":amountlst propcode")
 		}
 		var sects []int
 		if narg < 2 {
@@ -1121,11 +1087,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "node":
 		if usage {
-			stw.addHistory(":node nnum")
-			stw.addHistory(":node [x,y,z] [>,<,=] coord")
-			stw.addHistory(":node {confed/pinned/fixed/free}")
-			stw.addHistory(":node pile num")
-			return nil
+			var m bytes.Buffer
+			m.WriteString(":node nnum\n")
+			m.WriteString(":node [x,y,z] [>,<,=] coord\n")
+			m.WriteString(":node {confed/pinned/fixed/free}\n")
+			m.WriteString(":node pile num\n")
+			return st.Message(m.String())
 		}
 		stw.Deselect()
 		var f func(*st.Node) bool
@@ -1280,8 +1247,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "conf":
 		if usage {
-			stw.addHistory(":conf [0,1]{6}")
-			return nil
+			return st.Message(":conf [0,1]{6}")
 		}
 		lis := make([]bool, 6)
 		if len(args[1]) >= 6 {
@@ -1305,8 +1271,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "pile":
 		if usage {
-			stw.addHistory(":pile pilecode")
-			return nil
+			return st.Message(":pile pilecode")
 		}
 		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
 			return errors.New(":pile no selected node")
@@ -1331,8 +1296,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "xscale":
 		if usage {
-			stw.addHistory(":xscale factor coord")
-			return nil
+			return st.Message(":xscale factor coord")
 		}
 		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
 			return errors.New(":xscale no selected node")
@@ -1357,8 +1321,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "yscale":
 		if usage {
-			stw.addHistory(":yscale factor coord")
-			return nil
+			return st.Message(":yscale factor coord")
 		}
 		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
 			return errors.New(":yscale no selected node")
@@ -1383,8 +1346,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "zscale":
 		if usage {
-			stw.addHistory(":zscale factor coord")
-			return nil
+			return st.Message(":zscale factor coord")
 		}
 		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
 			return errors.New(":zscale no selected node")
@@ -1409,8 +1371,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "pload":
 		if usage {
-			stw.addHistory(":pload position value")
-			return nil
+			return st.Message(":pload position value")
 		}
 		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
 			return errors.New(":pload no selected node")
@@ -1435,8 +1396,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "elem":
 		if usage {
-			stw.addHistory(":elem [elemcode,sect sectcode,etype]")
-			return nil
+			return st.Message(":elem [elemcode,sect sectcode,etype]")
 		}
 		stw.Deselect()
 		var f func(*st.Elem) bool
@@ -1541,8 +1501,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "fence":
 		if usage {
-			stw.addHistory(":fence axis coord {-plate}")
-			return nil
+			return st.Message(":fence axis coord {-plate}")
 		}
 		if narg < 3 {
 			return st.NotEnoughArgs(":fence")
@@ -1596,8 +1555,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "filter":
 		if usage {
-			stw.addHistory(":filter condition")
-			return nil
+			return st.Message(":filter condition")
 		}
 		tmpels, err := stw.FilterElem(stw.SelectElem, strings.Join(args[1:], " "))
 		if err != nil {
@@ -1613,8 +1571,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "bond":
 		if usage {
-			stw.addHistory(":bond [pin,rigid,[01_t]{6}] [upper,lower,sect sectcode]")
-			return nil
+			return st.Message(":bond [pin,rigid,[01_t]{6}] [upper,lower,sect sectcode]")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":bond")
@@ -1711,8 +1668,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "section+":
 		if usage {
-			stw.addHistory(":section+ value")
-			return nil
+			return st.Message(":section+ value")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":section+")
@@ -1736,8 +1692,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "cang":
 		if usage {
-			stw.addHistory(":cang val")
-			return nil
+			return st.Message(":cang val")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":cang")
@@ -1781,8 +1736,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "axis2cang":
 		if usage {
-			stw.addHistory(":axis2cang n1 n2 [strong,weak]")
-			return nil
+			return st.Message(":axis2cang n1 n2 [strong,weak]")
 		}
 		if narg < 4 {
 			return st.NotEnoughArgs(":axis2cang")
@@ -1827,8 +1781,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "invert":
 		if usage {
-			stw.addHistory(":invert")
-			return nil
+			return st.Message(":invert")
 		}
 		var els []*st.Elem
 		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
@@ -1897,8 +1850,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.addHistory(fmt.Sprintf("X: %.3f Y: %.3f Z: %.3f F: %.3f", vec[0], vec[1], vec[2], v))
 	case "prestress":
 		if usage {
-			stw.addHistory(":prestress value")
-			return nil
+			return st.Message(":prestress value")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":prestress")
@@ -1944,8 +1896,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "thermal":
 		if usage {
-			stw.addHistory(":thermal tmp[℃]")
-			return nil
+			return st.Message(":thermal tmp[℃]")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":thermal")
@@ -2007,8 +1958,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 	case "divide":
 		if narg < 2 {
 			if usage {
-				stw.addHistory(":divide [mid, n, elem, ons, axis, length]")
-				return nil
+				return st.Message(":divide [mid, n, elem, ons, axis, length]")
 			}
 			return st.NotEnoughArgs(":divide")
 		}
@@ -2016,16 +1966,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		switch strings.ToLower(args[1]) {
 		case "mid":
 			if usage {
-				stw.addHistory(":divide mid")
-				return nil
+				return st.Message(":divide mid")
 			}
 			divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
 				return el.DivideAtMid(EPS)
 			}
 		case "n":
 			if usage {
-				stw.addHistory(":divide n div")
-				return nil
+				return st.Message(":divide n div")
 			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":divide n")
@@ -2040,8 +1988,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		case "elem":
 			if usage {
-				stw.addHistory(":divide elem (eps)")
-				return nil
+				return st.Message(":divide elem (eps)")
 			}
 			eps := EPS
 			if narg >= 3 {
@@ -2056,8 +2003,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		case "ons":
 			if usage {
-				stw.addHistory(":divide ons (eps)")
-				return nil
+				return st.Message(":divide ons (eps)")
 			}
 			eps := EPS
 			if narg >= 3 {
@@ -2071,8 +2017,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		case "axis":
 			if usage {
-				stw.addHistory(":divide axis [x, y, z] coord")
-				return nil
+				return st.Message(":divide axis [x, y, z] coord")
 			}
 			if narg < 4 {
 				return st.NotEnoughArgs(":divide axis")
@@ -2097,8 +2042,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		case "length":
 			if usage {
-				stw.addHistory(":divide length l")
-				return nil
+				return st.Message(":divide length l")
 			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":divide length")
@@ -2137,8 +2081,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "section":
 		if usage {
-			stw.addHistory(":section sectcode {-nodisp}")
-			return nil
+			return st.Message(":section sectcode {-nodisp}")
 		}
 		nodisp := false
 		if _, ok := argdict["NODISP"]; ok {
@@ -2230,8 +2173,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "thick":
 		if usage {
-			stw.addHistory(":thick nfig val")
-			return nil
+			return st.Message(":thick nfig val")
 		}
 		if narg < 3 {
 			return st.NotEnoughArgs(":thick")
@@ -2261,16 +2203,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 	case "add":
 		if narg < 2 {
 			if usage {
-				stw.addHistory(":add [elem, sect]")
-				return nil
+				return st.Message(":add [elem, sect]")
 			}
 			return st.NotEnoughArgs(":add")
 		}
 		switch strings.ToLower(args[1]) {
 		case "elem":
 			if usage {
-				stw.addHistory(":add elem {-sect=code} {-etype=type}")
-				return nil
+				return st.Message(":add elem {-sect=code} {-etype=type}")
 			}
 			var etype int
 			if et, ok := argdict["ETYPE"]; ok {
@@ -2337,8 +2277,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		case "sec", "sect":
 			if usage {
-				stw.addHistory(":add sect sectcode")
-				return nil
+				return st.Message(":add sect sectcode")
 			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":add sect")
@@ -2373,16 +2312,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 	case "copy":
 		if narg < 2 {
 			if usage {
-				stw.addHistory(":copy [sect]")
-				return nil
+				return st.Message(":copy [sect]")
 			}
 			return st.NotEnoughArgs(":copy")
 		}
 		switch strings.ToLower(args[1]) {
 		case "sec", "sect":
 			if usage {
-				stw.addHistory(":copy sect sectcode")
-				return nil
+				return st.Message(":copy sect sectcode")
 			}
 			if narg < 3 {
 				return st.NotEnoughArgs(":copy sect")
@@ -2409,8 +2346,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "currentvalue":
 		if usage {
-			stw.addHistory(":currentvalue {-abs}")
-			return nil
+			return st.Message(":currentvalue {-abs}")
 		}
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			var valfunc func(*st.Elem) float64
@@ -2432,8 +2368,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "max":
 		if usage {
-			stw.addHistory(":max {-abs}")
-			return nil
+			return st.Message(":max {-abs}")
 		}
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			maxval := -1e16
@@ -2496,8 +2431,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "min":
 		if usage {
-			stw.addHistory(":min {-abs}")
-			return nil
+			return st.Message(":min {-abs}")
 		}
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			minval := 1e16
@@ -2560,8 +2494,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "average":
 		if usage {
-			stw.addHistory(":average {-abs}")
-			return nil
+			return st.Message(":average {-abs}")
 		}
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			var valfunc func(*st.Elem) float64
@@ -2614,8 +2547,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "sum":
 		if usage {
-			stw.addHistory(":sum {-abs}")
-			return nil
+			return st.Message(":sum {-abs}")
 		}
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			var valfunc func(*st.Elem) float64
@@ -2668,8 +2600,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "erase":
 		if usage {
-			stw.addHistory(":erase")
-			return nil
+			return st.Message(":erase")
 		}
 		stw.Deselect()
 	ex_erase:
@@ -2697,8 +2628,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "count":
 		if usage {
-			stw.addHistory(":count")
-			return nil
+			return st.Message(":count")
 		}
 		var nnode, nelem int
 	ex_count:
@@ -2720,8 +2650,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.addHistory(fmt.Sprintf("NODES: %d, ELEMS: %d", nnode, nelem))
 	case "show":
 		if usage {
-			stw.addHistory(":show")
-			return nil
+			return st.Message(":show")
 		}
 	ex_show:
 		for {
@@ -2738,8 +2667,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "hide":
 		if usage {
-			stw.addHistory(":hide")
-			return nil
+			return st.Message(":hide")
 		}
 	ex_hide:
 		for {
@@ -2756,8 +2684,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "range":
 		if usage {
-			stw.addHistory(":range [x,y,z] min max")
-			return nil
+			return st.Message(":range [x,y,z] min max")
 		}
 		if narg == 1 {
 			for i:=0; i<3; i++ {
@@ -2798,8 +2725,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		axisrange(stw, axis, min, max, false)
 	case "height":
 		if usage {
-			stw.addHistory(":height f1 f2")
-			return nil
+			return st.Message(":height f1 f2")
 		}
 		if narg == 1 {
 			axisrange(stw, 2, -100.0, 1000.0, false)
@@ -2834,8 +2760,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		axisrange(stw, 2, stw.Frame.Ai.Boundary[min], stw.Frame.Ai.Boundary[max], false)
 	case "story", "storey":
 		if usage {
-			stw.addHistory(":storey n")
-			return nil
+			return st.Message(":storey n")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":storey")
@@ -2851,8 +2776,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		return stw.exmode(fmt.Sprintf("height %d %d", n-1, n+1))
 	case "floor":
 		if usage {
-			stw.addHistory(":floor n")
-			return nil
+			return st.Message(":floor n")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":floor")
@@ -2880,8 +2804,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.PrevFloor()
 	case "view":
 		if usage {
-			stw.addHistory(":view [top,front,back,right,left]")
-			return nil
+			return st.Message(":view [top,front,back,right,left]")
 		}
 		switch strings.ToUpper(args[1]) {
 		case "TOP":
@@ -2897,9 +2820,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "printrange":
 		if usage {
-			stw.addHistory(":printrange [on,true,yes] [a3tate,a3yoko,a4tate,a4yoko]")
-			stw.addHistory(":printrange [off,false,no]")
-			return nil
+			return st.Message(":printrange [on,true,yes/off,false,no] [a3tate,a3yoko,a4tate,a4yoko]")
 		}
 		if narg < 2 {
 			showprintrange = !showprintrange
@@ -2925,8 +2846,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "paper":
 		if usage {
-			stw.addHistory(":paper [a3tate,a3yoko,a4tate,a4yoko]")
-			return nil
+			return st.Message(":paper [a3tate,a3yoko,a4tate,a4yoko]")
 		}
 		if narg < 2 {
 			return st.NotEnoughArgs(":paper")
@@ -2956,8 +2876,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "color":
 		if usage {
-			stw.addHistory(":color [n,sect,rate,white,mono,strong]")
-			return nil
+			return st.Message(":color [n,sect,rate,white,mono,strong]")
 		}
 		if narg < 2 {
 			stw.SetColorMode(st.ECOLOR_SECT)
@@ -3004,8 +2923,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "analysis":
 		if usage {
-			stw.addHistory(":analysis")
-			return nil
+			return st.Message(":analysis")
 		}
 		err := stw.SaveFile(stw.Frame.Path)
 		if err != nil {
@@ -3026,8 +2944,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Redraw()
 	case "extractarclm":
 		if usage {
-			stw.addHistory(":extractarclm")
-			return nil
+			return st.Message(":extractarclm")
 		}
 		err := stw.SaveFile(stw.Frame.Path)
 		if err != nil {
@@ -3045,8 +2962,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "arclm001":
 		if usage {
-			stw.addHistory(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} filename")
-			return nil
+			return st.Message(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} filename")
 		}
 		var otp string
 		if fn == "" {
@@ -3132,8 +3048,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}()
 	case "arclm201":
 		if usage {
-			stw.addHistory(":arclm201 {-period=name} {-lap=nlap} {-safety=val} {-start=val} {-noinit} filename")
-			return nil
+			return st.Message(":arclm201 {-period=name} {-lap=nlap} {-safety=val} {-start=val} {-noinit} filename")
 		}
 		var otp string
 		if fn == "" {
@@ -3203,8 +3118,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}()
 	case "arclm301":
 		if usage {
-			stw.addHistory(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
-			return nil
+			return st.Message(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
 		}
 		var otp string
 		var sects []int

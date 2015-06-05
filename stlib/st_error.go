@@ -66,3 +66,17 @@ func (ne ArgumentError) Error() string {
 func NotEnoughArgs(name string) ArgumentError {
 	return ArgumentError{name, "not enough argument"}
 }
+
+type Messager interface {
+	Message() string
+}
+
+type Message string
+
+func (m Message) Error() string {
+	return fmt.Sprintf("message: %s", string(m))
+}
+
+func (m Message) Message() string {
+	return string(m)
+}
