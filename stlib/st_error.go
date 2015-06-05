@@ -2,6 +2,7 @@ package st
 
 import (
 	"fmt"
+	"strings"
 )
 
 type ParallelError struct {
@@ -79,4 +80,14 @@ func (m Message) Error() string {
 
 func (m Message) Message() string {
 	return string(m)
+}
+
+type Usage string
+
+func (u Usage) Error() string {
+	return fmt.Sprintf("usage: %s", string(u))
+}
+
+func (u Usage) Message() string {
+	return fmt.Sprintf("usage:\n\t%s", strings.Join(strings.Split(string(u), "\n"), "\n\t"))
 }
