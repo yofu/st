@@ -2398,7 +2398,9 @@ func (stw *Window) addHistory(str string) {
 	if str == "" {
 		return
 	}
-	stw.hist.SetAttribute("APPEND", str)
+	for _, s := range strings.Split(strings.TrimSuffix(str, "\n"), "\n") {
+		stw.hist.SetAttribute("APPEND", s)
+	}
 	lnum, err := strconv.ParseInt(stw.hist.GetAttribute("LINECOUNT"), 10, 64)
 	if err != nil {
 		fmt.Println(err)
