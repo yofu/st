@@ -62,6 +62,10 @@ ex_empty:
 }
 
 func (stw *Window) exmode(command string) error {
+	if command == ":." {
+		return stw.exmode(stw.lastexcommand)
+	}
+	stw.lastexcommand = command
 	if !strings.Contains(command, "|") {
 		err := stw.excommand(command, false)
 		if u, ok := err.(st.Messager); ok {
@@ -90,10 +94,6 @@ func (stw *Window) excommand(command string, pipe bool) error {
 	if len(command) == 1 {
 		return st.NotEnoughArgs("exmode")
 	}
-	if command == ":." {
-		return stw.exmode(stw.lastexcommand)
-	}
-	stw.lastexcommand = command
 	tmpargs := strings.Split(command, " ")
 	args := make([]string, len(tmpargs))
 	argdict := make(map[string]string, 0)
