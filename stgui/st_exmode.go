@@ -203,7 +203,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return err
 		}
 		EPS = val
-		stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
+		return st.Message(fmt.Sprintf("EPS=%.3E", EPS))
 	case "fitscale":
 		if usage {
 			return st.Usage(":fitscale val")
@@ -216,7 +216,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return err
 		}
 		CanvasFitScale = val
-		stw.addHistory(fmt.Sprintf("FITSCALE=%.3E", CanvasFitScale))
+		return st.Message(fmt.Sprintf("FITSCALE=%.3E", CanvasFitScale))
 	case "mkdir":
 		if usage {
 			return st.Usage(":mkdir dirname")
@@ -343,17 +343,17 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		fixMove = !fixMove
 	case "noundo":
 		NOUNDO = true
-		stw.addHistory("undo/redo is off")
+		return st.Message("undo/redo is off")
 	case "undo":
 		NOUNDO = false
 		stw.Snapshot()
-		stw.addHistory("undo/redo is on")
+		return st.Message("undo/redo is on")
 	case "alt":
 		ALTSELECTNODE = !ALTSELECTNODE
 		if ALTSELECTNODE {
-			stw.addHistory("select node with Alt key")
+			return st.Message("select node with Alt key")
 		} else {
-			stw.addHistory("select elem with Alt key")
+			return st.Message("select elem with Alt key")
 		}
 	case "procs":
 		if usage {
@@ -361,8 +361,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		if narg < 2 {
 			current := runtime.GOMAXPROCS(-1)
-			stw.addHistory(fmt.Sprintf("PROCS: %d", current))
-			return nil
+			return st.Message(fmt.Sprintf("PROCS: %d", current))
 		}
 		tmp, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
@@ -371,7 +370,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		val := int(tmp)
 		if 1 <= val && val <= runtime.NumCPU() {
 			old := runtime.GOMAXPROCS(val)
-			stw.addHistory(fmt.Sprintf("PROCS: %d -> %d", old, val))
+			return st.Message(fmt.Sprintf("PROCS: %d -> %d", old, val))
 		}
 	case "empty":
 		if usage {
@@ -454,7 +453,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			case 1:
 				stw.SaveAS()
 			case 2:
-				stw.addHistory("not saved")
+				fmt.Println("not saved")
 			case 3:
 				return errors.New(":inc cancelled")
 			}
@@ -758,12 +757,13 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		stw.Deselect()
 		var isect []int
+		var m bytes.Buffer
 		if isec, ok := argdict["IGNORESECT"]; ok {
 			if isec == "" {
 				isect = nil
 			} else {
 				isect = SplitNums(isec)
-				stw.addHistory(fmt.Sprintf("IGNORE SECT: %v", isect))
+				m.WriteString(fmt.Sprintf("IGNORE SECT: %v\n", isect))
 			}
 		} else {
 			isect = nil
@@ -777,6 +777,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 			stw.SelectElem = stw.SelectElem[:enum]
 		}
+		return st.Message(m.String())
 	case "intersectall":
 		if usage {
 			return st.Usage(":intersectall")
@@ -816,9 +817,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if usage {
 			return st.Usage(":srcal {-fbold} {-noreload} {-tmp}")
 		}
+		var m bytes.Buffer
 		cond := st.NewCondition()
 		if _, ok := argdict["FBOLD"]; ok {
-			stw.addHistory("Fb: old")
+			m.WriteString("Fb: old")
 			cond.FbOld = true
 		}
 		reload := true
@@ -833,6 +835,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			otp = "tmp"
 		}
 		stw.Frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
+		return st.Message(m.String())
 	case "nminteraction":
 		if usage {
 			return st.Usage(":nminteraction sectcode")
@@ -846,11 +849,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		if al, ok := stw.Frame.Allows[int(tmp)]; ok {
 			var otp bytes.Buffer
+			var m bytes.Buffer
 			cond := st.NewCondition()
 			ndiv := 100
 			if nd, ok := argdict["NDIV"]; ok {
 				if nd != "" {
-					stw.addHistory(fmt.Sprintf("NDIV: %s", nd))
+					m.WriteString(fmt.Sprintf("NDIV: %s", nd))
 					tmp, err := strconv.ParseInt(nd, 10, 64)
 					if err == nil {
 						ndiv = int(tmp)
@@ -860,7 +864,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			filename := "nmi.txt"
 			if o, ok := argdict["OUTPUT"]; ok {
 				if o != "" {
-					stw.addHistory(fmt.Sprintf("OUTPUT: %s", o))
+					m.WriteString(fmt.Sprintf("OUTPUT: %s", o))
 					filename = o
 				}
 			}
@@ -881,6 +885,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				return err
 			}
 			otp.WriteTo(w)
+			return st.Message(m.String())
 		}
 	case "gohanlst":
 		if usage {
@@ -945,10 +950,11 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		} else {
 			els = stw.SelectElem
 		}
+		var m bytes.Buffer
 		var props []int
 		if val, ok := argdict["HALF"]; ok {
 			props = SplitNums(val)
-			stw.addHistory(fmt.Sprintf("HALF: %v", props))
+			m.WriteString(fmt.Sprintf("HALF: %v", props))
 		}
 		alpha := math.Sqrt(24.0 / 18.0)
 		if val, ok := argdict["FC"]; ok {
@@ -963,7 +969,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				alpha = math.Min(math.Sqrt2, a)
 			}
 		}
-		stw.addHistory(fmt.Sprintf("ALPHA: %.3f", alpha))
+		m.WriteString(fmt.Sprintf("ALPHA: %.3f", alpha))
 		ccol := 7.0
 		cwall := 25.0
 		if r, ok := argdict["ROUTE"]; ok {
@@ -976,7 +982,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				cwall = 18.0
 			}
 		}
-		stw.addHistory(fmt.Sprintf("COEFFICIENT: COLUMN=%.1f WALL=%.1f", ccol, cwall))
+		m.WriteString(fmt.Sprintf("COEFFICIENT: COLUMN=%.1f WALL=%.1f", ccol, cwall))
 		sumcol := 0.0
 		sumwall := 0.0
 		for _, el := range els {
@@ -1004,11 +1010,13 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}
 		total := alpha * (ccol*sumcol + cwall*sumwall)
-		stw.addHistory(fmt.Sprintf("COLUMN: %.3f WALL: %.3f TOTAL: %.3f", sumcol, sumwall, total))
+		m.WriteString(fmt.Sprintf("COLUMN: %.3f WALL: %.3f TOTAL: %.3f", sumcol, sumwall, total))
+		return st.Message(m.String())
 	case "facts":
 		if usage {
 			return st.Usage(":facts {-skipany=code} {-skipall=code}")
 		}
+		var m bytes.Buffer
 		fn = st.Ce(stw.Frame.Path, ".fes")
 		var skipany, skipall []int
 		if sany, ok := argdict["SKIPANY"]; ok {
@@ -1016,7 +1024,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				skipany = nil
 			} else {
 				skipany = SplitNums(sany)
-				stw.addHistory(fmt.Sprintf("SKIP ANY: %v", skipany))
+				m.WriteString(fmt.Sprintf("SKIP ANY: %v", skipany))
 			}
 		} else {
 			skipany = nil
@@ -1026,7 +1034,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				skipall = nil
 			} else {
 				skipall = SplitNums(sall)
-				stw.addHistory(fmt.Sprintf("SKIP ALL: %v", skipall))
+				m.WriteString(fmt.Sprintf("SKIP ALL: %v", skipall))
 			}
 		} else {
 			skipall = nil
@@ -1035,7 +1043,8 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if err != nil {
 			return err
 		}
-		stw.addHistory(fmt.Sprintf("Output: %s", fn))
+		m.WriteString(fmt.Sprintf("Output: %s", fn))
+		return st.Message(m.String())
 	case "amountprop":
 		if usage {
 			return st.Usage(":amountprop propcode")
@@ -1457,7 +1466,6 @@ func (stw *Window) excommand(command string, pipe bool) error {
 						threshold = val
 					}
 				}
-				stw.addHistory(fmt.Sprintf("THRESHOLD: %.3f", threshold))
 				f = func(el *st.Elem) bool {
 					switch el.Etype {
 					case st.COLUMN, st.GIRDER, st.BRACE, st.WALL, st.SLAB:
@@ -1846,8 +1854,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			v += vec[i] * vec[i]
 		}
 		v = math.Sqrt(v)
-		stw.addHistory(fmt.Sprintf("NODE: %d", en[0].Num))
-		stw.addHistory(fmt.Sprintf("X: %.3f Y: %.3f Z: %.3f F: %.3f", vec[0], vec[1], vec[2], v))
+		var m bytes.Buffer
+		m.WriteString(fmt.Sprintf("NODE: %d", en[0].Num))
+		m.WriteString(fmt.Sprintf("X: %.3f Y: %.3f Z: %.3f F: %.3f", vec[0], vec[1], vec[2], v))
+		return st.Message(m.String())
 	case "prestress":
 		if usage {
 			return st.Usage(":prestress value")
@@ -1940,7 +1950,8 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				alpha = tmpal
 			}
 		}
-		stw.addHistory(fmt.Sprintf("ALPHA: %.3E", alpha))
+		var m bytes.Buffer
+		m.WriteString(fmt.Sprintf("ALPHA: %.3E", alpha))
 		for _, el := range els {
 			if el == nil || el.Lock || !el.IsLineElem() {
 				continue
@@ -1955,6 +1966,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}
 		stw.Snapshot()
+		return st.Message(m.String())
 	case "divide":
 		if narg < 2 {
 			if usage {
@@ -2350,6 +2362,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
 			var valfunc func(*st.Elem) float64
+			var m bytes.Buffer
 			if _, ok := argdict["ABS"]; ok {
 				valfunc = func(elem *st.Elem) float64 {
 					return elem.CurrentValue(stw.Frame.Show, true, true)
@@ -2363,8 +2376,9 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				if el == nil {
 					continue
 				}
-				stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", el.Num, valfunc(el)))
+				m.WriteString(fmt.Sprintf("ELEM %d: %.3f", el.Num, valfunc(el)))
 			}
+			return st.Message(m.String())
 		}
 	case "max":
 		if usage {
@@ -2396,7 +2410,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 			if sel != nil {
 				stw.SelectElem = []*st.Elem{sel}
-				stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, true, abs)))
+				return st.Message(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, true, abs)))
 			}
 		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
 			maxval := -1e16
@@ -2424,7 +2438,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 			if sn != nil {
 				stw.SelectNode = []*st.Node{sn}
-				stw.addHistory(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, true, abs)))
+				return st.Message(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, true, abs)))
 			}
 		} else {
 			return errors.New(":max no selected elem/node")
@@ -2459,7 +2473,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 			if sel != nil {
 				stw.SelectElem = []*st.Elem{sel}
-				stw.addHistory(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, false, abs)))
+				return st.Message(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, false, abs)))
 			}
 		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
 			minval := 1e16
@@ -2487,7 +2501,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 			if sn != nil {
 				stw.SelectNode = []*st.Node{sn}
-				stw.addHistory(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, false, abs)))
+				return st.Message(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, false, abs)))
 			}
 		} else {
 			return errors.New(":min no selected elem/node")
@@ -2517,7 +2531,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				num++
 			}
 			if num >= 1 {
-				stw.addHistory(fmt.Sprintf("%d ELEMs : %.5f", num, val/float64(num)))
+				return st.Message(fmt.Sprintf("%d ELEMs : %.5f", num, val/float64(num)))
 			}
 		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
 			var valfunc func(*st.Node) float64
@@ -2540,7 +2554,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				num++
 			}
 			if num >= 1 {
-				stw.addHistory(fmt.Sprintf("%d NODEs: %.5f", num, val/float64(num)))
+				return st.Message(fmt.Sprintf("%d NODEs: %.5f", num, val/float64(num)))
 			}
 		} else {
 			return errors.New(":average no selected elem/node")
@@ -2570,7 +2584,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				num++
 			}
 			if num >= 1 {
-				stw.addHistory(fmt.Sprintf("%d ELEMs : %.5f", num, val))
+				return st.Message(fmt.Sprintf("%d ELEMs : %.5f", num, val))
 			}
 		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
 			var valfunc func(*st.Node) float64
@@ -2593,7 +2607,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				num++
 			}
 			if num >= 1 {
-				stw.addHistory(fmt.Sprintf("%d NODEs: %.5f", num, val))
+				return st.Message(fmt.Sprintf("%d NODEs: %.5f", num, val))
 			}
 		} else {
 			return errors.New(":sum no selected elem/node")
@@ -2647,7 +2661,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}
-		stw.addHistory(fmt.Sprintf("NODES: %d, ELEMS: %d", nnode, nelem))
+		return st.Message(fmt.Sprintf("NODES: %d, ELEMS: %d", nnode, nelem))
 	case "show":
 		if usage {
 			return st.Usage(":show")
@@ -3014,14 +3028,15 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				extra[i] = vec
 			}
 		}
-		stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
-		stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
-		stw.addHistory(fmt.Sprintf("SOLVER: %s", sol))
-		stw.addHistory(fmt.Sprintf("EPS: %.3E", eps))
+		var m bytes.Buffer
+		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
+		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
+		m.WriteString(fmt.Sprintf("SOLVER: %s", sol))
+		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
-			stw.addHistory("NO INITIALISATION")
+			m.WriteString("NO INITIALISATION")
 		}
 		af := stw.Frame.Arclms[per]
 		go func() {
@@ -3046,6 +3061,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}()
+		return st.Message(m.String())
 	case "arclm201":
 		if usage {
 			return st.Usage(":arclm201 {-period=name} {-lap=nlap} {-safety=val} {-start=val} {-noinit} filename")
@@ -3086,13 +3102,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				per = strings.ToUpper(p)
 			}
 		}
-		stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
-		stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
-		stw.addHistory(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f", lap, safety, start))
+		var m bytes.Buffer
+		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
+		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
+		m.WriteString(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f", lap, safety, start))
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
-			stw.addHistory("NO INITIALISATION")
+			m.WriteString("NO INITIALISATION")
 		}
 		af := stw.Frame.Arclms[per]
 		go func() {
@@ -3116,12 +3133,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}()
+		return st.Message(m.String())
 	case "arclm301":
 		if usage {
 			return st.Usage(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
 		}
 		var otp string
 		var sects []int
+		var m bytes.Buffer
 		if fn == "" {
 			otp = st.Ce(stw.Frame.Path, ".otp")
 		} else {
@@ -3132,7 +3151,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		if s, ok := argdict["SECTS"]; ok {
 			sects = SplitNums(s)
-			stw.addHistory(fmt.Sprintf("SOIL SPRING: %v", sects))
+			m.WriteString(fmt.Sprintf("SOIL SPRING: %v", sects))
 		}
 		eps := 1E-3
 		if s, ok := argdict["EPS"]; ok {
@@ -3147,14 +3166,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				per = strings.ToUpper(p)
 			}
 		}
-		stw.addHistory(fmt.Sprintf("PERIOD: %s", per))
-		stw.addHistory(fmt.Sprintf("OUTPUT: %s", otp))
-		stw.addHistory(fmt.Sprintf("EPS: %.3E", eps))
+		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
+		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
+		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
 		af := stw.Frame.Arclms[per]
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
-			stw.addHistory("NO INITIALISATION")
+			m.WriteString("NO INITIALISATION")
 		}
 		go func() {
 			err := af.Arclm301(otp, init, sects, eps)
@@ -3177,6 +3196,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}()
+		return st.Message(m.String())
 	}
 	return nil
 }
