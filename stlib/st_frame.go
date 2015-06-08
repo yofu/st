@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/yofu/st/arclm"
+	"github.com/mattn/natural"
 	"io/ioutil"
 	"math"
 	"os"
@@ -2192,7 +2193,7 @@ func (frame *Frame) WriteKjn(fn string) error {
 		ks[i] = k
 		i++
 	}
-	sort.Strings(ks)
+	natural.Sort(ks)
 	for _, k := range ks {
 		otp.WriteString(frame.Kijuns[k].String())
 	}
