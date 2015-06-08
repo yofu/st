@@ -2444,7 +2444,7 @@ func (frame *Frame) AddKijun(name string, start, end []float64) (*Kijun, error) 
 	k.Name = name
 	k.Start = start
 	k.End = end
-	frame.Kijuns[name] = k
+	frame.Kijuns[strings.ToLower(name)] = k
 	return k, nil
 }
 
