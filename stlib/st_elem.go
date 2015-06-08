@@ -1175,6 +1175,16 @@ func (elem *Elem) Mirror(coord, vec []float64, del bool, eps float64) *Elem {
 	}
 }
 
+func (elem *Elem) Offset(value, angle, eps float64) *Elem {
+	vec := make([]float64, 3)
+	c := math.Cos(angle)
+	s := math.Sin(angle)
+	for i:=0; i<3; i++ {
+		vec[i] = value * (elem.Strong[i] * c + elem.Weak[i] * s)
+	}
+	return elem.Copy(vec[0], vec[1], vec[2], eps)
+}
+
 func (elem *Elem) Invert() {
 	if len(elem.Enod) == 0 {
 		return

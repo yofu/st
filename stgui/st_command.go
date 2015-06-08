@@ -94,6 +94,7 @@ var (
 	INTERSECTALL        = &Command{"INTA", "INTERSECT ALL", "divide selected elems at all intersection", intersectall}
 	TRIM                = &Command{"TRIM", "TRIM", "trim elements with selected elem", trim}
 	EXTEND              = &Command{"EXTEND", "EXTEND", "extend elements to selected elem", extend}
+	OFFSET              = &Command{"OFFSET", "OFFSET", "offset element", offset}
 	MERGENODE           = &Command{"MERGE", "MERGE NODE", "merge nodes", mergenode}
 	ERASE               = &Command{"ERASE", "ERASE", "erase selected elems", erase}
 	FACTS               = &Command{"FACT", "FACTS", "calculate eccentricity ratio and modulus of rigidity", facts}
@@ -183,6 +184,7 @@ func init() {
 	Commands["INTERSECTALL"] = INTERSECTALL
 	Commands["TRIM"] = TRIM
 	Commands["EXTEND"] = EXTEND
+	Commands["OFFSET"] = OFFSET
 	Commands["MERGENODE"] = MERGENODE
 	Commands["ERASE"] = ERASE
 	Commands["FACTS"] = FACTS
@@ -1750,6 +1752,77 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 
 // }}}
 
+// GET1SIDE // {{{
+func get1side(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) bool, exitfunc func()) {
+	stw.SelectElem = make([]*st.Elem, 1)
+	selected := false
+	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+		if stw.Frame != nil {
+			stw.dbuff.UpdateYAxis(&arg.Y)
+			switch arg.Button {
+			case BUTTON_LEFT:
+				if arg.Pressed == 0 {
+					if selected {
+						f(stw.SelectElem[0], int(arg.X), int(arg.Y))
+						selected = false
+						stw.SelectElem = make([]*st.Elem, 1)
+					} else {
+						if el := stw.PickElem(int(arg.X), int(arg.Y)); el != nil {
+							if condition(el) {
+								stw.SelectElem[0] = el
+								selected = true
+								stw.canv.SetAttribute("CURSOR", "PEN")
+							}
+							stw.Redraw()
+						}
+					}
+				}
+			case BUTTON_CENTER:
+				if arg.Pressed == 0 { // Released
+					stw.Redraw()
+				} else { // Pressed
+					if isDouble(arg.Status) {
+						stw.Frame.SetFocus(nil)
+						stw.DrawFrameNode()
+						stw.ShowCenter()
+					} else {
+						stw.startX = int(arg.X)
+						stw.startY = int(arg.Y)
+					}
+				}
+			case BUTTON_RIGHT:
+				if arg.Pressed == 0 {
+					exitfunc()
+					stw.Snapshot()
+					stw.EscapeAll()
+				}
+			}
+		}
+	})
+	stw.canv.SetCallback(func(arg *iup.MouseMotion) {
+		if stw.Frame != nil {
+			stw.dbuff.UpdateYAxis(&arg.Y)
+			switch statusKey(arg.Status) {
+			case STATUS_CENTER:
+				stw.MoveOrRotate(arg)
+			}
+		}
+	})
+	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+		key := iup.KeyState(arg.Key)
+		switch key.Key() {
+		default:
+			stw.DefaultKeyAny(arg)
+		case KEY_ESCAPE:
+			exitfunc()
+			stw.Snapshot()
+			stw.EscapeAll()
+		}
+	})
+}
+
+// }}}
+
 // MATCHPROP// {{{
 func matchproperty(stw *Window) {
 	get1elem(stw, func(el *st.Elem, x, y int) {
@@ -2046,6 +2119,54 @@ func extend(stw *Window) {
 				}
 			}
 		})
+}
+
+// }}}
+
+// OFFSET// {{{
+func offset(stw *Window) {
+	tmp, err := stw.Query("オフセット距離を指定")
+	if err != nil {
+		stw.errormessage(err, ERROR)
+		stw.EscapeCB()
+		return
+	}
+	val, err := strconv.ParseFloat(tmp, 64)
+	if err != nil {
+		stw.errormessage(err, ERROR)
+		stw.EscapeCB()
+		return
+	}
+	angle := 0.0
+	tmp, err = stw.Query("オフセット方向を指定[°]")
+	if err == nil {
+		a, err := strconv.ParseFloat(tmp, 64)
+		if err == nil {
+			angle = a
+		}
+	}
+	get1side(stw, func(el *st.Elem, x, y int) {
+		if el.IsLineElem() {
+			st0 := make([]float64, 3)
+			mid := el.MidPoint()
+			c := math.Cos(angle)
+			s := math.Sin(angle)
+			for i := 0; i < 3; i++ {
+				st0[i] = mid[i] + el.Strong[i] * c + el.Weak[i] * s
+			}
+			st := el.Frame.View.ProjectCoord(st0)
+			if FDotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], float64(x), float64(y))*FDotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], st[0], st[1]) < 0.0 {
+				el.Offset(-val, angle, EPS)
+			} else {
+				el.Offset(val, angle, EPS)
+			}
+			stw.Redraw()
+		}
+	},
+		func(el *st.Elem) bool {
+			return el.IsLineElem()
+		},
+		func() {})
 }
 
 // }}}
