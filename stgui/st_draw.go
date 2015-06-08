@@ -820,7 +820,8 @@ func DrawKijun(k *st.Kijun, cvs *cd.Canvas, show *st.Show) {
 	default:
 		cvs.TextAlignment(cd.CD_CENTER)
 		cvs.FCircle(k.Pstart[0]-d[0]*show.KijunSize, k.Pstart[1]-d[1]*show.KijunSize, show.KijunSize*2)
-		if k.Name[0] == '_' {
+		if k.Name == "" {
+		} else if k.Name[0] == '_' {
 			cvs.FText(k.Pstart[0]-d[0]*show.KijunSize, k.Pstart[1]-d[1]*show.KijunSize, k.Name[1:])
 		} else {
 			cvs.FText(k.Pstart[0]-d[0]*show.KijunSize, k.Pstart[1]-d[1]*show.KijunSize, k.Name)

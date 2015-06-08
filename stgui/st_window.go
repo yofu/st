@@ -2780,6 +2780,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 			}
 			k.Pstart = stw.Frame.View.ProjectCoord(k.Start)
 			k.Pend = stw.Frame.View.ProjectCoord(k.End)
+			fmt.Println(k.Name, k.Start, k.End)
 			DrawKijun(k, canv, stw.Frame.Show)
 		}
 	}

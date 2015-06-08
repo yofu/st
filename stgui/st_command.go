@@ -23,6 +23,7 @@ var (
 	DISTS               = &Command{"DISTANCE", "DISTS", "measure distance", dists}
 	DEFORMEDDISTS       = &Command{"DEFORMEDDISTANCE", "DEFORMED DISTS", "measure deformed distance", deformeddists}
 	MEASURE             = &Command{"MEASURE", "MEASURE", "create dimension line", measure}
+	KIJUN               = &Command{"KIJUN", "KIJUN", "create kijun line", kijun}
 	TOGGLEBOND          = &Command{"TOGGLE", "TOGGLE BOND", "toggle bond of selected elem", togglebond}
 	COPYBOND            = &Command{"COPY", "COPY BOND", "copy bond of selected elem", copybond}
 	BONDPIN             = &Command{"PIN", "BOND PIN", "set bond of selected elem to pin-pin", bondpin}
@@ -113,6 +114,7 @@ func init() {
 	Commands["DISTS"] = DISTS
 	Commands["DEFORMEDDISTS"] = DEFORMEDDISTS
 	Commands["MEASURE"] = MEASURE
+	Commands["KIJUN"] = KIJUN
 	Commands["TOGGLEBOND"] = TOGGLEBOND
 	Commands["COPYBOND"] = COPYBOND
 	Commands["BONDPIN"] = BONDPIN
@@ -670,6 +672,24 @@ func measure(stw *Window) {
 				createmeasure("V")
 			}
 		})
+	},
+		func() {
+			stw.SelectNode = make([]*st.Node, 2)
+			stw.Redraw()
+		})
+}
+
+func kijun(stw *Window) {
+	get2nodes(stw, func(n *st.Node) {
+		stw.SelectNode[1] = n
+		name, err := stw.Query("基準線名を入力")
+		if err != nil {
+			stw.errormessage(err, ERROR)
+			stw.EscapeAll()
+			return
+		}
+		stw.Frame.AddKijun(name, stw.SelectNode[0].Coord, stw.SelectNode[1].Coord)
+		stw.EscapeAll()
 	},
 		func() {
 			stw.SelectNode = make([]*st.Node, 2)

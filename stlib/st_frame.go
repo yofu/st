@@ -2183,6 +2183,29 @@ func (frame *Frame) ReportZoubunReaction(fn string, ns []*Node, pers []string, d
 
 // }}}
 
+// WriteKjn
+func (frame *Frame) WriteKjn(fn string) error {
+	var otp bytes.Buffer
+	ks := make([]string, len(frame.Kijuns))
+	i := 0
+	for k := range frame.Kijuns {
+		ks[i] = k
+		i++
+	}
+	sort.Strings(ks)
+	for _, k := range ks {
+		otp.WriteString(frame.Kijuns[k].String())
+	}
+	w, err := os.Create(fn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
+	otp = AddCR(otp)
+	otp.WriteTo(w)
+	return nil
+}
+
 func (frame *Frame) Check() ([]*Node, []*Elem, bool) {
 	ok := true
 	ns := make([]*Node, len(frame.Nodes))
@@ -2411,6 +2434,18 @@ func (frame *Frame) AddPlateElem(enum int, ns []*Node, sect *Sect, etype int) (e
 	elem = NewPlateElem(ns, sect, etype)
 	frame.AddElem(enum, elem)
 	return elem
+}
+
+func (frame *Frame) AddKijun(name string, start, end []float64) (*Kijun, error) {
+	if _, exists := frame.Kijuns[name]; exists {
+		return nil, errors.New(fmt.Sprintf("kijun %s already exists", name))
+	}
+	k := NewKijun()
+	k.Name = name
+	k.Start = start
+	k.End = end
+	frame.Kijuns[name] = k
+	return k, nil
 }
 
 func (frame *Frame) AddMeasure(start, end, direction []float64) *Measure {
