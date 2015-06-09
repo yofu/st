@@ -1488,24 +1488,39 @@ func (elem *Elem) OnNode(num int, eps float64) []*Node {
 }
 
 func (elem *Elem) DivideAtOns(eps float64) (rn []*Node, els []*Elem, err error) {
-	if !elem.IsLineElem() {
-		return nil, nil, NotLineElem("DivideAtCoord")
-	}
-	rn = elem.OnNode(0, eps)
-	l := len(rn)
-	if l == 0 {
-		return nil, []*Elem{elem}, nil
-	}
-	els = make([]*Elem, l+1)
-	els[0] = elem
-	for i := l - 1; i >= 0; i-- {
-		_, newels, err := elem.DivideAtNode(rn[i], 1, false)
-		if err != nil {
-			return nil, nil, err
+	if elem.IsLineElem() {
+		rn = elem.OnNode(0, eps)
+		l := len(rn)
+		if l == 0 {
+			return nil, []*Elem{elem}, nil
 		}
-		els[i+1] = newels[1]
+		els = make([]*Elem, l+1)
+		els[0] = elem
+		for i := l - 1; i >= 0; i-- {
+			_, newels, err := elem.DivideAtNode(rn[i], 1, false)
+			if err != nil {
+				return nil, nil, err
+			}
+			els[i+1] = newels[1]
+		}
+		return rn, els, nil
+	} else {
+		if elem.Enods != 4 {
+			return nil, nil, errors.New("DivideAtOns: Enod != 4")
+		}
+		for i:=0; i<2; i++ {
+			rn1 := elem.OnNode(i, eps)
+			rn2 := elem.OnNode(i+2, eps)
+			if len(rn1) != 1 || len(rn2) != 1 {
+				continue
+			}
+			newel := elem.Frame.AddPlateElem(-1, []*Node{rn1[0], elem.Enod[1+i], elem.Enod[2+i], rn2[0]}, elem.Sect, elem.Etype)
+			elem.Enod[1+i] = rn1[0]
+			elem.Enod[2+i] = rn2[0]
+			return []*Node{rn1[0], rn2[0]}, []*Elem{elem, newel}, nil
+		}
+		return nil, nil, errors.New("DivideAtOns: divide pattern is indeterminate")
 	}
-	return
 }
 
 func (elem *Elem) DivideAtElem(eps float64) ([]*Elem, error) {
