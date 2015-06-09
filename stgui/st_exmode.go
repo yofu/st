@@ -21,7 +21,7 @@ import (
 var (
 	exabbrev = []string{
 		"e/dit", "q/uit", "vi/m", "hk/you", "hw/eak", "rp/ipe", "cp/ipe", "tk/you", "ck/you", "pla/te", "fixr/otate", "fixm/ove", "noun/do", "un/do", "w/rite", "sav/e", "inc/rement", "c/heck", "r/ead",
-		"ins/ert", "p/rop/s/ect", "w/rite/o/utput", "w/rite/rea/ction", "w/rite/k/ijun", "nmi/nteraction", "har/dcopy", "fi/g2", "fe/nce", "no/de", "xsc/ale", "ysc/ale", "zsc/ale", "pl/oad", "z/oubun/d/isp", "z/oubun/r/eaction",
+		"ins/ert", "p/rop/s/ect", "w/rite/o/utput", "w/rite/rea/ction", "w/rite/k/ijun", "nmi/nteraction", "w/ei/g/htcopy", "har/dcopy", "fi/g2", "fe/nce", "no/de", "xsc/ale", "ysc/ale", "zsc/ale", "pl/oad", "z/oubun/d/isp", "z/oubun/r/eaction",
 		"fac/ts", "go/han/l/st", "el/em", "ave/rage", "bo/nd", "ax/is/2//c/ang", "resul/tant", "prest/ress", "therm/al", "div/ide", "e/lem/dup/lication", "i/ntersect/a/ll", "co/nf",
 		"pi/le", "sec/tion", "c/urrent/v/alue", "an/alysis", "f/ilter", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "sec/tion/+/", "col/or", "ex/tractarclm", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
 	}
@@ -734,6 +734,33 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		err = stw.Frame.ReportZoubunReaction(fn, stw.SelectNode, pers, d)
 		if err != nil {
 			return err
+		}
+	case "weightcopy":
+		if usage {
+			return st.Usage(":weightcopy {-si}")
+		}
+		wgt := filepath.Join(stw.Home, "hogtxt.wgt")
+		if fn == "" {
+			fn = st.Ce(stw.Frame.Path, ".wgt")
+		}
+		si := false
+		if _, ok := argdict["SI"]; ok {
+			si = true
+			ext := filepath.Ext(fn)
+			fn = fmt.Sprintf("%ssi%s", st.PruneExt(fn), ext)
+		}
+		if !bang && st.FileExists(fn) {
+			return errors.New(":weightcopy file already exists")
+		}
+		err := st.CopyFile(wgt, fn)
+		if err != nil {
+			return err
+		}
+		if !si {
+			err = stw.Frame.ReadWgt(fn)
+			if err != nil {
+				return err
+			}
 		}
 	case "hardcopy":
 		if usage {
