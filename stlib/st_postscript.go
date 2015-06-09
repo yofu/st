@@ -40,6 +40,9 @@ func (frame *Frame) PostScript(cvs *ps.Canvas) {
 		}
 	}
 	for _, el := range frame.Elems {
+		if el.IsHidden(frame.Show) {
+			continue
+		}
 		el.PostScript(cvs, frame.Show)
 	}
 }
