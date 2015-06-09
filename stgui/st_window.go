@@ -2219,17 +2219,17 @@ func (stw *Window) ShowLogo(t time.Duration) {
 	w, h := stw.dbuff.GetSize()
 	STLOGO.Position = []float64{float64(w) * 0.5, float64(h) * 0.5}
 	STLOGO.Hide = false
-	go func() {
-	logo:
-		for {
-			select {
-			case <-time.After(t):
-				stw.HideLogo()
-				stw.Redraw()
-				break logo
-			}
-		}
-	}()
+	// go func() {
+	// logo:
+	// 	for {
+	// 		select {
+	// 		case <-time.After(t):
+	// 			stw.HideLogo()
+	// 			stw.Redraw()
+	// 			break logo
+	// 		}
+	// 	}
+	// }()
 }
 
 func (stw *Window) HideLogo() {
