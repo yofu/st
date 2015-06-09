@@ -1,6 +1,7 @@
 package st
 
 import (
+	"errors"
 	"fmt"
 	"math"
 )
@@ -135,4 +136,18 @@ func (k *Kijun) Distance(k2 *Kijun) float64 {
 		rtn += val2 - val2*d[i]*d[i]
 	}
 	return math.Sqrt(rtn)
+}
+
+func (k *Kijun) Contains(coord, vector []float64, min, max float64) (bool, error) {
+	if len(coord) != 3 || len(vector) != 3 {
+		return false, errors.New("size error")
+	}
+	v := Cross(k.Direction(), Normalize(vector))
+	s := make([]float64, 3)
+	dist := 0.0
+	for i:=0; i<3; i++ {
+		s[i] = coord[i] - k.Start[i]
+		dist += s[i] * v[i]
+	}
+	return min <= dist && dist <= max, nil
 }

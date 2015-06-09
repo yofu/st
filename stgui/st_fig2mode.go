@@ -84,14 +84,37 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 	switch key {
 	default:
 		if k, ok := stw.Frame.Kijuns[key]; ok {
-			d := k.Direction()
-			var axis int
-			if st.IsParallel(d, st.XAXIS, 1e-4) {
-				axis = 1
-			} else if st.IsParallel(d, st.YAXIS, 1e-4) {
-				axis = 0
+			min := -EPS
+			max := EPS
+			if len(lis) >= 2 {
+				tmp, err := strconv.ParseFloat(lis[1], 64)
+				if err == nil {
+					min = tmp
+				}
 			}
-			axisrange(stw, axis, k.Start[axis], k.Start[axis], false)
+			if len(lis) >= 3 {
+				tmp, err := strconv.ParseFloat(lis[2], 64)
+				if err == nil {
+					max = tmp
+				}
+			}
+			d := k.Direction()
+			if st.IsParallel(d, st.XAXIS, EPS) {
+				axisrange(stw, 1, k.Start[1] + min, k.Start[1] + max, false)
+			} else if st.IsParallel(d, st.YAXIS, EPS) {
+				axisrange(stw, 0, k.Start[0] + min, k.Start[0] + max, false)
+			} else {
+				for _, n := range stw.Frame.Nodes {
+					n.Hide()
+					ok, err := k.Contains(n.Coord, st.ZAXIS, min, max)
+					if err != nil {
+						continue
+					}
+					if ok {
+						n.Show()
+					}
+				}
+			}
 			return nil
 		}
 		stw.errormessage(errors.New(fmt.Sprintf("no fig2 keyword: %s", key)), INFO)
