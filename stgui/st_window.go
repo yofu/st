@@ -8,6 +8,7 @@ import (
 	"github.com/atotto/clipboard"
 	"github.com/visualfc/go-iup/cd"
 	"github.com/visualfc/go-iup/iup"
+	"github.com/yofu/abbrev"
 	"github.com/yofu/st/stlib"
 	"github.com/yofu/st/stsvg"
 	"gopkg.in/fsnotify.v1"
@@ -846,16 +847,25 @@ func NewWindow(homedir string) *Window { // {{{
 				stw.cline.SetAttribute("VALUE", "")
 				iup.SetFocus(stw.canv)
 			case KEY_TAB:
-				tmp := stw.cline.GetAttribute("VALUE")
+				lis := strings.Split(stw.cline.GetAttribute("VALUE"), " ")
+				tmp := lis[len(lis)-1]
 				if prevkey == KEY_TAB {
 					if key.IsShift() {
-						stw.cline.SetAttribute("VALUE", PrevComplete(tmp))
+						lis[len(lis)-1] = PrevComplete(tmp)
 					} else {
-						stw.cline.SetAttribute("VALUE", NextComplete(tmp))
+						lis[len(lis)-1] = NextComplete(tmp)
 					}
 				} else {
-					stw.cline.SetAttribute("VALUE", stw.Complete(tmp))
+					switch {
+					case strings.HasPrefix(tmp, ":"):
+						lis[len(lis)-1] = stw.CompleteExcommand(tmp)
+					case strings.HasPrefix(tmp, "'"):
+						lis[len(lis)-1] = stw.CompleteFig2Keyword(tmp)
+					default:
+						lis[len(lis)-1] = stw.CompleteFileName(tmp)
+					}
 				}
+				stw.cline.SetAttribute("VALUE", strings.Join(lis, " "))
 				stw.cline.SetAttribute("CARETPOS", "100")
 				arg.Return = int32(iup.IGNORE)
 			case KEY_UPARROW:
@@ -889,6 +899,16 @@ func NewWindow(homedir string) *Window { // {{{
 						u = ""
 					}
 					stw.cline.SetAttribute("VALUE", fmt.Sprintf(":%s%s%s ", c, b, u))
+					stw.cline.SetAttribute("CARETPOS", "100")
+				} else if strings.HasPrefix(val, "'") {
+					c, usage := fig2keywordcomplete(val)
+					var u string
+					if usage {
+						u = "?"
+					} else {
+						u = ""
+					}
+					stw.cline.SetAttribute("VALUE", fmt.Sprintf("'%s%s ", c, u))
 					stw.cline.SetAttribute("CARETPOS", "100")
 				} else {
 					stw.cline.SetAttribute("INSERT", " ")
@@ -2560,7 +2580,7 @@ func (stw *Window) execAliasCommand(al string) {
 	return
 }
 
-func (stw *Window) Complete(str string) string {
+func (stw *Window) CompleteFileName(str string) string {
 	envval := regexp.MustCompile("[$]([a-zA-Z]+)")
 	if envval.MatchString(str) {
 		efs := envval.FindStringSubmatch(str)
@@ -2636,6 +2656,46 @@ func (stw *Window) Complete(str string) string {
 		str = completes[0]
 	}
 	return str
+}
+
+func (stw *Window) CompleteExcommand(str string) string {
+	i := 0
+	rtn := make([]string, len(exabbrev))
+	for _, ab := range exabbrev {
+		pat := abbrev.MustCompile(ab)
+		l := fmt.Sprintf(":%s", pat.Longest())
+		if strings.HasPrefix(l, str) {
+			rtn[i] = l
+			i++
+		}
+	}
+	completepos = 0
+	completes = rtn[:i]
+	if i > 0 {
+		return completes[0]
+	} else {
+		return str
+	}
+}
+
+func (stw *Window) CompleteFig2Keyword(str string) string {
+	i := 0
+	rtn := make([]string, len(fig2abbrev))
+	for _, ab := range fig2abbrev {
+		pat := abbrev.MustCompile(ab)
+		l := fmt.Sprintf("'%s", pat.Longest())
+		if strings.HasPrefix(l, str) {
+			rtn[i] = l
+			i++
+		}
+	}
+	completepos = 0
+	completes = rtn[:i]
+	if i > 0 {
+		return completes[0]
+	} else {
+		return str
+	}
 }
 
 func PrevComplete(str string) string {
@@ -4858,8 +4918,17 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		if key.IsCtrl() {
 			stw.NextSideBarTab()
 		} else {
-			tmp := stw.cline.GetAttribute("VALUE")
-			stw.cline.SetAttribute("VALUE", stw.Complete(tmp))
+			lis := strings.Split(stw.cline.GetAttribute("VALUE"), " ")
+			tmp := lis[len(lis)-1]
+			switch {
+			case strings.HasPrefix(tmp, ":"):
+				lis[len(lis)-1] = stw.CompleteExcommand(tmp)
+			case strings.HasPrefix(tmp, "'"):
+				lis[len(lis)-1] = stw.CompleteFig2Keyword(tmp)
+			default:
+				lis[len(lis)-1] = stw.CompleteFileName(tmp)
+			}
+			stw.cline.SetAttribute("VALUE", strings.Join(lis, " "))
 			stw.cline.SetAttribute("CARETPOS", "100")
 		}
 	case KEY_UPARROW:

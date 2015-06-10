@@ -127,7 +127,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 	if narg < 2 {
 		fn = ""
 	} else {
-		fn = stw.Complete(args[1])
+		fn = stw.CompleteFileName(args[1])
 		if filepath.Dir(fn) == "." {
 			fn = filepath.Join(stw.Cwd, fn)
 		}
@@ -552,7 +552,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 			return nil
 		}
-		fn = stw.Complete(args[2])
+		fn = stw.CompleteFileName(args[2])
 		if filepath.Dir(fn) == "." {
 			fn = filepath.Join(stw.Cwd, fn)
 		}
