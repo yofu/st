@@ -4976,7 +4976,16 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", pos))
 	case 'N':
 		if key.IsCtrl() {
-			stw.New()
+			if stw.Frame != nil {
+				if strings.Contains(stw.Frame.Show.Period, "-") {
+					stw.SetPeriod(strings.Replace(stw.Frame.Show.Period, "-", "+", -1))
+					stw.Redraw()
+				} else if strings.Contains(stw.Frame.Show.Period, "+") {
+					stw.SetPeriod(strings.Replace(stw.Frame.Show.Period, "+", "-", -1))
+					stw.Redraw()
+				}
+			}
+			// stw.New()
 		}
 	case 'O':
 		if key.IsCtrl() {
