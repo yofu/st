@@ -3102,7 +3102,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		return st.Message(m.String())
 	case "arclm201":
 		if usage {
-			return st.Usage(":arclm201 {-period=name} {-lap=nlap} {-safety=val} {-start=val} {-noinit} filename")
+			return st.Usage(":arclm201 {-period=name} {-lap=nlap} {-safety=val} {-max=val} {-start=val} {-noinit} filename")
 		}
 		var otp string
 		if fn == "" {
@@ -3134,6 +3134,13 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				start = tmp
 			}
 		}
+		max := 1.0
+		if s, ok := argdict["MAX"]; ok {
+			tmp, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				max = tmp
+			}
+		}
 		per := "L"
 		if p, ok := argdict["PERIOD"]; ok {
 			if p != "" {
@@ -3143,7 +3150,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		var m bytes.Buffer
 		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
 		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
-		m.WriteString(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f", lap, safety, start))
+		m.WriteString(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f, MAX: %.3f", lap, safety, start, max))
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
@@ -3151,7 +3158,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		af := stw.Frame.Arclms[per]
 		go func() {
-			err := af.Arclm201(otp, init, lap, safety, start)
+			err := af.Arclm201(otp, init, lap, safety, start, max)
 			af.Endch <- err
 		}()
 		stw.CurrentLap("Calculating...", 0, lap)

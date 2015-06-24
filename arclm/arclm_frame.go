@@ -606,7 +606,7 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 	return nil
 }
 
-func (frame *Frame) Arclm201(otp string, init bool, nlap int, dsafety, safety float64) error { // TODO: speed up
+func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max float64) error { // TODO: speed up
 	if init {
 		frame.Initialise()
 	}
@@ -622,10 +622,11 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, dsafety, safety fl
 	var bnorm, rnorm float64
 	var csize int
 	var conf []bool
+	safety := min
 	for lap := 0; lap < nlap; lap++ {
-		safety += dsafety
-		if safety > 1.0 {
-			safety = 1.0
+		safety += delta
+		if safety > max {
+			safety = max
 		}
 		if init && lap == 0 { // K = KE
 			gmtx, gvct, err = frame.KE(safety)
