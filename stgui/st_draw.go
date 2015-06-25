@@ -691,6 +691,10 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 	}
 }
 
+func DrawElemLine(elem *st.Elem, cvs *cd.Canvas) {
+	cvs.FLine(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1], elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
+}
+
 func DrawWrect(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 	cvs.LineStyle(cd.CD_DOTTED)
 	wrns := make([][]float64, 4)

@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -3023,6 +3024,7 @@ func (stw *Window) DrawRange(canv *cd.Canvas, view *st.View) {
 	if stw.Frame == nil {
 		return
 	}
+	canv.Foreground(cd.CD_DARK_GREEN)
 	view.Set(0)
 	mins := make([]float64, 3)
 	maxs := make([]float64, 3)
@@ -3172,6 +3174,31 @@ func (stw *Window) DrawFrameNode() {
 			}
 		}
 		DrawNode(n, stw.dbuff, stw.Frame.Show)
+	}
+	if !stw.Frame.Show.Select {
+		stw.dbuff.LineStyle(cd.CD_CONTINUOUS)
+		stw.dbuff.Hatch(cd.CD_FDIAGONAL)
+		stw.dbuff.Foreground(cd.CD_DARK_GREEN)
+		var wg sync.WaitGroup
+		var m sync.Mutex
+		for _, elem := range stw.Frame.Elems {
+			wg.Add(1)
+			go func(el *st.Elem) {
+				defer wg.Done()
+				if el.Etype >= st.WBRACE || el.Etype < st.COLUMN {
+					return
+				}
+				for _, j := range stw.SelectElem {
+					if j == el {
+						return
+					}
+				}
+				m.Lock()
+				DrawElemLine(el, stw.dbuff)
+				m.Unlock()
+			}(elem)
+		}
+		wg.Wait()
 	}
 	if len(stw.SelectElem) > 0 && stw.SelectElem[0] != nil {
 		nomv := stw.Frame.Show.NoMomentValue
