@@ -794,3 +794,48 @@ func (elem *Elem) OutputStress() string {
 	}
 	return otp.String()
 }
+
+func (elem *Elem) StainEnergy(gdisp []float64) (float64, error) {
+	tmatrix, err := elem.TransMatrix()
+	if err != nil {
+		return 0.0, err
+	}
+	estiff, err := elem.StiffMatrix()
+	if err != nil {
+		return 0.0, err
+	}
+	estiff, err = elem.ModifyHinge(estiff)
+	if err != nil {
+		return 0.0, err
+	}
+	edisp := matrix.MatrixVector(tmatrix, gdisp)
+	estress := matrix.MatrixVector(estiff, edisp)
+	return Dot(edisp, estress, 12), nil
+}
+
+func (elem *Elem) BucklingEnergy(gdisp []float64) (float64, error) {
+	tmatrix, err := elem.TransMatrix()
+	if err != nil {
+		return 0.0, err
+	}
+	estiff, err := elem.StiffMatrix()
+	if err != nil {
+		return 0.0, err
+	}
+	gstiff, err := elem.GeoStiffMatrix()
+	if err != nil {
+		return 0.0, err
+	}
+	estiff, err = elem.ModifyHinge(estiff)
+	if err != nil {
+		return 0.0, err
+	}
+	gstiff, err = elem.ModifyHinge(gstiff)
+	if err != nil {
+		return 0.0, err
+	}
+	edisp := matrix.MatrixVector(tmatrix, gdisp)
+	estress := matrix.MatrixVector(estiff, edisp)
+	gstress := matrix.MatrixVector(gstiff, edisp)
+	return Dot(edisp, estress, 12) - Dot(edisp, gstress, 12), nil
+}
