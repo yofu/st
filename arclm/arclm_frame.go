@@ -523,7 +523,7 @@ func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, e
 	case LLS:
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, err = mtx.Solve(vecs...)
+		answers, _, _, _, err = mtx.Solve(vecs...)
 		if err != nil {
 			return err
 		}
@@ -610,7 +610,7 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, err = mtx.Solve(vec)
+		answers, _, _, _, err = mtx.Solve(vec)
 		if err != nil {
 			return err
 		}
@@ -642,10 +642,10 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 	if init {
 		frame.Initialise()
 	}
-	start := time.Now()
+	// start := time.Now()
 	laptime := func(message string) {
-		end := time.Now()
-		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+		// end := time.Now()
+		// fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
 	var err error
 	var answers [][]float64
@@ -655,6 +655,7 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 	var csize int
 	var conf []bool
 	var eotp bytes.Buffer
+	var npos, np, nz, nn int
 	safety := min
 	for lap := 0; lap < nlap; lap++ {
 		safety += delta
@@ -684,9 +685,19 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, err = mtx.Solve(vec)
+		answers, np, nz, nn, err = mtx.Solve(vec)
 		if err != nil {
 			return err
+		}
+		if lap == 0 {
+			npos = np
+			fmt.Printf("sylvester's law of inertia: LAP %d %d -> %d (%d %d)\n", lap, npos, np, nz, nn)
+		} else {
+			if npos != np {
+				fmt.Printf("sylvester's law of inertia: LAP %d %d -> %d (%d %d)\n", lap, npos, np, nz, nn)
+				npos = np
+				// return errors.New(fmt.Sprintf("sylvester's law of inertia: %d -> %d", npos, np))
+			}
 		}
 		laptime("Solve")
 		tmp := frame.FillConf(answers[0])
@@ -833,7 +844,7 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, err = mtx.Solve(vec)
+		answers, _, _, _, err = mtx.Solve(vec)
 		if err != nil {
 			return err
 		}

@@ -951,6 +951,21 @@ func (ll *LLSMatrix) LDLT() (*LLSMatrix, error) {
 	return ll, nil
 }
 
+func (ll *LLSMatrix) Sylvester() (int, int, int) {
+	var npos, nzero, nneg int
+	for col := 0; col < ll.Size; col++ {
+		val := ll.diag[col].value
+		if val > 0.0 {
+			npos++
+		} else if val == 0.0 {
+			nzero++
+		} else {
+			nneg++
+		}
+	}
+	return npos, nzero, nneg
+}
+
 func (ll *LLSMatrix) ILDLT() *LLSMatrix {
 	var n *LLSNode
 	size := ll.Size
@@ -1049,12 +1064,13 @@ func (ll *LLSMatrix) BSUpper(vec []float64) []float64 {
 	return vec
 }
 
-func (ll *LLSMatrix) Solve(vecs ...[]float64) ([][]float64, error) {
+func (ll *LLSMatrix) Solve(vecs ...[]float64) ([][]float64, int, int, int, error) {
 	size := ll.Size
 	C, err := ll.LDLT()
 	if err != nil {
-		return nil, err
+		return nil, 0, 0, 0, err
 	}
+	npos, nzero, nneg := C.Sylvester()
 	rtn := make([][]float64, len(vecs))
 	C.DiagUp()
 	for v, vec := range vecs {
@@ -1068,7 +1084,7 @@ func (ll *LLSMatrix) Solve(vecs ...[]float64) ([][]float64, error) {
 		}
 		rtn[v] = C.BSUpper(tmp)
 	}
-	return rtn, nil
+	return rtn, npos, nzero, nneg, nil
 }
 
 func (ll *LLSMatrix) MulV(vec []float64) []float64 {
