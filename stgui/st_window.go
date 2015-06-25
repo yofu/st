@@ -147,7 +147,7 @@ var (
 	RangeViewDists          = []float64{1000.0, 3000.0}
 	RangeViewAngle          = []float64{20.0, 225.0}
 	RangeViewCenter         = []float64{100.0, 100.0}
-	dataareaheight          = 200
+	dataareaheight          = 150
 )
 
 var (
@@ -1660,7 +1660,7 @@ func (stw *Window) OpenFile(filename string, readrcfile bool) error {
 			}
 		}
 	}
-	stw.Frame.Show.LegendPosition[0] = int(stw.CanvasSize[0]) - 500
+	stw.Frame.Show.LegendPosition[0] = int(stw.CanvasSize[0]) - 100
 	stw.Frame.Show.LegendPosition[1] = dataareaheight - int(float64((len(st.RainbowColor)+1)*stw.Frame.Show.LegendSize)*stw.Frame.Show.LegendLineSep)
 	openstr := fmt.Sprintf("OPEN: %s", fn)
 	stw.addHistory(openstr)
@@ -3612,7 +3612,7 @@ func (stw *Window) SectionData(sec *st.Sect) {
 	} else {
 		tb = NewTextBox()
 		tb.Hide = false
-		tb.Position = []float64{stw.CanvasSize[0] - 400.0, float64(dataareaheight)}
+		tb.Position = []float64{stw.CanvasSize[0] - 500.0, float64(dataareaheight)}
 		stw.TextBox["SECTION"] = tb
 	}
 	tb.SetText(strings.Split(sec.InpString(), "\n"))
