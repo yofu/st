@@ -2148,14 +2148,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				return nil
 			}
 			if t, tok := stw.TextBox["SECTION"]; tok {
-				t.Value = make([]string, 0)
+				t.Clear()
 			}
 			return nil
 		}
 		switch {
 		case strings.EqualFold(args[1], "off"):
 			if t, tok := stw.TextBox["SECTION"]; tok {
-				t.Value = make([]string, 0)
+				t.Clear()
 			}
 			return nil
 		case strings.EqualFold(args[1], "curtain"):

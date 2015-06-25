@@ -147,11 +147,12 @@ var (
 	RangeViewDists          = []float64{1000.0, 3000.0}
 	RangeViewAngle          = []float64{20.0, 225.0}
 	RangeViewCenter         = []float64{100.0, 100.0}
+	dataareaheight          = 200
 )
 
 var (
 	STLOGO = &TextBox{
-		Value:    []string{"         software", "     forstructural", "   analysisthename", "  ofwhichstandsfor", "", " sigmatau  stress", "structure  steel", "andsometh  ing", " likethat"},
+		value:    []string{"         software", "     forstructural", "   analysisthename", "  ofwhichstandsfor", "", " sigmatau  stress", "structure  steel", "andsometh  ing", " likethat"},
 		Position: []float64{100.0, 100.0},
 		Angle:    0.0,
 		Font:     NewFont(),
@@ -273,9 +274,6 @@ type Window struct { // {{{
 	SelectNode []*st.Node
 	SelectElem []*st.Elem
 
-	PageTitle *TextBox
-	Title     *TextBox
-	Text      *TextBox
 	TextBox   map[string]*TextBox
 
 	papersize uint
@@ -1216,14 +1214,14 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.CanvasSize = []float64{float64(w), float64(h)}
 	stw.dbuff.TextAlignment(DefaultTextAlignment)
 	stw.papersize = A4_TATE
-	stw.PageTitle = NewTextBox()
-	stw.PageTitle.Font.Size = 16
-	stw.PageTitle.Position = []float64{30.0, stw.CanvasSize[1] - 30.0}
-	stw.Title = NewTextBox()
-	stw.Title.Position = []float64{30.0, stw.CanvasSize[1] - 80.0}
-	stw.Text = NewTextBox()
-	stw.Text.Position = []float64{120.0, 65.0}
 	stw.TextBox = make(map[string]*TextBox, 0)
+	stw.TextBox["PAGETITLE"] = NewTextBox()
+	stw.TextBox["PAGETITLE"].Font.Size = 16
+	stw.TextBox["PAGETITLE"].Position = []float64{30.0, stw.CanvasSize[1] - 30.0}
+	stw.TextBox["TITLE"] = NewTextBox()
+	stw.TextBox["TITLE"].Position = []float64{30.0, stw.CanvasSize[1] - 80.0}
+	stw.TextBox["TEXT"] = NewTextBox()
+	stw.TextBox["TEXT"].Position = []float64{120.0, 65.0}
 	iup.SetHandle("mainwindow", stw.Dlg)
 	stw.EscapeAll()
 	stw.Changed = false
@@ -1662,6 +1660,8 @@ func (stw *Window) OpenFile(filename string, readrcfile bool) error {
 			}
 		}
 	}
+	stw.Frame.Show.LegendPosition[0] = int(stw.CanvasSize[0]) - 500
+	stw.Frame.Show.LegendPosition[1] = dataareaheight - int(float64((len(st.RainbowColor)+1)*stw.Frame.Show.LegendSize)*stw.Frame.Show.LegendLineSep)
 	openstr := fmt.Sprintf("OPEN: %s", fn)
 	stw.addHistory(openstr)
 	stw.Dlg.SetAttribute("TITLE", stw.Frame.Name)
@@ -1963,9 +1963,9 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 		m.ArrowSize = 75.0
 	}
 	for i := 0; i < 2; i++ {
-		stw.PageTitle.Position[i] *= factor
-		stw.Title.Position[i] *= factor
-		stw.Text.Position[i] *= factor
+		stw.TextBox["PAGETITLE"].Position[i] *= factor
+		stw.TextBox["TITLE"].Position[i] *= factor
+		stw.TextBox["TEXT"].Position[i] *= factor
 	}
 	for _, t := range stw.TextBox {
 		for i := 0; i < 2; i++ {
@@ -2033,9 +2033,9 @@ func (stw *Window) Print() {
 	}
 	stw.Frame.View = v
 	for i := 0; i < 2; i++ {
-		stw.PageTitle.Position[i] /= factor
-		stw.Title.Position[i] /= factor
-		stw.Text.Position[i] /= factor
+		stw.TextBox["PAGETITLE"].Position[i] /= factor
+		stw.TextBox["TITLE"].Position[i] /= factor
+		stw.TextBox["TEXT"].Position[i] /= factor
 	}
 	for _, t := range stw.TextBox {
 		for i := 0; i < 2; i++ {
@@ -3120,36 +3120,6 @@ func (stw *Window) DrawRange(canv *cd.Canvas, view *st.View) {
 }
 
 func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
-	if !stw.PageTitle.Hide {
-		if black {
-			col := stw.PageTitle.Font.Color
-			stw.PageTitle.Font.Color = cd.CD_BLACK
-			DrawText(stw.PageTitle, canv)
-			stw.PageTitle.Font.Color = col
-		} else {
-			DrawText(stw.PageTitle, canv)
-		}
-	}
-	if !stw.Title.Hide {
-		if black {
-			col := stw.Title.Font.Color
-			stw.Title.Font.Color = cd.CD_BLACK
-			DrawText(stw.Title, canv)
-			stw.Title.Font.Color = col
-		} else {
-			DrawText(stw.Title, canv)
-		}
-	}
-	if !stw.Text.Hide {
-		if black {
-			col := stw.Text.Font.Color
-			stw.Text.Font.Color = cd.CD_BLACK
-			DrawText(stw.Text, canv)
-			stw.Text.Font.Color = col
-		} else {
-			DrawText(stw.Text, canv)
-		}
-	}
 	for _, t := range stw.TextBox {
 		if !t.Hide {
 			if black {
@@ -3632,7 +3602,7 @@ func (stw *Window) ShapeData(sh st.Shape) {
 	otp.WriteString(fmt.Sprintf("J   = %10.4f [cm4]\n", sh.J()))
 	otp.WriteString(fmt.Sprintf("Zx  = %10.4f [cm3]\n", sh.Zx()))
 	otp.WriteString(fmt.Sprintf("Zy  = %10.4f [cm3]\n", sh.Zy()))
-	tb.Value = strings.Split(otp.String(), "\n")
+	tb.SetText(strings.Split(otp.String(), "\n"))
 }
 
 func (stw *Window) SectionData(sec *st.Sect) {
@@ -3642,12 +3612,12 @@ func (stw *Window) SectionData(sec *st.Sect) {
 	} else {
 		tb = NewTextBox()
 		tb.Hide = false
-		tb.Position = []float64{stw.CanvasSize[0] - 400.0, stw.CanvasSize[1] - 30.0}
+		tb.Position = []float64{stw.CanvasSize[0] - 400.0, float64(dataareaheight)}
 		stw.TextBox["SECTION"] = tb
 	}
-	tb.Value = strings.Split(sec.InpString(), "\n")
+	tb.SetText(strings.Split(sec.InpString(), "\n"))
 	if al, ok := stw.Frame.Allows[sec.Num]; ok {
-		tb.Value = append(tb.Value, strings.Split(al.String(), "\n")...)
+		tb.AddText(strings.Split(al.String(), "\n")...)
 	}
 }
 
@@ -3662,9 +3632,9 @@ func (stw *Window) CurrentLap(comment string, nlap, laps int) {
 		stw.TextBox["LAP"] = tb
 	}
 	if comment == "" {
-		tb.Value = []string{fmt.Sprintf("LAP: %3d / %3d", nlap, laps)}
+		tb.SetText([]string{fmt.Sprintf("LAP: %3d / %3d", nlap, laps)})
 	} else {
-		tb.Value = []string{comment, fmt.Sprintf("LAP: %3d / %3d", nlap, laps)}
+		tb.SetText([]string{comment, fmt.Sprintf("LAP: %3d / %3d", nlap, laps)})
 	}
 }
 
@@ -4838,11 +4808,22 @@ func (stw *Window) CB_CanvasWheel() {
 	stw.canv.SetCallback(func(arg *iup.CanvasWheel) {
 		if stw.Frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
-			val := math.Pow(2.0, float64(arg.Delta)/CanvasScaleSpeed)
 			x := arg.X
 			if x > 65535 {
 				x -= 65535
 			}
+			for _, tb := range stw.TextBox {
+				if tb.Contains(float64(x), float64(arg.Y)) {
+					if arg.Delta >= 0 {
+						tb.ScrollUp(1)
+					} else {
+						tb.ScrollDown(1)
+					}
+					stw.Redraw()
+					return
+				}
+			}
+			val := math.Pow(2.0, float64(arg.Delta)/CanvasScaleSpeed)
 			var v *st.View
 			if isAlt(arg.Status) {
 				v = RangeView

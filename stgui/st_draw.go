@@ -895,7 +895,7 @@ func DrawText(t *TextBox, cvs *cd.Canvas) {
 	s := cvs.SaveState()
 	cvs.Font(t.Font.Face, cd.CD_PLAIN, t.Font.Size)
 	cvs.Foreground(t.Font.Color)
-	for i, txt := range t.Value {
+	for i, txt := range t.Text() {
 		xpos := t.Position[0]
 		ypos := t.Position[1] - float64(i*t.Font.Size)*1.5 - float64(t.Font.Size)
 		cvs.FText(xpos, ypos, txt)

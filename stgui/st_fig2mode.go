@@ -1013,27 +1013,27 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		stw.SetColorMode(st.ECOLOR_N)
 	case "pagetitle":
 		if un {
-			stw.PageTitle.Value = make([]string, 0)
-			stw.PageTitle.Hide = true
+			stw.TextBox["PAGETITLE"].Clear()
+			stw.TextBox["PAGETITLE"].Hide = true
 		} else {
-			stw.PageTitle.Value = append(stw.PageTitle.Value, st.ToUtf8string(strings.Join(lis[1:], " ")))
-			stw.PageTitle.Hide = false
+			stw.TextBox["PAGETITLE"].AddText(st.ToUtf8string(strings.Join(lis[1:], " ")))
+			stw.TextBox["PAGETITLE"].Hide = false
 		}
 	case "title":
 		if un {
-			stw.Title.Value = make([]string, 0)
-			stw.Title.Hide = true
+			stw.TextBox["TITLE"].Clear()
+			stw.TextBox["TITLE"].Hide = true
 		} else {
-			stw.Title.Value = append(stw.Title.Value, st.ToUtf8string(strings.Join(lis[1:], " ")))
-			stw.Title.Hide = false
+			stw.TextBox["TITLE"].AddText(st.ToUtf8string(strings.Join(lis[1:], " ")))
+			stw.TextBox["TITLE"].Hide = false
 		}
 	case "text":
 		if un {
-			stw.Text.Value = make([]string, 0)
-			stw.Text.Hide = true
+			stw.TextBox["TEXT"].Clear()
+			stw.TextBox["TEXT"].Hide = true
 		} else {
-			stw.Text.Value = append(stw.Text.Value, st.ToUtf8string(strings.Join(lis[1:], " ")))
-			stw.Text.Hide = false
+			stw.TextBox["TEXT"].AddText(st.ToUtf8string(strings.Join(lis[1:], " ")))
+			stw.TextBox["TEXT"].Hide = false
 		}
 	case "position":
 		if len(lis) < 4 {
@@ -1049,14 +1049,14 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		}
 		switch strings.ToUpper(lis[1]) {
 		case "PAGETITLE":
-			stw.PageTitle.Position[0] = xpos
-			stw.PageTitle.Position[1] = ypos
+			stw.TextBox["PAGETITLE"].Position[0] = xpos
+			stw.TextBox["PAGETITLE"].Position[1] = ypos
 		case "TITLE":
-			stw.Title.Position[0] = xpos
-			stw.Title.Position[1] = ypos
+			stw.TextBox["TITLE"].Position[0] = xpos
+			stw.TextBox["TITLE"].Position[1] = ypos
 		case "TEXT":
-			stw.Text.Position[0] = xpos
-			stw.Text.Position[1] = ypos
+			stw.TextBox["TEXT"].Position[0] = xpos
+			stw.TextBox["TEXT"].Position[1] = ypos
 		case "LEGEND":
 			stw.Frame.Show.LegendPosition[0] = int(xpos)
 			stw.Frame.Show.LegendPosition[1] = int(ypos)

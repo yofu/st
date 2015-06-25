@@ -10,7 +10,7 @@ import (
 
 const (
 	version  = "0.1.0"
-	modified = "LAST CHANGE:02-Apr-2015."
+	modified = "LAST CHANGE:25-Jun-2015."
 	HOME     = "C:/D/CDOCS/Hogan/Debug"
 	HOGAN    = "C:/D/CDOCS/Hogan/Debug"
 )
