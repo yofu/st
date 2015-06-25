@@ -2,6 +2,7 @@ package matrix
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -886,11 +887,14 @@ func (ll *LLSMatrix) Add(row, col int, val float64) float64 {
 	}
 }
 
-func (ll *LLSMatrix) LDLT() *LLSMatrix {
+func (ll *LLSMatrix) LDLT() (*LLSMatrix, error) {
 	var n *LLSNode
 	size := ll.Size
 	for col := 0; col < size; col++ {
 		n = ll.diag[col]
+		if n.value == 0.0 {
+			return nil, errors.New(fmt.Sprintf("matrix singular: %d", col))
+		}
 		w := 1.0 / n.value
 		for {
 			n = n.down
@@ -944,7 +948,7 @@ func (ll *LLSMatrix) LDLT() *LLSMatrix {
 			}
 		}
 	}
-	return ll
+	return ll, nil
 }
 
 func (ll *LLSMatrix) ILDLT() *LLSMatrix {
@@ -1045,9 +1049,12 @@ func (ll *LLSMatrix) BSUpper(vec []float64) []float64 {
 	return vec
 }
 
-func (ll *LLSMatrix) Solve(vecs ...[]float64) [][]float64 {
+func (ll *LLSMatrix) Solve(vecs ...[]float64) ([][]float64, error) {
 	size := ll.Size
-	C := ll.LDLT()
+	C, err := ll.LDLT()
+	if err != nil {
+		return nil, err
+	}
 	rtn := make([][]float64, len(vecs))
 	C.DiagUp()
 	for v, vec := range vecs {
@@ -1061,7 +1068,7 @@ func (ll *LLSMatrix) Solve(vecs ...[]float64) [][]float64 {
 		}
 		rtn[v] = C.BSUpper(tmp)
 	}
-	return rtn
+	return rtn, nil
 }
 
 func (ll *LLSMatrix) MulV(vec []float64) []float64 {

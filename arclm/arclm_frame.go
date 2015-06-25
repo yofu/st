@@ -523,7 +523,10 @@ func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, e
 	case LLS:
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers = mtx.Solve(vecs...)
+		answers, err = mtx.Solve(vecs...)
+		if err != nil {
+			return err
+		}
 		laptime("Solve")
 	case LLS_CG:
 		mtx := gmtx.ToLLS(csize, conf)
@@ -607,7 +610,10 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers = mtx.Solve(vec)
+		answers, err = mtx.Solve(vec)
+		if err != nil {
+			return err
+		}
 		laptime("Solve")
 		tmp := frame.FillConf(answers[0])
 		_, err = frame.UpdateStressPlastic(tmp)
@@ -678,7 +684,10 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers = mtx.Solve(vec)
+		answers, err = mtx.Solve(vec)
+		if err != nil {
+			return err
+		}
 		laptime("Solve")
 		tmp := frame.FillConf(answers[0])
 		_, eng, err := frame.UpdateStressEnergy(tmp)
@@ -824,7 +833,10 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers = mtx.Solve(vec)
+		answers, err = mtx.Solve(vec)
+		if err != nil {
+			return err
+		}
 		laptime("Solve")
 		tmp := frame.FillConf(answers[0])
 		_, err = kpilestress(frame, tmp, sects)
