@@ -161,6 +161,8 @@ type Elem struct {
 	Weak   []float64
 	Cmq    []float64
 	Stress []float64
+	Energy float64
+	Energyb float64
 }
 
 func NewElem() *Elem {
@@ -810,7 +812,9 @@ func (elem *Elem) StainEnergy(gdisp []float64) (float64, error) {
 	}
 	edisp := matrix.MatrixVector(tmatrix, gdisp)
 	estress := matrix.MatrixVector(estiff, edisp)
-	return Dot(edisp, estress, 12), nil
+	Ee := Dot(edisp, estress, 12)
+	elem.Energy += Ee
+	return Ee, nil
 }
 
 func (elem *Elem) BucklingEnergy(gdisp []float64) (float64, error) {
@@ -837,5 +841,13 @@ func (elem *Elem) BucklingEnergy(gdisp []float64) (float64, error) {
 	edisp := matrix.MatrixVector(tmatrix, gdisp)
 	estress := matrix.MatrixVector(estiff, edisp)
 	gstress := matrix.MatrixVector(gstiff, edisp)
-	return Dot(edisp, estress, 12) - Dot(edisp, gstress, 12), nil
+	Ee := Dot(edisp, estress, 12)
+	Eb := Dot(edisp, gstress, 12)
+	elem.Energy += Ee
+	elem.Energyb += Eb
+	if Ee == 0.0 {
+		return 0.0, nil
+	} else {
+		return (Ee - Eb) / Ee, nil
+	}
 }

@@ -398,6 +398,13 @@ func DrawElem(elem *st.Elem, cvs *cd.Canvas, show *st.Show) {
 			oncap = true
 		}
 	}
+	if show.Energy {
+		val, err := elem.Energy()
+		if err == nil {
+			ecap.WriteString(fmt.Sprintf("%.6f", val))
+			oncap = true
+		}
+	}
 	if oncap {
 		var textpos []float64
 		if st.BRACE <= elem.Etype && elem.Etype <= st.SBRACE {

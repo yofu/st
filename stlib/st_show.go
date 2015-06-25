@@ -55,10 +55,11 @@ const ( // Rate
 var ( // Boundary for Rainbow (length should be <= 6)
 	RateBoundary   = []float64{0.5, 0.6, 0.7, 0.71428, 0.9, 1.0}
 	HeightBoundary = []float64{0.5, 1.0, 1.5, 2.0, 2.5, 3.0}
+	EnergyBoundary = []float64{1.1, 2.0, 3.0, 4.0, 5.0, 6.0}
 )
 var (
 	// ECOLORS = []string{ "WHITE", "BLACK", "BY SECTION", "BY RATE", "BY HEIGHT", "BY N" }
-	ECOLORS = []string{"WHITE", "BLACK", "BY SECTION", "BY RATE", "BY N", "BY STRONG"}
+	ECOLORS = []string{"WHITE", "BLACK", "BY SECTION", "BY RATE", "BY N", "BY STRONG", "BY ENERGY"}
 	PERIODS = []string{"L", "X", "Y"}
 )
 
@@ -70,6 +71,7 @@ const (
 	// ECOLOR_HEIGHT
 	ECOLOR_N
 	ECOLOR_STRONG
+	ECOLOR_ENERGY
 )
 
 type Show struct { // {{{
@@ -83,6 +85,8 @@ type Show struct { // {{{
 	NodeCaption uint
 	ElemCaption uint
 	SrcanRate   uint
+
+	Energy bool
 
 	GlobalAxis      bool
 	GlobalAxisSize  float64

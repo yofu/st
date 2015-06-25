@@ -3665,6 +3665,8 @@ func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
 				}
 			}
 			el.Stress[per] = stress
+			el.Values["ENERGY"] = ael.Energy
+			el.Values["ENERGYB"] = ael.Energyb
 		}
 	}
 }

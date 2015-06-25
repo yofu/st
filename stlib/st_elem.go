@@ -66,6 +66,7 @@ type Elem struct {
 	Stress        map[string]map[int][]float64
 	InitialStress map[int][]float64
 
+	Values map[string]float64
 	Prestress float64
 
 	Phinge map[string]map[int]bool
@@ -93,6 +94,7 @@ func NewLineElem(ns []*Node, sect *Sect, etype int) *Elem {
 	el.Bonds = make([]bool, 12)
 	el.Cmq = make([]float64, 12)
 	el.Stress = make(map[string]map[int][]float64)
+	el.Values = make(map[string]float64)
 	el.InitialStress = make(map[int][]float64)
 	el.Phinge = make(map[string]map[int]bool)
 	el.Strong = make([]float64, 3)
@@ -116,6 +118,7 @@ func NewPlateElem(ns []*Node, sect *Sect, etype int) *Elem {
 	el.Enod = ns[:el.Enods]
 	el.Sect = sect
 	el.Etype = etype
+	el.Values = make(map[string]float64)
 	el.Children = make([]*Elem, 2)
 	el.Wrect = make([]float64, 2)
 	return el
@@ -2149,6 +2152,19 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 		}
 		return 0.0, errors.New("RateMax: no value")
 	}
+}
+
+func (elem *Elem) Energy() (float64, error) {
+	if val, ok := elem.Values["ENERGY"]; ok {
+		if valb, ok := elem.Values["ENERGYB"]; ok {
+			if val == 0.0 {
+				return 0.0, nil
+			} else {
+				return (val-valb) / val, nil
+			}
+		}
+	}
+	return 0.0, errors.New("no energy")
 }
 
 func (elem *Elem) DistFromProjection(v *View) float64 {

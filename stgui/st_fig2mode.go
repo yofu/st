@@ -16,7 +16,7 @@ var (
 	fig2abbrev = []string {
 		"gf/act", "foc/us", "ang/le", "dist/s", "pers/pective", "ax/onometric", "df/act", "rf/act", "qf/act", "mf/act", "gax/is", "eax/is",
 		"noax/is", "el/em", "el/em/+/", "el/em/-/", "sec/tion", "sec/tion/+/", "sec/tion/-/", "k/ijun", "mea/sure", "el/em/c/ode", "sec/t/c/ode",
-		"wid/th", "h/eigh/t/", "sr/can/col/or", "sr/can/ra/te", "st/ress", "prest/ress", "stiff/", "def/ormation", "dis/p", "ecc/entric", "dr/aw",
+		"wid/th", "h/eigh/t/", "sr/can/col/or", "sr/can/ra/te", "en/ergy", "st/ress", "prest/ress", "stiff/", "def/ormation", "dis/p", "ecc/entric", "dr/aw",
 		"al/ias", "anon/ymous", "no/de/c/ode", "wei/ght", "con/f", "pi/lecode", "fen/ce", "per/iod", "per/iod/++/", "per/iod/--/",
 		"nocap/tion", "noleg/end", "nos/hear/v/alue", "nom/oment/v/alue", "s/hear/ar/row", "m/oment/fig/ure", "ncol/or", "p/age/tit/le", "tit/le", "pos/ition",
 	}
@@ -580,6 +580,14 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.SrcanRateOff(names...)
 		} else {
 			stw.SrcanRateOn(names...)
+		}
+	case "energy":
+		if un {
+			stw.SetColorMode(st.ECOLOR_WHITE)
+			stw.Frame.Show.Energy = false
+		} else {
+			stw.SetColorMode(st.ECOLOR_ENERGY)
+			stw.Frame.Show.Energy = true
 		}
 	case "stress":
 		if usage {

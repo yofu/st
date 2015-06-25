@@ -2954,6 +2954,13 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 					} else {
 						canv.Foreground(el.Sect.Color)
 					}
+				case st.ECOLOR_ENERGY:
+					val, err := el.Energy()
+					if err != nil {
+						canv.Foreground(cd.CD_DARK_GRAY)
+					} else {
+						canv.Foreground(st.Rainbow(val, st.EnergyBoundary))
+					}
 				}
 			}
 			DrawElem(el, canv, stw.Frame.Show)
@@ -2993,6 +3000,13 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 					canv.Foreground(st.RainbowColor[0]) // Compression: Blue
 				} else {
 					canv.Foreground(st.RainbowColor[6]) // Tension: Red
+				}
+			case st.ECOLOR_ENERGY:
+				val, err := el.Energy()
+				if err != nil {
+					canv.Foreground(cd.CD_DARK_GRAY)
+				} else {
+					canv.Foreground(st.Rainbow(val, st.EnergyBoundary))
 				}
 			}
 		}
