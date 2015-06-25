@@ -361,6 +361,30 @@ func (frame *Frame) UpdateStress(vec []float64) ([][]float64, error) {
 	return rtn, nil
 }
 
+func (frame *Frame) UpdateStressEnergy(vec []float64) ([][]float64, []float64, error) {
+	rtn := make([][]float64, len(frame.Elems))
+	eng := make([]float64, len(frame.Elems))
+	for enum, el := range frame.Elems {
+		gdisp := make([]float64, 12)
+		for i := 0; i < 2; i++ {
+			for j := 0; j < 6; j++ {
+				gdisp[6*i+j] = vec[6*el.Enod[i].Index+j]
+			}
+		}
+		df, err := el.ElemStress(gdisp)
+		if err != nil {
+			return nil, nil, err
+		}
+		rtn[enum] = df
+		e, err := el.BucklingEnergy(gdisp)
+		if err != nil {
+			return nil, nil, err
+		}
+		eng[enum] = e
+	}
+	return rtn, eng, nil
+}
+
 // TODO: implement
 func (frame *Frame) UpdateStressPlastic(vec []float64) ([][]float64, error) {
 	rtn := make([][]float64, len(frame.Elems))
@@ -622,6 +646,7 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 	var bnorm, rnorm float64
 	var csize int
 	var conf []bool
+	var eotp bytes.Buffer
 	safety := min
 	for lap := 0; lap < nlap; lap++ {
 		safety += delta
@@ -654,10 +679,15 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 		answers = mtx.Solve(vec)
 		laptime("Solve")
 		tmp := frame.FillConf(answers[0])
-		_, err = frame.UpdateStress(tmp)
+		_, eng, err := frame.UpdateStressEnergy(tmp)
 		if err != nil {
 			return err
 		}
+		eotp.WriteString(fmt.Sprintf("LAP: %2d\n", lap+1))
+		for enum, el := range frame.Elems {
+			eotp.WriteString(fmt.Sprintf("%04d %12.8f\n", el.Num, eng[enum]))
+		}
+		eotp.WriteString("\n")
 		frame.UpdateReaction(gmtx, tmp)
 		frame.UpdateForm(tmp)
 		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, nlap, safety, rnorm/bnorm))
@@ -673,6 +703,12 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 	}
 	defer w.Close()
 	frame.WriteTo(w)
+	ew, err := os.Create("energy.otp")
+	if err != nil {
+		return err
+	}
+	defer ew.Close()
+	eotp.WriteTo(ew)
 	return nil
 }
 
