@@ -3178,7 +3178,6 @@ func (stw *Window) DrawFrameNode() {
 	if !stw.Frame.Show.Select {
 		stw.dbuff.LineStyle(cd.CD_CONTINUOUS)
 		stw.dbuff.Hatch(cd.CD_FDIAGONAL)
-		stw.dbuff.Foreground(cd.CD_DARK_GREEN)
 		var wg sync.WaitGroup
 		var m sync.Mutex
 		for _, elem := range stw.Frame.Elems {
@@ -3194,6 +3193,11 @@ func (stw *Window) DrawFrameNode() {
 					}
 				}
 				m.Lock()
+				if el.IsHidden(stw.Frame.Show) {
+					stw.dbuff.Foreground(cd.CD_DARK_GRAY)
+				} else {
+					stw.dbuff.Foreground(cd.CD_DARK_GREEN)
+				}
 				DrawElemLine(el, stw.dbuff)
 				m.Unlock()
 			}(elem)
