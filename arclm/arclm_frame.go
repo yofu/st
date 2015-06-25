@@ -161,6 +161,8 @@ func (frame *Frame) Initialise() {
 		for i := 0; i < 12; i++ {
 			el.Stress[i] = el.Cmq[i]
 		}
+		el.Energy = 0.0
+		el.Energyb = 0.0
 	}
 }
 
