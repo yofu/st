@@ -3176,18 +3176,13 @@ func (stw *Window) DrawFrameNode() {
 		if stw.Frame.Show.Deformation {
 			stw.Frame.View.ProjectDeformation(n, stw.Frame.Show)
 		}
-		if n.Lock {
-			stw.dbuff.Foreground(LOCKED_NODE_COLOR)
-		} else {
-			stw.dbuff.Foreground(canvasFontColor)
-		}
+		stw.dbuff.Foreground(cd.CD_GREEN)
 		for _, j := range stw.SelectNode {
 			if j == n {
-				stw.dbuff.Foreground(cd.CD_RED)
+				DrawNode(n, stw.dbuff, stw.Frame.Show)
 				break
 			}
 		}
-		DrawNode(n, stw.dbuff, stw.Frame.Show)
 	}
 	if !stw.Frame.Show.Select {
 		stw.dbuff.LineStyle(cd.CD_CONTINUOUS)
@@ -3230,7 +3225,7 @@ func (stw *Window) DrawFrameNode() {
 			if el.Lock {
 				stw.dbuff.Foreground(LOCKED_ELEM_COLOR)
 			} else {
-				stw.dbuff.Foreground(cd.CD_WHITE)
+				stw.dbuff.Foreground(cd.CD_GREEN)
 			}
 			DrawElem(el, stw.dbuff, stw.Frame.Show)
 		}
