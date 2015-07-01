@@ -2162,7 +2162,7 @@ func offset(stw *Window) {
 	if err == nil {
 		a, err := strconv.ParseFloat(tmp, 64)
 		if err == nil {
-			angle = a
+			angle = a * math.Pi / 180.0
 		}
 	}
 	get1side(stw, func(el *st.Elem, x, y int) {
