@@ -41,9 +41,6 @@ func (k *Kijun) Snapshot() *Kijun {
 }
 
 func (k *Kijun) String() string {
-	fmt.Println(k.Name)
-	fmt.Println(k.Start)
-	fmt.Println(k.End)
 	return fmt.Sprintf("%5s %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f\n", k.Name, k.Start[0], k.Start[1], k.Start[2], k.End[0], k.End[1], k.End[2])
 }
 
