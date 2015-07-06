@@ -216,6 +216,7 @@ const (
 )
 var (
 	CanvasFitScale     = 0.9
+	CanvasAnimateSpeed    = 0.02
 )
 
 // Command
@@ -3958,6 +3959,48 @@ func (stw *Window) UnlockAll() {
 	stw.Redraw()
 }
 
+func (stw *Window) Animate(view *st.View) {
+	scale := 1.0
+	if stw.Frame.View.Perspective {
+		scale = math.Pow(view.Dists[1] / stw.Frame.View.Dists[1], CanvasAnimateSpeed)
+	} else {
+		scale = math.Pow(view.Gfact / stw.Frame.View.Gfact, CanvasAnimateSpeed)
+	}
+	center := make([]float64, 2)
+	angle := make([]float64, 2)
+	for i:=0; i<2; i++ {
+		center[i] = CanvasAnimateSpeed*(view.Center[i] - stw.Frame.View.Center[i])
+		angle[i] = view.Angle[i] - stw.Frame.View.Angle[i]
+		if i == 1 {
+			for {
+				if angle[1] <= 180.0 {
+					break
+				}
+				angle[1] -= 360.0
+			}
+			for {
+				if angle[1] >= -180.0 {
+					break
+				}
+				angle[1] += 360.0
+			}
+		}
+		angle[i] *= CanvasAnimateSpeed
+	}
+	for i:=0; i<int(1/CanvasAnimateSpeed); i++ {
+		if stw.Frame.View.Perspective {
+			stw.Frame.View.Dists[1] *= scale
+		} else {
+			stw.Frame.View.Gfact *= scale
+		}
+		for j:=0; j<2; j++ {
+			stw.Frame.View.Center[j] += center[j]
+			stw.Frame.View.Angle[j] += angle[j]
+		}
+		stw.DrawFrameNode()
+	}
+}
+
 func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
 	for _, n := range stw.Frame.Nodes {
 		stw.Frame.View.ProjectNode(n)
@@ -3982,23 +4025,41 @@ func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
 	stw.Frame.View.Center[1] = float64(ch)*0.5 + scale*(stw.Frame.View.Center[1]-0.5*(ymax+ymin))
 }
 
-func (stw *Window) ShowAtCanvasCenter(canv *cd.Canvas) {
+func (stw *Window) CanvasCenterView(canv *cd.Canvas, angle []float64) *st.View {
+	a0 := make([]float64, 2)
+	for i:=0; i<2; i++ {
+		a0[i] = stw.Frame.View.Angle[i]
+		stw.Frame.View.Angle[i] = angle[i]
+	}
+	stw.Frame.View.Set(0)
 	for _, n := range stw.Frame.Nodes {
 		stw.Frame.View.ProjectNode(n)
 	}
 	xmin, xmax, ymin, ymax := stw.Bbox()
+	for i:=0; i<2; i++ {
+		stw.Frame.View.Angle[i] = a0[i]
+	}
+	stw.Frame.View.Set(0)
 	if xmax == xmin && ymax == ymin {
-		return
+		return nil
 	}
 	w, h := canv.GetSize()
+	view := stw.Frame.View.Copy()
 	scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * CanvasFitScale
 	if stw.Frame.View.Perspective {
-		stw.Frame.View.Dists[1] *= scale
+		view.Dists[1] = stw.Frame.View.Dists[1] * scale
 	} else {
-		stw.Frame.View.Gfact *= scale
+		view.Gfact = stw.Frame.View.Gfact * scale
 	}
-	stw.Frame.View.Center[0] = float64(w)*0.5 + scale*(stw.Frame.View.Center[0]-0.5*(xmax+xmin))
-	stw.Frame.View.Center[1] = float64(h)*0.5 + scale*(stw.Frame.View.Center[1]-0.5*(ymax+ymin))
+	view.Center[0] = float64(w)*0.5 + scale*(stw.Frame.View.Center[0]-0.5*(xmax+xmin))
+	view.Center[1] = float64(h)*0.5 + scale*(stw.Frame.View.Center[1]-0.5*(ymax+ymin))
+	view.Angle = angle
+	return view
+}
+
+func (stw *Window) ShowAtCanvasCenter(canv *cd.Canvas) {
+	view := stw.CanvasCenterView(canv, stw.Frame.View.Angle)
+	stw.Animate(view)
 }
 
 func (stw *Window) ShowCenter() {
@@ -4012,10 +4073,8 @@ func (stw *Window) ShowCenter() {
 
 func (stw *Window) SetAngle(phi, theta float64) {
 	if stw.Frame != nil {
-		stw.Frame.View.Angle[0] = phi
-		stw.Frame.View.Angle[1] = theta
-		stw.Redraw()
-		stw.ShowCenter()
+		view := stw.CanvasCenterView(stw.cdcanv, []float64{phi, theta})
+		stw.Animate(view)
 	}
 }
 

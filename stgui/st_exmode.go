@@ -217,6 +217,19 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		CanvasFitScale = val
 		return st.Message(fmt.Sprintf("FITSCALE=%.3E", CanvasFitScale))
+	case "animatespeed":
+		if usage {
+			return st.Usage(":animatespeed val")
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":animatespeed")
+		}
+		val, err := strconv.ParseFloat(args[1], 64)
+		if err != nil {
+			return err
+		}
+		CanvasAnimateSpeed = val
+		return st.Message(fmt.Sprintf("ANIMATESPEED=%.3f", CanvasAnimateSpeed))
 	case "mkdir":
 		if usage {
 			return st.Usage(":mkdir dirname")
