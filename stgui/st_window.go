@@ -840,6 +840,7 @@ func NewWindow(homedir string) *Window { // {{{
 		"NAME=command",
 		func(arg *iup.CommonKeyAny) {
 			key := iup.KeyState(arg.Key)
+			setprev := true
 			switch key.Key() {
 			case KEY_ENTER:
 				stw.feedCommand()
@@ -936,11 +937,27 @@ func NewWindow(homedir string) *Window { // {{{
 				}
 			case 'N':
 				if key.IsCtrl() {
-					stw.New()
+					if !(prevkey == KEY_UPARROW || prevkey == KEY_DOWNARROW) {
+						clineinput = stw.cline.GetAttribute("VALUE")
+					}
+					stw.NextCommand(clineinput)
+					arg.Return = int32(iup.IGNORE)
+					prevkey = KEY_DOWNARROW
+					setprev = false
 				}
 			case 'O':
 				if key.IsCtrl() {
 					stw.Open()
+				}
+			case 'P':
+				if key.IsCtrl() {
+					if !(prevkey == KEY_UPARROW || prevkey == KEY_DOWNARROW) {
+						clineinput = stw.cline.GetAttribute("VALUE")
+					}
+					stw.PrevCommand(clineinput)
+					arg.Return = int32(iup.IGNORE)
+					prevkey = KEY_UPARROW
+					setprev = false
 				}
 			case 'I':
 				if key.IsCtrl() {
@@ -975,7 +992,9 @@ func NewWindow(homedir string) *Window { // {{{
 					}
 				}
 			}
-			prevkey = key.Key()
+			if setprev {
+				prevkey = key.Key()
+			}
 		},
 	)
 	stw.coord = iup.Text(
