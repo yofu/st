@@ -3987,7 +3987,12 @@ func (stw *Window) Animate(view *st.View) {
 	}
 	center := make([]float64, 2)
 	angle := make([]float64, 2)
-	for i:=0; i<2; i++ {
+	focus := make([]float64, 3)
+	for i:=0; i<3; i++ {
+		focus[i] = CanvasAnimateSpeed*(view.Focus[i] - stw.Frame.View.Focus[i])
+		if i >= 2 {
+			break
+		}
 		center[i] = CanvasAnimateSpeed*(view.Center[i] - stw.Frame.View.Center[i])
 		angle[i] = view.Angle[i] - stw.Frame.View.Angle[i]
 		if i == 1 {
@@ -4012,7 +4017,11 @@ func (stw *Window) Animate(view *st.View) {
 		} else {
 			stw.Frame.View.Gfact *= scale
 		}
-		for j:=0; j<2; j++ {
+		for j:=0; j<3; j++ {
+			stw.Frame.View.Focus[j] += focus[j]
+			if j >= 2 {
+				break
+			}
 			stw.Frame.View.Center[j] += center[j]
 			stw.Frame.View.Angle[j] += angle[j]
 		}
@@ -4021,6 +4030,7 @@ func (stw *Window) Animate(view *st.View) {
 }
 
 func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
+	stw.Frame.SetFocus(nil)
 	for _, n := range stw.Frame.Nodes {
 		stw.Frame.View.ProjectNode(n)
 	}
@@ -4046,16 +4056,28 @@ func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
 
 func (stw *Window) CanvasCenterView(canv *cd.Canvas, angle []float64) *st.View {
 	a0 := make([]float64, 2)
-	for i:=0; i<2; i++ {
+	f0 := make([]float64, 3)
+	focus := make([]float64, 3)
+	for i:=0; i<3; i++ {
+		f0[i] = stw.Frame.View.Focus[i]
+		if i >= 2 {
+			break
+		}
 		a0[i] = stw.Frame.View.Angle[i]
 		stw.Frame.View.Angle[i] = angle[i]
 	}
+	stw.Frame.SetFocus(nil)
 	stw.Frame.View.Set(0)
 	for _, n := range stw.Frame.Nodes {
 		stw.Frame.View.ProjectNode(n)
 	}
 	xmin, xmax, ymin, ymax := stw.Bbox()
-	for i:=0; i<2; i++ {
+	for i:=0; i<3; i++ {
+		focus[i] = stw.Frame.View.Focus[i]
+		stw.Frame.View.Focus[i] = f0[i]
+		if i >= 2 {
+			break
+		}
 		stw.Frame.View.Angle[i] = a0[i]
 	}
 	stw.Frame.View.Set(0)
@@ -4064,6 +4086,7 @@ func (stw *Window) CanvasCenterView(canv *cd.Canvas, angle []float64) *st.View {
 	}
 	w, h := canv.GetSize()
 	view := stw.Frame.View.Copy()
+	view.Focus = focus
 	scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * CanvasFitScale
 	if stw.Frame.View.Perspective {
 		view.Dists[1] = stw.Frame.View.Dists[1] * scale
@@ -4095,6 +4118,39 @@ func (stw *Window) SetAngle(phi, theta float64) {
 		view := stw.CanvasCenterView(stw.cdcanv, []float64{phi, theta})
 		stw.Animate(view)
 	}
+}
+
+func (stw *Window) SetFocus() {
+	var focus []float64
+	if stw.SelectElem != nil {
+		for _, el := range stw.SelectElem {
+			if el == nil {
+				continue
+			}
+			focus = el.MidPoint()
+		}
+	}
+	if focus == nil {
+		if stw.SelectNode != nil {
+			for _, n := range stw.SelectNode {
+				if n == nil {
+					continue
+				}
+				focus = n.Coord
+			}
+		}
+	}
+	v := stw.Frame.View.Copy()
+	stw.Frame.SetFocus(focus)
+	w, h := stw.cdcanv.GetSize()
+	stw.CanvasSize = []float64{float64(w), float64(h)}
+	stw.Frame.View.Center[0] = stw.CanvasSize[0] * 0.5
+	stw.Frame.View.Center[1] = stw.CanvasSize[1] * 0.5
+	view := stw.Frame.View.Copy()
+	stw.Frame.View = v
+	stw.Animate(view)
+	stw.Redraw()
+	return
 }
 
 // }}}
@@ -4833,8 +4889,6 @@ func (stw *Window) CB_MouseButton() {
 								RangeView.Angle[i] = stw.Frame.View.Angle[i]
 							}
 						}
-						stw.Frame.SetFocus(nil)
-						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
 						stw.dbuff.UpdateYAxis(&arg.Y)
@@ -5100,6 +5154,10 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 	case 'M':
 		if key.IsCtrl() {
 			stw.Reload()
+		}
+	case 'F':
+		if key.IsCtrl() {
+			stw.SetFocus()
 		}
 	case 'H':
 		if key.IsCtrl() {
