@@ -3117,40 +3117,37 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			af.Endch <- err
 		}()
 		stw.CurrentLap("Calculating...", 0, lap)
+		pivot := make(chan int)
 		end := make(chan int)
-		stw.Deselect()
-		stw.cdcanv.Foreground(pivotColor)
-		stw.DrawFrameNode()
-		go func() {
-			ind := 0
-			nnum := 0
-		draw001:
-			for {
-				select {
-				case <-end:
-					stw.Deselect()
-					break draw001
-				case <-af.Pivot:
-					ind++
-					if ind >= 6 {
-						DrawNodeNum(stw.Frame.Nodes[af.Nodes[nnum].Num], stw.cdcanv)
-						nnum++
-						ind = 0
-					}
-				}
-			}
-		}()
+		nodes := make([]*st.Node, len(stw.Frame.Nodes))
+		i := 0
+		for _, n := range stw.Frame.Nodes {
+			nodes[i] = n
+			i++
+		}
+		sort.Sort(st.NodeByNum{nodes})
+		if drawpivot {
+			go stw.DrawPivot(nodes, pivot, end)
+		} else {
+			stw.Redraw()
+		}
 		go func() {
 		read001:
 			for {
 				select {
+				case <-af.Pivot:
+					if drawpivot {
+						pivot <- 1
+					}
 				case nlap := <-af.Lapch:
 					stw.Frame.ReadArclmData(af, pers[nlap])
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, lap)
 					stw.Redraw()
 				case <-af.Endch:
-					end <- 1
+					if drawpivot {
+						end <- 1
+					}
 					stw.CurrentLap("Completed", lap, lap)
 					stw.SetPeriod(per)
 					stw.Redraw()
@@ -3224,15 +3221,38 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			af.Endch <- err
 		}()
 		stw.CurrentLap("Calculating...", 0, lap)
+		pivot := make(chan int)
+		end := make(chan int)
+		nodes := make([]*st.Node, len(stw.Frame.Nodes))
+		i := 0
+		for _, n := range stw.Frame.Nodes {
+			nodes[i] = n
+			i++
+		}
+		sort.Sort(st.NodeByNum{nodes})
+		if drawpivot {
+			go stw.DrawPivot(nodes, pivot, end)
+		} else {
+			stw.Redraw()
+		}
 		go func() {
 		read201:
 			for {
 				select {
+				case <-af.Pivot:
+					if drawpivot {
+						pivot <- 1
+					}
 				case nlap := <-af.Lapch:
 					stw.Frame.ReadArclmData(af, per)
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, lap)
-					stw.Redraw()
+					if drawpivot {
+						end <- 1
+						go stw.DrawPivot(nodes, pivot, end)
+					} else {
+						stw.Redraw()
+					}
 				case <-af.Endch:
 					stw.CurrentLap("Completed", lap, lap)
 					stw.Redraw()
@@ -3291,6 +3311,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		read301:
 			for {
 				select {
+				case <-af.Pivot:
 				case nlap := <-af.Lapch:
 					stw.Frame.ReadArclmData(af, per)
 					af.Lapch <- 1
@@ -3308,3 +3329,23 @@ func (stw *Window) excommand(command string, pipe bool) error {
 	return nil
 }
 
+func (stw *Window) DrawPivot(nodes []*st.Node, pivot, end chan int) {
+	stw.DrawFrameNode()
+	stw.DrawTexts(stw.cdcanv, false)
+	stw.cdcanv.Foreground(pivotColor)
+	ind := 0
+	nnum := 0
+	for {
+		select {
+		case <-end:
+			return
+		case <-pivot:
+			ind++
+			if ind >= 6 {
+				DrawNodeNum(nodes[nnum], stw.cdcanv)
+				nnum++
+				ind = 0
+			}
+		}
+	}
+}
