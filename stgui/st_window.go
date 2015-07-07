@@ -5001,8 +5001,10 @@ func (stw *Window) CB_CanvasWheel() {
 			} else {
 				v = stw.Frame.View
 			}
-			v.Center[0] += (val - 1.0) * (v.Center[0] - float64(x))
-			v.Center[1] += (val - 1.0) * (v.Center[1] - float64(arg.Y))
+			if !isCtrl(arg.Status) {
+				v.Center[0] += (val - 1.0) * (v.Center[0] - float64(x))
+				v.Center[1] += (val - 1.0) * (v.Center[1] - float64(arg.Y))
+			}
 			if v.Perspective {
 				v.Dists[1] *= val
 				if v.Dists[1] < 0.0 {
