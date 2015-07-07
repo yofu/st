@@ -887,7 +887,7 @@ func (ll *LLSMatrix) Add(row, col int, val float64) float64 {
 	}
 }
 
-func (ll *LLSMatrix) LDLT() (*LLSMatrix, error) {
+func (ll *LLSMatrix) LDLT(ch chan int) (*LLSMatrix, error) {
 	var n *LLSNode
 	size := ll.Size
 	for col := 0; col < size; col++ {
@@ -947,6 +947,7 @@ func (ll *LLSMatrix) LDLT() (*LLSMatrix, error) {
 				ni = ni.down
 			}
 		}
+		ch <- col
 	}
 	return ll, nil
 }
@@ -1064,9 +1065,9 @@ func (ll *LLSMatrix) BSUpper(vec []float64) []float64 {
 	return vec
 }
 
-func (ll *LLSMatrix) Solve(vecs ...[]float64) ([][]float64, int, int, int, error) {
+func (ll *LLSMatrix) Solve(ch chan int, vecs ...[]float64) ([][]float64, int, int, int, error) {
 	size := ll.Size
-	C, err := ll.LDLT()
+	C, err := ll.LDLT(ch)
 	if err != nil {
 		return nil, 0, 0, 0, err
 	}

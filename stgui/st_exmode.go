@@ -68,7 +68,10 @@ func (stw *Window) exmode(command string) error {
 	stw.lastexcommand = command
 	if !strings.Contains(command, "|") {
 		err := stw.excommand(command, false)
-		if u, ok := err.(st.Messager); ok {
+		if n, ok := err.(st.NotRedraw); ok {
+			stw.addHistory(n.Message())
+			return err
+		} else if u, ok := err.(st.Messager); ok {
 			stw.addHistory(u.Message())
 			return nil
 		} else {
@@ -3114,6 +3117,29 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			af.Endch <- err
 		}()
 		stw.CurrentLap("Calculating...", 0, lap)
+		end := make(chan int)
+		stw.Deselect()
+		stw.cdcanv.Foreground(pivotColor)
+		stw.DrawFrameNode()
+		go func() {
+			ind := 0
+			nnum := 0
+		draw001:
+			for {
+				select {
+				case <-end:
+					stw.Deselect()
+					break draw001
+				case <-af.Pivot:
+					ind++
+					if ind >= 6 {
+						DrawNodeNum(stw.Frame.Nodes[af.Nodes[nnum].Num], stw.cdcanv)
+						nnum++
+						ind = 0
+					}
+				}
+			}
+		}()
 		go func() {
 		read001:
 			for {
@@ -3124,6 +3150,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 					stw.CurrentLap("Calculating...", nlap, lap)
 					stw.Redraw()
 				case <-af.Endch:
+					end <- 1
 					stw.CurrentLap("Completed", lap, lap)
 					stw.SetPeriod(per)
 					stw.Redraw()
@@ -3131,7 +3158,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}()
-		return st.Message(m.String())
+		return st.ArclmStart(m.String())
 	case "arclm201":
 		if usage {
 			return st.Usage(":arclm201 {-period=name} {-lap=nlap} {-safety=val} {-max=val} {-start=val} {-noinit} filename")
@@ -3213,7 +3240,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}()
-		return st.Message(m.String())
+		return st.ArclmStart(m.String())
 	case "arclm301":
 		if usage {
 			return st.Usage(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
@@ -3276,7 +3303,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}()
-		return st.Message(m.String())
+		return st.ArclmStart(m.String())
 	}
 	return nil
 }

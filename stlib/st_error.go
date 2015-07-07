@@ -91,3 +91,21 @@ func (u Usage) Error() string {
 func (u Usage) Message() string {
 	return fmt.Sprintf("usage:\n\t%s", strings.Join(strings.Split(string(u), "\n"), "\n\t"))
 }
+
+type NotRedraw interface {
+	Message() string
+	NotRedraw()
+}
+
+type ArclmStart string
+
+func (a ArclmStart) Error() string {
+	return fmt.Sprintf("arclm start: %s", string(a))
+}
+
+func (a ArclmStart) Message() string {
+	return string(a)
+}
+
+func (a ArclmStart) NotRedraw() {
+}

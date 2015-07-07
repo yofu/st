@@ -27,6 +27,7 @@ type Frame struct {
 	Sects []*Sect
 	Nodes []*Node
 	Elems []*Elem
+	Pivot chan int
 	Lapch chan int
 	Endch chan error
 }
@@ -36,6 +37,7 @@ func NewFrame() *Frame {
 	af.Sects = make([]*Sect, 0)
 	af.Nodes = make([]*Node, 0)
 	af.Elems = make([]*Elem, 0)
+	af.Pivot = make(chan int)
 	af.Lapch = make(chan int)
 	af.Endch = make(chan error)
 	return af
@@ -523,7 +525,7 @@ func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, e
 	case LLS:
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, _, _, _, err = mtx.Solve(vecs...)
+		answers, _, _, _, err = mtx.Solve(frame.Pivot, vecs...)
 		if err != nil {
 			return err
 		}
@@ -610,7 +612,7 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, _, _, _, err = mtx.Solve(vec)
+		answers, _, _, _, err = mtx.Solve(frame.Pivot, vec)
 		if err != nil {
 			return err
 		}
@@ -685,7 +687,7 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, np, nz, nn, err = mtx.Solve(vec)
+		answers, np, nz, nn, err = mtx.Solve(frame.Pivot, vec)
 		if err != nil {
 			return err
 		}
@@ -844,7 +846,7 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, _, _, _, err = mtx.Solve(vec)
+		answers, _, _, _, err = mtx.Solve(frame.Pivot, vec)
 		if err != nil {
 			return err
 		}

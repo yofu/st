@@ -274,6 +274,10 @@ func DrawNode(node *st.Node, cvs *cd.Canvas, show *st.Show) {
 	}
 }
 
+func DrawNodeNum(node *st.Node, cvs *cd.Canvas) {
+	cvs.FText(node.Pcoord[0], node.Pcoord[1], fmt.Sprintf("%d", node.Num))
+}
+
 func PinFigure(cvs *cd.Canvas, x, y, size float64) {
 	val := y - 0.5*math.Sqrt(3)*size
 	cvs.Begin(cd.CD_FILL)

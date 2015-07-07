@@ -100,6 +100,7 @@ var (
 	sectiondlgBGColor     = "66 66 66"
 	sectiondlgSelectColor = "255 255 0"
 	canvasFontColor       = cd.CD_DARK_GRAY
+	pivotColor            = cd.CD_GREEN
 	DefaultTextAlignment  = cd.CD_BASE_LEFT
 	printFontColor        = cd.CD_BLACK
 	printFontFace         = "IPA明朝"
@@ -2490,6 +2491,7 @@ func (stw *Window) execAliasCommand(al string) {
 		stw.FocusCanv()
 		return
 	}
+	redraw := true
 	alu := strings.ToUpper(al)
 	if alu == "." {
 		if stw.lastcommand != nil {
@@ -2506,7 +2508,11 @@ func (stw *Window) execAliasCommand(al string) {
 		case strings.HasPrefix(al, ":"):
 			err := stw.exmode(al)
 			if err != nil {
-				stw.errormessage(err, ERROR)
+				if _, ok := err.(st.NotRedraw); ok {
+					redraw = false
+				} else {
+					stw.errormessage(err, ERROR)
+				}
 			}
 		case strings.HasPrefix(al, "'"):
 			err := stw.fig2mode(al)
@@ -2594,7 +2600,9 @@ func (stw *Window) execAliasCommand(al string) {
 			stw.addHistory(fmt.Sprintf("AxisRange: %s = %.3f", tmp, val))
 		}
 	}
-	stw.Redraw()
+	if redraw {
+		stw.Redraw()
+	}
 	if stw.cline.GetAttribute("VALUE") == "" {
 		stw.FocusCanv()
 	}
