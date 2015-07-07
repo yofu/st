@@ -23,7 +23,7 @@ var (
 		"e/dit", "q/uit", "vi/m", "hk/you", "hw/eak", "rp/ipe", "cp/ipe", "tk/you", "ck/you", "pla/te", "fixr/otate", "fixm/ove", "noun/do", "un/do", "w/rite", "sav/e", "inc/rement", "c/heck", "r/ead",
 		"ins/ert", "p/rop/s/ect", "w/rite/o/utput", "w/rite/rea/ction", "w/rite/k/ijun", "nmi/nteraction", "w/ei/g/htcopy", "har/dcopy", "fi/g2", "fe/nce", "no/de", "xsc/ale", "ysc/ale", "zsc/ale", "pl/oad", "z/oubun/d/isp", "z/oubun/r/eaction",
 		"fac/ts", "go/han/l/st", "el/em", "ave/rage", "bo/nd", "ax/is/2//c/ang", "resul/tant", "prest/ress", "therm/al", "div/ide", "e/lem/dup/lication", "i/ntersect/a/ll", "co/nf",
-		"pi/le", "sec/tion", "c/urrent/v/alue", "an/alysis", "f/ilter", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "sec/tion/+/", "col/or", "ex/tractarclm", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
+		"pi/le", "sec/tion", "c/urrent/v/alue", "an/alysis", "f/ilter", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "ang/le", "sec/tion/+/", "col/or", "ex/tractarclm", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
 	}
 )
 
@@ -2867,6 +2867,25 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.NextFloor()
 	case "height-":
 		stw.PrevFloor()
+	case "angle":
+		if usage {
+			return st.Usage(":angle phi theta")
+		}
+		if narg < 3 {
+			return st.NotEnoughArgs(":angle")
+		}
+		angle := make([]float64, 2)
+		for i:=0; i<2; i++ {
+			if args[1+i] == "_" {
+				continue
+			}
+			val, err := strconv.ParseFloat(args[1+i], 64)
+			if err != nil {
+				return err
+			}
+			angle[i] = val
+		}
+		stw.SetAngle(angle[0], angle[1])
 	case "view":
 		if usage {
 			return st.Usage(":view [top,front,back,right,left]")
