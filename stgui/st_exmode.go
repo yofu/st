@@ -1155,6 +1155,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			m.WriteString(":node [x,y,z] [>,<,=] coord\n")
 			m.WriteString(":node {confed/pinned/fixed/free}\n")
 			m.WriteString(":node pile num")
+			m.WriteString(":node sect num")
 			return st.Usage(m.String())
 		}
 		stw.Deselect()
@@ -1164,6 +1165,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			coordstr := regexp.MustCompile("^ *([XYZ]) *([<!=>]{0,2}) *([0-9.]+)")
 			numstr := regexp.MustCompile("^[0-9, ]+$")
 			pilestr := regexp.MustCompile("^ *PILE *([0-9, ]+)$")
+			sectstr := regexp.MustCompile("^ *SECT *([0-9, ]+)$")
 			switch {
 			default:
 				return errors.New(":node: unknown format")
@@ -1253,6 +1255,58 @@ func (stw *Window) excommand(command string, pipe bool) error {
 						}
 					}
 					return false
+				}
+			case sectstr.MatchString(condition):
+				fs := sectstr.FindStringSubmatch(condition)
+				snums := SplitNums(fs[1])
+				if _, ok := argdict["ALL"]; ok {
+					nnums := make(map[int]int, len(stw.Frame.Nodes))
+					for _, n := range stw.Frame.Nodes {
+						nnums[n.Num] = 0
+					}
+					node_sect_all:
+					for _, el := range stw.Frame.Elems {
+						for _, snum := range snums {
+							if el.Sect.Num == snum {
+								continue node_sect_all
+							}
+						}
+						for _, en := range el.Enod {
+							nnums[en.Num]++
+						}
+					}
+					f = func(n *st.Node) bool {
+						if ref, ok := nnums[n.Num]; ok {
+							if ref > 0 {
+								return false
+							}
+						}
+						return true
+					}
+				} else {
+					els := make([]*st.Elem, len(stw.Frame.Elems))
+					num := 0
+					node_sect_any:
+					for _, el := range stw.Frame.Elems {
+						for _, snum := range snums {
+							if el.Sect.Num == snum {
+								els[num] = el
+								num++
+								continue node_sect_any
+							}
+						}
+					}
+					els = els[:num]
+					f = func(n *st.Node) bool {
+						for _, el := range els {
+							for _, en := range el.Enod {
+								if n == en {
+									return true
+								}
+							}
+						}
+						return false
+					}
 				}
 			case abbrev.For("CONF/ED", condition):
 				f = func(n *st.Node) bool {
