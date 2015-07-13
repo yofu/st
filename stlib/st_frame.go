@@ -2887,7 +2887,7 @@ susnode:
 		err1 := true
 		err2 := true
 		for _, el := range es {
-			if el.IsLineElem() {
+			if el.IsLineElem() && el.Etype <= BRACE {
 				err1 = false
 				if el.IsRigid(n.Num) {
 					err2 = false
