@@ -3687,6 +3687,7 @@ func (stw *Window) SectionData(sec *st.Sect) {
 	if al, ok := stw.Frame.Allows[sec.Num]; ok {
 		tb.AddText(strings.Split(al.String(), "\n")...)
 	}
+	tb.ScrollToTop()
 }
 
 func (stw *Window) CurrentLap(comment string, nlap, laps int) {

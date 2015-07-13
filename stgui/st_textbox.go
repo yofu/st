@@ -45,6 +45,7 @@ func (tb *TextBox) Text() []string {
 
 func (tb *TextBox) Clear() {
 	tb.value = make([]string, 0)
+	tb.index = 0
 }
 
 func (tb *TextBox) SetText(str []string) {
@@ -102,6 +103,10 @@ func (tb *TextBox) ScrollUp(n int) {
 		return
 	}
 	tb.index -= n
+}
+
+func (tb *TextBox) ScrollToTop() {
+	tb.index = 0
 }
 
 func NewFont() *Font {
