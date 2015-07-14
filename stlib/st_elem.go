@@ -1545,7 +1545,7 @@ divatdiag:
 	for i := 0; i < 2; i++ {
 		els := elem.Frame.SearchElem(elem.Enod[i], elem.Enod[i+2])
 		for _, el := range els {
-			if el.IsLineElem() {
+			if el.IsLineElem() && el.Etype <= GIRDER {
 				divdiag = i
 				break divatdiag
 			}
