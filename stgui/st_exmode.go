@@ -21,7 +21,7 @@ import (
 var (
 	exabbrev = []string{
 		"e/dit", "q/uit", "vi/m", "hk/you", "hw/eak", "rp/ipe", "cp/ipe", "tk/you", "ck/you", "pla/te", "fixr/otate", "fixm/ove", "noun/do", "un/do", "w/rite", "sav/e", "inc/rement", "c/heck", "r/ead",
-		"ins/ert", "p/rop/s/ect", "w/rite/o/utput", "w/rite/rea/ction", "w/rite/k/ijun", "nmi/nteraction", "w/ei/g/htcopy", "har/dcopy", "fi/g2", "fe/nce", "no/de", "xsc/ale", "ysc/ale", "zsc/ale", "pl/oad", "z/oubun/d/isp", "z/oubun/r/eaction",
+		"ins/ert", "p/rop/s/ect", "w/rite/o/utput", "w/rite/rea/ction", "w/rite/k/ijun", "p/late/w/eight", "nmi/nteraction", "w/ei/g/htcopy", "har/dcopy", "fi/g2", "fe/nce", "no/de", "xsc/ale", "ysc/ale", "zsc/ale", "pl/oad", "z/oubun/d/isp", "z/oubun/r/eaction",
 		"fac/ts", "go/han/l/st", "el/em", "ave/rage", "bo/nd", "ax/is/2//c/ang", "resul/tant", "prest/ress", "therm/al", "div/ide", "e/lem/dup/lication", "i/ntersect/a/ll", "co/nf",
 		"pi/le", "sec/tion", "c/urrent/v/alue", "an/alysis", "f/ilter", "ra/nge", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "ang/le", "sec/tion/+/", "col/or", "ex/tractarclm", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
 	}
@@ -748,6 +748,17 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
 		err = stw.Frame.ReportZoubunReaction(fn, stw.SelectNode, pers, d)
+		if err != nil {
+			return err
+		}
+	case "plateweight":
+		if usage {
+			return st.Usage(":plateweight fn")
+		}
+		if fn == "" {
+			fn = filepath.Join(filepath.Dir(stw.Frame.Path), "plateweight.txt")
+		}
+		err := stw.Frame.WritePlateWeight(fn)
 		if err != nil {
 			return err
 		}

@@ -2207,6 +2207,38 @@ func (frame *Frame) WriteKjn(fn string) error {
 	return nil
 }
 
+func (frame *Frame) WritePlateWeight(fn string) error {
+	sects := make([]*Sect, len(frame.Sects))
+	snum := 0
+	for _, sec := range frame.Sects {
+		if sec.Num < 700 || sec.Num >= 900 {
+			continue
+		}
+		sects[snum] = sec
+		snum++
+	}
+	sects = sects[:snum]
+	sort.Sort(SectByNum{sects})
+	var otp bytes.Buffer
+	otp.WriteString("CODE E          t        SLAB     FRAME    EQ\n")
+	otp.WriteString("     [tf/m2]    [m]      [tf/m2]  [tf/m2]  [tf/m2]\n")
+	for _, sec := range sects {
+		w := sec.Weight()
+		if sec.HasBrace() {
+			otp.WriteString(fmt.Sprintf("%4d %10.1f %6.3f    %6.3f   %6.3f   %6.3f\n", sec.Num, sec.Figs[0].Prop.E, sec.Figs[0].Value["THICK"], w[0], w[1], w[2]))
+		} else {
+			otp.WriteString(fmt.Sprintf("%4d %10s %6s    %6.3f   %6.3f   %6.3f\n", sec.Num, "", "", w[0], w[1], w[2]))
+		}
+	}
+	w, err := os.Create(fn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
+	otp.WriteTo(w)
+	return nil
+}
+
 func (frame *Frame) Check() ([]*Node, []*Elem, bool) {
 	ok := true
 	ns := make([]*Node, len(frame.Nodes))
