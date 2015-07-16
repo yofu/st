@@ -3650,6 +3650,7 @@ func notice1459(stw *Window) {
 		for i := 0; i < num; i++ {
 			ds[i] = -stw.SelectNode[i].ReturnDisp(stw.Frame.Show.Period, 2) * 100
 		}
+		var length float64
 		switch num {
 		default:
 			stw.EscapeAll()
@@ -3657,13 +3658,15 @@ func notice1459(stw *Window) {
 		case 2:
 			delta = ds[1] - ds[0]
 			stw.addHistory(fmt.Sprintf("Disp: %.3f - %.3f [cm]", ds[1], ds[0]))
+			for i := 0; i < 2; i++ {
+				length += math.Pow(stw.SelectNode[1].Coord[i]-stw.SelectNode[0].Coord[i], 2)
+			}
 		case 3:
 			delta = ds[1] - 0.5*(ds[0]+ds[2])
 			stw.addHistory(fmt.Sprintf("Disp: %.3f - (%.3f + %.3f)/2 [cm]", ds[1], ds[0], ds[2]))
-		}
-		var length float64
-		for i := 0; i < 2; i++ {
-			length += math.Pow(stw.SelectNode[2].Coord[i]-stw.SelectNode[0].Coord[i], 2)
+			for i := 0; i < 2; i++ {
+				length += math.Pow(stw.SelectNode[2].Coord[i]-stw.SelectNode[0].Coord[i], 2)
+			}
 		}
 		length = math.Sqrt(length) * 100
 		if delta != 0.0 {
