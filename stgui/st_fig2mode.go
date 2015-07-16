@@ -383,12 +383,30 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			stw.HideSection(int(val))
 		}
 	case "kijun":
+		if usage {
+			stw.addHistory("'kijun <name...>")
+			return nil
+		}
 		if un {
 			stw.Frame.Show.Kijun = false
 			stw.Labels["KIJUN"].SetAttribute("FGCOLOR", labelOFFColor)
 		} else {
 			stw.Frame.Show.Kijun = true
 			stw.Labels["KIJUN"].SetAttribute("FGCOLOR", labelFGColor)
+			if len(lis) > 1 {
+				for _, w := range lis[1:] {
+					pat, err := regexp.Compile(w)
+					if err != nil {
+						continue
+					}
+					for _, k := range stw.Frame.Kijuns {
+						k.Hide()
+						if pat.MatchString(k.Name) {
+							k.Show()
+						}
+					}
+				}
+			}
 		}
 	case "measure":
 		if usage {
