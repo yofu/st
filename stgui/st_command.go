@@ -2480,6 +2480,7 @@ func elemsamenode(stw *Window) {
 				stw.Frame.DeleteElem(el.Num)
 			}
 			stw.Snapshot()
+			stw.EscapeAll()
 		} else {
 			stw.EscapeCB()
 		}
