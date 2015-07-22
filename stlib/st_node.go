@@ -552,8 +552,16 @@ func ModifyEnod(ns []*Node) []*Node {
 	vecs := make([][]float64, l)
 	for i := 0; i < l-1; i++ {
 		tmp := make([]float64, 3)
+		sum := 0.0
 		for j := 0; j < 3; j++ {
 			tmp[j] = ns[i+1].Coord[j] - ns[i].Coord[j]
+			sum += tmp[j] * tmp[j]
+		}
+		if sum != 0.0 {
+			sum = math.Sqrt(sum)
+			for j := 0; j < 3; j++ {
+				tmp[j] /= sum
+			}
 		}
 		vecs[i] = tmp
 	}
