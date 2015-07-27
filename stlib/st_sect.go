@@ -142,10 +142,9 @@ func (sect *Sect) InpString() string {
 		rtn.WriteString(fmt.Sprintf("         MZMAX %9.3f MZMIN %9.3f\n", sect.Yield[6], sect.Yield[7]))
 		rtn.WriteString(fmt.Sprintf("         MXMAX %9.3f MXMIN %9.3f\n", sect.Yield[8], sect.Yield[9]))
 		rtn.WriteString(fmt.Sprintf("         MYMAX %9.3f MYMIN %9.3f\n", sect.Yield[10], sect.Yield[11]))
-	} else if _, ok := sect.Figs[0].Value["THICK"]; ok {
-		if sect.Lload[0] != 0.0 || sect.Lload[1] != 0.0 || sect.Lload[2] != 0.0 {
-			rtn.WriteString(fmt.Sprintf("         LLOAD %.3f %.3f %.3f\n", sect.Lload[0], sect.Lload[1], sect.Lload[2]))
-		}
+	}
+	if sect.Lload[0] != 0.0 || sect.Lload[1] != 0.0 || sect.Lload[2] != 0.0 {
+		rtn.WriteString(fmt.Sprintf("         LLOAD %.3f %.3f %.3f\n", sect.Lload[0], sect.Lload[1], sect.Lload[2]))
 	}
 	rtn.WriteString(fmt.Sprintf("         COLOR %s\n", col))
 	return rtn.String()
