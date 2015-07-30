@@ -5,8 +5,8 @@ import (
 	"github.com/visualfc/go-iup/cd"
 )
 
-const (
-	defaultfontface = "IPA明朝"
+var (
+	defaultfontface = fontface
 	defaultfontsize = 12
 )
 

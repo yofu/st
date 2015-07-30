@@ -83,7 +83,8 @@ const (
 
 // Font
 var (
-	commandFontFace = "IPA明朝"
+	fontface = "IPA明朝"
+	commandFontFace = fontface
 	commandFontSize = "11"
 	labelFGColor    = "0 0 0"
 	// labelBGColor = "255 255 255"
@@ -93,7 +94,7 @@ var (
 	historyBGColor        = "220 220 220"
 	sectionLabelColor     = "204 51 0"
 	labelOFFColor         = "160 160 160"
-	canvasFontFace        = "IPA明朝"
+	canvasFontFace        = fontface
 	canvasFontSize        = 9
 	sectiondlgFontSize    = "9"
 	sectiondlgFGColor     = "255 255 255"
@@ -103,7 +104,7 @@ var (
 	pivotColor            = cd.CD_GREEN
 	DefaultTextAlignment  = cd.CD_BASE_LEFT
 	printFontColor        = cd.CD_BLACK
-	printFontFace         = "IPA明朝"
+	printFontFace         = fontface
 	printFontSize         = 6
 	showprintrange        = false
 )
