@@ -5915,6 +5915,88 @@ func (stw *Window) ColorDialog() (int, error) {
 func (stw *Window) SectionProperty(sc *st.Sect) {
 	var data, linedata, platedata *iup.Handle
 	var addfig *iup.Handle
+	// var drawarea *iup.Handle
+	// var cdcanv *cd.Canvas
+	// cl := func(cvs *cd.Canvas, position []float64, scale float64, vertices [][]float64) {
+	// 	cvs.Begin(cd.CD_CLOSED_LINES)
+	// 	for _, v := range vertices {
+	// 		if v == nil {
+	// 			cvs.End()
+	// 			cvs.Begin(cd.CD_CLOSED_LINES)
+	// 			continue
+	// 		}
+	// 		fmt.Println(position[0]+v[0]*0.01*scale, position[1]+v[1]*0.01*scale)
+	// 		cvs.FVertex(position[0]+v[0]*0.01*scale, position[1]+v[1]*0.01*scale)
+	// 	}
+	// 	cvs.End()
+	// }
+	// draw := func(s *st.Sect, cvs *cd.Canvas) {
+	// 	if al, ok := stw.Frame.Allows[s.Num]; ok {
+	// 		scale := 1000.0
+	// 		w, h := cdcanv.GetSize()
+	// 		position := []float64{float64(w), float64(h)}
+	// 		switch al.(type) {
+	// 		case *st.SColumn:
+	// 			sh := al.(*st.SColumn).Shape
+	// 			switch sh.(type) {
+	// 			case st.HKYOU, st.HWEAK, st.RPIPE, st.CPIPE, st.PLATE:
+	// 				vertices := sh.Vertices()
+	// 				cl(cvs, position, scale, vertices)
+	// 			}
+	// 		case *st.RCColumn:
+	// 			rc := al.(*st.RCColumn)
+	// 			vertices := rc.CShape.Vertices()
+	// 			cl(cvs, position, scale, vertices)
+	// 			for _, reins := range rc.Reins {
+	// 				vertices = reins.Vertices()
+	// 				cl(cvs, position, scale, vertices)
+	// 			}
+	// 		case *st.RCGirder:
+	// 			rg := al.(*st.RCGirder)
+	// 			vertices := rg.CShape.Vertices()
+	// 			cl(cvs, position, scale, vertices)
+	// 			for _, reins := range rg.Reins {
+	// 				vertices = reins.Vertices()
+	// 				cl(cvs, position, scale, vertices)
+	// 			}
+	// 		case *st.WoodColumn:
+	// 			sh := al.(*st.WoodColumn).Shape
+	// 			switch sh.(type) {
+	// 			case st.PLATE:
+	// 				vertices := sh.Vertices()
+	// 				cl(cvs, position, scale, vertices)
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// drawarea = iup.Canvas(
+	// 	"CANFOCUS=YES",
+	// 	"EXPAND=HORIZONTAL",
+	// 	"SIZE=100x100",
+	// 	"BGCOLOR=\"0 0 0\"",
+	// 	"BORDER=YES",
+	// 	"EXPAND=NO",
+	// 	func(arg *iup.CommonMap) {
+	// 		cdcanv = cd.CreateCanvas(cd.CD_IUP, drawarea)
+	// 		cdcanv.Foreground(cd.CD_WHITE)
+	// 		cdcanv.Background(cd.CD_BLACK)
+	// 		cdcanv.LineStyle(cd.CD_CONTINUOUS)
+	// 		cdcanv.LineWidth(1)
+	// 		cdcanv.Activate()
+	// 		draw(sc, cdcanv)
+	// 		cdcanv.Flush()
+	// 	},
+	// 	func(arg *iup.CanvasResize) {
+	// 		cdcanv.Activate()
+	// 		draw(sc, cdcanv)
+	// 		cdcanv.Flush()
+	// 	},
+	// 	func(arg *iup.CanvasAction) {
+	// 		cdcanv.Activate()
+	// 		draw(sc, cdcanv)
+	// 		cdcanv.Flush()
+	// 	},
+	// )
 	dataset := make(map[string]*iup.Handle, 0)
 	dataset["NAME"] = datatext("-")
 	dataset["NAME"].SetAttribute("EXPAND", "HORIZONTAL")
@@ -6068,7 +6150,8 @@ func (stw *Window) SectionProperty(sc *st.Sect) {
 		}
 		updatedata(sc, ind)
 	})
-	dlg := iup.Dialog(iup.Vbox(dataset["NAME"],
+	dlg := iup.Dialog(iup.Vbox(drawarea,
+		dataset["NAME"],
 		iup.Hbox(propertylabel("CODE"), dataset["CODE"]),
 		iup.Hbox(proplist, addfig),
 		iup.Hbox(propertylabel("PROP"), dataset["PROP"]),
