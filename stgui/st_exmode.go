@@ -1630,6 +1630,42 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				sender[i] = stw.SelectElem[i]
 			}
 		}
+	case "reaction":
+		if usage {
+			return st.Usage(":reaction")
+		}
+		w := 0.0
+		a := 0.0
+		i := 0
+		sects := make([]*st.Sect, len(stw.Frame.Sects))
+		for _, el := range stw.Frame.Elems {
+			if el.Sect.Num >= 900 {
+				continue
+			}
+			if el.Sect.IsReaction() {
+				a += el.Area()
+				add := true
+				for _, s := range sects[:i] {
+					if el.Sect == s {
+						add = false
+						break
+					}
+				}
+				if add {
+					sects[i] = el.Sect
+					i++
+				}
+			}
+			ws := el.Weight()
+			w += ws[1]
+		}
+		if a == 0.0 {
+			return nil
+		}
+		val := -w/a
+		for _, s := range sects[:i] {
+			s.Lload[1] += val
+		}
 	case "fence":
 		if usage {
 			return st.Usage(":fence axis coord {-plate}")
