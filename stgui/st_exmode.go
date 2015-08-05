@@ -1524,7 +1524,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "elem":
 		if usage {
-			return st.Usage(":elem [elemcode,sect sectcode,etype]")
+			return st.Usage(":elem [elemcode,sect sectcode,etype,reaction]")
 		}
 		stw.Deselect()
 		var f func(*st.Elem) bool
@@ -1597,6 +1597,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 						}
 					}
 					return false
+				}
+			case strings.EqualFold(condition, "reaction"):
+				f = func(el *st.Elem) bool {
+					return el.Sect.IsReaction()
 				}
 			}
 			if f != nil {

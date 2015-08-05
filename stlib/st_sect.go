@@ -440,3 +440,14 @@ func (sect *Sect) IsGohan(eps float64) bool {
 	}
 	return sect.Figs[0].Prop.IsGohan(eps)
 }
+
+func (sect *Sect) IsReaction() bool {
+	if sect.Lload == nil || len(sect.Lload) < 3 {
+		return false
+	}
+	if sect.Lload[1] < 0.0 {
+		return true
+	} else {
+		return false
+	}
+}
