@@ -377,6 +377,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.Labels["DFACT"] = datatext("100.0")
 	stw.Labels["QFACT"] = datatext("0.5")
 	stw.Labels["MFACT"] = datatext("0.5")
+	stw.Labels["RFACT"] = datatext("0.5")
 	stw.Labels["XMAX"] = datatext("1000.0")
 	stw.Labels["XMIN"] = datatext("-100.0")
 	stw.Labels["YMAX"] = datatext("1000.0")
@@ -1160,7 +1161,8 @@ func NewWindow(homedir string) *Window { // {{{
 		iup.Hbox(datalabel("CONF"), stw.Labels["CONFSIZE"]),
 		iup.Hbox(datalabel("DFACT"), stw.Labels["DFACT"]),
 		iup.Hbox(datalabel("QFACT"), stw.Labels["QFACT"]),
-		iup.Hbox(datalabel("MFACT"), stw.Labels["MFACT"]))
+		iup.Hbox(datalabel("MFACT"), stw.Labels["MFACT"]),
+		iup.Hbox(datalabel("RFACT"), stw.Labels["RFACT"]))
 	tgshow := iup.Vbox(datasectionlabel("SHOW"),
 		stw.Labels["GAXIS"],
 		stw.Labels["EAXIS"],
@@ -6150,8 +6152,8 @@ func (stw *Window) SectionProperty(sc *st.Sect) {
 		}
 		updatedata(sc, ind)
 	})
-	dlg := iup.Dialog(iup.Vbox(drawarea,
-		dataset["NAME"],
+	// dlg := iup.Dialog(iup.Vbox(drawarea,
+	dlg := iup.Dialog(iup.Vbox(dataset["NAME"],
 		iup.Hbox(propertylabel("CODE"), dataset["CODE"]),
 		iup.Hbox(proplist, addfig),
 		iup.Hbox(propertylabel("PROP"), dataset["PROP"]),
@@ -7010,6 +7012,7 @@ func (stw *Window) LinkTextValue() {
 	stw.CB_TextValue(stw.Labels["DFACT"], &stw.Frame.Show.Dfact)
 	stw.CB_TextValue(stw.Labels["QFACT"], &stw.Frame.Show.Qfact)
 	stw.CB_TextValue(stw.Labels["MFACT"], &stw.Frame.Show.Mfact)
+	stw.CB_TextValue(stw.Labels["RFACT"], &stw.Frame.Show.Rfact)
 }
 
 func (stw *Window) EscapeCB() {
