@@ -110,7 +110,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 	args = args[:narg]
 	unnamed := make([]string, narg)
 	tmpnarg := 0
-	namedarg := regexp.MustCompile("^ *-{1,2}([a-zA-Z]+)(={0,1})([^ =]*) *$")
+	namedarg := regexp.MustCompile("^ *-{1,2}([a-zA-Z0-9]+)(={0,1})([^ =]*) *$")
 	for _, a := range args {
 		if namedarg.MatchString(a) {
 			fs := namedarg.FindStringSubmatch(a)
@@ -812,18 +812,26 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "dxf":
 		if usage {
-			return st.Usage(":dxf filename {-2d, -3d}")
+			return st.Usage(":dxf filename {-2d, -3d} {-scale=val}")
 		}
 		dimension := 2
 		if _, ok := argdict["3D"]; ok {
 			dimension = 3
 		}
+		scale := 1.0
+		if v, ok := argdict["SCALE"]; ok {
+			val, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				return err
+			}
+			scale = val
+		}
 		var err error
 		switch dimension {
 		case 2:
-			err = stw.Frame.WriteDxf2D(st.Ce(fn, ".dxf"))
+			err = stw.Frame.WriteDxf2D(st.Ce(fn, ".dxf"), scale)
 		case 3:
-			err = stw.Frame.WriteDxf3D(st.Ce(fn, ".dxf"))
+			err = stw.Frame.WriteDxf3D(st.Ce(fn, ".dxf"), scale)
 		default:
 			return st.Message("unknown dimension")
 		}

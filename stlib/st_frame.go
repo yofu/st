@@ -2240,14 +2240,14 @@ func (frame *Frame) WritePlateWeight(fn string) error {
 	return nil
 }
 
-func (frame *Frame) WriteDxf2D(filename string) error {
+func (frame *Frame) WriteDxf2D(filename string, scale float64) error {
 	d := dxf.NewDrawing()
 	for _, n := range frame.Nodes {
 		frame.View.ProjectNode(n)
 	}
 	for _, el := range frame.Elems {
 		if el.IsLineElem() {
-			d.Line(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], 0.0, el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], 0.0)
+			d.Line(el.Enod[0].Pcoord[0]*scale, el.Enod[0].Pcoord[1]*scale, 0.0, el.Enod[1].Pcoord[0]*scale, el.Enod[1].Pcoord[1]*scale, 0.0)
 		}
 	}
 	err := d.SaveAs(filename)
@@ -2257,11 +2257,11 @@ func (frame *Frame) WriteDxf2D(filename string) error {
 	return nil
 }
 
-func (frame *Frame) WriteDxf3D(filename string) error {
+func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 	d := dxf.NewDrawing()
 	for _, el := range frame.Elems {
 		if el.IsLineElem() {
-			d.Line(el.Enod[0].Coord[0], el.Enod[0].Coord[1], el.Enod[0].Coord[2], el.Enod[1].Coord[0], el.Enod[1].Coord[1], el.Enod[1].Coord[2])
+			d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, el.Enod[0].Coord[2]*scale, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, el.Enod[1].Coord[2]*scale)
 		}
 	}
 	err := d.SaveAs(filename)
