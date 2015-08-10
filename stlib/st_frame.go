@@ -2246,7 +2246,7 @@ func (frame *Frame) WriteDxf2D(filename string, scale float64) error {
 		frame.View.ProjectNode(n)
 	}
 	for _, el := range frame.Elems {
-		d.Layer(fmt.Sprintf("%s%d", ETYPES[el.Etype], el.Sect.Num), dxf.DefaultColor, dxf.DefaultLineType, true)
+		d.Layer(fmt.Sprintf("%s%d", ETYPES[el.Etype], el.Sect.Num), dxf.ColorIndex(IntColorList(el.Sect.Color)), dxf.DefaultLineType, true)
 		if el.IsLineElem() {
 			d.Line(el.Enod[0].Pcoord[0]*scale, el.Enod[0].Pcoord[1]*scale, 0.0, el.Enod[1].Pcoord[0]*scale, el.Enod[1].Pcoord[1]*scale, 0.0)
 		}
@@ -2261,7 +2261,7 @@ func (frame *Frame) WriteDxf2D(filename string, scale float64) error {
 func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 	d := dxf.NewDrawing()
 	for _, el := range frame.Elems {
-		d.Layer(fmt.Sprintf("%s%d", ETYPES[el.Etype], el.Sect.Num), dxf.DefaultColor, dxf.DefaultLineType, true)
+		d.Layer(fmt.Sprintf("%s%d", ETYPES[el.Etype], el.Sect.Num), dxf.ColorIndex(IntColorList(el.Sect.Color)), dxf.DefaultLineType, true)
 		if el.IsLineElem() {
 			d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, el.Enod[0].Coord[2]*scale, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, el.Enod[1].Coord[2]*scale)
 		} else {
