@@ -84,8 +84,11 @@ func (rf Reinforce) Ftw(cond *Condition) float64 {
 		return rf.Material.Fs
 	}
 }
+func (rf Reinforce) Radius() float64 {
+	return math.Sqrt(rf.Area/math.Pi)
+}
 func (rf Reinforce) Vertices() [][]float64 {
-	d := 0.5 * math.Sqrt(rf.Area*4.0/math.Pi)
+	d := rf.Radius()
 	val := math.Pi / 8.0
 	theta := 0.0
 	vertices := make([][]float64, 16)
