@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/yofu/st/arclm"
+	"github.com/yofu/dxf"
 	"github.com/mattn/natural"
 	"io/ioutil"
 	"math"
@@ -2236,6 +2237,37 @@ func (frame *Frame) WritePlateWeight(fn string) error {
 		return err
 	}
 	otp.WriteTo(w)
+	return nil
+}
+
+func (frame *Frame) WriteDxf2D(filename string) error {
+	d := dxf.NewDrawing()
+	for _, n := range frame.Nodes {
+		frame.View.ProjectNode(n)
+	}
+	for _, el := range frame.Elems {
+		if el.IsLineElem() {
+			d.Line(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], 0.0, el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], 0.0)
+		}
+	}
+	err := d.SaveAs(filename)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (frame *Frame) WriteDxf3D(filename string) error {
+	d := dxf.NewDrawing()
+	for _, el := range frame.Elems {
+		if el.IsLineElem() {
+			d.Line(el.Enod[0].Coord[0], el.Enod[0].Coord[1], el.Enod[0].Coord[2], el.Enod[1].Coord[0], el.Enod[1].Coord[1], el.Enod[1].Coord[2])
+		}
+	}
+	err := d.SaveAs(filename)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

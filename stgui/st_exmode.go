@@ -810,6 +810,26 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if err != nil {
 			return err
 		}
+	case "dxf":
+		if usage {
+			return st.Usage(":dxf filename {-2d, -3d}")
+		}
+		dimension := 2
+		if _, ok := argdict["3D"]; ok {
+			dimension = 3
+		}
+		var err error
+		switch dimension {
+		case 2:
+			err = stw.Frame.WriteDxf2D(st.Ce(fn, ".dxf"))
+		case 3:
+			err = stw.Frame.WriteDxf3D(st.Ce(fn, ".dxf"))
+		default:
+			return st.Message("unknown dimension")
+		}
+		if err != nil {
+			return err
+		}
 	case "check":
 		if usage {
 			return st.Usage(":check")
