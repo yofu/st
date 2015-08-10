@@ -36,6 +36,20 @@ func NewCOOMatrix(size int) *COOMatrix {
 	return rtn
 }
 
+func (co *COOMatrix) Copy() *COOMatrix {
+	rtn := NewCOOMatrix(co.Size)
+	for k, v := range co.data {
+		if _, ok := rtn.data[k]; !ok {
+			rtn.data[k] = make(map[int]float64)
+		}
+		for kk, vv := range v {
+			rtn.data[k][kk] = vv
+		}
+	}
+	rtn.nz = co.nz
+	return rtn
+}
+
 func (co *COOMatrix) String() string {
 	var rtn bytes.Buffer
 	for row := 0; row < co.Size; row++ {
