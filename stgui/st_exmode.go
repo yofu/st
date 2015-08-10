@@ -3459,6 +3459,69 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}()
 		return st.ArclmStart(m.String())
+	case "arclm401":
+		if usage {
+			return st.Usage(":arclm401 {-period=name} {-eps=val} {-noinit} filename")
+		}
+		var otp string
+		var m bytes.Buffer
+		if fn == "" {
+			otp = st.Ce(stw.Frame.Path, ".otp")
+		} else {
+			otp = fn
+		}
+		if o, ok := argdict["OTP"]; ok {
+			otp = o
+		}
+		eps := 1E-3
+		if s, ok := argdict["EPS"]; ok {
+			tmp, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				eps = tmp
+			}
+		}
+		per := "L"
+		if p, ok := argdict["PERIOD"]; ok {
+			if p != "" {
+				per = strings.ToUpper(p)
+			}
+		}
+		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
+		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
+		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
+		af := stw.Frame.Arclms[per]
+		init := true
+		if _, ok := argdict["NOINIT"]; ok {
+			init = false
+			m.WriteString("NO INITIALISATION")
+		}
+		wgtdict := make(map[int]float64)
+		for _, n := range stw.Frame.Nodes {
+			wgtdict[n.Num] = n.Weight[1]
+		}
+		go func() {
+			err := af.Arclm401(otp, init, eps, wgtdict)
+			af.Endch <- err
+		}()
+		stw.CurrentLap("Calculating...", 0, 0)
+		go func() {
+		read401:
+			for {
+				select {
+				case <-af.Pivot:
+				case nlap := <-af.Lapch:
+					stw.Frame.ReadArclmData(af, per)
+					af.Lapch <- 1
+					stw.CurrentLap("Calculating...", nlap, 0)
+					stw.Redraw()
+				case <-af.Endch:
+					stw.CurrentLap("Completed", 0, 0)
+					stw.Redraw()
+					break read401
+				}
+			}
+		}()
+		return st.ArclmStart(m.String())
 	}
 	return nil
 }

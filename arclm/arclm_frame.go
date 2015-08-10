@@ -884,3 +884,116 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 	frame.WriteTo(w)
 	return nil
 }
+
+// TODO: implement
+func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int]float64) error {
+	if init {
+		frame.Initialise()
+	}
+	s := frame.SaveState()
+	start := time.Now()
+	laptime := func(message string) {
+		end := time.Now()
+		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+	}
+	confed := make([]*Node, len(frame.Nodes))
+	confdata := make([][]bool, len(frame.Nodes))
+	nnum := 0
+	for _, n := range frame.Nodes {
+		if n.Conf[2] {
+			confed[nnum] = n
+			confdata[nnum] = make([]bool, 6)
+			for i:=0; i<6; i++ {
+				confdata[nnum][i] = n.Conf[i]
+			}
+			nnum++
+			continue
+		}
+	}
+	confed = confed[:nnum]
+	confdata = confdata[:nnum]
+	released := make([]bool, nnum)
+	lap := 0
+	for {
+		frame.Initialise()
+		gmtx, gvct, err := frame.KE(1.0)
+		laptime("ASSEM")
+		if err != nil {
+			return err
+		}
+		csize, conf, vec := frame.AssemConf(gvct, 1.0)
+		laptime("VEC")
+		var answers [][]float64
+		mtx := gmtx.ToLLS(csize, conf)
+		laptime("ToLLS")
+		answers, _, _, _, err = mtx.Solve(frame.Pivot, vec)
+		if err != nil {
+			return err
+		}
+		laptime("Solve")
+		ans := frame.FillConf(answers[0])
+		_, err = frame.UpdateStress(ans)
+		if err != nil {
+			return err
+		}
+		frame.UpdateReaction(gmtx, ans)
+		frame.UpdateForm(ans)
+		uplift := 0
+		for i, n := range confed {
+			if n.Num == 711 {
+				fmt.Println("NODE 711: ", n.Conf[2], n.Disp[2])
+			}
+			if n.Conf[2] {
+				wgt := 0.0
+				if v, ok := wgtdict[n.Num]; ok {
+					wgt = v
+				}
+				if n.Num == 711 {
+					fmt.Println(n.Reaction[2], wgt)
+				}
+				if n.Reaction[2]+wgt < 0.0 {
+					uplift++
+					released[i] = true
+					for j := 0; j < 6; j++ {
+						n.Conf[j] = false
+					}
+				}
+			} else {
+				if n.Disp[2] < 0.0 {
+					uplift++
+					released[i] = false
+					for j:=0; j<6; j++ {
+						n.Conf[j] = confdata[i][j]
+					}
+				}
+			}
+		}
+		if uplift == 0 {
+			break
+		}
+		lap++
+		frame.RestoreState(s)
+		frame.Lapch <- lap
+		<-frame.Lapch
+	}
+	var nodes bytes.Buffer
+	nodes.WriteString(":node")
+	for i:=0; i<nnum; i++ {
+		if released[i] {
+			nodes.WriteString(fmt.Sprintf(" %d", confed[i].Num))
+		}
+	}
+	fmt.Println(nodes.String())
+	if otp == "" {
+		otp = "hogtxt.otp"
+	}
+	w, err := os.Create(otp)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+	frame.WriteTo(w)
+	laptime("End")
+	return nil
+}
+
