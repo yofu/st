@@ -2260,10 +2260,75 @@ func (frame *Frame) WriteDxf2D(filename string, scale float64) error {
 
 func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 	d := dxf.NewDrawing()
+	drawsection := func(elem *Elem, position []float64, vertices [][]float64) {
+		var vers [][]float64
+		vers = make([][]float64, 0)
+		size := 0
+		for _, v := range vertices {
+			if v == nil {
+				d.Polyline(true, vers[:size]...)
+				vers = make([][]float64, 0)
+				size = 0
+				continue
+			}
+			coord := make([]float64, 3)
+			coord[0] = (position[0] + (v[0]*elem.Strong[0]+v[1]*elem.Weak[0])*0.01)*scale
+			coord[1] = (position[1] + (v[0]*elem.Strong[1]+v[1]*elem.Weak[1])*0.01)*scale
+			coord[2] = (position[2] + (v[0]*elem.Strong[2]+v[1]*elem.Weak[2])*0.01)*scale
+			vers = append(vers, coord)
+			size++
+		}
+		d.Polyline(true, vers[:size]...)
+	}
 	for _, el := range frame.Elems {
 		d.Layer(fmt.Sprintf("%s%d", ETYPES[el.Etype], el.Sect.Num), dxf.ColorIndex(IntColorList(el.Sect.Color)), dxf.DefaultLineType, true)
 		if el.IsLineElem() {
 			d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, el.Enod[0].Coord[2]*scale, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, el.Enod[1].Coord[2]*scale)
+			if al, ok := frame.Allows[el.Sect.Num]; ok {
+				d.Layer("SECTION", dxf.DefaultColor, dxf.DefaultLineType, true)
+				position := el.MidPoint()
+				switch al.(type) {
+				case *SColumn:
+					sh := al.(*SColumn).Shape
+					switch sh.(type) {
+					case HKYOU, HWEAK, RPIPE, PLATE:
+						vertices := sh.Vertices()
+						drawsection(el, position, vertices)
+					case CPIPE:
+						d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, sh.(CPIPE).D*0.01*0.5*scale)
+						d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, (sh.(CPIPE).D*0.5-sh.(CPIPE).T)*0.01*scale)
+					}
+				case *RCColumn:
+					rc := al.(*RCColumn)
+					vertices := rc.CShape.Vertices()
+					drawsection(el, position, vertices)
+					for _, reins := range rc.Reins {
+						pos := make([]float64, 3)
+						pos[0] = (position[0] + (reins.Position[0]*el.Strong[0]+reins.Position[1]*el.Weak[0])*0.01)*scale
+						pos[1] = (position[1] + (reins.Position[0]*el.Strong[1]+reins.Position[1]*el.Weak[1])*0.01)*scale
+						pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01)*scale
+						d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
+					}
+				case *RCGirder:
+					rg := al.(*RCGirder)
+					vertices := rg.CShape.Vertices()
+					drawsection(el, position, vertices)
+					for _, reins := range rg.Reins {
+						pos := make([]float64, 3)
+						pos[0] = (position[0] + (reins.Position[0]*el.Strong[0]+reins.Position[1]*el.Weak[0])*0.01)*scale
+						pos[1] = (position[1] + (reins.Position[0]*el.Strong[1]+reins.Position[1]*el.Weak[1])*0.01)*scale
+						pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01)*scale
+						d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
+					}
+				case *WoodColumn:
+					sh := al.(*WoodColumn).Shape
+					switch sh.(type) {
+					case PLATE:
+						vertices := sh.Vertices()
+						drawsection(el, position, vertices)
+					}
+				}
+			}
 		} else {
 			switch el.Enods {
 			case 3:
