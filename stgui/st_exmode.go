@@ -1691,6 +1691,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return nil
 		}
 		val := -w/a
+		val = math.Floor(val*1000)*0.001
 		for _, s := range sects[:i] {
 			s.Lload[1] += val
 		}
