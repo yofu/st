@@ -182,7 +182,26 @@ func ColorInt(str string) (rtn int) {
 	return
 }
 
-func IntColorList(col int) []string {
+func IntColorList(col int) []int {
+	rtn := make([]int, 3)
+	val := 65536
+	for i := 0; i < 3; i++ {
+		tmp := 0
+		for {
+			if col >= val {
+				col -= val
+				tmp += 1
+			} else {
+				rtn[i] = tmp
+				break
+			}
+		}
+		val >>= 8
+	}
+	return rtn
+}
+
+func IntColorStringList(col int) []string {
 	rtn := make([]string, 3)
 	val := 65536
 	for i := 0; i < 3; i++ {
