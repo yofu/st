@@ -2262,6 +2262,18 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 	for _, el := range frame.Elems {
 		if el.IsLineElem() {
 			d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, el.Enod[0].Coord[2]*scale, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, el.Enod[1].Coord[2]*scale)
+		} else {
+			switch el.Enods {
+			case 3:
+				d.ThreeDFace([][]float64{[]float64{el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, el.Enod[0].Coord[2]*scale},
+					[]float64{el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, el.Enod[1].Coord[2]*scale},
+					[]float64{el.Enod[2].Coord[0]*scale, el.Enod[2].Coord[1]*scale, el.Enod[2].Coord[2]*scale}})
+			case 4:
+				d.ThreeDFace([][]float64{[]float64{el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, el.Enod[0].Coord[2]*scale},
+					[]float64{el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, el.Enod[1].Coord[2]*scale},
+					[]float64{el.Enod[2].Coord[0]*scale, el.Enod[2].Coord[1]*scale, el.Enod[2].Coord[2]*scale},
+					[]float64{el.Enod[3].Coord[0]*scale, el.Enod[3].Coord[1]*scale, el.Enod[3].Coord[2]*scale}})
+			}
 		}
 	}
 	err := d.SaveAs(filename)
