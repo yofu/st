@@ -2295,7 +2295,18 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 	for _, el := range frame.Elems {
 		d.Layer(fmt.Sprintf("%s%d", ETYPES[el.Etype], el.Sect.Num), dxf.ColorIndex(IntColorList(el.Sect.Color)), dxf.DefaultLineType, true)
 		if el.IsLineElem() {
-			d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, el.Enod[0].Coord[2]*scale, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, el.Enod[1].Coord[2]*scale)
+			l, err := d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, el.Enod[0].Coord[2]*scale, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, el.Enod[1].Coord[2]*scale)
+			if err != nil {
+				continue
+			}
+			switch el.BondState() {
+			case PIN_RIGID:
+				d.Group("PINRIGID", "PIN-RIGID", l)
+			case RIGID_PIN:
+				d.Group("RIGIDPIN", "RIGID-PIN", l)
+			case PIN_PIN:
+				d.Group("PINPIN", "PIN-PIN", l)
+			}
 			if al, ok := frame.Allows[el.Sect.Num]; ok {
 				d.Layer("SECTION", dxf.DefaultColor, dxf.DefaultLineType, true)
 				position := el.MidPoint()
