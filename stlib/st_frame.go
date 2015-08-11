@@ -2307,30 +2307,45 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 						vertices := sh.Vertices()
 						drawsection(el, position, vertices)
 					case CPIPE:
-						d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, sh.(CPIPE).D*0.01*0.5*scale)
-						d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, (sh.(CPIPE).D*0.5-sh.(CPIPE).T)*0.01*scale)
+						direction := el.Direction(true)
+						c, err := d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, sh.(CPIPE).D*0.01*0.5*scale)
+						if err == nil {
+							c.SetDirection(direction)
+						}
+						c, err = d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, (sh.(CPIPE).D*0.5-sh.(CPIPE).T)*0.01*scale)
+						if err == nil {
+							c.SetDirection(direction)
+						}
 					}
 				case *RCColumn:
 					rc := al.(*RCColumn)
 					vertices := rc.CShape.Vertices()
 					drawsection(el, position, vertices)
+					direction := el.Direction(true)
 					for _, reins := range rc.Reins {
 						pos := make([]float64, 3)
 						pos[0] = (position[0] + (reins.Position[0]*el.Strong[0]+reins.Position[1]*el.Weak[0])*0.01)*scale
 						pos[1] = (position[1] + (reins.Position[0]*el.Strong[1]+reins.Position[1]*el.Weak[1])*0.01)*scale
 						pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01)*scale
-						d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
+						c, err := d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
+						if err == nil {
+							c.SetDirection(direction)
+						}
 					}
 				case *RCGirder:
 					rg := al.(*RCGirder)
 					vertices := rg.CShape.Vertices()
 					drawsection(el, position, vertices)
+					direction := el.Direction(true)
 					for _, reins := range rg.Reins {
 						pos := make([]float64, 3)
 						pos[0] = (position[0] + (reins.Position[0]*el.Strong[0]+reins.Position[1]*el.Weak[0])*0.01)*scale
 						pos[1] = (position[1] + (reins.Position[0]*el.Strong[1]+reins.Position[1]*el.Weak[1])*0.01)*scale
 						pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01)*scale
-						d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
+						c, err := d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
+						if err == nil {
+							c.SetDirection(direction)
+						}
 					}
 				case *WoodColumn:
 					sh := al.(*WoodColumn).Shape
