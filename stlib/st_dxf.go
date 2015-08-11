@@ -541,7 +541,7 @@ func (frame *Frame) ParseDxfGroup(lis []string, namehandle map[int]string, elemh
 				return err
 			}
 			if el, ok := elemhandle[int(h)]; ok {
-				for j:=0; j<12; j++ {
+				for j := 0; j < 12; j++ {
 					el.Bonds[j] = bonds[j]
 				}
 			}
