@@ -17,6 +17,7 @@ var (
 	entstart   = regexp.MustCompile("^ *0 *$")
 	layeretype = regexp.MustCompile("[a-zA-Z]+")
 	layersect  = regexp.MustCompile("[0-9]+")
+	re_conf    = regexp.MustCompile("^CONF([01]{6})$")
 )
 
 func (frame *Frame) ReadDxf(filename string, coord []float64, eps float64) (err error) {
@@ -174,13 +175,24 @@ func (frame *Frame) ParseDxfPoint(lis []string, coord []float64, eps float64) er
 		}
 		switch int(index) {
 		case 8:
-			switch strings.ToUpper(lis[i+1]) {
-			default:
+			str := strings.ToUpper(lis[i+1])
+			if re_conf.MatchString(str) {
+				fs := re_conf.FindStringSubmatch(str)
 				conf = []bool{false, false, false, false, false, false}
-			case "FIX":
-				conf = []bool{true, true, true, true, true, true}
-			case "PIN":
-				conf = []bool{true, true, true, false, false, false}
+				for j, s := range fs[1] {
+					if s == '1' {
+						conf[j] = true
+					}
+				}
+			} else {
+				switch str {
+				default:
+					conf = []bool{false, false, false, false, false, false}
+				case "FIX":
+					conf = []bool{true, true, true, true, true, true}
+				case "PIN":
+					conf = []bool{true, true, true, false, false, false}
+				}
 			}
 		case 10:
 			x, err = strconv.ParseFloat(lis[i+1], 64)
