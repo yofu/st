@@ -1,6 +1,8 @@
 package st
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"regexp"
@@ -21,7 +23,7 @@ var (
 )
 
 func (frame *Frame) ReadDxf(filename string, coord []float64, eps float64) (err error) {
-	var parse = false
+	var parse = 0
 	f, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
@@ -37,6 +39,8 @@ func (frame *Frame) ReadDxf(filename string, coord []float64, eps float64) (err 
 	}
 	tmp := make([]string, 0)
 	var vertices []*Node
+	namehandle := make(map[int]string)
+	elemhandle := make(map[int]*Elem)
 	for ind, j := range lis {
 		var words []string
 		for _, k := range strings.Split(j, " ") {
@@ -49,17 +53,23 @@ func (frame *Frame) ReadDxf(filename string, coord []float64, eps float64) (err 
 		}
 		first := words[0]
 		if first == "SECTION" {
-			if ok, err := regexp.MatchString("^ *ENTITIES *$", lis[ind+2]); ok {
-				parse = true
-			} else if err != nil {
-				return err
-			} else {
-				if parse {
-					break
+			str := strings.ToUpper(strings.Replace(lis[ind+2], " ", "", -1))
+			switch str {
+			case "ENTITIES":
+				parse = 1
+			case "OBJECTS":
+				vertices, elemhandle, err = frame.ParseDxfEntities(tmp, elemhandle, coord, vertices, eps)
+				if err != nil {
+					return err
 				}
+				tmp = []string{strings.Join(words, " ")}
+				parse = 2
+			default:
+				parse = 0
 			}
 		}
-		if parse {
+		switch parse {
+		case 1:
 			if ind%2 == 1 {
 				tmp = append(tmp, strings.Join(words, " "))
 			} else {
@@ -67,7 +77,22 @@ func (frame *Frame) ReadDxf(filename string, coord []float64, eps float64) (err 
 				default:
 					tmp = append(tmp, strings.Join(words, " "))
 				case entstart.MatchString(first):
-					vertices, err = frame.ParseDxf(tmp, coord, vertices, eps)
+					vertices, elemhandle, err = frame.ParseDxfEntities(tmp, elemhandle, coord, vertices, eps)
+					if err != nil {
+						return err
+					}
+					tmp = []string{strings.Join(words, " ")}
+				}
+			}
+		case 2:
+			if ind%2 == 1 {
+				tmp = append(tmp, strings.Join(words, " "))
+			} else {
+				switch {
+				default:
+					tmp = append(tmp, strings.Join(words, " "))
+				case entstart.MatchString(first):
+					namehandle, err = frame.ParseDxfObjects(tmp, namehandle, elemhandle)
 					if err != nil {
 						return err
 					}
@@ -76,23 +101,19 @@ func (frame *Frame) ReadDxf(filename string, coord []float64, eps float64) (err 
 			}
 		}
 	}
-	vertices, err = frame.ParseDxf(tmp, coord, vertices, eps)
-	if err != nil {
-		return err
-	}
 	frame.Name = filepath.Base(filename)
 	return nil
 }
 
-func (frame *Frame) ParseDxf(lis []string, coord []float64, vertices []*Node, eps float64) ([]*Node, error) {
+func (frame *Frame) ParseDxfEntities(lis []string, elemhandle map[int]*Elem, coord []float64, vertices []*Node, eps float64) ([]*Node, map[int]*Elem, error) {
 	var err error
 	if len(lis) < 2 {
-		return nil, nil
+		return nil, elemhandle, nil
 	}
 	tp := lis[1]
 	switch tp {
 	case "LINE":
-		err = frame.ParseDxfLine(lis, coord, eps)
+		elemhandle, err = frame.ParseDxfLine(lis, elemhandle, coord, eps)
 	// case "POLYLINE":
 	//     err = frame.ParseDxfPolyLine(lis)
 	case "POINT":
@@ -104,12 +125,13 @@ func (frame *Frame) ParseDxf(lis []string, coord []float64, vertices []*Node, ep
 	case "3DFACE":
 		err = frame.ParseDxf3DFace(lis, coord, eps)
 	}
-	return vertices, err
+	return vertices, elemhandle, err
 }
 
-func (frame *Frame) ParseDxfLine(lis []string, coord []float64, eps float64) error {
+func (frame *Frame) ParseDxfLine(lis []string, elemhandle map[int]*Elem, coord []float64, eps float64) (map[int]*Elem, error) {
 	var err error
-	var index int64
+	var index, h int64
+	handle := 0
 	var sect *Sect
 	var etype int
 	var startx, starty, startz, endx, endy, endz float64
@@ -119,17 +141,23 @@ func (frame *Frame) ParseDxfLine(lis []string, coord []float64, eps float64) err
 		}
 		index, err = strconv.ParseInt(word, 10, 64)
 		if err != nil {
-			return err
+			return elemhandle, err
 		}
 		switch int(index) {
+		case 5:
+			h, err = strconv.ParseInt(lis[i+1], 16, 64)
+			if err != nil {
+				return elemhandle, err
+			}
+			handle = int(h)
 		case 8:
 			etype = Etype(layeretype.FindString(lis[i+1]))
 			if etype == 0 {
-				return nil
+				return elemhandle, nil
 			}
 			tmp, err := strconv.ParseInt(layersect.FindString(lis[i+1]), 10, 64)
 			if err != nil {
-				return err
+				return elemhandle, err
 			}
 			if val, ok := frame.Sects[int(tmp)]; ok {
 				sect = val
@@ -151,13 +179,16 @@ func (frame *Frame) ParseDxfLine(lis []string, coord []float64, eps float64) err
 			endz, err = strconv.ParseFloat(lis[i+1], 64)
 		}
 		if err != nil {
-			return err
+			return elemhandle, err
 		}
 	}
 	n1, _ := frame.CoordNode(startx*factor+coord[0], starty*factor+coord[1], startz*factor+coord[2], eps)
 	n2, _ := frame.CoordNode(endx*factor+coord[0], endy*factor+coord[1], endz*factor+coord[2], eps)
-	frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
-	return nil
+	el := frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+	if handle != 0 {
+		elemhandle[handle] = el
+	}
+	return elemhandle, nil
 }
 
 func (frame *Frame) ParseDxfPoint(lis []string, coord []float64, eps float64) error {
@@ -431,4 +462,90 @@ func LineSect(frame *Frame, sect *Sect) (*Sect, int) {
 		letype = COLUMN
 	}
 	return lsect, letype
+}
+
+func (frame *Frame) ParseDxfObjects(lis []string, namehandle map[int]string, elemhandle map[int]*Elem) (map[int]string, error) {
+	var err error
+	if len(lis) < 2 {
+		return namehandle, nil
+	}
+	tp := lis[1]
+	switch tp {
+	case "DICTIONARY":
+		namehandle, err = frame.ParseDxfDictionary(lis, namehandle, elemhandle)
+	case "GROUP":
+		err = frame.ParseDxfGroup(lis, namehandle, elemhandle)
+	}
+	return namehandle, err
+}
+
+func (frame *Frame) ParseDxfDictionary(lis []string, namehandle map[int]string, elemhandle map[int]*Elem) (map[int]string, error) {
+	var err error
+	var index, h int64
+	var name string
+	for i, word := range lis {
+		if i%2 != 0 {
+			continue
+		}
+		index, err = strconv.ParseInt(word, 10, 64)
+		if err != nil {
+			return namehandle, err
+		}
+		switch int(index) {
+		case 3:
+			name = lis[i+1]
+		case 350:
+			h, err = strconv.ParseInt(lis[i+1], 16, 64)
+			if err != nil {
+				return namehandle, err
+			}
+			namehandle[int(h)] = name
+		}
+	}
+	return namehandle, nil
+}
+
+func (frame *Frame) ParseDxfGroup(lis []string, namehandle map[int]string, elemhandle map[int]*Elem) error {
+	var err error
+	var index, h int64
+	var bonds []bool
+	for i, word := range lis {
+		if i%2 != 0 {
+			continue
+		}
+		index, err = strconv.ParseInt(word, 10, 64)
+		if err != nil {
+			return err
+		}
+		switch int(index) {
+		case 5:
+			h, err = strconv.ParseInt(lis[i+1], 16, 64)
+			if err != nil {
+				return err
+			}
+			if name, ok := namehandle[int(h)]; ok {
+				switch name {
+				case "PINPIN":
+					bonds = []bool{false, false, false, false, true, true, false, false, false, false, true, true}
+				case "RIGIDPIN":
+					bonds = []bool{false, false, false, false, false, false, false, false, false, false, true, true}
+				case "PINRIGID":
+					bonds = []bool{false, false, false, false, true, true, false, false, false, false, false, false}
+				}
+			} else {
+				return errors.New(fmt.Sprintf("handle %X not fount", int(h)))
+			}
+		case 340:
+			h, err = strconv.ParseInt(lis[i+1], 16, 64)
+			if err != nil {
+				return err
+			}
+			if el, ok := elemhandle[int(h)]; ok {
+				for j:=0; j<12; j++ {
+					el.Bonds[j] = bonds[j]
+				}
+			}
+		}
+	}
+	return nil
 }
