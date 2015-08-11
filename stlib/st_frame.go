@@ -2260,6 +2260,18 @@ func (frame *Frame) WriteDxf2D(filename string, scale float64) error {
 
 func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 	d := dxf.NewDrawing()
+	for _, n := range frame.Nodes {
+		val := 0
+		for i:=0; i<6; i++ {
+			if n.Conf[i] {
+				val += 1<<uint(5-i)
+			}
+		}
+		if val != 0 {
+			d.Layer(fmt.Sprintf("CONF%06b", val), dxf.DefaultColor, dxf.DefaultLineType, true)
+			d.Point(n.Coord[0]*scale, n.Coord[1]*scale, n.Coord[2]*scale)
+		}
+	}
 	drawsection := func(elem *Elem, position []float64, vertices [][]float64) {
 		var vers [][]float64
 		vers = make([][]float64, 0)
