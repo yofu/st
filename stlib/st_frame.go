@@ -2321,11 +2321,11 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 						direction := el.Direction(true)
 						c, err := d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, sh.(CPIPE).D*0.01*0.5*scale)
 						if err == nil {
-							c.SetDirection(direction)
+							dxf.SetExtrusion(c, direction)
 						}
 						c, err = d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, (sh.(CPIPE).D*0.5-sh.(CPIPE).T)*0.01*scale)
 						if err == nil {
-							c.SetDirection(direction)
+							dxf.SetExtrusion(c, direction)
 						}
 					}
 				case *RCColumn:
@@ -2340,7 +2340,7 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 						pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01)*scale
 						c, err := d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
 						if err == nil {
-							c.SetDirection(direction)
+							dxf.SetExtrusion(c, direction)
 						}
 					}
 				case *RCGirder:
@@ -2355,7 +2355,7 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 						pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01)*scale
 						c, err := d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
 						if err == nil {
-							c.SetDirection(direction)
+							dxf.SetExtrusion(c, direction)
 						}
 					}
 				case *WoodColumn:
