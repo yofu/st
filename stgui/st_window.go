@@ -150,7 +150,7 @@ var (
 	RangeViewAngle          = []float64{20.0, 225.0}
 	RangeViewCenter         = []float64{100.0, 100.0}
 	dataareaheight          = 150
-	drawpivot               = true
+	drawpivot               = false
 )
 
 var (
