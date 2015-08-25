@@ -904,6 +904,28 @@ func NewWindow(homedir string) *Window { // {{{
 			case KEY_SPACE:
 				val := stw.cline.GetAttribute("VALUE")
 				if strings.Contains(val, " ") {
+					lis := strings.Split(val, " ")
+					tmp := lis[len(lis)-1]
+					if stw.complete != nil {
+						if stw.complete.Context(val) == complete.FileName {
+							stw.completefunc = stw.CompleteFileName
+						} else {
+							stw.completefunc = func(v string) string {
+								lis := stw.complete.CompleteWord(val)
+								if len(lis) == 0 {
+									return val
+								} else {
+									stw.completepos = 0
+									stw.completes = lis
+									return stw.completes[0]
+								}
+							}
+						}
+					}
+					lis[len(lis)-1] = stw.completefunc(tmp)
+					stw.cline.SetAttribute("VALUE", fmt.Sprintf("%s ", strings.Join(lis, " ")))
+					stw.cline.SetAttribute("CARETPOS", "100")
+					arg.Return = int32(iup.IGNORE)
 					break
 				}
 				if strings.HasPrefix(val, ":") {
