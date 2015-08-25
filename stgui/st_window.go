@@ -9,6 +9,7 @@ import (
 	"github.com/visualfc/go-iup/cd"
 	"github.com/visualfc/go-iup/iup"
 	"github.com/yofu/abbrev"
+	"github.com/yofu/complete"
 	"github.com/yofu/st/stlib"
 	"github.com/yofu/st/stsvg"
 	"gopkg.in/fsnotify.v1"
@@ -37,8 +38,6 @@ var (
 	DoubleClickCommand = []string{"TOGGLEBOND", "EDITPLATEELEM"}
 	comhistpos         int
 	undopos            int
-	completepos        int
-	completes          []string
 	prevkey            int
 	clineinput         string
 	logf               os.File
@@ -312,6 +311,11 @@ type Window struct { // {{{
 	recentfiles []string
 	undostack   []*st.Frame
 	taggedFrame map[string]*st.Frame
+
+	complete     *complete.Complete
+	completepos  int
+	completes    []string
+	completefunc func(string) string
 }
 
 // }}}
@@ -850,25 +854,37 @@ func NewWindow(homedir string) *Window { // {{{
 				stw.feedCommand()
 			case KEY_ESCAPE:
 				stw.cline.SetAttribute("VALUE", "")
+				stw.completefunc = stw.CompleteFileName
+				stw.complete = nil
 				iup.SetFocus(stw.canv)
 			case KEY_TAB:
-				lis := strings.Split(stw.cline.GetAttribute("VALUE"), " ")
+				str := stw.cline.GetAttribute("VALUE")
+				lis := strings.Split(str, " ")
 				tmp := lis[len(lis)-1]
 				if prevkey == KEY_TAB {
 					if key.IsShift() {
-						lis[len(lis)-1] = PrevComplete(tmp)
+						lis[len(lis)-1] = stw.PrevComplete(tmp)
 					} else {
-						lis[len(lis)-1] = NextComplete(tmp)
+						lis[len(lis)-1] = stw.NextComplete(tmp)
 					}
 				} else {
-					switch {
-					case strings.HasPrefix(tmp, ":"):
-						lis[len(lis)-1] = stw.CompleteExcommand(tmp)
-					case strings.HasPrefix(tmp, "'"):
-						lis[len(lis)-1] = stw.CompleteFig2Keyword(tmp)
-					default:
-						lis[len(lis)-1] = stw.CompleteFileName(tmp)
+					if stw.complete != nil {
+						if stw.complete.Context(str) == complete.FileName {
+							stw.completefunc = stw.CompleteFileName
+						} else {
+							stw.completefunc = func(v string) string {
+								lis := stw.complete.CompleteWord(str)
+								if len(lis) == 0 {
+									return str
+								} else {
+									stw.completepos = 0
+									stw.completes = lis
+									return stw.completes[0]
+								}
+							}
+						}
 					}
+					lis[len(lis)-1] = stw.completefunc(tmp)
 				}
 				stw.cline.SetAttribute("VALUE", strings.Join(lis, " "))
 				stw.cline.SetAttribute("CARETPOS", "100")
@@ -891,7 +907,7 @@ func NewWindow(homedir string) *Window { // {{{
 					break
 				}
 				if strings.HasPrefix(val, ":") {
-					c, bang, usage := exmodecomplete(val)
+					c, bang, usage, comp := exmodecomplete(val)
 					var b, u string
 					if bang {
 						b = "!"
@@ -903,18 +919,48 @@ func NewWindow(homedir string) *Window { // {{{
 					} else {
 						u = ""
 					}
-					stw.cline.SetAttribute("VALUE", fmt.Sprintf(":%s%s%s ", c, b, u))
+					str := fmt.Sprintf(":%s%s%s ", c, b, u)
+					stw.cline.SetAttribute("VALUE", str)
 					stw.cline.SetAttribute("CARETPOS", "100")
+					if comp != nil {
+						stw.complete = comp
+						stw.complete.Chdir(stw.Cwd)
+						stw.completefunc = func(v string) string {
+							lis := comp.CompleteWord(str)
+							if len(lis) == 0 {
+								return str
+							} else {
+								stw.completepos = 0
+								stw.completes = lis
+								return stw.completes[0]
+							}
+						}
+					}
 				} else if strings.HasPrefix(val, "'") {
-					c, usage := fig2keywordcomplete(val)
+					c, usage, comp := fig2keywordcomplete(val)
 					var u string
 					if usage {
 						u = "?"
 					} else {
 						u = ""
 					}
-					stw.cline.SetAttribute("VALUE", fmt.Sprintf("'%s%s ", c, u))
+					str := fmt.Sprintf("'%s%s ", c, u)
+					stw.cline.SetAttribute("VALUE", str)
 					stw.cline.SetAttribute("CARETPOS", "100")
+					if comp != nil {
+						stw.complete = comp
+						stw.complete.Chdir(stw.Cwd)
+						stw.completefunc = func(v string) string {
+							lis := comp.CompleteWord(str)
+							if len(lis) == 0 {
+								return str
+							} else {
+								stw.completepos = 0
+								stw.completes = lis
+								return stw.completes[0]
+							}
+						}
+					}
 				} else {
 					stw.cline.SetAttribute("INSERT", " ")
 				}
@@ -931,10 +977,16 @@ func NewWindow(homedir string) *Window { // {{{
 				val := stw.cline.GetAttribute("VALUE")
 				if val == "" {
 					stw.cline.SetAttribute("INSERT", ":")
+					stw.completefunc = stw.CompleteExcommand
 				} else {
 					stw.cline.SetAttribute("INSERT", ";")
 				}
 				arg.Return = int32(iup.IGNORE)
+			case '\'':
+				val := stw.cline.GetAttribute("VALUE")
+				if val == "" {
+					stw.completefunc = stw.CompleteFig2Keyword
+				}
 			case '[':
 				if key.IsCtrl() {
 					stw.cline.SetAttribute("VALUE", "")
@@ -1265,6 +1317,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.ShowLogo(3*time.Second)
 	stw.exmodech = make(chan interface{})
 	stw.exmodeend = make(chan int)
+	stw.completefunc = stw.CompleteFileName
 	if rcfn := filepath.Join(stw.Cwd, ResourceFileName); st.FileExists(rcfn) {
 		stw.ReadResource(rcfn)
 	}
@@ -1694,6 +1747,9 @@ func (stw *Window) OpenFile(filename string, readrcfile bool) error {
 	stw.Frame.Home = stw.Home
 	stw.LinkTextValue()
 	stw.Cwd = filepath.Dir(fn)
+	if stw.complete != nil {
+		stw.complete.Chdir(stw.Cwd)
+	}
 	stw.AddRecently(fn)
 	stw.Snapshot()
 	stw.Changed = false
@@ -2671,9 +2727,9 @@ func (stw *Window) CompleteFileName(str string) string {
 	var err error
 	tmp, err := filepath.Glob(path + "*")
 	if err != nil || len(tmp) == 0 {
-		completes = make([]string, 0)
+		stw.completes = make([]string, 0)
 	} else {
-		completes = make([]string, len(tmp))
+		stw.completes = make([]string, len(tmp))
 		for i := 0; i < len(tmp); i++ {
 			stat, err := os.Stat(tmp[i])
 			if err != nil {
@@ -2683,10 +2739,10 @@ func (stw *Window) CompleteFileName(str string) string {
 				tmp[i] += string(os.PathSeparator)
 			}
 			lis[len(lis)-1] = tmp[i]
-			completes[i] = strings.Join(lis, " ")
+			stw.completes[i] = strings.Join(lis, " ")
 		}
-		completepos = 0
-		str = completes[0]
+		stw.completepos = 0
+		str = stw.completes[0]
 	}
 	return str
 }
@@ -2694,7 +2750,7 @@ func (stw *Window) CompleteFileName(str string) string {
 func (stw *Window) CompleteExcommand(str string) string {
 	i := 0
 	rtn := make([]string, len(exabbrev))
-	for _, ab := range exabbrev {
+	for ab := range exabbrev {
 		pat := abbrev.MustCompile(ab)
 		l := fmt.Sprintf(":%s", pat.Longest())
 		if strings.HasPrefix(l, str) {
@@ -2702,10 +2758,11 @@ func (stw *Window) CompleteExcommand(str string) string {
 			i++
 		}
 	}
-	completepos = 0
-	completes = rtn[:i]
+	stw.completepos = 0
+	stw.completes = rtn[:i]
+	sort.Strings(stw.completes)
 	if i > 0 {
-		return completes[0]
+		return stw.completes[0]
 	} else {
 		return str
 	}
@@ -2714,7 +2771,7 @@ func (stw *Window) CompleteExcommand(str string) string {
 func (stw *Window) CompleteFig2Keyword(str string) string {
 	i := 0
 	rtn := make([]string, len(fig2abbrev))
-	for _, ab := range fig2abbrev {
+	for ab := range fig2abbrev {
 		pat := abbrev.MustCompile(ab)
 		l := fmt.Sprintf("'%s", pat.Longest())
 		if strings.HasPrefix(l, str) {
@@ -2722,35 +2779,35 @@ func (stw *Window) CompleteFig2Keyword(str string) string {
 			i++
 		}
 	}
-	completepos = 0
-	completes = rtn[:i]
+	stw.completepos = 0
+	stw.completes = rtn[:i]
 	if i > 0 {
-		return completes[0]
+		return stw.completes[0]
 	} else {
 		return str
 	}
 }
 
-func PrevComplete(str string) string {
-	if completes == nil || len(completes) == 0 {
+func (stw *Window) PrevComplete(str string) string {
+	if stw.completes == nil || len(stw.completes) == 0 {
 		return str
 	}
-	completepos--
-	if completepos < 0 {
-		completepos = len(completes) - 1
+	stw.completepos--
+	if stw.completepos < 0 {
+		stw.completepos = len(stw.completes) - 1
 	}
-	return completes[completepos]
+	return stw.completes[stw.completepos]
 }
 
-func NextComplete(str string) string {
-	if completes == nil || len(completes) == 0 {
+func (stw *Window) NextComplete(str string) string {
+	if stw.completes == nil || len(stw.completes) == 0 {
 		return str
 	}
-	completepos++
-	if completepos >= len(completes) {
-		completepos = 0
+	stw.completepos++
+	if stw.completepos >= len(stw.completes) {
+		stw.completepos = 0
 	}
-	return completes[completepos]
+	return stw.completes[stw.completepos]
 }
 
 func (stw *Window) NextFloor() {
@@ -5056,6 +5113,12 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 				stw.cline.SetAttribute("APPEND", "V4")
 			}
 		}
+	case '\'':
+		val := stw.cline.GetAttribute("VALUE")
+		if val == "" {
+			stw.completefunc = stw.CompleteFig2Keyword
+		}
+		stw.cline.SetAttribute("APPEND", "'")
 	case ':':
 		val := stw.cline.GetAttribute("VALUE")
 		if val == "" {
@@ -5067,6 +5130,7 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		val := stw.cline.GetAttribute("VALUE")
 		if val == "" {
 			stw.cline.SetAttribute("APPEND", ":")
+			stw.completefunc = stw.CompleteExcommand
 		} else {
 			stw.cline.SetAttribute("APPEND", ";")
 		}

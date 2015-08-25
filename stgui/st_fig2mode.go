@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/yofu/abbrev"
+	"github.com/yofu/complete"
 	"github.com/yofu/st/stlib"
 	"os/exec"
 	"path/filepath"
@@ -13,12 +14,86 @@ import (
 )
 
 var (
-	fig2abbrev = []string {
-		"gf/act", "foc/us", "ang/le", "dist/s", "pers/pective", "ax/onometric", "df/act", "rf/act", "qf/act", "mf/act", "gax/is", "eax/is",
-		"noax/is", "el/em", "el/em/+/", "el/em/-/", "sec/tion", "sec/tion/+/", "sec/tion/-/", "k/ijun", "mea/sure", "el/em/c/ode", "sec/t/c/ode",
-		"wid/th", "h/eigh/t/", "sr/can/col/or", "sr/can/ra/te", "en/ergy", "st/ress", "prest/ress", "stiff/", "def/ormation", "dis/p", "ecc/entric", "dr/aw",
-		"al/ias", "anon/ymous", "no/de/c/ode", "wei/ght", "con/f", "pi/lecode", "fen/ce", "per/iod", "per/iod/++/", "per/iod/--/",
-		"nocap/tion", "noleg/end", "nos/hear/v/alue", "nom/oment/v/alue", "s/hear/ar/row", "m/oment/fig/ure", "ncol/or", "p/age/tit/le", "tit/le", "pos/ition",
+	fig2abbrev = map[string]*complete.Complete{
+		"gf/act":           complete.MustCompile("'gfact _", nil),
+		"foc/us":           complete.MustCompile("'focus _ _ _", nil),
+		"ang/le":           complete.MustCompile("'angle _ _", nil),
+		"dist/s":           complete.MustCompile("'dists _ _", nil),
+		"pers/pective":     complete.MustCompile("'perspective", nil),
+		"ax/onometric":     complete.MustCompile("'axonometric", nil),
+		"df/act":           complete.MustCompile("'dfact _", nil),
+		"rf/act":           complete.MustCompile("'rfact _", nil),
+		"qf/act":           complete.MustCompile("'qfact _", nil),
+		"mf/act":           complete.MustCompile("'mfact _", nil),
+		"gax/is":           complete.MustCompile("'gaxis _", nil),
+		"eax/is":           complete.MustCompile("'eaxis _", nil),
+		"noax/is":          complete.MustCompile("'noaxis", nil),
+		"el/em":            complete.MustCompile("'elem $ETYPE",
+			map[string][]string{
+				"ETYPE": []string{"column", "girder", "brace", "wall", "wbrace", "slab", "sbrace"},
+			}),
+		"el/em/+/":         complete.MustCompile("'elem+ $ETYPE",
+			map[string][]string{
+				"ETYPE": []string{"column", "girder", "brace", "wall", "wbrace", "slab", "sbrace"},
+			}),
+		"el/em/-/":         complete.MustCompile("'elem- $ETYPE",
+			map[string][]string{
+				"ETYPE": []string{"column", "girder", "brace", "wall", "wbrace", "slab", "sbrace"},
+			}),
+		"sec/tion":         complete.MustCompile("'section _", nil),
+		"sec/tion/+/":      complete.MustCompile("'section+ _", nil),
+		"sec/tion/-/":      complete.MustCompile("'section- _", nil),
+		"k/ijun":           complete.MustCompile("'kijun", nil),
+		"mea/sure":         complete.MustCompile("'measure", nil),
+		"el/em/c/ode":      complete.MustCompile("'elemcode", nil),
+		"sec/t/c/ode":      complete.MustCompile("'sectcode", nil),
+		"wid/th":           complete.MustCompile("'width", nil),
+		"h/eigh/t/":        complete.MustCompile("'height", nil),
+		"sr/can/col/or":    complete.MustCompile("'srcancolor", nil),
+		"sr/can/ra/te":     complete.MustCompile("'srcanrate", nil),
+		"en/ergy":          complete.MustCompile("'energy", nil),
+		"st/ress":          complete.MustCompile("'stress $ETYPE $PERIOD $NAME",
+			map[string][]string{
+				"ETYPE":  []string{"column", "girder", "brace", "wall", "wbrace", "slab", "sbrace"},
+				"PERIOD": []string{"l", "x", "y"},
+				"NAME":   []string{"n", "qx", "qy", "mz", "mx", "my"},
+			}),
+		"prest/ress":       complete.MustCompile("'prestress", nil),
+		"stiff/":           complete.MustCompile("'stiff", nil),
+		"def/ormation":     complete.MustCompile("'deformation $PERIOD",
+			map[string][]string{
+				"PERIOD": []string{"l", "x", "y"},
+			}),
+		"dis/p":            complete.MustCompile("'disp $PERIOD $DIRECTION",
+			map[string][]string{
+				"PERIOD":    []string{"l", "x", "y"},
+				"DIRECTION": []string{"z", "x", "y"},
+			}),
+		"ecc/entric":       complete.MustCompile("'eccentric", nil),
+		"dr/aw":            complete.MustCompile("'draw $ETYPE",
+			map[string][]string{
+				"ETYPE": []string{"column", "girder", "brace", "wall", "wbrace", "slab", "sbrace"},
+			}),
+		"al/ias":           complete.MustCompile("'alias", nil),
+		"anon/ymous":       complete.MustCompile("'anonymous", nil),
+		"no/de/c/ode":      complete.MustCompile("'nodecode", nil),
+		"wei/ght":          complete.MustCompile("'weight", nil),
+		"con/f":            complete.MustCompile("'conf", nil),
+		"pi/lecode":        complete.MustCompile("'pilecode", nil),
+		"fen/ce":           complete.MustCompile("'fence", nil),
+		"per/iod":          complete.MustCompile("'period", nil),
+		"per/iod/++/":      complete.MustCompile("'period++", nil),
+		"per/iod/--/":      complete.MustCompile("'period--", nil),
+		"nocap/tion":       complete.MustCompile("'nocaption", nil),
+		"noleg/end":        complete.MustCompile("'nolegend", nil),
+		"nos/hear/v/alue":  complete.MustCompile("'noshearvalue", nil),
+		"nom/oment/v/alue": complete.MustCompile("'nomomentvalue", nil),
+		"s/hear/ar/row":    complete.MustCompile("'sheararrow", nil),
+		"m/oment/fig/ure":  complete.MustCompile("'momentfigure", nil),
+		"ncol/or":          complete.MustCompile("'ncolor", nil),
+		"p/age/tit/le":     complete.MustCompile("'pagetitle", nil),
+		"tit/le":           complete.MustCompile("'title", nil),
+		"pos/ition":        complete.MustCompile("'position", nil),
 	}
 )
 
@@ -51,22 +126,24 @@ func (stw *Window) fig2mode(command string) error {
 	return stw.fig2keyword(args, un)
 }
 
-func fig2keywordcomplete(command string) (string, bool) {
+func fig2keywordcomplete(command string) (string, bool, *complete.Complete) {
 	usage := strings.HasSuffix(command, "?")
 	cname := strings.TrimSuffix(command, "?")
 	cname = strings.ToLower(strings.TrimPrefix(cname, "'"))
 	var rtn string
-	for _, ab := range fig2abbrev {
+	var c *complete.Complete
+	for ab, cp := range fig2abbrev {
 		pat := abbrev.MustCompile(ab)
 		if pat.MatchString(cname) {
 			rtn = pat.Longest()
+			c = cp
 			break
 		}
 	}
 	if rtn == "" {
 		rtn = cname
 	}
-	return rtn, usage
+	return rtn, usage, c
 }
 
 func (stw *Window) fig2keyword(lis []string, un bool) error {
@@ -80,7 +157,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			cmd.Start()
 		}
 	}
-	key, usage := fig2keywordcomplete(strings.ToLower(lis[0]))
+	key, usage, _ := fig2keywordcomplete(strings.ToLower(lis[0]))
 	switch key {
 	default:
 		if k, ok := stw.Frame.Kijuns[key]; ok {
@@ -100,9 +177,9 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			}
 			d := k.Direction()
 			if st.IsParallel(d, st.XAXIS, EPS) {
-				axisrange(stw, 1, k.Start[1] + min, k.Start[1] + max, false)
+				axisrange(stw, 1, k.Start[1]+min, k.Start[1]+max, false)
 			} else if st.IsParallel(d, st.YAXIS, EPS) {
-				axisrange(stw, 0, k.Start[0] + min, k.Start[0] + max, false)
+				axisrange(stw, 0, k.Start[0]+min, k.Start[0]+max, false)
 			} else {
 				for _, n := range stw.Frame.Nodes {
 					n.Hide()
@@ -587,7 +664,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		}
 		names := make([]string, 4)
 		ind := 0
-		for i:=0; i<4; i++ {
+		for i := 0; i < 4; i++ {
 			if onoff[i] {
 				names[ind] = st.SRCANS[i]
 				ind++
@@ -1090,4 +1167,3 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 	}
 	return nil
 }
-

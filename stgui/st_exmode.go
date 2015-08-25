@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/yofu/abbrev"
+	"github.com/yofu/complete"
 	"github.com/yofu/ps"
 	"github.com/yofu/st/stlib"
 	"math"
@@ -19,32 +20,112 @@ import (
 )
 
 var (
-	exabbrev = []string{
-		"e/dit", "q/uit", "vi/m", "hk/you", "hw/eak", "rp/ipe", "cp/ipe", "tk/you", "ck/you", "pla/te", "fixr/otate", "fixm/ove", "noun/do", "un/do", "w/rite", "sav/e", "inc/rement", "c/heck", "r/ead",
-		"ins/ert", "p/rop/s/ect", "w/rite/o/utput", "w/rite/rea/ction", "w/rite/k/ijun", "p/late/w/eight", "nmi/nteraction", "w/ei/g/htcopy", "har/dcopy", "fi/g2", "fe/nce", "no/de", "xsc/ale", "ysc/ale", "zsc/ale", "pl/oad", "z/oubun/d/isp", "z/oubun/r/eaction",
-		"fac/ts", "go/han/l/st", "el/em", "ave/rage", "bo/nd", "ax/is/2//c/ang", "resul/tant", "prest/ress", "therm/al", "div/ide", "e/lem/dup/lication", "i/ntersect/a/ll", "co/nf",
-		"pi/le", "sec/tion", "c/urrent/v/alue", "an/alysis", "f/ilter", "ra/nge", "h/eigh/t/", "h/eigh/t+/", "h/eigh/t-/", "ang/le", "sec/tion/+/", "col/or", "ex/tractarclm", "a/rclm/001/", "a/rclm/201/", "a/rclm/301/",
+	exabbrev = map[string]*complete.Complete{
+		"e/dit":             complete.MustCompile(":edit %g", nil),
+		"q/uit":             complete.MustCompile(":quit", nil),
+		"vi/m":              complete.MustCompile(":vim %g", nil),
+		"hk/you":            complete.MustCompile(":hkyou _ _ _ _", nil),
+		"hw/eak":            complete.MustCompile(":hweak _ _ _ _", nil),
+		"rp/ipe":            complete.MustCompile(":rpipe _ _ _ _", nil),
+		"cp/ipe":            complete.MustCompile(":cpipe _ _", nil),
+		"tk/you":            complete.MustCompile(":tkyou _ _ _ _", nil),
+		"ck/you":            complete.MustCompile(":ckyou _ _ _ _", nil),
+		"pla/te":            complete.MustCompile(":plate _ _", nil),
+		"fixr/otate":        complete.MustCompile(":fixrotate", nil),
+		"fixm/ove":          complete.MustCompile(":fixmove", nil),
+		"noun/do":           complete.MustCompile(":noundo", nil),
+		"un/do":             complete.MustCompile(":undo", nil),
+		"w/rite":            complete.MustCompile(":write _", nil),
+		"sav/e":             complete.MustCompile(":save _", nil),
+		"inc/rement":        complete.MustCompile(":increment [times:_] _", nil),
+		"c/heck":            complete.MustCompile(":check", nil),
+		"r/ead":             complete.MustCompile(":read %g", nil),
+		"ins/ert":           complete.MustCompile(":insert %g", nil),
+		"p/rop/s/ect":       complete.MustCompile(":propsect %g", nil),
+		"w/rite/o/utput":    complete.MustCompile(":writeoutput _", nil),
+		"w/rite/rea/ction":  complete.MustCompile(":writereaction _", nil),
+		"w/rite/k/ijun":     complete.MustCompile(":writekijun _", nil),
+		"p/late/w/eight":    complete.MustCompile(":plateweight", nil),
+		"nmi/nteraction":    complete.MustCompile(":nminteraction", nil),
+		"w/ei/g/htcopy":     complete.MustCompile(":weightcopy", nil),
+		"har/dcopy":         complete.MustCompile(":hardcopy", nil),
+		"fi/g2":             complete.MustCompile(":fig2", nil),
+		"fe/nce":            complete.MustCompile(":fence", nil),
+		"no/de":             complete.MustCompile(":node", nil),
+		"xsc/ale":           complete.MustCompile(":xscale _", nil),
+		"ysc/ale":           complete.MustCompile(":yscale _", nil),
+		"zsc/ale":           complete.MustCompile(":zscale _", nil),
+		"pl/oad":            complete.MustCompile(":pload _", nil),
+		"z/oubun/d/isp":     complete.MustCompile(":zoubundisp", nil),
+		"z/oubun/r/eaction": complete.MustCompile(":zoubunreaction", nil),
+		"fac/ts":            complete.MustCompile(":facts [skipany:_] [skipall:_]", nil),
+		"go/han/l/st":       complete.MustCompile(":gohanlst _ _", nil),
+		"el/em":             complete.MustCompile(":elem $TYPE _",
+			map[string][]string{
+				"TYPE": []string{"sect", "etype", "reaction"},
+			}),
+		"ave/rage":          complete.MustCompile(":average", nil),
+		"bo/nd":             complete.MustCompile(":bond", nil),
+		"ax/is/2//c/ang":    complete.MustCompile(":axis2cang", nil),
+		"resul/tant":        complete.MustCompile(":resultant", nil),
+		"prest/ress":        complete.MustCompile(":prestress _", nil),
+		"therm/al":          complete.MustCompile(":thermal _", nil),
+		"div/ide":           complete.MustCompile(":divide $TYPE",
+			map[string][]string{
+				"TYPE": []string{"mid", "n", "elem", "ons", "axis", "length"},
+			}),
+		"e/lem/dup/lication": complete.MustCompile(":elemduplication", nil),
+		"i/ntersect/a/ll":    complete.MustCompile(":intersectall", nil),
+		"co/nf":              complete.MustCompile(":conf", nil),
+		"pi/le":              complete.MustCompile(":pile", nil),
+		"sec/tion":           complete.MustCompile(":section _", nil),
+		"c/urrent/v/alue":    complete.MustCompile(":currentvalue", nil),
+		"an/alysis":          complete.MustCompile(":analysis", nil),
+		"f/ilter":            complete.MustCompile(":filter", nil),
+		"ra/nge":             complete.MustCompile(":range", nil),
+		"h/eigh/t/":          complete.MustCompile(":height _ _", nil),
+		"h/eigh/t+/":         complete.MustCompile(":height+", nil),
+		"h/eigh/t-/":         complete.MustCompile(":height-", nil),
+		"ang/le":             complete.MustCompile(":angle _ _", nil),
+		"sec/tion/+/":        complete.MustCompile(":section+ _", nil),
+		"col/or":             complete.MustCompile(":color", nil),
+		"ex/tractarclm":      complete.MustCompile(":extractarclm", nil),
+		"a/rclm/001/":        complete.MustCompile(":arclm001 [period:$PERIOD] [all:] [solver:$SOLVER] [eps:_] [noinit:] _",
+			map[string][]string{
+				"PERIOD": []string{"l", "x", "y"},
+				"SOLVER": []string{"LLS", "CRS"},
+			}),
+		"a/rclm/201/":        complete.MustCompile(":arclm201 [period:$PERIOD] [lap:_] [safety:_] [max:_] [start:_] [noinit:] _",
+			map[string][]string{
+				"PERIOD": []string{"l", "x", "y"},
+			}),
+		"a/rclm/301/":        complete.MustCompile(":arclm301 [period:$PERIOD] [sects:_] [eps:_] [noinit:] _",
+			map[string][]string{
+				"PERIOD": []string{"l", "x", "y"},
+			}),
 	}
 )
 
-func exmodecomplete(command string) (string, bool, bool) {
+func exmodecomplete(command string) (string, bool, bool, *complete.Complete) {
 	usage := strings.HasSuffix(command, "?")
 	cname := strings.TrimSuffix(command, "?")
 	bang := strings.HasSuffix(cname, "!")
 	cname = strings.TrimSuffix(cname, "!")
 	cname = strings.ToLower(strings.TrimPrefix(cname, ":"))
 	var rtn string
-	for _, ab := range exabbrev {
+	var c *complete.Complete
+	for ab, cp := range exabbrev {
 		pat := abbrev.MustCompile(ab)
 		if pat.MatchString(cname) {
 			rtn = pat.Longest()
+			c = cp
 			break
 		}
 	}
 	if rtn == "" {
 		rtn = cname
 	}
-	return rtn, bang, usage
+	return rtn, bang, usage, c
 }
 
 func (stw *Window) emptyexmodech() {
@@ -135,7 +216,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			fn = filepath.Join(stw.Cwd, fn)
 		}
 	}
-	cname, bang, usage := exmodecomplete(args[0])
+	cname, bang, usage, _ := exmodecomplete(args[0])
 	evaluated := true
 	var sender []interface{}
 	defer func() {
@@ -1303,7 +1384,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 					for _, n := range stw.Frame.Nodes {
 						nnums[n.Num] = 0
 					}
-					node_sect_all:
+				node_sect_all:
 					for _, el := range stw.Frame.Elems {
 						for _, snum := range snums {
 							if el.Sect.Num == snum {
@@ -1325,7 +1406,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				} else {
 					els := make([]*st.Elem, len(stw.Frame.Elems))
 					num := 0
-					node_sect_any:
+				node_sect_any:
 					for _, el := range stw.Frame.Elems {
 						for _, snum := range snums {
 							if el.Sect.Num == snum {
@@ -1397,7 +1478,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if pipe {
 			num := len(stw.SelectNode)
 			sender = make([]interface{}, num)
-			for i:=0; i<num; i++ {
+			for i := 0; i < num; i++ {
 				sender[i] = stw.SelectNode[i]
 			}
 		}
@@ -1654,7 +1735,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if pipe {
 			num := len(stw.SelectElem)
 			sender = make([]interface{}, num)
-			for i:=0; i<num; i++ {
+			for i := 0; i < num; i++ {
 				sender[i] = stw.SelectElem[i]
 			}
 		}
@@ -1690,8 +1771,8 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if a == 0.0 {
 			return nil
 		}
-		val := -w/a
-		val = math.Floor(val*1000)*0.001
+		val := -w / a
+		val = math.Floor(val*1000) * 0.001
 		for _, s := range sects[:i] {
 			s.Lload[1] += val
 		}
@@ -1745,7 +1826,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if pipe {
 			num := len(stw.SelectElem)
 			sender = make([]interface{}, num)
-			for i:=0; i<num; i++ {
+			for i := 0; i < num; i++ {
 				sender[i] = stw.SelectElem[i]
 			}
 		}
@@ -1761,7 +1842,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if pipe {
 			num := len(stw.SelectElem)
 			sender = make([]interface{}, num)
-			for i:=0; i<num; i++ {
+			for i := 0; i < num; i++ {
 				sender[i] = stw.SelectElem[i]
 			}
 		}
@@ -2327,13 +2408,13 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				return nil
 			}
 			sects = sects[:num]
-			if !nodisp{
+			if !nodisp {
 				stw.SectionData(sects[0])
 			}
 			if pipe {
 				num := len(sects)
 				sender = make([]interface{}, num)
-				for i:=0; i<num; i++ {
+				for i := 0; i < num; i++ {
 					sender[i] = sects[i]
 				}
 			}
@@ -2889,7 +2970,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return st.Usage(":range [x,y,z] min max")
 		}
 		if narg == 1 {
-			for i:=0; i<3; i++ {
+			for i := 0; i < 3; i++ {
 				axisrange(stw, i, -100.0, 1000.0, false)
 			}
 			return nil
@@ -2972,7 +3053,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return err
 		}
 		n := int(tmp)
-		if n <= 0 || n >= len(stw.Frame.Ai.Boundary) - 1 {
+		if n <= 0 || n >= len(stw.Frame.Ai.Boundary)-1 {
 			return errors.New(":storey out of boundary")
 		}
 		return stw.exmode(fmt.Sprintf("height %d %d", n-1, n+1))
@@ -3012,7 +3093,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return st.NotEnoughArgs(":angle")
 		}
 		angle := make([]float64, 2)
-		for i:=0; i<2; i++ {
+		for i := 0; i < 2; i++ {
 			if args[1+i] == "_" {
 				continue
 			}
