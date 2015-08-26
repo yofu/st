@@ -852,6 +852,8 @@ func NewWindow(homedir string) *Window { // {{{
 			switch key.Key() {
 			case KEY_ENTER:
 				stw.feedCommand()
+				stw.completefunc = stw.CompleteFileName
+				stw.complete = nil
 			case KEY_ESCAPE:
 				stw.cline.SetAttribute("VALUE", "")
 				stw.completefunc = stw.CompleteFileName
