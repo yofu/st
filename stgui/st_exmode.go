@@ -1099,31 +1099,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if usage {
 			return st.Usage(":kaberyo")
 		}
-		var els []*st.Elem
-		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-			enum := 0
-			els = make([]*st.Elem, 0)
-		ex_kaberyo:
-			for {
-				select {
-				case <-time.After(time.Second):
-					break ex_kaberyo
-				case <-stw.exmodeend:
-					break ex_kaberyo
-				case el := <-stw.exmodech:
-					if el, ok := el.(*st.Elem); ok {
-						els = append(els, el)
-						enum++
-					}
-				}
-			}
-			if enum == 0 {
-				return errors.New(":kaberyo no selected elem")
-			}
-			els = els[:enum]
-		} else {
-			els = stw.SelectElem
-		}
+		els := stw.currentelem()
 		var m bytes.Buffer
 		var props []int
 		if val, ok := argdict["HALF"]; ok {
@@ -1853,31 +1829,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if narg < 2 {
 			return st.NotEnoughArgs(":bond")
 		}
-		var els []*st.Elem
-		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-			enum := 0
-			els = make([]*st.Elem, 0)
-		ex_bond:
-			for {
-				select {
-				case <-time.After(time.Second):
-					break ex_bond
-				case <-stw.exmodeend:
-					break ex_bond
-				case el := <-stw.exmodech:
-					if el, ok := el.(*st.Elem); ok {
-						els = append(els, el)
-						enum++
-					}
-				}
-			}
-			if enum == 0 {
-				return errors.New(":bond no selected elem")
-			}
-			els = els[:enum]
-		} else {
-			els = stw.SelectElem
-		}
+		els := stw.currentelem()
 		lis := make([]bool, 6)
 		pat := regexp.MustCompile("[01_t]{6}")
 		switch {
@@ -1978,31 +1930,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if err != nil {
 			return err
 		}
-		var els []*st.Elem
-		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-			enum := 0
-			els = make([]*st.Elem, 0)
-		ex_cang:
-			for {
-				select {
-				case <-time.After(time.Second):
-					break ex_cang
-				case <-stw.exmodeend:
-					break ex_cang
-				case el := <-stw.exmodech:
-					if el, ok := el.(*st.Elem); ok {
-						els = append(els, el)
-						enum++
-					}
-				}
-			}
-			if enum == 0 {
-				return errors.New(":cang no selected elem")
-			}
-			els = els[:enum]
-		} else {
-			els = stw.SelectElem
-		}
+		els := stw.currentelem()
 		for _, el := range els {
 			if !el.IsLineElem() {
 				continue
@@ -2060,31 +1988,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if usage {
 			return st.Usage(":invert")
 		}
-		var els []*st.Elem
-		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-			enum := 0
-			els = make([]*st.Elem, 0)
-		ex_invert:
-			for {
-				select {
-				case <-time.After(time.Second):
-					break ex_invert
-				case <-stw.exmodeend:
-					break ex_invert
-				case el := <-stw.exmodech:
-					if el, ok := el.(*st.Elem); ok {
-						els = append(els, el)
-						enum++
-					}
-				}
-			}
-			if enum == 0 {
-				return errors.New(":invert no selected elem")
-			}
-			els = els[:enum]
-		} else {
-			els = stw.SelectElem
-		}
+		els := stw.currentelem()
 		for _, el := range els {
 			el.Invert()
 		}
@@ -2134,34 +2038,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if narg < 2 {
 			return st.NotEnoughArgs(":prestress")
 		}
-		var els []*st.Elem
-		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-			enum := 0
-			els = make([]*st.Elem, 0)
-		ex_prestress:
-			for {
-				select {
-				case <-time.After(time.Second):
-					break ex_prestress
-				case <-stw.exmodeend:
-					break ex_prestress
-				case el := <-stw.exmodech:
-					if el == nil {
-						break ex_prestress
-					}
-					if el, ok := el.(*st.Elem); ok {
-						els = append(els, el)
-						enum++
-					}
-				}
-			}
-			if enum == 0 {
-				return errors.New(":prestress no selected elem")
-			}
-			els = els[:enum]
-		} else {
-			els = stw.SelectElem
-		}
+		els := stw.currentelem()
 		val, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
 			return err
@@ -2180,34 +2057,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if narg < 2 {
 			return st.NotEnoughArgs(":thermal")
 		}
-		var els []*st.Elem
-		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
-			enum := 0
-			els = make([]*st.Elem, 0)
-		ex_thermal:
-			for {
-				select {
-				case <-time.After(time.Second):
-					break ex_thermal
-				case <-stw.exmodeend:
-					break ex_thermal
-				case el := <-stw.exmodech:
-					if el == nil {
-						break ex_thermal
-					}
-					if el, ok := el.(*st.Elem); ok {
-						els = append(els, el)
-						enum++
-					}
-				}
-			}
-			if enum == 0 {
-				return errors.New(":thermal no selected elem")
-			}
-			els = els[:enum]
-		} else {
-			els = stw.SelectElem
-		}
+		els := stw.currentelem()
 		tmp, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
 			return err
@@ -3626,4 +3476,36 @@ func (stw *Window) DrawPivot(nodes []*st.Node, pivot, end chan int) {
 			}
 		}
 	}
+}
+
+func (stw *Window) currentelem() []*st.Elem {
+	var els []*st.Elem
+	if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+		enum := 0
+		els = make([]*st.Elem, 0)
+	current:
+		for {
+			select {
+			case <-time.After(time.Second):
+				break current
+			case <-stw.exmodeend:
+				break current
+			case el := <-stw.exmodech:
+				if el == nil {
+					break current
+				}
+				if el, ok := el.(*st.Elem); ok {
+					els = append(els, el)
+					enum++
+				}
+			}
+		}
+		if enum == 0 {
+			return []*st.Elem{}
+		}
+		els = els[:enum]
+	} else {
+		els = stw.SelectElem
+	}
+	return els
 }
