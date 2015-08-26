@@ -16,14 +16,15 @@ const (
 )
 
 type Sect struct {
-	Num   int
-	E     float64
-	Poi   float64
-	Value []float64
-	Yield []float64
-	Type  int
-	Exp   float64
-	Exq   float64
+	Num      int
+	E        float64
+	Poi      float64
+	Value    []float64
+	Yield    []float64
+	Type     int
+	Exp      float64
+	Exq      float64
+	Original int
 }
 
 func NewSect() *Sect {
@@ -31,6 +32,20 @@ func NewSect() *Sect {
 	s.Value = make([]float64, 4)
 	s.Yield = make([]float64, 12)
 	return s
+}
+
+func (sect *Sect) InlString() string {
+	var rtn bytes.Buffer
+	rtn.WriteString(fmt.Sprintf("%5d ", sect.Num))
+	rtn.WriteString(fmt.Sprintf("%11.5E %7.5f ", sect.E, sect.Poi))
+	rtn.WriteString(fmt.Sprintf("%6.4f %10.8f %10.8f %10.8f", sect.Value[0], sect.Value[1], sect.Value[2], sect.Value[3]))
+	for i := 0; i < 12; i++ {
+		rtn.WriteString(fmt.Sprintf(" %9.3f", sect.Yield[i]))
+	}
+	rtn.WriteString(fmt.Sprintf(" %5d", sect.Type))
+	rtn.WriteString(fmt.Sprintf(" %5d", sect.Original))
+	rtn.WriteString("\n")
+	return rtn.String()
 }
 
 func ParseArclmSect(words []string) (*Sect, error) {
@@ -96,6 +111,27 @@ func NewNode() *Node {
 	return n
 }
 
+func (node *Node) InlCoordString() string {
+	return fmt.Sprintf("%5d %7.3f %7.3f %7.3f\n", node.Num, node.Coord[0], node.Coord[1], node.Coord[2])
+}
+
+func (node *Node) InlConditionString() string {
+	var rtn bytes.Buffer
+	rtn.WriteString(fmt.Sprintf("%5d", node.Num))
+	for i := 0; i < 6; i++ {
+		if node.Conf[i] {
+			rtn.WriteString(" 1")
+		} else {
+			rtn.WriteString(" 0")
+		}
+	}
+	for i := 0; i < 6; i++ {
+		rtn.WriteString(fmt.Sprintf(" %12.8f", node.Force[i]))
+	}
+	rtn.WriteString("\n")
+	return rtn.String()
+}
+
 func ParseArclmNode(words []string) (*Node, error) {
 	var val float64
 	var err error
@@ -152,16 +188,16 @@ func (node *Node) OutputDisp() string {
 }
 
 type Elem struct {
-	Num    int
-	Sect   *Sect
-	Enod   []*Node
-	Cang   float64
-	Bonds  []int
-	Strong []float64
-	Weak   []float64
-	Cmq    []float64
-	Stress []float64
-	Energy float64
+	Num     int
+	Sect    *Sect
+	Enod    []*Node
+	Cang    float64
+	Bonds   []int
+	Strong  []float64
+	Weak    []float64
+	Cmq     []float64
+	Stress  []float64
+	Energy  float64
 	Energyb float64
 }
 
@@ -172,6 +208,23 @@ func NewElem() *Elem {
 	el.Cmq = make([]float64, 12)
 	el.Stress = make([]float64, 12)
 	return el
+}
+
+func (elem *Elem) InlString() string {
+	var rtn bytes.Buffer
+	rtn.WriteString(fmt.Sprintf("%5d %6d ", elem.Num, elem.Sect.Num))
+	rtn.WriteString(fmt.Sprintf(" %5d %5d ", elem.Enod[0].Num, elem.Enod[1].Num))
+	rtn.WriteString(fmt.Sprintf("%8.5f", elem.Cang))
+	for i := 0; i < 2; i++ {
+		for j := 3; j < 6; j++ {
+			rtn.WriteString(fmt.Sprintf(" %d", elem.Bonds[6*i+j]))
+		}
+	}
+	for i := 0; i < 12; i++ {
+		rtn.WriteString(fmt.Sprintf(" %10.8f", elem.Cmq[i]))
+	}
+	rtn.WriteString("\n")
+	return rtn.String()
 }
 
 func (elem *Elem) Number() int {

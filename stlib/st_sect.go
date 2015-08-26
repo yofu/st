@@ -217,6 +217,15 @@ func (sect *Sect) InlString() string {
 	return rtn.String()
 }
 
+func (sect *Sect) ArclmValue() []float64 {
+	return []float64{
+		sect.Figs[0].Value["AREA"],
+		sect.Figs[0].Value["IXX"],
+		sect.Figs[0].Value["IYY"],
+		sect.Figs[0].Value["VEN"],
+	}
+}
+
 func (sect *Sect) HasBrace() bool {
 	if len(sect.Figs) < 1 {
 		return false

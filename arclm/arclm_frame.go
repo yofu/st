@@ -152,6 +152,37 @@ func (af *Frame) ReadInput(filename string) error {
 	return nil
 }
 
+func (frame *Frame) SaveInput(fn string) error {
+	var otp bytes.Buffer
+	otp.WriteString(fmt.Sprintf("%5d %5d %5d\n", len(frame.Nodes), len(frame.Elems), len(frame.Sects)))
+	// Sect
+	for _, s := range frame.Sects {
+		otp.WriteString(s.InlString())
+	}
+	// Node: Coord
+	for _, n := range frame.Nodes {
+		otp.WriteString(n.InlCoordString())
+	}
+	// Elem
+	for _, el := range frame.Elems {
+		otp.WriteString(el.InlString())
+	}
+	// Node: Boundary Condition
+	for _, n := range frame.Nodes {
+		otp.WriteString(n.InlConditionString())
+	}
+	// Write
+	w, err := os.Create(fn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
+	var withcr bytes.Buffer
+	withcr.WriteString(strings.Replace(otp.String(), "\n", "\r\n", -1))
+	withcr.WriteTo(w)
+	return nil
+}
+
 func (frame *Frame) Initialise() {
 	for _, n := range frame.Nodes {
 		for i := 0; i < 6; i++ {

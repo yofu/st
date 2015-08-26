@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/yofu/st/arclm"
-	"github.com/yofu/dxf"
 	"github.com/mattn/natural"
+	"github.com/yofu/dxf"
+	"github.com/yofu/st/arclm"
 	"io/ioutil"
 	"math"
 	"os"
@@ -2262,9 +2262,9 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 	d := dxf.NewDrawing()
 	for _, n := range frame.Nodes {
 		val := 0
-		for i:=0; i<6; i++ {
+		for i := 0; i < 6; i++ {
 			if n.Conf[i] {
-				val += 1<<uint(5-i)
+				val += 1 << uint(5-i)
 			}
 		}
 		if val != 0 {
@@ -2284,9 +2284,9 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 				continue
 			}
 			coord := make([]float64, 3)
-			coord[0] = (position[0] + (v[0]*elem.Strong[0]+v[1]*elem.Weak[0])*0.01)*scale
-			coord[1] = (position[1] + (v[0]*elem.Strong[1]+v[1]*elem.Weak[1])*0.01)*scale
-			coord[2] = (position[2] + (v[0]*elem.Strong[2]+v[1]*elem.Weak[2])*0.01)*scale
+			coord[0] = (position[0] + (v[0]*elem.Strong[0]+v[1]*elem.Weak[0])*0.01) * scale
+			coord[1] = (position[1] + (v[0]*elem.Strong[1]+v[1]*elem.Weak[1])*0.01) * scale
+			coord[2] = (position[2] + (v[0]*elem.Strong[2]+v[1]*elem.Weak[2])*0.01) * scale
 			vers = append(vers, coord)
 			size++
 		}
@@ -2335,9 +2335,9 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 					direction := el.Direction(true)
 					for _, reins := range rc.Reins {
 						pos := make([]float64, 3)
-						pos[0] = (position[0] + (reins.Position[0]*el.Strong[0]+reins.Position[1]*el.Weak[0])*0.01)*scale
-						pos[1] = (position[1] + (reins.Position[0]*el.Strong[1]+reins.Position[1]*el.Weak[1])*0.01)*scale
-						pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01)*scale
+						pos[0] = (position[0] + (reins.Position[0]*el.Strong[0]+reins.Position[1]*el.Weak[0])*0.01) * scale
+						pos[1] = (position[1] + (reins.Position[0]*el.Strong[1]+reins.Position[1]*el.Weak[1])*0.01) * scale
+						pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01) * scale
 						c, err := d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
 						if err == nil {
 							dxf.SetExtrusion(c, direction)
@@ -2350,9 +2350,9 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 					direction := el.Direction(true)
 					for _, reins := range rg.Reins {
 						pos := make([]float64, 3)
-						pos[0] = (position[0] + (reins.Position[0]*el.Strong[0]+reins.Position[1]*el.Weak[0])*0.01)*scale
-						pos[1] = (position[1] + (reins.Position[0]*el.Strong[1]+reins.Position[1]*el.Weak[1])*0.01)*scale
-						pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01)*scale
+						pos[0] = (position[0] + (reins.Position[0]*el.Strong[0]+reins.Position[1]*el.Weak[0])*0.01) * scale
+						pos[1] = (position[1] + (reins.Position[0]*el.Strong[1]+reins.Position[1]*el.Weak[1])*0.01) * scale
+						pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01) * scale
 						c, err := d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
 						if err == nil {
 							dxf.SetExtrusion(c, direction)
@@ -2370,14 +2370,14 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 		} else {
 			switch el.Enods {
 			case 3:
-				d.ThreeDFace([][]float64{[]float64{el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, el.Enod[0].Coord[2]*scale},
-					[]float64{el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, el.Enod[1].Coord[2]*scale},
-					[]float64{el.Enod[2].Coord[0]*scale, el.Enod[2].Coord[1]*scale, el.Enod[2].Coord[2]*scale}})
+				d.ThreeDFace([][]float64{[]float64{el.Enod[0].Coord[0] * scale, el.Enod[0].Coord[1] * scale, el.Enod[0].Coord[2] * scale},
+					[]float64{el.Enod[1].Coord[0] * scale, el.Enod[1].Coord[1] * scale, el.Enod[1].Coord[2] * scale},
+					[]float64{el.Enod[2].Coord[0] * scale, el.Enod[2].Coord[1] * scale, el.Enod[2].Coord[2] * scale}})
 			case 4:
-				d.ThreeDFace([][]float64{[]float64{el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, el.Enod[0].Coord[2]*scale},
-					[]float64{el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, el.Enod[1].Coord[2]*scale},
-					[]float64{el.Enod[2].Coord[0]*scale, el.Enod[2].Coord[1]*scale, el.Enod[2].Coord[2]*scale},
-					[]float64{el.Enod[3].Coord[0]*scale, el.Enod[3].Coord[1]*scale, el.Enod[3].Coord[2]*scale}})
+				d.ThreeDFace([][]float64{[]float64{el.Enod[0].Coord[0] * scale, el.Enod[0].Coord[1] * scale, el.Enod[0].Coord[2] * scale},
+					[]float64{el.Enod[1].Coord[0] * scale, el.Enod[1].Coord[1] * scale, el.Enod[1].Coord[2] * scale},
+					[]float64{el.Enod[2].Coord[0] * scale, el.Enod[2].Coord[1] * scale, el.Enod[2].Coord[2] * scale},
+					[]float64{el.Enod[3].Coord[0] * scale, el.Enod[3].Coord[1] * scale, el.Enod[3].Coord[2] * scale}})
 			}
 		}
 	}
@@ -3500,38 +3500,144 @@ func (frame *Frame) Upside() {
 
 // ExtractArclm// {{{
 func (frame *Frame) ExtractArclm() {
-	frame.WeightDistribution()
-	for _, el := range frame.Elems {
-		if !el.IsLineElem() {
-			brs := el.RectToBrace(2, 1.0)
-			if brs != nil {
-				for _, br := range brs {
-					frame.AddElem(-1, br)
-					el.Adopt(br)
-				}
-			}
-		}
-	}
-	var ekeys []int
+	// frame.WeightDistribution()
+	// for _, el := range frame.Elems {
+	// 	if !el.IsLineElem() {
+	// 		brs := el.RectToBrace(2, 1.0)
+	// 		if brs != nil {
+	// 			for _, br := range brs {
+	// 				frame.AddElem(-1, br)
+	// 				el.Adopt(br)
+	// 			}
+	// 		}
+	// 	}
+	// }
+	sects := make([]*Sect, 0)
 	snum := 0
 	for _, sect := range frame.Sects {
 		if sect.HasArea(0) {
+			sects = append(sects, sect)
 			snum++
 		}
 	}
-	for k := range frame.Elems {
-		ekeys = append(ekeys, k)
+	sects = sects[:snum]
+	sort.Sort(SectByNum{sects})
+	nodes := make([]*Node, 0)
+	nnum := 0
+	for _, n := range frame.Nodes {
+		nodes = append(nodes, n)
+		nnum++
 	}
-	sort.Ints(ekeys)
-	for _, k := range ekeys {
-		el := frame.Elems[k]
+	nodes = nodes[:nnum]
+	sort.Sort(NodeByNum{nodes})
+	elems := make([]*Elem, 0)
+	enum := 0
+	for _, el := range frame.Elems {
+		if el.IsLineElem() {
+			elems = append(elems, el)
+			enum++
+		}
+	}
+	elems = elems[:enum]
+	sort.Sort(ElemByNum{elems})
+	set := snum
+	for _, el := range elems {
 		if el.Sect.Type == 0 {
 			el.Sect.Type = el.Etype
-			snum--
-			if snum < 0 {
+			set--
+			if set <= 0 {
 				break
 			}
 		}
+	}
+	for _, p := range []string{"L", "X", "Y"} {
+		af := arclm.NewFrame()
+		af.Sects = make([]*arclm.Sect, snum)
+		arclmsects := make(map[int]int)
+		for i, sec := range sects {
+			yield := make([]float64, 12)
+			for j := 0; j < 12; j++ {
+				yield[j] = sec.Yield[j]
+			}
+			af.Sects[i] = &arclm.Sect{
+				Num:      sec.Num,
+				E:        sec.Figs[0].Prop.E,
+				Poi:      sec.Figs[0].Prop.Poi,
+				Value:    sec.ArclmValue(),
+				Yield:    yield,
+				Type:     sec.Type,
+				Exp:      sec.Exp,
+				Exq:      sec.Exq,
+				Original: sec.Original,
+			}
+			arclmsects[sec.Num] = i
+		}
+		af.Nodes = make([]*arclm.Node, nnum)
+		arclmnodes := make(map[int]int)
+		for i, n := range nodes {
+			an := arclm.NewNode()
+			an.Num = n.Num
+			for j := 0; j < 3; j++ {
+				an.Coord[j] = n.Coord[j]
+			}
+			var disp []float64
+			var reaction []float64
+			if d, ok := n.Disp[p]; ok {
+				disp = d
+			}
+			if r, ok := n.Reaction[p]; ok {
+				reaction = r
+			}
+			for j := 0; j < 6; j++ {
+				an.Conf[j] = n.Conf[j]
+				// an.Force[j] = n.Force[p][j]
+				an.Force[j] = n.Load[j]
+				if disp != nil {
+					an.Disp[j] = n.Disp[p][j]
+				}
+				if n.Conf[j] {
+					if reaction != nil {
+						an.Reaction[j] = n.Reaction[p][j]
+					}
+				}
+			}
+			an.Index = i
+			af.Nodes[i] = an
+			arclmnodes[n.Num] = i
+		}
+		af.Elems = make([]*arclm.Elem, enum)
+		for i, el := range elems {
+			ae := arclm.NewElem()
+			ae.Num = el.Num
+			ae.Sect = af.Sects[arclmsects[el.Sect.Num]]
+			for j := 0; j < 2; j++ {
+				ae.Enod[j] = af.Nodes[arclmnodes[el.Enod[j].Num]]
+			}
+			ae.Cang = el.Cang
+			var stress map[int][]float64
+			if s, ok := el.Stress[p]; ok {
+				stress = s
+			}
+			for j := 0; j < 12; j++ {
+				if el.Bonds[j] {
+					ae.Bonds[j] = 1
+				} else {
+					ae.Bonds[j] = 0
+				}
+				ae.Cmq[j] = el.Cmq[j]
+				if stress != nil {
+					if j < 6 {
+						ae.Stress[j] = stress[el.Enod[0].Num][j]
+					} else {
+						ae.Stress[j] = stress[el.Enod[1].Num][j-6]
+					}
+				} else {
+					ae.Stress[j] = el.Cmq[j]
+				}
+			}
+			af.Elems[i] = ae
+		}
+		frame.Arclms[p] = af
 	}
 }
 
@@ -3759,66 +3865,11 @@ func (frame *Frame) SaveAsArclm(name string) error {
 	if name == "" {
 		name = frame.Path
 	}
-	nums := make([]int, 3)
-	otp := make([]bytes.Buffer, 3)
-	var skeys, nkeys, ekeys []int
-	// Sect
-	for k := range frame.Sects {
-		skeys = append(skeys, k)
-	}
-	sort.Ints(skeys)
-	for _, k := range skeys {
-		if frame.Sects[k].HasArea(0) {
-			str := frame.Sects[k].InlString()
-			nums[2]++
-			for i := 0; i < 3; i++ {
-				otp[i].WriteString(str)
-			}
-		}
-	}
-	// Node: Coord
-	for k := range frame.Nodes {
-		nkeys = append(nkeys, k)
-	}
-	sort.Ints(nkeys)
-	for _, k := range nkeys {
-		str := frame.Nodes[k].InlCoordString()
-		nums[0]++
-		for i := 0; i < 3; i++ {
-			otp[i].WriteString(str)
-		}
-	}
-	// Elem
-	for k := range frame.Elems {
-		ekeys = append(ekeys, k)
-	}
-	sort.Ints(ekeys)
-	for _, k := range ekeys {
-		if frame.Elems[k].IsLineElem() {
-			for i := 0; i < 3; i++ {
-				otp[i].WriteString(frame.Elems[k].InlString(i))
-			}
-			nums[1]++
-		}
-	}
-	// Node: Boundary Condition
-	for _, k := range nkeys {
-		for i := 0; i < 3; i++ {
-			otp[i].WriteString(frame.Nodes[k].InlConditionString(i))
-		}
-	}
-	numstr := fmt.Sprintf("%5d %5d %5d\n", nums[0], nums[1], nums[2])
-	// Write
-	for i, ext := range InputExt {
-		fn := Ce(name, ext)
-		w, err := os.Create(fn)
-		defer w.Close()
+	for i, p := range []string{"L", "X", "Y"} {
+		err := frame.Arclms[p].SaveInput(Ce(name, InputExt[i]))
 		if err != nil {
 			return err
 		}
-		w.WriteString(numstr)
-		otp[i] = AddCR(otp[i])
-		otp[i].WriteTo(w)
 	}
 	return nil
 }
