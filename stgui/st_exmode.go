@@ -50,6 +50,10 @@ var (
 		"w/ei/g/htcopy":     complete.MustCompile(":weightcopy", nil),
 		"har/dcopy":         complete.MustCompile(":hardcopy", nil),
 		"fi/g2":             complete.MustCompile(":fig2", nil),
+		"dxf/":              complete.MustCompile(":dxf [dimension:$DNUM] [scale:_]",
+			map[string][]string{
+				"DNUM": []string{"2", "3"},
+			}),
 		"fe/nce":            complete.MustCompile(":fence", nil),
 		"no/de":             complete.MustCompile(":node", nil),
 		"xsc/ale":           complete.MustCompile(":xscale _", nil),
@@ -193,7 +197,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 	args = args[:narg]
 	unnamed := make([]string, narg)
 	tmpnarg := 0
-	namedarg := regexp.MustCompile("^ *-{1,2}([a-zA-Z0-9]+)(={0,1})([^ =]*) *$")
+	namedarg := regexp.MustCompile("^ *-{1,2}([a-zA-Z]+)(={0,1})([^ =]*) *$")
 	for _, a := range args {
 		if namedarg.MatchString(a) {
 			fs := namedarg.FindStringSubmatch(a)
@@ -895,11 +899,16 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "dxf":
 		if usage {
-			return st.Usage(":dxf filename {-2d, -3d} {-scale=val}")
+			return st.Usage(":dxf filename {-dimension=2,3} {-scale=val}")
 		}
 		dimension := 2
-		if _, ok := argdict["3D"]; ok {
-			dimension = 3
+		if d, ok := argdict["DIMENSION"]; ok {
+			switch d {
+			case "2":
+				dimension = 2
+			case "3":
+				dimension = 3
+			}
 		}
 		scale := 1.0
 		if v, ok := argdict["SCALE"]; ok {
