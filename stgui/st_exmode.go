@@ -96,6 +96,7 @@ var (
 		"sec/tion/+/":        complete.MustCompile(":section+ _", nil),
 		"col/or":             complete.MustCompile(":color", nil),
 		"ex/tractarclm":      complete.MustCompile(":extractarclm", nil),
+		"s/aveas/ar/clm":     complete.MustCompile(":saveasarclm", nil),
 		"a/rclm/001/":        complete.MustCompile(":arclm001 [period:$PERIOD] [all:] [solver:$SOLVER] [eps:_] [noinit:] _",
 			map[string][]string{
 				"PERIOD": []string{"l", "x", "y"},
@@ -3155,20 +3156,22 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if usage {
 			return st.Usage(":extractarclm")
 		}
-		err := stw.SaveFile(stw.Frame.Path)
-		if err != nil {
-			return err
+		stw.Frame.ExtractArclm()
+		// err = stw.Analysis(filepath.ToSlash(stw.Frame.Path), "")
+		// if err != nil {
+		// 	return err
+		// }
+		// for _, ext := range []string{".inl", ".ihx", ".ihy"} {
+		// 	err := stw.Frame.ReadData(st.Ce(stw.Frame.Path, ext))
+		// 	if err != nil {
+		// 		stw.errormessage(err, ERROR)
+		// 	}
+		// }
+	case "saveasarclm":
+		if usage {
+			return st.Usage(":saveasarclm")
 		}
-		err = stw.Analysis(filepath.ToSlash(stw.Frame.Path), "")
-		if err != nil {
-			return err
-		}
-		for _, ext := range []string{".inl", ".ihx", ".ihy"} {
-			err := stw.Frame.ReadData(st.Ce(stw.Frame.Path, ext))
-			if err != nil {
-				stw.errormessage(err, ERROR)
-			}
-		}
+		stw.Frame.SaveAsArclm("")
 	case "arclm001":
 		if usage {
 			return st.Usage(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} filename")
