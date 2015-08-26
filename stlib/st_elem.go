@@ -557,6 +557,14 @@ func (elem *Elem) Length() float64 {
 	return math.Sqrt(sum)
 }
 
+func (elem *Elem) DeformedLength(p string) float64 {
+	sum := 0.0
+	for i := 0; i < 3; i++ {
+		sum += math.Pow((elem.Enod[1].Coord[i] + elem.Enod[1].ReturnDisp(p, i) - elem.Enod[0].Coord[i] - elem.Enod[0].ReturnDisp(p, i)), 2)
+	}
+	return math.Sqrt(sum)
+}
+
 func (elem *Elem) EdgeLength(ind int) float64 {
 	if ind >= elem.Enods-1 {
 		return 0.0
@@ -584,6 +592,25 @@ func (elem *Elem) Area() float64 {
 			ds[i-1] += math.Pow((elem.Enod[i].Coord[j] - elem.Enod[0].Coord[j]), 2)
 		}
 		vs[i-1] = Direction(elem.Enod[0], elem.Enod[i], false)
+	}
+	for i := 0; i < elem.Enods-2; i++ {
+		area += 0.5 * math.Sqrt(ds[i]*ds[i+1]-math.Pow(Dot(vs[i], vs[i+1], 3), 2))
+	}
+	return area
+}
+
+func (elem *Elem) DeformedArea(p string) float64 {
+	if elem.Enods <= 2 {
+		return 0.0
+	}
+	var area float64
+	ds := make([]float64, elem.Enods-1)
+	vs := make([][]float64, elem.Enods-1)
+	for i := 1; i < elem.Enods; i++ {
+		for j := 0; j < 3; j++ {
+			ds[i-1] += math.Pow((elem.Enod[i].Coord[j] + elem.Enod[i].ReturnDisp(p, j) - elem.Enod[0].Coord[j] - elem.Enod[0].ReturnDisp(p, j)), 2)
+		}
+		vs[i-1] = DeformedDirection(elem.Enod[0], elem.Enod[i], false, p)
 	}
 	for i := 0; i < elem.Enods-2; i++ {
 		area += 0.5 * math.Sqrt(ds[i]*ds[i+1]-math.Pow(Dot(vs[i], vs[i+1], 3), 2))

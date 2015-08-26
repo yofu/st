@@ -521,6 +521,14 @@ func Distance(n1, n2 *Node) float64 {
 	return math.Sqrt(sum)
 }
 
+func DeformedDistance(n1, n2 *Node, p string) float64 {
+	sum := 0.0
+	for i := 0; i < 3; i++ {
+		sum += math.Pow((n2.Coord[i] + n2.ReturnDisp(p, i) - n1.Coord[i] - n1.ReturnDisp(p, i)), 2)
+	}
+	return math.Sqrt(sum)
+}
+
 func VectorDistance(n1, n2 *Node, vec []float64) float64 {
 	fmt.Println(vec)
 	rtn := 0.0
@@ -543,6 +551,23 @@ func Direction(n1, n2 *Node, normalize bool) []float64 {
 	}
 	for i := 0; i < 3; i++ {
 		vec[i] = (n2.Coord[i] - n1.Coord[i]) / l
+	}
+	return vec
+}
+
+func DeformedDirection(n1, n2 *Node, normalize bool, p string) []float64 {
+	vec := make([]float64, 3)
+	var l float64
+	if normalize {
+		l = DeformedDistance(n1, n2, p)
+		if l == 0.0 {
+			l = 1.0
+		}
+	} else {
+		l = 1.0
+	}
+	for i := 0; i < 3; i++ {
+		vec[i] = (n2.Coord[i] + n2.ReturnDisp(p, i) - n1.Coord[i] - n1.ReturnDisp(p, i)) / l
 	}
 	return vec
 }

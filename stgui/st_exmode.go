@@ -80,6 +80,8 @@ var (
 		"pi/le":              complete.MustCompile(":pile", nil),
 		"sec/tion":           complete.MustCompile(":section _", nil),
 		"c/urrent/v/alue":    complete.MustCompile(":currentvalue", nil),
+		"len/gth":            complete.MustCompile(":length [deformed:]", nil),
+		"are/a":              complete.MustCompile(":area [deformed:]", nil),
 		"an/alysis":          complete.MustCompile(":analysis", nil),
 		"f/ilter":            complete.MustCompile(":filter", nil),
 		"ra/nge":             complete.MustCompile(":range", nil),
@@ -2781,6 +2783,52 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}
 		return st.Message(fmt.Sprintf("NODES: %d, ELEMS: %d", nnode, nelem))
+	case "length":
+		if usage {
+			return st.Usage(":length [-deformed]")
+		}
+		deformed := false
+		if _, ok := argdict["DEFORMED"]; ok {
+			deformed = true
+		}
+		sum := 0.0
+		for _, el := range stw.currentelem() {
+			if el.IsLineElem() {
+				if deformed {
+					sum += el.DeformedLength(stw.Frame.Show.Period)
+				} else {
+					sum += el.Length()
+				}
+			}
+		}
+		if deformed {
+			return st.Message(fmt.Sprintf("total length: %.3f (deformed)", sum))
+		} else {
+			return st.Message(fmt.Sprintf("total length: %.3f", sum))
+		}
+	case "area":
+		if usage {
+			return st.Usage(":area [-deformed]")
+		}
+		deformed := false
+		if _, ok := argdict["DEFORMED"]; ok {
+			deformed = true
+		}
+		sum := 0.0
+		for _, el := range stw.currentelem() {
+			if !el.IsLineElem() {
+				if deformed {
+					sum += el.DeformedArea(stw.Frame.Show.Period)
+				} else {
+					sum += el.Area()
+				}
+			}
+		}
+		if deformed {
+			return st.Message(fmt.Sprintf("total area: %.3f (deformed)", sum))
+		} else {
+			return st.Message(fmt.Sprintf("total area: %.3f", sum))
+		}
 	case "show":
 		if usage {
 			return st.Usage(":show")
