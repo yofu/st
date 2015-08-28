@@ -24,6 +24,7 @@ var (
 		"e/dit":             complete.MustCompile(":edit %g", nil),
 		"q/uit":             complete.MustCompile(":quit", nil),
 		"vi/m":              complete.MustCompile(":vim %g", nil),
+		"exp/lorer":         complete.MustCompile(":explorer %g", nil),
 		"hk/you":            complete.MustCompile(":hkyou _ _ _ _", nil),
 		"hw/eak":            complete.MustCompile(":hweak _ _ _ _", nil),
 		"rp/ipe":            complete.MustCompile(":rpipe _ _ _ _", nil),
@@ -336,6 +337,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return st.Usage(":vim filename")
 		}
 		Vim(fn)
+	case "explorer":
+		var dir string
+		if narg < 2 {
+			dir = stw.Cwd
+		} else {
+			dir = args[1]
+		}
+		Explorer(dir)
 	case "hkyou":
 		if usage {
 			return st.Usage(":hkyou h b tw tf")

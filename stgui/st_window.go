@@ -2288,6 +2288,15 @@ func (stw *Window) ParseFig2Page(pcanv *cd.Canvas, lis [][]string) error {
 	return nil
 }
 
+func Explorer(dir string) {
+	stat, err := os.Stat(dir)
+	if err != nil || !stat.IsDir() {
+		dir = "."
+	}
+	cmd := exec.Command("cmd", "/C", "explorer", dir)
+	cmd.Start()
+}
+
 func Edit(fn string) {
 	cmd := exec.Command("cmd", "/C", "start", fn)
 	cmd.Start()
