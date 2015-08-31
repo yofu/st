@@ -88,7 +88,10 @@ var (
 		"len/gth":            complete.MustCompile(":length [deformed:]", nil),
 		"are/a":              complete.MustCompile(":area [deformed:]", nil),
 		"an/alysis":          complete.MustCompile(":analysis", nil),
-		"f/ilter":            complete.MustCompile(":filter", nil),
+		"f/ilter":            complete.MustCompile(":filter $CONDITION",
+			map[string][]string{
+				"CONDITION": []string{"//", "TT", "on", "adjoin", "cv"},
+			}),
 		"ra/nge":             complete.MustCompile(":range", nil),
 		"h/eigh/t/":          complete.MustCompile(":height _ _", nil),
 		"h/eigh/t+/":         complete.MustCompile(":height+", nil),

@@ -3916,6 +3916,7 @@ func (stw *Window) FilterElem(els []*st.Elem, str string) ([]*st.Elem, error) {
 	ortho := regexp.MustCompile("^ *TT *([xyzXYZ]{1})")
 	onplane := regexp.MustCompile("(?i)^ *on *([xyz]{2})")
 	adjoin := regexp.MustCompile("^ *ad(j(o(in?)?)?)? (.*)")
+	currentvalue := regexp.MustCompile("^ *cv *([><=!]+) *([0-9.-]+)")
 	var filterfunc func(el *st.Elem) bool
 	var hstr string
 	switch {
@@ -4021,6 +4022,45 @@ func (stw *Window) FilterElem(els []*st.Elem, str string) ([]*st.Elem, error) {
 			}
 			hstr = fmt.Sprintf("ADJOIN TO %s", hst)
 		}
+	case currentvalue.MatchString(str):
+		fs := currentvalue.FindStringSubmatch(str)
+		var f func(float64, float64) bool
+		switch fs[1] {
+		case ">=":
+			f = func (u, v float64) bool {
+				return u >= v
+			}
+		case ">":
+			f = func (u, v float64) bool {
+				return u > v
+			}
+		case "<=":
+			f = func (u, v float64) bool {
+				return u <= v
+			}
+		case "<":
+			f = func (u, v float64) bool {
+				return u < v
+			}
+		case "=", "==":
+			f = func (u, v float64) bool {
+				return u == v
+			}
+		case "!=":
+			f = func (u, v float64) bool {
+				return u != v
+			}
+		default:
+			return els, errors.New("no filtering")
+		}
+		val, err := strconv.ParseFloat(fs[2], 64)
+		if err != nil {
+			return els, err
+		}
+		filterfunc = func(el *st.Elem) bool {
+			return f(el.CurrentValue(stw.Frame.Show, true, false), val)
+		}
+		hstr = fmt.Sprintf("CURRENT VALUE %s %.3f", fs[1], val)
 	}
 	if filterfunc != nil {
 		tmpels := make([]*st.Elem, l)
