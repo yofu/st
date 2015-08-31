@@ -94,8 +94,19 @@ var (
 		"h/eigh/t+/":         complete.MustCompile(":height+", nil),
 		"h/eigh/t-/":         complete.MustCompile(":height-", nil),
 		"ang/le":             complete.MustCompile(":angle _ _", nil),
+		"view/":              complete.MustCompile(":view $DIRECTION",
+			map[string][]string{
+				"DIRECTION": []string{"top", "front", "back", "right", "left"},
+			}),
+		"paper/":             complete.MustCompile(":paper $NAME",
+			map[string][]string{
+				"NAME": []string{"a3tate", "a3yoko", "a4tate", "a4yoko"},
+			}),
 		"sec/tion/+/":        complete.MustCompile(":section+ _", nil),
-		"col/or":             complete.MustCompile(":color", nil),
+		"col/or":             complete.MustCompile(":color $NAME",
+			map[string][]string{
+				"NAME": []string{"n", "sect", "rate", "white", "mono", "strong"},
+			}),
 		"ex/tractarclm":      complete.MustCompile(":extractarclm", nil),
 		"s/aveas/ar/clm":     complete.MustCompile(":saveasarclm", nil),
 		"a/rclm/001/":        complete.MustCompile(":arclm001 [period:$PERIOD] [all:] [solver:$SOLVER] [eps:_] [noinit:] _",
