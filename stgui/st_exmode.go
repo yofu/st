@@ -48,6 +48,10 @@ var (
 		"w/rite/k/ijun":     complete.MustCompile(":writekijun _", nil),
 		"p/late/w/eight":    complete.MustCompile(":plateweight", nil),
 		"nmi/nteraction":    complete.MustCompile(":nminteraction [ndiv:] [output:]", nil),
+		"kabe/ryo":          complete.MustCompile(":kaberyo [half:_] [fc:_] [alpha:_] [route:$ROUTE]",
+			map[string][]string{
+				"ROUTE": []string{"1", "2-1", "2-2"},
+			}),
 		"w/ei/g/htcopy":     complete.MustCompile(":weightcopy [si:]", nil),
 		"har/dcopy":         complete.MustCompile(":hardcopy", nil),
 		"fi/g2":             complete.MustCompile(":fig2", nil),
@@ -1132,7 +1136,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		otp.WriteTo(w)
 	case "kaberyo":
 		if usage {
-			return st.Usage(":kaberyo")
+			return st.Usage(":kaberyo {-half} {-fc=24} {-alpha=1.155} {-route}")
 		}
 		els := stw.currentelem()
 		var m bytes.Buffer
@@ -1167,7 +1171,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				cwall = 18.0
 			}
 		}
-		m.WriteString(fmt.Sprintf("COEFFICIENT: COLUMN=%.1f WALL=%.1f", ccol, cwall))
+		m.WriteString(fmt.Sprintf(" COEFFICIENT: COLUMN=%.1f WALL=%.1f", ccol, cwall))
 		sumcol := 0.0
 		sumwall := 0.0
 		for _, el := range els {
