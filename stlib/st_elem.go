@@ -1790,6 +1790,26 @@ pruneenod:
 	}
 }
 
+func (elem *Elem) IsDiagonal(n1, n2 *Node) bool {
+	if elem.IsLineElem() {
+		return false
+	}
+	i1, err := elem.EnodIndex(n1.Num)
+	if err != nil {
+		return false
+	}
+	i2, err := elem.EnodIndex(n2.Num)
+	if err != nil {
+		return false
+	}
+	switch i1 - i2 {
+	case 2, -2:
+		return true
+	default:
+		return false
+	}
+}
+
 // }}}
 
 // STRESS// {{{
