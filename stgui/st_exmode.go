@@ -2119,8 +2119,8 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 			if a, ok := el.Sect.Figs[0].Value["AREA"]; ok {
 				val := el.Sect.Figs[0].Prop.E * a * alpha * tmp
-				el.Cmq[0] = val
-				el.Cmq[6] = -val
+				el.Cmq[0] += val
+				el.Cmq[6] -= val
 			}
 		}
 		stw.Snapshot()
