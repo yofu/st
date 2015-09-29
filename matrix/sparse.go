@@ -1212,6 +1212,65 @@ func (ll *LLSMatrix) PCG(C *LLSMatrix, vec []float64) []float64 {
 	}
 }
 
+// func (ll *LLSMatrix) Householder() { // underconstruction
+// 	size := ll.Size
+// 	for i:=0; i<size; i++ {
+// 		ss := 0.0
+// 		n := ll.diag[i]
+// 		for {
+// 			n = n.down
+// 			if n == nil {
+// 				break
+// 			}
+// 			ss += n.value * n.value
+// 		}
+// 		sign := 1
+// 		val := ll.diag[i].down.value
+// 		if val < 0.0 {
+// 			sign = -1
+// 		}
+// 		s := sign * math.Sqrt(ss)
+// 		c := 1.0/(ss+val*s)
+// 	}
+// }
+
+// func BisectionSilvester(A, B, M *LLSMatrix, m int) ([]float64, [][]float64, error) {
+// 	N := A.Size
+// 	if B.Size != N {
+// 		return nil, nil, errors.New("size error")
+// 	}
+// 	eigval := make([]float64, m)
+// 	eigvec := make([][]float64, m)
+// 	init := make([]float64, N)
+// 	Lmin, Lmax := Gershgorin(A, B)
+// 	for i:=0; i<m; i++ {
+// 		for j:=0; j<N; j++ {
+// 			init[j] = rand.Float64()
+// 		}
+// 		Bphi := B.MulV(init)
+// 		dot := Dot(Bphi, init)
+// 		for j:=0; j<N; j++ {
+// 			init[j] /= dot
+// 		}
+// 		Lk = 0.5*(Lmin+Lmax)
+// 		for {
+// 		}
+// 	}
+// 	return eigval, eigvec, nil
+// }
+
+// func MinresSilvester(A, B, M *LLSMatrix, b []float64, phi [][]float64, l) ([]float64, int, error) {
+// 	N := A.Size
+// 	if B.Size != N || len(b) != N {
+// 		return nil, nil, errors.New("size error")
+// 	}
+// 	p := make([]float64, N)
+// 	for i:=0; i<N; i++ {
+// 		val = b[i]
+// 		p[i] = val
+// 		z[i] = val*M[i]
+// }
+
 func Dot(x, y []float64, size int) float64 {
 	rtn := 0.0
 	for i := 0; i < size; i++ {
