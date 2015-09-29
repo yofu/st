@@ -420,7 +420,7 @@ func (elem *Elem) InpString() string {
 		rtn.WriteString("           CMQ ")
 		for i := 0; i < elem.Enods; i++ {
 			for j := 0; j < 6; j++ {
-				rtn.WriteString(fmt.Sprintf(" %3.1f", elem.Cmq[6*i+j]))
+				rtn.WriteString(fmt.Sprintf(" %15.12f", elem.Cmq[6*i+j]))
 			}
 			if i < elem.Enods-1 {
 				rtn.WriteString(" ")

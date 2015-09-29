@@ -1646,6 +1646,34 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			n.Load[int(ind)] = val
 		}
 		stw.Snapshot()
+	case "cmq":
+		if usage {
+			return st.Usage(":cmq period")
+		}
+		if narg < 2 {
+			return st.NotEnoughArgs(":cmq")
+		}
+		els := stw.currentelem()
+		if strings.EqualFold(args[1], "zero") {
+			for _, el := range els {
+				for i:=0; i<12; i++ {
+					el.Cmq[i] = 0.0
+				}
+			}
+			return nil
+		}
+		if s, ok := stw.Frame.ResultFileName[args[1]]; ok {
+			if s == "" {
+				return errors.New(fmt.Sprintf("period %s: no data", args[1]))
+			}
+			for _, el := range els {
+				for i:=0; i<2; i++ {
+					for j:=0; j<6; j++ {
+						el.Cmq[6*i+j] = el.Stress[args[1]][el.Enod[i].Num][j]
+					}
+				}
+			}
+		}
 	case "elem":
 		if usage {
 			return st.Usage(":elem [elemcode,sect sectcode,etype,reaction]")
