@@ -771,7 +771,7 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 }
 
 // ANALYSIS FOR INCOMPRESSIBLE ELEMENT
-func (frame *Frame) Arclm202(otp string, init bool, nlap int, delta, min, max float64, sects []int) error { // TODO: speed up
+func (frame *Frame) Arclm202(otp string, init bool, nlap int, delta, min, max float64, sects []int, compval float64) error { // TODO: speed up
 	if init {
 		frame.Initialise()
 	}
@@ -790,7 +790,7 @@ func (frame *Frame) Arclm202(otp string, init bool, nlap int, delta, min, max fl
 	for _, el := range frame.Elems {
 		for _, sec := range sects {
 			if el.Sect.Num == sec {
-				el.SetIncompressible()
+				el.SetIncompressible(compval)
 				continue incomp
 			}
 		}

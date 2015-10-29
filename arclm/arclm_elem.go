@@ -391,7 +391,7 @@ func (elem *Elem) Check() int {
 	return elem.CheckFunc()
 }
 
-func (elem *Elem) SetIncompressible() {
+func (elem *Elem) SetIncompressible(val float64) {
 	elem.CheckFunc = func() int {
 		if !elem.IsValid {
 			if elem.Length() > elem.Length0() {
@@ -401,7 +401,7 @@ func (elem *Elem) SetIncompressible() {
 				return ASIS
 			}
 		} else {
-			if elem.Stress[0] > 0.010 { // Comressed
+			if elem.Stress[0] > val { // Comressed
 				elem.IsValid = false
 				for i:=0; i<12; i++ {
 					elem.Stress[i] = 0.0

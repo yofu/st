@@ -3447,7 +3447,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		return st.ArclmStart(m.String())
 	case "arclm202":
 		if usage {
-			return st.Usage(":arclm202 {-period=name} {-lap=nlap} {-safety=val} {-max=val} {-start=val} {-noinit} {-sects=val}filename")
+			return st.Usage(":arclm202 {-period=name} {-lap=nlap} {-safety=val} {-max=val} {-start=val} {-noinit} {-sects=val} {-comp=val} filename")
 		}
 		var otp string
 		var sects []int
@@ -3493,10 +3493,17 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				per = strings.ToUpper(p)
 			}
 		}
+		comp := 0.0
+		if c, ok := argdict["COMP"]; ok {
+			val, err := strconv.ParseFloat(c, 64)
+			if err == nil {
+				comp = val
+			}
+		}
 		var m bytes.Buffer
 		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
 		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
-		m.WriteString(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f, MAX: %.3f", lap, safety, start, max))
+		m.WriteString(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f, MAX: %.3f, COMP: %.3f", lap, safety, start, max, comp))
 		if s, ok := argdict["SECTS"]; ok {
 			sects = SplitNums(s)
 			m.WriteString(fmt.Sprintf("INCOMPRESSIBLE: %v", sects))
@@ -3508,7 +3515,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		af := stw.Frame.Arclms[per]
 		go func() {
-			err := af.Arclm202(otp, init, lap, safety, start, max, sects)
+			err := af.Arclm202(otp, init, lap, safety, start, max, sects, comp)
 			if err != nil {
 				fmt.Println(err)
 			}
