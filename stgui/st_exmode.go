@@ -3441,6 +3441,116 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}()
 		return st.ArclmStart(m.String())
+	case "arclm202":
+		if usage {
+			return st.Usage(":arclm202 {-period=name} {-lap=nlap} {-safety=val} {-max=val} {-start=val} {-noinit} {-sects=val}filename")
+		}
+		var otp string
+		var sects []int
+		if fn == "" {
+			otp = st.Ce(stw.Frame.Path, ".otp")
+		} else {
+			otp = fn
+		}
+		if o, ok := argdict["OTP"]; ok {
+			otp = o
+		}
+		lap := 1
+		if l, ok := argdict["LAP"]; ok {
+			tmp, err := strconv.ParseInt(l, 10, 64)
+			if err == nil {
+				lap = int(tmp)
+			}
+		}
+		safety := 1.0
+		if s, ok := argdict["SAFETY"]; ok {
+			tmp, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				safety = tmp
+			}
+		}
+		start := 0.0
+		if s, ok := argdict["START"]; ok {
+			tmp, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				start = tmp
+			}
+		}
+		max := 1.0
+		if s, ok := argdict["MAX"]; ok {
+			tmp, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				max = tmp
+			}
+		}
+		per := "L"
+		if p, ok := argdict["PERIOD"]; ok {
+			if p != "" {
+				per = strings.ToUpper(p)
+			}
+		}
+		var m bytes.Buffer
+		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
+		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
+		m.WriteString(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f, MAX: %.3f", lap, safety, start, max))
+		if s, ok := argdict["SECTS"]; ok {
+			sects = SplitNums(s)
+			m.WriteString(fmt.Sprintf("INCOMPRESSIBLE: %v", sects))
+		}
+		init := true
+		if _, ok := argdict["NOINIT"]; ok {
+			init = false
+			m.WriteString("NO INITIALISATION")
+		}
+		af := stw.Frame.Arclms[per]
+		go func() {
+			err := af.Arclm202(otp, init, lap, safety, start, max, sects)
+			if err != nil {
+				fmt.Println(err)
+			}
+			af.Endch <- err
+		}()
+		stw.CurrentLap("Calculating...", 0, lap)
+		pivot := make(chan int)
+		end := make(chan int)
+		nodes := make([]*st.Node, len(stw.Frame.Nodes))
+		i := 0
+		for _, n := range stw.Frame.Nodes {
+			nodes[i] = n
+			i++
+		}
+		sort.Sort(st.NodeByNum{nodes})
+		if drawpivot {
+			go stw.DrawPivot(nodes, pivot, end)
+		} else {
+			stw.Redraw()
+		}
+		go func() {
+		read202:
+			for {
+				select {
+				case <-af.Pivot:
+					if drawpivot {
+						pivot <- 1
+					}
+				case nlap := <-af.Lapch:
+					stw.Frame.ReadArclmData(af, per)
+					af.Lapch <- 1
+					stw.CurrentLap("Calculating...", nlap, lap)
+					if drawpivot {
+						end <- 1
+						go stw.DrawPivot(nodes, pivot, end)
+					} else {
+						stw.Redraw()
+					}
+				case <-af.Endch:
+					stw.CurrentLap("Completed", lap, lap)
+					stw.Redraw()
+					break read202
+				}
+			}
+		}()
+		return st.ArclmStart(m.String())
 	case "arclm301":
 		if usage {
 			return st.Usage(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
