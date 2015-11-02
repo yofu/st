@@ -1674,6 +1674,22 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}
+	case "lock":
+		if usage {
+			return st.Usage(":lock")
+		}
+		els := stw.currentelem()
+		for _, el := range els {
+			el.Lock = true
+		}
+	case "unlock":
+		if usage {
+			return st.Usage(":unlock")
+		}
+		els := stw.currentelem()
+		for _, el := range els {
+			el.Lock = false
+		}
 	case "elem":
 		if usage {
 			return st.Usage(":elem [elemcode,sect sectcode,etype,reaction,locked]")
