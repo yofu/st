@@ -1297,7 +1297,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		var f func(*st.Node) bool
 		if narg >= 2 {
 			condition := strings.ToUpper(strings.Join(args[1:], " "))
-			coordstr := regexp.MustCompile("^ *([XYZ]) *([<!=>]{0,2}) *([0-9.]+)")
+			coordstr := regexp.MustCompile("^ *([XYZ]) *([<!=>]{0,2}) *([-0-9.]+)")
 			numstr := regexp.MustCompile("^[0-9, ]+$")
 			pilestr := regexp.MustCompile("^ *PILE *([0-9, ]+)$")
 			sectstr := regexp.MustCompile("^ *SECT *([0-9, ]+)$")
