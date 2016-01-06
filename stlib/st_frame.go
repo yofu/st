@@ -2246,7 +2246,10 @@ func (frame *Frame) WriteDxf2D(filename string, scale float64) error {
 		frame.View.ProjectNode(n)
 	}
 	for _, el := range frame.Elems {
-		d.Layer(fmt.Sprintf("%s%d", ETYPES[el.Etype], el.Sect.Num), dxf.ColorIndex(IntColorList(el.Sect.Color)), dxf.DefaultLineType, true)
+		_, err := d.Layer(fmt.Sprintf("%s%d", ETYPES[el.Etype], el.Sect.Num), true)
+		if err != nil {
+			d.AddLayer(fmt.Sprintf("%s%d", ETYPES[el.Etype], el.Sect.Num), dxf.ColorIndex(IntColorList(el.Sect.Color)), dxf.DefaultLineType, true)
+		}
 		if el.IsLineElem() {
 			d.Line(el.Enod[0].Pcoord[0]*scale, el.Enod[0].Pcoord[1]*scale, 0.0, el.Enod[1].Pcoord[0]*scale, el.Enod[1].Pcoord[1]*scale, 0.0)
 		}
@@ -2268,7 +2271,10 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 			}
 		}
 		if val != 0 {
-			d.Layer(fmt.Sprintf("CONF%06b", val), dxf.DefaultColor, dxf.DefaultLineType, true)
+			_, err := d.Layer(fmt.Sprintf("CONF%06b", val), true)
+			if err != nil {
+				d.AddLayer(fmt.Sprintf("CONF%06b", val), dxf.DefaultColor, dxf.DefaultLineType, true)
+			}
 			d.Point(n.Coord[0]*scale, n.Coord[1]*scale, n.Coord[2]*scale)
 		}
 	}
@@ -2293,7 +2299,10 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 		d.Polyline(true, vers[:size]...)
 	}
 	for _, el := range frame.Elems {
-		d.Layer(fmt.Sprintf("%s%d", ETYPES[el.Etype], el.Sect.Num), dxf.ColorIndex(IntColorList(el.Sect.Color)), dxf.DefaultLineType, true)
+		_, err := d.Layer(fmt.Sprintf("%s%d", ETYPES[el.Etype], el.Sect.Num), true)
+		if err != nil {
+			d.AddLayer(fmt.Sprintf("%s%d", ETYPES[el.Etype], el.Sect.Num), dxf.ColorIndex(IntColorList(el.Sect.Color)), dxf.DefaultLineType, true)
+		}
 		if el.IsLineElem() {
 			l, err := d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, el.Enod[0].Coord[2]*scale, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, el.Enod[1].Coord[2]*scale)
 			if err != nil {
@@ -2308,7 +2317,10 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 				d.Group("PINPIN", "PIN-PIN", l)
 			}
 			if al, ok := frame.Allows[el.Sect.Num]; ok {
-				d.Layer("SECTION", dxf.DefaultColor, dxf.DefaultLineType, true)
+				_, err := d.Layer("SECTION", true)
+				if err != nil {
+					d.AddLayer("SECTION", dxf.DefaultColor, dxf.DefaultLineType, true)
+				}
 				position := el.MidPoint()
 				switch al.(type) {
 				case *SColumn:
