@@ -113,14 +113,6 @@ const (
 	FONT_CANVAS
 )
 
-// Paper Size
-const (
-	A4_TATE = iota
-	A4_YOKO
-	A3_TATE
-	A3_YOKO
-)
-
 // keymode
 const (
 	NORMAL = iota
@@ -245,21 +237,13 @@ var (
 	axrn_max1     = regexp.MustCompile("([+-]?[-0-9.]+)>=?([XYZxyz]{1})")
 	axrn_max2     = regexp.MustCompile("([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
 	axrn_eq       = regexp.MustCompile("([XYZxyz]{1})=([+-]?[-0-9.]+)")
-	re_etype      = regexp.MustCompile("(?i)^ *et(y(pe?)?)? *={0,2} *([a-zA-Z]+)")
-	re_column     = regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
-	re_girder     = regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
-	re_brace      = regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
-	re_wall       = regexp.MustCompile("(?i)wa(l){0,2}$")
-	re_slab       = regexp.MustCompile("(?i)sl(a(b)?)?$")
-	re_sectnum    = regexp.MustCompile("(?i)^ *sect? *={0,2} *(range[(]{1}){0,1}[[]?([0-9, ]+)[]]?")
-	re_orgsectnum = regexp.MustCompile("(?i)^ *osect? *={0,2} *[[]?([0-9, ]+)[]]?")
 )
 
 // }}}
 
 type Window struct { // {{{
 	Home string
-	Cwd  string
+	cwd  string
 
 	Frame                  *st.Frame
 	Dlg                    *iup.Handle
@@ -282,8 +266,8 @@ type Window struct { // {{{
 
 	lselect *iup.Handle
 
-	SelectNode []*st.Node
-	SelectElem []*st.Elem
+	selectNode []*st.Node
+	selectElem []*st.Elem
 
 	TextBox   map[string]*TextBox
 
@@ -330,9 +314,9 @@ type Window struct { // {{{
 func NewWindow(homedir string) *Window { // {{{
 	stw := new(Window)
 	stw.Home = homedir
-	stw.Cwd = homedir
-	stw.SelectNode = make([]*st.Node, 0)
-	stw.SelectElem = make([]*st.Elem, 0)
+	stw.cwd = homedir
+	stw.selectNode = make([]*st.Node, 0)
+	stw.selectElem = make([]*st.Elem, 0)
 	stw.Labels = make(map[string]*iup.Handle)
 	stw.Labels["GAXIS"] = stw.displayLabel("GAXIS", true)
 	stw.Labels["EAXIS"] = stw.displayLabel("EAXIS", false)
@@ -557,13 +541,11 @@ func NewWindow(homedir string) *Window { // {{{
 				iup.Item(
 					iup.Attr("TITLE", "Read Pgp"),
 					func(arg *iup.ItemAction) {
-						if name, ok := iup.GetOpenFile(stw.Cwd, "*.pgp"); ok {
-							al := make(map[string]*Command, 0)
-							err := ReadPgp(name, al)
+						if name, ok := iup.GetOpenFile(stw.cwd, "*.pgp"); ok {
+							err := stw.ReadPgp(name)
 							if err != nil {
 								stw.addHistory("ReadPgp: Cannot Read st.pgp")
 							} else {
-								aliases = al
 								stw.addHistory(fmt.Sprintf("ReadPgp: Read %s", name))
 							}
 						}
@@ -720,13 +702,13 @@ func NewWindow(homedir string) *Window { // {{{
 				iup.Item(
 					iup.Attr("TITLE", "RC lst"),
 					func(arg *iup.ItemAction) {
-						StartTool(filepath.Join(tooldir, "rclst/rclst.html"))
+						st.StartTool(filepath.Join(tooldir, "rclst/rclst.html"))
 					},
 				),
 				iup.Item(
 					iup.Attr("TITLE", "Fig2 Keyword"),
 					func(arg *iup.ItemAction) {
-						StartTool(filepath.Join(tooldir, "fig2/fig2.html"))
+						st.StartTool(filepath.Join(tooldir, "fig2/fig2.html"))
 					},
 				),
 			),
@@ -939,7 +921,7 @@ func NewWindow(homedir string) *Window { // {{{
 					break
 				}
 				if strings.HasPrefix(val, ":") {
-					c, bang, usage, comp := exmodecomplete(val)
+					c, bang, usage, comp := st.ExModeComplete(val)
 					var b, u string
 					if bang {
 						b = "!"
@@ -956,7 +938,7 @@ func NewWindow(homedir string) *Window { // {{{
 					stw.cline.SetAttribute("CARETPOS", "100")
 					if comp != nil {
 						stw.complete = comp
-						stw.complete.Chdir(stw.Cwd)
+						stw.complete.Chdir(stw.cwd)
 						stw.completefunc = func(v string) string {
 							lis := comp.CompleteWord(str)
 							if len(lis) == 0 {
@@ -981,7 +963,7 @@ func NewWindow(homedir string) *Window { // {{{
 					stw.cline.SetAttribute("CARETPOS", "100")
 					if comp != nil {
 						stw.complete = comp
-						stw.complete.Chdir(stw.Cwd)
+						stw.complete.Chdir(stw.cwd)
 						stw.completefunc = func(v string) string {
 							lis := comp.CompleteWord(str)
 							if len(lis) == 0 {
@@ -1323,7 +1305,7 @@ func NewWindow(homedir string) *Window { // {{{
 	w, h := stw.cdcanv.GetSize()
 	stw.CanvasSize = []float64{float64(w), float64(h)}
 	stw.dbuff.TextAlignment(DefaultTextAlignment)
-	stw.papersize = A4_TATE
+	stw.papersize = st.A4_TATE
 	stw.TextBox = make(map[string]*TextBox, 0)
 	stw.TextBox["PAGETITLE"] = NewTextBox()
 	stw.TextBox["PAGETITLE"].Font.Size = 16
@@ -1345,12 +1327,16 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.taggedFrame = make(map[string]*st.Frame)
 	undopos = 0
 	StartLogging()
+	err := stw.ReadPgp(pgpfile)
+	if err != nil {
+		stw.SetDefaultPgp()
+	}
 	stw.New()
 	stw.ShowLogo(3*time.Second)
 	stw.exmodech = make(chan interface{})
 	stw.exmodeend = make(chan int)
 	stw.completefunc = stw.CompleteFileName
-	if rcfn := filepath.Join(stw.Cwd, ResourceFileName); st.FileExists(rcfn) {
+	if rcfn := filepath.Join(stw.cwd, ResourceFileName); st.FileExists(rcfn) {
 		stw.ReadResource(rcfn)
 	}
 	return stw
@@ -1415,7 +1401,7 @@ func (stw *Window) Chdir(dir string) error {
 	if _, err := os.Stat(dir); err != nil {
 		return err
 	} else {
-		stw.Cwd = dir
+		stw.cwd = dir
 		return nil
 	}
 }
@@ -1446,7 +1432,7 @@ func (stw *Window) New() {
 
 // Open// {{{
 func (stw *Window) Open() {
-	if name, ok := iup.GetOpenFile(stw.Cwd, "*.inp"); ok {
+	if name, ok := iup.GetOpenFile(stw.cwd, "*.inp"); ok {
 		err := stw.OpenFile(name, true)
 		if err != nil {
 			fmt.Println(err)
@@ -1724,7 +1710,7 @@ func (stw *Window) Reload() {
 }
 
 func (stw *Window) OpenDxf() {
-	if name, ok := iup.GetOpenFile(stw.Cwd, "*.dxf"); ok {
+	if name, ok := iup.GetOpenFile(stw.cwd, "*.dxf"); ok {
 		err := stw.OpenFile(name, true)
 		if err != nil {
 			fmt.Println(err)
@@ -1778,16 +1764,16 @@ func (stw *Window) OpenFile(filename string, readrcfile bool) error {
 	stw.Dlg.SetAttribute("TITLE", stw.Frame.Name)
 	stw.Frame.Home = stw.Home
 	stw.LinkTextValue()
-	stw.Cwd = filepath.Dir(fn)
+	stw.cwd = filepath.Dir(fn)
 	if stw.complete != nil {
-		stw.complete.Chdir(stw.Cwd)
+		stw.complete.Chdir(stw.cwd)
 	}
 	stw.AddRecently(fn)
 	stw.Snapshot()
 	stw.Changed = false
 	stw.HideLogo()
 	if readrcfile {
-		if rcfn := filepath.Join(stw.Cwd, ResourceFileName); st.FileExists(rcfn) {
+		if rcfn := filepath.Join(stw.cwd, ResourceFileName); st.FileExists(rcfn) {
 			stw.ReadResource(rcfn)
 		}
 	}
@@ -1907,8 +1893,9 @@ func (stw *Window) SaveFile(fn string) error {
 	return nil
 }
 
-func (stw *Window) SaveFileSelected(fn string, els []*st.Elem) error {
+func (stw *Window) SaveFileSelected(fn string) error {
 	var v *st.View
+	els := stw.selectElem
 	if !stw.Frame.View.Perspective {
 		v = stw.Frame.View.Copy()
 		stw.Frame.View.Gfact = 1.0
@@ -2059,7 +2046,7 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 	v := stw.Frame.View.Copy()
 	pw, ph := pcanv.GetSize() // seems to be [mm]/25.4*[dpi]*2
 	w0, h0 := stw.dbuff.GetSize()
-	w, h, err := stw.PaperSize(stw.dbuff)
+	w, h, err := stw.CanvasPaperSize(stw.dbuff)
 	if err != nil {
 		return v, 0.0, err
 	}
@@ -2089,16 +2076,16 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 	return v, factor, nil
 }
 
-func (stw *Window) PaperSize(canv *cd.Canvas) (float64, float64, error) {
+func (stw *Window) CanvasPaperSize(canv *cd.Canvas) (float64, float64, error) {
 	w, h := canv.GetSize()
 	length := math.Min(float64(w), float64(h)) * 0.9
 	val := 1.0 / math.Sqrt(2)
 	switch stw.papersize {
 	default:
 		return 0.0, 0.0, errors.New("unknown papersize")
-	case A4_TATE, A3_TATE:
+	case st.A4_TATE, st.A3_TATE:
 		return length * val, length, nil
-	case A4_YOKO, A3_YOKO:
+	case st.A4_YOKO, st.A3_YOKO:
 		return length, length * val, nil
 	}
 }
@@ -2295,40 +2282,11 @@ func (stw *Window) ParseFig2Page(pcanv *cd.Canvas, lis [][]string) error {
 	return nil
 }
 
-func Explorer(dir string) {
-	stat, err := os.Stat(dir)
-	if err != nil || !stat.IsDir() {
-		dir = "."
-	}
-	cmd := exec.Command("cmd", "/C", "explorer", dir)
-	cmd.Start()
-}
-
-func Edit(fn string) {
-	cmd := exec.Command("cmd", "/C", "start", fn)
-	cmd.Start()
-}
-
-func Vim(fn string) {
-	cmd := exec.Command("gvim", fn)
-	cmd.Start()
-}
-
 func (stw *Window) EditInp() {
 	if stw.Frame != nil {
 		cmd := exec.Command("cmd", "/C", "start", stw.Frame.Path)
 		cmd.Start()
 	}
-}
-
-func (stw *Window) EditReadme(dir string) {
-	fn := filepath.Join(dir, "readme.txt")
-	Vim(fn)
-}
-
-func StartTool(fn string) {
-	cmd := exec.Command("cmd", "/C", "start", fn)
-	cmd.Start()
 }
 
 func (stw *Window) SearchFile(fn string) (string, error) {
@@ -2582,7 +2540,7 @@ func (stw *Window) ExecCommand(com *Command) {
 func (stw *Window) execAliasCommand(al string) {
 	if stw.Frame == nil {
 		if strings.HasPrefix(al, ":") {
-			err := stw.exmode(al)
+			err := st.ExMode(stw, stw.Frame, al)
 			if err != nil {
 				stw.errormessage(err, ERROR)
 			}
@@ -2607,7 +2565,7 @@ func (stw *Window) execAliasCommand(al string) {
 		default:
 			stw.addHistory(fmt.Sprintf("command doesn't exist: %s", al))
 		case strings.HasPrefix(al, ":"):
-			err := stw.exmode(al)
+			err := st.ExMode(stw, stw.Frame, al)
 			if err != nil {
 				if _, ok := err.(st.NotRedraw); ok {
 					redraw = false
@@ -2632,7 +2590,7 @@ func (stw *Window) execAliasCommand(al string) {
 					break
 				}
 			}
-			axisrange(stw, axis, min, max, false)
+			stw.AxisRange(axis, min, max, false)
 			stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s <= %.3f", min, tmp, max))
 		case axrn_min1.MatchString(alu):
 			var axis int
@@ -2645,7 +2603,7 @@ func (stw *Window) execAliasCommand(al string) {
 					break
 				}
 			}
-			axisrange(stw, axis, min, 1000.0, false)
+			stw.AxisRange(axis, min, 1000.0, false)
 			stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s", min, tmp))
 		case axrn_min2.MatchString(alu):
 			var axis int
@@ -2658,7 +2616,7 @@ func (stw *Window) execAliasCommand(al string) {
 					break
 				}
 			}
-			axisrange(stw, axis, min, 1000.0, false)
+			stw.AxisRange(axis, min, 1000.0, false)
 			stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s", min, tmp))
 		case axrn_max1.MatchString(alu):
 			var axis int
@@ -2671,7 +2629,7 @@ func (stw *Window) execAliasCommand(al string) {
 					break
 				}
 			}
-			axisrange(stw, axis, -100.0, max, false)
+			stw.AxisRange(axis, -100.0, max, false)
 			stw.addHistory(fmt.Sprintf("AxisRange: %s <= %.3f", tmp, max))
 		case axrn_max2.MatchString(alu):
 			var axis int
@@ -2684,7 +2642,7 @@ func (stw *Window) execAliasCommand(al string) {
 					break
 				}
 			}
-			axisrange(stw, axis, -100.0, max, false)
+			stw.AxisRange(axis, -100.0, max, false)
 			stw.addHistory(fmt.Sprintf("AxisRange: %s <= %.3f", tmp, max))
 		case axrn_eq.MatchString(alu):
 			var axis int
@@ -2697,7 +2655,7 @@ func (stw *Window) execAliasCommand(al string) {
 					break
 				}
 			}
-			axisrange(stw, axis, val, val, false)
+			stw.AxisRange(axis, val, val, false)
 			stw.addHistory(fmt.Sprintf("AxisRange: %s = %.3f", tmp, val))
 		}
 	}
@@ -2763,7 +2721,7 @@ func (stw *Window) CompleteFileName(str string) string {
 	lis := strings.Split(str, " ")
 	path := lis[len(lis)-1]
 	if !filepath.IsAbs(path) {
-		path = filepath.Join(stw.Cwd, path)
+		path = filepath.Join(stw.cwd, path)
 	}
 	var err error
 	tmp, err := filepath.Glob(path + "*")
@@ -2790,8 +2748,8 @@ func (stw *Window) CompleteFileName(str string) string {
 
 func (stw *Window) CompleteExcommand(str string) string {
 	i := 0
-	rtn := make([]string, len(exabbrev))
-	for ab := range exabbrev {
+	rtn := make([]string, len(st.ExAbbrev))
+	for ab := range st.ExAbbrev {
 		pat := abbrev.MustCompile(ab)
 		l := fmt.Sprintf(":%s", pat.Longest())
 		if strings.HasPrefix(l, str) {
@@ -2908,7 +2866,7 @@ func (stw *Window) PrevFloor() {
 	stw.Redraw()
 }
 
-func axisrange(stw *Window, axis int, min, max float64, any bool) {
+func (stw *Window) AxisRange(axis int, min, max float64, any bool) {
 	tmpnodes := make([]*st.Node, 0)
 	for _, n := range stw.Frame.Nodes {
 		if !(min <= n.Coord[axis] && n.Coord[axis] <= max) {
@@ -3013,7 +2971,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 					canv.Foreground(cd.CD_CYAN)
 				}
 			}
-			for _, j := range stw.SelectNode {
+			for _, j := range stw.selectNode {
 				if j == n {
 					canv.Foreground(cd.CD_RED)
 					break
@@ -3033,7 +2991,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 			}
 			canv.LineStyle(cd.CD_CONTINUOUS)
 			canv.Hatch(cd.CD_FDIAGONAL)
-			for _, j := range stw.SelectElem {
+			for _, j := range stw.selectElem {
 				if j == el {
 					continue loop
 				}
@@ -3100,7 +3058,7 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 	nosv := stw.Frame.Show.NoShearValue
 	stw.Frame.Show.NoMomentValue = false
 	stw.Frame.Show.NoShearValue = false
-	for _, el := range stw.SelectElem {
+	for _, el := range stw.selectElem {
 		canv.LineStyle(cd.CD_DOTTED)
 		if el == nil || el.IsHidden(stw.Frame.Show) {
 			continue
@@ -3282,6 +3240,27 @@ func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
 	}
 }
 
+func (stw *Window) DrawPivot(nodes []*st.Node, pivot, end chan int) {
+	stw.DrawFrameNode()
+	stw.DrawTexts(stw.cdcanv, false)
+	stw.cdcanv.Foreground(pivotColor)
+	ind := 0
+	nnum := 0
+	for {
+		select {
+		case <-end:
+			return
+		case <-pivot:
+			ind++
+			if ind >= 6 {
+				DrawNodeNum(nodes[nnum], stw.cdcanv)
+				nnum++
+				ind = 0
+			}
+		}
+	}
+}
+
 func (stw *Window) Redraw() {
 	stw.DrawFrame(stw.dbuff, stw.Frame.Show.ColorMode, false)
 	if stw.Property {
@@ -3306,7 +3285,7 @@ func (stw *Window) DrawFrameNode() {
 			stw.Frame.View.ProjectDeformation(n, stw.Frame.Show)
 		}
 		stw.dbuff.Foreground(cd.CD_GREEN)
-		for _, j := range stw.SelectNode {
+		for _, j := range stw.selectNode {
 			if j == n {
 				DrawNode(n, stw.dbuff, stw.Frame.Show)
 				break
@@ -3325,7 +3304,7 @@ func (stw *Window) DrawFrameNode() {
 				if el.Etype >= st.WBRACE || el.Etype < st.COLUMN {
 					return
 				}
-				for _, j := range stw.SelectElem {
+				for _, j := range stw.selectElem {
 					if j == el {
 						return
 					}
@@ -3342,11 +3321,11 @@ func (stw *Window) DrawFrameNode() {
 		}
 		wg.Wait()
 	}
-	if len(stw.SelectElem) > 0 && stw.SelectElem[0] != nil {
+	if len(stw.selectElem) > 0 && stw.selectElem[0] != nil {
 		nomv := stw.Frame.Show.NoMomentValue
 		stw.Frame.Show.NoMomentValue = false
 		stw.dbuff.Hatch(cd.CD_DIAGCROSS)
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			stw.dbuff.LineStyle(cd.CD_DOTTED)
 			if el == nil || el.IsHidden(stw.Frame.Show) {
 				continue
@@ -3516,7 +3495,7 @@ func (stw *Window) DrawConvexHull() {
 
 func (stw *Window) SetSelectData() {
 	if stw.Frame != nil {
-		stw.lselect.SetAttribute("VALUE", fmt.Sprintf("ELEM = %5d\nNODE = %5d", len(stw.SelectElem), len(stw.SelectNode)))
+		stw.lselect.SetAttribute("VALUE", fmt.Sprintf("ELEM = %5d\nNODE = %5d", len(stw.selectElem), len(stw.selectNode)))
 	} else {
 		stw.lselect.SetAttribute("VALUE", "ELEM =     0\nNODE =     0")
 	}
@@ -3584,14 +3563,14 @@ func (stw *Window) SetShowRange() {
 }
 
 func (stw *Window) HideNotSelected() {
-	if stw.SelectElem != nil {
+	if stw.selectElem != nil {
 		for _, n := range stw.Frame.Nodes {
 			n.Hide()
 		}
 		for _, el := range stw.Frame.Elems {
 			el.Hide()
 		}
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el != nil {
 				el.Show()
 				for _, en := range el.Enod {
@@ -3605,8 +3584,8 @@ func (stw *Window) HideNotSelected() {
 }
 
 func (stw *Window) HideSelected() {
-	if stw.SelectElem != nil {
-		for _, el := range stw.SelectElem {
+	if stw.selectElem != nil {
+		for _, el := range stw.selectElem {
 			if el != nil {
 				el.Hide()
 			}
@@ -3617,14 +3596,14 @@ func (stw *Window) HideSelected() {
 }
 
 func (stw *Window) LockNotSelected() {
-	if stw.SelectElem != nil {
+	if stw.selectElem != nil {
 		for _, n := range stw.Frame.Nodes {
 			n.Lock = true
 		}
 		for _, el := range stw.Frame.Elems {
 			el.Lock = true
 		}
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el != nil {
 				el.Lock = false
 				for _, en := range el.Enod {
@@ -3637,8 +3616,8 @@ func (stw *Window) LockNotSelected() {
 }
 
 func (stw *Window) LockSelected() {
-	if stw.SelectElem != nil {
-		for _, el := range stw.SelectElem {
+	if stw.selectElem != nil {
+		for _, el := range stw.selectElem {
 			if el != nil {
 				el.Lock = true
 				for _, en := range el.Enod {
@@ -3651,8 +3630,8 @@ func (stw *Window) LockSelected() {
 }
 
 func (stw *Window) DeleteSelected() {
-	if stw.SelectElem != nil {
-		for _, el := range stw.SelectElem {
+	if stw.selectElem != nil {
+		for _, el := range stw.selectElem {
 			if el != nil && !el.Lock {
 				stw.Frame.DeleteElem(el.Num)
 			}
@@ -3668,31 +3647,31 @@ func (stw *Window) SelectNotHidden() {
 		return
 	}
 	stw.Deselect()
-	stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
+	stw.selectElem = make([]*st.Elem, len(stw.Frame.Elems))
 	num := 0
 	for _, el := range stw.Frame.Elems {
 		if el.IsHidden(stw.Frame.Show) {
 			continue
 		}
-		stw.SelectElem[num] = el
+		stw.selectElem[num] = el
 		num++
 	}
-	stw.SelectElem = stw.SelectElem[:num]
+	stw.selectElem = stw.selectElem[:num]
 	stw.Redraw()
 }
 
 func (stw *Window) CopyClipboard() error {
 	var rtn error
-	if stw.SelectElem == nil {
+	if stw.selectElem == nil {
 		return nil
 	}
 	var otp bytes.Buffer
-	ns := stw.Frame.ElemToNode(stw.SelectElem...)
+	ns := stw.Frame.ElemToNode(stw.selectElem...)
 	getcoord(stw, func(x, y, z float64) {
 		for _, n := range ns {
 			otp.WriteString(n.CopyString(x, y, z))
 		}
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el != nil {
 				otp.WriteString(el.InpString())
 			}
@@ -3701,7 +3680,7 @@ func (stw *Window) CopyClipboard() error {
 		if err != nil {
 			rtn = err
 		}
-		stw.addHistory(fmt.Sprintf("%d ELEMs Copied", len(stw.SelectElem)))
+		stw.addHistory(fmt.Sprintf("%d ELEMs Copied", len(stw.selectElem)))
 		stw.EscapeCB()
 	})
 	if rtn != nil {
@@ -3808,287 +3787,6 @@ func (stw *Window) CurrentLap(comment string, nlap, laps int) {
 	}
 }
 
-func SplitNums(nums string) []int {
-	sectrange := regexp.MustCompile("(?i)^ *range *[(] *([0-9]+) *, *([0-9]+) *[)] *$")
-	if sectrange.MatchString(nums) {
-		fs := sectrange.FindStringSubmatch(nums)
-		start, err := strconv.ParseInt(fs[1], 10, 64)
-		end, err := strconv.ParseInt(fs[2], 10, 64)
-		if err != nil {
-			return nil
-		}
-		if start > end {
-			return nil
-		}
-		sects := make([]int, int(end-start))
-		for i := 0; i < int(end-start); i++ {
-			sects[i] = i + int(start)
-		}
-		return sects
-	} else {
-		splitter := regexp.MustCompile("[, ]")
-		tmp := splitter.Split(nums, -1)
-		rtn := make([]int, len(tmp))
-		i := 0
-		for _, numstr := range tmp {
-			val, err := strconv.ParseInt(strings.Trim(numstr, " "), 10, 64)
-			if err != nil {
-				continue
-			}
-			rtn[i] = int(val)
-			i++
-		}
-		return rtn[:i]
-	}
-}
-
-func SectFilter(str string) (func(*st.Elem) bool, string) {
-	var filterfunc func(el *st.Elem) bool
-	var hstr string
-	var snums []int
-	fs := re_sectnum.FindStringSubmatch(str)
-	if fs[1] != "" {
-		snums = SplitNums(fmt.Sprintf("range(%s)", fs[2]))
-	} else {
-		snums = SplitNums(fs[2])
-	}
-	filterfunc = func(el *st.Elem) bool {
-		for _, snum := range snums {
-			if el.Sect.Num == snum {
-				return true
-			}
-		}
-		return false
-	}
-	hstr = fmt.Sprintf("Sect == %v", snums)
-	return filterfunc, hstr
-}
-
-func OriginalSectFilter(str string) (func(*st.Elem) bool, string) {
-	var filterfunc func(el *st.Elem) bool
-	var hstr string
-	fs := re_orgsectnum.FindStringSubmatch(str)
-	if len(fs) < 2 {
-		return nil, ""
-	}
-	snums := SplitNums(fs[1])
-	filterfunc = func(el *st.Elem) bool {
-		if el.Etype != st.WBRACE && el.Etype != st.SBRACE {
-			return false
-		}
-		for _, snum := range snums {
-			if el.OriginalSection().Num == snum {
-				return true
-			}
-		}
-		return false
-	}
-	hstr = fmt.Sprintf("Sect == %v", snums)
-	return filterfunc, hstr
-}
-
-func EtypeFilter(str string) (func(*st.Elem) bool, string) {
-	var filterfunc func(el *st.Elem) bool
-	var hstr string
-	fs := re_etype.FindStringSubmatch(str)
-	l := len(fs)
-	if l >= 4 {
-		var val int
-		switch {
-		case re_column.MatchString(fs[l-1]):
-			val = st.COLUMN
-		case re_girder.MatchString(fs[l-1]):
-			val = st.GIRDER
-		case re_brace.MatchString(fs[l-1]):
-			val = st.BRACE
-		case re_wall.MatchString(fs[l-1]):
-			val = st.WALL
-		case re_slab.MatchString(fs[l-1]):
-			val = st.SLAB
-		}
-		filterfunc = func(el *st.Elem) bool {
-			return el.Etype == val
-		}
-		hstr = fmt.Sprintf("Etype == %s", st.ETYPES[val])
-	}
-	return filterfunc, hstr
-}
-
-func (stw *Window) FilterElem(els []*st.Elem, str string) ([]*st.Elem, error) {
-	l := len(els)
-	if els == nil || l == 0 {
-		return nil, errors.New("number of input elems is zero")
-	}
-	parallel := regexp.MustCompile("(?i)^ *// *([xyz]{1})")
-	ortho := regexp.MustCompile("^ *TT *([xyzXYZ]{1})")
-	onplane := regexp.MustCompile("(?i)^ *on *([xyz]{2})")
-	adjoin := regexp.MustCompile("^ *ad(j(o(in?)?)?)? (.*)")
-	currentvalue := regexp.MustCompile("^ *cv *([><=!]+) *([0-9.-]+)")
-	var filterfunc func(el *st.Elem) bool
-	var hstr string
-	switch {
-	case parallel.MatchString(str):
-		var axis []float64
-		fs := parallel.FindStringSubmatch(str)
-		if len(fs) < 2 {
-			break
-		}
-		tmp := strings.ToUpper(fs[1])
-		axes := [][]float64{st.XAXIS, st.YAXIS, st.ZAXIS}
-		for i, val := range []string{"X", "Y", "Z"} {
-			if tmp == val {
-				axis = axes[i]
-				break
-			}
-		}
-		filterfunc = func(el *st.Elem) bool {
-			return el.IsParallel(axis, 1e-4)
-		}
-		hstr = fmt.Sprintf("Parallel to %sAXIS", tmp)
-	case ortho.MatchString(str):
-		var axis []float64
-		fs := ortho.FindStringSubmatch(str)
-		if len(fs) < 2 {
-			break
-		}
-		tmp := strings.ToUpper(fs[1])
-		axes := [][]float64{st.XAXIS, st.YAXIS, st.ZAXIS}
-		for i, val := range []string{"X", "Y", "Z"} {
-			if tmp == val {
-				axis = axes[i]
-				break
-			}
-		}
-		filterfunc = func(el *st.Elem) bool {
-			return el.IsOrthogonal(axis, 1e-4)
-		}
-		hstr = fmt.Sprintf("Orthogonal to %sAXIS", tmp)
-	case onplane.MatchString(str):
-		var axis int
-		fs := onplane.FindStringSubmatch(str)
-		if len(fs) < 2 {
-			break
-		}
-		tmp := strings.ToUpper(fs[1])
-		for i, val := range []string{"X", "Y", "Z"} {
-			if strings.Contains(tmp, val) {
-				continue
-			}
-			axis = i
-		}
-		filterfunc = func(el *st.Elem) bool {
-			if el.IsLineElem() {
-				return el.Direction(false)[axis] == 0.0
-			} else {
-				n := el.Normal(false)
-				if n == nil {
-					return false
-				}
-				for i := 0; i < 3; i++ {
-					if i == axis {
-						continue
-					}
-					if n[i] != 0.0 {
-						return false
-					}
-				}
-				return true
-			}
-		}
-	case re_sectnum.MatchString(str):
-		filterfunc, hstr = SectFilter(str)
-	case re_etype.MatchString(str):
-		filterfunc, hstr = EtypeFilter(str)
-	case adjoin.MatchString(str):
-		fs := adjoin.FindStringSubmatch(str)
-		if len(fs) >= 5 {
-			condition := fs[4]
-			var fil func(*st.Elem) bool
-			var hst string
-			switch {
-			case re_sectnum.MatchString(condition):
-				fil, hst = SectFilter(condition)
-			case re_etype.MatchString(condition):
-				fil, hst = EtypeFilter(condition)
-			}
-			if fil == nil {
-				break
-			}
-			filterfunc = func(el *st.Elem) bool {
-				for _, en := range el.Enod {
-					for _, sel := range stw.Frame.SearchElem(en) {
-						if sel.Num == el.Num {
-							continue
-						}
-						if fil(sel) {
-							return true
-						}
-					}
-				}
-				return false
-			}
-			hstr = fmt.Sprintf("ADJOIN TO %s", hst)
-		}
-	case currentvalue.MatchString(str):
-		fs := currentvalue.FindStringSubmatch(str)
-		var f func(float64, float64) bool
-		switch fs[1] {
-		case ">=":
-			f = func (u, v float64) bool {
-				return u >= v
-			}
-		case ">":
-			f = func (u, v float64) bool {
-				return u > v
-			}
-		case "<=":
-			f = func (u, v float64) bool {
-				return u <= v
-			}
-		case "<":
-			f = func (u, v float64) bool {
-				return u < v
-			}
-		case "=", "==":
-			f = func (u, v float64) bool {
-				return u == v
-			}
-		case "!=":
-			f = func (u, v float64) bool {
-				return u != v
-			}
-		default:
-			return els, errors.New("no filtering")
-		}
-		val, err := strconv.ParseFloat(fs[2], 64)
-		if err != nil {
-			return els, err
-		}
-		filterfunc = func(el *st.Elem) bool {
-			return f(el.CurrentValue(stw.Frame.Show, true, false), val)
-		}
-		hstr = fmt.Sprintf("CURRENT VALUE %s %.3f", fs[1], val)
-	}
-	if filterfunc != nil {
-		tmpels := make([]*st.Elem, l)
-		enum := 0
-		for _, el := range els {
-			if el == nil {
-				continue
-			}
-			if filterfunc(el) {
-				tmpels[enum] = el
-				enum++
-			}
-		}
-		rtn := tmpels[:enum]
-		stw.addHistory(fmt.Sprintf("FILTER: %s", hstr))
-		return rtn, nil
-	} else {
-		return els, errors.New("no filtering")
-	}
-}
-
 func (stw *Window) ShowAll() {
 	for _, el := range stw.Frame.Elems {
 		el.Show()
@@ -4189,7 +3887,7 @@ func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
 	if xmax == xmin && ymax == ymin {
 		return
 	}
-	w, h, err := stw.PaperSize(canv)
+	w, h, err := stw.CanvasPaperSize(canv)
 	if err != nil {
 		stw.errormessage(err, ERROR)
 		return
@@ -4273,8 +3971,8 @@ func (stw *Window) SetAngle(phi, theta float64) {
 
 func (stw *Window) SetFocus() {
 	var focus []float64
-	if stw.SelectElem != nil {
-		for _, el := range stw.SelectElem {
+	if stw.selectElem != nil {
+		for _, el := range stw.selectElem {
 			if el == nil {
 				continue
 			}
@@ -4282,8 +3980,8 @@ func (stw *Window) SetFocus() {
 		}
 	}
 	if focus == nil {
-		if stw.SelectNode != nil {
-			for _, n := range stw.SelectNode {
+		if stw.selectNode != nil {
+			for _, n := range stw.selectNode {
 				if n == nil {
 					continue
 				}
@@ -4355,7 +4053,7 @@ func (stw *Window) SelectNodeStart(arg *iup.MouseButton) {
 			if n != nil {
 				stw.MergeSelectNode([]*st.Node{n}, isShift(arg.Status))
 			} else {
-				stw.SelectNode = make([]*st.Node, 0)
+				stw.selectNode = make([]*st.Node, 0)
 			}
 		} else {
 			tmpselect := make([]*st.Node, len(stw.Frame.Nodes))
@@ -4487,7 +4185,7 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 			if el != nil {
 				stw.MergeSelectElem([]*st.Elem{el}, isShift(arg.Status))
 			} else {
-				stw.SelectElem = make([]*st.Elem, 0)
+				stw.selectElem = make([]*st.Elem, 0)
 			}
 		} else {
 			tmpselectnode := make([]*st.Node, len(stw.Frame.Nodes))
@@ -4649,12 +4347,12 @@ func (stw *Window) MergeSelectNode(nodes []*st.Node, isshift bool) {
 	k := len(nodes)
 	if isshift {
 		for l := 0; l < k; l++ {
-			for m, el := range stw.SelectNode {
+			for m, el := range stw.selectNode {
 				if el == nodes[l] {
-					if m == len(stw.SelectNode)-1 {
-						stw.SelectNode = stw.SelectNode[:m]
+					if m == len(stw.selectNode)-1 {
+						stw.selectNode = stw.selectNode[:m]
 					} else {
-						stw.SelectNode = append(stw.SelectNode[:m], stw.SelectNode[m+1:]...)
+						stw.selectNode = append(stw.selectNode[:m], stw.selectNode[m+1:]...)
 					}
 					break
 				}
@@ -4664,14 +4362,14 @@ func (stw *Window) MergeSelectNode(nodes []*st.Node, isshift bool) {
 		var add bool
 		for l := 0; l < k; l++ {
 			add = true
-			for _, n := range stw.SelectNode {
+			for _, n := range stw.selectNode {
 				if n == nodes[l] {
 					add = false
 					break
 				}
 			}
 			if add {
-				stw.SelectNode = append(stw.SelectNode, nodes[l])
+				stw.selectNode = append(stw.selectNode, nodes[l])
 			}
 		}
 	}
@@ -4681,12 +4379,12 @@ func (stw *Window) MergeSelectElem(elems []*st.Elem, isshift bool) {
 	k := len(elems)
 	if isshift {
 		for l := 0; l < k; l++ {
-			for m, el := range stw.SelectElem {
+			for m, el := range stw.selectElem {
 				if el == elems[l] {
-					if m == len(stw.SelectElem)-1 {
-						stw.SelectElem = stw.SelectElem[:m]
+					if m == len(stw.selectElem)-1 {
+						stw.selectElem = stw.selectElem[:m]
 					} else {
-						stw.SelectElem = append(stw.SelectElem[:m], stw.SelectElem[m+1:]...)
+						stw.selectElem = append(stw.selectElem[:m], stw.selectElem[m+1:]...)
 					}
 					break
 				}
@@ -4696,14 +4394,14 @@ func (stw *Window) MergeSelectElem(elems []*st.Elem, isshift bool) {
 		var add bool
 		for l := 0; l < k; l++ {
 			add = true
-			for _, n := range stw.SelectElem {
+			for _, n := range stw.selectElem {
 				if n == elems[l] {
 					add = false
 					break
 				}
 			}
 			if add {
-				stw.SelectElem = append(stw.SelectElem, elems[l])
+				stw.selectElem = append(stw.selectElem, elems[l])
 			}
 		}
 	}
@@ -4819,7 +4517,7 @@ func (stw *Window) SelectElemFenceMotion(arg *iup.MouseMotion) {
 //     // }
 //     stw.cdcanv.Line(x, y, arg.GetX(), arg.GetY())
 //     stw.endX = arg.GetX(); stw.endY = arg.GetY()
-//     fmt.Printf("TAIL: %d %d %d %d %d %d\n", int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), arg.GetX(), arg.GetY(), stw.endX, stw.endY)
+//     fmt.Printf("TAIL: %d %d %d %d %d %d\n", int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), arg.GetX(), arg.GetY(), stw.endX, stw.endY)
 // }
 func (stw *Window) TailLine(x, y int, arg *iup.MouseMotion) {
 	if first == 1 {
@@ -4869,8 +4567,8 @@ func (stw *Window) TailPolygon(ns []*st.Node, arg *iup.MouseMotion) {
 }
 
 func (stw *Window) Deselect() {
-	stw.SelectNode = make([]*st.Node, 0)
-	stw.SelectElem = make([]*st.Elem, 0)
+	stw.selectNode = make([]*st.Node, 0)
+	stw.selectElem = make([]*st.Elem, 0)
 }
 
 // }}}
@@ -5021,8 +4719,8 @@ func (stw *Window) CB_MouseButton() {
 				} else {
 					stw.SelectElemStart(arg)
 					if isDouble(arg.Status) {
-						if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
-							if stw.SelectElem[0].IsLineElem() {
+						if stw.ElemSelected() {
+							if stw.selectElem[0].IsLineElem() {
 								stw.execAliasCommand(DoubleClickCommand[0])
 							} else {
 								stw.execAliasCommand(DoubleClickCommand[1])
@@ -5055,7 +4753,7 @@ func (stw *Window) CB_MouseButton() {
 						if time.Since(pressed).Seconds() < repeatcommand {
 							if isShift(arg.Status) {
 								if stw.lastexcommand != "" {
-									stw.exmode(stw.lastexcommand)
+									st.ExMode(stw, stw.Frame, stw.lastexcommand)
 									stw.Redraw()
 								}
 							} else {
@@ -5469,7 +5167,7 @@ func (stw *Window) LinkProperty(index int, eval func()) {
 		stw.Props[index].SetAttribute("SELECTION", "1:100")
 	})
 	stw.Props[index].SetCallback(func(arg *iup.CommonKillFocus) {
-		if stw.Frame != nil && stw.SelectElem != nil {
+		if stw.Frame != nil && stw.selectElem != nil {
 			eval()
 		}
 	})
@@ -5477,11 +5175,11 @@ func (stw *Window) LinkProperty(index int, eval func()) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		case KEY_ENTER:
-			if stw.Frame != nil && stw.SelectElem != nil {
+			if stw.Frame != nil && stw.selectElem != nil {
 				eval()
 			}
 		case KEY_TAB:
-			if stw.Frame != nil && stw.SelectElem != nil {
+			if stw.Frame != nil && stw.selectElem != nil {
 				eval()
 			}
 		case KEY_ESCAPE:
@@ -5504,7 +5202,7 @@ func (stw *Window) PropertyDialog() {
 		val, err := strconv.ParseInt(stw.Props[1].GetAttribute("VALUE"), 10, 64)
 		if err == nil {
 			if sec, ok := stw.Frame.Sects[int(val)]; ok {
-				for _, el := range stw.SelectElem {
+				for _, el := range stw.selectElem {
 					if el != nil && !el.Lock {
 						el.Sect = sec
 					}
@@ -5517,20 +5215,20 @@ func (stw *Window) PropertyDialog() {
 		word := stw.Props[2].GetAttribute("VALUE")
 		var val int
 		switch {
-		case re_column.MatchString(word):
+		case st.Re_column.MatchString(word):
 			val = st.COLUMN
-		case re_girder.MatchString(word):
+		case st.Re_girder.MatchString(word):
 			val = st.GIRDER
-		case re_brace.MatchString(word):
+		case st.Re_brace.MatchString(word):
 			val = st.BRACE
-		case re_wall.MatchString(word):
+		case st.Re_wall.MatchString(word):
 			val = st.WALL
-		case re_slab.MatchString(word):
+		case st.Re_slab.MatchString(word):
 			val = st.SLAB
 		}
 		stw.Props[2].SetAttribute("VALUE", st.ETYPES[val])
 		if val != 0 {
-			for _, el := range stw.SelectElem {
+			for _, el := range stw.selectElem {
 				if el != nil && !el.Lock {
 					el.Etype = val
 				}
@@ -5542,11 +5240,11 @@ func (stw *Window) PropertyDialog() {
 }
 
 func (stw *Window) UpdatePropertyDialog() {
-	if stw.SelectElem != nil {
+	if stw.selectElem != nil {
 		var selected bool
 		var lines, plates int
 		var length, area float64
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el != nil {
 				if el.IsLineElem() {
 					lines++
@@ -5765,13 +5463,13 @@ func (stw *Window) CMenu() {
 				iup.Item(
 					iup.Attr("TITLE", "RC lst"),
 					func(arg *iup.ItemAction) {
-						StartTool(filepath.Join(tooldir, "rclst/rclst.html"))
+						st.StartTool(filepath.Join(tooldir, "rclst/rclst.html"))
 					},
 				),
 				iup.Item(
 					iup.Attr("TITLE", "Fig2 Keyword"),
 					func(arg *iup.ItemAction) {
-						StartTool(filepath.Join(tooldir, "fig2/fig2.html"))
+						st.StartTool(filepath.Join(tooldir, "fig2/fig2.html"))
 					},
 				),
 			),
@@ -7295,7 +6993,92 @@ func (stw *Window) Analysis(fn string, arg string) error {
 	return err
 }
 
-func ReadPgp(filename string, aliases map[string]*Command) error {
+func (stw *Window) SetDefaultPgp() {
+	aliases = make(map[string]*Command, 0)
+	aliases["D"] = DISTS
+	aliases["M"] = MEASURE
+	aliases["TB"] = TOGGLEBOND
+	aliases["O"] = OPEN
+	aliases["W"] = WEIGHTCOPY
+	aliases["IN"] = INSERT
+	aliases["SF"] = SETFOCUS
+	aliases["NODE"] = SELECTNODE
+	aliases["CB"] = SELECTCOLUMNBASE
+	aliases["CD"] = SELECTCONFED
+	aliases["ELEM"] = SELECTELEM
+	aliases["SEC"] = SELECTSECT
+	aliases["SEC-"] = HIDESECTION
+	aliases["CW"] = HIDECURTAINWALL
+	aliases["CH"] = SELECTCHILDREN
+	aliases["ER"] = ERRORELEM
+	aliases["F"] = FENCE
+	aliases["PL"] = SHOWPLANE
+	aliases["A"] = ADDLINEELEM
+	aliases["AA"] = ADDPLATEELEM
+	aliases["AAA"] = ADDPLATEELEMBYLINE
+	aliases["AS"] = ADDPLATEALL
+	aliases["WR"] = EDITWRECT
+	aliases["H"] = HATCHPLATEELEM
+	aliases["CV"] = CONVEXHULL
+	aliases["Q"] = MATCHPROP
+	aliases["QQ"] = COPYBOND
+	aliases["AC"] = AXISTOCANG
+	aliases["BP"] = BONDPIN
+	aliases["BR"] = BONDRIGID
+	aliases["CP"] = CONFPIN
+	aliases["CZ"] = CONFXYROLLER
+	aliases["CF"] = CONFFREE
+	aliases["CX"] = CONFFIX
+	aliases["C"] = COPYELEM
+	aliases["DC"] = DUPLICATEELEM
+	aliases["DD"] = MOVENODE
+	aliases["ML"] = MOVETOLINE
+	aliases["DDD"] = MOVEELEM
+	aliases["PN"] = PINCHNODE
+	aliases["R"] = ROTATE
+	aliases["SC"] = SCALE
+	aliases["MI"] = MIRROR
+	aliases["SE"] = SEARCHELEM
+	aliases["NE"] = NODETOELEM
+	aliases["EN"] = ELEMTONODE
+	aliases["CO"] = CONNECTED
+	aliases["ON"] = ONNODE
+	aliases["NN"] = NODENOREFERENCE
+	aliases["ES"] = ELEMSAMENODE
+	aliases["SUS"] = SUSPICIOUS
+	aliases["PE"] = PRUNEENOD
+	aliases["ND"] = NODEDUPLICATION
+	aliases["ED"] = ELEMDUPLICATION
+	aliases["NS"] = NODESORT
+	aliases["CN"] = CATBYNODE
+	aliases["CI"] = CATINTERMEDIATENODE
+	aliases["J"] = JOINLINEELEM
+	aliases["JP"] = JOINPLATEELEM
+	aliases["EA"] = EXTRACTARCLM
+	aliases["DO"] = DIVIDEATONS
+	aliases["DM"] = DIVIDEATMID
+	aliases["DN"] = DIVIDEINN
+	aliases["DE"] = DIVIDEATELEM
+	aliases["I"] = INTERSECT
+	aliases["IA"] = INTERSECTALL
+	aliases["Z"] = TRIM
+	aliases["ZZ"] = EXTEND
+	aliases["MN"] = MERGENODE
+	aliases["E"] = ERASE
+	aliases["FAC"] = FACTS
+	aliases["REA"] = REACTION
+	aliases["SR"] = SUMREACTION
+	aliases["UL"] = UPLIFT
+	aliases["SS"] = NOTICE1459
+	aliases["ZD"] = ZOUBUNDISP
+	aliases["ZY"] = ZOUBUNYIELD
+	aliases["ZR"] = ZOUBUNREACTION
+	aliases["AMT"] = AMOUNTPROP
+	aliases["EPS"] = SETEPS
+}
+
+func (stw *Window) ReadPgp(filename string) error {
+	aliases = make(map[string]*Command, 0)
 	f, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -7338,7 +7121,7 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 				val := int(tmp)
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
 					currentcommand := strings.Replace(command, str, fmt.Sprintf("%d", val), -1)
-					err := stw.exmode(currentcommand)
+					err := st.ExMode(stw, stw.Frame, currentcommand)
 					if err != nil {
 						stw.errormessage(err, ERROR)
 					}
@@ -7346,7 +7129,7 @@ func ReadPgp(filename string, aliases map[string]*Command) error {
 				}}
 			} else {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					err := stw.exmode(command)
+					err := st.ExMode(stw, stw.Frame, command)
 					if err != nil {
 						stw.errormessage(err, ERROR)
 					}
@@ -7393,91 +7176,7 @@ func StopLogging() {
 
 // Initialize
 func init() {
-	aliases = make(map[string]*Command, 0)
 	sectionaliases = make(map[int]string, 0)
-	err := ReadPgp(pgpfile, aliases)
-	if err != nil {
-		aliases["D"] = DISTS
-		aliases["M"] = MEASURE
-		aliases["TB"] = TOGGLEBOND
-		aliases["O"] = OPEN
-		aliases["W"] = WEIGHTCOPY
-		aliases["IN"] = INSERT
-		aliases["SF"] = SETFOCUS
-		aliases["NODE"] = SELECTNODE
-		aliases["CB"] = SELECTCOLUMNBASE
-		aliases["CD"] = SELECTCONFED
-		aliases["ELEM"] = SELECTELEM
-		aliases["SEC"] = SELECTSECT
-		aliases["SEC-"] = HIDESECTION
-		aliases["CW"] = HIDECURTAINWALL
-		aliases["CH"] = SELECTCHILDREN
-		aliases["ER"] = ERRORELEM
-		aliases["F"] = FENCE
-		aliases["PL"] = SHOWPLANE
-		aliases["A"] = ADDLINEELEM
-		aliases["AA"] = ADDPLATEELEM
-		aliases["AAA"] = ADDPLATEELEMBYLINE
-		aliases["AS"] = ADDPLATEALL
-		aliases["WR"] = EDITWRECT
-		aliases["H"] = HATCHPLATEELEM
-		aliases["CV"] = CONVEXHULL
-		aliases["Q"] = MATCHPROP
-		aliases["QQ"] = COPYBOND
-		aliases["AC"] = AXISTOCANG
-		aliases["BP"] = BONDPIN
-		aliases["BR"] = BONDRIGID
-		aliases["CP"] = CONFPIN
-		aliases["CZ"] = CONFXYROLLER
-		aliases["CF"] = CONFFREE
-		aliases["CX"] = CONFFIX
-		aliases["C"] = COPYELEM
-		aliases["DC"] = DUPLICATEELEM
-		aliases["DD"] = MOVENODE
-		aliases["ML"] = MOVETOLINE
-		aliases["DDD"] = MOVEELEM
-		aliases["PN"] = PINCHNODE
-		aliases["R"] = ROTATE
-		aliases["SC"] = SCALE
-		aliases["MI"] = MIRROR
-		aliases["SE"] = SEARCHELEM
-		aliases["NE"] = NODETOELEM
-		aliases["EN"] = ELEMTONODE
-		aliases["CO"] = CONNECTED
-		aliases["ON"] = ONNODE
-		aliases["NN"] = NODENOREFERENCE
-		aliases["ES"] = ELEMSAMENODE
-		aliases["SUS"] = SUSPICIOUS
-		aliases["PE"] = PRUNEENOD
-		aliases["ND"] = NODEDUPLICATION
-		aliases["ED"] = ELEMDUPLICATION
-		aliases["NS"] = NODESORT
-		aliases["CN"] = CATBYNODE
-		aliases["CI"] = CATINTERMEDIATENODE
-		aliases["J"] = JOINLINEELEM
-		aliases["JP"] = JOINPLATEELEM
-		aliases["EA"] = EXTRACTARCLM
-		aliases["DO"] = DIVIDEATONS
-		aliases["DM"] = DIVIDEATMID
-		aliases["DN"] = DIVIDEINN
-		aliases["DE"] = DIVIDEATELEM
-		aliases["I"] = INTERSECT
-		aliases["IA"] = INTERSECTALL
-		aliases["Z"] = TRIM
-		aliases["ZZ"] = EXTEND
-		aliases["MN"] = MERGENODE
-		aliases["E"] = ERASE
-		aliases["FAC"] = FACTS
-		aliases["REA"] = REACTION
-		aliases["SR"] = SUMREACTION
-		aliases["UL"] = UPLIFT
-		aliases["SS"] = NOTICE1459
-		aliases["ZD"] = ZOUBUNDISP
-		aliases["ZY"] = ZOUBUNYIELD
-		aliases["ZR"] = ZOUBUNREACTION
-		aliases["AMT"] = AMOUNTPROP
-		aliases["EPS"] = SETEPS
-	}
 	RangeView.Dists = RangeViewDists
 	RangeView.Angle = RangeViewAngle
 	RangeView.Center = RangeViewCenter
@@ -7517,4 +7216,162 @@ func max(x, y int) int {
 	} else {
 		return y
 	}
+}
+
+func (stw *Window) Checkout(name string) error {
+	f, exists := stw.taggedFrame[name]
+	if !exists {
+		return fmt.Errorf("tag %s doesn't exist", name)
+	}
+	stw.Frame = f
+	return nil
+}
+
+func (stw *Window) AddTag(name string, bang bool) error {
+	if !bang {
+		if _, exists := stw.taggedFrame[name]; exists {
+			return fmt.Errorf("tag %s already exists", name)
+		}
+	}
+	stw.taggedFrame[name] = stw.Frame.Snapshot()
+	return nil
+}
+
+func (stw *Window) UseUndo(yes bool) {
+	NOUNDO = !yes
+}
+
+func (stw *Window) EPS() float64 {
+	return EPS
+}
+
+func (stw *Window) SetEPS(val float64) {
+	EPS = val
+}
+
+func (stw *Window) CanvasFitScale() float64 {
+	return CanvasFitScale
+}
+
+func (stw *Window) SetCanvasFitScale(val float64) {
+	CanvasFitScale = val
+}
+
+func (stw *Window) CanvasAnimateSpeed() float64 {
+	return CanvasAnimateSpeed
+}
+
+func (stw *Window) SetCanvasAnimateSpeed(val float64) {
+	CanvasAnimateSpeed = val
+}
+
+func (stw *Window) ToggleFixRotate() {
+	fixRotate = !fixRotate
+}
+
+func (stw *Window) ToggleFixMove() {
+	fixMove = !fixMove
+}
+
+func (stw *Window) ToggleAltSelectNode() {
+	ALTSELECTNODE = !ALTSELECTNODE
+}
+
+func (stw *Window) AltSelectNode() bool {
+	return ALTSELECTNODE
+}
+
+func (stw *Window) CheckFrame() {
+	checkframe(stw)
+}
+
+func (stw *Window) ClearTextBox(name string) {
+	if t, tok := stw.TextBox[name]; tok {
+		t.Clear()
+	}
+}
+
+func (stw *Window) Cwd() string {
+	return stw.cwd
+}
+func (stw *Window) HomeDir() string {
+	return stw.Home
+}
+func (stw *Window) IsChanged() bool {
+	return stw.Changed
+}
+
+func (stw *Window) LastExCommand() string {
+	return stw.lastexcommand
+}
+
+func (stw *Window) SelectElem(els []*st.Elem) {
+	stw.selectElem = els
+}
+
+func (stw *Window) SelectNode(ns []*st.Node) {
+	stw.selectNode = ns
+}
+
+func (stw *Window) ElemSelected() bool {
+	if stw.selectElem == nil || len(stw.selectElem) == 0 {
+		return false
+	} else {
+		return true
+	}
+}
+
+func (stw *Window) NodeSelected() bool {
+	if stw.selectNode == nil || len(stw.selectNode) == 0 {
+		return false
+	} else {
+		return true
+	}
+}
+
+func (stw *Window) SelectedElems() []*st.Elem {
+	return stw.selectElem
+}
+
+func (stw *Window) SelectedNodes() []*st.Node {
+	return stw.selectNode
+}
+
+func (stw *Window) SelectConfed() {
+	selectconfed(stw)
+}
+
+func (stw *Window) ErrorMessage(err error) {
+	stw.errormessage(err, ERROR)
+}
+
+func (stw *Window) History(str string) {
+	stw.addHistory(str)
+}
+
+func (stw *Window) SetPaperSize(s uint) {
+	stw.papersize = s
+}
+
+func (stw *Window) PaperSize() uint {
+	return stw.papersize
+}
+func (stw *Window) Pivot() bool {
+	return drawpivot
+}
+
+func (stw *Window) SetConf(lis []bool) {
+	setconf(stw, lis)
+}
+
+func (stw *Window) SetLastExCommand(c string) {
+	stw.lastexcommand = c
+}
+
+func (stw *Window) SetShowPrintRange(val bool) {
+	showprintrange = val
+}
+
+func (stw *Window) ToggleShowPrintRange() {
+	showprintrange = !showprintrange
 }

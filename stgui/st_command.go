@@ -218,7 +218,7 @@ func getcoord(stw *Window, f func(x, y, z float64)) {
 	var snap *st.Node // for Snapping
 	stw.cdcanv.Foreground(cd.CD_YELLOW)
 	stw.cdcanv.WriteMode(cd.CD_XOR)
-	stw.SelectNode = make([]*st.Node, 1)
+	stw.selectNode = make([]*st.Node, 1)
 	setnnum := func() {
 		nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
@@ -237,13 +237,13 @@ func getcoord(stw *Window, f func(x, y, z float64)) {
 					if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
 						f(n.Coord[0], n.Coord[1], n.Coord[2])
 					}
-					// stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
+					// stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
 					stw.Redraw()
 				}
 			case BUTTON_CENTER:
 				if arg.Pressed == 0 { // Released
-					// if stw.SelectNode[0] != nil { // TODO
-					//     stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY)
+					// if stw.selectNode[0] != nil { // TODO
+					//     stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY)
 					// }
 					stw.Redraw()
 				} else { // Pressed
@@ -320,7 +320,7 @@ func get1node(stw *Window, f func(n *st.Node)) {
 	var snap *st.Node // for Snapping
 	stw.cdcanv.Foreground(cd.CD_YELLOW)
 	stw.cdcanv.WriteMode(cd.CD_XOR)
-	stw.SelectNode = make([]*st.Node, 1)
+	stw.selectNode = make([]*st.Node, 1)
 	setnnum := func() {
 		nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
@@ -339,13 +339,13 @@ func get1node(stw *Window, f func(n *st.Node)) {
 					if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
 						f(n)
 					}
-					// stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
+					// stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
 					stw.Redraw()
 				}
 			case BUTTON_CENTER:
 				if arg.Pressed == 0 { // Released
-					// if stw.SelectNode[0] != nil { // TODO
-					//     stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY)
+					// if stw.selectNode[0] != nil { // TODO
+					//     stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY)
 					// }
 					stw.Redraw()
 				} else { // Pressed
@@ -420,10 +420,10 @@ func get1node(stw *Window, f func(n *st.Node)) {
 // TOGGLEBOND// {{{
 func togglebond(stw *Window) {
 	get1node(stw, func(n *st.Node) {
-		if stw.SelectElem == nil {
+		if stw.selectElem == nil {
 			return
 		}
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el == nil {
 				continue
 			}
@@ -443,16 +443,16 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 	stw.canv.SetAttribute("CURSOR", "CROSS")
 	stw.cdcanv.Foreground(cd.CD_YELLOW)
 	stw.cdcanv.WriteMode(cd.CD_XOR)
-	stw.SelectNode = make([]*st.Node, 2)
+	stw.selectNode = make([]*st.Node, 2)
 	stw.addHistory("始端を指定[ダイアログ(D,R)]")
 	setnnum := func() {
 		nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
 			if n, ok := stw.Frame.Nodes[int(nnum)]; ok {
-				if stw.SelectNode[0] != nil {
+				if stw.selectNode[0] != nil {
 					f(n)
 				} else {
-					stw.SelectNode[0] = n
+					stw.selectNode[0] = n
 					stw.cdcanv.Foreground(cd.CD_DARK_RED)
 					stw.cdcanv.WriteMode(cd.CD_XOR)
 					first = 1
@@ -468,14 +468,14 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
-					if stw.SelectNode[0] != nil {
+					if stw.selectNode[0] != nil {
 						if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
 							f(n)
 						}
-						// stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
+						// stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
 					} else {
 						if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
-							stw.SelectNode[0] = n
+							stw.selectNode[0] = n
 							stw.cdcanv.Foreground(cd.CD_DARK_RED)
 							stw.cdcanv.WriteMode(cd.CD_XOR)
 							first = 1
@@ -486,8 +486,8 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 				}
 			case BUTTON_CENTER:
 				if arg.Pressed == 0 { // Released
-					// if stw.SelectNode[0] != nil { // TODO
-					//     stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY)
+					// if stw.selectNode[0] != nil { // TODO
+					//     stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY)
 					// }
 					stw.Redraw()
 				} else { // Pressed
@@ -531,9 +531,9 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 			case STATUS_CENTER:
 				stw.MoveOrRotate(arg)
 			}
-			if stw.SelectNode[0] != nil {
+			if stw.selectNode[0] != nil {
 				stw.cdcanv.Foreground(cd.CD_DARK_RED)
-				stw.TailLine(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), arg)
+				stw.TailLine(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), arg)
 			}
 		}
 	})
@@ -558,10 +558,10 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 			if err == nil {
 				n, _ := stw.Frame.CoordNode(x, y, z, EPS)
 				stw.Redraw()
-				if stw.SelectNode[0] != nil {
+				if stw.selectNode[0] != nil {
 					f(n)
 				} else {
-					stw.SelectNode[0] = n
+					stw.selectNode[0] = n
 					stw.cdcanv.Foreground(cd.CD_DARK_RED)
 					stw.cdcanv.WriteMode(cd.CD_XOR)
 					first = 1
@@ -571,14 +571,14 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 		case 'R', 'r':
 			x, y, z, err := stw.QueryCoord("GET COORD")
 			if err == nil {
-				if stw.SelectNode[0] != nil {
-					n, _ := stw.Frame.CoordNode(x+stw.SelectNode[0].Coord[0], y+stw.SelectNode[0].Coord[1], z+stw.SelectNode[0].Coord[2], EPS)
+				if stw.selectNode[0] != nil {
+					n, _ := stw.Frame.CoordNode(x+stw.selectNode[0].Coord[0], y+stw.selectNode[0].Coord[1], z+stw.selectNode[0].Coord[2], EPS)
 					stw.Redraw()
 					f(n)
 				} else {
 					n, _ := stw.Frame.CoordNode(x, y, z, EPS)
 					stw.Redraw()
-					stw.SelectNode[0] = n
+					stw.selectNode[0] = n
 					stw.cdcanv.Foreground(cd.CD_DARK_RED)
 					stw.cdcanv.WriteMode(cd.CD_XOR)
 					first = 1
@@ -594,34 +594,34 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 // DISTS// {{{
 func dists(stw *Window) {
 	get2nodes(stw, func(n *st.Node) {
-		stw.SelectNode[1] = n
-		dx, dy, dz, d := stw.Frame.Distance(stw.SelectNode[0], n)
-		stw.addHistory(fmt.Sprintf("NODE: %d - %d", stw.SelectNode[0].Num, n.Num))
+		stw.selectNode[1] = n
+		dx, dy, dz, d := stw.Frame.Distance(stw.selectNode[0], n)
+		stw.addHistory(fmt.Sprintf("NODE: %d - %d", stw.selectNode[0].Num, n.Num))
 		stw.addHistory(fmt.Sprintf("DX: %.3f DY: %.3f DZ: %.3f D: %.3f", dx, dy, dz, d))
 		// stw.cdcanv.Foreground(cd.CD_WHITE)
 		// stw.cdcanv.WriteMode(cd.CD_REPLACE)
 		stw.EscapeAll()
 	},
 		func() {
-			stw.SelectNode = make([]*st.Node, 2)
+			stw.selectNode = make([]*st.Node, 2)
 			stw.Redraw()
 		})
 }
 
 func deformeddists(stw *Window) {
 	get2nodes(stw, func(n *st.Node) {
-		stw.SelectNode[1] = n
-		dx, dy, dz, d := stw.Frame.Distance(stw.SelectNode[0], n)
-		stw.addHistory(fmt.Sprintf("NODE: %d - %d", stw.SelectNode[0].Num, n.Num))
+		stw.selectNode[1] = n
+		dx, dy, dz, d := stw.Frame.Distance(stw.selectNode[0], n)
+		stw.addHistory(fmt.Sprintf("NODE: %d - %d", stw.selectNode[0].Num, n.Num))
 		stw.addHistory(fmt.Sprintf("DX: %.3f DY: %.3f DZ: %.3f D: %.3f", dx, dy, dz, d))
-		dx, dy, dz, d = stw.Frame.DeformedDistance(stw.SelectNode[0], n)
+		dx, dy, dz, d = stw.Frame.DeformedDistance(stw.selectNode[0], n)
 		stw.addHistory(fmt.Sprintf("dx: %.3f dy: %.3f dz: %.3f d: %.3f", dx, dy, dz, d))
 		// stw.cdcanv.Foreground(cd.CD_WHITE)
 		// stw.cdcanv.WriteMode(cd.CD_REPLACE)
 		stw.EscapeAll()
 	},
 		func() {
-			stw.SelectNode = make([]*st.Node, 2)
+			stw.selectNode = make([]*st.Node, 2)
 			stw.Redraw()
 		})
 }
@@ -630,7 +630,7 @@ func deformeddists(stw *Window) {
 
 func measure(stw *Window) {
 	get2nodes(stw, func(n *st.Node) {
-		stw.SelectNode[1] = n
+		stw.selectNode[1] = n
 		stw.addHistory("引き出し方向を指定[X, Y, Z, V]")
 		createmeasure := func(direction string) {
 			var u, v []float64
@@ -644,15 +644,15 @@ func measure(stw *Window) {
 			case "Z":
 				u = st.ZAXIS
 			case "V":
-				v = st.Direction(stw.SelectNode[0], stw.SelectNode[1], true)
+				v = st.Direction(stw.selectNode[0], stw.selectNode[1], true)
 				u = st.Cross(v, st.ZAXIS)
 			default:
 				stw.errormessage(errors.New("unknown direction"), ERROR)
 				stw.EscapeAll()
 				return
 			}
-			m := stw.Frame.AddMeasure(stw.SelectNode[0].Coord, stw.SelectNode[1].Coord, u)
-			m.Text = fmt.Sprintf("%.0f", st.VectorDistance(stw.SelectNode[0], stw.SelectNode[1], v)*1000)
+			m := stw.Frame.AddMeasure(stw.selectNode[0].Coord, stw.selectNode[1].Coord, u)
+			m.Text = fmt.Sprintf("%.0f", st.VectorDistance(stw.selectNode[0], stw.selectNode[1], v)*1000)
 			stw.EscapeAll()
 		}
 		stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
@@ -674,25 +674,25 @@ func measure(stw *Window) {
 		})
 	},
 		func() {
-			stw.SelectNode = make([]*st.Node, 2)
+			stw.selectNode = make([]*st.Node, 2)
 			stw.Redraw()
 		})
 }
 
 func kijun(stw *Window) {
 	get2nodes(stw, func(n *st.Node) {
-		stw.SelectNode[1] = n
+		stw.selectNode[1] = n
 		name, err := stw.Query("基準線名を入力")
 		if err != nil {
 			stw.errormessage(err, ERROR)
 			stw.EscapeAll()
 			return
 		}
-		stw.Frame.AddKijun(name, stw.SelectNode[0].Coord, stw.SelectNode[1].Coord)
+		stw.Frame.AddKijun(name, stw.selectNode[0].Coord, stw.selectNode[1].Coord)
 		stw.EscapeAll()
 	},
 		func() {
-			stw.SelectNode = make([]*st.Node, 2)
+			stw.selectNode = make([]*st.Node, 2)
 			stw.Redraw()
 		})
 }
@@ -700,17 +700,17 @@ func kijun(stw *Window) {
 // ADDLINEELEM// {{{
 func addlineelem(stw *Window) {
 	get2nodes(stw, func(n *st.Node) {
-		stw.SelectNode[1] = n
+		stw.selectNode[1] = n
 		sec := stw.Frame.DefaultSect()
-		el := stw.Frame.AddLineElem(-1, stw.SelectNode, sec, st.NONE)
-		stw.addHistory(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, stw.SelectNode[0].Num, n.Num, sec.Num))
+		el := stw.Frame.AddLineElem(-1, stw.selectNode, sec, st.NONE)
+		stw.addHistory(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, stw.selectNode[0].Num, n.Num, sec.Num))
 		stw.Snapshot()
 		// stw.cdcanv.Foreground(cd.CD_WHITE)
 		// stw.cdcanv.WriteMode(cd.CD_REPLACE)
 		stw.EscapeAll()
 	},
 		func() {
-			stw.SelectNode = make([]*st.Node, 2)
+			stw.selectNode = make([]*st.Node, 2)
 			stw.Redraw()
 		})
 }
@@ -724,7 +724,7 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 	var snap *st.Node // for Snapping
 	stw.cdcanv.Foreground(cd.CD_YELLOW)
 	stw.cdcanv.WriteMode(cd.CD_XOR)
-	stw.SelectNode = make([]*st.Node, maxnum)
+	stw.selectNode = make([]*st.Node, maxnum)
 	selected := 0
 	setnnum := func() {
 		if selected >= maxnum {
@@ -734,11 +734,11 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 		nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
 			if n, ok := stw.Frame.Nodes[int(nnum)]; ok {
-				if stw.SelectNode[0] != nil {
-					stw.SelectNode[selected] = n
+				if stw.selectNode[0] != nil {
+					stw.selectNode[selected] = n
 					selected++
 				} else {
-					stw.SelectNode[0] = n
+					stw.selectNode[0] = n
 					selected++
 					stw.cdcanv.Foreground(cd.CD_DARK_RED)
 					stw.cdcanv.WriteMode(cd.CD_XOR)
@@ -757,12 +757,12 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 					if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
 						if selected >= maxnum {
 							stw.addHistory("TOO MANY NODES SELECTED")
-						} else if stw.SelectNode[0] != nil {
-							stw.SelectNode[selected] = n
+						} else if stw.selectNode[0] != nil {
+							stw.selectNode[selected] = n
 							selected++
-							// stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
+							// stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
 						} else {
-							stw.SelectNode[0] = n
+							stw.selectNode[0] = n
 							selected++
 							stw.cdcanv.Foreground(cd.CD_DARK_RED)
 							stw.cdcanv.WriteMode(cd.CD_XOR)
@@ -773,8 +773,8 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 				}
 			case BUTTON_CENTER:
 				if arg.Pressed == 0 { // Released
-					// if stw.SelectNode[0] != nil { // TODO
-					//     stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY)
+					// if stw.selectNode[0] != nil { // TODO
+					//     stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY)
 					// }
 					stw.Redraw()
 				} else { // Pressed
@@ -818,11 +818,11 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 			case STATUS_CENTER:
 				stw.MoveOrRotate(arg)
 			}
-			if stw.SelectNode[0] != nil {
+			if stw.selectNode[0] != nil {
 				if selected < 2 {
-					stw.TailLine(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), arg)
+					stw.TailLine(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), arg)
 				} else {
-					stw.TailPolygon(stw.SelectNode, arg)
+					stw.TailPolygon(stw.selectNode, arg)
 				}
 			}
 		}
@@ -838,7 +838,7 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 				stw.cline.SetAttribute("VALUE", val[:len(val)-1])
 			}
 		case KEY_DELETE:
-			stw.SelectNode = make([]*st.Node, maxnum)
+			stw.selectNode = make([]*st.Node, maxnum)
 			selected++
 		case KEY_ENTER:
 			if v := stw.cline.GetAttribute("VALUE"); v != "" {
@@ -859,7 +859,7 @@ func addplateelem(stw *Window) {
 	maxnum := 4
 	getnnodes(stw, maxnum, func(num int) {
 		if num >= 3 {
-			en := stw.SelectNode[:num]
+			en := stw.selectNode[:num]
 			sec := stw.Frame.DefaultSect()
 			el := stw.Frame.AddPlateElem(-1, en, sec, st.NONE)
 			var buf bytes.Buffer
@@ -879,7 +879,7 @@ func addplateelembyline(stw *Window) {
 	getnelems(stw, 2, func(size int) {
 		els := make([]*st.Elem, 2)
 		num := 0
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el != nil && el.IsLineElem() {
 				els[num] = el
 				num++
@@ -920,8 +920,8 @@ func addplateelembyline(stw *Window) {
 
 // SEARCHELEM// {{{
 func searchelem(stw *Window) {
-	if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
-		stw.SelectElem = stw.Frame.SearchElem(stw.SelectNode...)
+	if stw.selectNode != nil && len(stw.selectNode) >= 1 {
+		stw.selectElem = stw.Frame.SearchElem(stw.selectNode...)
 		stw.Redraw()
 		stw.EscapeCB()
 		return
@@ -929,7 +929,7 @@ func searchelem(stw *Window) {
 	stw.Deselect()
 	iup.SetFocus(stw.canv)
 	startsearch := func(n *st.Node) {
-		stw.SelectElem = stw.Frame.SearchElem(n)
+		stw.selectElem = stw.Frame.SearchElem(n)
 		stw.addHistory(fmt.Sprintf("Select Element Using NODE %d", n.Num))
 		stw.EscapeCB()
 	}
@@ -1000,29 +1000,29 @@ func searchelem(stw *Window) {
 
 // NODE <-> ELEM// {{{
 func nodetoelemany(stw *Window) {
-	stw.SelectElem = stw.Frame.NodeToElemAny(stw.SelectNode...)
+	stw.selectElem = stw.Frame.NodeToElemAny(stw.selectNode...)
 	stw.EscapeCB()
 }
 func nodetoelemall(stw *Window) {
-	stw.SelectElem = stw.Frame.NodeToElemAll(stw.SelectNode...)
+	stw.selectElem = stw.Frame.NodeToElemAll(stw.selectNode...)
 	stw.EscapeCB()
 }
 func elemtonode(stw *Window) {
-	stw.SelectNode = stw.Frame.ElemToNode(stw.SelectElem...)
+	stw.selectNode = stw.Frame.ElemToNode(stw.selectElem...)
 	stw.EscapeCB()
 }
 func connected(stw *Window) {
-	if stw.SelectNode != nil && len(stw.SelectNode) >= 1 && stw.SelectNode[0] != nil {
-		stw.SelectNode = stw.Frame.LineConnected(stw.SelectNode[0])
+	if stw.selectNode != nil && len(stw.selectNode) >= 1 && stw.selectNode[0] != nil {
+		stw.selectNode = stw.Frame.LineConnected(stw.selectNode[0])
 	}
 	stw.EscapeCB()
 }
 func onnode(stw *Window) {
-	stw.SelectNode = make([]*st.Node, 0)
-	if stw.SelectElem != nil {
-		for _, el := range stw.SelectElem {
+	stw.selectNode = make([]*st.Node, 0)
+	if stw.selectElem != nil {
+		for _, el := range stw.selectElem {
 			ns := el.OnNode(0, EPS)
-			stw.SelectNode = append(stw.SelectNode, ns...)
+			stw.selectNode = append(stw.selectNode, ns...)
 		}
 	}
 	stw.EscapeCB()
@@ -1070,7 +1070,7 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 						if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
 							funcbynode(n)
 						}
-						// stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
+						// stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
 					} else {
 						if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
 							startpoint = n
@@ -1083,8 +1083,8 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 				}
 			case BUTTON_CENTER:
 				if arg.Pressed == 0 { // Released
-					// if stw.SelectNode[0] != nil { // TODO
-					//     stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY)
+					// if stw.selectNode[0] != nil { // TODO
+					//     stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY)
 					// }
 					stw.Redraw()
 				} else { // Pressed
@@ -1162,13 +1162,13 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 
 // COPYELEM// {{{
 func copyelem(stw *Window) {
-	if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+	if stw.selectElem == nil || len(stw.selectElem) == 0 {
 		return
 	}
 	stw.addHistory("移動距離を指定[ダイアログ(D)]")
 	getvector(stw, func(x, y, z float64) {
 		if !(x == 0.0 && y == 0.0 && z == 0.0) {
-			for _, el := range stw.SelectElem {
+			for _, el := range stw.selectElem {
 				if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock {
 					continue
 				}
@@ -1184,12 +1184,12 @@ func copyelem(stw *Window) {
 
 // DUPLICATEELEM// {{{
 func duplicateelem(stw *Window) {
-	if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+	if stw.selectElem == nil || len(stw.selectElem) == 0 {
 		return
 	}
-	newels := make([]*st.Elem, len(stw.SelectElem))
+	newels := make([]*st.Elem, len(stw.selectElem))
 	enum := 0
-	for _, el := range stw.SelectElem {
+	for _, el := range stw.selectElem {
 		if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock {
 			continue
 		}
@@ -1202,7 +1202,7 @@ func duplicateelem(stw *Window) {
 	for _, el := range newels {
 		stw.Frame.AddElem(-1, el)
 	}
-	stw.SelectElem = newels
+	stw.selectElem = newels
 	stw.Snapshot()
 	stw.EscapeCB()
 	stw.Redraw()
@@ -1212,12 +1212,12 @@ func duplicateelem(stw *Window) {
 
 // MOVEELEM// {{{
 func moveelem(stw *Window) {
-	if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+	if stw.selectElem == nil || len(stw.selectElem) == 0 {
 		return
 	}
 	stw.addHistory("移動距離を指定[ダイアログ(D)]")
 	getvector(stw, func(x, y, z float64) {
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock {
 				continue
 			}
@@ -1236,15 +1236,15 @@ func moveelem(stw *Window) {
 // MOVENODE// {{{
 func movenode(stw *Window) {
 	ns := make([]*st.Node, 0)
-	if stw.SelectNode != nil {
-		for _, n := range stw.SelectNode {
+	if stw.selectNode != nil {
+		for _, n := range stw.selectNode {
 			if n != nil {
 				ns = append(ns, n)
 			}
 		}
 	}
-	if stw.SelectElem != nil {
-		en := stw.Frame.ElemToNode(stw.SelectElem...)
+	if stw.selectElem != nil {
+		en := stw.Frame.ElemToNode(stw.selectElem...)
 		var add bool
 		for _, n := range en {
 			add = true
@@ -1281,8 +1281,8 @@ func movenode(stw *Window) {
 func movetoline(stw *Window) {
 	fixed := 0
 	ns := make([]*st.Node, 0)
-	if stw.SelectNode != nil {
-		for _, n := range stw.SelectNode {
+	if stw.selectNode != nil {
+		for _, n := range stw.selectNode {
 			if n != nil {
 				ns = append(ns, n)
 			}
@@ -1295,9 +1295,9 @@ func movetoline(stw *Window) {
 	}
 	stw.addHistory("直線を指定[Xを固定]")
 	get2nodes(stw, func(n *st.Node) {
-		stw.SelectNode[1] = n
+		stw.selectNode[1] = n
 		for _, n := range ns {
-			n.MoveToLine(stw.SelectNode[0], stw.SelectNode[1], fixed)
+			n.MoveToLine(stw.selectNode[0], stw.selectNode[1], fixed)
 		}
 		stw.cdcanv.Foreground(cd.CD_WHITE)
 		stw.cdcanv.WriteMode(cd.CD_REPLACE)
@@ -1305,7 +1305,7 @@ func movetoline(stw *Window) {
 		stw.EscapeAll()
 	},
 		func() {
-			stw.SelectNode = make([]*st.Node, 2)
+			stw.selectNode = make([]*st.Node, 2)
 			stw.Redraw()
 		})
 	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
@@ -1319,7 +1319,7 @@ func movetoline(stw *Window) {
 				stw.cline.SetAttribute("VALUE", val[:len(val)-1])
 			}
 		case KEY_DELETE:
-			stw.SelectNode = make([]*st.Node, 2)
+			stw.selectNode = make([]*st.Node, 2)
 			stw.Redraw()
 		case KEY_ESCAPE:
 			stw.EscapeAll()
@@ -1394,15 +1394,15 @@ func pinchnode(stw *Window) {
 // ROTATE// {{{
 func rotate(stw *Window) {
 	ns := make([]*st.Node, 0)
-	if stw.SelectNode != nil {
-		for _, n := range stw.SelectNode {
+	if stw.selectNode != nil {
+		for _, n := range stw.selectNode {
 			if n != nil {
 				ns = append(ns, n)
 			}
 		}
 	}
-	if stw.SelectElem != nil {
-		en := stw.Frame.ElemToNode(stw.SelectElem...)
+	if stw.selectElem != nil {
+		en := stw.Frame.ElemToNode(stw.selectElem...)
 		var add bool
 		for _, n := range en {
 			add = true
@@ -1467,8 +1467,8 @@ func rotate(stw *Window) {
 							v1 := make([]float64, 3)
 							v2 := make([]float64, 3)
 							for i := 0; i < 3; i++ {
-								v1[i] = stw.SelectNode[1].Coord[i] - stw.SelectNode[0].Coord[i]
-								v2[i] = stw.SelectNode[2].Coord[i] - stw.SelectNode[0].Coord[i]
+								v1[i] = stw.selectNode[1].Coord[i] - stw.selectNode[0].Coord[i]
+								v2[i] = stw.selectNode[2].Coord[i] - stw.selectNode[0].Coord[i]
 							}
 							uv1 := st.Dot(u, v1, 3)
 							uv2 := st.Dot(u, v2, 3)
@@ -1479,7 +1479,7 @@ func rotate(stw *Window) {
 							if w != 0.0 {
 								rot(math.Acos((v12 - uv1*uv2) / w))
 							}
-							stw.SelectNode = make([]*st.Node, 0)
+							stw.selectNode = make([]*st.Node, 0)
 							stw.EscapeCB()
 							return
 						})
@@ -1496,10 +1496,10 @@ func rotate(stw *Window) {
 
 // MIRROR// {{{
 func mirror(stw *Window) {
-	if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+	if stw.selectElem == nil || len(stw.selectElem) == 0 {
 		return
 	}
-	ns := stw.Frame.ElemToNode(stw.SelectElem...)
+	ns := stw.Frame.ElemToNode(stw.selectElem...)
 	stw.addHistory("対称面を指定[1点又は3点]")
 	maxnum := 3
 	createmirrors := func(coord, vec []float64) {
@@ -1514,7 +1514,7 @@ func mirror(stw *Window) {
 				}
 			}
 		}
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			newenod := make([]*st.Node, el.Enods)
 			var add bool
 			for i := 0; i < el.Enods; i++ {
@@ -1543,18 +1543,18 @@ func mirror(stw *Window) {
 		case 1:
 			stw.addHistory("法線方向を選択[ダイアログ(D)]")
 			getvector(stw, func(x, y, z float64) {
-				createmirrors(stw.SelectNode[0].Coord, []float64{x, y, z})
+				createmirrors(stw.selectNode[0].Coord, []float64{x, y, z})
 				stw.EscapeAll()
 			})
 		case 3:
 			v1 := make([]float64, 3)
 			v2 := make([]float64, 3)
 			for i := 0; i < 3; i++ {
-				v1[i] = stw.SelectNode[1].Coord[i] - stw.SelectNode[0].Coord[i]
-				v2[i] = stw.SelectNode[2].Coord[i] - stw.SelectNode[0].Coord[i]
+				v1[i] = stw.selectNode[1].Coord[i] - stw.selectNode[0].Coord[i]
+				v2[i] = stw.selectNode[2].Coord[i] - stw.selectNode[0].Coord[i]
 			}
 			vec := st.Cross(v1, v2)
-			createmirrors(stw.SelectNode[0].Coord, vec)
+			createmirrors(stw.selectNode[0].Coord, vec)
 			stw.EscapeAll()
 		}
 	})
@@ -1565,15 +1565,15 @@ func mirror(stw *Window) {
 // SCALE// {{{
 func scale(stw *Window) {
 	ns := make([]*st.Node, 0)
-	if stw.SelectNode != nil {
-		for _, n := range stw.SelectNode {
+	if stw.selectNode != nil {
+		for _, n := range stw.selectNode {
 			if n != nil {
 				ns = append(ns, n)
 			}
 		}
 	}
-	if stw.SelectElem != nil {
-		en := stw.Frame.ElemToNode(stw.SelectElem...)
+	if stw.selectElem != nil {
+		en := stw.Frame.ElemToNode(stw.selectElem...)
 		var add bool
 		for _, n := range en {
 			add = true
@@ -1656,13 +1656,11 @@ func weightcopy(stw *Window) {
 
 // READPGP// {{{
 func readpgp(stw *Window) {
-	if name, ok := iup.GetOpenFile(stw.Cwd, "*.pgp"); ok {
-		al := make(map[string]*Command, 0)
-		err := ReadPgp(name, al)
+	if name, ok := iup.GetOpenFile(stw.cwd, "*.pgp"); ok {
+		err := stw.ReadPgp(name)
 		if err != nil {
 			stw.addHistory("ReadPgp: Cannot Read st.pgp")
 		} else {
-			aliases = al
 			stw.addHistory(fmt.Sprintf("ReadPgp: Read %s", name))
 		}
 	}
@@ -1703,7 +1701,7 @@ func setfocus(stw *Window) {
 
 // GET1ELEM// {{{
 func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) bool, exitfunc func()) {
-	stw.SelectElem = make([]*st.Elem, 1)
+	stw.selectElem = make([]*st.Elem, 1)
 	selected := false
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
 		if stw.Frame != nil {
@@ -1718,7 +1716,7 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 					} else {
 						if el := stw.PickElem(int(arg.X), int(arg.Y)); el != nil {
 							if condition(el) {
-								stw.SelectElem[0] = el
+								stw.selectElem[0] = el
 								selected = true
 								stw.canv.SetAttribute("CURSOR", "PEN")
 							}
@@ -1774,7 +1772,7 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 
 // GET1SIDE // {{{
 func get1side(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) bool, exitfunc func()) {
-	stw.SelectElem = make([]*st.Elem, 1)
+	stw.selectElem = make([]*st.Elem, 1)
 	selected := false
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
 		if stw.Frame != nil {
@@ -1783,13 +1781,13 @@ func get1side(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 {
 					if selected {
-						f(stw.SelectElem[0], int(arg.X), int(arg.Y))
+						f(stw.selectElem[0], int(arg.X), int(arg.Y))
 						selected = false
-						stw.SelectElem = make([]*st.Elem, 1)
+						stw.selectElem = make([]*st.Elem, 1)
 					} else {
 						if el := stw.PickElem(int(arg.X), int(arg.Y)); el != nil {
 							if condition(el) {
-								stw.SelectElem[0] = el
+								stw.selectElem[0] = el
 								selected = true
 								stw.canv.SetAttribute("CURSOR", "PEN")
 							}
@@ -1846,8 +1844,8 @@ func get1side(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 // MATCHPROP// {{{
 func matchproperty(stw *Window) {
 	get1elem(stw, func(el *st.Elem, x, y int) {
-		el.Sect = stw.SelectElem[0].Sect
-		el.Etype = stw.SelectElem[0].Etype
+		el.Sect = stw.selectElem[0].Sect
+		el.Etype = stw.selectElem[0].Etype
 		stw.Redraw()
 	},
 		func(el *st.Elem) bool {
@@ -1863,7 +1861,7 @@ func copybond(stw *Window) {
 	get1elem(stw, func(el *st.Elem, x, y int) {
 		if el.IsLineElem() {
 			for i := 0; i < 12; i++ {
-				el.Bonds[i] = stw.SelectElem[0].Bonds[i]
+				el.Bonds[i] = stw.selectElem[0].Bonds[i]
 			}
 		}
 		stw.Redraw()
@@ -1878,7 +1876,7 @@ func copybond(stw *Window) {
 
 // AXISTOCANG// {{{
 func axistocang(stw *Window) {
-	if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+	if stw.selectElem == nil || len(stw.selectElem) == 0 {
 		stw.EscapeAll()
 		return
 	}
@@ -1886,7 +1884,7 @@ func axistocang(stw *Window) {
 	strong := true
 	axisfunc := func(x, y, z float64) {
 		if !(x == 0.0 && y == 0.0 && z == 0.0) {
-			for _, el := range stw.SelectElem {
+			for _, el := range stw.selectElem {
 				if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock {
 					continue
 				}
@@ -1940,11 +1938,11 @@ func axistocang(stw *Window) {
 // BOND// {{{
 // BONDPIN
 func bondpin(stw *Window) {
-	if stw.SelectElem == nil {
+	if stw.selectElem == nil {
 		stw.EscapeAll()
 		return
 	}
-	for _, el := range stw.SelectElem {
+	for _, el := range stw.selectElem {
 		if el == nil || el.Lock {
 			continue
 		}
@@ -1961,11 +1959,11 @@ func bondpin(stw *Window) {
 }
 
 func bondrigid(stw *Window) {
-	if stw.SelectElem == nil {
+	if stw.selectElem == nil {
 		stw.EscapeAll()
 		return
 	}
-	for _, el := range stw.SelectElem {
+	for _, el := range stw.selectElem {
 		if el == nil || el.Lock {
 			continue
 		}
@@ -1985,11 +1983,11 @@ func bondrigid(stw *Window) {
 
 // CONF// {{{
 func setconf(stw *Window, lis []bool) {
-	if stw.SelectNode == nil {
+	if stw.selectNode == nil {
 		stw.EscapeAll()
 		return
 	}
-	for _, n := range stw.SelectNode {
+	for _, n := range stw.selectNode {
 		if n == nil || n.Lock {
 			continue
 		}
@@ -2003,11 +2001,11 @@ func setconf(stw *Window, lis []bool) {
 
 // CONFFIX
 func conffix(stw *Window) {
-	if stw.SelectNode == nil {
+	if stw.selectNode == nil {
 		stw.EscapeAll()
 		return
 	}
-	for _, n := range stw.SelectNode {
+	for _, n := range stw.selectNode {
 		if n == nil || n.Lock {
 			continue
 		}
@@ -2022,11 +2020,11 @@ func conffix(stw *Window) {
 
 // CONFPIN
 func confpin(stw *Window) {
-	if stw.SelectNode == nil {
+	if stw.selectNode == nil {
 		stw.EscapeAll()
 		return
 	}
-	for _, n := range stw.SelectNode {
+	for _, n := range stw.selectNode {
 		if n == nil || n.Lock {
 			continue
 		}
@@ -2041,11 +2039,11 @@ func confpin(stw *Window) {
 
 // CONFXYROLLER
 func confxyroller(stw *Window) {
-	if stw.SelectNode == nil {
+	if stw.selectNode == nil {
 		stw.EscapeAll()
 		return
 	}
-	for _, n := range stw.SelectNode {
+	for _, n := range stw.selectNode {
 		if n == nil || n.Lock {
 			continue
 		}
@@ -2061,11 +2059,11 @@ func confxyroller(stw *Window) {
 
 // CONFFREE
 func conffree(stw *Window) {
-	if stw.SelectNode == nil {
+	if stw.selectNode == nil {
 		stw.EscapeAll()
 		return
 	}
-	for _, n := range stw.SelectNode {
+	for _, n := range stw.selectNode {
 		if n == nil || n.Lock {
 			continue
 		}
@@ -2088,10 +2086,10 @@ func trim(stw *Window) {
 	get1elem(stw, func(el *st.Elem, x, y int) {
 		if el.IsLineElem() {
 			var err error
-			if FDotLine(stw.SelectElem[0].Enod[0].Pcoord[0], stw.SelectElem[0].Enod[0].Pcoord[1], stw.SelectElem[0].Enod[1].Pcoord[0], stw.SelectElem[0].Enod[1].Pcoord[1], float64(x), float64(y))*FDotLine(stw.SelectElem[0].Enod[0].Pcoord[0], stw.SelectElem[0].Enod[0].Pcoord[1], stw.SelectElem[0].Enod[1].Pcoord[0], stw.SelectElem[0].Enod[1].Pcoord[1], el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1]) < 0.0 {
-				_, _, err = stw.Frame.Trim(stw.SelectElem[0], el, 1, EPS)
+			if FDotLine(stw.selectElem[0].Enod[0].Pcoord[0], stw.selectElem[0].Enod[0].Pcoord[1], stw.selectElem[0].Enod[1].Pcoord[0], stw.selectElem[0].Enod[1].Pcoord[1], float64(x), float64(y))*FDotLine(stw.selectElem[0].Enod[0].Pcoord[0], stw.selectElem[0].Enod[0].Pcoord[1], stw.selectElem[0].Enod[1].Pcoord[0], stw.selectElem[0].Enod[1].Pcoord[1], el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1]) < 0.0 {
+				_, _, err = stw.Frame.Trim(stw.selectElem[0], el, 1, EPS)
 			} else {
-				_, _, err = stw.Frame.Trim(stw.SelectElem[0], el, -1, EPS)
+				_, _, err = stw.Frame.Trim(stw.selectElem[0], el, -1, EPS)
 			}
 			if err != nil {
 				stw.errormessage(err, ERROR)
@@ -2105,9 +2103,9 @@ func trim(stw *Window) {
 			return el.IsLineElem()
 		},
 		func() {
-			if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
-				if stw.SelectElem[0] != nil {
-					stw.SelectElem[0].DivideAtOns(EPS)
+			if stw.selectElem != nil && len(stw.selectElem) > 0 {
+				if stw.selectElem[0] != nil {
+					stw.selectElem[0].DivideAtOns(EPS)
 				}
 			}
 		})
@@ -2120,7 +2118,7 @@ func extend(stw *Window) {
 	get1elem(stw, func(el *st.Elem, x, y int) {
 		if el.IsLineElem() {
 			var err error
-			_, _, err = stw.Frame.Extend(stw.SelectElem[0], el, EPS)
+			_, _, err = stw.Frame.Extend(stw.selectElem[0], el, EPS)
 			if err != nil {
 				stw.errormessage(err, ERROR)
 			} else {
@@ -2133,9 +2131,9 @@ func extend(stw *Window) {
 			return el.IsLineElem()
 		},
 		func() {
-			if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
-				if stw.SelectElem[0] != nil {
-					stw.SelectElem[0].DivideAtOns(EPS)
+			if stw.selectElem != nil && len(stw.selectElem) > 0 {
+				if stw.selectElem[0] != nil {
+					stw.selectElem[0].DivideAtOns(EPS)
 				}
 			}
 		})
@@ -2200,8 +2198,8 @@ func selectnode(stw *Window) {
 		if err == nil {
 			if n, ok := stw.Frame.Nodes[int(nnum)]; ok {
 				stw.addHistory(fmt.Sprintf("NODE %d Selected", nnum))
-				stw.SelectNode = make([]*st.Node, 1)
-				stw.SelectNode[0] = n
+				stw.selectNode = make([]*st.Node, 1)
+				stw.selectNode[0] = n
 				stw.EscapeCB()
 			} else {
 				stw.addHistory(fmt.Sprintf("NODE %d not found", nnum))
@@ -2251,7 +2249,7 @@ func selectcolumnbase(stw *Window) {
 			}
 		}
 	}
-	stw.SelectNode = ns[:nnum]
+	stw.selectNode = ns[:nnum]
 	stw.EscapeCB()
 }
 
@@ -2267,13 +2265,13 @@ func selectconfed(stw *Window) {
 		}
 		for i := 0; i < 6; i++ {
 			if n.Conf[i] {
-				stw.SelectNode = append(stw.SelectNode, n)
+				stw.selectNode = append(stw.selectNode, n)
 				num++
 				break
 			}
 		}
 	}
-	stw.SelectNode = stw.SelectNode[:num]
+	stw.selectNode = stw.selectNode[:num]
 	stw.EscapeCB()
 }
 
@@ -2288,8 +2286,8 @@ func selectelem(stw *Window) {
 		if err == nil {
 			if el, ok := stw.Frame.Elems[int(enum)]; ok {
 				stw.addHistory(fmt.Sprintf("ELEM %d Selected", enum))
-				stw.SelectElem = make([]*st.Elem, 1)
-				stw.SelectElem[0] = el
+				stw.selectElem = make([]*st.Elem, 1)
+				stw.selectElem[0] = el
 				stw.EscapeCB()
 			} else {
 				stw.addHistory(fmt.Sprintf("ELEM %d not found", enum))
@@ -2328,13 +2326,13 @@ func selectsect(stw *Window) {
 			snum := int(tmp)
 			if _, ok := stw.Frame.Sects[snum]; ok {
 				stw.addHistory(fmt.Sprintf("SECT %d Selected", snum))
-				stw.SelectElem = make([]*st.Elem, 0)
+				stw.selectElem = make([]*st.Elem, 0)
 				for _, el := range stw.Frame.Elems {
 					if el.IsHidden(stw.Frame.Show) {
 						continue
 					}
 					if el.Sect.Num == snum {
-						stw.SelectElem = append(stw.SelectElem, el)
+						stw.selectElem = append(stw.selectElem, el)
 					}
 				}
 				stw.EscapeCB()
@@ -2418,7 +2416,7 @@ func selectchildren(stw *Window) {
 	getnelems(stw, 10, func(size int) {
 		els := make([]*st.Elem, 2)
 		num := 0
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el != nil && !el.IsLineElem() {
 				els[num] = el
 				num++
@@ -2427,7 +2425,7 @@ func selectchildren(stw *Window) {
 		if num > 0 {
 			tmpels := make([]*st.Elem, num*2)
 			nc := 0
-			for _, el := range stw.SelectElem {
+			for _, el := range stw.selectElem {
 				if el.Children != nil {
 					for _, c := range el.Children {
 						if c != nil {
@@ -2437,7 +2435,7 @@ func selectchildren(stw *Window) {
 					}
 				}
 			}
-			stw.SelectElem = tmpels[:nc]
+			stw.selectElem = tmpels[:nc]
 			stw.EscapeCB()
 		}
 	})
@@ -2450,7 +2448,7 @@ func nodenoreference(stw *Window) {
 	stw.Deselect()
 	ns := stw.Frame.NodeNoReference()
 	if len(ns) != 0 {
-		stw.SelectNode = ns
+		stw.selectNode = ns
 		stw.Redraw()
 		if stw.Yn("NODE NO REFERENCE", "不要な節点を削除しますか?") {
 			for _, n := range ns {
@@ -2469,8 +2467,8 @@ func elemsamenode(stw *Window) {
 	stw.Deselect()
 	els := stw.Frame.ElemSameNode()
 	if len(els) != 0 {
-		stw.SelectNode = stw.Frame.ElemToNode(els...)
-		stw.SelectElem = els
+		stw.selectNode = stw.Frame.ElemToNode(els...)
+		stw.selectElem = els
 		stw.Redraw()
 		if stw.Yn("ELEM SAME NODE", "部材を削除しますか?") {
 			for _, el := range els {
@@ -2495,8 +2493,8 @@ func suspicious(stw *Window) {
 	stw.Deselect()
 	ns, els, err := stw.Frame.Suspicious()
 	if err != nil {
-		stw.SelectNode = ns
-		stw.SelectElem = els
+		stw.selectNode = ns
+		stw.selectElem = els
 		stw.errormessage(err, ERROR)
 	}
 	stw.EscapeCB()
@@ -2516,7 +2514,7 @@ func pruneenod(stw *Window) {
 				enum++
 			}
 		}
-		stw.SelectElem = els[:enum]
+		stw.selectElem = els[:enum]
 		stw.Redraw()
 		if stw.Yn("ELEM SAME NODE", "部材の不要なENODを削除しますか?") {
 			for _, el := range els[:enum] {
@@ -2539,7 +2537,7 @@ func nodeduplication(stw *Window) {
 	nm := stw.Frame.NodeDuplication(EPS)
 	if len(nm) != 0 {
 		for k := range nm {
-			stw.SelectNode = append(stw.SelectNode, k)
+			stw.selectNode = append(stw.selectNode, k)
 		}
 		stw.Redraw()
 		if stw.Yn("NODE DUPLICATION", "重なった節点を削除しますか?") {
@@ -2561,7 +2559,7 @@ func elemduplication(stw *Window) {
 	els := stw.Frame.ElemDuplication(nil)
 	if len(els) != 0 {
 		for k := range els {
-			stw.SelectElem = append(stw.SelectElem, k)
+			stw.selectElem = append(stw.selectElem, k)
 		}
 		stw.Redraw()
 		if stw.Yn("ELEM DUPLICATION", "重なった部材を削除しますか?") {
@@ -2593,8 +2591,8 @@ func checkframe(stw *Window) {
 	eall := true
 	ns, els, ok := stw.Frame.Check()
 	if !ok {
-		stw.SelectNode = ns
-		stw.SelectElem = els
+		stw.selectNode = ns
+		stw.selectElem = els
 		stw.Redraw()
 		if stw.Yn("CHECK FRAME", "無効な節点と部材を削除しますか？") {
 			for _, n := range els {
@@ -2774,7 +2772,7 @@ func errorelem(stw *Window) {
 			}
 		}
 	}
-	stw.SelectElem = tmpels[:i]
+	stw.selectElem = tmpels[:i]
 	stw.EscapeCB()
 }
 
@@ -2786,7 +2784,7 @@ func showplane(stw *Window) {
 	maxnum := 3
 	getnnodes(stw, maxnum, func(num int) {
 		if num >= 3 {
-			err := stw.Frame.ShowPlane(stw.SelectNode[0], stw.SelectNode[1], stw.SelectNode[2], EPS)
+			err := stw.Frame.ShowPlane(stw.selectNode[0], stw.selectNode[1], stw.selectNode[2], EPS)
 			if err != nil {
 				stw.errormessage(err, ERROR)
 			}
@@ -2828,9 +2826,9 @@ func cutter(stw *Window) {
 
 // DIVIDE// {{{
 func divide(stw *Window, divfunc func(*st.Elem) ([]*st.Node, []*st.Elem, error)) {
-	if stw.SelectElem != nil {
+	if stw.selectElem != nil {
 		tmpels := make([]*st.Elem, 0)
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			_, els, err := divfunc(el)
 			if err != nil {
 				stw.errormessage(err, ERROR)
@@ -2840,7 +2838,7 @@ func divide(stw *Window, divfunc func(*st.Elem) ([]*st.Node, []*st.Elem, error))
 				tmpels = append(tmpels, els...)
 			}
 		}
-		stw.SelectElem = tmpels
+		stw.selectElem = tmpels
 		stw.Snapshot()
 		stw.EscapeCB()
 	}
@@ -2887,7 +2885,7 @@ func intersect(stw *Window) {
 	getnelems(stw, 2, func(size int) {
 		els := make([]*st.Elem, 2)
 		num := 0
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el != nil {
 				els[num] = el
 				num++
@@ -2905,7 +2903,7 @@ func intersect(stw *Window) {
 				stw.Deselect()
 				switch len(els) {
 				case 4:
-					stw.SelectElem = []*st.Elem{els[1], els[3]}
+					stw.selectElem = []*st.Elem{els[1], els[3]}
 				}
 				stw.Redraw()
 			}
@@ -2919,7 +2917,7 @@ func intersect(stw *Window) {
 
 // INTERSECTALL
 func intersectall(stw *Window) {
-	err := stw.Frame.IntersectAll(stw.SelectElem, EPS)
+	err := stw.Frame.IntersectAll(stw.selectElem, EPS)
 	if err != nil {
 		stw.errormessage(err, ERROR)
 		stw.EscapeAll()
@@ -2931,15 +2929,15 @@ func intersectall(stw *Window) {
 
 // INTERSECTALL2 // {{{
 func intersectall2(stw *Window) {
-	l := len(stw.SelectElem)
-	if stw.SelectElem == nil || l <= 1 {
+	l := len(stw.selectElem)
+	if stw.selectElem == nil || l <= 1 {
 		stw.EscapeAll()
 		return
 	}
-	sort.Sort(st.ElemByNum{stw.SelectElem})
+	sort.Sort(st.ElemByNum{stw.selectElem})
 	ind := 0
 	for {
-		if stw.SelectElem[ind].IsLineElem() {
+		if stw.selectElem[ind].IsLineElem() {
 			break
 		}
 		ind++
@@ -2948,11 +2946,11 @@ func intersectall2(stw *Window) {
 			return
 		}
 	}
-	for _, el1 := range stw.SelectElem[ind:] {
+	for _, el1 := range stw.selectElem[ind:] {
 		if !el1.IsLineElem() {
 			continue
 		}
-		for _, el2 := range stw.SelectElem[ind+1:] {
+		for _, el2 := range stw.selectElem[ind+1:] {
 			if !el2.IsLineElem() {
 				continue
 			}
@@ -3192,13 +3190,13 @@ func hatchplateelem(stw *Window) {
 
 // ADDPLATEALL // {{{
 func addplateall(stw *Window) {
-	if stw.SelectElem == nil || len(stw.SelectElem) < 1 {
+	if stw.selectElem == nil || len(stw.selectElem) < 1 {
 		stw.EscapeAll()
 		return
 	}
-	elems := make([]*st.Elem, len(stw.SelectElem))
+	elems := make([]*st.Elem, len(stw.selectElem))
 	enum := 0
-	for _, el := range stw.SelectElem {
+	for _, el := range stw.selectElem {
 		if el != nil && el.IsLineElem() {
 			elems[enum] = el
 			enum++
@@ -3297,7 +3295,7 @@ func addplateall(stw *Window) {
 			}
 		}
 		added = added[:add]
-		stw.SelectElem = added
+		stw.selectElem = added
 		var buf bytes.Buffer
 		buf.WriteString(fmt.Sprintf("%d ELEM (SECT %d, ETYPE %s) added", add, sec.Num, st.ETYPES[etype]))
 		stw.addHistory(buf.String())
@@ -3322,25 +3320,25 @@ func addplateall(stw *Window) {
 
 // EDITLINEELEM// {{{
 func editlineelem(stw *Window) {
-	if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+	if stw.selectElem == nil || len(stw.selectElem) == 0 {
 		stw.EscapeAll()
 		return
 	}
 	replaceenod := func(n *st.Node) {
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			for i, en := range el.Enod {
-				if en == stw.SelectNode[0] {
+				if en == stw.selectNode[0] {
 					el.Enod[i] = n
 					break
 				}
 			}
 		}
-		stw.SelectNode = make([]*st.Node, 2)
+		stw.selectNode = make([]*st.Node, 2)
 		stw.Snapshot()
 		stw.Redraw()
 	}
 	get2nodes(stw, replaceenod, func() {
-		stw.SelectNode = make([]*st.Node, 2)
+		stw.selectNode = make([]*st.Node, 2)
 		stw.Redraw()
 	})
 }
@@ -3349,30 +3347,30 @@ func editlineelem(stw *Window) {
 
 // EDITPLATEELEM// {{{
 func editplateelem(stw *Window) {
-	if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+	if stw.selectElem == nil || len(stw.selectElem) == 0 {
 		stw.EscapeAll()
 		return
 	}
 	replaceenod := func(n *st.Node) {
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			for i, en := range el.Enod {
-				if en == stw.SelectNode[0] {
+				if en == stw.selectNode[0] {
 					el.Enod[i] = n
 					break
 				}
 			}
 		}
-		stw.SelectNode = make([]*st.Node, 2)
+		stw.selectNode = make([]*st.Node, 2)
 		stw.Snapshot()
 		stw.Redraw()
 	}
 	prune := func() {
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			var ens int
 			tmp := make([]*st.Node, el.Enods)
 		prnloop:
 			for _, en := range el.Enod {
-				for _, n := range stw.SelectNode {
+				for _, n := range stw.selectNode {
 					if en == n {
 						continue prnloop
 					}
@@ -3383,7 +3381,7 @@ func editplateelem(stw *Window) {
 			el.Enod = tmp[:ens]
 			el.Enods = ens
 		}
-		stw.SelectNode = make([]*st.Node, 2)
+		stw.selectNode = make([]*st.Node, 2)
 		stw.Redraw()
 	}
 	get2nodes(stw, replaceenod, prune)
@@ -3426,9 +3424,9 @@ func editwrect(stw *Window) {
 		}
 	}
 	selected := false
-	if stw.SelectElem != nil {
+	if stw.selectElem != nil {
 		els := make([]*st.Elem, 0)
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el == nil {
 				continue
 			}
@@ -3477,12 +3475,12 @@ func reaction(stw *Window) {
 		return
 	}
 	d := int(val)
-	if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+	if stw.selectNode == nil || len(stw.selectNode) == 0 {
 		selectconfed(stw)
 	}
-	sort.Sort(st.NodeByNum{stw.SelectNode})
+	sort.Sort(st.NodeByNum{stw.selectNode})
 	fn := st.Ce(stw.Frame.Path, ".rct")
-	err = st.WriteReaction(fn, stw.SelectNode, d)
+	err = st.WriteReaction(fn, stw.selectNode, d)
 	if err != nil {
 		stw.errormessage(err, ERROR)
 		stw.EscapeCB()
@@ -3496,12 +3494,12 @@ func reaction(stw *Window) {
 
 // SUMREACTION// {{{
 func sumreaction(stw *Window) {
-	if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+	if stw.selectNode == nil || len(stw.selectNode) == 0 {
 		stw.EscapeAll()
 	}
 	showval := func() {
 		val := make([]float64, 5)
-		for _, n := range stw.SelectNode {
+		for _, n := range stw.selectNode {
 			if n == nil {
 				continue
 			}
@@ -3537,8 +3535,8 @@ func sumreaction(stw *Window) {
 			switch arg.Button {
 			case BUTTON_CENTER:
 				if arg.Pressed == 0 { // Released
-					// if stw.SelectNode[0] != nil { // TODO
-					//     stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY)
+					// if stw.selectNode[0] != nil { // TODO
+					//     stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY)
 					// }
 					stw.Redraw()
 				} else { // Pressed
@@ -3608,7 +3606,7 @@ func uplift(stw *Window) {
 				val := n.Weight[1] + n.ReturnReaction(p, 2)
 				fmt.Printf("NODE %d VAL %.3f\n", n.Num, val)
 				if val < 0.0 {
-					stw.SelectNode = append(stw.SelectNode, n)
+					stw.selectNode = append(stw.selectNode, n)
 					num++
 				}
 			}
@@ -3617,7 +3615,7 @@ func uplift(stw *Window) {
 			stw.addHistory("NO UPLIFTS")
 		} else {
 			stw.addHistory(fmt.Sprintf("%d UPLIFTS", num))
-			stw.SelectNode = stw.SelectNode[:num]
+			stw.selectNode = stw.selectNode[:num]
 		}
 		stw.EscapeCB()
 	}
@@ -3649,7 +3647,7 @@ func notice1459(stw *Window) {
 		var delta float64
 		ds := make([]float64, num)
 		for i := 0; i < num; i++ {
-			ds[i] = -stw.SelectNode[i].ReturnDisp(stw.Frame.Show.Period, 2) * 100
+			ds[i] = -stw.selectNode[i].ReturnDisp(stw.Frame.Show.Period, 2) * 100
 		}
 		var length float64
 		switch num {
@@ -3660,13 +3658,13 @@ func notice1459(stw *Window) {
 			delta = ds[1] - ds[0]
 			stw.addHistory(fmt.Sprintf("Disp: %.3f - %.3f [cm]", ds[1], ds[0]))
 			for i := 0; i < 2; i++ {
-				length += math.Pow(stw.SelectNode[1].Coord[i]-stw.SelectNode[0].Coord[i], 2)
+				length += math.Pow(stw.selectNode[1].Coord[i]-stw.selectNode[0].Coord[i], 2)
 			}
 		case 3:
 			delta = ds[1] - 0.5*(ds[0]+ds[2])
 			stw.addHistory(fmt.Sprintf("Disp: %.3f - (%.3f + %.3f)/2 [cm]", ds[1], ds[0], ds[2]))
 			for i := 0; i < 2; i++ {
-				length += math.Pow(stw.SelectNode[2].Coord[i]-stw.SelectNode[0].Coord[i], 2)
+				length += math.Pow(stw.selectNode[2].Coord[i]-stw.selectNode[0].Coord[i], 2)
 			}
 		}
 		length = math.Sqrt(length) * 100
@@ -3736,10 +3734,10 @@ func catintermediatenode(stw *Window) {
 		}
 	}
 	if nnum > 0 {
-		stw.SelectNode = ns[:nnum]
+		stw.selectNode = ns[:nnum]
 		stw.Redraw()
 		if stw.Yn("CAT INTERMEDIATE NODE", "中間節点を除去しますか？") {
-			for _, n := range stw.SelectNode {
+			for _, n := range stw.selectNode {
 				stw.Frame.CatByNode(n, true)
 			}
 			stw.Snapshot()
@@ -3753,7 +3751,7 @@ func catintermediatenode(stw *Window) {
 // GETNELEMS// {{{
 func getnelems(stw *Window, size int, f func(int)) {
 	selected := 0
-	for _, el := range stw.SelectElem {
+	for _, el := range stw.selectElem {
 		if el != nil {
 			selected++
 		}
@@ -3766,7 +3764,7 @@ func getnelems(stw *Window, size int, f func(int)) {
 		enum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
 			if el, ok := stw.Frame.Elems[int(enum)]; ok {
-				stw.SelectElem = append(stw.SelectElem, el)
+				stw.selectElem = append(stw.selectElem, el)
 			}
 		}
 		stw.cline.SetAttribute("VALUE", "")
@@ -3779,8 +3777,8 @@ func getnelems(stw *Window, size int, f func(int)) {
 			case BUTTON_CENTER:
 				stw.dbuff.UpdateYAxis(&arg.Y)
 				if arg.Pressed == 0 { // Released
-					// if stw.SelectNode[0] != nil { // TODO
-					//     stw.cdcanv.Line(int(stw.SelectNode[0].Pcoord[0]), int(stw.SelectNode[0].Pcoord[1]), stw.endX, stw.endY)
+					// if stw.selectNode[0] != nil { // TODO
+					//     stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY)
 					// }
 					stw.Redraw()
 				} else { // Pressed
@@ -3799,7 +3797,7 @@ func getnelems(stw *Window, size int, f func(int)) {
 						setenum()
 					} else {
 						// fmt.Println("CONTEXT MENU")
-						f(len(stw.SelectElem))
+						f(len(stw.selectElem))
 					}
 				}
 			}
@@ -3830,7 +3828,7 @@ func joinlineelem(stw *Window) {
 	getnelems(stw, 2, func(size int) {
 		els := make([]*st.Elem, 2)
 		num := 0
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el != nil && el.IsLineElem() {
 				els[num] = el
 				num++
@@ -3869,7 +3867,7 @@ func joinplateelem(stw *Window) {
 	getnelems(stw, 2, func(size int) {
 		els := make([]*st.Elem, 2)
 		num := 0
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el != nil && !el.IsLineElem() {
 				els[num] = el
 				num++
@@ -3929,12 +3927,12 @@ func mergenode(stw *Window) {
 			stw.Snapshot()
 		}
 	}
-	if stw.SelectNode != nil {
-		merge(stw.SelectNode)
+	if stw.selectNode != nil {
+		merge(stw.selectNode)
 		stw.EscapeAll()
 		return
 	}
-	getnnodes(stw, len(stw.Frame.Nodes), func(num int) { merge(stw.SelectNode); stw.EscapeAll() })
+	getnnodes(stw, len(stw.Frame.Nodes), func(num int) { merge(stw.selectNode); stw.EscapeAll() })
 }
 
 // }}}
@@ -3970,7 +3968,7 @@ func facts(stw *Window) {
 
 // ZOUBUNDISP// {{{
 func zoubundisp(stw *Window) {
-	if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+	if stw.selectNode == nil || len(stw.selectNode) == 0 {
 		stw.EscapeAll()
 		return
 	}
@@ -3996,7 +3994,7 @@ func zoubundisp(stw *Window) {
 		return
 	}
 	fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
-	err = stw.Frame.ReportZoubunDisp(fn, stw.SelectNode, pers, d)
+	err = stw.Frame.ReportZoubunDisp(fn, stw.selectNode, pers, d)
 	if err != nil {
 		stw.errormessage(err, ERROR)
 		stw.EscapeCB()
@@ -4055,7 +4053,7 @@ func zoubunyield(stw *Window) {
 
 // ZOUBUNREACTION// {{{
 func zoubunreaction(stw *Window) {
-	if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+	if stw.selectNode == nil || len(stw.selectNode) == 0 {
 		stw.EscapeAll()
 		return
 	}
@@ -4081,7 +4079,7 @@ func zoubunreaction(stw *Window) {
 		return
 	}
 	fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
-	err = stw.Frame.ReportZoubunReaction(fn, stw.SelectNode, pers, d)
+	err = stw.Frame.ReportZoubunReaction(fn, stw.selectNode, pers, d)
 	if err != nil {
 		stw.errormessage(err, ERROR)
 		stw.EscapeCB()

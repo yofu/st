@@ -11,6 +11,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -657,3 +658,314 @@ func ToUtf8string(str string) string {
 	}
 	return str
 }
+
+func Vim(fn string) {
+	cmd := exec.Command("gvim", fn)
+	cmd.Start()
+}
+
+func Explorer(dir string) {
+	stat, err := os.Stat(dir)
+	if err != nil || !stat.IsDir() {
+		dir = "."
+	}
+	cmd := exec.Command("cmd", "/C", "explorer", dir)
+	cmd.Start()
+}
+
+func Edit(fn string) {
+	cmd := exec.Command("cmd", "/C", "start", fn)
+	cmd.Start()
+}
+
+func EditReadme(dir string) {
+	fn := filepath.Join(dir, "readme.txt")
+	Vim(fn)
+}
+
+func StartTool(fn string) {
+	cmd := exec.Command("cmd", "/C", "start", fn)
+	cmd.Start()
+}
+
+func SplitNums(nums string) []int {
+	sectrange := regexp.MustCompile("(?i)^ *range *[(] *([0-9]+) *, *([0-9]+) *[)] *$")
+	if sectrange.MatchString(nums) {
+		fs := sectrange.FindStringSubmatch(nums)
+		start, err := strconv.ParseInt(fs[1], 10, 64)
+		end, err := strconv.ParseInt(fs[2], 10, 64)
+		if err != nil {
+			return nil
+		}
+		if start > end {
+			return nil
+		}
+		sects := make([]int, int(end-start))
+		for i := 0; i < int(end-start); i++ {
+			sects[i] = i + int(start)
+		}
+		return sects
+	} else {
+		splitter := regexp.MustCompile("[, ]")
+		tmp := splitter.Split(nums, -1)
+		rtn := make([]int, len(tmp))
+		i := 0
+		for _, numstr := range tmp {
+			val, err := strconv.ParseInt(strings.Trim(numstr, " "), 10, 64)
+			if err != nil {
+				continue
+			}
+			rtn[i] = int(val)
+			i++
+		}
+		return rtn[:i]
+	}
+}
+
+func SectFilter(str string) (func(*Elem) bool, string) {
+	var filterfunc func(el *Elem) bool
+	var hstr string
+	var snums []int
+	fs := Re_sectnum.FindStringSubmatch(str)
+	if fs[1] != "" {
+		snums = SplitNums(fmt.Sprintf("range(%s)", fs[2]))
+	} else {
+		snums = SplitNums(fs[2])
+	}
+	filterfunc = func(el *Elem) bool {
+		for _, snum := range snums {
+			if el.Sect.Num == snum {
+				return true
+			}
+		}
+		return false
+	}
+	hstr = fmt.Sprintf("Sect == %v", snums)
+	return filterfunc, hstr
+}
+
+func OriginalSectFilter(str string) (func(*Elem) bool, string) {
+	var filterfunc func(el *Elem) bool
+	var hstr string
+	fs := Re_orgsectnum.FindStringSubmatch(str)
+	if len(fs) < 2 {
+		return nil, ""
+	}
+	snums := SplitNums(fs[1])
+	filterfunc = func(el *Elem) bool {
+		if el.Etype != WBRACE && el.Etype != SBRACE {
+			return false
+		}
+		for _, snum := range snums {
+			if el.OriginalSection().Num == snum {
+				return true
+			}
+		}
+		return false
+	}
+	hstr = fmt.Sprintf("Sect == %v", snums)
+	return filterfunc, hstr
+}
+
+func EtypeFilter(str string) (func(*Elem) bool, string) {
+	var filterfunc func(el *Elem) bool
+	var hstr string
+	fs := Re_etype.FindStringSubmatch(str)
+	l := len(fs)
+	if l >= 4 {
+		var val int
+		switch {
+		case Re_column.MatchString(fs[l-1]):
+			val = COLUMN
+		case Re_girder.MatchString(fs[l-1]):
+			val = GIRDER
+		case Re_brace.MatchString(fs[l-1]):
+			val = BRACE
+		case Re_wall.MatchString(fs[l-1]):
+			val = WALL
+		case Re_slab.MatchString(fs[l-1]):
+			val = SLAB
+		}
+		filterfunc = func(el *Elem) bool {
+			return el.Etype == val
+		}
+		hstr = fmt.Sprintf("Etype == %s", ETYPES[val])
+	}
+	return filterfunc, hstr
+}
+
+func FilterElem(frame *Frame, els []*Elem, str string) ([]*Elem, error) {
+	l := len(els)
+	if els == nil || l == 0 {
+		return nil, errors.New("number of input elems is zero")
+	}
+	parallel := regexp.MustCompile("(?i)^ *// *([xyz]{1})")
+	ortho := regexp.MustCompile("^ *TT *([xyzXYZ]{1})")
+	onplane := regexp.MustCompile("(?i)^ *on *([xyz]{2})")
+	adjoin := regexp.MustCompile("^ *ad(j(o(in?)?)?)? (.*)")
+	currentvalue := regexp.MustCompile("^ *cv *([><=!]+) *([0-9.-]+)")
+	var filterfunc func(el *Elem) bool
+	var hstr string
+	switch {
+	case parallel.MatchString(str):
+		var axis []float64
+		fs := parallel.FindStringSubmatch(str)
+		if len(fs) < 2 {
+			break
+		}
+		tmp := strings.ToUpper(fs[1])
+		axes := [][]float64{XAXIS, YAXIS, ZAXIS}
+		for i, val := range []string{"X", "Y", "Z"} {
+			if tmp == val {
+				axis = axes[i]
+				break
+			}
+		}
+		filterfunc = func(el *Elem) bool {
+			return el.IsParallel(axis, 1e-4)
+		}
+		hstr = fmt.Sprintf("Parallel to %sAXIS", tmp)
+	case ortho.MatchString(str):
+		var axis []float64
+		fs := ortho.FindStringSubmatch(str)
+		if len(fs) < 2 {
+			break
+		}
+		tmp := strings.ToUpper(fs[1])
+		axes := [][]float64{XAXIS, YAXIS, ZAXIS}
+		for i, val := range []string{"X", "Y", "Z"} {
+			if tmp == val {
+				axis = axes[i]
+				break
+			}
+		}
+		filterfunc = func(el *Elem) bool {
+			return el.IsOrthogonal(axis, 1e-4)
+		}
+		hstr = fmt.Sprintf("Orthogonal to %sAXIS", tmp)
+	case onplane.MatchString(str):
+		var axis int
+		fs := onplane.FindStringSubmatch(str)
+		if len(fs) < 2 {
+			break
+		}
+		tmp := strings.ToUpper(fs[1])
+		for i, val := range []string{"X", "Y", "Z"} {
+			if strings.Contains(tmp, val) {
+				continue
+			}
+			axis = i
+		}
+		filterfunc = func(el *Elem) bool {
+			if el.IsLineElem() {
+				return el.Direction(false)[axis] == 0.0
+			} else {
+				n := el.Normal(false)
+				if n == nil {
+					return false
+				}
+				for i := 0; i < 3; i++ {
+					if i == axis {
+						continue
+					}
+					if n[i] != 0.0 {
+						return false
+					}
+				}
+				return true
+			}
+		}
+	case Re_sectnum.MatchString(str):
+		filterfunc, hstr = SectFilter(str)
+	case Re_etype.MatchString(str):
+		filterfunc, hstr = EtypeFilter(str)
+	case adjoin.MatchString(str):
+		fs := adjoin.FindStringSubmatch(str)
+		if len(fs) >= 5 {
+			condition := fs[4]
+			var fil func(*Elem) bool
+			var hst string
+			switch {
+			case Re_sectnum.MatchString(condition):
+				fil, hst = SectFilter(condition)
+			case Re_etype.MatchString(condition):
+				fil, hst = EtypeFilter(condition)
+			}
+			if fil == nil {
+				break
+			}
+			filterfunc = func(el *Elem) bool {
+				for _, en := range el.Enod {
+					for _, sel := range frame.SearchElem(en) {
+						if sel.Num == el.Num {
+							continue
+						}
+						if fil(sel) {
+							return true
+						}
+					}
+				}
+				return false
+			}
+			hstr = fmt.Sprintf("ADJOIN TO %s", hst)
+		}
+	case currentvalue.MatchString(str):
+		fs := currentvalue.FindStringSubmatch(str)
+		var f func(float64, float64) bool
+		switch fs[1] {
+		case ">=":
+			f = func (u, v float64) bool {
+				return u >= v
+			}
+		case ">":
+			f = func (u, v float64) bool {
+				return u > v
+			}
+		case "<=":
+			f = func (u, v float64) bool {
+				return u <= v
+			}
+		case "<":
+			f = func (u, v float64) bool {
+				return u < v
+			}
+		case "=", "==":
+			f = func (u, v float64) bool {
+				return u == v
+			}
+		case "!=":
+			f = func (u, v float64) bool {
+				return u != v
+			}
+		default:
+			return els, errors.New("no filtering")
+		}
+		val, err := strconv.ParseFloat(fs[2], 64)
+		if err != nil {
+			return els, err
+		}
+		filterfunc = func(el *Elem) bool {
+			return f(el.CurrentValue(frame.Show, true, false), val)
+		}
+		hstr = fmt.Sprintf("CURRENT VALUE %s %.3f", fs[1], val)
+	}
+	if filterfunc != nil {
+		tmpels := make([]*Elem, l)
+		enum := 0
+		for _, el := range els {
+			if el == nil {
+				continue
+			}
+			if filterfunc(el) {
+				tmpels[enum] = el
+				enum++
+			}
+		}
+		rtn := tmpels[:enum]
+		fmt.Printf("FILTER: %s\n", hstr)
+		return rtn, nil
+	} else {
+		return els, errors.New("no filtering")
+	}
+}
+

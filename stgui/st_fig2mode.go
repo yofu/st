@@ -177,9 +177,9 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			}
 			d := k.Direction()
 			if st.IsParallel(d, st.XAXIS, EPS) {
-				axisrange(stw, 1, k.Start[1]+min, k.Start[1]+max, false)
+				stw.AxisRange(1, k.Start[1]+min, k.Start[1]+max, false)
 			} else if st.IsParallel(d, st.YAXIS, EPS) {
-				axisrange(stw, 0, k.Start[0]+min, k.Start[0]+max, false)
+				stw.AxisRange(0, k.Start[0]+min, k.Start[0]+max, false)
 			} else {
 				for _, n := range stw.Frame.Nodes {
 					n.Hide()
@@ -937,15 +937,15 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 			}
 			var val int
 			switch {
-			case re_column.MatchString(lis[1]):
+			case st.Re_column.MatchString(lis[1]):
 				val = st.COLUMN
-			case re_girder.MatchString(lis[1]):
+			case st.Re_girder.MatchString(lis[1]):
 				val = st.GIRDER
-			case re_slab.MatchString(lis[1]):
+			case st.Re_slab.MatchString(lis[1]):
 				val = st.BRACE
-			case re_wall.MatchString(lis[1]):
+			case st.Re_wall.MatchString(lis[1]):
 				val = st.WALL
-			case re_slab.MatchString(lis[1]):
+			case st.Re_slab.MatchString(lis[1]):
 				val = st.SLAB
 			default:
 				tmp, err := strconv.ParseInt(lis[1], 10, 64)
@@ -1059,7 +1059,7 @@ func (stw *Window) fig2keyword(lis []string, un bool) error {
 		if err != nil {
 			return err
 		}
-		stw.SelectElem = stw.Frame.Fence(axis, val, false)
+		stw.SelectElem(stw.Frame.Fence(axis, val, false))
 		stw.HideNotSelected()
 	case "period":
 		if len(lis) < 2 {

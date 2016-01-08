@@ -1,4 +1,4 @@
-package stgui
+package st
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 	"github.com/yofu/abbrev"
 	"github.com/yofu/complete"
 	"github.com/yofu/ps"
-	"github.com/yofu/st/stlib"
 	"math"
 	"os"
 	"path/filepath"
@@ -20,7 +19,7 @@ import (
 )
 
 var (
-	exabbrev = map[string]*complete.Complete{
+	ExAbbrev = map[string]*complete.Complete{
 		"e/dit":             complete.MustCompile(":edit %g", nil),
 		"q/uit":             complete.MustCompile(":quit", nil),
 		"vi/m":              complete.MustCompile(":vim %g", nil),
@@ -132,7 +131,18 @@ var (
 	}
 )
 
-func exmodecomplete(command string) (string, bool, bool, *complete.Complete) {
+var (
+	Re_etype      = regexp.MustCompile("(?i)^ *et(y(pe?)?)? *={0,2} *([a-zA-Z]+)")
+	Re_column     = regexp.MustCompile("(?i)co(l(u(m(n)?)?)?)?$")
+	Re_girder     = regexp.MustCompile("(?i)gi(r(d(e(r)?)?)?)?$")
+	Re_brace      = regexp.MustCompile("(?i)br(a(c(e)?)?)?$")
+	Re_wall       = regexp.MustCompile("(?i)wa(l){0,2}$")
+	Re_slab       = regexp.MustCompile("(?i)sl(a(b)?)?$")
+	Re_sectnum    = regexp.MustCompile("(?i)^ *sect? *={0,2} *(range[(]{1}){0,1}[[]?([0-9, ]+)[]]?")
+	Re_orgsectnum = regexp.MustCompile("(?i)^ *osect? *={0,2} *[[]?([0-9, ]+)[]]?")
+)
+
+func ExModeComplete(command string) (string, bool, bool, *complete.Complete) {
 	usage := strings.HasSuffix(command, "?")
 	cname := strings.TrimSuffix(command, "?")
 	bang := strings.HasSuffix(cname, "!")
@@ -140,7 +150,7 @@ func exmodecomplete(command string) (string, bool, bool, *complete.Complete) {
 	cname = strings.ToLower(strings.TrimPrefix(cname, ":"))
 	var rtn string
 	var c *complete.Complete
-	for ab, cp := range exabbrev {
+	for ab, cp := range ExAbbrev {
 		pat := abbrev.MustCompile(ab)
 		if pat.MatchString(cname) {
 			rtn = pat.Longest()
@@ -154,44 +164,46 @@ func exmodecomplete(command string) (string, bool, bool, *complete.Complete) {
 	return rtn, bang, usage, c
 }
 
-func (stw *Window) emptyexmodech() {
+func emptyExModech(ch chan interface{}, endch chan int) {
 ex_empty:
 	for {
 		select {
 		case <-time.After(time.Second):
 			break ex_empty
-		case <-stw.exmodeend:
+		case <-endch:
 			break ex_empty
-		case <-stw.exmodech:
+		case <-ch:
 			continue ex_empty
 		}
 	}
 }
 
-func (stw *Window) exmode(command string) error {
+func ExMode(stw ExModer, frame *Frame, command string) error {
 	if command == ":." {
-		return stw.exmode(stw.lastexcommand)
+		return ExMode(stw, frame, stw.LastExCommand())
 	}
-	stw.lastexcommand = command
+	exmodech := make(chan interface{})
+	exmodeend := make(chan int)
+	stw.SetLastExCommand(command)
 	if !strings.Contains(command, "|") {
-		err := stw.excommand(command, false)
-		if n, ok := err.(st.NotRedraw); ok {
-			stw.addHistory(n.Message())
+		err := exCommand(stw, frame, command, false, exmodech, exmodeend)
+		if n, ok := err.(NotRedraw); ok {
+			stw.History(n.Message())
 			return err
-		} else if u, ok := err.(st.Messager); ok {
-			stw.addHistory(u.Message())
+		} else if u, ok := err.(Messager); ok {
+			stw.History(u.Message())
 			return nil
 		} else {
 			return err
 		}
 	}
 	excms := strings.Split(command, "|")
-	defer stw.emptyexmodech()
+	defer emptyExModech(exmodech, exmodeend)
 	for _, com := range excms {
-		err := stw.excommand(com, true)
+		err := exCommand(stw, frame, com, true, exmodech, exmodeend)
 		if err != nil {
-			if u, ok := err.(st.Messager); ok {
-				stw.addHistory(u.Message())
+			if u, ok := err.(Messager); ok {
+				stw.History(u.Message())
 			} else {
 				return err
 			}
@@ -200,10 +212,11 @@ func (stw *Window) exmode(command string) error {
 	return nil
 }
 
-func (stw *Window) excommand(command string, pipe bool) error {
+func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech chan interface{}, exmodeend chan int) error {
 	if len(command) == 1 {
-		return st.NotEnoughArgs("exmode")
+		return NotEnoughArgs("exmode")
 	}
+	EPS := stw.EPS()
 	tmpargs := strings.Split(command, " ")
 	args := make([]string, len(tmpargs))
 	argdict := make(map[string]string, 0)
@@ -239,19 +252,19 @@ func (stw *Window) excommand(command string, pipe bool) error {
 	} else {
 		fn = stw.CompleteFileName(args[1])
 		if filepath.Dir(fn) == "." {
-			fn = filepath.Join(stw.Cwd, fn)
+			fn = filepath.Join(stw.Cwd(), fn)
 		}
 	}
-	cname, bang, usage, _ := exmodecomplete(args[0])
+	cname, bang, usage, _ := ExModeComplete(args[0])
 	evaluated := true
 	var sender []interface{}
 	defer func() {
 		if pipe {
 			go func(ents []interface{}) {
 				for _, e := range ents {
-					stw.exmodech <- e
+					exmodech <- e
 				}
-				stw.exmodeend <- 1
+				exmodeend <- 1
 			}(sender)
 		}
 	}()
@@ -260,9 +273,9 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		evaluated = false
 	case "edit":
 		if usage {
-			return st.Usage(":edit filename {-u=.strc}")
+			return Usage(":edit filename {-u=.strc}")
 		}
-		if !bang && stw.Changed {
+		if !bang && stw.IsChanged() {
 			if stw.Yn("CHANGED", "変更を保存しますか") {
 				stw.SaveAS()
 			} else {
@@ -276,7 +289,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}
 		if fn != "" {
-			if !st.FileExists(fn) {
+			if !FileExists(fn) {
 				sfn, err := stw.SearchFile(args[1])
 				if err != nil {
 					return err
@@ -285,92 +298,92 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				if err != nil {
 					return err
 				}
-				stw.Redraw()
+				// stw.Redraw()
 			} else {
 				err := stw.OpenFile(fn, readrc)
 				if err != nil {
 					return err
 				}
-				stw.Redraw()
+				// stw.Redraw()
 			}
 		} else {
 			stw.Reload()
 		}
 	case "quit":
 		if usage {
-			return st.Usage(":quit")
+			return Usage(":quit")
 		}
 		stw.Close(bang)
 	case "eps":
 		if usage {
-			return st.Usage(":eps val")
+			return Usage(":eps val")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":eps")
+			return NotEnoughArgs(":eps")
 		}
 		val, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
 			return err
 		}
-		EPS = val
-		return st.Message(fmt.Sprintf("EPS=%.3E", EPS))
+		stw.SetEPS(val)
+		return Message(fmt.Sprintf("EPS=%.3E", EPS))
 	case "fitscale":
 		if usage {
-			return st.Usage(":fitscale val")
+			return Usage(":fitscale val")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":fitscale")
+			return NotEnoughArgs(":fitscale")
 		}
 		val, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
 			return err
 		}
-		CanvasFitScale = val
-		return st.Message(fmt.Sprintf("FITSCALE=%.3E", CanvasFitScale))
+		stw.SetCanvasFitScale(val)
+		return Message(fmt.Sprintf("FITSCALE=%.3E", stw.CanvasFitScale()))
 	case "animatespeed":
 		if usage {
-			return st.Usage(":animatespeed val")
+			return Usage(":animatespeed val")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":animatespeed")
+			return NotEnoughArgs(":animatespeed")
 		}
 		val, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
 			return err
 		}
-		CanvasAnimateSpeed = val
-		return st.Message(fmt.Sprintf("ANIMATESPEED=%.3f", CanvasAnimateSpeed))
+		stw.SetCanvasAnimateSpeed(val)
+		return Message(fmt.Sprintf("ANIMATESPEED=%.3f", stw.CanvasAnimateSpeed()))
 	case "mkdir":
 		if usage {
-			return st.Usage(":mkdir dirname")
+			return Usage(":mkdir dirname")
 		}
 		os.MkdirAll(fn, 0644)
 	case "#":
 		if usage {
-			return st.Usage(":#")
+			return Usage(":#")
 		}
 		stw.ShowRecently()
 	case "vim":
 		if usage {
-			return st.Usage(":vim filename")
+			return Usage(":vim filename")
 		}
 		Vim(fn)
 	case "explorer":
 		var dir string
 		if narg < 2 {
-			dir = stw.Cwd
+			dir = stw.Cwd()
 		} else {
 			dir = args[1]
 		}
 		Explorer(dir)
 	case "hkyou":
 		if usage {
-			return st.Usage(":hkyou h b tw tf")
+			return Usage(":hkyou h b tw tf")
 		}
 		if narg < 5 {
-			return st.NotEnoughArgs(":hkyou")
+			return NotEnoughArgs(":hkyou")
 		}
-		al, err := st.NewHKYOU(args[1:5])
+		al, err := NewHKYOU(args[1:5])
 		if err != nil {
 			return err
 		}
@@ -380,12 +393,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "hweak":
 		if usage {
-			return st.Usage(":hweak h b tw tf")
+			return Usage(":hweak h b tw tf")
 		}
 		if narg < 5 {
-			return st.NotEnoughArgs(":hweak")
+			return NotEnoughArgs(":hweak")
 		}
-		al, err := st.NewHWEAK(args[1:5])
+		al, err := NewHWEAK(args[1:5])
 		if err != nil {
 			return err
 		}
@@ -395,12 +408,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "rpipe":
 		if usage {
-			return st.Usage(":rpipe h b tw tf")
+			return Usage(":rpipe h b tw tf")
 		}
 		if narg < 5 {
-			return st.NotEnoughArgs(":rpipe")
+			return NotEnoughArgs(":rpipe")
 		}
-		al, err := st.NewRPIPE(args[1:5])
+		al, err := NewRPIPE(args[1:5])
 		if err != nil {
 			return err
 		}
@@ -410,12 +423,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "cpipe":
 		if usage {
-			return st.Usage(":cpipe d t")
+			return Usage(":cpipe d t")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":cpipe")
+			return NotEnoughArgs(":cpipe")
 		}
-		al, err := st.NewCPIPE(args[1:3])
+		al, err := NewCPIPE(args[1:3])
 		if err != nil {
 			return err
 		}
@@ -425,12 +438,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "tkyou":
 		if usage {
-			return st.Usage(":tkyou h b tw tf")
+			return Usage(":tkyou h b tw tf")
 		}
 		if narg < 5 {
-			return st.NotEnoughArgs(":tkyou")
+			return NotEnoughArgs(":tkyou")
 		}
-		al, err := st.NewTKYOU(args[1:5])
+		al, err := NewTKYOU(args[1:5])
 		if err != nil {
 			return err
 		}
@@ -440,12 +453,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "ckyou":
 		if usage {
-			return st.Usage(":ckyou h b tw tf")
+			return Usage(":ckyou h b tw tf")
 		}
 		if narg < 5 {
-			return st.NotEnoughArgs(":ckyou")
+			return NotEnoughArgs(":ckyou")
 		}
-		al, err := st.NewCKYOU(args[1:5])
+		al, err := NewCKYOU(args[1:5])
 		if err != nil {
 			return err
 		}
@@ -455,12 +468,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "plate":
 		if usage {
-			return st.Usage(":plate h b")
+			return Usage(":plate h b")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":plate")
+			return NotEnoughArgs(":plate")
 		}
-		al, err := st.NewPLATE(args[1:3])
+		al, err := NewPLATE(args[1:3])
 		if err != nil {
 			return err
 		}
@@ -469,30 +482,30 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			sender = []interface{}{al}
 		}
 	case "fixrotate":
-		fixRotate = !fixRotate
+		stw.ToggleFixRotate()
 	case "fixmove":
-		fixMove = !fixMove
+		stw.ToggleFixMove()
 	case "noundo":
-		NOUNDO = true
-		return st.Message("undo/redo is off")
+		stw.UseUndo(false)
+		return Message("undo/redo is off")
 	case "undo":
-		NOUNDO = false
+		stw.UseUndo(true)
 		stw.Snapshot()
-		return st.Message("undo/redo is on")
+		return Message("undo/redo is on")
 	case "alt":
-		ALTSELECTNODE = !ALTSELECTNODE
-		if ALTSELECTNODE {
-			return st.Message("select node with Alt key")
+		stw.ToggleAltSelectNode()
+		if stw.AltSelectNode() {
+			return Message("select node with Alt key")
 		} else {
-			return st.Message("select elem with Alt key")
+			return Message("select elem with Alt key")
 		}
 	case "procs":
 		if usage {
-			return st.Usage(":procs numcpu")
+			return Usage(":procs numcpu")
 		}
 		if narg < 2 {
 			current := runtime.GOMAXPROCS(-1)
-			return st.Message(fmt.Sprintf("PROCS: %d", current))
+			return Message(fmt.Sprintf("PROCS: %d", current))
 		}
 		tmp, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
@@ -501,48 +514,48 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		val := int(tmp)
 		if 1 <= val && val <= runtime.NumCPU() {
 			old := runtime.GOMAXPROCS(val)
-			return st.Message(fmt.Sprintf("PROCS: %d -> %d", old, val))
+			return Message(fmt.Sprintf("PROCS: %d -> %d", old, val))
 		}
 	case "empty":
 		if usage {
-			return st.Usage(":empty")
+			return Usage(":empty")
 		}
-		stw.emptyexmodech()
+		emptyExModech(exmodech, exmodeend)
 	}
 	if evaluated {
 		return nil
 	}
-	if stw.Frame == nil {
-		return st.Message("frame is nil")
+	if frame == nil {
+		return Message("frame is nil")
 	}
 	switch cname {
 	default:
-		return st.Message(fmt.Sprintf("no exmode command: %s", cname))
+		return Message(fmt.Sprintf("no exmode command: %s", cname))
 	case "write":
 		if usage {
-			return st.Usage(":write")
+			return Usage(":write")
 		}
 		if fn == "" {
-			stw.SaveFile(stw.Frame.Path)
+			stw.SaveFile(frame.Path)
 		} else {
-			if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
+			if bang || (!FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
 				err := stw.SaveFile(fn)
 				if err != nil {
 					return err
 				}
-				if fn != stw.Frame.Path {
+				if fn != frame.Path {
 					stw.Copylsts(fn)
 				}
 			}
 		}
 	case "save":
 		if usage {
-			return st.Usage(":save filename {-u=.strc}")
+			return Usage(":save filename {-u=.strc}")
 		}
 		if fn == "" {
-			return st.NotEnoughArgs(":save")
+			return NotEnoughArgs(":save")
 		}
-		if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
+		if bang || (!FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
 			if _, ok := argdict["MKDIR"]; ok {
 				os.MkdirAll(filepath.Dir(fn), 0644)
 			}
@@ -553,8 +566,8 @@ func (stw *Window) excommand(command string, pipe bool) error {
 					readrc = false
 				}
 			}
-			if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
-				err = stw.SaveFileSelected(fn, stw.SelectElem)
+			if stw.ElemSelected() {
+				err = stw.SaveFileSelected(fn)
 				if err != nil {
 					return err
 				}
@@ -570,16 +583,16 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			if err != nil {
 				return err
 			}
-			if fn != stw.Frame.Path {
+			if fn != frame.Path {
 				stw.Copylsts(fn)
 			}
 			stw.Rebase(fn)
 		}
 	case "increment":
 		if usage {
-			return st.Usage(":increment {times:1}")
+			return Usage(":increment {times:1}")
 		}
-		if !bang && stw.Changed {
+		if !bang && stw.IsChanged() {
 			switch stw.Yna("CHANGED", "変更を保存しますか", "キャンセル") {
 			case 1:
 				stw.SaveAS()
@@ -599,55 +612,52 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		} else {
 			times = 1
 		}
-		fn, err := st.Increment(stw.Frame.Path, "_", 1, times)
+		fn, err := Increment(frame.Path, "_", 1, times)
 		if err != nil {
 			return err
 		}
-		if bang || (!st.FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
+		if bang || (!FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
 			err := stw.SaveFile(fn)
 			if err != nil {
 				return err
 			}
-			if fn != stw.Frame.Path {
+			if fn != frame.Path {
 				stw.Copylsts(fn)
 			}
 			stw.Rebase(fn)
 			stw.Snapshot()
-			stw.EditReadme(filepath.Dir(fn))
+			EditReadme(filepath.Dir(fn))
 		}
 	case "tag":
 		if usage {
-			return st.Usage(":tag name")
+			return Usage(":tag name")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":tag")
+			return NotEnoughArgs(":tag")
 		}
 		name := args[1]
-		if !bang {
-			if _, exists := stw.taggedFrame[name]; exists {
-				return errors.New(fmt.Sprintf("tag %s already exists", name))
-			}
+		err := stw.AddTag(name, bang)
+		if err != nil {
+			return err
 		}
-		stw.taggedFrame[name] = stw.Frame.Snapshot()
 	case "checkout":
 		if usage {
-			return st.Usage(":checkout name")
+			return Usage(":checkout name")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":checkout")
+			return NotEnoughArgs(":checkout")
 		}
 		name := args[1]
-		if f, exists := stw.taggedFrame[name]; exists {
-			stw.Frame = f
-		} else {
-			return errors.New(fmt.Sprintf("tag %s doesn't exist", name))
+		err := stw.Checkout(name)
+		if err != nil {
+			return err
 		}
 	case "read":
 		if usage {
-			return st.Usage(":read {type} filename")
+			return Usage(":read {type} filename")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":read")
+			return NotEnoughArgs(":read")
 		}
 		t := strings.ToLower(args[1])
 		if narg < 3 {
@@ -656,23 +666,23 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				stw.ReadAll()
 			case "$data":
 				for _, ext := range []string{".inl", ".ihx", ".ihy"} {
-					err := stw.Frame.ReadData(st.Ce(stw.Frame.Path, ext))
+					err := frame.ReadData(Ce(frame.Path, ext))
 					if err != nil {
-						stw.errormessage(err, ERROR)
+						stw.ErrorMessage(err)
 					}
 				}
 			case "$results":
-				mode := st.UpdateResult
+				mode := UpdateResult
 				if _, ok := argdict["ADD"]; ok {
-					mode = st.AddResult
+					mode = AddResult
 					if _, ok2 := argdict["SEARCH"]; ok2 {
-						mode = st.AddSearchResult
+						mode = AddSearchResult
 					}
 				}
 				for _, ext := range []string{".otl", ".ohx", ".ohy"} {
-					err := stw.Frame.ReadResult(st.Ce(stw.Frame.Path, ext), uint(mode))
+					err := frame.ReadResult(Ce(frame.Path, ext), uint(mode))
 					if err != nil {
-						stw.errormessage(err, ERROR)
+						stw.ErrorMessage(err)
 					}
 				}
 			default:
@@ -685,148 +695,147 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		fn = stw.CompleteFileName(args[2])
 		if filepath.Dir(fn) == "." {
-			fn = filepath.Join(stw.Cwd, fn)
+			fn = filepath.Join(stw.Cwd(), fn)
 		}
 		switch {
 		case abbrev.For("d/ata", t):
-			err := stw.Frame.ReadData(fn)
+			err := frame.ReadData(fn)
 			if err != nil {
 				return err
 			}
 		case abbrev.For("r/esult", t):
-			mode := st.UpdateResult
+			mode := UpdateResult
 			if _, ok := argdict["ADD"]; ok {
-				mode = st.AddResult
+				mode = AddResult
 				if _, ok2 := argdict["SEARCH"]; ok2 {
-					mode = st.AddSearchResult
+					mode = AddSearchResult
 				}
 			}
-			err := stw.Frame.ReadResult(fn, uint(mode))
+			err := frame.ReadResult(fn, uint(mode))
 			if err != nil {
 				return err
 			}
 		case abbrev.For("s/rcan", t):
-			err := stw.Frame.ReadRat(fn)
+			err := frame.ReadRat(fn)
 			if err != nil {
 				return err
 			}
 		case abbrev.For("l/ist", t):
-			err := stw.Frame.ReadLst(fn)
+			err := frame.ReadLst(fn)
 			if err != nil {
 				return err
 			}
 		case abbrev.For("w/eight", t):
-			err := stw.Frame.ReadWgt(fn)
+			err := frame.ReadWgt(fn)
 			if err != nil {
 				return err
 			}
 		case abbrev.For("k/ijun", t):
-			err := stw.Frame.ReadKjn(fn)
+			err := frame.ReadKjn(fn)
 			if err != nil {
 				return err
 			}
 		case abbrev.For("b/uckling", t):
-			err := stw.Frame.ReadBuckling(fn)
+			err := frame.ReadBuckling(fn)
 			if err != nil {
 				return err
 			}
 		case abbrev.For("z/oubun", t):
-			err := stw.Frame.ReadZoubun(fn)
+			err := frame.ReadZoubun(fn)
 			if err != nil {
 				return err
 			}
 		case t == "pgp":
-			al := make(map[string]*Command, 0)
-			err := ReadPgp(fn, al)
+			err := stw.ReadPgp(fn)
 			if err != nil {
 				return err
 			}
-			aliases = al
 		}
 	case "insert":
 		if usage {
-			return st.Usage(":insert filename angle(deg)")
+			return Usage(":insert filename angle(deg)")
 		}
-		if narg > 2 && len(stw.SelectNode) >= 1 {
+		if narg > 2 && stw.NodeSelected() {
 			angle, err := strconv.ParseFloat(args[2], 64)
 			if err != nil {
 				return err
 			}
-			err = stw.Frame.ReadInp(fn, stw.SelectNode[0].Coord, angle*math.Pi/180.0, false)
+			err = frame.ReadInp(fn, stw.SelectedNodes()[0].Coord, angle*math.Pi/180.0, false)
 			stw.Snapshot()
 			if err != nil {
 				return err
 			}
-			stw.EscapeAll()
+			// stw.EscapeAll()
 		}
 	case "propsect":
 		if usage {
-			return st.Usage(":propsect filename")
+			return Usage(":propsect filename")
 		}
-		err := stw.AddPropAndSect(fn)
+		err := frame.AddPropAndSect(fn, true)
 		stw.Snapshot()
 		if err != nil {
 			return err
 		}
 	case "writeoutput":
 		if usage {
-			return st.Usage(":writeoutput filename period")
+			return Usage(":writeoutput filename period")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":wo")
+			return NotEnoughArgs(":wo")
 		}
 		var err error
 		period := strings.ToUpper(args[2])
-		if stw.SelectElem != nil && len(stw.SelectElem) > 0 {
-			err = st.WriteOutput(fn, period, stw.SelectElem)
+		if stw.ElemSelected() {
+			err = WriteOutput(fn, period, stw.SelectedElems())
 		} else {
-			err = stw.Frame.WriteOutput(fn, period)
+			err = frame.WriteOutput(fn, period)
 		}
 		if err != nil {
 			return err
 		}
 	case "writereaction":
 		if usage {
-			return st.Usage(":writereaction filename direction")
+			return Usage(":writereaction filename direction")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":wr")
+			return NotEnoughArgs(":wr")
 		}
 		tmp, err := strconv.ParseInt(args[2], 10, 64)
 		if err != nil {
 			return err
 		}
 		if _, ok := argdict["CONFED"]; ok {
-			selectconfed(stw)
+			stw.SelectConfed()
 		}
-		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+		if !stw.NodeSelected () {
 			return errors.New(":writereaction: no selected node")
 		}
-		sort.Sort(st.NodeByNum{stw.SelectNode})
-		err = st.WriteReaction(fn, stw.SelectNode, int(tmp))
+		ns := stw.SelectedNodes()
+		sort.Sort(NodeByNum{ns})
+		err = WriteReaction(fn, ns, int(tmp))
 		if err != nil {
 			return err
 		}
 	case "writekijun":
 		if usage {
-			return st.Usage(":writekijun filename")
+			return Usage(":writekijun filename")
 		}
 		if fn == "" {
-			fn = st.Ce(stw.Frame.Path, ".kjn")
+			fn = Ce(frame.Path, ".kjn")
 		}
-		err := stw.Frame.WriteKjn(fn)
+		err := frame.WriteKjn(fn)
 		if err != nil {
 			return err
 		}
 	case "zoubundisp":
 		if usage {
-			return st.Usage(":zoubundisp period direction")
+			return Usage(":zoubundisp period direction")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":zoubundisp")
+			return NotEnoughArgs(":zoubundisp")
 		}
-		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
-			return st.NotEnoughArgs(":zoubundisp no selected node")
+		if !stw.NodeSelected() {
+			return NotEnoughArgs(":zoubundisp no selected node")
 		}
 		pers := []string{args[1]}
 		val, err := strconv.ParseInt(args[2], 10, 64)
@@ -837,20 +846,20 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if d < 0 || d > 5 {
 			return errors.New(":zoubundisp direction should be between 0 ~ 6")
 		}
-		fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
-		err = stw.Frame.ReportZoubunDisp(fn, stw.SelectNode, pers, d)
+		fn := filepath.Join(filepath.Dir(frame.Path), "zoubunout.txt")
+		err = frame.ReportZoubunDisp(fn, stw.SelectedNodes(), pers, d)
 		if err != nil {
 			return err
 		}
 	case "zoubunreaction":
 		if usage {
-			return st.Usage(":zoubunreaction period direction")
+			return Usage(":zoubunreaction period direction")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":zoubunreaction")
+			return NotEnoughArgs(":zoubunreaction")
 		}
-		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
-			return st.NotEnoughArgs(":zoubunreaction no selected node")
+		if !stw.NodeSelected() {
+			return NotEnoughArgs(":zoubunreaction no selected node")
 		}
 		pers := []string{args[1]}
 		val, err := strconv.ParseInt(args[2], 10, 64)
@@ -861,57 +870,57 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if d < 0 || d > 5 {
 			return errors.New(":zoubunreaction direction should be between 0 ~ 6")
 		}
-		fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
-		err = stw.Frame.ReportZoubunReaction(fn, stw.SelectNode, pers, d)
+		fn := filepath.Join(filepath.Dir(frame.Path), "zoubunout.txt")
+		err = frame.ReportZoubunReaction(fn, stw.SelectedNodes(), pers, d)
 		if err != nil {
 			return err
 		}
 	case "plateweight":
 		if usage {
-			return st.Usage(":plateweight fn")
+			return Usage(":plateweight fn")
 		}
 		if fn == "" {
-			fn = filepath.Join(filepath.Dir(stw.Frame.Path), "plateweight.txt")
+			fn = filepath.Join(filepath.Dir(frame.Path), "plateweight.txt")
 		}
-		err := stw.Frame.WritePlateWeight(fn)
+		err := frame.WritePlateWeight(fn)
 		if err != nil {
 			return err
 		}
 	case "weightcopy":
 		if usage {
-			return st.Usage(":weightcopy {-si}")
+			return Usage(":weightcopy {-si}")
 		}
-		wgt := filepath.Join(stw.Home, "hogtxt.wgt")
+		wgt := filepath.Join(stw.HomeDir(), "hogtxt.wgt")
 		if fn == "" {
-			fn = st.Ce(stw.Frame.Path, ".wgt")
+			fn = Ce(frame.Path, ".wgt")
 		}
 		si := false
 		if _, ok := argdict["SI"]; ok {
 			si = true
 			ext := filepath.Ext(fn)
-			fn = fmt.Sprintf("%ssi%s", st.PruneExt(fn), ext)
+			fn = fmt.Sprintf("%ssi%s", PruneExt(fn), ext)
 		}
-		if !bang && st.FileExists(fn) {
+		if !bang && FileExists(fn) {
 			return errors.New(":weightcopy file already exists")
 		}
-		err := st.CopyFile(wgt, fn)
+		err := CopyFile(wgt, fn)
 		if err != nil {
 			return err
 		}
 		if !si {
-			err = stw.Frame.ReadWgt(fn)
+			err = frame.ReadWgt(fn)
 			if err != nil {
 				return err
 			}
 		}
 	case "hardcopy":
 		if usage {
-			return st.Usage(":hardcopy")
+			return Usage(":hardcopy")
 		}
 		stw.Print()
 	case "fig2":
 		if usage {
-			return st.Usage(":fig2 filename")
+			return Usage(":fig2 filename")
 		}
 		err := stw.ReadFig2(fn)
 		if err != nil {
@@ -919,7 +928,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "svg":
 		if usage {
-			return st.Usage(":svg filename")
+			return Usage(":svg filename")
 		}
 		err := stw.PrintSVG(fn)
 		if err != nil {
@@ -927,7 +936,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "dxf":
 		if usage {
-			return st.Usage(":dxf filename {-dimension=2,3} {-scale=val}")
+			return Usage(":dxf filename {-dimension=2,3} {-scale=val}")
 		}
 		dimension := 2
 		if d, ok := argdict["DIMENSION"]; ok {
@@ -949,24 +958,24 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		var err error
 		switch dimension {
 		case 2:
-			err = stw.Frame.WriteDxf2D(st.Ce(fn, ".dxf"), scale)
+			err = frame.WriteDxf2D(Ce(fn, ".dxf"), scale)
 		case 3:
-			err = stw.Frame.WriteDxf3D(st.Ce(fn, ".dxf"), scale)
+			err = frame.WriteDxf3D(Ce(fn, ".dxf"), scale)
 		default:
-			return st.Message("unknown dimension")
+			return Message("unknown dimension")
 		}
 		if err != nil {
 			return err
 		}
 	case "check":
 		if usage {
-			return st.Usage(":check")
+			return Usage(":check")
 		}
-		checkframe(stw)
-		return st.Message("CHECKED")
+		stw.CheckFrame()
+		return Message("CHECKED")
 	case "elemduplication":
 		if usage {
-			return st.Usage(":elemduplication {-ignoresect=code}")
+			return Usage(":elemduplication {-ignoresect=code}")
 		}
 		stw.Deselect()
 		var isect []int
@@ -981,27 +990,28 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		} else {
 			isect = nil
 		}
-		els := stw.Frame.ElemDuplication(isect)
+		els := frame.ElemDuplication(isect)
 		if len(els) != 0 {
+			es := make([]*Elem, len(els))
 			enum := 0
 			for k := range els {
-				stw.SelectElem = append(stw.SelectElem, k)
+				es = append(es, k)
 				enum++
 			}
-			stw.SelectElem = stw.SelectElem[:enum]
+			stw.SelectElem(es[:enum])
 		}
-		return st.Message(m.String())
+		return Message(m.String())
 	case "intersectall":
 		if usage {
-			return st.Usage(":intersectall")
+			return Usage(":intersectall")
 		}
-		l := len(stw.SelectElem)
+		l := len(stw.SelectedElems())
 		if l <= 1 {
 			return nil
 		}
 		go func() {
-			err := stw.Frame.IntersectAll(stw.SelectElem, EPS)
-			stw.Frame.Endch <- err
+			err := frame.IntersectAll(stw.SelectedElems(), EPS)
+			frame.Endch <- err
 		}()
 		stw.CurrentLap("Calculating...", 0, l)
 		go func() {
@@ -1010,13 +1020,13 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		iallloop:
 			for {
 				select {
-				case nlap = <-stw.Frame.Lapch:
+				case nlap = <-frame.Lapch:
 					stw.CurrentLap("Calculating...", nlap, l)
 					stw.Redraw()
-				case err = <-stw.Frame.Endch:
+				case err = <-frame.Endch:
 					if err != nil {
 						stw.CurrentLap("Error", nlap, l)
-						stw.errormessage(err, ERROR)
+						stw.ErrorMessage(err)
 					} else {
 						stw.CurrentLap("Completed", nlap, l)
 					}
@@ -1028,10 +1038,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "srcal":
 		if usage {
-			return st.Usage(":srcal {-fbold} {-noreload} {-tmp}")
+			return Usage(":srcal {-fbold} {-noreload} {-tmp}")
 		}
 		var m bytes.Buffer
-		cond := st.NewCondition()
+		cond := NewCondition()
 		if _, ok := argdict["FBOLD"]; ok {
 			m.WriteString("Fb: old")
 			cond.FbOld = true
@@ -1041,29 +1051,29 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			reload = false
 		}
 		if reload {
-			stw.ReadFile(st.Ce(stw.Frame.Path, ".lst"))
+			stw.ReadFile(Ce(frame.Path, ".lst"))
 		}
-		otp := stw.Frame.Path
+		otp := frame.Path
 		if _, ok := argdict["TMP"]; ok {
 			otp = "tmp"
 		}
-		stw.Frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
-		return st.Message(m.String())
+		frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
+		return Message(m.String())
 	case "nminteraction":
 		if usage {
-			return st.Usage(":nminteraction sectcode")
+			return Usage(":nminteraction sectcode")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":nminteraction")
+			return NotEnoughArgs(":nminteraction")
 		}
 		tmp, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
 			return err
 		}
-		if al, ok := stw.Frame.Allows[int(tmp)]; ok {
+		if al, ok := frame.Allows[int(tmp)]; ok {
 			var otp bytes.Buffer
 			var m bytes.Buffer
-			cond := st.NewCondition()
+			cond := NewCondition()
 			ndiv := 100
 			if nd, ok := argdict["NDIV"]; ok {
 				if nd != "" {
@@ -1084,9 +1094,9 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			switch al.(type) {
 			default:
 				return nil
-			case *st.RCColumn:
-				nmax := al.(*st.RCColumn).Nmax(cond)
-				nmin := al.(*st.RCColumn).Nmin(cond)
+			case *RCColumn:
+				nmax := al.(*RCColumn).Nmax(cond)
+				nmin := al.(*RCColumn).Nmin(cond)
 				for i := 0; i <= ndiv; i++ {
 					cond.N = nmax - float64(i)*(nmax-nmin)/float64(ndiv)
 					otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.Ma(cond)))
@@ -1098,14 +1108,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				return err
 			}
 			otp.WriteTo(w)
-			return st.Message(m.String())
+			return Message(m.String())
 		}
 	case "gohanlst":
 		if usage {
-			return st.Usage(":gohanlst factor sectcode...")
+			return Usage(":gohanlst factor sectcode...")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":gohanlst")
+			return NotEnoughArgs(":gohanlst")
 		}
 		val, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
@@ -1115,7 +1125,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		var otp bytes.Buffer
 		var etype string
 		for _, snum := range sects {
-			if sec, ok := stw.Frame.Sects[snum]; ok {
+			if sec, ok := frame.Sects[snum]; ok {
 				for _, s := range sec.BraceSection() {
 					if s.Type == 5 {
 						etype = "WALL"
@@ -1127,18 +1137,18 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}
-		w, err := os.Create(filepath.Join(stw.Cwd, "gohan.lst"))
+		w, err := os.Create(filepath.Join(stw.Cwd(), "gohan.lst"))
 		defer w.Close()
 		if err != nil {
 			return err
 		}
-		otp = st.AddCR(otp)
+		otp = AddCR(otp)
 		otp.WriteTo(w)
 	case "kaberyo":
 		if usage {
-			return st.Usage(":kaberyo {-half} {-fc=24} {-alpha=1.155} {-route}")
+			return Usage(":kaberyo {-half} {-fc=24} {-alpha=1.155} {-route}")
 		}
-		els := stw.currentelem()
+		els := currentelem(stw, exmodech, exmodeend)
 		var m bytes.Buffer
 		var props []int
 		if val, ok := argdict["HALF"]; ok {
@@ -1200,13 +1210,13 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 		total := alpha * (ccol*sumcol + cwall*sumwall)
 		m.WriteString(fmt.Sprintf("COLUMN: %.3f WALL: %.3f TOTAL: %.3f", sumcol, sumwall, total))
-		return st.Message(m.String())
+		return Message(m.String())
 	case "facts":
 		if usage {
-			return st.Usage(":facts {-skipany=code} {-skipall=code}")
+			return Usage(":facts {-skipany=code} {-skipall=code}")
 		}
 		var m bytes.Buffer
-		fn = st.Ce(stw.Frame.Path, ".fes")
+		fn = Ce(frame.Path, ".fes")
 		var skipany, skipall []int
 		if sany, ok := argdict["SKIPANY"]; ok {
 			if sany == "" {
@@ -1228,38 +1238,38 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		} else {
 			skipall = nil
 		}
-		err := stw.Frame.Facts(fn, []int{st.COLUMN, st.GIRDER, st.BRACE, st.WBRACE, st.SBRACE}, skipany, skipall)
+		err := frame.Facts(fn, []int{COLUMN, GIRDER, BRACE, WBRACE, SBRACE}, skipany, skipall)
 		if err != nil {
 			return err
 		}
 		m.WriteString(fmt.Sprintf("Output: %s", fn))
-		return st.Message(m.String())
+		return Message(m.String())
 	case "amountprop":
 		if usage {
-			return st.Usage(":amountprop propcode")
+			return Usage(":amountprop propcode")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":amountprop")
+			return NotEnoughArgs(":amountprop")
 		}
 		props := SplitNums(strings.Join(args[1:], " "))
 		if len(props) == 0 {
 			return errors.New(":amountprop: no selected prop")
 		}
-		fn := filepath.Join(filepath.Dir(stw.Frame.Path), "amount.txt")
-		err := stw.Frame.AmountProp(fn, props...)
+		fn := filepath.Join(filepath.Dir(frame.Path), "amount.txt")
+		err := frame.AmountProp(fn, props...)
 		if err != nil {
 			return err
 		}
 	case "amountlst":
 		if usage {
-			return st.Usage(":amountlst propcode")
+			return Usage(":amountlst propcode")
 		}
 		var sects []int
 		if narg < 2 {
 			if _, ok := argdict["ALL"]; ok {
-				sects = make([]int, len(stw.Frame.Sects))
+				sects = make([]int, len(frame.Sects))
 				i := 0
-				for _, sec := range stw.Frame.Sects {
+				for _, sec := range frame.Sects {
 					if sec.Num >= 900 {
 						continue
 					}
@@ -1269,7 +1279,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				sects = sects[:i]
 				sort.Ints(sects)
 			} else {
-				return st.NotEnoughArgs(":amountlst")
+				return NotEnoughArgs(":amountlst")
 			}
 		}
 		if sects == nil {
@@ -1278,8 +1288,8 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if len(sects) == 0 {
 			return errors.New(":amountlst: no selected sect")
 		}
-		fn := filepath.Join(filepath.Dir(stw.Frame.Path), "amountlst.txt")
-		err := stw.Frame.AmountLst(fn, sects...)
+		fn := filepath.Join(filepath.Dir(frame.Path), "amountltxt")
+		err := frame.AmountLst(fn, sects...)
 		if err != nil {
 			return err
 		}
@@ -1291,10 +1301,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			m.WriteString(":node {confed/pinned/fixed/free}\n")
 			m.WriteString(":node pile num")
 			m.WriteString(":node sect num")
-			return st.Usage(m.String())
+			return Usage(m.String())
 		}
 		stw.Deselect()
-		var f func(*st.Node) bool
+		var f func(*Node) bool
 		if narg >= 2 {
 			condition := strings.ToUpper(strings.Join(args[1:], " "))
 			coordstr := regexp.MustCompile("^ *([XYZ]) *([<!=>]{0,2}) *([-0-9.]+)")
@@ -1306,15 +1316,15 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				return errors.New(":node: unknown format")
 			case numstr.MatchString(condition):
 				nnums := SplitNums(condition)
-				stw.SelectNode = make([]*st.Node, len(nnums))
+				ns := make([]*Node, len(nnums))
 				nods := 0
 				for i, nnum := range nnums {
-					if n, ok := stw.Frame.Nodes[nnum]; ok {
-						stw.SelectNode[i] = n
+					if n, ok := frame.Nodes[nnum]; ok {
+						ns[i] = n
 						nods++
 					}
 				}
-				stw.SelectNode = stw.SelectNode[:nods]
+				stw.SelectNode(ns[:nods])
 			case coordstr.MatchString(condition):
 				fs := coordstr.FindStringSubmatch(condition)
 				if len(fs) < 4 {
@@ -1335,42 +1345,42 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 				switch fs[2] {
 				case "", "=", "==":
-					f = func(n *st.Node) bool {
+					f = func(n *Node) bool {
 						if n.Coord[ind] == val {
 							return true
 						}
 						return false
 					}
 				case "!=":
-					f = func(n *st.Node) bool {
+					f = func(n *Node) bool {
 						if n.Coord[ind] != val {
 							return true
 						}
 						return false
 					}
 				case ">":
-					f = func(n *st.Node) bool {
+					f = func(n *Node) bool {
 						if n.Coord[ind] > val {
 							return true
 						}
 						return false
 					}
 				case ">=":
-					f = func(n *st.Node) bool {
+					f = func(n *Node) bool {
 						if n.Coord[ind] >= val {
 							return true
 						}
 						return false
 					}
 				case "<":
-					f = func(n *st.Node) bool {
+					f = func(n *Node) bool {
 						if n.Coord[ind] < val {
 							return true
 						}
 						return false
 					}
 				case "<=":
-					f = func(n *st.Node) bool {
+					f = func(n *Node) bool {
 						if n.Coord[ind] <= val {
 							return true
 						}
@@ -1380,7 +1390,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			case pilestr.MatchString(condition):
 				fs := pilestr.FindStringSubmatch(condition)
 				pnums := SplitNums(fs[1])
-				f = func(n *st.Node) bool {
+				f = func(n *Node) bool {
 					if n.Pile == nil {
 						return false
 					}
@@ -1395,12 +1405,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				fs := sectstr.FindStringSubmatch(condition)
 				snums := SplitNums(fs[1])
 				if _, ok := argdict["ALL"]; ok {
-					nnums := make(map[int]int, len(stw.Frame.Nodes))
-					for _, n := range stw.Frame.Nodes {
+					nnums := make(map[int]int, len(frame.Nodes))
+					for _, n := range frame.Nodes {
 						nnums[n.Num] = 0
 					}
 				node_sect_all:
-					for _, el := range stw.Frame.Elems {
+					for _, el := range frame.Elems {
 						for _, snum := range snums {
 							if el.Sect.Num == snum {
 								continue node_sect_all
@@ -1410,7 +1420,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 							nnums[en.Num]++
 						}
 					}
-					f = func(n *st.Node) bool {
+					f = func(n *Node) bool {
 						if ref, ok := nnums[n.Num]; ok {
 							if ref > 0 {
 								return false
@@ -1419,10 +1429,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 						return true
 					}
 				} else {
-					els := make([]*st.Elem, len(stw.Frame.Elems))
+					els := make([]*Elem, len(frame.Elems))
 					num := 0
 				node_sect_any:
-					for _, el := range stw.Frame.Elems {
+					for _, el := range frame.Elems {
 						for _, snum := range snums {
 							if el.Sect.Num == snum {
 								els[num] = el
@@ -1432,7 +1442,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 						}
 					}
 					els = els[:num]
-					f = func(n *st.Node) bool {
+					f = func(n *Node) bool {
 						for _, el := range els {
 							for _, en := range el.Enod {
 								if n == en {
@@ -1444,7 +1454,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 					}
 				}
 			case abbrev.For("CONF/ED", condition):
-				f = func(n *st.Node) bool {
+				f = func(n *Node) bool {
 					for i := 0; i < 6; i++ {
 						if n.Conf[i] {
 							return true
@@ -1453,7 +1463,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 					return false
 				}
 			case condition == "FREE":
-				f = func(n *st.Node) bool {
+				f = func(n *Node) bool {
 					for i := 0; i < 6; i++ {
 						if n.Conf[i] {
 							return false
@@ -1462,44 +1472,45 @@ func (stw *Window) excommand(command string, pipe bool) error {
 					return true
 				}
 			case abbrev.For("PIN/NED", condition):
-				f = func(n *st.Node) bool {
+				f = func(n *Node) bool {
 					return n.IsPinned()
 				}
 			case abbrev.For("FIX/ED", condition):
-				f = func(n *st.Node) bool {
+				f = func(n *Node) bool {
 					return n.IsFixed()
 				}
 			}
 			if f != nil {
-				stw.SelectNode = make([]*st.Node, len(stw.Frame.Nodes))
+				ns := make([]*Node, len(frame.Nodes))
 				num := 0
-				for _, n := range stw.Frame.Nodes {
+				for _, n := range frame.Nodes {
 					if f(n) {
-						stw.SelectNode[num] = n
+						ns[num] = n
 						num++
 					}
 				}
-				stw.SelectNode = stw.SelectNode[:num]
+				stw.SelectNode(ns[:num])
 			}
 		} else {
-			stw.SelectNode = make([]*st.Node, len(stw.Frame.Nodes))
+			ns := make([]*Node, len(frame.Nodes))
 			num := 0
-			for _, n := range stw.Frame.Nodes {
-				stw.SelectNode[num] = n
+			for _, n := range frame.Nodes {
+				ns[num] = n
 				num++
 			}
-			stw.SelectNode = stw.SelectNode[:num]
+			stw.SelectNode(ns[:num])
 		}
 		if pipe {
-			num := len(stw.SelectNode)
+			ns := stw.SelectedNodes()
+			num := len(ns)
 			sender = make([]interface{}, num)
 			for i := 0; i < num; i++ {
-				sender[i] = stw.SelectNode[i]
+				sender[i] = ns[i]
 			}
 		}
 	case "conf":
 		if usage {
-			return st.Usage(":conf [0,1]{6}")
+			return Usage(":conf [0,1]{6}")
 		}
 		lis := make([]bool, 6)
 		if len(args[1]) >= 6 {
@@ -1517,19 +1528,19 @@ func (stw *Window) excommand(command string, pipe bool) error {
 					lis[i] = !lis[i]
 				}
 			}
-			setconf(stw, lis)
+			stw.SetConf(lis)
 		} else {
-			return st.NotEnoughArgs(":conf")
+			return NotEnoughArgs(":conf")
 		}
 	case "pile":
 		if usage {
-			return st.Usage(":pile pilecode")
+			return Usage(":pile pilecode")
 		}
-		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+		if !stw.NodeSelected() {
 			return errors.New(":pile no selected node")
 		}
 		if narg < 2 {
-			for _, n := range stw.SelectNode {
+			for _, n := range stw.SelectedNodes() {
 				n.Pile = nil
 			}
 			break
@@ -1538,8 +1549,8 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if err != nil {
 			return err
 		}
-		if p, ok := stw.Frame.Piles[int(val)]; ok {
-			for _, n := range stw.SelectNode {
+		if p, ok := frame.Piles[int(val)]; ok {
+			for _, n := range stw.SelectedNodes() {
 				n.Pile = p
 			}
 			stw.Snapshot()
@@ -1548,13 +1559,13 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "xscale":
 		if usage {
-			return st.Usage(":xscale factor coord")
+			return Usage(":xscale factor coord")
 		}
-		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+		if !stw.NodeSelected() {
 			return errors.New(":xscale no selected node")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":xscale")
+			return NotEnoughArgs(":xscale")
 		}
 		factor, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
@@ -1564,7 +1575,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if err != nil {
 			return err
 		}
-		for _, n := range stw.SelectNode {
+		for _, n := range stw.SelectedNodes() {
 			if n == nil {
 				continue
 			}
@@ -1573,13 +1584,13 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "yscale":
 		if usage {
-			return st.Usage(":yscale factor coord")
+			return Usage(":yscale factor coord")
 		}
-		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+		if !stw.NodeSelected() {
 			return errors.New(":yscale no selected node")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":yscale")
+			return NotEnoughArgs(":yscale")
 		}
 		factor, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
@@ -1589,7 +1600,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if err != nil {
 			return err
 		}
-		for _, n := range stw.SelectNode {
+		for _, n := range stw.SelectedNodes() {
 			if n == nil {
 				continue
 			}
@@ -1598,13 +1609,13 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "zscale":
 		if usage {
-			return st.Usage(":zscale factor coord")
+			return Usage(":zscale factor coord")
 		}
-		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+		if !stw.NodeSelected() {
 			return errors.New(":zscale no selected node")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":zscale")
+			return NotEnoughArgs(":zscale")
 		}
 		factor, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
@@ -1614,7 +1625,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if err != nil {
 			return err
 		}
-		for _, n := range stw.SelectNode {
+		for _, n := range stw.SelectedNodes() {
 			if n == nil {
 				continue
 			}
@@ -1623,13 +1634,13 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "pload":
 		if usage {
-			return st.Usage(":pload position value")
+			return Usage(":pload position value")
 		}
-		if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+		if !stw.NodeSelected() {
 			return errors.New(":pload no selected node")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":pload")
+			return NotEnoughArgs(":pload")
 		}
 		ind, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
@@ -1639,7 +1650,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if err != nil {
 			return err
 		}
-		for _, n := range stw.SelectNode {
+		for _, n := range stw.SelectedNodes() {
 			if n == nil {
 				continue
 			}
@@ -1648,12 +1659,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "cmq":
 		if usage {
-			return st.Usage(":cmq period")
+			return Usage(":cmq period")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":cmq")
+			return NotEnoughArgs(":cmq")
 		}
-		els := stw.currentelem()
+		els := currentelem(stw, exmodech, exmodeend)
 		if strings.EqualFold(args[1], "zero") {
 			for _, el := range els {
 				for i:=0; i<12; i++ {
@@ -1662,7 +1673,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 			return nil
 		}
-		if s, ok := stw.Frame.ResultFileName[args[1]]; ok {
+		if s, ok := frame.ResultFileName[args[1]]; ok {
 			if s == "" {
 				return errors.New(fmt.Sprintf("period %s: no data", args[1]))
 			}
@@ -1676,26 +1687,26 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "lock":
 		if usage {
-			return st.Usage(":lock")
+			return Usage(":lock")
 		}
-		els := stw.currentelem()
+		els := currentelem(stw, exmodech, exmodeend)
 		for _, el := range els {
 			el.Lock = true
 		}
 	case "unlock":
 		if usage {
-			return st.Usage(":unlock")
+			return Usage(":unlock")
 		}
-		els := stw.currentelem()
+		els := currentelem(stw, exmodech, exmodeend)
 		for _, el := range els {
 			el.Lock = false
 		}
 	case "elem":
 		if usage {
-			return st.Usage(":elem [elemcode,sect sectcode,etype,reaction,locked]")
+			return Usage(":elem [elemcode,sect sectcode,etype,reaction,locked]")
 		}
 		stw.Deselect()
-		var f func(*st.Elem) bool
+		var f func(*Elem) bool
 		if narg >= 2 {
 			condition := strings.ToUpper(strings.Join(args[1:], " "))
 			numstr := regexp.MustCompile("^[0-9, ]+$")
@@ -1704,32 +1715,32 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				return errors.New(":elem: unknown format")
 			case numstr.MatchString(condition):
 				enums := SplitNums(condition)
-				stw.SelectElem = make([]*st.Elem, len(enums))
+				elems := make([]*Elem, len(enums))
 				els := 0
 				for i, enum := range enums {
-					if el, ok := stw.Frame.Elems[enum]; ok {
-						stw.SelectElem[i] = el
+					if el, ok := frame.Elems[enum]; ok {
+						elems[i] = el
 						els++
 					}
 				}
-				stw.SelectElem = stw.SelectElem[:els]
-			case re_sectnum.MatchString(condition):
+				stw.SelectElem(elems[:els])
+			case Re_sectnum.MatchString(condition):
 				f, _ = SectFilter(condition)
 				if f == nil {
 					return errors.New(":elem sect: format error")
 				}
-			case re_orgsectnum.MatchString(condition):
+			case Re_orgsectnum.MatchString(condition):
 				f, _ = OriginalSectFilter(condition)
 				if f == nil {
 					return errors.New(":elem sect: format error")
 				}
-			case re_etype.MatchString(condition):
+			case Re_etype.MatchString(condition):
 				f, _ = EtypeFilter(condition)
 				if f == nil {
 					return errors.New(":elem etype: format error")
 				}
 			case strings.EqualFold(condition, "curtain"):
-				f = func(el *st.Elem) bool {
+				f = func(el *Elem) bool {
 					if el.Sect.Num > 900 {
 						return false
 					}
@@ -1742,7 +1753,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 					return false
 				}
 			case strings.EqualFold(condition, "isgohan"):
-				f = func(el *st.Elem) bool {
+				f = func(el *Elem) bool {
 					return el.Sect.IsGohan(EPS)
 				}
 			case strings.EqualFold(condition, "error"):
@@ -1753,10 +1764,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 						threshold = val
 					}
 				}
-				f = func(el *st.Elem) bool {
+				f = func(el *Elem) bool {
 					switch el.Etype {
-					case st.COLUMN, st.GIRDER, st.BRACE, st.WALL, st.SLAB:
-						val, err := el.RateMax(stw.Frame.Show)
+					case COLUMN, GIRDER, BRACE, WALL, SLAB:
+						val, err := el.RateMax(frame.Show)
 						if err != nil {
 							return false
 						}
@@ -1767,50 +1778,51 @@ func (stw *Window) excommand(command string, pipe bool) error {
 					return false
 				}
 			case strings.EqualFold(condition, "reaction"):
-				f = func(el *st.Elem) bool {
+				f = func(el *Elem) bool {
 					return el.Sect.IsReaction()
 				}
 			case strings.EqualFold(condition, "locked"):
-				f = func(el *st.Elem) bool {
+				f = func(el *Elem) bool {
 					return el.Lock
 				}
 			}
 			if f != nil {
-				stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
+				els := make([]*Elem, len(frame.Elems))
 				num := 0
-				for _, el := range stw.Frame.Elems {
+				for _, el := range frame.Elems {
 					if f(el) {
-						stw.SelectElem[num] = el
+						els[num] = el
 						num++
 					}
 				}
-				stw.SelectElem = stw.SelectElem[:num]
+				stw.SelectElem(els[:num])
 			}
 		} else {
-			stw.SelectElem = make([]*st.Elem, len(stw.Frame.Elems))
+			els := make([]*Elem, len(frame.Elems))
 			num := 0
-			for _, el := range stw.Frame.Elems {
-				stw.SelectElem[num] = el
+			for _, el := range frame.Elems {
+				els[num] = el
 				num++
 			}
-			stw.SelectElem = stw.SelectElem[:num]
+			stw.SelectElem(els[:num])
 		}
 		if pipe {
-			num := len(stw.SelectElem)
+			els := stw.SelectedElems()
+			num := len(els)
 			sender = make([]interface{}, num)
 			for i := 0; i < num; i++ {
-				sender[i] = stw.SelectElem[i]
+				sender[i] = els[i]
 			}
 		}
 	case "reaction":
 		if usage {
-			return st.Usage(":reaction")
+			return Usage(":reaction")
 		}
 		w := 0.0
 		a := 0.0
 		i := 0
-		sects := make([]*st.Sect, len(stw.Frame.Sects))
-		for _, el := range stw.Frame.Elems {
+		sects := make([]*Sect, len(frame.Sects))
+		for _, el := range frame.Elems {
 			if el.Sect.Num >= 900 {
 				continue
 			}
@@ -1841,10 +1853,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "fence":
 		if usage {
-			return st.Usage(":fence axis coord {-plate}")
+			return Usage(":fence axis coord {-plate}")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":fence")
+			return NotEnoughArgs(":fence")
 		}
 		var axis int
 		var err error
@@ -1876,47 +1888,49 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			if err != nil {
 				return err
 			}
-			if int(ind) > stw.Frame.Ai.Nfloor-1 {
+			if int(ind) > frame.Ai.Nfloor-1 {
 				return errors.New(":fence height: index error")
 			}
-			val = stw.Frame.Ai.Boundary[int(ind)]
+			val = frame.Ai.Boundary[int(ind)]
 		}
 		plate := false
 		if _, ok := argdict["PLATE"]; ok {
 			plate = true
 		}
-		stw.SelectElem = stw.Frame.Fence(axis, val, plate)
+		stw.SelectElem(frame.Fence(axis, val, plate))
 		if pipe {
-			num := len(stw.SelectElem)
+			els := stw.SelectedElems()
+			num := len(els)
 			sender = make([]interface{}, num)
 			for i := 0; i < num; i++ {
-				sender[i] = stw.SelectElem[i]
+				sender[i] = els[i]
 			}
 		}
 	case "filter":
 		if usage {
-			return st.Usage(":filter condition")
+			return Usage(":filter condition")
 		}
-		tmpels, err := stw.FilterElem(stw.SelectElem, strings.Join(args[1:], " "))
+		tmpels, err := FilterElem(frame, stw.SelectedElems(), strings.Join(args[1:], " "))
 		if err != nil {
 			return err
 		}
-		stw.SelectElem = tmpels
+		stw.SelectElem(tmpels)
 		if pipe {
-			num := len(stw.SelectElem)
+			els := stw.SelectedElems()
+			num := len(els)
 			sender = make([]interface{}, num)
 			for i := 0; i < num; i++ {
-				sender[i] = stw.SelectElem[i]
+				sender[i] = els[i]
 			}
 		}
 	case "bond":
 		if usage {
-			return st.Usage(":bond [pin,rigid,[01_t]{6}] [upper,lower,sect sectcode]")
+			return Usage(":bond [pin,rigid,[01_t]{6}] [upper,lower,sect sectcode]")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":bond")
+			return NotEnoughArgs(":bond")
 		}
-		els := stw.currentelem()
+		els := currentelem(stw, exmodech, exmodeend)
 		lis := make([]bool, 6)
 		pat := regexp.MustCompile("[01_t]{6}")
 		switch {
@@ -1939,23 +1953,23 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}
-		f := func(el *st.Elem, ind int) bool {
+		f := func(el *Elem, ind int) bool {
 			return true
 		}
 		if narg >= 3 {
 			condition := strings.ToLower(strings.Join(args[2:], " "))
 			switch {
 			case abbrev.For("up/per", condition):
-				f = func(el *st.Elem, ind int) bool {
+				f = func(el *Elem, ind int) bool {
 					return el.Enod[ind].Coord[2] > el.Enod[1-ind].Coord[2]
 				}
 			case abbrev.For("lo/wer", condition):
-				f = func(el *st.Elem, ind int) bool {
+				f = func(el *Elem, ind int) bool {
 					return el.Enod[ind].Coord[2] < el.Enod[1-ind].Coord[2]
 				}
-			case re_sectnum.MatchString(condition):
+			case Re_sectnum.MatchString(condition):
 				tmpf, _ := SectFilter(condition)
-				f = func(el *st.Elem, ind int) bool {
+				f = func(el *Elem, ind int) bool {
 					for _, sel := range el.Frame.SearchElem(el.Enod[ind]) {
 						if sel.Num == el.Num {
 							continue
@@ -1984,10 +1998,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "section+":
 		if usage {
-			return st.Usage(":section+ value")
+			return Usage(":section+ value")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":section+")
+			return NotEnoughArgs(":section+")
 		}
 		tmp, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
@@ -1997,27 +2011,27 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			break
 		}
 		val := int(tmp)
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.SelectedElems() {
 			if el == nil {
 				continue
 			}
-			if sec, ok := stw.Frame.Sects[el.Sect.Num+val]; ok {
+			if sec, ok := frame.Sects[el.Sect.Num+val]; ok {
 				el.Sect = sec
 			}
 		}
 		stw.Snapshot()
 	case "cang":
 		if usage {
-			return st.Usage(":cang val")
+			return Usage(":cang val")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":cang")
+			return NotEnoughArgs(":cang")
 		}
 		val, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
 			return err
 		}
-		els := stw.currentelem()
+		els := currentelem(stw, exmodech, exmodeend)
 		for _, el := range els {
 			if !el.IsLineElem() {
 				continue
@@ -2028,12 +2042,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "axis2cang":
 		if usage {
-			return st.Usage(":axis2cang n1 n2 [strong,weak]")
+			return Usage(":axis2cang n1 n2 [strong,weak]")
 		}
 		if narg < 4 {
-			return st.NotEnoughArgs(":axis2cang")
+			return NotEnoughArgs(":axis2cang")
 		}
-		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+		if !stw.ElemSelected() {
 			return errors.New(":axis2cang no selected elem")
 		}
 		nnum1, err := strconv.ParseInt(args[1], 10, 64)
@@ -2052,17 +2066,17 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		} else {
 			return errors.New(":axis2cang: last argument must be strong or weak")
 		}
-		var n1, n2 *st.Node
+		var n1, n2 *Node
 		var found bool
-		if n1, found = stw.Frame.Nodes[int(nnum1)]; !found {
+		if n1, found = frame.Nodes[int(nnum1)]; !found {
 			return errors.New(fmt.Sprintf(":axis2cang: NODE %d not found", nnum1))
 		}
-		if n2, found = stw.Frame.Nodes[int(nnum2)]; !found {
+		if n2, found = frame.Nodes[int(nnum2)]; !found {
 			return errors.New(fmt.Sprintf(":axis2cang: NODE %d not found", nnum2))
 		}
 		vec := []float64{n2.Coord[0] - n1.Coord[0], n2.Coord[1] - n1.Coord[1], n2.Coord[2] - n1.Coord[2]}
-		for _, el := range stw.SelectElem {
-			if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock || !el.IsLineElem() {
+		for _, el := range stw.SelectedElems() {
+			if el == nil || el.IsHidden(frame.Show) || el.Lock || !el.IsLineElem() {
 				continue
 			}
 			_, err := el.AxisToCang(vec, strong)
@@ -2073,21 +2087,22 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "invert":
 		if usage {
-			return st.Usage(":invert")
+			return Usage(":invert")
 		}
-		els := stw.currentelem()
+		els := currentelem(stw, exmodech, exmodeend)
 		for _, el := range els {
 			el.Invert()
 		}
 		stw.Snapshot()
 	case "resultant":
-		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+		if !stw.ElemSelected() {
 			return errors.New(":resultant no selected elem")
 		}
 		vec := make([]float64, 3)
-		elems := make([]*st.Elem, len(stw.SelectElem))
+		els := stw.SelectedElems()
+		elems := make([]*Elem, len(els))
 		enum := 0
-		for _, el := range stw.SelectElem {
+		for _, el := range els {
 			if el == nil || el.Lock || !el.IsLineElem() {
 				continue
 			}
@@ -2095,15 +2110,15 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			enum++
 		}
 		elems = elems[:enum]
-		en, err := st.CommonEnod(elems...)
+		en, err := CommonEnod(elems...)
 		if err != nil {
 			return err
 		}
 		if en == nil || len(en) == 0 {
 			return errors.New(":resultant no common enod")
 		}
-		axis := [][]float64{st.XAXIS, st.YAXIS, st.ZAXIS}
-		per := stw.Frame.Show.Period
+		axis := [][]float64{XAXIS, YAXIS, ZAXIS}
+		per := frame.Show.Period
 		for _, el := range elems {
 			for i := 0; i < 3; i++ {
 				vec[i] += el.VectorStress(per, en[0].Num, axis[i])
@@ -2117,15 +2132,15 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		var m bytes.Buffer
 		m.WriteString(fmt.Sprintf("NODE: %d", en[0].Num))
 		m.WriteString(fmt.Sprintf("X: %.3f Y: %.3f Z: %.3f F: %.3f", vec[0], vec[1], vec[2], v))
-		return st.Message(m.String())
+		return Message(m.String())
 	case "prestress":
 		if usage {
-			return st.Usage(":prestress value")
+			return Usage(":prestress value")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":prestress")
+			return NotEnoughArgs(":prestress")
 		}
-		els := stw.currentelem()
+		els := currentelem(stw, exmodech, exmodeend)
 		val, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
 			return err
@@ -2139,12 +2154,12 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.Snapshot()
 	case "thermal":
 		if usage {
-			return st.Usage(":thermal tmp[℃]")
+			return Usage(":thermal tmp[℃]")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":thermal")
+			return NotEnoughArgs(":thermal")
 		}
-		els := stw.currentelem()
+		els := currentelem(stw, exmodech, exmodeend)
 		tmp, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
 			return err
@@ -2172,41 +2187,41 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 		}
 		stw.Snapshot()
-		return st.Message(m.String())
+		return Message(m.String())
 	case "divide":
 		if narg < 2 {
 			if usage {
-				return st.Usage(":divide [mid, n, elem, ons, axis, length]")
+				return Usage(":divide [mid, n, elem, ons, axis, length]")
 			}
-			return st.NotEnoughArgs(":divide")
+			return NotEnoughArgs(":divide")
 		}
-		var divfunc func(*st.Elem) ([]*st.Node, []*st.Elem, error)
+		var divfunc func(*Elem) ([]*Node, []*Elem, error)
 		switch strings.ToLower(args[1]) {
 		case "mid":
 			if usage {
-				return st.Usage(":divide mid")
+				return Usage(":divide mid")
 			}
-			divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+			divfunc = func(el *Elem) ([]*Node, []*Elem, error) {
 				return el.DivideAtMid(EPS)
 			}
 		case "n":
 			if usage {
-				return st.Usage(":divide n div")
+				return Usage(":divide n div")
 			}
 			if narg < 3 {
-				return st.NotEnoughArgs(":divide n")
+				return NotEnoughArgs(":divide n")
 			}
 			val, err := strconv.ParseInt(args[2], 10, 64)
 			if err != nil {
 				return err
 			}
 			ndiv := int(val)
-			divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+			divfunc = func(el *Elem) ([]*Node, []*Elem, error) {
 				return el.DivideInN(ndiv, EPS)
 			}
 		case "elem":
 			if usage {
-				return st.Usage(":divide elem (eps)")
+				return Usage(":divide elem (eps)")
 			}
 			eps := EPS
 			if narg >= 3 {
@@ -2215,13 +2230,13 @@ func (stw *Window) excommand(command string, pipe bool) error {
 					eps = val
 				}
 			}
-			divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+			divfunc = func(el *Elem) ([]*Node, []*Elem, error) {
 				els, err := el.DivideAtElem(eps)
 				return nil, els, err
 			}
 		case "ons":
 			if usage {
-				return st.Usage(":divide ons (eps)")
+				return Usage(":divide ons (eps)")
 			}
 			eps := EPS
 			if narg >= 3 {
@@ -2230,15 +2245,15 @@ func (stw *Window) excommand(command string, pipe bool) error {
 					eps = val
 				}
 			}
-			divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+			divfunc = func(el *Elem) ([]*Node, []*Elem, error) {
 				return el.DivideAtOns(eps)
 			}
 		case "axis":
 			if usage {
-				return st.Usage(":divide axis [x, y, z] coord")
+				return Usage(":divide axis [x, y, z] coord")
 			}
 			if narg < 4 {
-				return st.NotEnoughArgs(":divide axis")
+				return NotEnoughArgs(":divide axis")
 			}
 			var axis int
 			switch args[2] {
@@ -2255,39 +2270,39 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			if err != nil {
 				return err
 			}
-			divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+			divfunc = func(el *Elem) ([]*Node, []*Elem, error) {
 				return el.DivideAtAxis(axis, val, EPS)
 			}
 		case "length":
 			if usage {
-				return st.Usage(":divide length l")
+				return Usage(":divide length l")
 			}
 			if narg < 3 {
-				return st.NotEnoughArgs(":divide length")
+				return NotEnoughArgs(":divide length")
 			}
 			val, err := strconv.ParseFloat(args[2], 64)
 			if err != nil {
 				return err
 			}
-			divfunc = func(el *st.Elem) ([]*st.Node, []*st.Elem, error) {
+			divfunc = func(el *Elem) ([]*Node, []*Elem, error) {
 				return el.DivideAtLength(val, EPS)
 			}
 		}
 		if divfunc == nil {
 			return errors.New(":divide: unknown format")
 		}
-		if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+		if !stw.ElemSelected() {
 			return errors.New(":divide: no selected elem")
 		}
-		tmpels := make([]*st.Elem, 0)
+		tmpels := make([]*Elem, 0)
 		enum := 0
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.SelectedElems() {
 			if el == nil {
 				continue
 			}
 			_, els, err := divfunc(el)
 			if err != nil {
-				stw.errormessage(err, ERROR)
+				stw.ErrorMessage(err)
 				continue
 			}
 			if err == nil && len(els) > 1 {
@@ -2295,41 +2310,40 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				enum += len(els)
 			}
 		}
-		stw.SelectElem = tmpels[:enum]
+		stw.SelectElem(tmpels[:enum])
 		stw.Snapshot()
 	case "section":
 		if usage {
-			return st.Usage(":section sectcode {-nodisp}")
+			return Usage(":section sectcode {-nodisp}")
 		}
 		nodisp := false
 		if _, ok := argdict["NODISP"]; ok {
 			nodisp = true
 		}
 		if narg < 2 {
-			if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+			if stw.ElemSelected() {
 				if !nodisp {
-					stw.SectionData(stw.SelectElem[0].Sect)
+					stw.SectionData(stw.SelectedElems()[0].Sect)
 				}
 				if pipe {
-					sender = []interface{}{stw.SelectElem[0].Sect}
+					sender = []interface{}{stw.SelectedElems()[0].Sect}
 				}
 				return nil
 			}
-			if t, tok := stw.TextBox["SECTION"]; tok {
-				t.Clear()
-			}
+			stw.ClearTextBox("SECTION")
+			// if t, tok := stw.TextBox["SECTION"]; tok {
+			// 	t.Clear()
+			// }
 			return nil
 		}
 		switch {
 		case strings.EqualFold(args[1], "off"):
-			if t, tok := stw.TextBox["SECTION"]; tok {
-				t.Clear()
-			}
+			stw.ClearTextBox("SECTION")
 			return nil
 		case strings.EqualFold(args[1], "curtain"):
-			sects := make([]*st.Sect, len(stw.Frame.Sects))
+			sects := make([]*Sect, len(frame.Sects))
 			num := 0
-			for _, sec := range stw.Frame.Sects {
+			for _, sec := range frame.Sects {
 				if sec.Num > 900 {
 					continue
 				}
@@ -2361,17 +2375,17 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				return err
 			}
 			snum := int(tmp)
-			if sec, ok := stw.Frame.Sects[snum]; ok {
+			if sec, ok := frame.Sects[snum]; ok {
 				if narg >= 3 && args[2] == "<-" {
 					select {
 					case <-time.After(time.Second):
 						break
-					case al := <-stw.exmodech:
+					case al := <-exmodech:
 						if al == nil {
 							break
 						}
 						switch al := al.(type) {
-						case st.Shape:
+						case Shape:
 							if sec.HasArea(0) {
 								sec.Figs[0].SetShapeProperty(al)
 								sec.Name = al.Description()
@@ -2391,10 +2405,10 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "thick":
 		if usage {
-			return st.Usage(":thick nfig val")
+			return Usage(":thick nfig val")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":thick")
+			return NotEnoughArgs(":thick")
 		}
 		tmp, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
@@ -2408,11 +2422,11 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		select {
 		case <-time.After(time.Second):
 			break
-		case sec := <-stw.exmodech:
+		case sec := <-exmodech:
 			if sec == nil {
 				break
 			}
-			if sec, ok := sec.(*st.Sect); ok {
+			if sec, ok := sec.(*Sect); ok {
 				if sec.HasThick(ind) {
 					sec.Figs[ind].Value["THICK"] = val
 				}
@@ -2421,28 +2435,28 @@ func (stw *Window) excommand(command string, pipe bool) error {
 	case "add":
 		if narg < 2 {
 			if usage {
-				return st.Usage(":add [elem, sect]")
+				return Usage(":add [elem, sect]")
 			}
-			return st.NotEnoughArgs(":add")
+			return NotEnoughArgs(":add")
 		}
 		switch strings.ToLower(args[1]) {
 		case "elem":
 			if usage {
-				return st.Usage(":add elem {-sect=code} {-etype=type}")
+				return Usage(":add elem {-sect=code} {-etype=type}")
 			}
 			var etype int
 			if et, ok := argdict["ETYPE"]; ok {
 				switch {
-				case re_column.MatchString(et):
-					etype = st.COLUMN
-				case re_girder.MatchString(et):
-					etype = st.GIRDER
-				case re_slab.MatchString(et):
-					etype = st.BRACE
-				case re_wall.MatchString(et):
-					etype = st.WALL
-				case re_slab.MatchString(et):
-					etype = st.SLAB
+				case Re_column.MatchString(et):
+					etype = COLUMN
+				case Re_girder.MatchString(et):
+					etype = GIRDER
+				case Re_slab.MatchString(et):
+					etype = BRACE
+				case Re_wall.MatchString(et):
+					etype = WALL
+				case Re_slab.MatchString(et):
+					etype = SLAB
 				default:
 					tmp, err := strconv.ParseInt(et, 10, 64)
 					if err != nil {
@@ -2453,13 +2467,13 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			} else {
 				return errors.New(":add elem: no etype selected")
 			}
-			var sect *st.Sect
+			var sect *Sect
 			if sc, ok := argdict["SECT"]; ok {
 				tmp, err := strconv.ParseInt(sc, 10, 64)
 				if err != nil {
 					return err
 				}
-				if sec, ok := stw.Frame.Sects[int(tmp)]; ok {
+				if sec, ok := frame.Sects[int(tmp)]; ok {
 					sect = sec
 				} else {
 					return errors.New(fmt.Sprintf(":add elem: SECT %d doesn't exist", tmp))
@@ -2467,17 +2481,17 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			} else {
 				return errors.New(":add elem: no sectcode selected")
 			}
-			enod := make([]*st.Node, 0)
+			enod := make([]*Node, 0)
 			enods := 0
 		ex_addelem:
 			for {
 				select {
 				case <-time.After(time.Second):
 					break ex_addelem
-				case <-stw.exmodeend:
+				case <-exmodeend:
 					break ex_addelem
-				case ent := <-stw.exmodech:
-					if n, ok := ent.(*st.Node); ok {
+				case ent := <-exmodech:
+					if n, ok := ent.(*Node); ok {
 						enod = append(enod, n)
 						enods++
 					}
@@ -2485,41 +2499,41 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 			enod = enod[:enods]
 			switch etype {
-			case st.COLUMN, st.GIRDER, st.BRACE:
-				stw.Frame.AddLineElem(-1, enod[:2], sect, etype)
-			case st.WALL, st.SLAB:
+			case COLUMN, GIRDER, BRACE:
+				frame.AddLineElem(-1, enod[:2], sect, etype)
+			case WALL, SLAB:
 				if enods > 4 {
 					enod = enod[:4]
 				}
-				stw.Frame.AddPlateElem(-1, enod, sect, etype)
+				frame.AddPlateElem(-1, enod, sect, etype)
 			}
 		case "sec", "sect":
 			if usage {
-				return st.Usage(":add sect sectcode")
+				return Usage(":add sect sectcode")
 			}
 			if narg < 3 {
-				return st.NotEnoughArgs(":add sect")
+				return NotEnoughArgs(":add sect")
 			}
 			val, err := strconv.ParseInt(args[2], 10, 64)
 			if err != nil {
 				return err
 			}
 			snum := int(val)
-			if _, ok := stw.Frame.Sects[snum]; ok && !bang {
+			if _, ok := frame.Sects[snum]; ok && !bang {
 				return errors.New(fmt.Sprintf(":add sect: SECT %d already exists", snum))
 			}
-			sec := stw.Frame.AddSect(snum)
+			sec := frame.AddSect(snum)
 			select {
 			case <-time.After(time.Second):
 				break
-			case al := <-stw.exmodech:
-				if a, ok := al.(st.Shape); ok {
-					sec.Figs = make([]*st.Fig, 1)
-					f := st.NewFig()
-					if p, ok := stw.Frame.Props[101]; ok {
+			case al := <-exmodech:
+				if a, ok := al.(Shape); ok {
+					sec.Figs = make([]*Fig, 1)
+					f := NewFig()
+					if p, ok := frame.Props[101]; ok {
 						f.Prop = p
 					} else {
-						f.Prop = stw.Frame.DefaultProp()
+						f.Prop = frame.DefaultProp()
 					}
 					sec.Figs[0] = f
 					sec.Figs[0].SetShapeProperty(a)
@@ -2530,82 +2544,82 @@ func (stw *Window) excommand(command string, pipe bool) error {
 	case "copy":
 		if narg < 2 {
 			if usage {
-				return st.Usage(":copy [sect]")
+				return Usage(":copy [sect]")
 			}
-			return st.NotEnoughArgs(":copy")
+			return NotEnoughArgs(":copy")
 		}
 		switch strings.ToLower(args[1]) {
 		case "sec", "sect":
 			if usage {
-				return st.Usage(":copy sect sectcode")
+				return Usage(":copy sect sectcode")
 			}
 			if narg < 3 {
-				return st.NotEnoughArgs(":copy sect")
+				return NotEnoughArgs(":copy sect")
 			}
 			val, err := strconv.ParseInt(args[2], 10, 64)
 			if err != nil {
 				return err
 			}
 			snum := int(val)
-			if _, ok := stw.Frame.Sects[snum]; ok && !bang {
+			if _, ok := frame.Sects[snum]; ok && !bang {
 				return errors.New(fmt.Sprintf(":copy sect: SECT %d already exists", snum))
 			}
 			select {
 			case <-time.After(time.Second):
 				break
-			case s := <-stw.exmodech:
-				if sec, ok := s.(*st.Sect); ok {
-					as := sec.Snapshot(stw.Frame)
+			case s := <-exmodech:
+				if sec, ok := s.(*Sect); ok {
+					as := sec.Snapshot(frame)
 					as.Num = snum
-					stw.Frame.Sects[snum] = as
-					stw.Frame.Show.Sect[snum] = true
+					frame.Sects[snum] = as
+					frame.Show.Sect[snum] = true
 				}
 			}
 		}
 	case "currentvalue":
 		if usage {
-			return st.Usage(":currentvalue {-abs}")
+			return Usage(":currentvalue {-abs}")
 		}
-		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
-			var valfunc func(*st.Elem) float64
+		if stw.ElemSelected() {
+			var valfunc func(*Elem) float64
 			var m bytes.Buffer
 			if _, ok := argdict["ABS"]; ok {
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, true, true)
+				valfunc = func(elem *Elem) float64 {
+					return elem.CurrentValue(frame.Show, true, true)
 				}
 			} else {
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, true, false)
+				valfunc = func(elem *Elem) float64 {
+					return elem.CurrentValue(frame.Show, true, false)
 				}
 			}
-			for _, el := range stw.SelectElem {
+			for _, el := range stw.SelectedElems() {
 				if el == nil {
 					continue
 				}
 				m.WriteString(fmt.Sprintf("ELEM %d: %.3f", el.Num, valfunc(el)))
 			}
-			return st.Message(m.String())
+			return Message(m.String())
 		}
 	case "max":
 		if usage {
-			return st.Usage(":max {-abs}")
+			return Usage(":max {-abs}")
 		}
-		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+		if stw.ElemSelected() {
 			maxval := -1e16
-			var valfunc func(*st.Elem) float64
-			var sel *st.Elem
+			var valfunc func(*Elem) float64
+			var sel *Elem
 			abs := false
 			if _, ok := argdict["ABS"]; ok {
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, true, true)
+				valfunc = func(elem *Elem) float64 {
+					return elem.CurrentValue(frame.Show, true, true)
 				}
 				abs = true
 			} else {
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, true, false)
+				valfunc = func(elem *Elem) float64 {
+					return elem.CurrentValue(frame.Show, true, false)
 				}
 			}
-			for _, el := range stw.SelectElem {
+			for _, el := range stw.SelectedElems() {
 				if el == nil {
 					continue
 				}
@@ -2615,25 +2629,25 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 			if sel != nil {
-				stw.SelectElem = []*st.Elem{sel}
-				return st.Message(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, true, abs)))
+				stw.SelectElem([]*Elem{sel})
+				return Message(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(frame.Show, true, abs)))
 			}
-		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
+		} else if stw.NodeSelected() {
 			maxval := -1e16
-			var valfunc func(*st.Node) float64
-			var sn *st.Node
+			var valfunc func(*Node) float64
+			var sn *Node
 			abs := false
 			if _, ok := argdict["ABS"]; ok {
-				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, true, true)
+				valfunc = func(node *Node) float64 {
+					return node.CurrentValue(frame.Show, true, true)
 				}
 				abs = true
 			} else {
-				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, true, false)
+				valfunc = func(node *Node) float64 {
+					return node.CurrentValue(frame.Show, true, false)
 				}
 			}
-			for _, n := range stw.SelectNode {
+			for _, n := range stw.SelectedNodes() {
 				if n == nil {
 					continue
 				}
@@ -2643,32 +2657,32 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 			if sn != nil {
-				stw.SelectNode = []*st.Node{sn}
-				return st.Message(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, true, abs)))
+				stw.SelectNode([]*Node{sn})
+				return Message(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(frame.Show, true, abs)))
 			}
 		} else {
 			return errors.New(":max no selected elem/node")
 		}
 	case "min":
 		if usage {
-			return st.Usage(":min {-abs}")
+			return Usage(":min {-abs}")
 		}
-		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
+		if stw.ElemSelected() {
 			minval := 1e16
-			var valfunc func(*st.Elem) float64
-			var sel *st.Elem
+			var valfunc func(*Elem) float64
+			var sel *Elem
 			abs := false
 			if _, ok := argdict["ABS"]; ok {
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, false, true)
+				valfunc = func(elem *Elem) float64 {
+					return elem.CurrentValue(frame.Show, false, true)
 				}
 				abs = true
 			} else {
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, false, false)
+				valfunc = func(elem *Elem) float64 {
+					return elem.CurrentValue(frame.Show, false, false)
 				}
 			}
-			for _, el := range stw.SelectElem {
+			for _, el := range stw.SelectedElems() {
 				if el == nil {
 					continue
 				}
@@ -2678,25 +2692,25 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 			if sel != nil {
-				stw.SelectElem = []*st.Elem{sel}
-				return st.Message(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(stw.Frame.Show, false, abs)))
+				stw.SelectElem([]*Elem{sel})
+				return Message(fmt.Sprintf("ELEM %d: %.3f", sel.Num, sel.CurrentValue(frame.Show, false, abs)))
 			}
-		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
+		} else if stw.NodeSelected() {
 			minval := 1e16
-			var valfunc func(*st.Node) float64
-			var sn *st.Node
+			var valfunc func(*Node) float64
+			var sn *Node
 			abs := false
 			if _, ok := argdict["ABS"]; ok {
-				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, false, true)
+				valfunc = func(node *Node) float64 {
+					return node.CurrentValue(frame.Show, false, true)
 				}
 				abs = true
 			} else {
-				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, false, false)
+				valfunc = func(node *Node) float64 {
+					return node.CurrentValue(frame.Show, false, false)
 				}
 			}
-			for _, n := range stw.SelectNode {
+			for _, n := range stw.SelectedNodes() {
 				if n == nil {
 					continue
 				}
@@ -2706,30 +2720,30 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 			if sn != nil {
-				stw.SelectNode = []*st.Node{sn}
-				return st.Message(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(stw.Frame.Show, false, abs)))
+				stw.SelectNode([]*Node{sn})
+				return Message(fmt.Sprintf("NODE %d: %.3f", sn.Num, sn.CurrentValue(frame.Show, false, abs)))
 			}
 		} else {
 			return errors.New(":min no selected elem/node")
 		}
 	case "average":
 		if usage {
-			return st.Usage(":average {-abs}")
+			return Usage(":average {-abs}")
 		}
-		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
-			var valfunc func(*st.Elem) float64
+		if stw.ElemSelected() {
+			var valfunc func(*Elem) float64
 			if _, ok := argdict["ABS"]; ok {
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, false, true)
+				valfunc = func(elem *Elem) float64 {
+					return elem.CurrentValue(frame.Show, false, true)
 				}
 			} else {
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, false, false)
+				valfunc = func(elem *Elem) float64 {
+					return elem.CurrentValue(frame.Show, false, false)
 				}
 			}
 			val := 0.0
 			num := 0
-			for _, el := range stw.SelectElem {
+			for _, el := range stw.SelectedElems() {
 				if el == nil {
 					continue
 				}
@@ -2737,22 +2751,22 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				num++
 			}
 			if num >= 1 {
-				return st.Message(fmt.Sprintf("%d ELEMs : %.5f", num, val/float64(num)))
+				return Message(fmt.Sprintf("%d ELEMs : %.5f", num, val/float64(num)))
 			}
-		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
-			var valfunc func(*st.Node) float64
+		} else if stw.NodeSelected() {
+			var valfunc func(*Node) float64
 			if _, ok := argdict["ABS"]; ok {
-				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, false, true)
+				valfunc = func(node *Node) float64 {
+					return node.CurrentValue(frame.Show, false, true)
 				}
 			} else {
-				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, false, false)
+				valfunc = func(node *Node) float64 {
+					return node.CurrentValue(frame.Show, false, false)
 				}
 			}
 			val := 0.0
 			num := 0
-			for _, n := range stw.SelectNode {
+			for _, n := range stw.SelectedNodes() {
 				if n == nil {
 					continue
 				}
@@ -2760,29 +2774,29 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				num++
 			}
 			if num >= 1 {
-				return st.Message(fmt.Sprintf("%d NODEs: %.5f", num, val/float64(num)))
+				return Message(fmt.Sprintf("%d NODEs: %.5f", num, val/float64(num)))
 			}
 		} else {
 			return errors.New(":average no selected elem/node")
 		}
 	case "sum":
 		if usage {
-			return st.Usage(":sum {-abs}")
+			return Usage(":sum {-abs}")
 		}
-		if stw.SelectElem != nil && len(stw.SelectElem) >= 1 {
-			var valfunc func(*st.Elem) float64
+		if stw.ElemSelected() {
+			var valfunc func(*Elem) float64
 			if _, ok := argdict["ABS"]; ok {
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, false, true)
+				valfunc = func(elem *Elem) float64 {
+					return elem.CurrentValue(frame.Show, false, true)
 				}
 			} else {
-				valfunc = func(elem *st.Elem) float64 {
-					return elem.CurrentValue(stw.Frame.Show, false, false)
+				valfunc = func(elem *Elem) float64 {
+					return elem.CurrentValue(frame.Show, false, false)
 				}
 			}
 			val := 0.0
 			num := 0
-			for _, el := range stw.SelectElem {
+			for _, el := range stw.SelectedElems() {
 				if el == nil {
 					continue
 				}
@@ -2790,22 +2804,22 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				num++
 			}
 			if num >= 1 {
-				return st.Message(fmt.Sprintf("%d ELEMs : %.5f", num, val))
+				return Message(fmt.Sprintf("%d ELEMs : %.5f", num, val))
 			}
-		} else if stw.SelectNode != nil && len(stw.SelectNode) >= 1 {
-			var valfunc func(*st.Node) float64
+		} else if stw.NodeSelected() {
+			var valfunc func(*Node) float64
 			if _, ok := argdict["ABS"]; ok {
-				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, false, true)
+				valfunc = func(node *Node) float64 {
+					return node.CurrentValue(frame.Show, false, true)
 				}
 			} else {
-				valfunc = func(node *st.Node) float64 {
-					return node.CurrentValue(stw.Frame.Show, false, false)
+				valfunc = func(node *Node) float64 {
+					return node.CurrentValue(frame.Show, false, false)
 				}
 			}
 			val := 0.0
 			num := 0
-			for _, n := range stw.SelectNode {
+			for _, n := range stw.SelectedNodes() {
 				if n == nil {
 					continue
 				}
@@ -2813,14 +2827,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				num++
 			}
 			if num >= 1 {
-				return st.Message(fmt.Sprintf("%d NODEs: %.5f", num, val))
+				return Message(fmt.Sprintf("%d NODEs: %.5f", num, val))
 			}
 		} else {
 			return errors.New(":sum no selected elem/node")
 		}
 	case "erase":
 		if usage {
-			return st.Usage(":erase")
+			return Usage(":erase")
 		}
 		stw.Deselect()
 	ex_erase:
@@ -2828,27 +2842,27 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			select {
 			case <-time.After(time.Second):
 				break ex_erase
-			case <-stw.exmodeend:
+			case <-exmodeend:
 				break ex_erase
-			case ent := <-stw.exmodech:
+			case ent := <-exmodech:
 				switch ent := ent.(type) {
-				case *st.Node:
-					stw.Frame.DeleteNode(ent.Num)
-				case *st.Elem:
-					stw.Frame.DeleteElem(ent.Num)
+				case *Node:
+					frame.DeleteNode(ent.Num)
+				case *Elem:
+					frame.DeleteElem(ent.Num)
 				}
 			}
 		}
-		ns := stw.Frame.NodeNoReference()
+		ns := frame.NodeNoReference()
 		if len(ns) != 0 {
 			for _, n := range ns {
-				stw.Frame.DeleteNode(n.Num)
+				frame.DeleteNode(n.Num)
 			}
 		}
 		stw.Snapshot()
 	case "count":
 		if usage {
-			return st.Usage(":count")
+			return Usage(":count")
 		}
 		var nnode, nelem int
 	ex_count:
@@ -2856,105 +2870,105 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			select {
 			case <-time.After(time.Second):
 				break ex_count
-			case <-stw.exmodeend:
+			case <-exmodeend:
 				break ex_count
-			case ent := <-stw.exmodech:
+			case ent := <-exmodech:
 				switch ent.(type) {
-				case *st.Node:
+				case *Node:
 					nnode++
-				case *st.Elem:
+				case *Elem:
 					nelem++
 				}
 			}
 		}
-		return st.Message(fmt.Sprintf("NODES: %d, ELEMS: %d", nnode, nelem))
+		return Message(fmt.Sprintf("NODES: %d, ELEMS: %d", nnode, nelem))
 	case "length":
 		if usage {
-			return st.Usage(":length [-deformed]")
+			return Usage(":length [-deformed]")
 		}
 		deformed := false
 		if _, ok := argdict["DEFORMED"]; ok {
 			deformed = true
 		}
 		sum := 0.0
-		for _, el := range stw.currentelem() {
+		for _, el := range currentelem(stw, exmodech, exmodeend) {
 			if el.IsLineElem() {
 				if deformed {
-					sum += el.DeformedLength(stw.Frame.Show.Period)
+					sum += el.DeformedLength(frame.Show.Period)
 				} else {
 					sum += el.Length()
 				}
 			}
 		}
 		if deformed {
-			return st.Message(fmt.Sprintf("total length: %.3f (deformed)", sum))
+			return Message(fmt.Sprintf("total length: %.3f (deformed)", sum))
 		} else {
-			return st.Message(fmt.Sprintf("total length: %.3f", sum))
+			return Message(fmt.Sprintf("total length: %.3f", sum))
 		}
 	case "area":
 		if usage {
-			return st.Usage(":area [-deformed]")
+			return Usage(":area [-deformed]")
 		}
 		deformed := false
 		if _, ok := argdict["DEFORMED"]; ok {
 			deformed = true
 		}
 		sum := 0.0
-		for _, el := range stw.currentelem() {
+		for _, el := range currentelem(stw, exmodech, exmodeend) {
 			if !el.IsLineElem() {
 				if deformed {
-					sum += el.DeformedArea(stw.Frame.Show.Period)
+					sum += el.DeformedArea(frame.Show.Period)
 				} else {
 					sum += el.Area()
 				}
 			}
 		}
 		if deformed {
-			return st.Message(fmt.Sprintf("total area: %.3f (deformed)", sum))
+			return Message(fmt.Sprintf("total area: %.3f (deformed)", sum))
 		} else {
-			return st.Message(fmt.Sprintf("total area: %.3f", sum))
+			return Message(fmt.Sprintf("total area: %.3f", sum))
 		}
 	case "show":
 		if usage {
-			return st.Usage(":show")
+			return Usage(":show")
 		}
 	ex_show:
 		for {
 			select {
 			case <-time.After(time.Second):
 				break ex_show
-			case <-stw.exmodeend:
+			case <-exmodeend:
 				break ex_show
-			case ent := <-stw.exmodech:
-				if h, ok := ent.(st.Hider); ok {
+			case ent := <-exmodech:
+				if h, ok := ent.(Hider); ok {
 					h.Show()
 				}
 			}
 		}
 	case "hide":
 		if usage {
-			return st.Usage(":hide")
+			return Usage(":hide")
 		}
 	ex_hide:
 		for {
 			select {
 			case <-time.After(time.Second):
 				break ex_hide
-			case <-stw.exmodeend:
+			case <-exmodeend:
 				break ex_hide
-			case ent := <-stw.exmodech:
-				if h, ok := ent.(st.Hider); ok {
+			case ent := <-exmodech:
+				if h, ok := ent.(Hider); ok {
 					h.Hide()
 				}
 			}
 		}
 	case "range":
 		if usage {
-			return st.Usage(":range [x,y,z] min max")
+			return Usage(":range [x,y,z] min max")
 		}
 		if narg == 1 {
 			for i := 0; i < 3; i++ {
-				axisrange(stw, i, -100.0, 1000.0, false)
+				stw.AxisRange(i, -100.0, 1000.0, false)
 			}
 			return nil
 		}
@@ -2970,7 +2984,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			return errors.New(":range unknown axis")
 		}
 		if narg == 2 {
-			axisrange(stw, axis, -100.0, 1000.0, false)
+			stw.AxisRange(axis, -100.0, 1000.0, false)
 			return nil
 		}
 		var min, max float64
@@ -2988,21 +3002,21 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		} else {
 			max = min
 		}
-		axisrange(stw, axis, min, max, false)
+		stw.AxisRange(axis, min, max, false)
 	case "height":
 		if usage {
-			return st.Usage(":height f1 f2")
+			return Usage(":height f1 f2")
 		}
 		if narg == 1 {
-			axisrange(stw, 2, -100.0, 1000.0, false)
+			stw.AxisRange(2, -100.0, 1000.0, false)
 			return nil
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":height")
+			return NotEnoughArgs(":height")
 		}
 		var min, max int
 		if strings.EqualFold(args[1], "n") {
-			min = stw.Frame.Ai.Nfloor
+			min = frame.Ai.Nfloor
 		} else {
 			tmp, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
@@ -3011,7 +3025,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			min = int(tmp)
 		}
 		if strings.EqualFold(args[2], "n") {
-			max = stw.Frame.Ai.Nfloor
+			max = frame.Ai.Nfloor
 		} else {
 			tmp, err := strconv.ParseInt(args[2], 10, 64)
 			if err != nil {
@@ -3019,61 +3033,61 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			}
 			max = int(tmp)
 		}
-		l := len(stw.Frame.Ai.Boundary)
+		l := len(frame.Ai.Boundary)
 		if min < 0 || min >= l || max < 0 || max >= l {
 			return errors.New(":height out of boundary")
 		}
-		axisrange(stw, 2, stw.Frame.Ai.Boundary[min], stw.Frame.Ai.Boundary[max], false)
+		stw.AxisRange(2, frame.Ai.Boundary[min], frame.Ai.Boundary[max], false)
 	case "story", "storey":
 		if usage {
-			return st.Usage(":storey n")
+			return Usage(":storey n")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":storey")
+			return NotEnoughArgs(":storey")
 		}
 		tmp, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
 			return err
 		}
 		n := int(tmp)
-		if n <= 0 || n >= len(stw.Frame.Ai.Boundary)-1 {
+		if n <= 0 || n >= len(frame.Ai.Boundary)-1 {
 			return errors.New(":storey out of boundary")
 		}
-		return stw.exmode(fmt.Sprintf("height %d %d", n-1, n+1))
+		return ExMode(stw, frame, fmt.Sprintf("height %d %d", n-1, n+1))
 	case "floor":
 		if usage {
-			return st.Usage(":floor n")
+			return Usage(":floor n")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":floor")
+			return NotEnoughArgs(":floor")
 		}
 		var n int
 		switch strings.ToLower(args[1]) {
 		case "g":
 			n = 1
 		case "r":
-			n = len(stw.Frame.Ai.Boundary) - 1
+			n = len(frame.Ai.Boundary) - 1
 		default:
 			tmp, err := strconv.ParseInt(args[1], 10, 64)
 			if err != nil {
 				return err
 			}
 			n = int(tmp)
-			if n <= 0 || n >= len(stw.Frame.Ai.Boundary) {
+			if n <= 0 || n >= len(frame.Ai.Boundary) {
 				return errors.New(":floor out of boundary")
 			}
 		}
-		return stw.exmode(fmt.Sprintf("height %d %d", n-1, n))
+		return ExMode(stw, frame, fmt.Sprintf("height %d %d", n-1, n))
 	case "height+":
 		stw.NextFloor()
 	case "height-":
 		stw.PrevFloor()
 	case "angle":
 		if usage {
-			return st.Usage(":angle phi theta")
+			return Usage(":angle phi theta")
 		}
 		if narg < 3 {
-			return st.NotEnoughArgs(":angle")
+			return NotEnoughArgs(":angle")
 		}
 		angle := make([]float64, 2)
 		for i := 0; i < 2; i++ {
@@ -3089,7 +3103,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.SetAngle(angle[0], angle[1])
 	case "view":
 		if usage {
-			return st.Usage(":view [top,front,back,right,left]")
+			return Usage(":view [top,front,back,right,left]")
 		}
 		switch strings.ToUpper(args[1]) {
 		case "TOP":
@@ -3105,36 +3119,36 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		}
 	case "printrange":
 		if usage {
-			return st.Usage(":printrange [on,true,yes/off,false,no] [a3tate,a3yoko,a4tate,a4yoko]")
+			return Usage(":printrange [on,true,yes/off,false,no] [a3tate,a3yoko,a4tate,a4yoko]")
 		}
 		if narg < 2 {
-			showprintrange = !showprintrange
+			stw.ToggleShowPrintRange()
 			break
 		}
 		switch strings.ToUpper(args[1]) {
 		case "ON", "TRUE", "YES":
-			showprintrange = true
+			stw.SetShowPrintRange(true)
 			if narg >= 3 {
-				err := stw.exmode(fmt.Sprintf(":paper %s", strings.Join(args[2:], " ")))
+				err := ExMode(stw, frame, fmt.Sprintf(":paper %s", strings.Join(args[2:], " ")))
 				if err != nil {
 					return err
 				}
 			}
 		case "OFF", "FALSE", "NO":
-			showprintrange = false
+			stw.SetShowPrintRange(false)
 		default:
-			err := stw.exmode(fmt.Sprintf(":paper %s", strings.Join(args[1:], " ")))
+			err := ExMode(stw, frame, fmt.Sprintf(":paper %s", strings.Join(args[1:], " ")))
 			if err != nil {
 				return err
 			}
-			showprintrange = true
+			stw.SetShowPrintRange(true)
 		}
 	case "paper":
 		if usage {
-			return st.Usage(":paper [a3tate,a3yoko,a4tate,a4yoko]")
+			return Usage(":paper [a3tate,a3yoko,a4tate,a4yoko]")
 		}
 		if narg < 2 {
-			return st.NotEnoughArgs(":paper")
+			return NotEnoughArgs(":paper")
 		}
 		tate := regexp.MustCompile("(?i)a([0-9]+) *t(a(t(e?)?)?)?")
 		yoko := regexp.MustCompile("(?i)a([0-9]+) *y(o(k(o?)?)?)?")
@@ -3144,49 +3158,49 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			fs := tate.FindStringSubmatch(name)
 			switch fs[1] {
 			case "3":
-				stw.papersize = A3_TATE
+				stw.SetPaperSize(A3_TATE)
 			case "4":
-				stw.papersize = A4_TATE
+				stw.SetPaperSize(A4_TATE)
 			}
 		case yoko.MatchString(name):
 			fs := yoko.FindStringSubmatch(name)
 			switch fs[1] {
 			case "3":
-				stw.papersize = A3_YOKO
+				stw.SetPaperSize(A3_YOKO)
 			case "4":
-				stw.papersize = A4_YOKO
+				stw.SetPaperSize(A4_YOKO)
 			}
 		default:
 			return errors.New(":paper unknown papersize")
 		}
 	case "color":
 		if usage {
-			return st.Usage(":color [n,sect,rate,white,mono,strong]")
+			return Usage(":color [n,sect,rate,white,mono,strong]")
 		}
 		if narg < 2 {
-			stw.SetColorMode(st.ECOLOR_SECT)
+			stw.SetColorMode(ECOLOR_SECT)
 			break
 		}
 		switch strings.ToUpper(args[1]) {
 		case "N":
-			stw.SetColorMode(st.ECOLOR_N)
+			stw.SetColorMode(ECOLOR_N)
 		case "SECT":
-			stw.SetColorMode(st.ECOLOR_SECT)
+			stw.SetColorMode(ECOLOR_SECT)
 		case "RATE":
-			stw.SetColorMode(st.ECOLOR_RATE)
+			stw.SetColorMode(ECOLOR_RATE)
 		case "WHIHTE", "MONO", "MONOCHROME":
-			stw.SetColorMode(st.ECOLOR_WHITE)
+			stw.SetColorMode(ECOLOR_WHITE)
 		case "STRONG":
-			stw.SetColorMode(st.ECOLOR_STRONG)
+			stw.SetColorMode(ECOLOR_STRONG)
 		}
 	case "mono":
-		stw.SetColorMode(st.ECOLOR_WHITE)
+		stw.SetColorMode(ECOLOR_WHITE)
 	case "postscript":
 		if fn == "" {
-			fn = filepath.Join(stw.Cwd, "test.ps")
+			fn = filepath.Join(stw.Cwd(), "teps")
 		}
 		var paper ps.Paper
-		switch stw.papersize {
+		switch stw.PaperSize() {
 		default:
 			paper = ps.A4Portrait
 		case A4_TATE:
@@ -3198,62 +3212,62 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		case A3_YOKO:
 			paper = ps.A3Landscape
 		}
-		v := stw.Frame.View.Copy()
-		stw.Frame.SetFocus(nil)
-		stw.Frame.CentringTo(paper)
-		err := stw.Frame.PrintPostScript(fn, paper)
-		stw.Frame.View = v
+		v := frame.View.Copy()
+		frame.SetFocus(nil)
+		frame.CentringTo(paper)
+		err := frame.PrintPostScript(fn, paper)
+		frame.View = v
 		if err != nil {
 			return err
 		}
-	case "analysis":
-		if usage {
-			return st.Usage(":analysis")
-		}
-		err := stw.SaveFile(stw.Frame.Path)
-		if err != nil {
-			return err
-		}
-		var anarg string
-		if narg >= 3 {
-			anarg = args[2]
-		} else {
-			anarg = "-a"
-		}
-		err = stw.Analysis(filepath.ToSlash(stw.Frame.Path), anarg)
-		if err != nil {
-			return err
-		}
-		stw.Reload()
-		stw.ReadAll()
-		stw.Redraw()
+	// case "analysis":
+	// 	if usage {
+	// 		return Usage(":analysis")
+	// 	}
+	// 	err := stw.SaveFile(frame.Path)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	var anarg string
+	// 	if narg >= 3 {
+	// 		anarg = args[2]
+	// 	} else {
+	// 		anarg = "-a"
+	// 	}
+	// 	err = stw.Analysis(filepath.ToSlash(frame.Path), anarg)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	stw.Reload()
+	// 	stw.ReadAll()
+	// 	stw.Redraw()
 	case "extractarclm":
 		if usage {
-			return st.Usage(":extractarclm")
+			return Usage(":extractarclm")
 		}
-		stw.Frame.ExtractArclm()
-		// err = stw.Analysis(filepath.ToSlash(stw.Frame.Path), "")
+		frame.ExtractArclm()
+		// err = stw.Analysis(filepath.ToSlash(frame.Path), "")
 		// if err != nil {
 		// 	return err
 		// }
 		// for _, ext := range []string{".inl", ".ihx", ".ihy"} {
-		// 	err := stw.Frame.ReadData(st.Ce(stw.Frame.Path, ext))
+		// 	err := frame.ReadData(Ce(frame.Path, ext))
 		// 	if err != nil {
 		// 		stw.errormessage(err, ERROR)
 		// 	}
 		// }
 	case "saveasarclm":
 		if usage {
-			return st.Usage(":saveasarclm")
+			return Usage(":saveasarclm")
 		}
-		stw.Frame.SaveAsArclm("")
+		frame.SaveAsArclm("")
 	case "arclm001":
 		if usage {
-			return st.Usage(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} filename")
+			return Usage(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} filename")
 		}
 		var otp string
 		if fn == "" {
-			otp = st.Ce(stw.Frame.Path, ".otp")
+			otp = Ce(frame.Path, ".otp")
 		} else {
 			otp = fn
 		}
@@ -3289,11 +3303,11 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		if _, ok := argdict["ALL"]; ok {
 			extra = make([][]float64, 2)
 			pers = []string{"L", "X", "Y"}
-			otps = []string{st.Ce(otp, ".otl"), st.Ce(otp, ".ohx"), st.Ce(otp, ".ohy")}
+			otps = []string{Ce(otp, ".otl"), Ce(otp, ".ohx"), Ce(otp, ".ohy")}
 			per = "L"
 			lap = 3
 			for i, eper := range []string{"X", "Y"} {
-				eaf := stw.Frame.Arclms[eper]
+				eaf := frame.Arclms[eper]
 				_, _, vec, err := eaf.AssemGlobalVector(1.0)
 				if err != nil {
 					return err
@@ -3311,7 +3325,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			init = false
 			m.WriteString("NO INITIALISATION")
 		}
-		af := stw.Frame.Arclms[per]
+		af := frame.Arclms[per]
 		go func() {
 			err := af.Arclm001(otps, init, sol, eps, extra...)
 			af.Endch <- err
@@ -3319,14 +3333,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.CurrentLap("Calculating...", 0, lap)
 		pivot := make(chan int)
 		end := make(chan int)
-		nodes := make([]*st.Node, len(stw.Frame.Nodes))
+		nodes := make([]*Node, len(frame.Nodes))
 		i := 0
-		for _, n := range stw.Frame.Nodes {
+		for _, n := range frame.Nodes {
 			nodes[i] = n
 			i++
 		}
-		sort.Sort(st.NodeByNum{nodes})
-		if drawpivot {
+		sort.Sort(NodeByNum{nodes})
+		if stw.Pivot() {
 			go stw.DrawPivot(nodes, pivot, end)
 		} else {
 			stw.Redraw()
@@ -3336,16 +3350,16 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			for {
 				select {
 				case <-af.Pivot:
-					if drawpivot {
+					if stw.Pivot() {
 						pivot <- 1
 					}
 				case nlap := <-af.Lapch:
-					stw.Frame.ReadArclmData(af, pers[nlap])
+					frame.ReadArclmData(af, pers[nlap])
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, lap)
 					stw.Redraw()
 				case <-af.Endch:
-					if drawpivot {
+					if stw.Pivot() {
 						end <- 1
 					}
 					stw.CurrentLap("Completed", lap, lap)
@@ -3355,14 +3369,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}()
-		return st.ArclmStart(m.String())
+		return ArclmStart(m.String())
 	case "arclm201":
 		if usage {
-			return st.Usage(":arclm201 {-period=name} {-lap=nlap} {-safety=val} {-max=val} {-start=val} {-noinit} filename")
+			return Usage(":arclm201 {-period=name} {-lap=nlap} {-safety=val} {-max=val} {-start=val} {-noinit} filename")
 		}
 		var otp string
 		if fn == "" {
-			otp = st.Ce(stw.Frame.Path, ".otp")
+			otp = Ce(frame.Path, ".otp")
 		} else {
 			otp = fn
 		}
@@ -3412,7 +3426,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			init = false
 			m.WriteString("NO INITIALISATION")
 		}
-		af := stw.Frame.Arclms[per]
+		af := frame.Arclms[per]
 		go func() {
 			err := af.Arclm201(otp, init, lap, safety, start, max)
 			if err != nil {
@@ -3423,14 +3437,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.CurrentLap("Calculating...", 0, lap)
 		pivot := make(chan int)
 		end := make(chan int)
-		nodes := make([]*st.Node, len(stw.Frame.Nodes))
+		nodes := make([]*Node, len(frame.Nodes))
 		i := 0
-		for _, n := range stw.Frame.Nodes {
+		for _, n := range frame.Nodes {
 			nodes[i] = n
 			i++
 		}
-		sort.Sort(st.NodeByNum{nodes})
-		if drawpivot {
+		sort.Sort(NodeByNum{nodes})
+		if stw.Pivot() {
 			go stw.DrawPivot(nodes, pivot, end)
 		} else {
 			stw.Redraw()
@@ -3440,14 +3454,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			for {
 				select {
 				case <-af.Pivot:
-					if drawpivot {
+					if stw.Pivot() {
 						pivot <- 1
 					}
 				case nlap := <-af.Lapch:
-					stw.Frame.ReadArclmData(af, per)
+					frame.ReadArclmData(af, per)
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, lap)
-					if drawpivot {
+					if stw.Pivot() {
 						end <- 1
 						go stw.DrawPivot(nodes, pivot, end)
 					} else {
@@ -3460,15 +3474,15 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}()
-		return st.ArclmStart(m.String())
+		return ArclmStart(m.String())
 	case "arclm202":
 		if usage {
-			return st.Usage(":arclm202 {-period=name} {-lap=nlap} {-safety=val} {-max=val} {-start=val} {-noinit} {-sects=val} {-comp=val} filename")
+			return Usage(":arclm202 {-period=name} {-lap=nlap} {-safety=val} {-max=val} {-start=val} {-noinit} {-sects=val} {-comp=val} filename")
 		}
 		var otp string
 		var sects []int
 		if fn == "" {
-			otp = st.Ce(stw.Frame.Path, ".otp")
+			otp = Ce(frame.Path, ".otp")
 		} else {
 			otp = fn
 		}
@@ -3529,7 +3543,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			init = false
 			m.WriteString("NO INITIALISATION")
 		}
-		af := stw.Frame.Arclms[per]
+		af := frame.Arclms[per]
 		go func() {
 			err := af.Arclm202(otp, init, lap, safety, start, max, sects, comp)
 			if err != nil {
@@ -3540,14 +3554,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		stw.CurrentLap("Calculating...", 0, lap)
 		pivot := make(chan int)
 		end := make(chan int)
-		nodes := make([]*st.Node, len(stw.Frame.Nodes))
+		nodes := make([]*Node, len(frame.Nodes))
 		i := 0
-		for _, n := range stw.Frame.Nodes {
+		for _, n := range frame.Nodes {
 			nodes[i] = n
 			i++
 		}
-		sort.Sort(st.NodeByNum{nodes})
-		if drawpivot {
+		sort.Sort(NodeByNum{nodes})
+		if stw.Pivot() {
 			go stw.DrawPivot(nodes, pivot, end)
 		} else {
 			stw.Redraw()
@@ -3557,14 +3571,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 			for {
 				select {
 				case <-af.Pivot:
-					if drawpivot {
+					if stw.Pivot() {
 						pivot <- 1
 					}
 				case nlap := <-af.Lapch:
-					stw.Frame.ReadArclmData(af, per)
+					frame.ReadArclmData(af, per)
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, lap)
-					if drawpivot {
+					if stw.Pivot() {
 						end <- 1
 						go stw.DrawPivot(nodes, pivot, end)
 					} else {
@@ -3577,16 +3591,16 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}()
-		return st.ArclmStart(m.String())
+		return ArclmStart(m.String())
 	case "arclm301":
 		if usage {
-			return st.Usage(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
+			return Usage(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
 		}
 		var otp string
 		var sects []int
 		var m bytes.Buffer
 		if fn == "" {
-			otp = st.Ce(stw.Frame.Path, ".otp")
+			otp = Ce(frame.Path, ".otp")
 		} else {
 			otp = fn
 		}
@@ -3613,7 +3627,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
 		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
 		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
-		af := stw.Frame.Arclms[per]
+		af := frame.Arclms[per]
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
@@ -3630,7 +3644,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				select {
 				case <-af.Pivot:
 				case nlap := <-af.Lapch:
-					stw.Frame.ReadArclmData(af, per)
+					frame.ReadArclmData(af, per)
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, 0)
 					stw.Redraw()
@@ -3641,15 +3655,15 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}()
-		return st.ArclmStart(m.String())
+		return ArclmStart(m.String())
 	case "arclm401":
 		if usage {
-			return st.Usage(":arclm401 {-period=name} {-eps=val} {-noinit} filename")
+			return Usage(":arclm401 {-period=name} {-eps=val} {-noinit} filename")
 		}
 		var otp string
 		var m bytes.Buffer
 		if fn == "" {
-			otp = st.Ce(stw.Frame.Path, ".otp")
+			otp = Ce(frame.Path, ".otp")
 		} else {
 			otp = fn
 		}
@@ -3672,14 +3686,14 @@ func (stw *Window) excommand(command string, pipe bool) error {
 		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
 		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
 		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
-		af := stw.Frame.Arclms[per]
+		af := frame.Arclms[per]
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
 			m.WriteString("NO INITIALISATION")
 		}
 		wgtdict := make(map[int]float64)
-		for _, n := range stw.Frame.Nodes {
+		for _, n := range frame.Nodes {
 			wgtdict[n.Num] = n.Weight[1]
 		}
 		go func() {
@@ -3693,7 +3707,7 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				select {
 				case <-af.Pivot:
 				case nlap := <-af.Lapch:
-					stw.Frame.ReadArclmData(af, per)
+					frame.ReadArclmData(af, per)
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, 0)
 					stw.Redraw()
@@ -3704,60 +3718,39 @@ func (stw *Window) excommand(command string, pipe bool) error {
 				}
 			}
 		}()
-		return st.ArclmStart(m.String())
+		return ArclmStart(m.String())
 	}
 	return nil
 }
 
-func (stw *Window) DrawPivot(nodes []*st.Node, pivot, end chan int) {
-	stw.DrawFrameNode()
-	stw.DrawTexts(stw.cdcanv, false)
-	stw.cdcanv.Foreground(pivotColor)
-	ind := 0
-	nnum := 0
-	for {
-		select {
-		case <-end:
-			return
-		case <-pivot:
-			ind++
-			if ind >= 6 {
-				DrawNodeNum(nodes[nnum], stw.cdcanv)
-				nnum++
-				ind = 0
-			}
-		}
-	}
-}
-
-func (stw *Window) currentelem() []*st.Elem {
-	var els []*st.Elem
-	if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+func currentelem(stw ExModer, exmodech chan interface{}, exmodeend chan int) []*Elem {
+	var els []*Elem
+	if !stw.ElemSelected() {
 		enum := 0
-		els = make([]*st.Elem, 0)
+		els = make([]*Elem, 0)
 	current:
 		for {
 			select {
 			case <-time.After(time.Second):
 				break current
-			case <-stw.exmodeend:
+			case <-exmodeend:
 				break current
-			case el := <-stw.exmodech:
+			case el := <-exmodech:
 				if el == nil {
 					break current
 				}
-				if el, ok := el.(*st.Elem); ok {
+				if el, ok := el.(*Elem); ok {
 					els = append(els, el)
 					enum++
 				}
 			}
 		}
 		if enum == 0 {
-			return []*st.Elem{}
+			return []*Elem{}
 		}
 		els = els[:enum]
 	} else {
-		els = stw.SelectElem
+		els = stw.SelectedElems()
 	}
 	return els
 }

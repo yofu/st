@@ -269,7 +269,7 @@ func hanging(stw *Window) {
 	}
 	starthanging := func() {
 		moved := make([]*st.Node, 0)
-		for _, n := range stw.SelectNode {
+		for _, n := range stw.selectNode {
 			if n == nil {
 				continue
 			}
@@ -350,13 +350,13 @@ func hanging(stw *Window) {
 
 // RING// {{{
 func ring(stw *Window) {
-	if stw.SelectNode == nil {
+	if stw.selectNode == nil {
 		stw.EscapeAll()
 		return
 	}
 	mid := make([]float64, 2)
 	num := 0
-	for _, n := range stw.SelectNode {
+	for _, n := range stw.selectNode {
 		if n != nil {
 			num++
 			for i := 0; i < 2; i++ {
@@ -374,7 +374,7 @@ func ring(stw *Window) {
 	nodes := make(map[float64]*st.Node, num)
 	sortednodes := make([]*st.Node, num)
 	var keys []float64
-	for _, n := range stw.SelectNode {
+	for _, n := range stw.selectNode {
 		if n != nil {
 			nodes[math.Atan2(n.Coord[1]-mid[1], n.Coord[0]-mid[0])] = n
 		}

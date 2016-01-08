@@ -123,14 +123,14 @@ func tensegrity(stw *Window, f func(cs, ts, sz int), csect, tsect, size int) {
 // }}}
 
 func tensegrityconnected(stw *Window) {
-	if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+	if !stw.ElemSelected() {
 		return
 	}
 	tensegrity(stw, func(cs, ts, sz int) {
 		var tmpelems []*st.Elem
 		var num int
 		var el0 *st.Elem
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el != nil {
 				el0 = el
 				break
@@ -182,20 +182,20 @@ func tensegrityconnected(stw *Window) {
 					}
 				}
 			}
-			stw.SelectElem = tmpelems[:num]
+			stw.selectElem = tmpelems[:num]
 			stw.Redraw()
 		}
 	}, 201, 211, 0)
 }
 
 func tensegrityadd(stw *Window) {
-	if stw.SelectElem == nil || len(stw.SelectElem) == 0 {
+	if !stw.ElemSelected() {
 		return
 	}
 	tensegrity(stw, func(cs, ts, sz int) {
 		var tmpelems []*st.Elem
 		var num int
-		for _, el := range stw.SelectElem {
+		for _, el := range stw.selectElem {
 			if el == nil {
 				continue
 			}
@@ -208,7 +208,7 @@ func tensegrityadd(stw *Window) {
 				}
 			}
 		}
-		stw.SelectElem = tmpelems[:num]
+		stw.selectElem = tmpelems[:num]
 		stw.Redraw()
 		if stw.Yn("TENSEGRITY ADD", "部材を追加しますか?") {
 			for _, el := range tmpelems[:num] {
@@ -220,13 +220,13 @@ func tensegrityadd(stw *Window) {
 }
 
 func tensegritydelete(stw *Window) {
-	if stw.SelectNode == nil || len(stw.SelectNode) == 0 {
+	if !stw.NodeSelected() {
 		return
 	}
 	tensegrity(stw, func(cs, ts, sz int) {
 		del := false
-		stw.SelectElem = make([]*st.Elem, 0)
-		for _, n := range stw.SelectNode {
+		stw.selectElem = make([]*st.Elem, 0)
+		for _, n := range stw.selectNode {
 			var tens []*st.Elem
 			var tnum int
 			for _, el := range stw.Frame.SearchElem(n) {
@@ -259,8 +259,8 @@ func tensegritydelete(stw *Window) {
 				for i, k := range keys {
 					sortedelems[i] = elems[k]
 				}
-				stw.SelectElem = append(stw.SelectElem, sortedelems[:tnum-sz]...) // valが小さいものを削除
-				// stw.SelectElem = append(stw.SelectElem, sortedelems[sz:]...) // valが大きいものを削除
+				stw.selectElem = append(stw.selectElem, sortedelems[:tnum-sz]...) // valが小さいものを削除
+				// stw.selectElem = append(stw.selectElem, sortedelems[sz:]...) // valが大きいものを削除
 			}
 		}
 		stw.Redraw()
@@ -274,7 +274,7 @@ func tensegritydelete(stw *Window) {
 }
 
 // func tensegritydelete2 (stw *Window) {
-//     if stw.SelectElem == nil || len(stw.SelectElem)==0 { return }
+//     if stw.selectElem == nil || len(stw.selectElem)==0 { return }
 //     tensegrity(stw, func (cs, ts, sz int) {
 //                         del := false
 //                         tnum := 0
@@ -282,7 +282,7 @@ func tensegritydelete(stw *Window) {
 //                         for _, el := range stw.Frame.Elems {
 //                         }
 //                         elems := make(map[float64]*st.Elem, tnum)
-//                         for _, el := range stw.SelectElem {
+//                         for _, el := range stw.selectElem {
 //                             if el.Sect.Num == ts {
 //                                 val := math.Abs(el.N("L", 0) * 1.5)
 //                                 for _, per := range []string{"+X", "-X", "+Y", "-Y"} {
@@ -295,7 +295,7 @@ func tensegritydelete(stw *Window) {
 //                                 tnum++
 //                             }
 //                         }
-//                         stw.SelectElem = make([]*st.Elem, 0)
+//                         stw.selectElem = make([]*st.Elem, 0)
 //                         sortedelems := make([]*st.Elem, tnum)
 //                         var keys []float64
 //                         for k := range elems {
@@ -334,7 +334,7 @@ func tensegritydelete(stw *Window) {
 //                                         ref[cm.Num]--
 //                                     }
 //                                     del = true
-//                                     stw.SelectElem = append(stw.SelectElem, el)
+//                                     stw.selectElem = append(stw.selectElem, el)
 //                                 }
 //                             }
 //                         stw.DrawFrame(ColorMode)
