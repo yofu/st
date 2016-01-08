@@ -121,6 +121,12 @@ const (
 	A3_YOKO
 )
 
+// keymode
+const (
+	NORMAL = iota
+	VIEWEDIT
+)
+
 // Draw
 var (
 	first                   = 1
@@ -151,6 +157,7 @@ var (
 	RangeViewCenter         = []float64{100.0, 100.0}
 	dataareaheight          = 150
 	drawpivot               = false
+	keymode                 = NORMAL
 )
 
 var (
@@ -5306,15 +5313,18 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		}
 	case 'M':
 		if key.IsCtrl() {
-			stw.Reload()
+			// stw.Reload()
+			if keymode == NORMAL {
+				keymode = VIEWEDIT
+				stw.addHistory("VIEWEDIT")
+			} else if keymode == VIEWEDIT {
+				keymode = NORMAL
+				stw.addHistory("NORMAL")
+			}
 		}
 	case 'F':
 		if key.IsCtrl() {
 			stw.SetFocus()
-		}
-	case 'H':
-		if key.IsCtrl() {
-			stw.HideSelected()
 		}
 	case 'D':
 		if key.IsCtrl() {
@@ -5325,9 +5335,57 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 			// stw.Save()
 			stw.ShowAll()
 		}
+	case 'H':
+		switch keymode {
+		case NORMAL:
+			if key.IsCtrl() {
+				stw.HideSelected()
+			}
+		case VIEWEDIT:
+			if key.IsCtrl() {
+				stw.Frame.View.Angle[1] += 5
+				stw.Redraw()
+			} else if key.IsAlt() {
+				stw.Frame.View.Center[0] -= 5
+				stw.Redraw()
+			}
+		}
+	case 'J':
+		switch keymode {
+		case VIEWEDIT:
+			if key.IsCtrl() {
+				stw.Frame.View.Angle[0] += 5
+				stw.Redraw()
+			} else if key.IsAlt() {
+				stw.Frame.View.Center[1] -= 5
+				stw.Redraw()
+			}
+		}
+	case 'K':
+		switch keymode {
+		case VIEWEDIT:
+			if key.IsCtrl() {
+				stw.Frame.View.Angle[0] -= 5
+				stw.Redraw()
+			} else if key.IsAlt() {
+				stw.Frame.View.Center[1] += 5
+				stw.Redraw()
+			}
+		}
 	case 'L':
-		if key.IsCtrl() {
-			stw.LockSelected()
+		switch keymode {
+		case NORMAL:
+			if key.IsCtrl() {
+				stw.LockSelected()
+			}
+		case VIEWEDIT:
+			if key.IsCtrl() {
+				stw.Frame.View.Angle[1] -= 5
+				stw.Redraw()
+			} else if key.IsAlt() {
+				stw.Frame.View.Center[0] += 5
+				stw.Redraw()
+			}
 		}
 	case 'U':
 		if key.IsCtrl() {
@@ -5375,8 +5433,26 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 			stw.Redo()
 		}
 	case 'Z':
-		if key.IsCtrl() {
-			stw.Undo()
+		switch keymode {
+		case NORMAL:
+			if key.IsCtrl() {
+				stw.Undo()
+			}
+		case VIEWEDIT:
+			var val float64
+			if key.IsCtrl() {
+				val = math.Pow(2.0, 1.0/CanvasScaleSpeed)
+			} else if key.IsAlt() {
+				val = math.Pow(2.0, -1.0/CanvasScaleSpeed)
+			} else {
+				break
+			}
+			if stw.Frame.View.Perspective {
+				stw.Frame.View.Dists[1] *= val
+			} else {
+				stw.Frame.View.Gfact *= val
+			}
+			stw.Redraw()
 		}
 	}
 	prevkey = key.Key()

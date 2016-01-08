@@ -187,6 +187,12 @@ func (node *Node) OutputDisp() string {
 	return otp.String()
 }
 
+const (
+	ASIS = iota
+	DELETED
+	RESTORED
+)
+
 type Elem struct {
 	Num     int
 	Sect    *Sect
@@ -199,6 +205,8 @@ type Elem struct {
 	Stress  []float64
 	Energy  float64
 	Energyb float64
+	IsValid bool
+	CheckFunc func() int
 }
 
 func NewElem() *Elem {
@@ -207,6 +215,7 @@ func NewElem() *Elem {
 	el.Bonds = make([]int, 12)
 	el.Cmq = make([]float64, 12)
 	el.Stress = make([]float64, 12)
+	el.IsValid = true
 	return el
 }
 
@@ -373,6 +382,36 @@ func (elem *Elem) SetPrincipalAxis() error {
 	elem.Strong = s
 	elem.Weak = w
 	return nil
+}
+
+func (elem *Elem) Check() int {
+	if elem.CheckFunc == nil {
+		return ASIS
+	}
+	return elem.CheckFunc()
+}
+
+func (elem *Elem) SetIncompressible(val float64) {
+	elem.CheckFunc = func() int {
+		if !elem.IsValid {
+			if elem.Length() > elem.Length0() {
+				elem.IsValid = true
+				return RESTORED
+			} else {
+				return ASIS
+			}
+		} else {
+			if elem.Stress[0] > val { // Comressed
+				elem.IsValid = false
+				for i:=0; i<12; i++ {
+					elem.Stress[i] = 0.0
+				}
+				return DELETED
+			} else {
+				return ASIS
+			}
+		}
+	}
 }
 
 func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]float64, [][]float64, []error) {

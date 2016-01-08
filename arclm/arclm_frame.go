@@ -262,6 +262,9 @@ func (frame *Frame) AssemGlobalMatrix(matf func(*Elem) ([][]float64, error), vec
 		if err != nil {
 			return nil, nil, err
 		}
+		if stiff == nil {
+			continue
+		}
 		stiff, err = el.ModifyHinge(stiff)
 		if err != nil {
 			return nil, nil, err
@@ -764,6 +767,166 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 	}
 	defer ew.Close()
 	eotp.WriteTo(ew)
+	return nil
+}
+
+// ANALYSIS FOR INCOMPRESSIBLE ELEMENT
+func (frame *Frame) Arclm202(otp string, init bool, nlap int, delta, min, max float64, sects []int, compval float64) error { // TODO: speed up
+	if init {
+		frame.Initialise()
+	}
+	start := time.Now()
+	laptime := func(message string) {
+		end := time.Now()
+		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+	}
+	var err error
+	var answers [][]float64
+	var gmtx *matrix.COOMatrix
+	var gvct, vec []float64
+	var csize int
+	var conf []bool
+	incomp:
+	for _, el := range frame.Elems {
+		for _, sec := range sects {
+			if el.Sect.Num == sec {
+				el.SetIncompressible(compval)
+				continue incomp
+			}
+		}
+	}
+	kekg := func(f *Frame, safety float64) (*matrix.COOMatrix, []float64, error) {
+		matf := func(elem *Elem) ([][]float64, error) {
+			if !elem.IsValid {
+				return nil, nil
+			}
+			estiff, err := elem.StiffMatrix()
+			if err != nil {
+				return nil, err
+			}
+			gstiff, err := elem.GeoStiffMatrix()
+			if err != nil {
+				return nil, err
+			}
+			stiff := make([][]float64, 12)
+			for i := 0; i < 12; i++ {
+				stiff[i] = make([]float64, 12)
+			}
+			for i := 0; i < 12; i++ {
+				for j := 0; j < 12; j++ {
+					stiff[i][j] = estiff[i][j] + gstiff[i][j]
+				}
+			}
+			return stiff, nil
+		}
+		vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
+			if !elem.IsValid {
+				return gvct
+			}
+			gvct = elem.AssemCMQ(tmatrix, gvct, safety)
+			gvct = elem.ModifyTrueForce(tmatrix, gvct)
+			return gvct
+		}
+		return f.AssemGlobalMatrix(matf, vecf, safety)
+	}
+	updatestress := func(f *Frame, vec []float64, sects []int) ([][]float64, error) {
+		rtn := make([][]float64, len(f.Elems))
+		for enum, el := range f.Elems {
+			if !el.IsValid {
+				for i:=0; i<12; i++ {
+					el.Stress[i] = 0.0
+				}
+				continue
+			}
+			gdisp := make([]float64, 12)
+			for i := 0; i < 2; i++ {
+				for j := 0; j < 6; j++ {
+					gdisp[6*i+j] = vec[6*el.Enod[i].Index+j]
+				}
+			}
+			df, err := el.ElemStress(gdisp)
+			if err != nil {
+				return nil, err
+			}
+			rtn[enum] = df
+		}
+		return rtn, nil
+	}
+	lap := 0
+	safety := min + delta
+	for {
+		if safety > max {
+			safety = max
+		}
+		f := frame.SaveState()
+		if init && lap == 0 {
+			gmtx, gvct, err = frame.KE(safety)
+			csize, conf, vec = frame.AssemConf(gvct, safety)
+			for _, el := range frame.Elems {
+				for i := 0; i < 12; i++ {
+					el.Stress[i] = 0.0
+				}
+			}
+		} else {
+			gmtx, gvct, err = kekg(frame, safety)
+			csize, conf, vec = frame.AssemConf(gvct, safety)
+		}
+		if err != nil {
+			return err
+		}
+		laptime("Assem")
+		mtx := gmtx.ToLLS(csize, conf)
+		laptime("ToLLS")
+		answers, _, _, _, err = mtx.Solve(frame.Pivot, vec)
+		if err != nil {
+			return err
+		}
+		laptime("Solve")
+		tmp := frame.FillConf(answers[0])
+		_, err = updatestress(frame, tmp, sects)
+		if err != nil {
+			return err
+		}
+		frame.UpdateReaction(gmtx, tmp)
+		frame.UpdateForm(tmp)
+		next := true
+		del := make([]int, 0)
+		res := make([]int, 0)
+		for _, el := range frame.Elems {
+			checked := el.Check()
+			switch checked {
+			case DELETED:
+				next = false
+				del = append(del, el.Num)
+			case RESTORED:
+				res = append(res, el.Num)
+			}
+		}
+		laptime(fmt.Sprintf("LAP = %d SAFETY = %.3f", lap+1, safety))
+		fmt.Printf("DEL: %v\n", del)
+		fmt.Printf("RES: %v\n", res)
+		if lap > nlap - 1 {
+			frame.Lapch <- lap + 1
+			break
+		}
+		frame.Lapch <- lap + 1
+		<-frame.Lapch
+		if !next {
+			frame.RestoreState(f)
+		} else {
+			lap++
+			safety += delta
+		}
+	}
+	if otp == "" {
+		otp = "hogtxt.otp"
+	}
+	w, err := os.Create(otp)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+	frame.WriteTo(w)
 	return nil
 }
 
