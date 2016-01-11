@@ -61,18 +61,6 @@ const LOGFILE = "_st.log"
 
 const ResourceFileName = ".strc"
 
-var (
-	LOGLEVEL = []string{"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
-)
-
-const (
-	DEBUG = iota
-	INFO
-	WARNING
-	ERROR
-	CRITICAL
-)
-
 const (
 	windowSize   = "FULLxFULL"
 	nRecentFiles = 3
@@ -1588,7 +1576,7 @@ func (stw *Window) SearchInp() {
 	openfile := func(fn string) {
 		err := stw.OpenFile(fn, true)
 		if err != nil {
-			stw.errormessage(err, ERROR)
+			stw.errormessage(err, st.ERROR)
 		}
 		// if searchinginps_r {
 		// 	brk <- true
@@ -1786,7 +1774,7 @@ func (stw *Window) WatchFile(fn string) {
 	}
 	watcher, err = fsnotify.NewWatcher()
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 	}
 	read := true
 	go func() {
@@ -1807,13 +1795,13 @@ func (stw *Window) WatchFile(fn string) {
 				}
 				read = !read
 			case err := <-watcher.Errors:
-				stw.errormessage(err, ERROR)
+				stw.errormessage(err, st.ERROR)
 			}
 		}
 	}()
 	err = watcher.Add(fn)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 	}
 }
 
@@ -1939,7 +1927,7 @@ func (stw *Window) Read() {
 		if name, ok := iup.GetOpenFile("", ""); ok {
 			err := stw.ReadFile(name)
 			if err != nil {
-				stw.errormessage(err, ERROR)
+				stw.errormessage(err, st.ERROR)
 			}
 		}
 	}
@@ -1969,7 +1957,7 @@ func (stw *Window) ReadAll() {
 						continue
 					}
 				}
-				stw.errormessage(err, ERROR)
+				stw.errormessage(err, st.ERROR)
 			} else {
 				read[nread] = ext
 				nread++
@@ -2095,12 +2083,12 @@ func (stw *Window) Print() {
 	}
 	pcanv, err := SetPrinter(stw.Frame.Name)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		return
 	}
 	v, factor, err := stw.FittoPrinter(pcanv)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		return
 	}
 	PlateEdgeColor = cd.CD_BLACK
@@ -2515,11 +2503,11 @@ func (stw *Window) errormessage(err error, level uint) {
 		return
 	}
 	var otp string
-	if level >= ERROR {
+	if level >= st.ERROR {
 		_, file, line, _ := runtime.Caller(1)
-		otp = fmt.Sprintf("%s:%d: [%s]: %s", filepath.Base(file), line, LOGLEVEL[level], err.Error())
+		otp = fmt.Sprintf("%s:%d: [%s]: %s", filepath.Base(file), line, st.LOGLEVEL[level], err.Error())
 	} else {
-		otp = fmt.Sprintf("[%s]: %s", LOGLEVEL[level], err.Error())
+		otp = fmt.Sprintf("[%s]: %s", st.LOGLEVEL[level], err.Error())
 	}
 	stw.addHistory(otp)
 	logger.Println(otp)
@@ -2541,7 +2529,7 @@ func (stw *Window) execAliasCommand(al string) {
 		if strings.HasPrefix(al, ":") {
 			err := st.ExMode(stw, stw.Frame, al)
 			if err != nil {
-				stw.errormessage(err, ERROR)
+				stw.errormessage(err, st.ERROR)
 			}
 		} else {
 			stw.Open()
@@ -2569,13 +2557,13 @@ func (stw *Window) execAliasCommand(al string) {
 				if _, ok := err.(st.NotRedraw); ok {
 					redraw = false
 				} else {
-					stw.errormessage(err, ERROR)
+					stw.errormessage(err, st.ERROR)
 				}
 			}
 		case strings.HasPrefix(al, "'"):
 			err := st.Fig2Mode(stw, stw.Frame, al)
 			if err != nil {
-				stw.errormessage(err, ERROR)
+				stw.errormessage(err, st.ERROR)
 			}
 		case axrn_minmax.MatchString(alu):
 			var axis int
@@ -3888,7 +3876,7 @@ func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
 	}
 	w, h, err := stw.CanvasPaperSize(canv)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		return
 	}
 	scale := math.Min(w/(xmax-xmin), h/(ymax-ymin)) * CanvasFitScale
@@ -7122,7 +7110,7 @@ func (stw *Window) ReadPgp(filename string) error {
 					currentcommand := strings.Replace(command, str, fmt.Sprintf("%d", val), -1)
 					err := st.ExMode(stw, stw.Frame, currentcommand)
 					if err != nil {
-						stw.errormessage(err, ERROR)
+						stw.errormessage(err, st.ERROR)
 					}
 					val++
 				}}
@@ -7130,7 +7118,7 @@ func (stw *Window) ReadPgp(filename string) error {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
 					err := st.ExMode(stw, stw.Frame, command)
 					if err != nil {
-						stw.errormessage(err, ERROR)
+						stw.errormessage(err, st.ERROR)
 					}
 				}}
 			}
@@ -7147,7 +7135,7 @@ func (stw *Window) ReadPgp(filename string) error {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
 					err := st.Fig2Mode(stw, stw.Frame, command)
 					if err != nil {
-						stw.errormessage(err, ERROR)
+						stw.errormessage(err, st.ERROR)
 					}
 				}}
 			}
@@ -7341,8 +7329,8 @@ func (stw *Window) SelectConfed() {
 	selectconfed(stw)
 }
 
-func (stw *Window) ErrorMessage(err error) {
-	stw.errormessage(err, ERROR)
+func (stw *Window) ErrorMessage(err error, level int) {
+	stw.errormessage(err, level)
 }
 
 func (stw *Window) History(str string) {
@@ -7356,6 +7344,7 @@ func (stw *Window) SetPaperSize(s uint) {
 func (stw *Window) PaperSize() uint {
 	return stw.papersize
 }
+
 func (stw *Window) Pivot() bool {
 	return drawpivot
 }

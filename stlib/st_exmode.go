@@ -668,7 +668,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				for _, ext := range []string{".inl", ".ihx", ".ihy"} {
 					err := frame.ReadData(Ce(frame.Path, ext))
 					if err != nil {
-						stw.ErrorMessage(err)
+						stw.ErrorMessage(err, ERROR)
 					}
 				}
 			case "$results":
@@ -682,7 +682,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				for _, ext := range []string{".otl", ".ohx", ".ohy"} {
 					err := frame.ReadResult(Ce(frame.Path, ext), uint(mode))
 					if err != nil {
-						stw.ErrorMessage(err)
+						stw.ErrorMessage(err, ERROR)
 					}
 				}
 			default:
@@ -1026,7 +1026,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				case err = <-frame.Endch:
 					if err != nil {
 						stw.CurrentLap("Error", nlap, l)
-						stw.ErrorMessage(err)
+						stw.ErrorMessage(err, ERROR)
 					} else {
 						stw.CurrentLap("Completed", nlap, l)
 					}
@@ -2302,7 +2302,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			}
 			_, els, err := divfunc(el)
 			if err != nil {
-				stw.ErrorMessage(err)
+				stw.ErrorMessage(err, ERROR)
 				continue
 			}
 			if err == nil && len(els) > 1 {

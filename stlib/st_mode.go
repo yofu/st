@@ -1,5 +1,18 @@
 package st
 
+// Log Level
+var (
+	LOGLEVEL = []string{"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+)
+
+const (
+	DEBUG = iota
+	INFO
+	WARNING
+	ERROR
+	CRITICAL
+)
+
 // Paper Size
 const (
 	A4_TATE = iota
@@ -12,7 +25,7 @@ type ExModer interface {
 	LastExCommand() string
 	SetLastExCommand(string)
 	History(string)
-	ErrorMessage(error)
+	ErrorMessage(error, int)
 	CompleteFileName(string) string
 	Cwd() string
 	HomeDir() string
@@ -82,7 +95,7 @@ type Fig2Moder interface {
 	LastFig2Command() string
 	SetLastFig2Command(string)
 	History(string)
-	ErrorMessage(error)
+	ErrorMessage(error, int)
 	SetLabel(string, string)
 	DisableLabel(string)
 	EnableLabel(string)
