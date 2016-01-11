@@ -63,7 +63,7 @@ type ExModer interface {
 	ToggleShowPrintRange()
 	CurrentLap(string, int, int)
 	SectionData(*Sect)
-	ClearTextBox(string)
+	TextBox(string) TextBox
 	AxisRange(int, float64, float64, bool)
 	NextFloor()
 	PrevFloor()
@@ -76,4 +76,44 @@ type ExModer interface {
 	SetColorMode(uint)
 	Redraw()
 	SetConf([]bool)
+}
+
+type Fig2Moder interface {
+	LastFig2Command() string
+	SetLastFig2Command(string)
+	History(string)
+	ErrorMessage(error)
+	SetLabel(string, string)
+	DisableLabel(string)
+	EnableLabel(string)
+	GetCanvasSize() (int, int)
+	ShowCenter()
+	ShowEtype(int)
+	HideEtype(int)
+	ShowSection(int)
+	HideSection(int)
+	HideAllSection()
+	HideNotSelected()
+	ElemCaptionOn(string)
+	ElemCaptionOff(string)
+	NodeCaptionOn(string)
+	NodeCaptionOff(string)
+	SetColorMode(uint)
+	EPS() float64
+	AxisRange(int, float64, float64, bool)
+	SrcanRateOn(...string)
+	SrcanRateOff(...string)
+	StressOn(int, uint)
+	StressOff(int, uint)
+	DeformationOn()
+	DeformationOff()
+	DispOn(int)
+	DispOff(int)
+	SetPeriod(string)
+	AddSectionAliase(int, string)
+	DeleteSectionAliase(int)
+	ClearSectionAliase()
+	SelectElem([]*Elem)
+	IncrementPeriod(int)
+	TextBox(string) TextBox
 }

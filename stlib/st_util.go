@@ -25,6 +25,11 @@ const (
     hextable = "0123456789abcdef"
 )
 
+var (
+	home            = os.Getenv("HOME")
+	tooldir  = filepath.Join(home, ".st/tool")
+)
+
 type Hider interface {
 	Hide()
 	Show()
@@ -684,7 +689,7 @@ func EditReadme(dir string) {
 }
 
 func StartTool(fn string) {
-	cmd := exec.Command("cmd", "/C", "start", fn)
+	cmd := exec.Command("cmd", "/C", "start", filepath.Join(tooldir, fn))
 	cmd.Start()
 }
 

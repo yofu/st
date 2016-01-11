@@ -2330,15 +2330,12 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				}
 				return nil
 			}
-			stw.ClearTextBox("SECTION")
-			// if t, tok := stw.TextBox["SECTION"]; tok {
-			// 	t.Clear()
-			// }
+			stw.TextBox("SECTION").Clear()
 			return nil
 		}
 		switch {
 		case strings.EqualFold(args[1], "off"):
-			stw.ClearTextBox("SECTION")
+			stw.TextBox("SECTION").Clear()
 			return nil
 		case strings.EqualFold(args[1], "curtain"):
 			sects := make([]*Sect, len(frame.Sects))

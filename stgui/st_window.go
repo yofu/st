@@ -49,7 +49,6 @@ var (
 	gopath          = os.Getenv("GOPATH")
 	home            = os.Getenv("HOME")
 	releasenote     = filepath.Join(home, ".st/help/releasenote.html")
-	tooldir         = filepath.Join(home, ".st/tool")
 	pgpfile         = filepath.Join(home, ".st/st.pgp")
 	recentfn        = filepath.Join(home, ".st/recent.dat")
 	historyfn       = filepath.Join(home, ".st/history.dat")
@@ -158,7 +157,7 @@ var (
 		Position: []float64{100.0, 100.0},
 		Angle:    0.0,
 		Font:     NewFont(),
-		Hide:     false,
+		hide:     false,
 	}
 )
 
@@ -269,7 +268,7 @@ type Window struct { // {{{
 	selectNode []*st.Node
 	selectElem []*st.Elem
 
-	TextBox   map[string]*TextBox
+	textBox   map[string]*TextBox
 
 	papersize uint
 
@@ -702,13 +701,13 @@ func NewWindow(homedir string) *Window { // {{{
 				iup.Item(
 					iup.Attr("TITLE", "RC lst"),
 					func(arg *iup.ItemAction) {
-						st.StartTool(filepath.Join(tooldir, "rclst/rclst.html"))
+						st.StartTool("rclst/rclst.html")
 					},
 				),
 				iup.Item(
 					iup.Attr("TITLE", "Fig2 Keyword"),
 					func(arg *iup.ItemAction) {
-						st.StartTool(filepath.Join(tooldir, "fig2/fig2.html"))
+						st.StartTool("fig2/fig2.html")
 					},
 				),
 			),
@@ -951,7 +950,7 @@ func NewWindow(homedir string) *Window { // {{{
 						}
 					}
 				} else if strings.HasPrefix(val, "'") {
-					c, usage, comp := fig2keywordcomplete(val)
+					c, usage, comp := st.Fig2KeywordComplete(val)
 					var u string
 					if usage {
 						u = "?"
@@ -1306,14 +1305,14 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.CanvasSize = []float64{float64(w), float64(h)}
 	stw.dbuff.TextAlignment(DefaultTextAlignment)
 	stw.papersize = st.A4_TATE
-	stw.TextBox = make(map[string]*TextBox, 0)
-	stw.TextBox["PAGETITLE"] = NewTextBox()
-	stw.TextBox["PAGETITLE"].Font.Size = 16
-	stw.TextBox["PAGETITLE"].Position = []float64{30.0, stw.CanvasSize[1] - 30.0}
-	stw.TextBox["TITLE"] = NewTextBox()
-	stw.TextBox["TITLE"].Position = []float64{30.0, stw.CanvasSize[1] - 80.0}
-	stw.TextBox["TEXT"] = NewTextBox()
-	stw.TextBox["TEXT"].Position = []float64{120.0, 65.0}
+	stw.textBox = make(map[string]*TextBox, 0)
+	stw.textBox["PAGETITLE"] = NewTextBox()
+	stw.textBox["PAGETITLE"].Font.Size = 16
+	stw.textBox["PAGETITLE"].Position = []float64{30.0, stw.CanvasSize[1] - 30.0}
+	stw.textBox["TITLE"] = NewTextBox()
+	stw.textBox["TITLE"].Position = []float64{30.0, stw.CanvasSize[1] - 80.0}
+	stw.textBox["TEXT"] = NewTextBox()
+	stw.textBox["TEXT"].Position = []float64{120.0, 65.0}
 	iup.SetHandle("mainwindow", stw.Dlg)
 	stw.EscapeAll()
 	stw.Changed = false
@@ -2064,11 +2063,11 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 		m.ArrowSize = 75.0
 	}
 	for i := 0; i < 2; i++ {
-		stw.TextBox["PAGETITLE"].Position[i] *= factor
-		stw.TextBox["TITLE"].Position[i] *= factor
-		stw.TextBox["TEXT"].Position[i] *= factor
+		stw.textBox["PAGETITLE"].Position[i] *= factor
+		stw.textBox["TITLE"].Position[i] *= factor
+		stw.textBox["TEXT"].Position[i] *= factor
 	}
-	for _, t := range stw.TextBox {
+	for _, t := range stw.textBox {
 		for i := 0; i < 2; i++ {
 			t.Position[i] *= factor
 		}
@@ -2134,11 +2133,11 @@ func (stw *Window) Print() {
 	}
 	stw.Frame.View = v
 	for i := 0; i < 2; i++ {
-		stw.TextBox["PAGETITLE"].Position[i] /= factor
-		stw.TextBox["TITLE"].Position[i] /= factor
-		stw.TextBox["TEXT"].Position[i] /= factor
+		stw.textBox["PAGETITLE"].Position[i] /= factor
+		stw.textBox["TITLE"].Position[i] /= factor
+		stw.textBox["TEXT"].Position[i] /= factor
 	}
-	for _, t := range stw.TextBox {
+	for _, t := range stw.textBox {
 		for i := 0; i < 2; i++ {
 			t.Position[i] /= factor
 		}
@@ -2271,7 +2270,7 @@ func (stw *Window) ParseFig2Page(pcanv *cd.Canvas, lis [][]string) error {
 		} else {
 			un = false
 		}
-		err := stw.fig2keyword(txt, un)
+		err := st.Fig2Keyword(stw, stw.Frame, txt, un)
 		if err != nil {
 			return err
 		}
@@ -2319,7 +2318,7 @@ func ShowReleaseNote() {
 func (stw *Window) ShowLogo(t time.Duration) {
 	w, h := stw.dbuff.GetSize()
 	STLOGO.Position = []float64{float64(w) * 0.5, float64(h) * 0.5}
-	STLOGO.Hide = false
+	STLOGO.Show()
 	// go func() {
 	// logo:
 	// 	for {
@@ -2334,7 +2333,7 @@ func (stw *Window) ShowLogo(t time.Duration) {
 }
 
 func (stw *Window) HideLogo() {
-	STLOGO.Hide = true
+	STLOGO.Hide()
 }
 
 func (stw *Window) ShowAbout() {
@@ -2574,7 +2573,7 @@ func (stw *Window) execAliasCommand(al string) {
 				}
 			}
 		case strings.HasPrefix(al, "'"):
-			err := stw.fig2mode(al)
+			err := st.Fig2Mode(stw, stw.Frame, al)
 			if err != nil {
 				stw.errormessage(err, ERROR)
 			}
@@ -2769,8 +2768,8 @@ func (stw *Window) CompleteExcommand(str string) string {
 
 func (stw *Window) CompleteFig2Keyword(str string) string {
 	i := 0
-	rtn := make([]string, len(fig2abbrev))
-	for ab := range fig2abbrev {
+	rtn := make([]string, len(st.Fig2Abbrev))
+	for ab := range st.Fig2Abbrev {
 		pat := abbrev.MustCompile(ab)
 		l := fmt.Sprintf("'%s", pat.Longest())
 		if strings.HasPrefix(l, str) {
@@ -3223,8 +3222,8 @@ func (stw *Window) DrawRange(canv *cd.Canvas, view *st.View) {
 }
 
 func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
-	for _, t := range stw.TextBox {
-		if !t.Hide {
+	for _, t := range stw.textBox {
+		if !t.IsHidden(stw.Frame.Show) {
 			if black {
 				col := t.Font.Color
 				t.Font.Color = cd.CD_BLACK
@@ -3235,7 +3234,7 @@ func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
 			}
 		}
 	}
-	if !STLOGO.Hide {
+	if !STLOGO.IsHidden(stw.Frame.Show) {
 		DrawText(STLOGO, canv)
 	}
 }
@@ -3732,13 +3731,13 @@ func (stw *Window) PasteClipboard() error {
 
 func (stw *Window) ShapeData(sh st.Shape) {
 	var tb *TextBox
-	if t, tok := stw.TextBox["SHAPE"]; tok {
+	if t, tok := stw.textBox["SHAPE"]; tok {
 		tb = t
 	} else {
 		tb = NewTextBox()
-		tb.Hide = false
+		tb.Show()
 		tb.Position = []float64{stw.CanvasSize[0] - 300.0, 200.0}
-		stw.TextBox["SHAPE"] = tb
+		stw.textBox["SHAPE"] = tb
 	}
 	var otp bytes.Buffer
 	otp.WriteString(fmt.Sprintf("%s\n", sh.String()))
@@ -3755,13 +3754,13 @@ func (stw *Window) ShapeData(sh st.Shape) {
 
 func (stw *Window) SectionData(sec *st.Sect) {
 	var tb *TextBox
-	if t, tok := stw.TextBox["SECTION"]; tok {
+	if t, tok := stw.textBox["SECTION"]; tok {
 		tb = t
 	} else {
 		tb = NewTextBox()
-		tb.Hide = false
+		tb.Show()
 		tb.Position = []float64{stw.CanvasSize[0] - 500.0, float64(dataareaheight)}
-		stw.TextBox["SECTION"] = tb
+		stw.textBox["SECTION"] = tb
 	}
 	tb.SetText(strings.Split(sec.InpString(), "\n"))
 	if al, ok := stw.Frame.Allows[sec.Num]; ok {
@@ -3772,13 +3771,13 @@ func (stw *Window) SectionData(sec *st.Sect) {
 
 func (stw *Window) CurrentLap(comment string, nlap, laps int) {
 	var tb *TextBox
-	if t, tok := stw.TextBox["LAP"]; tok {
+	if t, tok := stw.textBox["LAP"]; tok {
 		tb = t
 	} else {
 		tb = NewTextBox()
-		tb.Hide = false
+		tb.Show()
 		tb.Position = []float64{30.0, stw.CanvasSize[1] - 30.0}
-		stw.TextBox["LAP"] = tb
+		stw.textBox["LAP"] = tb
 	}
 	if comment == "" {
 		tb.SetText([]string{fmt.Sprintf("LAP: %3d / %3d", nlap, laps)})
@@ -4832,7 +4831,7 @@ func (stw *Window) CB_CanvasWheel() {
 			if x > 65535 {
 				x -= 65535
 			}
-			for _, tb := range stw.TextBox {
+			for _, tb := range stw.textBox {
 				if tb.Contains(float64(x), float64(arg.Y)) {
 					if arg.Delta >= 0 {
 						tb.ScrollUp(1)
@@ -5089,9 +5088,9 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		if key.IsCtrl() {
 			if stw.Frame != nil {
 				if stw.Frame.Show.Unit[0] == 1.0 && stw.Frame.Show.Unit[1] == 1.0 {
-					stw.fig2keyword([]string{"unit", "kN,m"}, false)
+					st.Fig2Keyword(stw, stw.Frame, []string{"unit", "kN,m"}, false)
 				} else {
-					stw.fig2keyword([]string{"unit", "tf,m"}, false)
+					st.Fig2Keyword(stw, stw.Frame, []string{"unit", "tf,m"}, false)
 				}
 				stw.Redraw()
 			}
@@ -5463,13 +5462,13 @@ func (stw *Window) CMenu() {
 				iup.Item(
 					iup.Attr("TITLE", "RC lst"),
 					func(arg *iup.ItemAction) {
-						st.StartTool(filepath.Join(tooldir, "rclst/rclst.html"))
+						st.StartTool("rclst/rclst.html")
 					},
 				),
 				iup.Item(
 					iup.Attr("TITLE", "Fig2 Keyword"),
 					func(arg *iup.ItemAction) {
-						st.StartTool(filepath.Join(tooldir, "fig2/fig2.html"))
+						st.StartTool("fig2/fig2.html")
 					},
 				),
 			),
@@ -7146,7 +7145,7 @@ func (stw *Window) ReadPgp(filename string) error {
 				}}
 			} else {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					err := stw.fig2mode(command)
+					err := st.Fig2Mode(stw, stw.Frame, command)
 					if err != nil {
 						stw.errormessage(err, ERROR)
 					}
@@ -7285,10 +7284,11 @@ func (stw *Window) CheckFrame() {
 	checkframe(stw)
 }
 
-func (stw *Window) ClearTextBox(name string) {
-	if t, tok := stw.TextBox[name]; tok {
-		t.Clear()
+func (stw *Window) TextBox(name string) st.TextBox {
+	if _, tok := stw.textBox[name]; !tok {
+		stw.textBox[name] = NewTextBox()
 	}
+	return stw.textBox[name]
 }
 
 func (stw *Window) Cwd() string {
@@ -7374,4 +7374,46 @@ func (stw *Window) SetShowPrintRange(val bool) {
 
 func (stw *Window) ToggleShowPrintRange() {
 	showprintrange = !showprintrange
+}
+
+func (stw *Window) LastFig2Command() string {
+	return stw.lastfig2command
+}
+
+func (stw *Window) SetLastFig2Command(c string) {
+	stw.lastfig2command = c
+}
+
+func (stw *Window) SetLabel(key, value string) {
+	if l, ok := stw.Labels[key]; ok {
+		l.SetAttribute("VALUE", value)
+	}
+}
+
+func (stw *Window) EnableLabel(key string) {
+	if l, ok := stw.Labels[key]; ok {
+		l.SetAttribute("FGCOLOR", labelFGColor)
+	}
+}
+
+func (stw *Window) DisableLabel(key string) {
+	if l, ok := stw.Labels[key]; ok {
+		l.SetAttribute("FGCOLOR", labelOFFColor)
+	}
+}
+
+func (stw *Window) GetCanvasSize() (int, int) {
+	return stw.cdcanv.GetSize()
+}
+
+func (stw *Window) AddSectionAliase(key int, value string) {
+	sectionaliases[key] = value
+}
+
+func (stw *Window) DeleteSectionAliase(key int) {
+	delete(sectionaliases, key)
+}
+
+func (stw *Window) ClearSectionAliase() {
+	sectionaliases = make(map[int]string, 0)
 }

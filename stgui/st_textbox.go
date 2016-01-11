@@ -3,6 +3,7 @@ package stgui
 import (
 	"github.com/mattn/go-runewidth"
 	"github.com/visualfc/go-iup/cd"
+	"github.com/yofu/st/stlib"
 )
 
 var (
@@ -20,7 +21,7 @@ type TextBox struct {
 	Position []float64
 	Angle    float64
 	Font     *Font
-	Hide     bool
+	hide     bool
 }
 
 type Font struct {
@@ -35,8 +36,25 @@ func NewTextBox() *TextBox {
 	rtn.index = 0
 	rtn.Position = []float64{0.0, 0.0}
 	rtn.Font = NewFont()
-	rtn.Hide = true
+	rtn.hide = true
 	return rtn
+}
+
+func (tb *TextBox) Hide() {
+	tb.hide = true
+}
+
+func (tb *TextBox) Show() {
+	tb.hide = false
+}
+
+func (tb *TextBox) IsHidden(s *st.Show) bool {
+	return tb.hide == true
+}
+
+func (tb *TextBox) SetPosition(x, y float64) {
+	tb.Position[0] = x
+	tb.Position[1] = y
 }
 
 func (tb *TextBox) Text() []string {
