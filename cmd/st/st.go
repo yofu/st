@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/visualfc/go-iup/iup"
-	"github.com/yofu/st/stgui"
+	"github.com/yofu/st/driver/iup"
 	"os"
 	"runtime"
 	"runtime/debug"
@@ -10,7 +10,7 @@ import (
 
 const (
 	version  = "0.1.0"
-	modified = "LAST CHANGE:11-Aug-2015."
+	modified = "LAST CHANGE:11-Jan-2016."
 	HOME     = "C:/D/CDOCS/Hogan/Debug"
 	HOGAN    = "C:/D/CDOCS/Hogan/Debug"
 )
