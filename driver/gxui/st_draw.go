@@ -202,8 +202,35 @@ func (stw *Window) Text(x, y float64, str string) {
 }
 
 func (stw *Window) Foreground(fg int) {
-	stw.currentPen = Pen(fg, false)
-	stw.currentBrush = Brush(fg, false)
+	selected := stw.currentPen.Color.A != 1.0
+	stw.currentPen = Pen(fg, selected)
+	stw.currentBrush = Brush(fg, selected)
+}
+
+func (stw *Window) DefaultStyle() {
+	stw.currentPen = Pen(st.WHITE, false)
+	stw.currentBrush = Brush(st.WHITE, false)
+}
+
+func (stw *Window) BondStyle(show *st.Show) {
+	stw.Foreground(show.BondColor)
+}
+
+func (stw *Window) PhingeStyle(show *st.Show) {
+	stw.Foreground(show.BondColor)
+}
+
+func (stw *Window) ConfStyle(show *st.Show) {
+	stw.Foreground(show.ConfColor)
+}
+
+func (stw *Window) SelectNodeStyle() {
+	stw.Foreground(st.RED)
+}
+
+func (stw *Window) SelectElemStyle() {
+	stw.currentPen = Pen(st.WHITE, true)
+	stw.currentBrush = Brush(st.WHITE, true)
 }
 
 func (stw *Window) LineStyle(ls int) {
