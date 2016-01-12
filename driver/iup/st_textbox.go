@@ -18,7 +18,7 @@ var (
 type TextBox struct {
 	value    []string
 	index    int
-	Position []float64
+	position []float64
 	Angle    float64
 	Font     *Font
 	hide     bool
@@ -34,7 +34,7 @@ func NewTextBox() *TextBox {
 	rtn := new(TextBox)
 	rtn.value = make([]string, 0)
 	rtn.index = 0
-	rtn.Position = []float64{0.0, 0.0}
+	rtn.position = []float64{0.0, 0.0}
 	rtn.Font = NewFont()
 	rtn.hide = true
 	return rtn
@@ -53,8 +53,12 @@ func (tb *TextBox) IsHidden(s *st.Show) bool {
 }
 
 func (tb *TextBox) SetPosition(x, y float64) {
-	tb.Position[0] = x
-	tb.Position[1] = y
+	tb.position[0] = x
+	tb.position[1] = y
+}
+
+func (tb *TextBox) Position() (float64, float64) {
+	return tb.position[0], tb.position[1]
 }
 
 func (tb *TextBox) Text() []string {
@@ -86,7 +90,7 @@ func (tb *TextBox) Linage() int {
 }
 
 func (tb *TextBox) Bbox() (float64, float64, float64, float64) {
-	return tb.Position[0], tb.Position[1]-tb.Height(), tb.Position[0]+tb.Width(), tb.Position[1]
+	return tb.position[0], tb.position[1]-tb.Height(), tb.position[0]+tb.Width(), tb.position[1]
 }
 
 func (tb *TextBox) Contains(x, y float64) bool {

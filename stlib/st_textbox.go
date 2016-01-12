@@ -7,6 +7,7 @@ type TextBox interface {
 	SetText([]string)
 	AddText(...string)
 	SetPosition(float64, float64)
+	Position() (float64, float64)
 	Linage() int
 	Bbox() (float64, float64, float64, float64)
 	Contains(float64, float64) bool

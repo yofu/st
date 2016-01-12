@@ -647,7 +647,7 @@ func (stw *Window) ShapeData(sh st.Shape) {
 	} else {
 		tb = NewTextBox()
 		tb.hide = false
-		tb.Position = []int{0, 200}
+		tb.position = []int{0, 200}
 		stw.textBox["SHAPE"] = tb
 	}
 	var otp bytes.Buffer
@@ -728,7 +728,7 @@ func (stw *Window) CurrentLap(comment string, nlap int, laps int) {
 		tb = t
 	} else {
 		tb = NewTextBox()
-		tb.Position = []int{30, 30}
+		tb.position = []int{30, 30}
 		tb.hide = false
 		stw.textBox["LAP"] = tb
 	}
@@ -746,7 +746,7 @@ func (stw *Window) SectionData(sec *st.Sect) {
 	} else {
 		tb = NewTextBox()
 		tb.hide = false
-		tb.Position = []int{0, 30}
+		tb.position = []int{0, 30}
 		stw.textBox["SECTION"] = tb
 	}
 	tb.value = strings.Split(sec.InpString(), "\n")

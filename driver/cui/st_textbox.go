@@ -8,7 +8,7 @@ import (
 type TextBox struct {
 	value    []string
 	index    int
-	Position []int
+	position []int
 	Angle    float64
 	hide     bool
 }
@@ -16,7 +16,7 @@ type TextBox struct {
 func NewTextBox() *TextBox {
 	rtn := new(TextBox)
 	rtn.value = make([]string, 0)
-	rtn.Position = []int{0, 0}
+	rtn.position = []int{0, 0}
 	rtn.hide = true
 	return rtn
 }
@@ -34,8 +34,12 @@ func (tb *TextBox) IsHidden(*st.Show) bool {
 }
 
 func (tb *TextBox) SetPosition(x, y float64) {
-	tb.Position[0] = int(x)
-	tb.Position[1] = int(y)
+	tb.position[0] = int(x)
+	tb.position[1] = int(y)
+}
+
+func (tb *TextBox) Position() (float64, float64) {
+	return float64(tb.position[0]), float64(tb.position[1])
 }
 
 func (tb *TextBox) Text() []string {
@@ -67,7 +71,7 @@ func (tb *TextBox) Linage() int {
 }
 
 func (tb *TextBox) Bbox() (float64, float64, float64, float64) {
-	return float64(tb.Position[0]), float64(tb.Position[1])-tb.Height(), float64(tb.Position[0])+tb.Width(), float64(tb.Position[1])
+	return float64(tb.position[0]), float64(tb.position[1])-tb.Height(), float64(tb.position[0])+tb.Width(), float64(tb.position[1])
 }
 
 func (tb *TextBox) Contains(x, y float64) bool {

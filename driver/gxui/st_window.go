@@ -128,7 +128,7 @@ var (
 var (
 	STLOGO = &TextBox{
 		value:    []string{"         software", "     forstructural", "   analysisthename", "  ofwhichstandsfor", "", " sigmatau  stress", "structure  steel", "andsometh  ing", " likethat"},
-		Position: []int{100, 100},
+		position: []int{100, 100},
 		Angle:    0.0,
 		Font:     NewFont(),
 		hide:     false,
@@ -149,6 +149,14 @@ type Window struct { // {{{
 	cline   gxui.TextBox
 	history gxui.TextBox
 
+	currentCanvas gxui.Canvas
+	currentPen    gxui.Pen
+	currentBrush  gxui.Brush
+	currentFont   gxui.Font
+	currentFontColor gxui.Color
+	currentHorizontalAlignment gxui.HorizontalAlignment
+	currentVerticalAlignment gxui.VerticalAlignment
+
 	CanvasSize []int // width, height
 
 	selectNode []*st.Node
@@ -156,7 +164,7 @@ type Window struct { // {{{
 
 	PageTitle *TextBox
 	Title     *TextBox
-	Text      *TextBox
+	text      *TextBox
 	textBox   map[string]*TextBox
 
 	papersize uint
@@ -394,6 +402,13 @@ func NewWindow(driver gxui.Driver, theme gxui.Theme, homedir string) *Window {
 	})
 
 	stw.SetCanvasSize()
+
+	stw.currentPen = Pen(st.WHITE, false)
+	stw.currentBrush = Brush(st.WHITE, false)
+	stw.currentFont = theme.DefaultFont()
+	stw.currentFontColor = gxui.White
+	stw.currentHorizontalAlignment = gxui.AlignLeft
+	stw.currentVerticalAlignment = gxui.AlignBottom
 
 	stw.Changed = false
 	stw.comhist = make([]string, CommandHistorySize)
@@ -811,7 +826,7 @@ func (stw *Window) OpenFile(filename string, readrcfile bool) error {
 		}
 		stw.Frame = frame
 		frame.SetFocus(nil)
-		stw.DrawFrameNode()
+		stw.RedrawNode()
 		stw.ShowCenter()
 	}
 	if s != nil {
@@ -1041,7 +1056,7 @@ func (stw *Window) CurrentLap(comment string, nlap, laps int) {
 	} else {
 		tb = NewTextBox()
 		tb.hide = false
-		tb.Position = []int{30, stw.CanvasSize[1] - 30}
+		tb.position = []int{30, stw.CanvasSize[1] - 30}
 		stw.textBox["LAP"] = tb
 	}
 	if comment == "" {
@@ -1058,7 +1073,7 @@ func (stw *Window) SectionData(sec *st.Sect) {
 	} else {
 		tb = NewTextBox()
 		tb.hide = false
-		tb.Position = []int{stw.CanvasSize[0] - 400, stw.CanvasSize[1] - 30}
+		tb.position = []int{stw.CanvasSize[0] - 400, stw.CanvasSize[1] - 30}
 		stw.textBox["SECTION"] = tb
 	}
 	tb.value = strings.Split(sec.InpString(), "\n")
@@ -1513,6 +1528,7 @@ func (stw *Window) execAliasCommand(al string) {
 			if err != nil {
 				stw.ErrorMessage(err, st.ERROR)
 			}
+			stw.Redraw()
 		} else {
 			stw.Open()
 		}
@@ -2141,14 +2157,22 @@ func (stw *Window) SelectNodeMotion(ev gxui.MouseEvent) {
 	if stw.startX <= ev.Point.X {
 		selectDirection = SD_FROMLEFT
 		stw.rubber = stw.driver.CreateCanvas(gxmath.Size{W: stw.CanvasSize[0], H: stw.CanvasSize[1]})
-		Rect(stw.rubber, RubberPenNode, RubberBrushNode, int(ev.Point.X), stw.startX, min(stw.startY, int(ev.Point.Y)), max(stw.startY, int(ev.Point.Y)))
+		// Rect(stw.rubber, RubberPenNode, RubberBrushNode, int(ev.Point.X), stw.startX, min(stw.startY, int(ev.Point.Y)), max(stw.startY, int(ev.Point.Y)))
+		stw.currentCanvas = stw.rubber
+		stw.currentPen = RubberPenNode
+		stw.currentBrush = RubberBrushNode
+		stw.Rect(float64(ev.Point.X), float64(stw.startX), float64(min(stw.startY, int(ev.Point.Y))), float64(max(stw.startY, int(ev.Point.Y))))
 		stw.rubber.Complete()
 		stw.endX = ev.Point.X
 		stw.endY = ev.Point.Y
 	} else {
 		selectDirection = SD_FROMRIGHT
 		stw.rubber = stw.driver.CreateCanvas(gxmath.Size{W: stw.CanvasSize[0], H: stw.CanvasSize[1]})
-		Rect(stw.rubber, RubberPenNode, RubberBrushNode, stw.startX, int(ev.Point.X), min(stw.startY, int(ev.Point.Y)), max(stw.startY, int(ev.Point.Y)))
+		// Rect(stw.rubber, RubberPenNode, RubberBrushNode, stw.startX, int(ev.Point.X), min(stw.startY, int(ev.Point.Y)), max(stw.startY, int(ev.Point.Y)))
+		stw.currentCanvas = stw.rubber
+		stw.currentPen = RubberPenNode
+		stw.currentBrush = RubberBrushNode
+		stw.Rect(float64(stw.startX), float64(ev.Point.X), float64(min(stw.startY, int(ev.Point.Y))), float64(max(stw.startY, int(ev.Point.Y))))
 		stw.rubber.Complete()
 		stw.endX = ev.Point.X
 		stw.endY = ev.Point.Y
@@ -2159,14 +2183,22 @@ func (stw *Window) SelectElemMotion(ev gxui.MouseEvent) {
 	if stw.startX <= ev.Point.X {
 		selectDirection = SD_FROMLEFT
 		stw.rubber = stw.driver.CreateCanvas(gxmath.Size{W: stw.CanvasSize[0], H: stw.CanvasSize[1]})
-		Rect(stw.rubber, RubberPenLeft, RubberBrushLeft, int(ev.Point.X), stw.startX, min(stw.startY, int(ev.Point.Y)), max(stw.startY, int(ev.Point.Y)))
+		// Rect(stw.rubber, RubberPenLeft, RubberBrushLeft, int(ev.Point.X), stw.startX, min(stw.startY, int(ev.Point.Y)), max(stw.startY, int(ev.Point.Y)))
+		stw.currentCanvas = stw.rubber
+		stw.currentPen = RubberPenLeft
+		stw.currentBrush = RubberBrushLeft
+		stw.Rect(float64(ev.Point.X), float64(stw.startX), float64(min(stw.startY, int(ev.Point.Y))), float64(max(stw.startY, int(ev.Point.Y))))
 		stw.rubber.Complete()
 		stw.endX = ev.Point.X
 		stw.endY = ev.Point.Y
 	} else {
 		selectDirection = SD_FROMRIGHT
 		stw.rubber = stw.driver.CreateCanvas(gxmath.Size{W: stw.CanvasSize[0], H: stw.CanvasSize[1]})
-		Rect(stw.rubber, RubberPenRight, RubberBrushRight, stw.startX, int(ev.Point.X), min(stw.startY, int(ev.Point.Y)), max(stw.startY, int(ev.Point.Y)))
+		// Rect(stw.rubber, RubberPenRight, RubberBrushRight, stw.startX, int(ev.Point.X), min(stw.startY, int(ev.Point.Y)), max(stw.startY, int(ev.Point.Y)))
+		stw.currentCanvas = stw.rubber
+		stw.currentPen = RubberPenRight
+		stw.currentBrush = RubberBrushRight
+		stw.Rect(float64(stw.startX), float64(ev.Point.X), float64(min(stw.startY, int(ev.Point.Y))), float64(max(stw.startY, int(ev.Point.Y))))
 		stw.rubber.Complete()
 		stw.endX = ev.Point.X
 		stw.endY = ev.Point.Y
@@ -2176,13 +2208,19 @@ func (stw *Window) SelectElemMotion(ev gxui.MouseEvent) {
 func (stw *Window) SelectElemFenceMotion(ev gxui.MouseEvent) {
 	if ev.Modifier.Control() {
 		stw.rubber = stw.driver.CreateCanvas(gxmath.Size{W: stw.CanvasSize[0], H: stw.CanvasSize[1]})
-		Line(stw.rubber, RubberPenLeft, stw.startX, stw.startY, int(ev.Point.X), stw.startY)
+		// Line(stw.rubber, RubberPenLeft, stw.startX, stw.startY, int(ev.Point.X), stw.startY)
+		stw.currentCanvas = stw.rubber
+		stw.currentPen = RubberPenLeft
+		stw.Line(float64(stw.startX), float64(stw.startY), float64(ev.Point.X), float64(stw.startY))
 		stw.rubber.Complete()
 		stw.endX = ev.Point.X
 		stw.endY = stw.startY
 	} else {
 		stw.rubber = stw.driver.CreateCanvas(gxmath.Size{W: stw.CanvasSize[0], H: stw.CanvasSize[1]})
-		Line(stw.rubber, RubberPenLeft, stw.startX, stw.startY, int(ev.Point.X), int(ev.Point.Y))
+		// Line(stw.rubber, RubberPenLeft, stw.startX, stw.startY, int(ev.Point.X), int(ev.Point.Y))
+		stw.currentCanvas = stw.rubber
+		stw.currentPen = RubberPenLeft
+		stw.Line(float64(stw.startX), float64(stw.startY), float64(ev.Point.X), float64(ev.Point.Y))
 		stw.rubber.Complete()
 		stw.endX = ev.Point.X
 		stw.endY = ev.Point.Y
@@ -2191,7 +2229,10 @@ func (stw *Window) SelectElemFenceMotion(ev gxui.MouseEvent) {
 
 func (stw *Window) TailLine(x, y int, ev gxui.MouseEvent) {
 	stw.rubber = stw.driver.CreateCanvas(gxmath.Size{W: stw.CanvasSize[0], H: stw.CanvasSize[1]})
-	Line(stw.rubber, RubberPenLeft, x, y, int(ev.Point.X), int(ev.Point.Y))
+	// Line(stw.rubber, RubberPenLeft, x, y, int(ev.Point.X), int(ev.Point.Y))
+	stw.currentCanvas = stw.rubber
+	stw.currentPen = RubberPenLeft
+	stw.Line(float64(x), float64(y), float64(ev.Point.X), float64(ev.Point.Y))
 	stw.rubber.Complete()
 	stw.endX = ev.Point.X
 	stw.endY = ev.Point.Y
@@ -2200,16 +2241,20 @@ func (stw *Window) TailLine(x, y int, ev gxui.MouseEvent) {
 func (stw *Window) TailPolygon(ns []*st.Node, ev gxui.MouseEvent) {
 	l := len(ns) + 1
 	num := 0
-	coords := make([][]int, l)
+	coords := make([][]float64, l)
 	for i := 0; i < l-1; i++ {
 		if ns[i] == nil {
 			continue
 		}
-		coords[num] = []int{int(ns[i].Pcoord[0]), int(ns[i].Pcoord[1])}
+		coords[num] = []float64{ns[i].Pcoord[0], ns[i].Pcoord[1]}
 		num++
 	}
-	coords[num] = []int{ev.Point.X, ev.Point.Y}
-	Polygon(stw.rubber, RubberPenLeft, RubberBrushLeft, coords[:num+1])
+	coords[num] = []float64{float64(ev.Point.X), float64(ev.Point.Y)}
+	// Polygon(stw.rubber, RubberPenLeft, RubberBrushLeft, coords[:num+1])
+	stw.currentCanvas = stw.rubber
+	stw.currentPen = RubberPenLeft
+	stw.currentBrush = RubberBrushLeft
+	stw.Polygon(coords[:num+1])
 	stw.rubber.Complete()
 	stw.endX = ev.Point.X
 	stw.endY = ev.Point.Y
@@ -2592,34 +2637,41 @@ func (stw *Window) DispOff(direction int) {
 
 
 func (stw *Window) DrawPivot(nodes []*st.Node, pivot, end chan int) {
-	stw.DrawFrameNode()
+	// TODO
+	// stw.DrawFrameNode()
 	// stw.DrawTexts(stw.cdcanv, false)
 	// stw.cdcanv.Foreground(pivotColor)
-	ind := 0
-	nnum := 0
-	for {
-		select {
-		case <-end:
-			return
-		case <-pivot:
-			ind++
-			if ind >= 6 {
-				// DrawNodeNum(nodes[nnum], stw.cdcanv)
-				nnum++
-				ind = 0
-			}
-		}
-	}
+	// ind := 0
+	// nnum := 0
+	// for {
+	// 	select {
+	// 	case <-end:
+	// 		return
+	// 	case <-pivot:
+	// 		ind++
+	// 		if ind >= 6 {
+	// 			// DrawNodeNum(nodes[nnum], stw.cdcanv)
+	// 			nnum++
+	// 			ind = 0
+	// 		}
+	// 	}
+	// }
 }
 
 func (stw *Window) RedrawNode() {
-	canvas := stw.DrawFrameNode()
-	stw.draw.SetCanvas(canvas)
+	canvas := stw.driver.CreateCanvas(gxmath.Size{W: stw.CanvasSize[0], H: stw.CanvasSize[1]})
+	stw.currentCanvas = canvas
+	st.DrawFrameNode(stw, stw.Frame, st.ECOLOR_SECT, false)
+	if stw.rubber != nil && stw.rubber.IsComplete() {
+		stw.currentCanvas.DrawCanvas(stw.rubber, gxmath.Point{X: 0, Y: 0})
+	}
+	stw.Flush()
 }
 
 func (stw *Window) Redraw() {
-	canvas := stw.DrawFrame()
-	stw.draw.SetCanvas(canvas)
+	canvas := stw.driver.CreateCanvas(gxmath.Size{W: stw.CanvasSize[0], H: stw.CanvasSize[1]})
+	stw.currentCanvas = canvas
+	st.DrawFrame(stw, stw.Frame, st.ECOLOR_SECT, true)
 }
 
 func (stw *Window) ShapeData(sh st.Shape) {
@@ -2629,7 +2681,7 @@ func (stw *Window) ShapeData(sh st.Shape) {
 	} else {
 		tb = NewTextBox()
 		tb.hide = false
-		tb.Position = []int{stw.CanvasSize[0] - 300, 200}
+		tb.position = []int{stw.CanvasSize[0] - 300, 200}
 		stw.textBox["SHAPE"] = tb
 	}
 	var otp bytes.Buffer
@@ -2861,6 +2913,11 @@ func (stw *Window) DisableLabel(key string) {
 func (stw *Window) GetCanvasSize() (int, int) {
 	stw.SetCanvasSize()
 	return stw.CanvasSize[0], stw.CanvasSize[1]
+}
+
+func (stw *Window) SectionAliase(key int) (string, bool) {
+	val, ok := sectionaliases[key]
+	return val, ok
 }
 
 func (stw *Window) AddSectionAliase(key int, value string) {

@@ -142,7 +142,7 @@ var (
 var (
 	STLOGO = &TextBox{
 		value:    []string{"         software", "     forstructural", "   analysisthename", "  ofwhichstandsfor", "", " sigmatau  stress", "structure  steel", "andsometh  ing", " likethat"},
-		Position: []float64{100.0, 100.0},
+		position: []float64{100.0, 100.0},
 		Angle:    0.0,
 		Font:     NewFont(),
 		hide:     false,
@@ -1293,11 +1293,11 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.textBox = make(map[string]*TextBox, 0)
 	stw.textBox["PAGETITLE"] = NewTextBox()
 	stw.textBox["PAGETITLE"].Font.Size = 16
-	stw.textBox["PAGETITLE"].Position = []float64{30.0, stw.CanvasSize[1] - 30.0}
+	stw.textBox["PAGETITLE"].position = []float64{30.0, stw.CanvasSize[1] - 30.0}
 	stw.textBox["TITLE"] = NewTextBox()
-	stw.textBox["TITLE"].Position = []float64{30.0, stw.CanvasSize[1] - 80.0}
+	stw.textBox["TITLE"].position = []float64{30.0, stw.CanvasSize[1] - 80.0}
 	stw.textBox["TEXT"] = NewTextBox()
-	stw.textBox["TEXT"].Position = []float64{120.0, 65.0}
+	stw.textBox["TEXT"].position = []float64{120.0, 65.0}
 	iup.SetHandle("mainwindow", stw.Dlg)
 	stw.EscapeAll()
 	stw.Changed = false
@@ -2046,13 +2046,13 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 		m.ArrowSize = 75.0
 	}
 	for i := 0; i < 2; i++ {
-		stw.textBox["PAGETITLE"].Position[i] *= factor
-		stw.textBox["TITLE"].Position[i] *= factor
-		stw.textBox["TEXT"].Position[i] *= factor
+		stw.textBox["PAGETITLE"].position[i] *= factor
+		stw.textBox["TITLE"].position[i] *= factor
+		stw.textBox["TEXT"].position[i] *= factor
 	}
 	for _, t := range stw.textBox {
 		for i := 0; i < 2; i++ {
-			t.Position[i] *= factor
+			t.position[i] *= factor
 		}
 	}
 	return v, factor, nil
@@ -2116,13 +2116,13 @@ func (stw *Window) Print() {
 	}
 	stw.Frame.View = v
 	for i := 0; i < 2; i++ {
-		stw.textBox["PAGETITLE"].Position[i] /= factor
-		stw.textBox["TITLE"].Position[i] /= factor
-		stw.textBox["TEXT"].Position[i] /= factor
+		stw.textBox["PAGETITLE"].position[i] /= factor
+		stw.textBox["TITLE"].position[i] /= factor
+		stw.textBox["TEXT"].position[i] /= factor
 	}
 	for _, t := range stw.textBox {
 		for i := 0; i < 2; i++ {
-			t.Position[i] /= factor
+			t.position[i] /= factor
 		}
 	}
 	PlateEdgeColor = defaultPlateEdgeColor
@@ -2300,7 +2300,7 @@ func ShowReleaseNote() {
 
 func (stw *Window) ShowLogo(t time.Duration) {
 	w, h := stw.dbuff.GetSize()
-	STLOGO.Position = []float64{float64(w) * 0.5, float64(h) * 0.5}
+	STLOGO.position = []float64{float64(w) * 0.5, float64(h) * 0.5}
 	STLOGO.Show()
 	// go func() {
 	// logo:
@@ -3719,7 +3719,7 @@ func (stw *Window) ShapeData(sh st.Shape) {
 	} else {
 		tb = NewTextBox()
 		tb.Show()
-		tb.Position = []float64{stw.CanvasSize[0] - 300.0, 200.0}
+		tb.position = []float64{stw.CanvasSize[0] - 300.0, 200.0}
 		stw.textBox["SHAPE"] = tb
 	}
 	var otp bytes.Buffer
@@ -3742,7 +3742,7 @@ func (stw *Window) SectionData(sec *st.Sect) {
 	} else {
 		tb = NewTextBox()
 		tb.Show()
-		tb.Position = []float64{stw.CanvasSize[0] - 500.0, float64(dataareaheight)}
+		tb.position = []float64{stw.CanvasSize[0] - 500.0, float64(dataareaheight)}
 		stw.textBox["SECTION"] = tb
 	}
 	tb.SetText(strings.Split(sec.InpString(), "\n"))
@@ -3759,7 +3759,7 @@ func (stw *Window) CurrentLap(comment string, nlap, laps int) {
 	} else {
 		tb = NewTextBox()
 		tb.Show()
-		tb.Position = []float64{30.0, stw.CanvasSize[1] - 30.0}
+		tb.position = []float64{30.0, stw.CanvasSize[1] - 30.0}
 		stw.textBox["LAP"] = tb
 	}
 	if comment == "" {

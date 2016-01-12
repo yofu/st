@@ -3,6 +3,18 @@ package st
 // Color Palette by Google
 // http://www.google.com/design/spec/style/color.html
 
+const (
+	WHITE = GREY_0
+	GRAY  = GREY_200
+	BLACK = GREY_1000
+	RED   = RED_A700
+	GREEN = GREEN_A700
+	BLUE  = BLUE_A700
+	DARK_GREEN = GREEN_50
+	DARK_GRAY  = GREY_50
+	CYAN = BLUE_100
+)
+
 //Red
 const RED_50 int = 16638172   // #fde0dc 253 224 220
 const RED_100 int = 16367035  // #f9bdbb 249 189 187

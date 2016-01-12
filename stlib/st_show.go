@@ -109,6 +109,10 @@ type Show struct { // {{{
 	BondColor int
 	Phinge    bool
 
+	KijunColor int
+	MeasureColor int
+	CanvasFontColor int
+
 	Draw     map[int]bool
 	DrawSize float64
 
@@ -136,6 +140,10 @@ type Show struct { // {{{
 	Qfact           float64
 	MomentColor     int
 	StressTextColor int
+	YieldedTextColor int
+	BrittleTextColor int
+
+	DefaultTextAlignment int
 
 	Fes      bool
 	MassSize float64
