@@ -50,6 +50,12 @@ type Drawer interface {
 	SelectedNodes() []*Node
 	SelectedElems() []*Elem
 	ElemSelected() bool
+	DefaultStyle()
+	BondStyle(*Show)
+	PhingeStyle(*Show)
+	ConfStyle(*Show)
+	SelectNodeStyle()
+	SelectElemStyle()
 	ShowPrintRange() bool
 	GetCanvasSize() (int, int)
 	CanvasPaperSize() (float64, float64, error)
@@ -163,7 +169,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 		stw.Line(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1], elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
 		pd := elem.PDirection(true)
 		if show.Bond {
-			stw.Foreground(show.BondColor)
+			stw.BondStyle(show)
 			switch elem.BondState() {
 			case PIN_RIGID:
 				stw.Circle(elem.Enod[0].Pcoord[0]+pd[0]*show.BondSize, elem.Enod[0].Pcoord[1]+pd[1]*show.BondSize, show.BondSize*2)
@@ -175,7 +181,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			}
 		}
 		if show.Phinge {
-			stw.Foreground(show.BondColor)
+			stw.PhingeStyle(show)
 			ph1 := elem.Phinge[show.Period][elem.Enod[0].Num]
 			ph2 := elem.Phinge[show.Period][elem.Enod[1].Num]
 			switch {
@@ -194,7 +200,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 		// Deformation
 		if show.Deformation {
 			stw.LineStyle(DOTTED)
-			stw.Foreground(show.BondColor)
+			stw.Foreground(show.DeformationColor)
 			stw.Line(elem.Enod[0].Dcoord[0], elem.Enod[0].Dcoord[1], elem.Enod[1].Dcoord[0], elem.Enod[1].Dcoord[1])
 			stw.LineStyle(CONTINUOUS)
 		}
@@ -724,7 +730,7 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 	}
 	// Conffigure
 	if show.Conf {
-		stw.Foreground(show.ConfColor)
+		stw.ConfStyle(show)
 		switch node.ConfState() {
 		default:
 			return
@@ -738,6 +744,10 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 			FixFigure(stw, node.Pcoord[0], node.Pcoord[1], show.ConfSize)
 		}
 	}
+}
+
+func DrawNodeNum(stw Drawer, node *Node) {
+	stw.Text(node.Pcoord[0], node.Pcoord[1], fmt.Sprintf("%d", node.Num))
 }
 
 func PinFigure(stw Drawer, x, y, size float64) {
@@ -798,6 +808,7 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 		}
 		return
 	}
+	stw.DefaultStyle()
 	show := frame.Show
 	frame.View.Set(stw.CanvasDirection())
 	if show.GlobalAxis {
@@ -853,14 +864,13 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 			}
 			for _, j := range stw.SelectedNodes() {
 				if j == n {
-					stw.Foreground(RED)
+					stw.SelectNodeStyle()
 					break
 				}
 			}
 		}
 		DrawNode(stw, n, show)
 	}
-	stw.LineStyle(CONTINUOUS)
 	if !frame.Show.Select {
 		els := SortedElem(frame.Elems, func(e *Elem) float64 { return -e.DistFromProjection(frame.View) })
 	loop:
@@ -868,12 +878,12 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 			if el.IsHidden(frame.Show) {
 				continue
 			}
-			stw.LineStyle(CONTINUOUS)
 			for _, j := range stw.SelectedElems() {
 				if j == el {
 					continue loop
 				}
 			}
+			stw.DefaultStyle()
 			if el.Lock {
 				stw.Foreground(LOCKED_ELEM_COLOR)
 			} else {
@@ -934,10 +944,10 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 	show.NoMomentValue = false
 	show.NoShearValue = false
 	for _, el := range stw.SelectedElems() {
-		stw.LineStyle(DOTTED)
 		if el == nil || el.IsHidden(frame.Show) {
 			continue
 		}
+		stw.SelectElemStyle()
 		if el.Lock {
 			stw.Foreground(LOCKED_ELEM_COLOR)
 		} else {
@@ -974,11 +984,11 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 	}
 	show.NoMomentValue = nomv
 	show.NoShearValue = nosv
+	stw.DefaultStyle()
 	if frame.Fes != nil {
 		// DrawEccentric(stw, frame, show)
 	}
 	if stw.ShowPrintRange() {
-		stw.LineStyle(CONTINUOUS)
 		if color == ECOLOR_BLACK {
 			stw.Foreground(BLACK)
 		} else {
@@ -986,12 +996,12 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 		}
 		DrawPrintRange(stw)
 	}
+	stw.DefaultStyle()
 	DrawLegend(stw, show)
 	// DrawRange(stw, RangeView)
 	if flush {
 		stw.Flush()
 	}
-	// stw.SetViewData()
 }
 
 func DrawFrameNode(stw Drawer, frame *Frame, color uint, flush bool) {

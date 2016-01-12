@@ -23,7 +23,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -109,24 +108,6 @@ const (
 // Draw
 var (
 	first                   = 1
-	defaultPlateEdgeColor   = cd.CD_GRAY
-	defaultBondColor        = cd.CD_GRAY
-	defaultConfColor        = cd.CD_GRAY
-	defaultMomentColor      = cd.CD_DARK_MAGENTA
-	defaultKijunColor       = cd.CD_GRAY
-	defaultMeasureColor     = cd.CD_GRAY
-	defaultStressTextColor  = cd.CD_GRAY
-	defaultYieldedTextColor = cd.CD_YELLOW
-	defaultBrittleTextColor = cd.CD_RED
-	PlateEdgeColor          = defaultPlateEdgeColor
-	BondColor               = defaultBondColor
-	ConfColor               = defaultConfColor
-	MomentColor             = defaultMomentColor
-	KijunColor              = defaultKijunColor
-	MeasureColor            = defaultMeasureColor
-	StressTextColor         = defaultStressTextColor
-	YieldedTextColor        = defaultYieldedTextColor
-	BrittleTextColor        = defaultBrittleTextColor
 	fixRotate               = false
 	fixMove                 = false
 	deg10                   = 10.0 * math.Pi / 180.0
@@ -244,6 +225,8 @@ type Window struct { // {{{
 	formattag, lsformattag *iup.Handle
 	cname                  *iup.Handle
 	context                *iup.Handle
+
+	currentCanvas *cd.Canvas
 
 	sectiondlg *iup.Handle
 
@@ -2028,7 +2011,8 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 	v := stw.Frame.View.Copy()
 	pw, ph := pcanv.GetSize() // seems to be [mm]/25.4*[dpi]*2
 	w0, h0 := stw.dbuff.GetSize()
-	w, h, err := stw.CanvasPaperSize(stw.dbuff)
+	stw.currentCanvas = stw.dbuff
+	w, h, err := stw.CanvasPaperSize()
 	if err != nil {
 		return v, 0.0, err
 	}
@@ -2058,8 +2042,8 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 	return v, factor, nil
 }
 
-func (stw *Window) CanvasPaperSize(canv *cd.Canvas) (float64, float64, error) {
-	w, h := canv.GetSize()
+func (stw *Window) CanvasPaperSize() (float64, float64, error) {
+	w, h := stw.currentCanvas.GetSize()
 	length := math.Min(float64(w), float64(h)) * 0.9
 	val := 1.0 / math.Sqrt(2)
 	switch stw.papersize {
@@ -2086,15 +2070,15 @@ func (stw *Window) Print() {
 		stw.errormessage(err, st.ERROR)
 		return
 	}
-	PlateEdgeColor = cd.CD_BLACK
-	BondColor = cd.CD_BLACK
-	ConfColor = cd.CD_BLACK
-	MomentColor = cd.CD_BLACK
-	KijunColor = cd.CD_BLACK
-	MeasureColor = cd.CD_BLACK
-	StressTextColor = cd.CD_BLACK
-	YieldedTextColor = cd.CD_BLACK
-	BrittleTextColor = cd.CD_BLACK
+	// PlateEdgeColor = cd.CD_BLACK
+	// BondColor = cd.CD_BLACK
+	// ConfColor = cd.CD_BLACK
+	// MomentColor = cd.CD_BLACK
+	// KijunColor = cd.CD_BLACK
+	// MeasureColor = cd.CD_BLACK
+	// StressTextColor = cd.CD_BLACK
+	// YieldedTextColor = cd.CD_BLACK
+	// BrittleTextColor = cd.CD_BLACK
 	switch stw.Frame.Show.ColorMode {
 	default:
 		stw.DrawFrame(pcanv, stw.Frame.Show.ColorMode, false)
@@ -2125,15 +2109,15 @@ func (stw *Window) Print() {
 			t.position[i] /= factor
 		}
 	}
-	PlateEdgeColor = defaultPlateEdgeColor
-	BondColor = defaultBondColor
-	ConfColor = defaultConfColor
-	MomentColor = defaultMomentColor
-	KijunColor = defaultKijunColor
-	MeasureColor = defaultMeasureColor
-	StressTextColor = defaultStressTextColor
-	YieldedTextColor = defaultYieldedTextColor
-	BrittleTextColor = defaultBrittleTextColor
+	// PlateEdgeColor = defaultPlateEdgeColor
+	// BondColor = defaultBondColor
+	// ConfColor = defaultConfColor
+	// MomentColor = defaultMomentColor
+	// KijunColor = defaultKijunColor
+	// MeasureColor = defaultMeasureColor
+	// StressTextColor = defaultStressTextColor
+	// YieldedTextColor = defaultYieldedTextColor
+	// BrittleTextColor = defaultBrittleTextColor
 	stw.Redraw()
 }
 
@@ -2894,212 +2878,10 @@ func (stw *Window) AxisRange(axis int, min, max float64, any bool) {
 
 // Draw// {{{
 func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
-	if stw.Frame == nil {
-		return
-	}
+	stw.currentCanvas = canv
 	canv.Hatch(cd.CD_FDIAGONAL)
 	canv.Clear()
-	stw.Frame.View.Set(0)
-	if stw.Frame.Show.GlobalAxis {
-		stw.DrawGlobalAxis(canv, color)
-	}
-	if stw.Frame.Show.Kijun {
-		canv.Foreground(KijunColor)
-		for _, k := range stw.Frame.Kijuns {
-			if k.IsHidden(stw.Frame.Show) {
-				continue
-			}
-			k.Pstart = stw.Frame.View.ProjectCoord(k.Start)
-			k.Pend = stw.Frame.View.ProjectCoord(k.End)
-			DrawKijun(k, canv, stw.Frame.Show)
-		}
-	}
-	if stw.Frame.Show.Measure {
-		canv.TextAlignment(cd.CD_SOUTH)
-		canv.InteriorStyle(cd.CD_SOLID)
-		canv.Foreground(MeasureColor)
-		for _, m := range stw.Frame.Measures {
-			if m.IsHidden(stw.Frame.Show) {
-				continue
-			}
-			DrawMeasure(m, canv, stw.Frame.Show)
-		}
-		canv.TextAlignment(DefaultTextAlignment)
-		canv.InteriorStyle(cd.CD_HATCH)
-	}
-	canv.Foreground(cd.CD_WHITE)
-	for _, n := range stw.Frame.Nodes {
-		stw.Frame.View.ProjectNode(n)
-		if stw.Frame.Show.Deformation {
-			stw.Frame.View.ProjectDeformation(n, stw.Frame.Show)
-		}
-		if n.IsHidden(stw.Frame.Show) {
-			continue
-		}
-		if color == st.ECOLOR_BLACK {
-			canv.Foreground(cd.CD_BLACK)
-		} else {
-			if n.Lock {
-				canv.Foreground(LOCKED_NODE_COLOR)
-			} else {
-				switch n.ConfState() {
-				case st.CONF_FREE:
-					canv.Foreground(canvasFontColor)
-				case st.CONF_PIN:
-					canv.Foreground(cd.CD_GREEN)
-				case st.CONF_FIX:
-					canv.Foreground(cd.CD_DARK_GREEN)
-				default:
-					canv.Foreground(cd.CD_CYAN)
-				}
-			}
-			for _, j := range stw.selectNode {
-				if j == n {
-					canv.Foreground(cd.CD_RED)
-					break
-				}
-			}
-		}
-		DrawNode(n, canv, stw.Frame.Show)
-	}
-	canv.LineStyle(cd.CD_CONTINUOUS)
-	canv.Hatch(cd.CD_FDIAGONAL)
-	if !stw.Frame.Show.Select {
-		els := st.SortedElem(stw.Frame.Elems, func(e *st.Elem) float64 { return -e.DistFromProjection(stw.Frame.View) })
-	loop:
-		for _, el := range els {
-			if el.IsHidden(stw.Frame.Show) {
-				continue
-			}
-			canv.LineStyle(cd.CD_CONTINUOUS)
-			canv.Hatch(cd.CD_FDIAGONAL)
-			for _, j := range stw.selectElem {
-				if j == el {
-					continue loop
-				}
-			}
-			if el.Lock {
-				canv.Foreground(LOCKED_ELEM_COLOR)
-			} else {
-				switch color {
-				case st.ECOLOR_WHITE:
-					canv.Foreground(cd.CD_WHITE)
-				case st.ECOLOR_BLACK:
-					canv.Foreground(cd.CD_BLACK)
-				case st.ECOLOR_SECT:
-					canv.Foreground(el.Sect.Color)
-				case st.ECOLOR_RATE:
-					val, err := el.RateMax(stw.Frame.Show)
-					if err != nil {
-						canv.Foreground(cd.CD_DARK_GRAY)
-					} else {
-						canv.Foreground(st.Rainbow(val, st.RateBoundary))
-					}
-				// case st.ECOLOR_HEIGHT:
-				//     canv.Foreground(st.Rainbow(el.MidPoint()[2], st.HeightBoundary))
-				case st.ECOLOR_N:
-					if el.N(stw.Frame.Show.Period, 0) >= 0.0 {
-						canv.Foreground(st.RainbowColor[0]) // Compression: Blue
-					} else {
-						canv.Foreground(st.RainbowColor[6]) // Tension: Red
-					}
-				case st.ECOLOR_STRONG:
-					if el.IsLineElem() {
-						Ix, err := el.Sect.Ix(0)
-						if err != nil {
-							canv.Foreground(cd.CD_WHITE)
-						}
-						Iy, err := el.Sect.Iy(0)
-						if err != nil {
-							canv.Foreground(cd.CD_WHITE)
-						}
-						if Ix > Iy {
-							canv.Foreground(st.RainbowColor[0]) // Strong: Blue
-						} else if Ix == Iy {
-							canv.Foreground(st.RainbowColor[4]) // Same: Yellow
-						} else {
-							canv.Foreground(st.RainbowColor[6]) // Weak: Red
-						}
-					} else {
-						canv.Foreground(el.Sect.Color)
-					}
-				case st.ECOLOR_ENERGY:
-					val, err := el.Energy()
-					if err != nil {
-						canv.Foreground(cd.CD_DARK_GRAY)
-					} else {
-						canv.Foreground(st.Rainbow(val, st.EnergyBoundary))
-					}
-				}
-			}
-			DrawElem(el, canv, stw.Frame.Show)
-		}
-	}
-	canv.Hatch(cd.CD_DIAGCROSS)
-	nomv := stw.Frame.Show.NoMomentValue
-	nosv := stw.Frame.Show.NoShearValue
-	stw.Frame.Show.NoMomentValue = false
-	stw.Frame.Show.NoShearValue = false
-	for _, el := range stw.selectElem {
-		canv.LineStyle(cd.CD_DOTTED)
-		if el == nil || el.IsHidden(stw.Frame.Show) {
-			continue
-		}
-		if el.Lock {
-			canv.Foreground(LOCKED_ELEM_COLOR)
-		} else {
-			switch color {
-			case st.ECOLOR_WHITE:
-				canv.Foreground(cd.CD_WHITE)
-			case st.ECOLOR_BLACK:
-				canv.Foreground(cd.CD_BLACK)
-			case st.ECOLOR_SECT:
-				canv.Foreground(el.Sect.Color)
-			case st.ECOLOR_RATE:
-				val, err := el.RateMax(stw.Frame.Show)
-				if err != nil {
-					canv.Foreground(cd.CD_DARK_GRAY)
-				} else {
-					canv.Foreground(st.Rainbow(val, st.RateBoundary))
-				}
-			// case st.ECOLOR_HEIGHT:
-			//     canv.Foreground(st.Rainbow(el.MidPoint()[2], st.HeightBoundary))
-			case st.ECOLOR_N:
-				if el.N(stw.Frame.Show.Period, 0) >= 0.0 {
-					canv.Foreground(st.RainbowColor[0]) // Compression: Blue
-				} else {
-					canv.Foreground(st.RainbowColor[6]) // Tension: Red
-				}
-			case st.ECOLOR_ENERGY:
-				val, err := el.Energy()
-				if err != nil {
-					canv.Foreground(cd.CD_DARK_GRAY)
-				} else {
-					canv.Foreground(st.Rainbow(val, st.EnergyBoundary))
-				}
-			}
-		}
-		DrawElem(el, canv, stw.Frame.Show)
-	}
-	stw.Frame.Show.NoMomentValue = nomv
-	stw.Frame.Show.NoShearValue = nosv
-	if stw.Frame.Fes != nil {
-		DrawEccentric(stw.Frame, canv, stw.Frame.Show)
-	}
-	if showprintrange {
-		canv.LineStyle(cd.CD_CONTINUOUS)
-		if color == st.ECOLOR_BLACK {
-			canv.Foreground(cd.CD_BLACK)
-		} else {
-			canv.Foreground(cd.CD_GRAY)
-		}
-		DrawPrintRange(stw)
-	}
-	DrawLegend(canv, stw.Frame.Show)
-	stw.DrawRange(canv, RangeView)
-	if flush {
-		canv.Flush()
-	}
+	st.DrawFrame(stw, stw.Frame, color, flush)
 	stw.SetViewData()
 }
 
@@ -3235,7 +3017,8 @@ func (stw *Window) DrawPivot(nodes []*st.Node, pivot, end chan int) {
 		case <-pivot:
 			ind++
 			if ind >= 6 {
-				DrawNodeNum(nodes[nnum], stw.cdcanv)
+				stw.currentCanvas = stw.cdcanv
+				st.DrawNodeNum(stw, nodes[nnum])
 				nnum++
 				ind = 0
 			}
@@ -3253,78 +3036,9 @@ func (stw *Window) Redraw() {
 }
 
 func (stw *Window) DrawFrameNode() {
-	if stw.Frame == nil {
-		return
-	}
 	stw.dbuff.Clear()
-	stw.Frame.View.Set(0)
-	if stw.Frame.Show.GlobalAxis {
-		stw.DrawGlobalAxis(stw.dbuff, stw.Frame.Show.ColorMode)
-	}
-	for _, n := range stw.Frame.Nodes {
-		stw.Frame.View.ProjectNode(n)
-		if stw.Frame.Show.Deformation {
-			stw.Frame.View.ProjectDeformation(n, stw.Frame.Show)
-		}
-		stw.dbuff.Foreground(cd.CD_GREEN)
-		for _, j := range stw.selectNode {
-			if j == n {
-				DrawNode(n, stw.dbuff, stw.Frame.Show)
-				break
-			}
-		}
-	}
-	if !stw.Frame.Show.Select {
-		stw.dbuff.LineStyle(cd.CD_CONTINUOUS)
-		stw.dbuff.Hatch(cd.CD_FDIAGONAL)
-		var wg sync.WaitGroup
-		var m sync.Mutex
-		for _, elem := range stw.Frame.Elems {
-			wg.Add(1)
-			go func(el *st.Elem) {
-				defer wg.Done()
-				if el.Etype >= st.WBRACE || el.Etype < st.COLUMN {
-					return
-				}
-				for _, j := range stw.selectElem {
-					if j == el {
-						return
-					}
-				}
-				m.Lock()
-				if el.IsHidden(stw.Frame.Show) {
-					stw.dbuff.Foreground(cd.CD_DARK_GRAY)
-				} else {
-					stw.dbuff.Foreground(cd.CD_DARK_GREEN)
-				}
-				DrawElemLine(el, stw.dbuff)
-				m.Unlock()
-			}(elem)
-		}
-		wg.Wait()
-	}
-	if len(stw.selectElem) > 0 && stw.selectElem[0] != nil {
-		nomv := stw.Frame.Show.NoMomentValue
-		stw.Frame.Show.NoMomentValue = false
-		stw.dbuff.Hatch(cd.CD_DIAGCROSS)
-		for _, el := range stw.selectElem {
-			stw.dbuff.LineStyle(cd.CD_DOTTED)
-			if el == nil || el.IsHidden(stw.Frame.Show) {
-				continue
-			}
-			if el.Lock {
-				stw.dbuff.Foreground(LOCKED_ELEM_COLOR)
-			} else {
-				stw.dbuff.Foreground(cd.CD_GREEN)
-			}
-			DrawElem(el, stw.dbuff, stw.Frame.Show)
-		}
-		stw.Frame.Show.NoMomentValue = nomv
-		stw.dbuff.LineStyle(cd.CD_CONTINUOUS)
-		stw.dbuff.Hatch(cd.CD_FDIAGONAL)
-	}
-	stw.DrawRange(stw.dbuff, RangeView)
-	stw.dbuff.Flush()
+	stw.currentCanvas = stw.dbuff
+	st.DrawFrameNode(stw, stw.Frame, stw.Frame.Show.ColorMode, true)
 }
 
 // TODO: implement
@@ -3466,7 +3180,7 @@ func (stw *Window) DrawConvexHull() {
 	}
 	stw.dbuff.Clear()
 	stw.dbuff.Begin(cd.CD_FILL)
-	stw.dbuff.Foreground(PlateEdgeColor)
+	// stw.dbuff.Foreground(PlateEdgeColor)
 	stw.dbuff.Begin(cd.CD_CLOSED_LINES)
 	for i := 0; i < ncw+nccw+2; i++ {
 		stw.dbuff.FVertex(chnodes[i].Pcoord[0], chnodes[i].Pcoord[1])
@@ -3869,7 +3583,8 @@ func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
 	if xmax == xmin && ymax == ymin {
 		return
 	}
-	w, h, err := stw.CanvasPaperSize(canv)
+	stw.currentCanvas = canv
+	w, h, err := stw.CanvasPaperSize()
 	if err != nil {
 		stw.errormessage(err, st.ERROR)
 		return
@@ -7390,6 +7105,11 @@ func (stw *Window) GetCanvasSize() (int, int) {
 	return stw.cdcanv.GetSize()
 }
 
+func (stw *Window) SectionAliase(key int) (string, bool) {
+	str, ok := sectionaliases[key]
+	return str, ok
+}
+
 func (stw *Window) AddSectionAliase(key int, value string) {
 	sectionaliases[key] = value
 }
@@ -7400,4 +7120,8 @@ func (stw *Window) DeleteSectionAliase(key int) {
 
 func (stw *Window) ClearSectionAliase() {
 	sectionaliases = make(map[int]string, 0)
+}
+
+func (stw *Window) CanvasDirection() int {
+	return 0
 }

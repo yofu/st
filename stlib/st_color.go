@@ -4,15 +4,17 @@ package st
 // http://www.google.com/design/spec/style/color.html
 
 const (
-	WHITE = GREY_0
-	GRAY  = GREY_200
-	BLACK = GREY_1000
-	RED   = RED_A700
-	GREEN = GREEN_A700
-	BLUE  = BLUE_A700
-	DARK_GREEN = GREEN_50
-	DARK_GRAY  = GREY_50
-	CYAN = BLUE_100
+	WHITE        = GREY_0
+	GRAY         = GREY_500
+	BLACK        = GREY_1000
+	RED          = RED_500
+	GREEN        = GREEN_500
+	BLUE         = BLUE_500
+	DARK_GREEN   = GREEN_200
+	DARK_GRAY    = GREY_0
+	CYAN         = CYAN_500
+	YELLOW       = YELLOW_500
+	DARK_MAGENTA = PURPLE_200
 )
 
 //Red

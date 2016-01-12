@@ -109,6 +109,7 @@ type Show struct { // {{{
 	BondColor int
 	Phinge    bool
 
+	DeformationColor int
 	KijunColor int
 	MeasureColor int
 	CanvasFontColor int
@@ -252,6 +253,18 @@ func NewShow(frame *Frame) *Show {
 	s.Formats["DISP"] = "%.3f"
 	s.Formats["THETA"] = "%.3e"
 	s.Formats["REACTION"] = "%.3f"
+
+	s.CanvasFontColor = GRAY
+	s.PlateEdgeColor = GRAY
+	s.ConfColor = GRAY
+	s.BondColor = GRAY
+	s.DeformationColor = GRAY
+	s.KijunColor = GRAY
+	s.MeasureColor = GRAY
+	s.MomentColor = DARK_MAGENTA
+	s.StressTextColor = GRAY
+	s.YieldedTextColor = YELLOW
+	s.BrittleTextColor = RED
 
 	return s
 }
