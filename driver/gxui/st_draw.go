@@ -48,6 +48,12 @@ func IntColorFloat32(col int) []float32 {
 	return rtn
 }
 
+func GxuiColor(color int) gxui.Color {
+	c := IntColorFloat32(color)
+	a := float32(1.0)
+	return gxui.Color{c[0], c[1], c[2], a}
+}
+
 func OpaqueColor(c gxui.Color, opacity float32) gxui.Color {
 	return gxui.Color{c.R, c.G, c.B, opacity}
 }
@@ -205,11 +211,13 @@ func (stw *Window) Foreground(fg int) {
 	selected := stw.currentPen.Color.A != 1.0
 	stw.currentPen = Pen(fg, selected)
 	stw.currentBrush = Brush(fg, selected)
+	stw.currentFontColor = GxuiColor(fg)
 }
 
 func (stw *Window) DefaultStyle() {
 	stw.currentPen = Pen(st.WHITE, false)
 	stw.currentBrush = Brush(st.WHITE, false)
+	stw.currentFontColor = gxui.White
 }
 
 func (stw *Window) BondStyle(show *st.Show) {
