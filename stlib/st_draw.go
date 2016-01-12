@@ -751,7 +751,11 @@ func DrawNodeNum(stw Drawer, node *Node) {
 }
 
 func PinFigure(stw Drawer, x, y, size float64) {
-	val := y - 0.5*math.Sqrt(3)*size
+	d := -1.0
+	if stw.CanvasDirection() == 1 {
+		d = 1.0
+	}
+	val := y + d*0.5*math.Sqrt(3)*size
 	coords := make([][]float64, 3)
 	coords[0] = []float64{x, y}
 	coords[1] = []float64{x+0.5*size, val}
@@ -762,8 +766,12 @@ func PinFigure(stw Drawer, x, y, size float64) {
 func RollerFigure(stw Drawer, x, y, size float64, direction int) {
 	switch direction {
 	case 0:
-		val1 := y - 0.5*math.Sqrt(3)*size
-		val2 := y - 0.75*math.Sqrt(3)*size
+		d := -1.0
+		if stw.CanvasDirection() == 1 {
+			d = 1.0
+		}
+		val1 := y + d*0.5*math.Sqrt(3)*size
+		val2 := y + d*0.75*math.Sqrt(3)*size
 		coords := make([][]float64, 3)
 		coords[0] = []float64{x, y}
 		coords[1] = []float64{x+0.5*size, val1}
@@ -783,10 +791,14 @@ func RollerFigure(stw Drawer, x, y, size float64, direction int) {
 }
 
 func FixFigure(stw Drawer, x, y, size float64) {
+	d := 1.0
+	if stw.CanvasDirection() == 1 {
+		d = -1.0
+	}
 	stw.Line(x-size, y, x+size, y)
-	stw.Line(x-0.25*size, y, x-0.75*size, y-0.5*size)
-	stw.Line(x+0.25*size, y, x-0.25*size, y-0.5*size)
-	stw.Line(x+0.75*size, y, x+0.25*size, y-0.5*size)
+	stw.Line(x-0.25*size, d*y, x-0.75*size, d*(y-0.5*size))
+	stw.Line(x+0.25*size, d*y, x-0.25*size, d*(y-0.5*size))
+	stw.Line(x+0.75*size, d*y, x+0.25*size, d*(y-0.5*size))
 }
 
 func DrawNodeNormal(stw Drawer, node *Node, show *Show) {
