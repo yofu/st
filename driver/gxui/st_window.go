@@ -178,9 +178,6 @@ type Window struct { // {{{
 	InpModified bool
 	Changed     bool
 
-	exmodech  chan (interface{})
-	exmodeend chan (int)
-
 	comhist     []string
 	recentfiles []string
 	undostack   []*st.Frame
@@ -407,8 +404,6 @@ func NewWindow(driver gxui.Driver, theme gxui.Theme, homedir string) *Window {
 	stw.taggedFrame = make(map[string]*st.Frame)
 	undopos = 0
 	StartLogging()
-	stw.exmodech = make(chan interface{})
-	stw.exmodeend = make(chan int)
 
 	return stw
 }

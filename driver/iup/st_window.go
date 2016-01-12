@@ -282,9 +282,6 @@ type Window struct { // {{{
 	InpModified bool
 	Changed     bool
 
-	exmodech  chan (interface{})
-	exmodeend chan (int)
-
 	comhist     []string
 	recentfiles []string
 	undostack   []*st.Frame
@@ -1320,8 +1317,6 @@ func NewWindow(homedir string) *Window { // {{{
 	}
 	stw.New()
 	stw.ShowLogo(3*time.Second)
-	stw.exmodech = make(chan interface{})
-	stw.exmodeend = make(chan int)
 	stw.completefunc = stw.CompleteFileName
 	if rcfn := filepath.Join(stw.cwd, ResourceFileName); st.FileExists(rcfn) {
 		stw.ReadResource(rcfn)
