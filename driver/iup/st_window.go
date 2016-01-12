@@ -1870,7 +1870,7 @@ func (stw *Window) SaveFile(fn string) error {
 	if err != nil {
 		return err
 	}
-	stw.errormessage(errors.New(fmt.Sprintf("SAVE: %s", fn)), INFO)
+	stw.errormessage(errors.New(fmt.Sprintf("SAVE: %s", fn)), st.INFO)
 	stw.Changed = false
 	return nil
 }
@@ -1898,7 +1898,7 @@ func (stw *Window) SaveFileSelected(fn string) error {
 	if err != nil {
 		return err
 	}
-	stw.errormessage(errors.New(fmt.Sprintf("SAVE: %s", fn)), INFO)
+	stw.errormessage(errors.New(fmt.Sprintf("SAVE: %s", fn)), st.INFO)
 	stw.Changed = false
 	return nil
 }
@@ -7325,7 +7325,7 @@ func (stw *Window) SelectConfed() {
 }
 
 func (stw *Window) ErrorMessage(err error, level int) {
-	stw.errormessage(err, level)
+	stw.errormessage(err, uint(level))
 }
 
 func (stw *Window) History(str string) {

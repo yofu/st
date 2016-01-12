@@ -647,7 +647,7 @@ func measure(stw *Window) {
 				v = st.Direction(stw.selectNode[0], stw.selectNode[1], true)
 				u = st.Cross(v, st.ZAXIS)
 			default:
-				stw.errormessage(errors.New("unknown direction"), ERROR)
+				stw.errormessage(errors.New("unknown direction"), st.ERROR)
 				stw.EscapeAll()
 				return
 			}
@@ -684,7 +684,7 @@ func kijun(stw *Window) {
 		stw.selectNode[1] = n
 		name, err := stw.Query("基準線名を入力")
 		if err != nil {
-			stw.errormessage(err, ERROR)
+			stw.errormessage(err, st.ERROR)
 			stw.EscapeAll()
 			return
 		}
@@ -1595,12 +1595,12 @@ func scale(stw *Window) {
 	get1node(stw, func(n0 *st.Node) {
 		tmp, err := stw.Query("倍率を指定")
 		if err != nil {
-			stw.errormessage(err, ERROR)
+			stw.errormessage(err, st.ERROR)
 			stw.EscapeCB()
 		}
 		val, err := strconv.ParseFloat(tmp, 64)
 		if err != nil {
-			stw.errormessage(err, ERROR)
+			stw.errormessage(err, st.ERROR)
 			stw.EscapeCB()
 		}
 		for _, n := range ns {
@@ -1639,14 +1639,14 @@ func weightcopy(stw *Window) {
 	if !st.FileExists(fn) || stw.Yn("Copy Wgt", "上書きしますか") {
 		err := st.CopyFile(wgt, fn)
 		if err != nil {
-			stw.errormessage(err, ERROR)
+			stw.errormessage(err, st.ERROR)
 			stw.EscapeAll()
 			return
 		}
 		stw.addHistory(fmt.Sprintf("COPY: %s", fn))
 		err = stw.Frame.ReadWgt(fn)
 		if err != nil {
-			stw.errormessage(err, ERROR)
+			stw.errormessage(err, st.ERROR)
 		}
 	}
 	stw.EscapeAll()
@@ -1676,7 +1676,7 @@ func insert(stw *Window) {
 			// TODO: 角度を指定
 			err := stw.Frame.ReadInp(name, n.Coord, 0.0, false)
 			if err != nil {
-				stw.errormessage(err, ERROR)
+				stw.errormessage(err, st.ERROR)
 			}
 			stw.Snapshot()
 			stw.EscapeAll()
@@ -2092,7 +2092,7 @@ func trim(stw *Window) {
 				_, _, err = stw.Frame.Trim(stw.selectElem[0], el, -1, EPS)
 			}
 			if err != nil {
-				stw.errormessage(err, ERROR)
+				stw.errormessage(err, st.ERROR)
 			} else {
 				stw.Redraw()
 			}
@@ -2120,7 +2120,7 @@ func extend(stw *Window) {
 			var err error
 			_, _, err = stw.Frame.Extend(stw.selectElem[0], el, EPS)
 			if err != nil {
-				stw.errormessage(err, ERROR)
+				stw.errormessage(err, st.ERROR)
 			} else {
 				stw.Redraw()
 			}
@@ -2145,13 +2145,13 @@ func extend(stw *Window) {
 func offset(stw *Window) {
 	tmp, err := stw.Query("オフセット距離を指定")
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
 	val, err := strconv.ParseFloat(tmp, 64)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -2495,7 +2495,7 @@ func suspicious(stw *Window) {
 	if err != nil {
 		stw.selectNode = ns
 		stw.selectElem = els
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 	}
 	stw.EscapeCB()
 }
@@ -2786,7 +2786,7 @@ func showplane(stw *Window) {
 		if num >= 3 {
 			err := stw.Frame.ShowPlane(stw.selectNode[0], stw.selectNode[1], stw.selectNode[2], EPS)
 			if err != nil {
-				stw.errormessage(err, ERROR)
+				stw.errormessage(err, st.ERROR)
 			}
 			stw.EscapeAll()
 		}
@@ -2831,7 +2831,7 @@ func divide(stw *Window, divfunc func(*st.Elem) ([]*st.Node, []*st.Elem, error))
 		for _, el := range stw.selectElem {
 			_, els, err := divfunc(el)
 			if err != nil {
-				stw.errormessage(err, ERROR)
+				stw.errormessage(err, st.ERROR)
 				continue
 			}
 			if err == nil && len(els) > 1 {
@@ -2856,13 +2856,13 @@ func divideatmid(stw *Window) {
 func divideinn(stw *Window) {
 	ans, err := stw.Query("分割数")
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
 	val, err := strconv.ParseInt(ans, 10, 64)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -2897,7 +2897,7 @@ func intersect(stw *Window) {
 		if num == 2 {
 			_, els, err := stw.Frame.Intersect(els[0], els[1], true, 1, 1, false, false, EPS)
 			if err != nil {
-				stw.errormessage(err, ERROR)
+				stw.errormessage(err, st.ERROR)
 				stw.Deselect()
 			} else {
 				stw.Deselect()
@@ -2919,7 +2919,7 @@ func intersect(stw *Window) {
 func intersectall(stw *Window) {
 	err := stw.Frame.IntersectAll(stw.selectElem, EPS)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeAll()
 		return
 	}
@@ -3394,25 +3394,25 @@ func editwrect(stw *Window) {
 	setwrect := func(els ...*st.Elem) {
 		ans, err := stw.Query("開口長さ h[m]")
 		if err != nil {
-			stw.errormessage(err, ERROR)
+			stw.errormessage(err, st.ERROR)
 			stw.EscapeCB()
 			return
 		}
 		w, err := strconv.ParseFloat(ans, 64)
 		if err != nil {
-			stw.errormessage(err, ERROR)
+			stw.errormessage(err, st.ERROR)
 			stw.EscapeCB()
 			return
 		}
 		ans, err = stw.Query("開口高さ l[m]")
 		if err != nil {
-			stw.errormessage(err, ERROR)
+			stw.errormessage(err, st.ERROR)
 			stw.EscapeCB()
 			return
 		}
 		h, err := strconv.ParseFloat(ans, 64)
 		if err != nil {
-			stw.errormessage(err, ERROR)
+			stw.errormessage(err, st.ERROR)
 			stw.EscapeCB()
 			return
 		}
@@ -3464,13 +3464,13 @@ func convexhull(stw *Window) {
 func reaction(stw *Window) {
 	tmp, err := stw.Query("方向を指定[0～5]")
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
 	val, err := strconv.ParseInt(tmp, 10, 64)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -3482,7 +3482,7 @@ func reaction(stw *Window) {
 	fn := st.Ce(stw.Frame.Path, ".rct")
 	err = st.WriteReaction(fn, stw.selectNode, d)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -3683,7 +3683,7 @@ func catbynode(stw *Window) {
 	get1node(stw, func(n *st.Node) {
 		err := stw.Frame.CatByNode(n, true)
 		if err != nil {
-			stw.errormessage(err, ERROR)
+			stw.errormessage(err, st.ERROR)
 		} else {
 			stw.Snapshot()
 			stw.Redraw()
@@ -3842,13 +3842,13 @@ func joinlineelem(stw *Window) {
 			if err != nil {
 				switch err.(type) {
 				default:
-					stw.errormessage(err, ERROR)
+					stw.errormessage(err, st.ERROR)
 					return
 				case st.ParallelError:
 					if stw.Yn("JOIN LINE ELEM", "平行でない部材を結合しますか") {
 						err := stw.Frame.JoinLineElem(els[0], els[1], false)
 						if err != nil {
-							stw.errormessage(err, ERROR)
+							stw.errormessage(err, st.ERROR)
 							return
 						}
 					}
@@ -3879,7 +3879,7 @@ func joinplateelem(stw *Window) {
 		if num == 2 {
 			err := stw.Frame.JoinPlateElem(els[0], els[1])
 			if err != nil {
-				stw.errormessage(err, ERROR)
+				stw.errormessage(err, st.ERROR)
 			} else {
 				stw.Snapshot()
 				stw.EscapeAll()
@@ -3957,7 +3957,7 @@ func facts(stw *Window) {
 	fn := st.Ce(stw.Frame.Path, ".fes")
 	err := stw.Frame.Facts(fn, []int{st.COLUMN, st.GIRDER, st.BRACE, st.WBRACE, st.SBRACE}, nil, nil)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 	} else {
 		stw.addHistory(fmt.Sprintf("Output: %s", fn))
 	}
@@ -3974,29 +3974,29 @@ func zoubundisp(stw *Window) {
 	}
 	pers, err := stw.QueryList("PERIODを指定")
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 	}
 	tmp, err := stw.Query("方向を指定[0～5]")
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 	}
 	val, err := strconv.ParseInt(tmp, 10, 64)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 	}
 	d := int(val)
 	if d < 0 || d > 5 {
-		stw.errormessage(errors.New(":zoubundisp direction should be between 0 ~ 6"), ERROR)
+		stw.errormessage(errors.New(":zoubundisp direction should be between 0 ~ 6"), st.ERROR)
 		stw.EscapeCB()
 		return
 	}
 	fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
 	err = stw.Frame.ReportZoubunDisp(fn, stw.selectNode, pers, d)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -4041,7 +4041,7 @@ func zoubunyield(stw *Window) {
 	w, err := os.Create(fn)
 	defer w.Close()
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 	}
 	otp.WriteTo(w)
@@ -4059,29 +4059,29 @@ func zoubunreaction(stw *Window) {
 	}
 	pers, err := stw.QueryList("PERIODを指定")
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 	}
 	tmp, err := stw.Query("方向を指定[0～5]")
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 	}
 	val, err := strconv.ParseInt(tmp, 10, 64)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 	}
 	d := int(val)
 	if d < 0 || d > 5 {
-		stw.errormessage(errors.New(":zoubundisp direction should be between 0 ~ 6"), ERROR)
+		stw.errormessage(errors.New(":zoubundisp direction should be between 0 ~ 6"), st.ERROR)
 		stw.EscapeCB()
 		return
 	}
 	fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
 	err = stw.Frame.ReportZoubunReaction(fn, stw.selectNode, pers, d)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -4111,7 +4111,7 @@ func amountprop(stw *Window) {
 	fn := filepath.Join(filepath.Dir(stw.Frame.Path), "amount.txt")
 	err = stw.Frame.AmountProp(fn, props...)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -4124,14 +4124,14 @@ func amountprop(stw *Window) {
 func seteps(stw *Window) {
 	ans, err := stw.Query("許容差[m]")
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
 		stw.EscapeCB()
 		return
 	}
 	val, err := strconv.ParseFloat(ans, 64)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
 		stw.EscapeCB()
 		return

@@ -83,7 +83,7 @@ func DrawPrintRange(stw *Window) {
 	centrey := 0.5 * stw.CanvasSize[1]
 	width, height, err := stw.CanvasPaperSize(stw.dbuff)
 	if err != nil {
-		stw.errormessage(err, ERROR)
+		stw.errormessage(err, st.ERROR)
 		return
 	}
 	width *= 0.5
