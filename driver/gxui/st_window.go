@@ -8,7 +8,6 @@ import (
 	"github.com/google/gxui"
 	gxmath "github.com/google/gxui/math"
 	"github.com/yofu/st/stlib"
-	"github.com/yofu/st/stsvg"
 	"log"
 	"path/filepath"
 	"math"
@@ -940,14 +939,6 @@ func (stw *Window) AddPropAndSect(filename string) error {
 	} else {
 		return errors.New("NO FRAME")
 	}
-}
-
-func (stw *Window) PrintSVG(filename string) error {
-	err := stsvg.Print(stw.Frame, filename)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (stw *Window) CompleteFileName(str string) string {

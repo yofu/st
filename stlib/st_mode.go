@@ -30,7 +30,6 @@ type ExModer interface {
 	Cwd() string
 	HomeDir() string
 	Print()
-	PrintSVG(string) error
 	IsChanged() bool
 	Yn(string, string) bool
 	Yna(string, string, string) int

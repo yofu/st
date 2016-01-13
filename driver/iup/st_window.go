@@ -11,7 +11,6 @@ import (
 	"github.com/yofu/abbrev"
 	"github.com/yofu/complete"
 	"github.com/yofu/st/stlib"
-	"github.com/yofu/st/stsvg"
 	"gopkg.in/fsnotify.v1"
 	"log"
 	"math"
@@ -2119,14 +2118,6 @@ func (stw *Window) Print() {
 	// YieldedTextColor = defaultYieldedTextColor
 	// BrittleTextColor = defaultBrittleTextColor
 	stw.Redraw()
-}
-
-func (stw *Window) PrintSVG(filename string) error {
-	err := stsvg.Print(stw.Frame, filename)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (stw *Window) PrintFig2(filename string) error {

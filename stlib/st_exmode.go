@@ -930,7 +930,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		if usage {
 			return Usage(":svg filename")
 		}
-		err := stw.PrintSVG(fn)
+		err := PrintSVG(frame, fn)
 		if err != nil {
 			return err
 		}

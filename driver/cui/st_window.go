@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/yofu/st/stlib"
-	"github.com/yofu/st/stsvg"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -241,10 +240,6 @@ func (stw *Window) HomeDir() string {
 }
 
 func (stw *Window) Print() {
-}
-
-func (stw *Window) PrintSVG(filename string) error {
-	return stsvg.Print(stw.Frame, filename)
 }
 
 func (stw *Window) IsChanged() bool {
