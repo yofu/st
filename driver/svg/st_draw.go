@@ -1,10 +1,9 @@
-package stsvg
+package st
 
 import (
 	"bytes"
 	"fmt"
 	"github.com/ajstarks/svgo"
-	"github.com/yofu/st/stlib"
 	"math"
 	"os"
 )
@@ -19,7 +18,114 @@ var (
 	kfont      = "font-family:IPAmincho; text-anchor:middle; alignment-baseline:central"
 )
 
-func Print(frame *st.Frame, otp string) error {
+func rgbString(color int) string {
+	return "#fff"
+}
+
+func (stw *Window) Line(x1, y1, x2, y2 float64) {
+	stw.currentCanvas.Line(int(x1), int(y1), int(x2), int(y2), stw.currentStyle.Stroke())
+}
+
+func (stw *Window) Polyline(coord [][]float64) {
+	xs := make([]int, len(coord)
+	ys := make([]int, len(coord)
+	for i := 0; i< len(coord); i++ {
+		xs[i] = int(coord[0])
+		ys[i] = int(coord[1])
+	}
+	s := stw.currentStyle.Copy()
+	s.Set("fill", "none")
+	stw.currentCanvas.Polygon(xs, ys, s.Fill())
+}
+
+func (stw *Window) Polygon(coord [][]float64) {
+	xs := make([]int, len(coord)
+	ys := make([]int, len(coord)
+	for i := 0; i< len(coord); i++ {
+		xs[i] = int(coord[0])
+		ys[i] = int(coord[1])
+	}
+	stw.currentCanvas.Polygon(xs, ys, stw.currentStyle.Fill())
+}
+
+func (stw *Window) Circle(x, y, r float64) {
+	stw.currentCanvas.Circle(int(x), int(y), int(r), stw.currentStyle.Fill())
+}
+
+func (stw *Window) FilledCircle(x, y, r float64) {
+}
+
+func (stw *Window) Text(x, y float64, txt string) {
+	stw.currentCanvas.Text(int(x), int(y), txt, stw.currentStyle.Text())
+}
+
+func (stw *Window) Foreground(fg int) {
+	c := rgbString(fg)
+	stw.currentStyle.Set("stroke", c)
+	stw.currentStyle.Set("fill", c)
+}
+
+func (stw *Window) LineStyle(ls int) {
+	switch ls {
+	case CONTINUOUS:
+		stw.currentStyle.Delete("stroke-dasharray")
+	case DOTTED:
+		stw.currentStyle.Set("stroke-dasharray", "2,2")
+	case DASHED:
+	case DASH_DOT:
+		stw.currentStyle.Set("stroke-dasharray", "10,5,2,5")
+	}
+}
+
+func (stw *Window) TextAlignment(ta int) {
+}
+
+func (stw *Window) TextOrientation(to float64) {
+}
+
+func (stw *Window) SectionAliase(s int) (string, bool) {
+}
+
+func (stw *Window) SelectedNodes() []*Node {
+	return nil
+}
+
+func (stw *Window) SelectedElems() []*Elem {
+	return nil
+}
+
+func (stw *Window) ElemSelected() bool {
+	return false
+}
+
+func (stw *Window) DefaultStyle() {
+	stw.currentStyle = NewStyle()
+}
+
+func (stw *Window) BondStyle(show *Show) {
+	stw.currentStyle.Set("fill", "none")
+	stw.currentStyle.Set("stroke", "black")
+}
+
+func (stw *Window) PhingeStyle(show *Show) {
+	stw.currentStyle.Set("fill", "black")
+	stw.currentStyle.Set("stroke", "black")
+}
+
+func (stw *Window) ConfStyle(show *Show) {
+	stw.currentStyle.Set("fill", "black")
+	stw.currentStyle.Set("stroke", "black")
+}
+
+func (stw *Window) SelectNodeStyle()
+func (stw *Window) SelectElemStyle()
+func (stw *Window) ShowPrintRange() bool
+func (stw *Window) GetCanvasSize() (int, int)
+func (stw *Window) CanvasPaperSize() (float64, float64, error)
+func (stw *Window) Flush()
+func (stw *Window) CanvasDirection() int
+
+func Print(frame *Frame, otp string) error {
 	s := frame.Show.Copy()
 	v := frame.View.Copy()
 	w, err := os.Create(otp)
@@ -60,7 +166,7 @@ func Print(frame *st.Frame, otp string) error {
 	return nil
 }
 
-func PrintToCanvas(frame *st.Frame, cvs *svg.SVG) error {
+func PrintToCanvas(frame *Frame, cvs *svg.SVG) error {
 	frame.View.Center[0] = 500
 	frame.View.Center[1] = 500
 	frame.View.Set(1)
@@ -87,7 +193,7 @@ func PrintToCanvas(frame *st.Frame, cvs *svg.SVG) error {
 		}
 		DrawNode(n, cvs, frame.Show)
 	}
-	els := st.SortedElem(frame.Elems, func(e *st.Elem) float64 { return -e.DistFromProjection(frame.View) })
+	els := SortedElem(frame.Elems, func(e *Elem) float64 { return -e.DistFromProjection(frame.View) })
 	for _, el := range els {
 		if el.IsHidden(frame.Show) {
 			continue
@@ -98,15 +204,15 @@ func PrintToCanvas(frame *st.Frame, cvs *svg.SVG) error {
 }
 
 // NODE
-func DrawNode(node *st.Node, cvs *svg.SVG, show *st.Show) {
+func DrawNode(node *Node, cvs *svg.SVG, show *Show) {
 	// Caption
 	var ncap bytes.Buffer
 	var oncap bool
-	if show.NodeCaption&st.NC_NUM != 0 {
+	if show.NodeCaption&NC_NUM != 0 {
 		ncap.WriteString(fmt.Sprintf("%d\n", node.Num))
 		oncap = true
 	}
-	for i, j := range []uint{st.NC_DX, st.NC_DY, st.NC_DZ} {
+	for i, j := range []uint{NC_DX, NC_DY, NC_DZ} {
 		if show.NodeCaption&j != 0 {
 			if !node.Conf[i] {
 				ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["DISP"]), node.ReturnDisp(show.Period, i)*100.0))
@@ -114,7 +220,7 @@ func DrawNode(node *st.Node, cvs *svg.SVG, show *st.Show) {
 			}
 		}
 	}
-	for i, j := range []uint{st.NC_RX, st.NC_RY, st.NC_RZ} {
+	for i, j := range []uint{NC_RX, NC_RY, NC_RZ} {
 		if show.NodeCaption&j != 0 {
 			if node.Conf[i] {
 				ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), node.ReturnReaction(show.Period, i)))
@@ -122,7 +228,7 @@ func DrawNode(node *st.Node, cvs *svg.SVG, show *st.Show) {
 			}
 		}
 	}
-	if show.NodeCaption&st.NC_ZCOORD != 0 {
+	if show.NodeCaption&NC_ZCOORD != 0 {
 		ncap.WriteString(fmt.Sprintf("%.1f\n", node.Coord[2]))
 		oncap = true
 	}
@@ -134,13 +240,13 @@ func DrawNode(node *st.Node, cvs *svg.SVG, show *st.Show) {
 		switch node.ConfState() {
 		default:
 			return
-		case st.CONF_PIN:
+		case CONF_PIN:
 			PinFigure(cvs, node.Pcoord[0], node.Pcoord[1], show.ConfSize)
-		case st.CONF_XROL, st.CONF_YROL, st.CONF_XYROL:
+		case CONF_XROL, CONF_YROL, CONF_XYROL:
 			RollerFigure(cvs, node.Pcoord[0], node.Pcoord[1], show.ConfSize, 0)
-		case st.CONF_ZROL:
+		case CONF_ZROL:
 			RollerFigure(cvs, node.Pcoord[0], node.Pcoord[1], show.ConfSize, 1)
-		case st.CONF_FIX:
+		case CONF_FIX:
 			FixFigure(cvs, node.Pcoord[0], node.Pcoord[1], show.ConfSize)
 		}
 	}
@@ -194,18 +300,18 @@ func FixFigure(cvs *svg.SVG, x, y, size float64) {
 }
 
 // ELEM
-func DrawElem(elem *st.Elem, cvs *svg.SVG, show *st.Show) {
+func DrawElem(elem *Elem, cvs *svg.SVG, show *Show) {
 	var ecap bytes.Buffer
 	var oncap bool
-	if show.ElemCaption&st.EC_NUM != 0 {
+	if show.ElemCaption&EC_NUM != 0 {
 		ecap.WriteString(fmt.Sprintf("%d\n", elem.Num))
 		oncap = true
 	}
-	if show.ElemCaption&st.EC_SECT != 0 {
+	if show.ElemCaption&EC_SECT != 0 {
 		ecap.WriteString(fmt.Sprintf("%d\n", elem.Sect.Num))
 		oncap = true
 	}
-	if show.ElemCaption&st.EC_RATE_L != 0 || show.ElemCaption&st.EC_RATE_S != 0 {
+	if show.ElemCaption&EC_RATE_L != 0 || show.ElemCaption&EC_RATE_S != 0 {
 		val, err := elem.RateMax(show)
 		if err == nil {
 			ecap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["RATE"]), val))
@@ -214,7 +320,7 @@ func DrawElem(elem *st.Elem, cvs *svg.SVG, show *st.Show) {
 	}
 	if oncap {
 		var textpos []float64
-		if st.BRACE <= elem.Etype && elem.Etype <= st.SBRACE {
+		if BRACE <= elem.Etype && elem.Etype <= SBRACE {
 			coord := make([]float64, 3)
 			for j, en := range elem.Enod {
 				for k := 0; k < 3; k++ {
@@ -240,26 +346,26 @@ func DrawElem(elem *st.Elem, cvs *svg.SVG, show *st.Show) {
 		switch show.ColorMode {
 		default:
 			lc = "stroke:black"
-		case st.ECOLOR_SECT:
-			lc = fmt.Sprintf("stroke:%s", st.IntHexColor(elem.Sect.Color))
-		case st.ECOLOR_RATE:
+		case ECOLOR_SECT:
+			lc = fmt.Sprintf("stroke:%s", IntHexColor(elem.Sect.Color))
+		case ECOLOR_RATE:
 			val, err := elem.RateMax(show)
 			if err != nil {
 				lc = "stroke:darkgrey"
 			} else {
-				lc = fmt.Sprintf("stroke:%s", st.IntHexColor(st.Rainbow(val, st.RateBoundary)))
+				lc = fmt.Sprintf("stroke:%s", IntHexColor(Rainbow(val, RateBoundary)))
 			}
 		}
 		cvs.Line(int(elem.Enod[0].Pcoord[0]), int(elem.Enod[0].Pcoord[1]), int(elem.Enod[1].Pcoord[0]), int(elem.Enod[1].Pcoord[1]), lc)
 		if show.Bond {
 			switch elem.BondState() {
-			case st.PIN_RIGID:
+			case PIN_RIGID:
 				d := elem.PDirection(true)
 				cvs.Circle(int(elem.Enod[0].Pcoord[0]+d[0]*show.BondSize), int(elem.Enod[0].Pcoord[1]+d[1]*show.BondSize), int(show.BondSize), bondstyle)
-			case st.RIGID_PIN:
+			case RIGID_PIN:
 				d := elem.PDirection(true)
 				cvs.Circle(int(elem.Enod[1].Pcoord[0]-d[0]*show.BondSize), int(elem.Enod[1].Pcoord[1]-d[1]*show.BondSize), int(show.BondSize), bondstyle)
-			case st.PIN_PIN:
+			case PIN_PIN:
 				d := elem.PDirection(true)
 				cvs.Circle(int(elem.Enod[0].Pcoord[0]+d[0]*show.BondSize), int(elem.Enod[0].Pcoord[1]+d[1]*show.BondSize), int(show.BondSize), bondstyle)
 				cvs.Circle(int(elem.Enod[1].Pcoord[0]-d[0]*show.BondSize), int(elem.Enod[1].Pcoord[1]-d[1]*show.BondSize), int(show.BondSize), bondstyle)
@@ -281,7 +387,7 @@ func DrawElem(elem *st.Elem, cvs *svg.SVG, show *st.Show) {
 		}
 		if flag != 0 {
 			sttext := make([]bytes.Buffer, 2)
-			for i, st := range []uint{st.STRESS_NZ, st.STRESS_QX, st.STRESS_QY, st.STRESS_MZ, st.STRESS_MX, st.STRESS_MY} {
+			for i, st := range []uint{STRESS_NZ, STRESS_QX, STRESS_QY, STRESS_MZ, STRESS_MX, STRESS_MY} {
 				if flag&st != 0 {
 					sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)))
 					if i != 0 { // not showing NZ
@@ -342,7 +448,7 @@ func DrawElem(elem *st.Elem, cvs *svg.SVG, show *st.Show) {
 	}
 }
 
-func DrawKijun(k *st.Kijun, cvs *svg.SVG, show *st.Show) {
+func DrawKijun(k *Kijun, cvs *svg.SVG, show *Show) {
 	d := k.PDirection(true)
 	if math.Abs(d[0]) <= 1e-6 && math.Abs(d[1]) <= 1e-6 {
 		return
