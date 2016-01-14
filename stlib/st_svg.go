@@ -1,6 +1,8 @@
 package st
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/ajstarks/svgo"
 	"os"
 )
@@ -192,23 +194,71 @@ func PrintSVG(frame *Frame, otp string) error {
 }
 
 type Style struct {
+	value map[string]string
 }
+
 func NewStyle() *Style {
-	return new(Style)
+	s := new(Style)
+	s.value = make(map[string]string)
+	return s
 }
-func (s *Style) Delete(string) {
+
+func (s *Style) Set(k, v string) {
+	s.value[k] = v
 }
+
+func (s *Style) Delete(k string) {
+	delete(s.value, k)
+}
+
+func (s *Style) String() string {
+	var b bytes.Buffer
+	for k, v := range s.value {
+		b.WriteString(fmt.Sprintf("%s: %s;", k, v))
+	}
+	return b.String()
+}
+
+func (s *Style) Stroke() string {
+	var b bytes.Buffer
+	for k, v := range s.value {
+		switch k {
+		default:
+		case "stroke", "stroke-dasharray":
+			b.WriteString(fmt.Sprintf("%s: %s;", k, v))
+		}
+	}
+	return b.String()
+}
+
+func (s *Style) Fill() string {
+	var b bytes.Buffer
+	for k, v := range s.value {
+		switch k {
+		default:
+		case "stroke", "stroke-dasharray", "fill":
+			b.WriteString(fmt.Sprintf("%s: %s;", k, v))
+		}
+	}
+	return b.String()
+}
+
+func (s *Style) Text() string {
+	var b bytes.Buffer
+	for k, v := range s.value {
+		switch k {
+		default:
+		case "font-family", "font-size", "text-anchor", "alignment-baseline":
+			b.WriteString(fmt.Sprintf("%s: %s;", k, v))
+		}
+	}
+	return b.String()
+}
+
 func (s *Style) Copy() *Style {
-	return new(Style)
-}
-func (s *Style) Set(string, string) {
-}
-func (s *Style) Fill() string{
-	return ""
-}
-func (s *Style) Stroke() string{
-	return ""
-}
-func (s *Style) Text() string{
-	return ""
+	n := NewStyle()
+	for k, v := range s.value {
+		n.value[k] = v
+	}
+	return n
 }
