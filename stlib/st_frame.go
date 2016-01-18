@@ -3112,7 +3112,7 @@ susnode:
 	}
 }
 
-func (frame *Frame) Cat(e1, e2 *Elem, n *Node) error {
+func (frame *Frame) Cat(e1, e2 *Elem, n *Node, del bool) error {
 	if !e1.IsLineElem() || !e2.IsLineElem() {
 		return NotLineElem("Cat")
 	}
@@ -3133,7 +3133,9 @@ func (frame *Frame) Cat(e1, e2 *Elem, n *Node) error {
 	for j := 0; j < 6; j++ {
 		e1.Bonds[6*ind1+j] = e2.Bonds[6*ind1+j]
 	}
-	frame.DeleteNode(n.Num)
+	if del {
+		frame.DeleteNode(n.Num)
+	}
 	frame.DeleteElem(e2.Num)
 	return nil
 }
@@ -3169,13 +3171,14 @@ func CommonEnod(els ...*Elem) ([]*Node, error) {
 	return rtn, nil
 }
 
-func (frame *Frame) JoinLineElem(e1, e2 *Elem, parallel bool) error {
+func (frame *Frame) JoinLineElem(e1, e2 *Elem, parallel, others bool) error {
 	if !e1.IsLineElem() || !e2.IsLineElem() {
 		return NotLineElem("JoinLineElem")
 	}
 	if parallel && !IsParallel(e1.Direction(true), e2.Direction(true), 1e-4) {
 		return NotParallel("JoinLineElem")
 	}
+	del := true
 	for i, en1 := range e1.Enod {
 		for _, en2 := range e2.Enod {
 			if en1 == en2 {
@@ -3186,9 +3189,14 @@ func (frame *Frame) JoinLineElem(e1, e2 *Elem, parallel bool) error {
 					if el == e1 || el == e2 {
 						continue
 					}
-					return errors.New(fmt.Sprintf("JoinLineElem: NODE %d has more than 2 elements", e1.Enod[i].Num))
+					if others {
+						return errors.New(fmt.Sprintf("JoinLineElem: NODE %d has more than 2 elements", e1.Enod[i].Num))
+					} else {
+						del = false
+						break
+					}
 				}
-				return e1.Frame.Cat(e1, e2, e1.Enod[i])
+				return e1.Frame.Cat(e1, e2, e1.Enod[i], del)
 			}
 		}
 	}
@@ -3308,7 +3316,7 @@ func (frame *Frame) CatByNode(n *Node, parallel bool) error {
 			d = tmpd
 		}
 	}
-	frame.Cat(cat[0], cat[1], n)
+	frame.Cat(cat[0], cat[1], n, true)
 	return nil
 }
 
