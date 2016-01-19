@@ -55,11 +55,11 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 			switch ev.Button {
 			case gxui.MouseButtonLeft:
 				if len(stw.selectNode) > 0 && stw.selectNode[0] != nil {
-					if n := stw.PickNode(int(ev.Point.X), int(ev.Point.Y)); n != nil {
+					if n := stw.Frame.PickNode(float64(ev.Point.X), float64(ev.Point.Y), float64(nodeSelectPixel)); n != nil {
 						f(n)
 					}
 				} else {
-					if n := stw.PickNode(int(ev.Point.X), int(ev.Point.Y)); n != nil {
+					if n := stw.Frame.PickNode(float64(ev.Point.X), float64(ev.Point.Y), float64(nodeSelectPixel)); n != nil {
 						stw.selectNode[0] = n
 						stw.History("終端を指定[ダイアログ(D,R)]")
 					}
@@ -78,7 +78,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 		fmt.Println("get2node")
 		if stw.Frame != nil {
 			// Snapping
-			n := stw.PickNode(int(ev.Point.X), int(ev.Point.Y))
+			n := stw.Frame.PickNode(float64(ev.Point.X), float64(ev.Point.Y), float64(nodeSelectPixel))
 			if n != nil {
 				stw.rubber = stw.driver.CreateCanvas(gxmath.Size{W: stw.CanvasSize[0], H: stw.CanvasSize[1]})
 				// Circle(stw.rubber, RubberPenSnap, int(n.Pcoord[0]), int(n.Pcoord[1]), nodeSelectPixel)

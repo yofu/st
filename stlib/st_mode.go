@@ -22,6 +22,7 @@ const (
 )
 
 type ExModer interface {
+	Selector
 	LastExCommand() string
 	SetLastExCommand(string)
 	History(string)
@@ -48,14 +49,7 @@ type ExModer interface {
 	ReadPgp(string) error
 	ReadFig2(string) error
 	CheckFrame()
-	SelectElem([]*Elem)
-	SelectNode([]*Node)
-	ElemSelected() bool
-	NodeSelected() bool
-	SelectedElems() []*Elem
-	SelectedNodes() []*Node
 	SelectConfed()
-	Deselect()
 	Rebase(string)
 	ShowRecently()
 	ShapeData(Shape)

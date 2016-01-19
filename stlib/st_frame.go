@@ -2815,6 +2815,71 @@ func (frame *Frame) Fence(axis int, coord float64, plate bool) []*Elem {
 	return rtn[:num]
 }
 
+func (frame *Frame) FenceLine(x1, y1, x2, y2 float64) []*Elem {
+	rtn := make([]*Elem, len(frame.Elems))
+	k := 0
+	for _, el := range frame.Elems {
+		if el.IsHidden(frame.Show) {
+			continue
+		}
+		add := false
+		sign := 0
+		for i, en := range el.Enod {
+			if DotLine(x1, y1, x2, y2, en.Pcoord[0], en.Pcoord[1]) > 0 {
+				sign++
+			} else {
+				sign--
+			}
+			if i+1 != abs(sign) {
+				add = true
+				break
+			}
+		}
+		if add {
+			if el.IsLineElem() {
+				if DotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], x1, y1)*DotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], x2, y2) < 0 {
+					rtn[k] = el
+					k++
+				}
+			} else {
+				addx := false
+				sign := 0
+				for i, j := range el.Enod {
+					if math.Max(x1, x2) < j.Pcoord[0] {
+						sign++
+					} else if j.Pcoord[0] < math.Min(x1, x2) {
+						sign--
+					}
+					if i+1 != abs(sign) {
+						addx = true
+						break
+					}
+				}
+				if addx {
+					addy := false
+					sign := 0
+					for i, j := range el.Enod {
+						if math.Max(y1, y2) < j.Pcoord[1] {
+							sign++
+						} else if j.Pcoord[1] < math.Min(y1, y2) {
+							sign--
+						}
+						if i+1 != abs(sign) {
+							addy = true
+							break
+						}
+					}
+					if addy {
+						rtn[k] = el
+						k++
+					}
+				}
+			}
+		}
+	}
+	return rtn[:k]
+}
+
 func (frame *Frame) Cutter(axis int, coord float64, eps float64) error {
 	for _, el := range frame.Fence(axis, coord, false) {
 		_, _, err := el.DivideAtAxis(axis, coord, eps)
@@ -4560,6 +4625,109 @@ func (frame *Frame) SetFocus(coord []float64) {
 }
 
 // }}}
+
+func (frame *Frame) PickElem(x, y, eps float64) *Elem {
+	el := frame.PickLineElem(x, y, eps)
+	if el == nil {
+		els := frame.PickPlateElem(x, y)
+		if len(els) > 0 {
+			el = els[0]
+		}
+	}
+	return el
+}
+
+func (frame *Frame) PickLineElem(x, y, eps float64) *Elem {
+	mindist := eps
+	var rtn *Elem
+	for _, v := range frame.Elems {
+		if v.IsHidden(frame.Show) {
+			continue
+		}
+		if v.IsLineElem() && (math.Min(v.Enod[0].Pcoord[0], v.Enod[1].Pcoord[0]) <= x+eps && math.Max(v.Enod[0].Pcoord[0], v.Enod[1].Pcoord[0]) >= x-eps) && (math.Min(v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[1]) <= y+eps && math.Max(v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[1]) >= y-eps) {
+			dist := math.Abs(DotLine(v.Enod[0].Pcoord[0], v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[0], v.Enod[1].Pcoord[1], x, y))
+			if plen := math.Hypot(v.Enod[0].Pcoord[0]-v.Enod[1].Pcoord[0], v.Enod[0].Pcoord[1]-v.Enod[1].Pcoord[1]); plen > 1E-12 {
+				dist /= plen
+			}
+			if dist < mindist {
+				mindist = dist
+				rtn = v
+			}
+		}
+	}
+	return rtn
+}
+
+func (frame *Frame) PickPlateElem(x, y float64) []*Elem {
+	rtn := make(map[int]*Elem)
+	for _, el := range frame.Elems {
+		if el.IsHidden(frame.Show) {
+			continue
+		}
+		if !el.IsLineElem() {
+			add := true
+			sign := 0
+			for i := 0; i < el.Enods; i++ {
+				var j int
+				if i == el.Enods-1 {
+					j = 0
+				} else {
+					j = i + 1
+				}
+				if DotLine(el.Enod[i].Pcoord[0], el.Enod[i].Pcoord[1], el.Enod[j].Pcoord[0], el.Enod[j].Pcoord[1], x, y) > 0 {
+					sign++
+				} else {
+					sign--
+				}
+				if i+1 != abs(sign) {
+					add = false
+					break
+				}
+			}
+			if add {
+				rtn[el.Num] = el
+			}
+		}
+	}
+	return SortedElem(rtn, func(e *Elem) float64 { return e.DistFromProjection(frame.View) })
+}
+
+func (frame *Frame) PickNode(x, y, eps float64) *Node {
+	mindist := eps
+	var rtn *Node
+	for _, v := range frame.Nodes {
+		if v.IsHidden(frame.Show) {
+			continue
+		}
+		dist := math.Hypot(x-v.Pcoord[0], y-v.Pcoord[1])
+		if dist < mindist {
+			mindist = dist
+			rtn = v
+		} else if dist == mindist {
+			if rtn.DistFromProjection(frame.View) > v.DistFromProjection(frame.View) {
+				rtn = v
+			}
+		}
+	}
+	if frame.Show.Kijun {
+		for _, k := range frame.Kijuns {
+			if k.IsHidden(frame.Show) {
+				continue
+			}
+			for _, n := range [][]float64{k.Start, k.End} {
+				pc := frame.View.ProjectCoord(n)
+				dist := math.Hypot(x-pc[0], y-pc[1])
+				if dist < mindist {
+					mindist = dist
+					rtn = NewNode()
+					rtn.Coord = n
+					rtn.Pcoord = pc
+				}
+			}
+		}
+	}
+	return rtn
+}
 
 // Projection// {{{
 // direction: 0 -> origin=bottomleft, x=[1,0], y=[0,1]

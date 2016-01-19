@@ -234,7 +234,7 @@ func getcoord(stw *Window, f func(x, y, z float64)) {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
-					if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
+					if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 						f(n.Coord[0], n.Coord[1], n.Coord[2])
 					}
 					// stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
@@ -297,7 +297,7 @@ func getcoord(stw *Window, f func(x, y, z float64)) {
 			if snap != nil {
 				stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
 			}
-			n := stw.PickNode(int(arg.X), int(arg.Y))
+			n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
 				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
@@ -336,7 +336,7 @@ func get1node(stw *Window, f func(n *st.Node)) {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
-					if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
+					if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 						f(n)
 					}
 					// stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
@@ -400,7 +400,7 @@ func get1node(stw *Window, f func(n *st.Node)) {
 			if snap != nil {
 				stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
 			}
-			n := stw.PickNode(int(arg.X), int(arg.Y))
+			n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
 				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
@@ -469,12 +469,12 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
 					if stw.selectNode[0] != nil {
-						if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
+						if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 							f(n)
 						}
 						// stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
 					} else {
-						if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
+						if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 							stw.selectNode[0] = n
 							stw.cdcanv.Foreground(cd.CD_DARK_RED)
 							stw.cdcanv.WriteMode(cd.CD_XOR)
@@ -520,7 +520,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 			if snap != nil {
 				stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
 			}
-			n := stw.PickNode(int(arg.X), int(arg.Y))
+			n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
 				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
@@ -754,7 +754,7 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
-					if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
+					if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 						if selected >= maxnum {
 							stw.addHistory("TOO MANY NODES SELECTED")
 						} else if stw.selectNode[0] != nil {
@@ -807,7 +807,7 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 			if snap != nil {
 				stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
 			}
-			n := stw.PickNode(int(arg.X), int(arg.Y))
+			n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
 				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
@@ -967,7 +967,7 @@ func searchelem(stw *Window) {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
-					if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
+					if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 						startsearch(n)
 					}
 					stw.Redraw()
@@ -1067,12 +1067,12 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
 					if startpoint != nil {
-						if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
+						if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 							funcbynode(n)
 						}
 						// stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
 					} else {
-						if n := stw.PickNode(int(arg.X), int(arg.Y)); n != nil {
+						if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 							startpoint = n
 							stw.cdcanv.Foreground(cd.CD_DARK_RED)
 							stw.cdcanv.WriteMode(cd.CD_XOR)
@@ -1116,7 +1116,7 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 			if snap != nil {
 				stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
 			}
-			n := stw.PickNode(int(arg.X), int(arg.Y))
+			n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
 				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
@@ -1356,7 +1356,7 @@ func pinchnode(stw *Window) {
 						stw.Redraw()
 					}
 				} else { // Pressed
-					target = stw.PickNode(int(arg.X), int(arg.Y))
+					target = stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 					stw.startX = int(arg.X)
 					stw.startY = int(arg.Y)
 				}
