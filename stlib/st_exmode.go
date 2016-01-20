@@ -2196,6 +2196,19 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		}
 		stw.Snapshot()
 		return Message(m.String())
+	case "join":
+		if usage {
+			return Usage(":join")
+		}
+		els := currentelem(stw, exmodech, exmodeend)
+		if len(els) < 2 {
+			return errors.New("not enough elems selected")
+		}
+		err := frame.JoinLineElem(els[0], els[1], !bang, !bang)
+		if err != nil {
+			return err
+		}
+		stw.Deselect()
 	case "divide":
 		if narg < 2 {
 			if usage {

@@ -3838,7 +3838,7 @@ func joinlineelem(stw *Window) {
 			}
 		}
 		if num == 2 {
-			err := stw.Frame.JoinLineElem(els[0], els[1], true)
+			err := stw.Frame.JoinLineElem(els[0], els[1], true, true)
 			if err != nil {
 				switch err.(type) {
 				default:
@@ -3846,7 +3846,7 @@ func joinlineelem(stw *Window) {
 					return
 				case st.ParallelError:
 					if stw.Yn("JOIN LINE ELEM", "平行でない部材を結合しますか") {
-						err := stw.Frame.JoinLineElem(els[0], els[1], false)
+						err := stw.Frame.JoinLineElem(els[0], els[1], false, true)
 						if err != nil {
 							stw.errormessage(err, st.ERROR)
 							return
