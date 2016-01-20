@@ -934,6 +934,14 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		if err != nil {
 			return err
 		}
+	case "png":
+		if usage {
+			return Usage(":png filename")
+		}
+		err := PrintPNG(frame, fn)
+		if err != nil {
+			return err
+		}
 	case "dxf":
 		if usage {
 			return Usage(":dxf filename {-dimension=2,3} {-scale=val}")
