@@ -3,6 +3,8 @@ package st
 import (
 	"github.com/llgcode/draw2d/draw2dimg"
 	"image"
+	"image/color"
+	"math"
 )
 
 // TODO: font
@@ -53,9 +55,17 @@ func (pc *PngCanvas) Polygon(coord [][]float64) {
 }
 
 func (pc *PngCanvas) Circle(x, y, r float64) {
+	pc.currentCanvas.MoveTo(x, y)
+	pc.currentCanvas.ArcTo(x, y, r, r, 0, 2*math.Pi)
+	pc.currentCanvas.Close()
+	pc.currentCanvas.Stroke()
 }
 
 func (pc *PngCanvas) FilledCircle(x, y, r float64) {
+	pc.currentCanvas.MoveTo(x, y)
+	pc.currentCanvas.ArcTo(x, y, r, r, 0, 2*math.Pi)
+	pc.currentCanvas.Close()
+	pc.currentCanvas.Fill()
 }
 
 func (pc *PngCanvas) Text(x, y float64, str string) {
@@ -63,9 +73,21 @@ func (pc *PngCanvas) Text(x, y float64, str string) {
 }
 
 func (pc *PngCanvas) Foreground(fg int) {
+	cs := IntColorList(fg)
+	pc.currentCanvas.SetStrokeColor(color.RGBA{uint8(cs[0]), uint8(cs[1]), uint8(cs[2]), 255})
+	pc.currentCanvas.SetFillColor(color.RGBA{uint8(cs[0]), uint8(cs[1]), uint8(cs[2]), 51})
 }
 
 func (pc *PngCanvas) LineStyle(ls int) {
+	switch ls {
+	case CONTINUOUS:
+		pc.currentCanvas.SetLineDash(nil, 0.0)
+	case DOTTED:
+		pc.currentCanvas.SetLineDash([]float64{2.0, 2.0}, 0.0)
+	case DASHED:
+	case DASH_DOT:
+		pc.currentCanvas.SetLineDash([]float64{10.0, 5.0, 2.0, 5.0}, 0.0)
+	}
 }
 
 func (pc *PngCanvas) TextAlignment(ta int) {
