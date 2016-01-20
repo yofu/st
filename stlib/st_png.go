@@ -19,7 +19,7 @@ func PrintPNG (frame *Frame, otp string) error {
 	pc := &PngCanvas{
 		currentCanvas: gc,
 	}
-	DrawFrame(pc, frame, ECOLOR_BLACK, true)
+	DrawFrame(pc, frame, ECOLOR_SECT, true)
 	return draw2dimg.SaveToPngFile(otp, dest)
 }
 
