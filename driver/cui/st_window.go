@@ -56,6 +56,7 @@ type Window struct {
 	papersize uint
 
 	lastexcommand string
+	lastfig2command string
 
 	Changed bool
 
@@ -114,6 +115,11 @@ func (stw *Window) ExecCommand(command string) {
 			if err != nil {
 				stw.ErrorMessage(err, st.ERROR)
 			}
+		} else if strings.HasPrefix(command, "'") {
+			err := st.Fig2Mode(stw, stw.Frame, command)
+			if err != nil {
+				stw.ErrorMessage(err, st.ERROR)
+			}
 		}
 		return
 	}
@@ -122,6 +128,11 @@ func (stw *Window) ExecCommand(command string) {
 		stw.History(fmt.Sprintf("command doesn't exist: %s", command))
 	case strings.HasPrefix(command, ":"):
 		err := st.ExMode(stw, stw.Frame, command)
+		if err != nil {
+			stw.ErrorMessage(err, st.ERROR)
+		}
+	case strings.HasPrefix(command, "'"):
+		err := st.Fig2Mode(stw, stw.Frame, command)
 		if err != nil {
 			stw.ErrorMessage(err, st.ERROR)
 		}
@@ -797,4 +808,125 @@ func (stw *Window) SetColorMode(mode uint) {
 }
 
 func (stw *Window) SetConf(lis []bool) {
+}
+
+func (stw *Window) AddSectionAliase(int, string) {
+}
+
+func (stw *Window) DeleteSectionAliase(int) {
+}
+
+func (stw *Window) ClearSectionAliase() {
+}
+
+func (stw *Window) DeformationOn() {
+}
+
+func (stw *Window) DeformationOff() {
+}
+
+func (stw *Window) DispOn(int) {
+}
+
+func (stw *Window) DispOff(int) {
+}
+
+func (stw *Window) SrcanRateOn(...string) {
+}
+
+func (stw *Window) SrcanRateOff(...string) {
+}
+
+func (stw *Window) StressOn(int, uint) {
+}
+
+func (stw *Window) StressOff(int, uint) {
+}
+
+func (stw *Window) SetLabel(string, string) {
+}
+
+func (stw *Window) EnableLabel(string) {
+}
+
+func (stw *Window) DisableLabel(string) {
+}
+
+func (stw *Window) ElemCaptionOn(string) {
+}
+
+func (stw *Window) ElemCaptionOff(string) {
+}
+
+func (stw *Window) NodeCaptionOn(name string) {
+	for i, j := range st.NODECAPTIONS {
+		if j == name {
+			if stw.Frame != nil {
+				stw.Frame.Show.NodeCaptionOn(1 << uint(i))
+			}
+		}
+	}
+}
+
+func (stw *Window) NodeCaptionOff(name string) {
+	for i, j := range st.NODECAPTIONS {
+		if j == name {
+			if stw.Frame != nil {
+				stw.Frame.Show.NodeCaptionOff(1 << uint(i))
+			}
+		}
+	}
+}
+
+func (stw *Window) GetCanvasSize() (int, int) {
+	return 0, 0
+}
+
+func (stw *Window) HideAllSection() {
+}
+
+func (stw *Window) HideNotSelected() {
+}
+
+func (stw *Window) HideEtype(int) {
+}
+
+func (stw *Window) HideSection(int) {
+}
+
+func (stw *Window) ShowEtype(int) {
+}
+
+func (stw *Window) ShowSection(int) {
+}
+
+func (stw *Window) IncrementPeriod(num int) {
+	pat := regexp.MustCompile("([a-zA-Z]+)(@[0-9]+)")
+	fs := pat.FindStringSubmatch(stw.Frame.Show.Period)
+	if len(fs) < 3 {
+		return
+	}
+	if nl, ok := stw.Frame.Nlap[strings.ToUpper(fs[1])]; ok {
+		tmp, _ := strconv.ParseInt(fs[2][1:], 10, 64)
+		val := int(tmp) + num
+		if val < 1 || val > nl {
+			return
+		}
+		per := strings.Replace(stw.Frame.Show.Period, fs[2], fmt.Sprintf("@%d", val), -1)
+		stw.Frame.Show.Period = per
+	}
+}
+
+func (stw *Window) LastFig2Command() string {
+	return stw.lastfig2command
+}
+
+func (stw *Window) SetLastFig2Command(c string) {
+	stw.lastfig2command = c
+}
+
+func (stw *Window) ShowCenter() {
+	stw.Frame.SetFocus(nil)
+	stw.Frame.View.Center[0] = 500.0
+	stw.Frame.View.Center[1] = 500.0
 }
