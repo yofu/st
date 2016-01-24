@@ -87,6 +87,18 @@ func (stw *Window) LineStyle(ls int) {
 }
 
 func (stw *Window) TextAlignment(ta int) {
+	switch ta {
+	case st.CENTER:
+		stw.currentCanvas.TextAlignment(cd.CD_CENTER)
+	case st.NORTH:
+		stw.currentCanvas.TextAlignment(cd.CD_NORTH)
+	case st.SOUTH:
+		stw.currentCanvas.TextAlignment(cd.CD_SOUTH)
+	case st.SOUTH_WEST:
+		stw.currentCanvas.TextAlignment(cd.CD_SOUTH_WEST)
+	case st.SOUTH_EAST:
+		stw.currentCanvas.TextAlignment(cd.CD_SOUTH_EAST)
+	}
 }
 
 func (stw *Window) TextOrientation(deg float64) {
