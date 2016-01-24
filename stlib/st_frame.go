@@ -4890,6 +4890,9 @@ func WriteReaction(fn string, ns []*Node, direction int) error {
 		if n == nil {
 			continue
 		}
+		if !n.Conf[direction] {
+			continue
+		}
 		otp.WriteString(fmt.Sprintf(" %4d %8.3f %8.3f %8.3f", n.Num, n.Coord[0], n.Coord[1], n.Coord[2]))
 		wgt := n.Weight[1]
 		for i, per := range []string{"L", "X", "Y"} {
