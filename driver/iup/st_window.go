@@ -2626,81 +2626,13 @@ func (stw *Window) execAliasCommand(al string) {
 }
 
 func (stw *Window) CompleteFileName(str string) string {
-	envval := regexp.MustCompile("[$]([a-zA-Z]+)")
-	if envval.MatchString(str) {
-		efs := envval.FindStringSubmatch(str)
-		if len(efs) >= 2 {
-			val := os.Getenv(strings.ToUpper(efs[1]))
-			if val != "" {
-				str = strings.Replace(str, efs[0], val, 1)
-			}
-		}
+	path := ""
+	if stw.Frame != nil {
+		path = stw.Frame.Path
 	}
-	pat := regexp.MustCompile("(%|#[0-9]+)([-+=0-9]*)(<?)")
-	if pat.MatchString(str) {
-		repl := ""
-		fs := pat.FindStringSubmatch(str)
-		switch fs[1] {
-		case "":
-			break
-		case "%":
-			if stw.Frame != nil {
-				repl = stw.Frame.Path
-			}
-		default: // #[0-9]+
-			tmp, err := strconv.ParseInt(strings.TrimPrefix(fs[1], "#"), 10, 64)
-			if err == nil && int(tmp) < nRecentFiles {
-				repl = stw.recentfiles[int(tmp)]
-			}
-		}
-		if fs[2] != "" {
-			times := 0
-			switch fs[2] {
-			case "++":
-				times = 1
-			case "--":
-				times = -1
-			}
-			if times != 0 {
-				tmp, err := st.Increment(repl, "_", 1, times)
-				if err == nil {
-					repl = tmp
-				}
-			}
-		}
-		if fs[3] == "<" {
-			repl = st.PruneExt(repl)
-		}
-		if repl != "" {
-			str = strings.Replace(str, fs[0], repl, 1)
-		}
-	}
-	lis := strings.Split(str, " ")
-	path := lis[len(lis)-1]
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(stw.cwd, path)
-	}
-	var err error
-	tmp, err := filepath.Glob(path + "*")
-	if err != nil || len(tmp) == 0 {
-		stw.completes = make([]string, 0)
-	} else {
-		stw.completes = make([]string, len(tmp))
-		for i := 0; i < len(tmp); i++ {
-			stat, err := os.Stat(tmp[i])
-			if err != nil {
-				continue
-			}
-			if stat.IsDir() {
-				tmp[i] += string(os.PathSeparator)
-			}
-			lis[len(lis)-1] = tmp[i]
-			stw.completes[i] = strings.Join(lis, " ")
-		}
-		stw.completepos = 0
-		str = stw.completes[0]
-	}
-	return str
+	completes = st.CompleteFileName(str, path, stw.recentfiles)
+	completepos = 0
+	return completes[0]
 }
 
 func (stw *Window) CompleteExcommand(str string) string {

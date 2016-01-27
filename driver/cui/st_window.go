@@ -187,59 +187,13 @@ func (stw *Window) SetLastExCommand(c string) {
 }
 
 func (stw *Window) CompleteFileName(str string) string {
-	envval := regexp.MustCompile("[$]([a-zA-Z]+)")
-	if envval.MatchString(str) {
-		efs := envval.FindStringSubmatch(str)
-		if len(efs) >= 2 {
-			val := os.Getenv(strings.ToUpper(efs[1]))
-			if val != "" {
-				str = strings.Replace(str, efs[0], val, 1)
-			}
-		}
+	path := ""
+	if stw.Frame != nil {
+		path = stw.Frame.Path
 	}
-	if strings.Contains(str, "%") {
-		str = strings.Replace(str, "%:h", stw.cwd, 1)
-		if stw.Frame != nil {
-			str = strings.Replace(str, "%<", st.PruneExt(stw.Frame.Path), 1)
-			str = strings.Replace(str, "%", stw.Frame.Path, 1)
-		}
-	}
-	sharp := regexp.MustCompile("#([0-9]+)")
-	if sharp.MatchString(str) {
-		sfs := sharp.FindStringSubmatch(str)
-		if len(sfs) >= 2 {
-			tmp, err := strconv.ParseInt(sfs[1], 10, 64)
-			if err == nil && int(tmp) < nRecentFiles {
-				str = strings.Replace(str, sfs[0], stw.recentfiles[int(tmp)], 1)
-			}
-		}
-	}
-	lis := strings.Split(str, " ")
-	path := lis[len(lis)-1]
-	if !filepath.IsAbs(path) {
-		path = filepath.Join(stw.cwd, path)
-	}
-	var err error
-	tmp, err := filepath.Glob(path + "*")
-	if err != nil || len(tmp) == 0 {
-		completes = make([]string, 0)
-	} else {
-		completes = make([]string, len(tmp))
-		for i := 0; i < len(tmp); i++ {
-			stat, err := os.Stat(tmp[i])
-			if err != nil {
-				continue
-			}
-			if stat.IsDir() {
-				tmp[i] += string(os.PathSeparator)
-			}
-			lis[len(lis)-1] = tmp[i]
-			completes[i] = strings.Join(lis, " ")
-		}
-		completepos = 0
-		str = completes[0]
-	}
-	return str
+	completes = st.CompleteFileName(str, path, stw.recentfiles)
+	completepos = 0
+	return completes[0]
 }
 
 func (stw *Window) Cwd() string {
