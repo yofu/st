@@ -974,3 +974,11 @@ func FilterElem(frame *Frame, els []*Elem, str string) ([]*Elem, error) {
 	}
 }
 
+// line: (x1, y1) -> (x2, y2), dot: (dx, dy)
+// provided that x1*y2-x2*y1>0
+//     if rtn>0: dot is the same side as (0, 0)
+//     if rtn==0: dot is on the line
+//     if rtn<0: dot is the opposite side to (0, 0)
+func DotLine(x1, y1, x2, y2, dx, dy float64) float64 {
+	return (x1*y2 + x2*dy + dx*y1) - (x1*dy + x2*y1 + dx*y2)
+}

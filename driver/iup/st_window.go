@@ -3693,42 +3693,6 @@ func (stw *Window) SetFocus() {
 // }}}
 
 // Select// {{{
-func (stw *Window) PickNode(x, y int) (rtn *st.Node) {
-	mindist := float64(nodeSelectPixel)
-	for _, v := range stw.Frame.Nodes {
-		if v.IsHidden(stw.Frame.Show) {
-			continue
-		}
-		dist := math.Hypot(float64(x)-v.Pcoord[0], float64(y)-v.Pcoord[1])
-		if dist < mindist {
-			mindist = dist
-			rtn = v
-		} else if dist == mindist {
-			if rtn.DistFromProjection(stw.Frame.View) > v.DistFromProjection(stw.Frame.View) {
-				rtn = v
-			}
-		}
-	}
-	if stw.Frame.Show.Kijun {
-		for _, k := range stw.Frame.Kijuns {
-			if k.IsHidden(stw.Frame.Show) {
-				continue
-			}
-			for _, n := range [][]float64{k.Start, k.End} {
-				pc := stw.Frame.View.ProjectCoord(n)
-				dist := math.Hypot(float64(x)-pc[0], float64(y)-pc[1])
-				if dist < mindist {
-					mindist = dist
-					rtn = st.NewNode()
-					rtn.Coord = n
-					rtn.Pcoord = pc
-				}
-			}
-		}
-	}
-	return
-}
-
 func (stw *Window) SelectNodeStart(arg *iup.MouseButton) {
 	stw.dbuff.UpdateYAxis(&arg.Y)
 	if arg.Pressed == 0 { // Released
@@ -3737,7 +3701,7 @@ func (stw *Window) SelectNodeStart(arg *iup.MouseButton) {
 		bottom := min(stw.startY, stw.endY)
 		top := max(stw.startY, stw.endY)
 		if (right-left < nodeSelectPixel) && (top-bottom < nodeSelectPixel) {
-			n := stw.PickNode(left, bottom)
+			n := stw.Frame.PickNode(float64(left), float64(bottom), float64(nodeSelectPixel))
 			if n != nil {
 				stw.MergeSelectNode([]*st.Node{n}, isShift(arg.Status))
 			} else {
@@ -3771,89 +3735,7 @@ func (stw *Window) SelectNodeStart(arg *iup.MouseButton) {
 	}
 }
 
-// line: (x1, y1) -> (x2, y2), dot: (dx, dy)
-// provided that x1*y2-x2*y1>0
-//     if rtn>0: dot is the same side as (0, 0)
-//     if rtn==0: dot is on the line
-//     if rtn<0: dot is the opposite side to (0, 0)
-func DotLine(x1, y1, x2, y2, dx, dy int) int {
-	return (x1*y2 + x2*dy + dx*y1) - (x1*dy + x2*y1 + dx*y2)
-}
-func FDotLine(x1, y1, x2, y2, dx, dy float64) float64 {
-	return (x1*y2 + x2*dy + dx*y1) - (x1*dy + x2*y1 + dx*y2)
-}
 
-func (stw *Window) PickElem(x, y int) (rtn *st.Elem) {
-	el := stw.PickLineElem(x, y)
-	if el == nil {
-		els := stw.PickPlateElem(x, y)
-		if len(els) > 0 {
-			el = els[0]
-		}
-	}
-	return el
-}
-
-func (stw *Window) PickLineElem(x, y int) (rtn *st.Elem) {
-	mindist := float64(dotSelectPixel)
-	for _, v := range stw.Frame.Elems {
-		if v.IsHidden(stw.Frame.Show) {
-			continue
-		}
-		if v.IsLineElem() && (math.Min(v.Enod[0].Pcoord[0], v.Enod[1].Pcoord[0]) <= float64(x+dotSelectPixel) && math.Max(v.Enod[0].Pcoord[0], v.Enod[1].Pcoord[0]) >= float64(x-dotSelectPixel)) && (math.Min(v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[1]) <= float64(y+dotSelectPixel) && math.Max(v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[1]) >= float64(y-dotSelectPixel)) {
-			dist := math.Abs(FDotLine(v.Enod[0].Pcoord[0], v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[0], v.Enod[1].Pcoord[1], float64(x), float64(y)))
-			if plen := math.Hypot(v.Enod[0].Pcoord[0]-v.Enod[1].Pcoord[0], v.Enod[0].Pcoord[1]-v.Enod[1].Pcoord[1]); plen > 1E-12 {
-				dist /= plen
-			}
-			if dist < mindist {
-				mindist = dist
-				rtn = v
-			}
-		}
-	}
-	return
-}
-
-func abs(val int) int {
-	if val >= 0 {
-		return val
-	} else {
-		return -val
-	}
-}
-func (stw *Window) PickPlateElem(x, y int) []*st.Elem {
-	rtn := make(map[int]*st.Elem)
-	for _, el := range stw.Frame.Elems {
-		if el.IsHidden(stw.Frame.Show) {
-			continue
-		}
-		if !el.IsLineElem() {
-			add := true
-			sign := 0
-			for i := 0; i < int(el.Enods); i++ {
-				var j int
-				if i == int(el.Enods)-1 {
-					j = 0
-				} else {
-					j = i + 1
-				}
-				if FDotLine(el.Enod[i].Pcoord[0], el.Enod[i].Pcoord[1], el.Enod[j].Pcoord[0], el.Enod[j].Pcoord[1], float64(x), float64(y)) > 0 {
-					sign++
-				} else {
-					sign--
-				}
-				if i+1 != abs(sign) {
-					add = false
-					break
-				}
-			}
-			if add {
-				rtn[el.Num] = el
-			}
-		}
-	}
-	return st.SortedElem(rtn, func(e *st.Elem) float64 { return e.DistFromProjection(stw.Frame.View) })
-}
 
 func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 	stw.dbuff.UpdateYAxis(&arg.Y)
@@ -3863,15 +3745,15 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 		bottom := min(stw.startY, stw.endY)
 		top := max(stw.startY, stw.endY)
 		if (right-left < dotSelectPixel) && (top-bottom < dotSelectPixel) {
-			el := stw.PickLineElem(left, bottom)
+			el := stw.Frame.PickLineElem(left, bottom)
 			if el == nil {
-				els := stw.PickPlateElem(left, bottom)
+				els := stw.Frame.PickPlateElem(left, bottom)
 				if len(els) > 0 {
 					el = els[0]
 				}
 			}
 			if el != nil {
-				stw.MergeSelectElem([]*st.Elem{el}, isShift(arg.Status))
+				st.MergeSelectElem(stw, []*st.Elem{el}, isShift(arg.Status))
 			} else {
 				stw.selectElem = make([]*st.Elem, 0)
 			}
@@ -3935,7 +3817,7 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 					}
 				}
 			}
-			stw.MergeSelectElem(tmpselectelem[:k], isShift(arg.Status))
+			st.MergeSelectElem(stw, tmpselectelem[:k], isShift(arg.Status))
 		}
 		stw.cdcanv.Rect(left, right, bottom, top)
 		stw.cdcanv.WriteMode(cd.CD_REPLACE)
@@ -3951,71 +3833,18 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 	}
 }
 
+func abs(val int) int {
+	if val >= 0 {
+		return val
+	} else {
+		return -val
+	}
+}
 func (stw *Window) SelectElemFenceStart(arg *iup.MouseButton) {
 	stw.dbuff.UpdateYAxis(&arg.Y)
 	if arg.Pressed == 0 { // Released
-		tmpselectelem := make([]*st.Elem, len(stw.Frame.Elems))
-		k := 0
-		for _, el := range stw.Frame.Elems {
-			if el.IsHidden(stw.Frame.Show) {
-				continue
-			}
-			add := false
-			sign := 0
-			for i, en := range el.Enod {
-				if FDotLine(float64(stw.startX), float64(stw.startY), float64(stw.endX), float64(stw.endY), en.Pcoord[0], en.Pcoord[1]) > 0 {
-					sign++
-				} else {
-					sign--
-				}
-				if i+1 != abs(sign) {
-					add = true
-					break
-				}
-			}
-			if add {
-				if el.IsLineElem() {
-					if FDotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], float64(stw.startX), float64(stw.startY))*FDotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], float64(stw.endX), float64(stw.endY)) < 0 {
-						tmpselectelem[k] = el
-						k++
-					}
-				} else {
-					addx := false
-					sign := 0
-					for i, j := range el.Enod {
-						if float64(max(stw.startX, stw.endX)) < j.Pcoord[0] {
-							sign++
-						} else if j.Pcoord[0] < float64(min(stw.startX, stw.endX)) {
-							sign--
-						}
-						if i+1 != abs(sign) {
-							addx = true
-							break
-						}
-					}
-					if addx {
-						addy := false
-						sign := 0
-						for i, j := range el.Enod {
-							if float64(max(stw.startY, stw.endY)) < j.Pcoord[1] {
-								sign++
-							} else if j.Pcoord[1] < float64(min(stw.startY, stw.endY)) {
-								sign--
-							}
-							if i+1 != abs(sign) {
-								addy = true
-								break
-							}
-						}
-						if addy {
-							tmpselectelem[k] = el
-							k++
-						}
-					}
-				}
-			}
-		}
-		stw.MergeSelectElem(tmpselectelem[:k], isShift(arg.Status))
+		els := stw.Frame.FenceLine(float64(stw.startX), float64(stw.startY), float64(stw.endX), float64(stw.endY))
+		st.MergeSelectElem(stw, els, isShift(arg.Status))
 		stw.cdcanv.Line(stw.startX, stw.startY, stw.endX, stw.endY)
 		stw.cdcanv.WriteMode(cd.CD_REPLACE)
 		stw.Redraw()

@@ -78,7 +78,7 @@ func gravity(stw *Window) {
 			case BUTTON_LEFT:
 				stw.dbuff.UpdateYAxis(&arg.Y)
 				if arg.Pressed == 0 {
-					n := stw.PickNode(int(arg.X), int(arg.Y))
+					n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 					if n != nil {
 						if mousetime {
 							t = math.Min(time.Since(stw.startT).Seconds(), maxrange)
@@ -95,7 +95,7 @@ func gravity(stw *Window) {
 			case BUTTON_RIGHT:
 				stw.dbuff.UpdateYAxis(&arg.Y)
 				if arg.Pressed == 0 {
-					n := stw.PickNode(int(arg.X), int(arg.Y))
+					n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 					if n != nil {
 						if mousetime {
 							t = math.Min(time.Since(stw.startT).Seconds(), maxrange)
@@ -199,7 +199,7 @@ func smooth(stw *Window) {
 			case BUTTON_LEFT:
 				stw.dbuff.UpdateYAxis(&arg.Y)
 				if arg.Pressed == 0 {
-					n := stw.PickNode(int(arg.X), int(arg.Y))
+					n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 					if n != nil {
 						flatten(n)
 						stw.Redraw()
