@@ -31,8 +31,9 @@ func (stw *Window) Line(x1, y1, x2, y2 float64) {
 	endx := int(x2)
 	endy := int(y2)
 	var e2 int
+	cvs := stw.buffer.RGBA()
 	for {
-		stw.currentCanvas.SetRGBA(x, y, stw.currentPen)
+		cvs.SetRGBA(x, y, stw.currentPen)
 		if x == endx && y == endy {
 			break
 		}
@@ -67,20 +68,21 @@ func (stw *Window) Circle(x1, y1, d float64) {
 		x++
 		y++
 	}
+	cvs := stw.buffer.RGBA()
 	for cx = 0; cx <= cy; cx++ {
 		if dd > 0 {
 			dd += dy
 			dy += 8
 			cy--
 		}
-		stw.currentCanvas.SetRGBA(cy+x, cx+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
-		stw.currentCanvas.SetRGBA(cx+x, cy+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
-		stw.currentCanvas.SetRGBA(-cx+x, cy+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
-		stw.currentCanvas.SetRGBA(-cy+x, cx+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
-		stw.currentCanvas.SetRGBA(-cy+x, -cx+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
-		stw.currentCanvas.SetRGBA(-cx+x, -cy+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
-		stw.currentCanvas.SetRGBA(cx+x, -cy+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
-		stw.currentCanvas.SetRGBA(cy+x, -cx+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		cvs.SetRGBA(cy+x, cx+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		cvs.SetRGBA(cx+x, cy+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		cvs.SetRGBA(-cx+x, cy+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		cvs.SetRGBA(-cy+x, cx+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		cvs.SetRGBA(-cy+x, -cx+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		cvs.SetRGBA(-cx+x, -cy+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		cvs.SetRGBA(cx+x, -cy+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		cvs.SetRGBA(cy+x, -cx+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
 		dd += dx
 		dx += 8
 	}
