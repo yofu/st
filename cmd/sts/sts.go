@@ -11,6 +11,7 @@ import (
 	// "golang.org/x/image/math/f64"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
+	"golang.org/x/mobile/event/mouse"
 	"golang.org/x/mobile/event/paint"
 	"golang.org/x/mobile/event/size"
 	"github.com/yofu/st/driver/shiny"
@@ -23,6 +24,18 @@ var (
 
 	cos30 = math.Cos(math.Pi / 6)
 	sin30 = math.Sin(math.Pi / 6)
+
+	startX = 0
+	startY = 0
+	endX = 0
+	endY = 0
+
+	pressed = 0
+)
+
+const (
+	ButtonLeft = 1 << iota
+	ButtonMiddle
 )
 
 func main() {
@@ -54,42 +67,85 @@ func main() {
 		var sz size.Event
 		for {
 			e := w.NextEvent()
-
-			// This print message is to help programmers learn what events this
-			// example program generates. A real program shouldn't print such
-			// messages; they're not important to end users.
-			// format := "got %#v\n"
-			// if _, ok := e.(fmt.Stringer); ok {
-			// 	format = "got %v\n"
-			// }
-			// fmt.Printf(format, e)
-
 			switch e := e.(type) {
 			case lifecycle.Event:
 				if e.To == lifecycle.StageDead {
 					return
 				}
-
 			case key.Event:
 				if e.Code == key.CodeEscape {
 					return
 				}
-
+			case mouse.Event:
+				switch e.Direction {
+				case mouse.DirPress:
+					startX = int(e.X)
+					startY = int(e.Y)
+					switch e.Button {
+					case mouse.ButtonLeft:
+						pressed |= ButtonLeft
+					case mouse.ButtonMiddle:
+						pressed |= ButtonMiddle
+					}
+				case mouse.DirNone:
+					endX = int(e.X)
+					endY = int(e.Y)
+					if pressed&ButtonLeft != 0 {
+						b.Release()
+						b, err := s.NewBuffer(winSize)
+						if err != nil {
+							log.Fatal(err)
+						}
+						stw.SetBuffer(b.RGBA())
+						stw.Redraw()
+						w.Upload(image.Point{}, b, b.Bounds())
+						w.Fill(image.Rect(startX, startY, endX, endY), red, screen.Over)
+					} else if pressed&ButtonMiddle != 0 {
+						stw.Frame.View.Angle[0] += float64(int(e.Y)-startY) * 0.01
+						stw.Frame.View.Angle[1] -= float64(int(e.X)-startX) * 0.01
+						b.Release()
+						b, err := s.NewBuffer(winSize)
+						if err != nil {
+							log.Fatal(err)
+						}
+						stw.SetBuffer(b.RGBA())
+						stw.Redraw()
+						w.Upload(image.Point{}, b, b.Bounds())
+					}
+				case mouse.DirRelease:
+					endX = int(e.X)
+					endY = int(e.Y)
+					b.Release()
+					b, err := s.NewBuffer(winSize)
+					if err != nil {
+						log.Fatal(err)
+					}
+					stw.SetBuffer(b.RGBA())
+					stw.Redraw()
+					w.Upload(image.Point{}, b, b.Bounds())
+					switch e.Button {
+					case mouse.ButtonLeft:
+						pressed &= ^ButtonLeft
+					case mouse.ButtonMiddle:
+						pressed &= ^ButtonMiddle
+						// stw.Frame.View.Angle[0] += float64(int(e.Y)-startY) * 0.01
+						// stw.Frame.View.Angle[1] -= float64(int(e.X)-startX) * 0.01
+						// b.Release()
+						// b, err := s.NewBuffer(winSize)
+						// if err != nil {
+						// 	log.Fatal(err)
+						// }
+						// stw.SetBuffer(b.RGBA())
+						// stw.Redraw()
+						// w.Upload(image.Point{}, b, b.Bounds())
+					}
+				}
 			case paint.Event:
 				w.Fill(sz.Bounds(), blue0, screen.Src)
-				// w.Fill(sz.Bounds().Inset(10), blue1, screen.Src)
 				w.Upload(image.Point{}, b, b.Bounds())
-				// w.Fill(image.Rect(50, 50, 350, 120), red, screen.Over)
-				// w.Copy(image.Point{150, 100}, t, t.Bounds(), screen.Over, nil)
-				// w.Draw(f64.Aff3{
-				// 	+cos30, -sin30, 100,
-				// 	+sin30, +cos30, 200,
-				// }, t, t.Bounds(), screen.Over, nil)
 				w.Publish()
-
 			case size.Event:
 				sz = e
-
 			case error:
 				log.Print(e)
 			}

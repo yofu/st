@@ -30,6 +30,10 @@ func (stw *Window) OpenFile(fn string) error {
 	return nil
 }
 
+func (stw *Window) SetBuffer(b *image.RGBA) {
+	stw.currentCanvas = b
+}
+
 func (stw *Window) Redraw() {
 	if stw.Frame == nil {
 		return
