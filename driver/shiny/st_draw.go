@@ -55,7 +55,35 @@ func (stw *Window) Polyline([][]float64) {
 func (stw *Window) Polygon([][]float64) {
 }
 
-func (stw *Window) Circle(float64, float64, float64) {
+func (stw *Window) Circle(x1, y1, d float64) {
+	cx := 0
+	cy := int(0.5 * float64(d) + 1)
+	dd := - int(d) * int(d) + 4*cy*cy - 4*cy + 2
+	dx := 4
+	dy := -8*cy + 8
+	x := int(x1)
+	y := int(y1)
+	if (int(d)&1) == 0 {
+		x++
+		y++
+	}
+	for cx = 0; cx <= cy; cx++ {
+		if dd > 0 {
+			dd += dy
+			dy += 8
+			cy--
+		}
+		stw.currentCanvas.SetRGBA(cy+x, cx+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		stw.currentCanvas.SetRGBA(cx+x, cy+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		stw.currentCanvas.SetRGBA(-cx+x, cy+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		stw.currentCanvas.SetRGBA(-cy+x, cx+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		stw.currentCanvas.SetRGBA(-cy+x, -cx+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		stw.currentCanvas.SetRGBA(-cx+x, -cy+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		stw.currentCanvas.SetRGBA(cx+x, -cy+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		stw.currentCanvas.SetRGBA(cy+x, -cx+y, color.RGBA{0xff, 0xff, 0xff, 0xff})
+		dd += dx
+		dx += 8
+	}
 }
 
 func (stw *Window) FilledCircle(float64, float64, float64) {
