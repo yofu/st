@@ -1,6 +1,7 @@
 package stshiny
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"golang.org/x/exp/shiny/screen"
@@ -36,6 +37,7 @@ type Window struct {
 	window screen.Window
 	buffer screen.Buffer
 	currentPen color.RGBA
+	cline string
 }
 
 func NewWindow(s screen.Screen) *Window {
@@ -45,6 +47,7 @@ func NewWindow(s screen.Screen) *Window {
 		window: nil,
 		buffer: nil,
 		currentPen: color.RGBA{0xff, 0xff, 0xff, 0xff},
+		cline: "",
 	}
 }
 
@@ -56,6 +59,26 @@ func (stw *Window) OpenFile(fn string) error {
 	}
 	stw.Frame = frame
 	return nil
+}
+
+func keymap(ev key.Event) key.Event {
+	switch ev.Code {
+	default:
+		return ev
+	case key.CodeSemicolon:
+		r := ev.Rune
+		if ev.Modifiers&key.ModShift != 0 {
+			r = ';'
+		} else {
+			r = ':'
+		}
+		return key.Event{
+			Rune: r,
+			Code: ev.Code,
+			Modifiers: ev.Modifiers^key.ModShift,
+			Direction: ev.Direction,
+		}
+	}
 }
 
 func (stw *Window) Start() {
@@ -76,8 +99,23 @@ func (stw *Window) Start() {
 				return
 			}
 		case key.Event:
-			if e.Code == key.CodeEscape {
-				return
+			if e.Direction == key.DirRelease {
+				fmt.Println(e.Code)
+				kc := keymap(e)
+				switch kc.Code {
+				default:
+					stw.cline = fmt.Sprintf("%s%s", stw.cline, string(kc.Rune))
+				case key.CodeDeleteBackspace:
+					if len(stw.cline) >= 1 {
+						stw.cline = stw.cline[:len(stw.cline)-1]
+					}
+				case key.CodeLeftShift:
+				case key.CodeLeftAlt:
+				case key.CodeReturnEnter:
+				case key.CodeEscape:
+					return
+				}
+				fmt.Printf("%s\r", stw.cline)
 			}
 		case mouse.Event:
 			switch e.Direction {
