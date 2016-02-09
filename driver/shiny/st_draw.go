@@ -53,7 +53,143 @@ func (stw *Window) Line(x1, y1, x2, y2 float64) {
 func (stw *Window) Polyline([][]float64) {
 }
 
-func (stw *Window) Polygon([][]float64) {
+func (stw *Window) filltriangle(c1, c2, c3 []float64) {
+	x1 := int(c1[0])
+	y1 := int(c1[1])
+	x2 := int(c2[0])
+	y2 := int(c2[1])
+	x3 := int(c3[0])
+	y3 := int(c3[1])
+	if y1 > y2 {
+		x1, x2 = x2, x1
+		y1, y2 = y2, y1
+	}
+	if y1 > y3 {
+		x1, x3 = x3, x1
+		y1, y3 = y3, y1
+	}
+	if y2 > y3 {
+		x2, x3 = x3, x2
+		y2, y3 = y3, y2
+	}
+	if y1 == y3 {
+		return
+	}
+	var a1, a2, a3 float64
+	top := false
+	if y1 != y2 {
+		a1 = float64(x2-x1) / float64(y2-y1)
+	} else {
+		top = true
+	}
+	a2 = float64(x3-x1) / float64(y3-y1)
+	if a1 == a2 {
+		return
+	}
+	if y2 != y3 {
+		a3 = float64(x3-x2) / float64(y3-y2)
+	}
+	cvs := stw.buffer.RGBA()
+	if top {
+		sx := float64(x1)
+		ex := float64(x2)
+		if x1 < x2 {
+			for y := y2; y != y3; y++ {
+				sx += a2
+				ex += a3
+				x := int(sx)
+				end := int(ex)
+				for {
+					cvs.SetRGBA(x, y, stw.currentBrush)
+					if x >= end {
+						break
+					}
+					x++
+				}
+			}
+		} else {
+			for y := y2; y != y3; y++ {
+				sx += a2
+				ex += a3
+				x := int(sx)
+				end := int(ex)
+				for {
+					cvs.SetRGBA(x, y, stw.currentBrush)
+					if x <= end {
+						break
+					}
+					x--
+				}
+			}
+		}
+	} else {
+		sx := float64(x1)
+		ex := float64(x1)
+		if a1 < a2 {
+			for y := y1; y != y2; y++ {
+				sx += a1
+				ex += a2
+				x := int(sx)
+				end := int(ex)
+				for {
+					cvs.SetRGBA(x, y, stw.currentBrush)
+					if x >= end {
+						break
+					}
+					x++
+				}
+			}
+			for y := y2; y != y3; y++ {
+				sx += a3
+				ex += a2
+				x := int(sx)
+				end := int(ex)
+				for {
+					cvs.SetRGBA(x, y, stw.currentBrush)
+					if x >= end {
+						break
+					}
+					x++
+				}
+			}
+		} else {
+			for y := y1; y != y2; y++ {
+				sx += a1
+				ex += a2
+				x := int(sx)
+				end := int(ex)
+				for {
+					cvs.SetRGBA(x, y, stw.currentBrush)
+					if x <= end {
+						break
+					}
+					x--
+				}
+			}
+			for y := y2; y != y3; y++ {
+				sx += a3
+				ex += a2
+				x := int(sx)
+				end := int(ex)
+				for {
+					cvs.SetRGBA(x, y, stw.currentBrush)
+					if x <= end {
+						break
+					}
+					x--
+				}
+			}
+		}
+	}
+}
+
+func (stw *Window) Polygon(coords [][]float64) {
+	if len(coords) < 3 {
+		return
+	}
+	for i := 0; i< len(coords)-2; i++ {
+		stw.filltriangle(coords[0], coords[i+1], coords[i+2])
+	}
 }
 
 func (stw *Window) Circle(x1, y1, d float64) {
@@ -97,6 +233,7 @@ func (stw *Window) Text(float64, float64, string) {
 func (stw *Window) Foreground(fg int) {
 	col := st.IntColorList(fg)
 	stw.currentPen = color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), 0xff}
+	stw.currentBrush = color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), 0x77}
 }
 
 func (stw *Window) LineStyle(int) {

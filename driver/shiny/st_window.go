@@ -37,6 +37,7 @@ type Window struct {
 	window screen.Window
 	buffer screen.Buffer
 	currentPen color.RGBA
+	currentBrush color.RGBA
 	cline string
 }
 
@@ -47,6 +48,7 @@ func NewWindow(s screen.Screen) *Window {
 		window: nil,
 		buffer: nil,
 		currentPen: color.RGBA{0xff, 0xff, 0xff, 0xff},
+		currentBrush: color.RGBA{0xff, 0xff, 0xff, 0x77},
 		cline: "",
 	}
 }
