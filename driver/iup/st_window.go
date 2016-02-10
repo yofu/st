@@ -3680,7 +3680,7 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 		bottom := min(stw.startY, stw.endY)
 		top := max(stw.startY, stw.endY)
 		if (right-left < dotSelectPixel) && (top-bottom < dotSelectPixel) {
-			el := stw.Frame.PickLineElem(float64(left), float64(bottom), EPS)
+			el := stw.Frame.PickLineElem(float64(left), float64(bottom), dotSelectPixel)
 			if el == nil {
 				els := stw.Frame.PickPlateElem(float64(left), float64(bottom))
 				if len(els) > 0 {
