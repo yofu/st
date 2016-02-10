@@ -1710,11 +1710,11 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 {
 					if selected {
-						if el := stw.Frame.PickElem(float64(arg.X), float64(arg.Y), EPS); el != nil {
+						if el := stw.Frame.PickElem(float64(arg.X), float64(arg.Y), dotSelectPixel); el != nil {
 							f(el, int(arg.X), int(arg.Y))
 						}
 					} else {
-						if el := stw.Frame.PickElem(float64(arg.X), float64(arg.Y), EPS); el != nil {
+						if el := stw.Frame.PickElem(float64(arg.X), float64(arg.Y), dotSelectPixel); el != nil {
 							if condition(el) {
 								stw.selectElem[0] = el
 								selected = true
