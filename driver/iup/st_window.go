@@ -2630,9 +2630,9 @@ func (stw *Window) CompleteFileName(str string) string {
 	if stw.Frame != nil {
 		path = stw.Frame.Path
 	}
-	completes = st.CompleteFileName(str, path, stw.recentfiles)
-	completepos = 0
-	return completes[0]
+	stw.completes = st.CompleteFileName(str, path, stw.recentfiles)
+	stw.completepos = 0
+	return stw.completes[0]
 }
 
 func (stw *Window) CompleteExcommand(str string) string {
@@ -3677,9 +3677,9 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 		bottom := min(stw.startY, stw.endY)
 		top := max(stw.startY, stw.endY)
 		if (right-left < dotSelectPixel) && (top-bottom < dotSelectPixel) {
-			el := stw.Frame.PickLineElem(left, bottom)
+			el := stw.Frame.PickLineElem(float64(left), float64(bottom), EPS)
 			if el == nil {
-				els := stw.Frame.PickPlateElem(left, bottom)
+				els := stw.Frame.PickPlateElem(float64(left), float64(bottom))
 				if len(els) > 0 {
 					el = els[0]
 				}

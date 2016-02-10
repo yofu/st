@@ -1710,11 +1710,11 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 {
 					if selected {
-						if el := stw.PickElem(int(arg.X), int(arg.Y)); el != nil {
+						if el := stw.Frame.PickElem(float64(arg.X), float64(arg.Y), EPS); el != nil {
 							f(el, int(arg.X), int(arg.Y))
 						}
 					} else {
-						if el := stw.PickElem(int(arg.X), int(arg.Y)); el != nil {
+						if el := stw.Frame.PickElem(float64(arg.X), float64(arg.Y), EPS); el != nil {
 							if condition(el) {
 								stw.selectElem[0] = el
 								selected = true
@@ -1785,7 +1785,7 @@ func get1side(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 						selected = false
 						stw.selectElem = make([]*st.Elem, 1)
 					} else {
-						if el := stw.PickElem(int(arg.X), int(arg.Y)); el != nil {
+						if el := stw.Frame.PickElem(float64(arg.X), float64(arg.Y), EPS); el != nil {
 							if condition(el) {
 								stw.selectElem[0] = el
 								selected = true
@@ -2086,7 +2086,7 @@ func trim(stw *Window) {
 	get1elem(stw, func(el *st.Elem, x, y int) {
 		if el.IsLineElem() {
 			var err error
-			if FDotLine(stw.selectElem[0].Enod[0].Pcoord[0], stw.selectElem[0].Enod[0].Pcoord[1], stw.selectElem[0].Enod[1].Pcoord[0], stw.selectElem[0].Enod[1].Pcoord[1], float64(x), float64(y))*FDotLine(stw.selectElem[0].Enod[0].Pcoord[0], stw.selectElem[0].Enod[0].Pcoord[1], stw.selectElem[0].Enod[1].Pcoord[0], stw.selectElem[0].Enod[1].Pcoord[1], el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1]) < 0.0 {
+			if st.DotLine(stw.selectElem[0].Enod[0].Pcoord[0], stw.selectElem[0].Enod[0].Pcoord[1], stw.selectElem[0].Enod[1].Pcoord[0], stw.selectElem[0].Enod[1].Pcoord[1], float64(x), float64(y))*st.DotLine(stw.selectElem[0].Enod[0].Pcoord[0], stw.selectElem[0].Enod[0].Pcoord[1], stw.selectElem[0].Enod[1].Pcoord[0], stw.selectElem[0].Enod[1].Pcoord[1], el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1]) < 0.0 {
 				_, _, err = stw.Frame.Trim(stw.selectElem[0], el, 1, EPS)
 			} else {
 				_, _, err = stw.Frame.Trim(stw.selectElem[0], el, -1, EPS)
@@ -2172,8 +2172,8 @@ func offset(stw *Window) {
 			for i := 0; i < 3; i++ {
 				st0[i] = mid[i] + el.Strong[i] * c + el.Weak[i] * s
 			}
-			st := el.Frame.View.ProjectCoord(st0)
-			if FDotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], float64(x), float64(y))*FDotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], st[0], st[1]) < 0.0 {
+			st1 := el.Frame.View.ProjectCoord(st0)
+			if st.DotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], float64(x), float64(y))*st.DotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], st1[0], st1[1]) < 0.0 {
 				el.Offset(-val, angle, EPS)
 			} else {
 				el.Offset(val, angle, EPS)
