@@ -2632,6 +2632,9 @@ func (stw *Window) CompleteFileName(str string) string {
 	}
 	stw.completes = st.CompleteFileName(str, path, stw.recentfiles)
 	stw.completepos = 0
+	if len(stw.completes) == 0 {
+		return str
+	}
 	return stw.completes[0]
 }
 
