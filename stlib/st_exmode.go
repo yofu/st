@@ -2570,12 +2570,12 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		switch strings.ToLower(args[1]) {
 		case "stress":
 			if usage {
-				return Usage(":copy stress {-format=%.3f} [01]{12}")
+				return Usage(":copy stress {-format=%.3f} [01]{0,12}")
 			}
 			inds := make([]bool, 12)
 			if narg >= 3 {
-				for i := 0; i < 12; i++ {
-					if args[2][i] == '1' {
+				for i, s := range args[2] {
+					if s == '1' {
 						inds[i] = true
 					}
 				}
@@ -2589,10 +2589,9 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			for _, el := range currentelem(stw, exmodech, exmodeend) {
 				w.WriteString(fmt.Sprintf("ELEM: %d\n", el.Num))
 				for i := 0; i < 2; i++ {
-					nnum := el.Enod[i].Num
 					for j := 0; j < 6; j++ {
 						if inds[6*i+j] {
-							w.WriteString(fmt.Sprintf(format+"\n", el.Stress[period][nnum][j]))
+							w.WriteString(fmt.Sprintf(format+"\n", el.ReturnStress(period, i, j)))
 						}
 					}
 				}
