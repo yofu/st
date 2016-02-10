@@ -66,5 +66,8 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 			completes[i] = strings.Join(lis, " ")
 		}
 	}
+	if len(completes) == 0 {
+		completes = []string{path}
+	}
 	return completes
 }
