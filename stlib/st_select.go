@@ -10,6 +10,29 @@ type Selector interface {
 	Deselect()
 }
 
+func AddSelection(stw Selector, entity interface{}) {
+	switch en := entity.(type) {
+	case *Node:
+		var ns []*Node
+		if stw.NodeSelected() {
+			ns = stw.SelectedNodes()
+			ns = append(ns, en)
+		} else {
+			ns = []*Node{en}
+		}
+		stw.SelectNode(ns)
+	case *Elem:
+		var els []*Elem
+		if stw.ElemSelected() {
+			els = stw.SelectedElems()
+			els = append(els, en)
+		} else {
+			els = []*Elem{en}
+		}
+		stw.SelectElem(els)
+	}
+}
+
 func MergeSelectElem(stw Selector, elems []*Elem, deselect bool) {
 	k := len(elems)
 	els := stw.SelectedElems()
