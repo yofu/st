@@ -3271,6 +3271,14 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		if err != nil {
 			return err
 		}
+	case "object":
+		if !stw.NodeSelected() || !stw.ElemSelected() {
+			return nil
+		}
+		c := NewChain(frame, stw.SelectedNodes()[0], stw.SelectedElems()[0], Straight(1e-2), func (c *Chain) bool { return c.Elem().IsPin(c.Node().Num) })
+		for c.Next() {
+			AddSelection(stw, c.Elem())
+		}
 	// case "analysis":
 	// 	if usage {
 	// 		return Usage(":analysis")
