@@ -2949,6 +2949,19 @@ func (frame *Frame) SearchBraceSect(f *Fig, t int) *Sect {
 
 // Modify Frame// {{{
 func (frame *Frame) DeleteNode(num int) {
+	var node *Node
+	if n, ok := frame.Nodes[num]; ok {
+		node = n
+	} else {
+		return
+	}
+	for _, el := range frame.Elems {
+		for _, en := range el.Enod {
+			if en == node {
+				frame.DeleteElem(el.Num)
+			}
+		}
+	}
 	delete(frame.Nodes, num)
 	if frame.Maxnnum == num {
 		frame.Maxnnum--
