@@ -7,10 +7,6 @@ import (
 	"os"
 )
 
-func rgbString(color int) string {
-	return "#fff"
-}
-
 func (stw *SVGCanvas) Line(x1, y1, x2, y2 float64) {
 	stw.currentCanvas.Line(int(x1), int(y1), int(x2), int(y2), stw.currentStyle.Stroke())
 }
@@ -49,9 +45,10 @@ func (stw *SVGCanvas) Text(x, y float64, txt string) {
 }
 
 func (stw *SVGCanvas) Foreground(fg int) {
-	c := rgbString(fg)
-	stw.currentStyle.Set("stroke", c)
+	c := IntHexColor(fg)
+	stw.currentStyle.Set("stroke", "black")
 	stw.currentStyle.Set("fill", c)
+	stw.currentStyle.Set("fill-opacity", "0.5")
 }
 
 func (stw *SVGCanvas) LineStyle(ls int) {
@@ -102,6 +99,7 @@ func (stw *SVGCanvas) DefaultStyle() {
 	stw.currentStyle.Set("font-family", "IPAmincho")
 	stw.currentStyle.Set("font-size", "9px")
 	stw.currentStyle.Set("fill", "black")
+	stw.currentStyle.Set("fill-opacity", "0.5")
 	stw.currentStyle.Set("stroke", "black")
 }
 
@@ -112,11 +110,13 @@ func (stw *SVGCanvas) BondStyle(show *Show) {
 
 func (stw *SVGCanvas) PhingeStyle(show *Show) {
 	stw.currentStyle.Set("fill", "black")
+	stw.currentStyle.Set("fill-opacity", "1.0")
 	stw.currentStyle.Set("stroke", "black")
 }
 
 func (stw *SVGCanvas) ConfStyle(show *Show) {
 	stw.currentStyle.Set("fill", "black")
+	stw.currentStyle.Set("fill-opacity", "1.0")
 	stw.currentStyle.Set("stroke", "black")
 }
 
@@ -184,7 +184,7 @@ func PrintSVG(frame *Frame, otp string) error {
     }
 </style>
 `)
-	DrawFrame(sc, frame, ECOLOR_BLACK, true)
+	DrawFrame(sc, frame, ECOLOR_SECT, true)
 	frame.Show = s
 	frame.View = v
 	if err != nil {
@@ -236,7 +236,7 @@ func (s *Style) Fill() string {
 	for k, v := range s.value {
 		switch k {
 		default:
-		case "stroke", "stroke-dasharray", "fill":
+		case "stroke", "stroke-dasharray", "fill", "fill-opacity":
 			b.WriteString(fmt.Sprintf("%s: %s;", k, v))
 		}
 	}
