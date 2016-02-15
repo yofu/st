@@ -30,7 +30,9 @@ func (stw *SVGCanvas) Polygon(coord [][]float64) {
 		xs[i] = int(coord[i][0])
 		ys[i] = int(coord[i][1])
 	}
-	stw.currentCanvas.Polygon(xs, ys, stw.currentStyle.Fill())
+	s := stw.currentStyle.Copy()
+	s.Set("stroke", "none")
+	stw.currentCanvas.Polygon(xs, ys, s.Fill())
 }
 
 func (stw *SVGCanvas) Circle(x, y, r float64) {
@@ -41,7 +43,12 @@ func (stw *SVGCanvas) FilledCircle(x, y, r float64) {
 }
 
 func (stw *SVGCanvas) Text(x, y float64, txt string) {
-	stw.currentCanvas.Text(int(x), int(y), txt, stw.currentStyle.Text())
+	deg := stw.currentStyle.Value("rotate")
+	if deg != "" {
+		stw.currentCanvas.Text(int(x), int(y), txt, stw.currentStyle.Text(), fmt.Sprintf(" transform=\"rotate(%s %d %d)\"", deg, int(x), int(y)))
+	} else {
+		stw.currentCanvas.Text(int(x), int(y), txt, stw.currentStyle.Text())
+	}
 }
 
 func (stw *SVGCanvas) Foreground(fg int) {
@@ -76,6 +83,11 @@ func (stw *SVGCanvas) TextAlignment(ta int) {
 }
 
 func (stw *SVGCanvas) TextOrientation(to float64) {
+	if to == 0.0 {
+		stw.currentStyle.Delete("rotate")
+	} else {
+		stw.currentStyle.Set("rotate", fmt.Sprintf("%f", to))
+	}
 }
 
 func (stw *SVGCanvas) SectionAliase(s int) (string, bool) {
@@ -97,7 +109,7 @@ func (stw *SVGCanvas) ElemSelected() bool {
 func (stw *SVGCanvas) DefaultStyle() {
 	stw.currentStyle = NewStyle()
 	stw.currentStyle.Set("font-family", "IPAmincho")
-	stw.currentStyle.Set("font-size", "9px")
+	stw.currentStyle.Set("font-size", "8pt")
 	stw.currentStyle.Set("fill", "black")
 	stw.currentStyle.Set("fill-opacity", "0.5")
 	stw.currentStyle.Set("stroke", "black")
@@ -166,19 +178,19 @@ func PrintSVG(frame *Frame, otp string) error {
 	w.WriteString(`<style>
     .ndcap {
         font-family: "IPAmincho";
-        font-size: 9px;
+        font-size: 8pt;
     }
     .elcap {
         font-family: "IPAmincho";
-        font-size: 9px;
+        font-size: 8pt;
     }
     .sttext {
         font-family: "IPAmincho";
-        font-size: 9px;
+        font-size: 8pt;
     }
     .kijun {
         font-family: "IPAmincho";
-        font-size: 9px;
+        font-size: 8pt;
         text-anchor: middle;
         alignment-baseline: central;
     }
@@ -205,6 +217,10 @@ func NewStyle() *Style {
 
 func (s *Style) Set(k, v string) {
 	s.value[k] = v
+}
+
+func (s *Style) Value(k string) string {
+	return s.value[k]
 }
 
 func (s *Style) Delete(k string) {
