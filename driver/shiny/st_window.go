@@ -12,6 +12,7 @@ import (
 	"golang.org/x/mobile/event/size"
 	"github.com/yofu/st/stlib"
 	"log"
+	"os"
 )
 
 var (
@@ -90,7 +91,7 @@ func (stw *Window) Start() {
 	}
 	stw.window = w
 	defer stw.window.Release()
-	stw.OpenFile("/home/yofu/Downloads/yokofolly13.inp")
+	stw.OpenFile(fmt.Sprintf("%s/Downloads/yokofolly13.inp", os.Getenv("HOME")))
 	stw.Redraw()
 	var sz size.Event
 	for {
