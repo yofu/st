@@ -38,7 +38,7 @@ func (stw *Window) Line(x1, y1, x2, y2 float64) {
 		if x == endx && y == endy {
 			break
 		}
-		e2 = 2.0*eps
+		e2 = eps << 1
 		if e2 > -dy {
 			eps = eps - dy
 			x = x + sx
