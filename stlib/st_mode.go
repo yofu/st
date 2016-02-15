@@ -116,9 +116,9 @@ type Fig2Moder interface {
 	DispOn(int)
 	DispOff(int)
 	SetPeriod(string)
-	AddSectionAliase(int, string)
-	DeleteSectionAliase(int)
-	ClearSectionAliase()
+	AddSectionAlias(int, string)
+	DeleteSectionAlias(int)
+	ClearSectionAlias()
 	SelectElem([]*Elem)
 	IncrementPeriod(int)
 	TextBox(string) TextBox

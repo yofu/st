@@ -96,7 +96,7 @@ func (pc *PngCanvas) TextAlignment(ta int) {
 func (pc *PngCanvas) TextOrientation(to float64) {
 }
 
-func (pc *PngCanvas) SectionAliase(sa int) (string, bool) {
+func (pc *PngCanvas) SectionAlias(sa int) (string, bool) {
 	return "", false
 }
 

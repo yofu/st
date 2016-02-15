@@ -46,7 +46,7 @@ type Drawer interface {
 	LineStyle(int)
 	TextAlignment(int)
 	TextOrientation(float64)
-	SectionAliase(int) (string, bool)
+	SectionAlias(int) (string, bool)
 	SelectedNodes() []*Node
 	SelectedElems() []*Elem
 	ElemSelected() bool
@@ -71,7 +71,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 		oncap = true
 	}
 	if show.ElemCaption&EC_SECT != 0 {
-		if al, ok := stw.SectionAliase(elem.Sect.Num); ok {
+		if al, ok := stw.SectionAlias(elem.Sect.Num); ok {
 			ecap.WriteString(fmt.Sprintf("%s\n", al))
 		} else {
 			ecap.WriteString(fmt.Sprintf("%d\n", elem.Sect.Num))

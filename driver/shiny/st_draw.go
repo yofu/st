@@ -258,7 +258,7 @@ func (stw *Window) TextAlignment(int) {
 func (stw *Window) TextOrientation(float64) {
 }
 
-func (stw *Window) SectionAliase(int) (string, bool) {
+func (stw *Window) SectionAlias(int) (string, bool) {
 	return "", false
 }
 

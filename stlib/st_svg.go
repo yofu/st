@@ -90,7 +90,7 @@ func (stw *SVGCanvas) TextOrientation(to float64) {
 	}
 }
 
-func (stw *SVGCanvas) SectionAliase(s int) (string, bool) {
+func (stw *SVGCanvas) SectionAlias(s int) (string, bool) {
 	return "", false
 }
 

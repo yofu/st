@@ -968,7 +968,7 @@ func Fig2Keyword(stw Fig2Moder, frame *Frame, lis []string, un bool) error {
 	case "alias":
 		if un {
 			if len(lis) < 2 {
-				stw.ClearSectionAliase()
+				stw.ClearSectionAlias()
 			} else {
 				for _, j := range lis[1:] {
 					val, err := strconv.ParseInt(j, 10, 64)
@@ -976,7 +976,7 @@ func Fig2Keyword(stw Fig2Moder, frame *Frame, lis []string, un bool) error {
 						continue
 					}
 					if _, ok := frame.Sects[int(val)]; ok {
-						stw.DeleteSectionAliase(int(val))
+						stw.DeleteSectionAlias(int(val))
 					}
 				}
 			}
@@ -990,9 +990,9 @@ func Fig2Keyword(stw Fig2Moder, frame *Frame, lis []string, un bool) error {
 			}
 			if _, ok := frame.Sects[int(val)]; ok {
 				if len(lis) < 3 {
-					stw.AddSectionAliase(int(val), "")
+					stw.AddSectionAlias(int(val), "")
 				} else {
-					stw.AddSectionAliase(int(val), ToUtf8string(lis[2]))
+					stw.AddSectionAlias(int(val), ToUtf8string(lis[2]))
 				}
 			}
 		}
@@ -1003,7 +1003,7 @@ func Fig2Keyword(stw Fig2Moder, frame *Frame, lis []string, un bool) error {
 				continue
 			}
 			if _, ok := frame.Sects[int(val)]; ok {
-				stw.AddSectionAliase(int(val), "")
+				stw.AddSectionAlias(int(val), "")
 			}
 		}
 	case "nodecode":

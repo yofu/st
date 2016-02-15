@@ -2626,20 +2626,20 @@ func (stw *Window) GetCanvasSize() (int, int) {
 	return stw.CanvasSize[0], stw.CanvasSize[1]
 }
 
-func (stw *Window) SectionAliase(key int) (string, bool) {
+func (stw *Window) SectionAlias(key int) (string, bool) {
 	val, ok := sectionaliases[key]
 	return val, ok
 }
 
-func (stw *Window) AddSectionAliase(key int, value string) {
+func (stw *Window) AddSectionAlias(key int, value string) {
 	sectionaliases[key] = value
 }
 
-func (stw *Window) DeleteSectionAliase(key int) {
+func (stw *Window) DeleteSectionAlias(key int) {
 	delete(sectionaliases, key)
 }
 
-func (stw *Window) ClearSectionAliase() {
+func (stw *Window) ClearSectionAlias() {
 	sectionaliases = make(map[int]string, 0)
 }
 

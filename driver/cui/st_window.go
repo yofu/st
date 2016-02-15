@@ -764,13 +764,13 @@ func (stw *Window) SetColorMode(mode uint) {
 func (stw *Window) SetConf(lis []bool) {
 }
 
-func (stw *Window) AddSectionAliase(int, string) {
+func (stw *Window) AddSectionAlias(int, string) {
 }
 
-func (stw *Window) DeleteSectionAliase(int) {
+func (stw *Window) DeleteSectionAlias(int) {
 }
 
-func (stw *Window) ClearSectionAliase() {
+func (stw *Window) ClearSectionAlias() {
 }
 
 func (stw *Window) DeformationOn() {
