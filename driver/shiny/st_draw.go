@@ -1,6 +1,7 @@
 package stshiny
 
 import (
+	"image"
 	"image/color"
 	"github.com/yofu/st/stlib"
 )
@@ -53,6 +54,18 @@ func (stw *Window) Line(x1, y1, x2, y2 float64) {
 func (stw *Window) Polyline([][]float64) {
 }
 
+func Blend(cvs *image.RGBA, x, y int, src color.RGBA) {
+	dst := cvs.RGBAAt(x, y)
+	sa := int(src.A) << 8
+	da := int(dst.A) * int(255 - src.A)
+	cvs.SetRGBA(x, y, color.RGBA{
+		uint8((int(src.R) * sa + int(dst.R) * da) >> 16),
+		uint8((int(src.G) * sa + int(dst.G) * da) >> 16),
+		uint8((int(src.B) * sa + int(dst.B) * da) >> 16),
+		uint8((sa + da) >> 16),
+	})
+}
+
 func (stw *Window) filltriangle(c1, c2, c3 []float64) {
 	x1 := int(c1[0])
 	y1 := int(c1[1])
@@ -100,7 +113,7 @@ func (stw *Window) filltriangle(c1, c2, c3 []float64) {
 				x := int(sx)
 				end := int(ex)
 				for {
-					cvs.SetRGBA(x, y, stw.currentBrush)
+					Blend(cvs, x, y, stw.currentBrush)
 					if x >= end {
 						break
 					}
@@ -114,7 +127,7 @@ func (stw *Window) filltriangle(c1, c2, c3 []float64) {
 				x := int(sx)
 				end := int(ex)
 				for {
-					cvs.SetRGBA(x, y, stw.currentBrush)
+					Blend(cvs, x, y, stw.currentBrush)
 					if x <= end {
 						break
 					}
@@ -132,7 +145,7 @@ func (stw *Window) filltriangle(c1, c2, c3 []float64) {
 				x := int(sx)
 				end := int(ex)
 				for {
-					cvs.SetRGBA(x, y, stw.currentBrush)
+					Blend(cvs, x, y, stw.currentBrush)
 					if x >= end {
 						break
 					}
@@ -145,7 +158,7 @@ func (stw *Window) filltriangle(c1, c2, c3 []float64) {
 				x := int(sx)
 				end := int(ex)
 				for {
-					cvs.SetRGBA(x, y, stw.currentBrush)
+					Blend(cvs, x, y, stw.currentBrush)
 					if x >= end {
 						break
 					}
@@ -159,7 +172,7 @@ func (stw *Window) filltriangle(c1, c2, c3 []float64) {
 				x := int(sx)
 				end := int(ex)
 				for {
-					cvs.SetRGBA(x, y, stw.currentBrush)
+					Blend(cvs, x, y, stw.currentBrush)
 					if x <= end {
 						break
 					}
@@ -172,7 +185,7 @@ func (stw *Window) filltriangle(c1, c2, c3 []float64) {
 				x := int(sx)
 				end := int(ex)
 				for {
-					cvs.SetRGBA(x, y, stw.currentBrush)
+					Blend(cvs, x, y, stw.currentBrush)
 					if x <= end {
 						break
 					}
