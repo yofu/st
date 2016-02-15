@@ -56,13 +56,13 @@ func (stw *Window) Polyline([][]float64) {
 
 func Blend(cvs *image.RGBA, x, y int, src color.RGBA) {
 	dst := cvs.RGBAAt(x, y)
-	sa := int(src.A) << 8
-	da := int(dst.A) * int(255 - src.A)
+	sa := int(src.A)
+	da := (int(dst.A) * int(255 - src.A)) >> 8
 	cvs.SetRGBA(x, y, color.RGBA{
-		uint8((int(src.R) * sa + int(dst.R) * da) >> 16),
-		uint8((int(src.G) * sa + int(dst.G) * da) >> 16),
-		uint8((int(src.B) * sa + int(dst.B) * da) >> 16),
-		uint8((sa + da) >> 8),
+		uint8((int(src.R) * sa + int(dst.R) * da) >> 8),
+		uint8((int(src.G) * sa + int(dst.G) * da) >> 8),
+		uint8((int(src.B) * sa + int(dst.B) * da) >> 8),
+		uint8(sa + da),
 	})
 }
 
