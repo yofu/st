@@ -62,7 +62,7 @@ func Blend(cvs *image.RGBA, x, y int, src color.RGBA) {
 		uint8((int(src.R) * sa + int(dst.R) * da) >> 16),
 		uint8((int(src.G) * sa + int(dst.G) * da) >> 16),
 		uint8((int(src.B) * sa + int(dst.B) * da) >> 16),
-		uint8((sa + da) >> 16),
+		uint8((sa + da) >> 8),
 	})
 }
 
