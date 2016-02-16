@@ -2600,6 +2600,24 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			if err != nil {
 				return err
 			}
+		case "amount":
+			if usage {
+				return Usage(":copy amount {-format=%.3f}")
+			}
+			format := "%.3f"
+			if f, ok := argdict["FORMAT"]; ok {
+				format = f
+			}
+			var w bytes.Buffer
+			for _, el := range currentelem(stw, exmodech, exmodeend) {
+				w.WriteString(fmt.Sprintf("%d ", el.Num))
+				w.WriteString(fmt.Sprintf(format, el.Amount()))
+				w.WriteString("\n")
+			}
+			err := clipboard.WriteAll(w.String())
+			if err != nil {
+				return err
+			}
 		case "sec", "sect":
 			if usage {
 				return Usage(":copy sect sectcode")
