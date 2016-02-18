@@ -65,6 +65,7 @@ func (stw *SVGCanvas) LineStyle(ls int) {
 	case DOTTED:
 		stw.currentStyle.Set("stroke-dasharray", "2,2")
 	case DASHED:
+		stw.currentStyle.Set("stroke-dasharray", "10,5")
 	case DASH_DOT:
 		stw.currentStyle.Set("stroke-dasharray", "10,5,2,5")
 	}
@@ -73,9 +74,15 @@ func (stw *SVGCanvas) LineStyle(ls int) {
 func (stw *SVGCanvas) TextAlignment(ta int) {
 	switch ta {
 	case SOUTH:
+		stw.currentStyle.Set("alignment-baseline", "central")
+        stw.currentStyle.Set("text-anchor", "middle")
 	case NORTH:
+		stw.currentStyle.Set("alignment-baseline", "hanging")
+        stw.currentStyle.Set("text-anchor", "middle")
 	case WEST:
+        stw.currentStyle.Set("text-anchor", "start")
 	case EAST:
+        stw.currentStyle.Set("text-anchor", "end")
 	case CENTER:
 		stw.currentStyle.Set("alignment-baseline", "central")
         stw.currentStyle.Set("text-anchor", "middle")
@@ -172,7 +179,7 @@ func PrintSVG(frame *Frame, otp string) error {
 	}
 	defer w.Close()
 	cvs := svg.New(w)
-	cvs.Start(1000, 1000)
+	cvs.Start(210, 297)
 	sc := new(SVGCanvas)
 	sc.currentCanvas = cvs
 	w.WriteString(`<style>
