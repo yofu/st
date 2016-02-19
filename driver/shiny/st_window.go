@@ -43,6 +43,7 @@ type Window struct {
 	*st.Directory
 	*st.RecentFiles
 	*st.UndoStack
+	*st.TagFrame
 	frame        *st.Frame
 	screen       screen.Screen
 	window       screen.Window
@@ -59,6 +60,7 @@ func NewWindow(s screen.Screen) *Window {
 		Directory:    st.NewDirectory("", ""),
 		RecentFiles:  st.NewRecentFiles(3),
 		UndoStack:    st.NewUndoStack(10),
+		TagFrame:     st.NewTagFrame(),
 		frame:        st.NewFrame(),
 		screen:       s,
 		window:       nil,
@@ -332,14 +334,6 @@ func (stw *Window) Close(bang bool) {
 		fmt.Println(err)
 	}
 	os.Exit(0)
-}
-
-func (stw *Window) Checkout(string) error {
-	return nil
-}
-
-func (stw *Window) AddTag(string, bool) error {
-	return nil
 }
 
 func (stw *Window) Copylsts(string) {

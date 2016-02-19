@@ -195,6 +195,7 @@ type Window struct { // {{{
 	*st.Directory
 	*st.RecentFiles
 	*st.UndoStack
+	*st.TagFrame
 
 	frame                  *st.Frame
 	Dlg                    *iup.Handle
@@ -249,7 +250,6 @@ type Window struct { // {{{
 	changed     bool
 
 	comhist     []string
-	taggedFrame map[string]*st.Frame
 
 	complete     *complete.Complete
 	completepos  int
@@ -265,6 +265,7 @@ func NewWindow(homedir string) *Window { // {{{
 		Directory:    st.NewDirectory(homedir, homedir),
 		RecentFiles:  st.NewRecentFiles(3),
 		UndoStack:    st.NewUndoStack(10),
+		TagFrame:     st.NewTagFrame(),
 	}
 	stw.selectNode = make([]*st.Node, 0)
 	stw.selectElem = make([]*st.Elem, 0)
@@ -1275,7 +1276,6 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.SetCoord(0.0, 0.0, 0.0)
 	stw.ReadRecent()
 	stw.SetCommandHistory()
-	stw.taggedFrame = make(map[string]*st.Frame)
 	StartLogging()
 	err := stw.ReadPgp(pgpfile)
 	if err != nil {
@@ -6400,25 +6400,6 @@ func max(x, y int) int {
 	} else {
 		return y
 	}
-}
-
-func (stw *Window) Checkout(name string) error {
-	f, exists := stw.taggedFrame[name]
-	if !exists {
-		return fmt.Errorf("tag %s doesn't exist", name)
-	}
-	stw.frame = f
-	return nil
-}
-
-func (stw *Window) AddTag(name string, bang bool) error {
-	if !bang {
-		if _, exists := stw.taggedFrame[name]; exists {
-			return fmt.Errorf("tag %s already exists", name)
-		}
-	}
-	stw.taggedFrame[name] = stw.frame.Snapshot()
-	return nil
 }
 
 func (stw *Window) EPS() float64 {

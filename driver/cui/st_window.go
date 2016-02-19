@@ -37,6 +37,7 @@ type Window struct {
 	*st.Directory
 	*st.RecentFiles
 	*st.UndoStack
+	*st.TagFrame
 	prompt string
 
 	frame *st.Frame
@@ -53,8 +54,6 @@ type Window struct {
 
 	changed bool
 
-	taggedFrame map[string]*st.Frame
-
 	quit chan int
 }
 
@@ -63,6 +62,7 @@ func NewWindow(homedir string) *Window {
 		Directory: st.NewDirectory(homedir, homedir),
 		RecentFiles: st.NewRecentFiles(3),
 		UndoStack:    st.NewUndoStack(10),
+		TagFrame:     st.NewTagFrame(),
 	}
 	stw.prompt = ">"
 	stw.selectNode = make([]*st.Node, 0)
@@ -71,7 +71,6 @@ func NewWindow(homedir string) *Window {
 	stw.textBox = make(map[string]*TextBox, 0)
 	stw.changed = false
 	stw.ReadRecent()
-	stw.taggedFrame = make(map[string]*st.Frame)
 	stw.quit = make(chan int)
 	return stw
 }
@@ -287,25 +286,6 @@ func (stw *Window) ReadResource(filename string) error {
 	if err := s.Err(); err != nil {
 		return err
 	}
-	return nil
-}
-
-func (stw *Window) Checkout(name string) error {
-	f, exists := stw.taggedFrame[name]
-	if !exists {
-		return fmt.Errorf("tag %s doesn't exist", name)
-	}
-	stw.frame = f
-	return nil
-}
-
-func (stw *Window) AddTag(name string, bang bool) error {
-	if !bang {
-		if _, exists := stw.taggedFrame[name]; exists {
-			return fmt.Errorf("tag %s already exists", name)
-		}
-	}
-	stw.taggedFrame[name] = stw.frame.Snapshot()
 	return nil
 }
 

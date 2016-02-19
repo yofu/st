@@ -34,8 +34,8 @@ type ExModer interface {
 	SaveFileSelected(string) error
 	SearchFile(string) (string, error)
 	Close(bool)
-	Checkout(string) error
-	AddTag(string, bool) error
+	Checkout(string) (*Frame, error)
+	AddTag(*Frame, string, bool) error
 	Copylsts(string)
 	ReadFile(string) error
 	ReadAll()

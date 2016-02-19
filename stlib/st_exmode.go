@@ -637,7 +637,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			return NotEnoughArgs(":tag")
 		}
 		name := args[1]
-		err := stw.AddTag(name, bang)
+		err := stw.AddTag(frame, name, bang)
 		if err != nil {
 			return err
 		}
@@ -649,10 +649,11 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			return NotEnoughArgs(":checkout")
 		}
 		name := args[1]
-		err := stw.Checkout(name)
+		f, err := stw.Checkout(name)
 		if err != nil {
 			return err
 		}
+		stw.SetFrame(f)
 	case "read":
 		if usage {
 			return Usage(":read {type} filename")
