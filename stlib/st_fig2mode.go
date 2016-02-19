@@ -96,12 +96,12 @@ var (
 	}
 )
 
-func Fig2Mode(stw Fig2Moder, frame *Frame, command string) error {
+func Fig2Mode(stw Fig2Moder, command string) error {
 	if len(command) == 1 {
 		return NotEnoughArgs("fig2mode")
 	}
 	if command == "'." {
-		return Fig2Mode(stw, frame, stw.LastFig2Command())
+		return Fig2Mode(stw, stw.LastFig2Command())
 	}
 	stw.SetLastFig2Command(command)
 	command = command[1:]
@@ -122,7 +122,7 @@ func Fig2Mode(stw Fig2Moder, frame *Frame, command string) error {
 		}
 	}
 	args = args[:narg]
-	return Fig2Keyword(stw, frame, args, un)
+	return Fig2Keyword(stw, args, un)
 }
 
 func Fig2KeywordComplete(command string) (string, bool, *complete.Complete) {
@@ -145,10 +145,11 @@ func Fig2KeywordComplete(command string) (string, bool, *complete.Complete) {
 	return rtn, usage, c
 }
 
-func Fig2Keyword(stw Fig2Moder, frame *Frame, lis []string, un bool) error {
+func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 	if len(lis) < 1 {
 		return NotEnoughArgs("Fig2Keyword")
 	}
+	frame := stw.Frame()
 	EPS := stw.EPS()
 	showhtml := func(fn string) {
 		f := filepath.Join(tooldir, "fig2/keywords", fn)

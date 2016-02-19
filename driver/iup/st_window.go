@@ -1911,7 +1911,7 @@ func (stw *Window) ParseFig2Page(pcanv *cd.Canvas, lis [][]string) error {
 		} else {
 			un = false
 		}
-		err := st.Fig2Keyword(stw, stw.frame, txt, un)
+		err := st.Fig2Keyword(stw, txt, un)
 		if err != nil {
 			return err
 		}
@@ -2165,7 +2165,7 @@ func (stw *Window) execCommand(com *Command) {
 func (stw *Window) ExecCommand(al string) {
 	if stw.frame == nil {
 		if strings.HasPrefix(al, ":") {
-			err := st.ExMode(stw, stw.frame, al)
+			err := st.ExMode(stw, al)
 			if err != nil {
 				st.ErrorMessage(stw, err, st.ERROR)
 			}
@@ -2190,7 +2190,7 @@ func (stw *Window) ExecCommand(al string) {
 		default:
 			stw.addHistory(fmt.Sprintf("command doesn't exist: %s", al))
 		case strings.HasPrefix(al, ":"):
-			err := st.ExMode(stw, stw.frame, al)
+			err := st.ExMode(stw, al)
 			if err != nil {
 				if _, ok := err.(st.NotRedraw); ok {
 					redraw = false
@@ -2199,7 +2199,7 @@ func (stw *Window) ExecCommand(al string) {
 				}
 			}
 		case strings.HasPrefix(al, "'"):
-			err := st.Fig2Mode(stw, stw.frame, al)
+			err := st.Fig2Mode(stw, al)
 			if err != nil {
 				st.ErrorMessage(stw, err, st.ERROR)
 			}
@@ -3846,7 +3846,7 @@ func (stw *Window) CB_MouseButton() {
 						if time.Since(pressed).Seconds() < repeatcommand {
 							if isShift(arg.Status) {
 								if stw.lastexcommand != "" {
-									st.ExMode(stw, stw.frame, stw.lastexcommand)
+									st.ExMode(stw, stw.lastexcommand)
 									stw.Redraw()
 								}
 							} else {
@@ -4182,9 +4182,9 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		if key.IsCtrl() {
 			if stw.frame != nil {
 				if stw.frame.Show.Unit[0] == 1.0 && stw.frame.Show.Unit[1] == 1.0 {
-					st.Fig2Keyword(stw, stw.frame, []string{"unit", "kN,m"}, false)
+					st.Fig2Keyword(stw, []string{"unit", "kN,m"}, false)
 				} else {
-					st.Fig2Keyword(stw, stw.frame, []string{"unit", "tf,m"}, false)
+					st.Fig2Keyword(stw, []string{"unit", "tf,m"}, false)
 				}
 				stw.Redraw()
 			}
@@ -6225,7 +6225,7 @@ func (stw *Window) ReadPgp(filename string) error {
 				val := int(tmp)
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
 					currentcommand := strings.Replace(command, str, fmt.Sprintf("%d", val), -1)
-					err := st.ExMode(stw, stw.frame, currentcommand)
+					err := st.ExMode(stw, currentcommand)
 					if err != nil {
 						st.ErrorMessage(stw, err, st.ERROR)
 					}
@@ -6233,7 +6233,7 @@ func (stw *Window) ReadPgp(filename string) error {
 				}}
 			} else {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					err := st.ExMode(stw, stw.frame, command)
+					err := st.ExMode(stw, command)
 					if err != nil {
 						st.ErrorMessage(stw, err, st.ERROR)
 					}
@@ -6250,7 +6250,7 @@ func (stw *Window) ReadPgp(filename string) error {
 				}}
 			} else {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					err := st.Fig2Mode(stw, stw.frame, command)
+					err := st.Fig2Mode(stw, command)
 					if err != nil {
 						st.ErrorMessage(stw, err, st.ERROR)
 					}

@@ -216,7 +216,7 @@ func (stw *Window) FeedCommand() {
 func (stw *Window) ExecCommand(command string) {
 	if stw.frame == nil {
 		if strings.HasPrefix(command, ":") {
-			err := st.ExMode(stw, stw.frame, command)
+			err := st.ExMode(stw, command)
 			if err != nil {
 				st.ErrorMessage(stw, err, st.ERROR)
 			}
@@ -232,7 +232,7 @@ func (stw *Window) ExecCommand(command string) {
 	default:
 		stw.History(fmt.Sprintf("command doesn't exist: %s", command))
 	case strings.HasPrefix(command, ":"):
-		err := st.ExMode(stw, stw.frame, command)
+		err := st.ExMode(stw, command)
 		if err != nil {
 			st.ErrorMessage(stw, err, st.ERROR)
 		}

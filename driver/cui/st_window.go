@@ -108,12 +108,12 @@ func (stw *Window) SetFrame(frame *st.Frame) {
 func (stw *Window) ExecCommand(command string) {
 	if stw.frame == nil {
 		if strings.HasPrefix(command, ":") {
-			err := st.ExMode(stw, stw.frame, command)
+			err := st.ExMode(stw, command)
 			if err != nil {
 				stw.ErrorMessage(err, st.ERROR)
 			}
 		} else if strings.HasPrefix(command, "'") {
-			err := st.Fig2Mode(stw, stw.frame, command)
+			err := st.Fig2Mode(stw, command)
 			if err != nil {
 				stw.ErrorMessage(err, st.ERROR)
 			}
@@ -124,12 +124,12 @@ func (stw *Window) ExecCommand(command string) {
 	default:
 		stw.History(fmt.Sprintf("command doesn't exist: %s", command))
 	case strings.HasPrefix(command, ":"):
-		err := st.ExMode(stw, stw.frame, command)
+		err := st.ExMode(stw, command)
 		if err != nil {
 			stw.ErrorMessage(err, st.ERROR)
 		}
 	case strings.HasPrefix(command, "'"):
-		err := st.Fig2Mode(stw, stw.frame, command)
+		err := st.Fig2Mode(stw, command)
 		if err != nil {
 			stw.ErrorMessage(err, st.ERROR)
 		}

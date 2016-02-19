@@ -179,15 +179,15 @@ ex_empty:
 	}
 }
 
-func ExMode(stw ExModer, frame *Frame, command string) error {
+func ExMode(stw ExModer, command string) error {
 	if command == ":." {
-		return ExMode(stw, frame, stw.LastExCommand())
+		return ExMode(stw, stw.LastExCommand())
 	}
 	exmodech := make(chan interface{})
 	exmodeend := make(chan int)
 	stw.SetLastExCommand(command)
 	if !strings.Contains(command, "|") {
-		err := exCommand(stw, frame, command, false, exmodech, exmodeend)
+		err := exCommand(stw, command, false, exmodech, exmodeend)
 		if n, ok := err.(NotRedraw); ok {
 			stw.History(n.Message())
 			return err
@@ -201,7 +201,7 @@ func ExMode(stw ExModer, frame *Frame, command string) error {
 	excms := strings.Split(command, "|")
 	defer emptyExModech(exmodech, exmodeend)
 	for _, com := range excms {
-		err := exCommand(stw, frame, com, true, exmodech, exmodeend)
+		err := exCommand(stw, com, true, exmodech, exmodeend)
 		if err != nil {
 			if u, ok := err.(Messager); ok {
 				stw.History(u.Message())
@@ -213,7 +213,7 @@ func ExMode(stw ExModer, frame *Frame, command string) error {
 	return nil
 }
 
-func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech chan interface{}, exmodeend chan int) error {
+func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}, exmodeend chan int) error {
 	if len(command) == 1 {
 		return NotEnoughArgs("exmode")
 	}
@@ -526,6 +526,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 	if evaluated {
 		return nil
 	}
+	frame := stw.Frame()
 	if frame == nil {
 		return Message("frame is nil")
 	}
@@ -3123,7 +3124,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		if n <= 0 || n >= len(frame.Ai.Boundary)-1 {
 			return errors.New(":storey out of boundary")
 		}
-		return ExMode(stw, frame, fmt.Sprintf("height %d %d", n-1, n+1))
+		return ExMode(stw, fmt.Sprintf("height %d %d", n-1, n+1))
 	case "floor":
 		if usage {
 			return Usage(":floor n")
@@ -3147,7 +3148,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				return errors.New(":floor out of boundary")
 			}
 		}
-		return ExMode(stw, frame, fmt.Sprintf("height %d %d", n-1, n))
+		return ExMode(stw, fmt.Sprintf("height %d %d", n-1, n))
 	case "height+":
 		stw.NextFloor()
 	case "height-":
@@ -3199,7 +3200,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		case "ON", "TRUE", "YES":
 			stw.SetShowPrintRange(true)
 			if narg >= 3 {
-				err := ExMode(stw, frame, fmt.Sprintf(":paper %s", strings.Join(args[2:], " ")))
+				err := ExMode(stw, fmt.Sprintf(":paper %s", strings.Join(args[2:], " ")))
 				if err != nil {
 					return err
 				}
@@ -3207,7 +3208,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		case "OFF", "FALSE", "NO":
 			stw.SetShowPrintRange(false)
 		default:
-			err := ExMode(stw, frame, fmt.Sprintf(":paper %s", strings.Join(args[1:], " ")))
+			err := ExMode(stw, fmt.Sprintf(":paper %s", strings.Join(args[1:], " ")))
 			if err != nil {
 				return err
 			}
