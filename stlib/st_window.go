@@ -27,7 +27,7 @@ type Window interface {
 	SetCwd(string)
 	ExecCommand(string)
 	History(string)
-	AddRecent(string) error
+	AddRecent(string)
 	GetCanvasSize() (int, int)
 	CanvasFitScale() float64
 	SetCanvasFitScale(float64)

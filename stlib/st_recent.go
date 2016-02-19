@@ -27,13 +27,18 @@ func (r *RecentFiles) Recent() []string {
 	return r.filenames
 }
 
-func (r *RecentFiles) AddRecent(fn string) error {
+func (r *RecentFiles) AddRecent(fn string) {
 	fn = filepath.ToSlash(fn)
+	for _, f := range r.filenames {
+		if f == fn {
+			return
+		}
+	}
 	for i := r.size - 1; i > 0; i-- {
 		r.filenames[i] = r.filenames[i-1]
 	}
 	r.filenames[0] = fn
-	return nil
+	return
 }
 
 func (r *RecentFiles) ReadRecent() error {
