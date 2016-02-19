@@ -1275,6 +1275,7 @@ func NewWindow(homedir string) *Window { // {{{
 	comhistpos = -1
 	stw.SetCoord(0.0, 0.0, 0.0)
 	stw.ReadRecent()
+	stw.ShowRecent()
 	stw.SetCommandHistory()
 	StartLogging()
 	err := stw.ReadPgp(pgpfile)
@@ -1347,7 +1348,7 @@ func (stw *Window) Open() {
 	}
 }
 
-func (stw *Window) ShowRecently() {
+func (stw *Window) ShowRecent() {
 	for i, fn := range stw.Recent() {
 		if fn != "" {
 			stw.addHistory(fmt.Sprintf("%d: %s", i, fn))

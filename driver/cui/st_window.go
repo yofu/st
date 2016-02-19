@@ -71,6 +71,7 @@ func NewWindow(homedir string) *Window {
 	stw.textBox = make(map[string]*TextBox, 0)
 	stw.changed = false
 	stw.ReadRecent()
+	stw.ShowRecent()
 	stw.quit = make(chan int)
 	return stw
 }
@@ -422,7 +423,7 @@ func (stw *Window) Deselect() {
 	stw.selectElem = make([]*st.Elem, 0)
 }
 
-func (stw *Window) ShowRecently() {
+func (stw *Window) ShowRecent() {
 	for i, fn := range stw.Recent() {
 		if fn != "" {
 			stw.History(fmt.Sprintf("%d: %s", i, fn))
