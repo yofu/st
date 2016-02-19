@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 )
 
-const (
-	recentfn = "~/.st/recent.dat"
+var (
+	recentfn = filepath.Join(home, ".st/recent.dat")
 )
 
 type RecentFiles struct {
