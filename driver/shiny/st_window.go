@@ -337,9 +337,6 @@ func (stw *Window) Close(bang bool) {
 	os.Exit(0)
 }
 
-func (stw *Window) Copylsts(string) {
-}
-
 func (stw *Window) ReadPgp(string) error {
 	return nil
 }

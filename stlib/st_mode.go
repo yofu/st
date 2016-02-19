@@ -34,13 +34,10 @@ type ExModer interface {
 	SetLastExCommand(string)
 	CompleteFileName(string) string
 	Print()
-	Yn(string, string) bool
-	Yna(string, string, string) int
 	SaveAS()
 	SaveFileSelected(string) error
 	SearchFile(string) (string, error)
 	Close(bool)
-	Copylsts(string)
 	ReadPgp(string) error
 	CheckFrame()
 	ShapeData(Shape)

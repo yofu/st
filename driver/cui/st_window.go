@@ -217,7 +217,7 @@ func (stw *Window) SaveAS() {
 	fn := "hogtxt.inp"
 	err := stw.SaveFile(fn)
 	if err == nil && fn != stw.frame.Path {
-		stw.Copylsts(fn)
+		st.Copylsts(stw, fn)
 		st.Rebase(stw, fn)
 	}
 }
@@ -287,21 +287,6 @@ func (stw *Window) ReadResource(filename string) error {
 		return err
 	}
 	return nil
-}
-
-func (stw *Window) Copylsts(name string) {
-	if stw.Yn("SAVE AS", ".lst, .fig2, .kjnファイルがあればコピーしますか?") {
-		for _, ext := range []string{".lst", ".fig2", ".kjn"} {
-			src := st.Ce(stw.frame.Path, ext)
-			dst := st.Ce(name, ext)
-			if st.FileExists(src) {
-				err := st.CopyFile(src, dst)
-				if err == nil {
-					stw.History(fmt.Sprintf("COPY: %s", dst))
-				}
-			}
-		}
-	}
 }
 
 func (stw *Window) ReadPgp(string) error {

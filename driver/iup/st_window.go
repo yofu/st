@@ -1589,23 +1589,8 @@ func (stw *Window) SaveAS() {
 		fn := st.Ce(name, ".inp")
 		err = st.SaveFile(stw, fn)
 		if err == nil && fn != stw.frame.Path {
-			stw.Copylsts(name)
+			st.Copylsts(stw, name)
 			st.Rebase(stw, fn)
-		}
-	}
-}
-
-func (stw *Window) Copylsts(name string) {
-	if stw.Yn("SAVE AS", ".lst, .fig2, .kjnファイルがあればコピーしますか?") {
-		for _, ext := range []string{".lst", ".fig2", ".kjn"} {
-			src := st.Ce(stw.frame.Path, ext)
-			dst := st.Ce(name, ext)
-			if st.FileExists(src) {
-				err := st.CopyFile(src, dst)
-				if err == nil {
-					stw.addHistory(fmt.Sprintf("COPY: %s", dst))
-				}
-			}
 		}
 	}
 }

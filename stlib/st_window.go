@@ -40,6 +40,8 @@ type Window interface {
 	SetFrame(*Frame)
 	ExecCommand(string)
 	History(string)
+	Yn(string, string) bool
+	Yna(string, string, string) int
 	GetCanvasSize() (int, int)
 	Changed(bool)
 	IsChanged() bool
@@ -309,6 +311,22 @@ func ParseFig2Page(stw Fig2Moder, lis [][]string) error {
 	}
 	stw.Redraw()
 	return nil
+}
+
+func Copylsts(stw Window, name string) {
+	if stw.Yn("SAVE AS", ".lst, .fig2, .kjnファイルがあればコピーしますか?") {
+		frame := stw.Frame()
+		for _, ext := range []string{".lst", ".fig2", ".kjn"} {
+			src := Ce(frame.Path, ext)
+			dst := Ce(name, ext)
+			if FileExists(src) {
+				err := CopyFile(src, dst)
+				if err == nil {
+					stw.History(fmt.Sprintf("COPY: %s", dst))
+				}
+			}
+		}
+	}
 }
 
 func ShowRecent(stw Window) {

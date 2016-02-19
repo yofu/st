@@ -546,7 +546,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					return err
 				}
 				if fn != frame.Path {
-					stw.Copylsts(fn)
+					Copylsts(stw, fn)
 				}
 			}
 		}
@@ -578,7 +578,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				if err != nil {
 					return err
 				}
-				stw.Copylsts(fn)
+				Copylsts(stw, fn)
 			} else {
 				err = SaveFile(stw, fn)
 			}
@@ -586,7 +586,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				return err
 			}
 			if fn != frame.Path {
-				stw.Copylsts(fn)
+				Copylsts(stw, fn)
 			}
 			Rebase(stw, fn)
 		}
@@ -624,7 +624,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				return err
 			}
 			if fn != frame.Path {
-				stw.Copylsts(fn)
+				Copylsts(stw, fn)
 			}
 			Rebase(stw, fn)
 			Snapshot(stw)
