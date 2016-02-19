@@ -100,7 +100,7 @@ func (stw *Window) Start() {
 	stw.window = w
 	defer stw.window.Release()
 	stw.ReadRecent()
-	stw.ShowRecent()
+	st.ShowRecent(stw)
 	stw.Redraw()
 	var sz size.Event
 	for {
@@ -359,14 +359,6 @@ func (stw *Window) CheckFrame() {
 }
 
 func (stw *Window) SelectConfed() {
-}
-
-func (stw *Window) ShowRecent() {
-	for i, fn := range stw.Recent() {
-		if fn != "" {
-			stw.History(fmt.Sprintf("%d: %s", i, fn))
-		}
-	}
 }
 
 func (stw *Window) ShapeData(st.Shape) {

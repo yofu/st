@@ -363,7 +363,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		if usage {
 			return Usage(":#")
 		}
-		stw.ShowRecent()
+		ShowRecent(stw)
 	case "vim":
 		if usage {
 			return Usage(":vim filename")

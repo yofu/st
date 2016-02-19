@@ -43,7 +43,6 @@ type ExModer interface {
 	ReadFig2(string) error
 	CheckFrame()
 	SelectConfed()
-	ShowRecent()
 	ShapeData(Shape)
 	UseUndo(bool)
 	ToggleFixRotate()

@@ -27,6 +27,7 @@ type Window interface {
 	SetCwd(string)
 	ExecCommand(string)
 	History(string)
+	Recent() []string
 	AddRecent(string)
 	GetCanvasSize() (int, int)
 	CanvasFitScale() float64
@@ -160,6 +161,14 @@ func SaveFile(stw Window, filename string) error {
 	ErrorMessage(stw, fmt.Errorf("SAVE: %s", filename), INFO)
 	stw.Changed(true)
 	return nil
+}
+
+func ShowRecent(stw Window) {
+	for i, fn := range stw.Recent() {
+		if fn != "" {
+			stw.History(fmt.Sprintf("%d: %s", i, fn))
+		}
+	}
 }
 
 func Snapshot(stw Window) {

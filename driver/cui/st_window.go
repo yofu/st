@@ -71,7 +71,7 @@ func NewWindow(homedir string) *Window {
 	stw.textBox = make(map[string]*TextBox, 0)
 	stw.changed = false
 	stw.ReadRecent()
-	stw.ShowRecent()
+	st.ShowRecent(stw)
 	stw.quit = make(chan int)
 	return stw
 }
@@ -421,14 +421,6 @@ func (stw *Window) SelectConfed() {
 func (stw *Window) Deselect() {
 	stw.selectNode = make([]*st.Node, 0)
 	stw.selectElem = make([]*st.Elem, 0)
-}
-
-func (stw *Window) ShowRecent() {
-	for i, fn := range stw.Recent() {
-		if fn != "" {
-			stw.History(fmt.Sprintf("%d: %s", i, fn))
-		}
-	}
 }
 
 func (stw *Window) ShapeData(sh st.Shape) {
