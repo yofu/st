@@ -42,11 +42,10 @@ var (
 )
 
 type Window struct {
-	Home   string
-	cwd    string
+	*st.Directory
 	prompt string
 
-	Frame *st.Frame
+	frame *st.Frame
 
 	selectNode []*st.Node
 	selectElem []*st.Elem
@@ -58,7 +57,7 @@ type Window struct {
 	lastexcommand string
 	lastfig2command string
 
-	Changed bool
+	changed bool
 
 	recentfiles []string
 	undostack   []*st.Frame
@@ -68,15 +67,15 @@ type Window struct {
 }
 
 func NewWindow(homedir string) *Window {
-	stw := new(Window)
-	stw.Home = homedir
-	stw.cwd = homedir
+	stw := &Window{
+		Directory: st.NewDirectory(homedir, homedir),
+	}
 	stw.prompt = ">"
 	stw.selectNode = make([]*st.Node, 0)
 	stw.selectElem = make([]*st.Elem, 0)
 	stw.papersize = st.A4_TATE
 	stw.textBox = make(map[string]*TextBox, 0)
-	stw.Changed = false
+	stw.changed = false
 	stw.recentfiles = make([]string, nRecentFiles)
 	stw.SetRecently()
 	stw.undostack = make([]*st.Frame, nUndo)
@@ -108,15 +107,23 @@ func (stw *Window) Feed(command string) {
 	stw.Redraw()
 }
 
+func (stw *Window) Frame() *st.Frame {
+	return stw.frame
+}
+
+func (stw *Window) SetFrame(frame *st.Frame) {
+	stw.frame = frame
+}
+
 func (stw *Window) ExecCommand(command string) {
-	if stw.Frame == nil {
+	if stw.frame == nil {
 		if strings.HasPrefix(command, ":") {
-			err := st.ExMode(stw, stw.Frame, command)
+			err := st.ExMode(stw, stw.frame, command)
 			if err != nil {
 				stw.ErrorMessage(err, st.ERROR)
 			}
 		} else if strings.HasPrefix(command, "'") {
-			err := st.Fig2Mode(stw, stw.Frame, command)
+			err := st.Fig2Mode(stw, stw.frame, command)
 			if err != nil {
 				stw.ErrorMessage(err, st.ERROR)
 			}
@@ -127,12 +134,12 @@ func (stw *Window) ExecCommand(command string) {
 	default:
 		stw.History(fmt.Sprintf("command doesn't exist: %s", command))
 	case strings.HasPrefix(command, ":"):
-		err := st.ExMode(stw, stw.Frame, command)
+		err := st.ExMode(stw, stw.frame, command)
 		if err != nil {
 			stw.ErrorMessage(err, st.ERROR)
 		}
 	case strings.HasPrefix(command, "'"):
-		err := st.Fig2Mode(stw, stw.Frame, command)
+		err := st.Fig2Mode(stw, stw.frame, command)
 		if err != nil {
 			stw.ErrorMessage(err, st.ERROR)
 		}
@@ -146,10 +153,10 @@ func (stw *Window) Redraw() {
 
 func (stw *Window) DrawTexts() {
 	var s *st.Show
-	if stw.Frame == nil {
+	if stw.frame == nil {
 		s = nil
 	} else {
-		s = stw.Frame.Show
+		s = stw.frame.Show
 	}
 	for _, t := range stw.textBox {
 		if !t.IsHidden(s) {
@@ -188,27 +195,23 @@ func (stw *Window) SetLastExCommand(c string) {
 
 func (stw *Window) CompleteFileName(str string) string {
 	path := ""
-	if stw.Frame != nil {
-		path = stw.Frame.Path
+	if stw.frame != nil {
+		path = stw.frame.Path
 	}
 	completes = st.CompleteFileName(str, path, stw.recentfiles)
 	completepos = 0
 	return completes[0]
 }
 
-func (stw *Window) Cwd() string {
-	return stw.cwd
-}
-
-func (stw *Window) HomeDir() string {
-	return stw.Home
-}
-
 func (stw *Window) Print() {
 }
 
+func (stw *Window) Changed(c bool) {
+	stw.changed = c
+}
+
 func (stw *Window) IsChanged() bool {
-	return stw.Changed
+	return stw.changed
 }
 
 func (stw *Window) Yn(title, question string) bool {
@@ -223,30 +226,24 @@ func (stw *Window) Yna(title, question, another string) int {
 func (stw *Window) SaveAS() {
 	fn := "hogtxt.inp"
 	err := stw.SaveFile(fn)
-	if err == nil && fn != stw.Frame.Path {
+	if err == nil && fn != stw.frame.Path {
 		stw.Copylsts(fn)
-		stw.Rebase(fn)
+		st.Rebase(stw, fn)
 	}
 }
 
 func (stw *Window) SaveFile(fn string) error {
-	err := stw.Frame.WriteInp(fn)
-	if err != nil {
-		return err
-	}
-	stw.ErrorMessage(fmt.Errorf("SAVE: %s", fn), st.INFO)
-	stw.Changed = false
-	return nil
+	return st.SaveFile(stw, fn)
 }
 
 func (stw *Window) SaveFileSelected(fn string) error {
 	els := stw.selectElem
-	err := st.WriteInp(fn, stw.Frame.View, stw.Frame.Ai, els)
+	err := st.WriteInp(fn, stw.frame.View, stw.frame.Ai, els)
 	if err != nil {
 		return err
 	}
 	stw.ErrorMessage(fmt.Errorf("SAVE: %s", fn), st.INFO)
-	stw.Changed = false
+	stw.changed = false
 	return nil
 }
 
@@ -262,7 +259,7 @@ func (stw *Window) SearchFile(fn string) (string, error) {
 		if pos2 < 0 {
 			return fn, fmt.Errorf("File not fount %s", fn)
 		}
-		cand := filepath.Join(stw.Home, fn[:pos1], fn[:pos2], fn)
+		cand := filepath.Join(stw.Home(), fn[:pos1], fn[:pos2], fn)
 		if st.FileExists(cand) {
 			return cand, nil
 		} else {
@@ -271,65 +268,8 @@ func (stw *Window) SearchFile(fn string) (string, error) {
 	}
 }
 
-func (stw *Window) OpenFile(filename string, readrcfile bool) error {
-	var err error
-	var s *st.Show
-	fn := st.ToUtf8string(filename)
-	frame := st.NewFrame()
-	if stw.Frame != nil {
-		s = stw.Frame.Show
-	}
-	switch filepath.Ext(fn) {
-	case ".inp":
-		err = frame.ReadInp(fn, []float64{0.0, 0.0, 0.0}, 0.0, false)
-		if err != nil {
-			return err
-		}
-		stw.Frame = frame
-	case ".dxf":
-		err = frame.ReadDxf(fn, []float64{0.0, 0.0, 0.0}, EPS)
-		if err != nil {
-			return err
-		}
-		stw.Frame = frame
-		frame.SetFocus(nil)
-	}
-	if s != nil {
-		stw.Frame.Show = s
-		for snum := range stw.Frame.Sects {
-			if _, ok := stw.Frame.Show.Sect[snum]; !ok {
-				stw.Frame.Show.Sect[snum] = true
-			}
-		}
-	}
-	openstr := fmt.Sprintf("OPEN: %s", fn)
-	stw.History(openstr)
-	stw.Frame.Home = stw.Home
-	stw.cwd = filepath.Dir(fn)
-	stw.AddRecently(fn)
-	stw.Snapshot()
-	stw.Changed = false
-	if readrcfile {
-		if rcfn := filepath.Join(stw.cwd, ResourceFileName); st.FileExists(rcfn) {
-			stw.ReadResource(rcfn)
-		}
-	}
-	return nil
-}
-
-func (stw *Window) Reload() {
-	if stw.Frame != nil {
-		stw.Deselect()
-		v := stw.Frame.View
-		s := stw.Frame.Show
-		stw.OpenFile(stw.Frame.Path, false)
-		stw.Frame.View = v
-		stw.Frame.Show = s
-	}
-}
-
 func (stw *Window) Close(force bool) {
-	if !force && stw.Changed {
+	if !force && stw.changed {
 		if stw.Yn("CHANGED", "変更を保存しますか") {
 			stw.SaveAS()
 		} else {
@@ -364,7 +304,7 @@ func (stw *Window) Checkout(name string) error {
 	if !exists {
 		return fmt.Errorf("tag %s doesn't exist", name)
 	}
-	stw.Frame = f
+	stw.frame = f
 	return nil
 }
 
@@ -374,14 +314,14 @@ func (stw *Window) AddTag(name string, bang bool) error {
 			return fmt.Errorf("tag %s already exists", name)
 		}
 	}
-	stw.taggedFrame[name] = stw.Frame.Snapshot()
+	stw.taggedFrame[name] = stw.frame.Snapshot()
 	return nil
 }
 
 func (stw *Window) Copylsts(name string) {
 	if stw.Yn("SAVE AS", ".lst, .fig2, .kjnファイルがあればコピーしますか?") {
 		for _, ext := range []string{".lst", ".fig2", ".kjn"} {
-			src := st.Ce(stw.Frame.Path, ext)
+			src := st.Ce(stw.frame.Path, ext)
 			dst := st.Ce(name, ext)
 			if st.FileExists(src) {
 				err := st.CopyFile(src, dst)
@@ -402,23 +342,23 @@ func (stw *Window) ReadFile(filename string) error {
 		x := 0.0
 		y := 0.0
 		z := 0.0
-		err = stw.Frame.ReadInp(filename, []float64{x, y, z}, 0.0, false)
+		err = stw.frame.ReadInp(filename, []float64{x, y, z}, 0.0, false)
 	case ".inl", ".ihx", ".ihy":
-		err = stw.Frame.ReadData(filename)
+		err = stw.frame.ReadData(filename)
 	case ".otl", ".ohx", ".ohy":
-		err = stw.Frame.ReadResult(filename, st.UpdateResult)
+		err = stw.frame.ReadResult(filename, st.UpdateResult)
 	case ".rat", ".rat2":
-		err = stw.Frame.ReadRat(filename)
+		err = stw.frame.ReadRat(filename)
 	case ".lst":
-		err = stw.Frame.ReadLst(filename)
+		err = stw.frame.ReadLst(filename)
 	case ".wgt":
-		err = stw.Frame.ReadWgt(filename)
+		err = stw.frame.ReadWgt(filename)
 	case ".kjn":
-		err = stw.Frame.ReadKjn(filename)
+		err = stw.frame.ReadKjn(filename)
 	case ".otp":
-		err = stw.Frame.ReadBuckling(filename)
+		err = stw.frame.ReadBuckling(filename)
 	case ".otx", ".oty", ".inc":
-		err = stw.Frame.ReadZoubun(filename)
+		err = stw.frame.ReadZoubun(filename)
 	}
 	if err != nil {
 		return err
@@ -427,12 +367,12 @@ func (stw *Window) ReadFile(filename string) error {
 }
 
 func (stw *Window) ReadAll() {
-	if stw.Frame != nil {
+	if stw.frame != nil {
 		var err error
-		for _, el := range stw.Frame.Elems {
+		for _, el := range stw.frame.Elems {
 			switch el.Etype {
 			case st.WBRACE, st.SBRACE:
-				stw.Frame.DeleteElem(el.Num)
+				stw.frame.DeleteElem(el.Num)
 			case st.WALL, st.SLAB:
 				el.Children = make([]*st.Elem, 2)
 			}
@@ -441,11 +381,11 @@ func (stw *Window) ReadAll() {
 		read := make([]string, 10)
 		nread := 0
 		for _, ext := range exts {
-			name := st.Ce(stw.Frame.Path, ext)
+			name := st.Ce(stw.frame.Path, ext)
 			err = stw.ReadFile(name)
 			if err != nil {
 				if ext == ".rat2" {
-					err = stw.ReadFile(st.Ce(stw.Frame.Path, ".rat"))
+					err = stw.ReadFile(st.Ce(stw.frame.Path, ".rat"))
 					if err == nil {
 						continue
 					}
@@ -509,19 +449,6 @@ func (stw *Window) SelectConfed() {
 func (stw *Window) Deselect() {
 	stw.selectNode = make([]*st.Node, 0)
 	stw.selectElem = make([]*st.Elem, 0)
-}
-
-func (stw *Window) Rebase(fn string) {
-	stw.Frame.Name = filepath.Base(fn)
-	stw.Frame.Project = st.ProjectName(fn)
-	path, err := filepath.Abs(fn)
-	if err != nil {
-		stw.Frame.Path = fn
-	} else {
-		stw.Frame.Path = path
-	}
-	stw.Frame.Home = stw.Home
-	stw.AddRecently(fn)
 }
 
 func (stw *Window) AddRecently(fn string) error {
@@ -624,12 +551,12 @@ func (stw *Window) ShapeData(sh st.Shape) {
 }
 
 func (stw *Window) Snapshot() {
-	stw.Changed = true
+	stw.changed = true
 	if NOUNDO {
 		return
 	}
 	tmp := make([]*st.Frame, nUndo)
-	tmp[0] = stw.Frame.Snapshot()
+	tmp[0] = stw.frame.Snapshot()
 	for i := 0; i < nUndo-1-undopos; i++ {
 		tmp[i+1] = stw.undostack[i+undopos]
 	}
@@ -710,7 +637,7 @@ func (stw *Window) SectionData(sec *st.Sect) {
 		stw.textBox["SECTION"] = tb
 	}
 	tb.value = strings.Split(sec.InpString(), "\n")
-	if al, ok := stw.Frame.Allows[sec.Num]; ok {
+	if al, ok := stw.frame.Allows[sec.Num]; ok {
 		tb.value = append(tb.value, strings.Split(al.String(), "\n")...)
 	}
 }
@@ -732,9 +659,9 @@ func (stw *Window) PrevFloor() {
 }
 
 func (stw *Window) SetAngle(phi, theta float64) {
-	if stw.Frame != nil {
-		stw.Frame.View.Angle[0] = phi
-		stw.Frame.View.Angle[1] = theta
+	if stw.frame != nil {
+		stw.frame.View.Angle[0] = phi
+		stw.frame.View.Angle[1] = theta
 	}
 }
 
@@ -747,7 +674,7 @@ func (stw *Window) PaperSize() uint {
 }
 
 func (stw *Window) SetPeriod(per string) {
-	stw.Frame.Show.Period = per
+	stw.frame.Show.Period = per
 }
 
 func (stw *Window) Pivot() bool {
@@ -758,7 +685,7 @@ func (stw *Window) DrawPivot(nodes []*st.Node, pivot, end chan int) {
 }
 
 func (stw *Window) SetColorMode(mode uint) {
-	stw.Frame.Show.ColorMode = mode
+	stw.frame.Show.ColorMode = mode
 }
 
 func (stw *Window) SetConf(lis []bool) {
@@ -815,8 +742,8 @@ func (stw *Window) ElemCaptionOff(string) {
 func (stw *Window) NodeCaptionOn(name string) {
 	for i, j := range st.NODECAPTIONS {
 		if j == name {
-			if stw.Frame != nil {
-				stw.Frame.Show.NodeCaptionOn(1 << uint(i))
+			if stw.frame != nil {
+				stw.frame.Show.NodeCaptionOn(1 << uint(i))
 			}
 		}
 	}
@@ -825,8 +752,8 @@ func (stw *Window) NodeCaptionOn(name string) {
 func (stw *Window) NodeCaptionOff(name string) {
 	for i, j := range st.NODECAPTIONS {
 		if j == name {
-			if stw.Frame != nil {
-				stw.Frame.Show.NodeCaptionOff(1 << uint(i))
+			if stw.frame != nil {
+				stw.frame.Show.NodeCaptionOff(1 << uint(i))
 			}
 		}
 	}
@@ -856,18 +783,18 @@ func (stw *Window) ShowSection(int) {
 
 func (stw *Window) IncrementPeriod(num int) {
 	pat := regexp.MustCompile("([a-zA-Z]+)(@[0-9]+)")
-	fs := pat.FindStringSubmatch(stw.Frame.Show.Period)
+	fs := pat.FindStringSubmatch(stw.frame.Show.Period)
 	if len(fs) < 3 {
 		return
 	}
-	if nl, ok := stw.Frame.Nlap[strings.ToUpper(fs[1])]; ok {
+	if nl, ok := stw.frame.Nlap[strings.ToUpper(fs[1])]; ok {
 		tmp, _ := strconv.ParseInt(fs[2][1:], 10, 64)
 		val := int(tmp) + num
 		if val < 1 || val > nl {
 			return
 		}
-		per := strings.Replace(stw.Frame.Show.Period, fs[2], fmt.Sprintf("@%d", val), -1)
-		stw.Frame.Show.Period = per
+		per := strings.Replace(stw.frame.Show.Period, fs[2], fmt.Sprintf("@%d", val), -1)
+		stw.frame.Show.Period = per
 	}
 }
 
@@ -880,7 +807,7 @@ func (stw *Window) SetLastFig2Command(c string) {
 }
 
 func (stw *Window) ShowCenter() {
-	stw.Frame.SetFocus(nil)
-	stw.Frame.View.Center[0] = 500.0
-	stw.Frame.View.Center[1] = 500.0
+	stw.frame.SetFocus(nil)
+	stw.frame.View.Center[0] = 500.0
+	stw.frame.View.Center[1] = 500.0
 }
