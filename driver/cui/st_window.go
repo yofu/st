@@ -293,9 +293,6 @@ func (stw *Window) ReadPgp(string) error {
 	return nil
 }
 
-func (stw *Window) CheckFrame() {
-}
-
 func (stw *Window) SelectElem(els []*st.Elem) {
 	stw.selectElem = els
 }

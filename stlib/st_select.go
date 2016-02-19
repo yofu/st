@@ -31,6 +31,117 @@ func SelectConfed(stw Selector) {
 	stw.SelectNode(nodes[:num])
 }
 
+func CheckFrame(stw Selector) {
+	stw.Deselect()
+	frame := stw.Frame()
+	ns := frame.NodeNoReference()
+	if len(ns) != 0 {
+		stw.SelectNode(ns)
+		stw.Redraw()
+		if stw.Yn("NODE NO REFERENCE", "不要な節点を削除しますか?") {
+			for _, n := range ns {
+				frame.DeleteNode(n.Num)
+			}
+			Snapshot(stw)
+		} else {
+			return
+		}
+	}
+	stw.Deselect()
+	nm := frame.NodeDuplication(stw.EPS())
+	if len(nm) != 0 {
+		nodes := make([]*Node, len(nm))
+		num := 0
+		for k := range nm {
+			nodes[num] = k
+			num++
+		}
+		stw.SelectNode(nodes[:num])
+		stw.Redraw()
+		if stw.Yn("NODE DUPLICATION", "重なった節点を削除しますか?") {
+			frame.ReplaceNode(nm)
+			Snapshot(stw)
+		} else {
+			return
+		}
+	}
+	stw.Deselect()
+	els := frame.ElemSameNode()
+	if len(els) != 0 {
+		stw.SelectNode(frame.ElemToNode(els...))
+		stw.SelectElem(els)
+		stw.Redraw()
+		if stw.Yn("ELEM SAME NODE", "部材を削除しますか?") {
+			for _, el := range els {
+				if el.Lock {
+					continue
+				}
+				frame.DeleteElem(el.Num)
+			}
+			Snapshot(stw)
+		} else {
+			return
+		}
+	}
+	stw.Deselect()
+	els2 := frame.ElemDuplication(nil)
+	if len(els) != 0 {
+		sels := make([]*Elem, len(els2))
+		num := 0
+		for k := range els2 {
+			sels[num] = k
+			num++
+		}
+		stw.SelectElem(sels[:num])
+		stw.Redraw()
+		if stw.Yn("ELEM DUPLICATION", "重なった部材を削除しますか?") {
+			for el := range els2 {
+				if el.Lock {
+					continue
+				}
+				frame.DeleteElem(el.Num)
+			}
+			Snapshot(stw)
+		} else {
+			return
+		}
+	}
+	stw.Deselect()
+	ns, els, ok := frame.Check()
+	if !ok {
+		stw.SelectNode(ns)
+		stw.SelectElem(els)
+		stw.Redraw()
+		if stw.Yn("CHECK FRAME", "無効な節点と部材を削除しますか？") {
+			for _, n := range els {
+				if n.Lock {
+					continue
+				}
+				frame.DeleteNode(n.Num)
+			}
+			for _, el := range els {
+				if el.Lock {
+					continue
+				}
+				frame.DeleteElem(el.Num)
+			}
+			Snapshot(stw)
+		} else {
+			return
+		}
+	}
+	stw.Deselect()
+	if !frame.IsUpside() {
+		if stw.Yn("CHECK FRAME", "部材の向きを修正しますか？") {
+			frame.Upside()
+			Snapshot(stw)
+		} else {
+			return
+		}
+	}
+	stw.Deselect()
+}
+
 func AddSelection(stw Selector, entity interface{}) {
 	switch en := entity.(type) {
 	case *Node:

@@ -982,7 +982,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":check")
 		}
-		stw.CheckFrame()
+		CheckFrame(stw)
 		return Message("CHECKED")
 	case "elemduplication":
 		if usage {

@@ -341,9 +341,6 @@ func (stw *Window) ReadPgp(string) error {
 	return nil
 }
 
-func (stw *Window) CheckFrame() {
-}
-
 func (stw *Window) ShapeData(st.Shape) {
 }
 

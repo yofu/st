@@ -39,7 +39,6 @@ type ExModer interface {
 	SearchFile(string) (string, error)
 	Close(bool)
 	ReadPgp(string) error
-	CheckFrame()
 	ShapeData(Shape)
 	ToggleFixRotate()
 	ToggleFixMove()
