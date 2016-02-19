@@ -104,7 +104,6 @@ func (stw *Window) Start() {
 	}
 	stw.window = w
 	defer stw.window.Release()
-	stw.OpenFile(fmt.Sprintf("%s/Downloads/yokofolly13.inp", os.Getenv("HOME")), false)
 	stw.Redraw()
 	var sz size.Event
 	for {
@@ -116,7 +115,6 @@ func (stw *Window) Start() {
 			}
 		case key.Event:
 			if e.Direction == key.DirRelease {
-				fmt.Println(e.Code)
 				kc := keymap(e)
 				switch kc.Code {
 				default:
@@ -156,14 +154,12 @@ func (stw *Window) Start() {
 					stw.frame.View.Angle[0] += float64(int(e.Y)-startY) * 0.01
 					stw.frame.View.Angle[1] -= float64(int(e.X)-startX) * 0.01
 					stw.Redraw()
-					stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
 					stw.window.Publish()
 				}
 			case mouse.DirRelease:
 				endX = int(e.X)
 				endY = int(e.Y)
 				stw.Redraw()
-				stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
 				stw.window.Publish()
 				switch e.Button {
 				case mouse.ButtonLeft:
@@ -208,6 +204,7 @@ func (stw *Window) Redraw() {
 	stw.frame.View.Center[0] = 512
 	stw.frame.View.Center[1] = 512
 	st.DrawFrame(stw, stw.frame, st.ECOLOR_SECT, true)
+	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
 }
 
 func (stw *Window) FeedCommand() {
