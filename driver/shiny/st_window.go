@@ -221,7 +221,7 @@ func (stw *Window) ExecCommand(command string) {
 		if strings.HasPrefix(command, ":") {
 			err := st.ExMode(stw, stw.frame, command)
 			if err != nil {
-				stw.ErrorMessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 			}
 		} else if strings.HasPrefix(command, "'") {
 			// err := st.Fig2Mode(stw, stw.frame, command)
@@ -237,7 +237,7 @@ func (stw *Window) ExecCommand(command string) {
 	case strings.HasPrefix(command, ":"):
 		err := st.ExMode(stw, stw.frame, command)
 		if err != nil {
-			stw.ErrorMessage(err, st.ERROR)
+			st.ErrorMessage(stw, err, st.ERROR)
 		}
 		// case strings.HasPrefix(command, "'"):
 		// 	err := st.Fig2Mode(stw, stw.frame, command)
@@ -283,10 +283,6 @@ func (stw *Window) History(str string) {
 	fmt.Println(str)
 }
 
-func (stw *Window) ErrorMessage(err error, level int) {
-	st.ErrorMessage(stw, err, level)
-}
-
 func (stw *Window) CompleteFileName(str string) string {
 	path := ""
 	if stw.frame != nil {
@@ -295,10 +291,6 @@ func (stw *Window) CompleteFileName(str string) string {
 	completes = st.CompleteFileName(str, path, stw.Recent())
 	completepos = 0
 	return completes[0]
-}
-
-func (stw *Window) HomeDir() string {
-	return stw.Home()
 }
 
 func (stw *Window) Print() {
@@ -321,11 +313,7 @@ func (stw *Window) Yna(string, string, string) int {
 }
 
 func (stw *Window) SaveAS() {
-	stw.SaveFile("hogtxt.inp")
-}
-
-func (stw *Window) SaveFile(fn string) error {
-	return st.SaveFile(stw, fn)
+	st.SaveFile(stw, "hogtxt.inp")
 }
 
 func (stw *Window) GetCanvasSize() (int, int) {
@@ -338,9 +326,6 @@ func (stw *Window) SaveFileSelected(string) error {
 
 func (stw *Window) SearchFile(string) (string, error) {
 	return "", nil
-}
-
-func (stw *Window) Reload() {
 }
 
 func (stw *Window) Close(bool) {
@@ -377,10 +362,6 @@ func (stw *Window) CheckFrame() {
 }
 
 func (stw *Window) SelectConfed() {
-}
-
-func (stw *Window) Rebase(fn string) {
-	st.Rebase(stw, fn)
 }
 
 func (stw *Window) ShowRecently() {
