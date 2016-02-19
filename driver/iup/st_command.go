@@ -1626,7 +1626,7 @@ func openinput(stw *Window) {
 
 // SAVE// {{{
 func saveinput(stw *Window) {
-	stw.SaveFile(stw.frame.Path)
+	st.SaveFile(stw, stw.frame.Path)
 	stw.EscapeAll()
 }
 

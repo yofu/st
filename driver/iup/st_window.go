@@ -402,7 +402,7 @@ func NewWindow(homedir string) *Window { // {{{
 					iup.Attr("TITLE", "Reload\tCtrl+M"),
 					func(arg *iup.ItemAction) {
 						runtime.GC()
-						stw.Reload()
+						st.Reload(stw)
 					},
 				),
 				iup.Item(
@@ -769,7 +769,7 @@ func NewWindow(homedir string) *Window { // {{{
 		func(arg *iup.CanvasDropFiles) {
 			switch filepath.Ext(arg.FileName) {
 			case ".inp", ".dxf":
-				stw.OpenFile(arg.FileName, true)
+				st.OpenFile(stw, arg.FileName, true)
 				stw.Redraw()
 			default:
 				if stw.frame != nil {
@@ -989,7 +989,7 @@ func NewWindow(homedir string) *Window { // {{{
 				}
 			case 'M':
 				if key.IsCtrl() {
-					stw.Reload()
+					st.Reload(stw)
 				}
 			case 'S':
 				if key.IsCtrl() {
@@ -1249,7 +1249,7 @@ func NewWindow(homedir string) *Window { // {{{
 				if stw.InpModified {
 					stw.InpModified = false
 					if stw.Yn("RELOAD", fmt.Sprintf(".inpをリロードしますか？")) {
-						stw.Reload()
+						st.Reload(stw)
 					}
 				}
 				stw.Redraw()
@@ -1392,7 +1392,7 @@ func (stw *Window) New() {
 // Open// {{{
 func (stw *Window) Open() {
 	if name, ok := iup.GetOpenFile(stw.Cwd(), "*.inp"); ok {
-		err := stw.OpenFile(name, true)
+		err := st.OpenFile(stw, name, true)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -1478,7 +1478,7 @@ func (stw *Window) SearchInp() {
 		}
 	}
 	openfile := func(fn string) {
-		err := stw.OpenFile(fn, true)
+		err := st.OpenFile(stw, fn, true)
 		if err != nil {
 			st.ErrorMessage(stw, err, st.ERROR)
 		}
@@ -1588,87 +1588,14 @@ func (stw *Window) Insert() {
 	stw.ExecCommand("INSERT")
 }
 
-func (stw *Window) Reload() {
-	if stw.frame != nil {
-		stw.Deselect()
-		v := stw.frame.View
-		s := stw.frame.Show
-		stw.OpenFile(stw.frame.Path, false)
-		stw.frame.View = v
-		stw.frame.Show = s
-		stw.Redraw()
-	}
-}
-
 func (stw *Window) OpenDxf() {
 	if name, ok := iup.GetOpenFile(stw.Cwd(), "*.dxf"); ok {
-		err := stw.OpenFile(name, true)
+		err := st.OpenFile(stw, name, true)
 		if err != nil {
 			fmt.Println(err)
 		}
 		stw.Redraw()
 	}
-}
-
-func (stw *Window) OpenFile(filename string, readrcfile bool) error {
-	var err error
-	var s *st.Show
-	fn := st.ToUtf8string(filename)
-	frame := st.NewFrame()
-	if stw.frame != nil {
-		s = stw.frame.Show
-	}
-	w, h := stw.cdcanv.GetSize()
-	stw.CanvasSize = []float64{float64(w), float64(h)}
-	frame.View.Center[0] = stw.CanvasSize[0] * 0.5
-	frame.View.Center[1] = stw.CanvasSize[1] * 0.5
-	switch filepath.Ext(fn) {
-	case ".inp":
-		err = frame.ReadInp(fn, []float64{0.0, 0.0, 0.0}, 0.0, false)
-		if err != nil {
-			return err
-		}
-		stw.frame = frame
-		stw.WatchFile(fn)
-	case ".dxf":
-		err = frame.ReadDxf(fn, []float64{0.0, 0.0, 0.0}, EPS)
-		if err != nil {
-			return err
-		}
-		stw.frame = frame
-		frame.SetFocus(nil)
-		stw.DrawFrameNode()
-		stw.ShowCenter()
-	}
-	if s != nil {
-		stw.frame.Show = s
-		for snum := range stw.frame.Sects {
-			if _, ok := stw.frame.Show.Sect[snum]; !ok {
-				stw.frame.Show.Sect[snum] = true
-			}
-		}
-	}
-	stw.frame.Show.LegendPosition[0] = int(stw.CanvasSize[0]) - 100
-	stw.frame.Show.LegendPosition[1] = dataareaheight - int(float64((len(st.RainbowColor)+1)*stw.frame.Show.LegendSize)*stw.frame.Show.LegendLineSep)
-	openstr := fmt.Sprintf("OPEN: %s", fn)
-	stw.addHistory(openstr)
-	stw.Dlg.SetAttribute("TITLE", stw.frame.Name)
-	stw.frame.Home = stw.Home()
-	stw.LinkTextValue()
-	stw.SetCwd(filepath.Dir(fn))
-	if stw.complete != nil {
-		stw.complete.Chdir(stw.Cwd())
-	}
-	stw.AddRecent(fn)
-	stw.Snapshot()
-	stw.changed = false
-	stw.HideLogo()
-	if readrcfile {
-		if rcfn := filepath.Join(stw.Cwd(), ResourceFileName); st.FileExists(rcfn) {
-			stw.ReadResource(rcfn)
-		}
-	}
-	return nil
 }
 
 func (stw *Window) WatchFile(fn string) {
@@ -1713,17 +1640,17 @@ func (stw *Window) WatchFile(fn string) {
 
 // Save// {{{
 func (stw *Window) Save() {
-	stw.SaveFile(filepath.Join(stw.Home(), "hogtxt.inp"))
+	st.SaveFile(stw, filepath.Join(stw.Home(), "hogtxt.inp"))
 }
 
 func (stw *Window) SaveAS() {
 	var err error
 	if name, ok := iup.GetSaveFile(filepath.Dir(stw.frame.Path), "*.inp"); ok {
 		fn := st.Ce(name, ".inp")
-		err = stw.SaveFile(fn)
+		err = st.SaveFile(stw, fn)
 		if err == nil && fn != stw.frame.Path {
 			stw.Copylsts(name)
-			stw.Rebase(fn)
+			st.Rebase(stw, fn)
 		}
 	}
 }
@@ -1741,47 +1668,6 @@ func (stw *Window) Copylsts(name string) {
 			}
 		}
 	}
-}
-
-func (stw *Window) Rebase(fn string) {
-	stw.frame.Name = filepath.Base(fn)
-	stw.frame.Project = st.ProjectName(fn)
-	path, err := filepath.Abs(fn)
-	if err != nil {
-		stw.frame.Path = fn
-	} else {
-		stw.frame.Path = path
-	}
-	stw.Dlg.SetAttribute("TITLE", stw.frame.Name)
-	stw.frame.Home = stw.Home()
-	stw.AddRecent(fn)
-}
-
-func (stw *Window) SaveFile(fn string) error {
-	var v *st.View
-	if !stw.frame.View.Perspective {
-		v = stw.frame.View.Copy()
-		stw.frame.View.Gfact = 1.0
-		stw.frame.View.Perspective = true
-		for _, n := range stw.frame.Nodes {
-			stw.frame.View.ProjectNode(n)
-		}
-		xmin, xmax, ymin, ymax := stw.Bbox()
-		w, h := stw.cdcanv.GetSize()
-		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * stw.CanvasFitScale()
-		stw.frame.View.Dists[1] *= scale
-	}
-	passwatcher = true
-	err := stw.frame.WriteInp(fn)
-	if v != nil {
-		stw.frame.View = v
-	}
-	if err != nil {
-		return err
-	}
-	st.ErrorMessage(stw, errors.New(fmt.Sprintf("SAVE: %s", fn)), st.INFO)
-	stw.changed = false
-	return nil
 }
 
 func (stw *Window) SaveFileSelected(fn string) error {
@@ -4672,7 +4558,7 @@ func (stw *Window) CMenu() {
 					iup.Attr("TITLE", "Reload\tCtrl+M"),
 					func(arg *iup.ItemAction) {
 						runtime.GC()
-						stw.Reload()
+						st.Reload(stw)
 					},
 				),
 				iup.Item(
