@@ -73,10 +73,6 @@ func NewWindow(s screen.Screen) *Window {
 	}
 }
 
-func (stw *Window) OpenFile(fn string, readrcfile bool) error {
-	return st.OpenFile(stw, fn, readrcfile)
-}
-
 func keymap(ev key.Event) key.Event {
 	switch ev.Code {
 	default:
