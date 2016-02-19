@@ -23,23 +23,17 @@ const (
 
 type ExModer interface {
 	Selector
+	Window
 	LastExCommand() string
 	SetLastExCommand(string)
-	History(string)
 	ErrorMessage(error, int)
 	CompleteFileName(string) string
-	Cwd() string
-	HomeDir() string
 	Print()
-	IsChanged() bool
 	Yn(string, string) bool
 	Yna(string, string, string) int
 	SaveAS()
-	SaveFile(string) error
 	SaveFileSelected(string) error
 	SearchFile(string) (string, error)
-	OpenFile(string, bool) error
-	Reload()
 	Close(bool)
 	Checkout(string) error
 	AddTag(string, bool) error
@@ -50,17 +44,9 @@ type ExModer interface {
 	ReadFig2(string) error
 	CheckFrame()
 	SelectConfed()
-	Rebase(string)
 	ShowRecently()
 	ShapeData(Shape)
-	Snapshot()
 	UseUndo(bool)
-	EPS() float64
-	SetEPS(float64)
-	CanvasFitScale() float64
-	SetCanvasFitScale(float64)
-	CanvasAnimateSpeed() float64
-	SetCanvasAnimateSpeed(float64)
 	ToggleFixRotate()
 	ToggleFixMove()
 	ToggleAltSelectNode()
@@ -80,7 +66,6 @@ type ExModer interface {
 	Pivot() bool
 	DrawPivot([]*Node, chan int, chan int)
 	SetColorMode(uint)
-	Redraw()
 	SetConf([]bool)
 }
 

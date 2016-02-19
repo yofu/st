@@ -27,8 +27,14 @@ type Window interface {
 	Snapshot()
 	GetCanvasSize() (int, int)
 	CanvasFitScale() float64
+	SetCanvasFitScale(float64)
+	CanvasAnimateSpeed() float64
+	SetCanvasAnimateSpeed(float64)
 	Changed(bool)
+	IsChanged() bool
+	Redraw()
 	EPS() float64
+	SetEPS(float64)
 }
 
 func ErrorMessage(stw Window, err error, level int) {

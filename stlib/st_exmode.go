@@ -295,20 +295,20 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				if err != nil {
 					return err
 				}
-				err = stw.OpenFile(sfn, readrc)
+				err = OpenFile(stw, sfn, readrc)
 				if err != nil {
 					return err
 				}
 				// stw.Redraw()
 			} else {
-				err := stw.OpenFile(fn, readrc)
+				err := OpenFile(stw, fn, readrc)
 				if err != nil {
 					return err
 				}
 				// stw.Redraw()
 			}
 		} else {
-			stw.Reload()
+			Reload(stw)
 		}
 	case "quit":
 		if usage {
@@ -537,10 +537,10 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			return Usage(":write")
 		}
 		if fn == "" {
-			stw.SaveFile(frame.Path)
+			SaveFile(stw, frame.Path)
 		} else {
 			if bang || (!FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
-				err := stw.SaveFile(fn)
+				err := SaveFile(stw, fn)
 				if err != nil {
 					return err
 				}
@@ -573,13 +573,13 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 					return err
 				}
 				stw.Deselect()
-				err = stw.OpenFile(fn, readrc)
+				err = OpenFile(stw, fn, readrc)
 				if err != nil {
 					return err
 				}
 				stw.Copylsts(fn)
 			} else {
-				err = stw.SaveFile(fn)
+				err = SaveFile(stw, fn)
 			}
 			if err != nil {
 				return err
@@ -587,7 +587,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			if fn != frame.Path {
 				stw.Copylsts(fn)
 			}
-			stw.Rebase(fn)
+			Rebase(stw, fn)
 		}
 	case "increment":
 		if usage {
@@ -618,14 +618,14 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			return err
 		}
 		if bang || (!FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
-			err := stw.SaveFile(fn)
+			err := SaveFile(stw, fn)
 			if err != nil {
 				return err
 			}
 			if fn != frame.Path {
 				stw.Copylsts(fn)
 			}
-			stw.Rebase(fn)
+			Rebase(stw, fn)
 			stw.Snapshot()
 			EditReadme(filepath.Dir(fn))
 		}
@@ -891,7 +891,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		if usage {
 			return Usage(":weightcopy {-si}")
 		}
-		wgt := filepath.Join(stw.HomeDir(), "hogtxt.wgt")
+		wgt := filepath.Join(stw.Home(), "hogtxt.wgt")
 		if fn == "" {
 			fn = Ce(frame.Path, ".wgt")
 		}
