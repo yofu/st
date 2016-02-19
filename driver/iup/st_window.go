@@ -35,7 +35,6 @@ var (
 	SearchingInpsDone  chan bool
 	DoubleClickCommand = []string{"TOGGLEBOND", "EDITPLATEELEM"}
 	comhistpos         int
-	undopos            int
 	prevkey            int
 	clineinput         string
 	logf               os.File
@@ -50,7 +49,6 @@ var (
 	pgpfile         = filepath.Join(home, ".st/st.pgp")
 	historyfn       = filepath.Join(home, ".st/history.dat")
 	analysiscommand = "C:/an/an.exe"
-	NOUNDO          = false
 	ALTSELECTNODE   = true
 )
 
@@ -60,7 +58,6 @@ const ResourceFileName = ".strc"
 
 const (
 	windowSize   = "FULLxFULL"
-	nUndo        = 10
 )
 
 // Font
@@ -197,6 +194,7 @@ type Window struct { // {{{
 	*st.DrawOption
 	*st.Directory
 	*st.RecentFiles
+	*st.UndoStack
 
 	frame                  *st.Frame
 	Dlg                    *iup.Handle
@@ -251,7 +249,6 @@ type Window struct { // {{{
 	changed     bool
 
 	comhist     []string
-	undostack   []*st.Frame
 	taggedFrame map[string]*st.Frame
 
 	complete     *complete.Complete
@@ -267,6 +264,7 @@ func NewWindow(homedir string) *Window { // {{{
 		DrawOption:   st.NewDrawOption(),
 		Directory:    st.NewDirectory(homedir, homedir),
 		RecentFiles:  st.NewRecentFiles(3),
+		UndoStack:    st.NewUndoStack(10),
 	}
 	stw.selectNode = make([]*st.Node, 0)
 	stw.selectElem = make([]*st.Elem, 0)
@@ -1277,9 +1275,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.SetCoord(0.0, 0.0, 0.0)
 	stw.ReadRecent()
 	stw.SetCommandHistory()
-	stw.undostack = make([]*st.Frame, nUndo)
 	stw.taggedFrame = make(map[string]*st.Frame)
-	undopos = 0
 	StartLogging()
 	err := stw.ReadPgp(pgpfile)
 	if err != nil {
@@ -1309,51 +1305,10 @@ func (stw *Window) FocusCanv() {
 
 func (stw *Window) Snapshot() {
 	stw.changed = true
-	if NOUNDO {
+	if !stw.UndoEnabled() {
 		return
 	}
-	tmp := make([]*st.Frame, nUndo)
-	tmp[0] = stw.frame.Snapshot()
-	for i := 0; i < nUndo-1-undopos; i++ {
-		tmp[i+1] = stw.undostack[i+undopos]
-	}
-	stw.undostack = tmp
-	undopos = 0
-}
-
-func (stw *Window) Redo() {
-	if NOUNDO {
-		stw.addHistory("undo/redo is off")
-		return
-	}
-	undopos--
-	if undopos < 0 {
-		stw.addHistory("cannot redo any more")
-		undopos = 0
-		return
-	}
-	stw.frame = stw.undostack[undopos].Snapshot()
-	stw.Redraw()
-}
-
-func (stw *Window) Undo() {
-	if NOUNDO {
-		stw.addHistory("undo/redo is off")
-		return
-	}
-	undopos++
-	if undopos >= nUndo {
-		stw.addHistory("cannot undo any more")
-		undopos = nUndo - 1
-		return
-	}
-	if stw.undostack[undopos] == nil {
-		stw.addHistory("cannot undo any more")
-		undopos--
-		return
-	}
-	stw.frame = stw.undostack[undopos].Snapshot()
-	stw.Redraw()
+	stw.PushUndo(stw.frame)
 }
 
 func (stw *Window) Chdir(dir string) error {
@@ -4354,13 +4309,23 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		}
 	case 'Y':
 		if key.IsCtrl() {
-			stw.Redo()
+			frame, err := stw.Redo()
+			if err != nil {
+				st.ErrorMessage(stw, err, st.ERROR)
+			} else {
+				stw.frame = frame
+			}
 		}
 	case 'Z':
 		switch keymode {
 		case NORMAL:
 			if key.IsCtrl() {
-				stw.Undo()
+				frame, err := stw.Undo()
+				if err != nil {
+					st.ErrorMessage(stw, err, st.ERROR)
+				} else {
+					stw.frame = frame
+				}
 			}
 		case VIEWEDIT:
 			var val float64
@@ -6462,10 +6427,6 @@ func (stw *Window) AddTag(name string, bang bool) error {
 	}
 	stw.taggedFrame[name] = stw.frame.Snapshot()
 	return nil
-}
-
-func (stw *Window) UseUndo(yes bool) {
-	NOUNDO = !yes
 }
 
 func (stw *Window) EPS() float64 {

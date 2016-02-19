@@ -47,6 +47,7 @@ type Window struct {
 	*st.DrawOption
 	*st.Directory
 	*st.RecentFiles
+	*st.UndoStack
 	frame        *st.Frame
 	screen       screen.Screen
 	window       screen.Window
@@ -62,6 +63,7 @@ func NewWindow(s screen.Screen) *Window {
 		DrawOption:   st.NewDrawOption(),
 		Directory:    st.NewDirectory("", ""),
 		RecentFiles:  st.NewRecentFiles(3),
+		UndoStack:    st.UndoStack(10),
 		frame:        st.NewFrame(),
 		screen:       s,
 		window:       nil,

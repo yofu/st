@@ -15,17 +15,12 @@ import (
 )
 
 var (
-	undopos     int
 	completepos int
 	completes   []string
 )
 
 var (
 	EPS = 1e-4
-)
-
-const (
-	nUndo        = 10
 )
 
 const ResourceFileName = ".strc"
@@ -36,12 +31,12 @@ var (
 	releasenote = filepath.Join(home, ".st/help/releasenote.html")
 	pgpfile     = filepath.Join(home, ".st/st.pgp")
 	historyfn   = filepath.Join(home, ".st/history.dat")
-	NOUNDO      = false
 )
 
 type Window struct {
 	*st.Directory
 	*st.RecentFiles
+	*st.UndoStack
 	prompt string
 
 	frame *st.Frame
@@ -58,7 +53,6 @@ type Window struct {
 
 	changed bool
 
-	undostack   []*st.Frame
 	taggedFrame map[string]*st.Frame
 
 	quit chan int
@@ -68,6 +62,7 @@ func NewWindow(homedir string) *Window {
 	stw := &Window{
 		Directory: st.NewDirectory(homedir, homedir),
 		RecentFiles: st.NewRecentFiles(3),
+		UndoStack:    st.NewUndoStack(10),
 	}
 	stw.prompt = ">"
 	stw.selectNode = make([]*st.Node, 0)
@@ -76,9 +71,7 @@ func NewWindow(homedir string) *Window {
 	stw.textBox = make(map[string]*TextBox, 0)
 	stw.changed = false
 	stw.ReadRecent()
-	stw.undostack = make([]*st.Frame, nUndo)
 	stw.taggedFrame = make(map[string]*st.Frame)
-	undopos = 0
 	stw.quit = make(chan int)
 	return stw
 }
@@ -482,20 +475,10 @@ func (stw *Window) ShapeData(sh st.Shape) {
 
 func (stw *Window) Snapshot() {
 	stw.changed = true
-	if NOUNDO {
+	if !stw.UndoEnabled() {
 		return
 	}
-	tmp := make([]*st.Frame, nUndo)
-	tmp[0] = stw.frame.Snapshot()
-	for i := 0; i < nUndo-1-undopos; i++ {
-		tmp[i+1] = stw.undostack[i+undopos]
-	}
-	stw.undostack = tmp
-	undopos = 0
-}
-
-func (stw *Window) UseUndo(yes bool) {
-	NOUNDO = !yes
+	stw.PushUndo(stw.frame)
 }
 
 func (stw *Window) EPS() float64 {
