@@ -14,6 +14,10 @@ import (
 
 const ResourceFileName = ".strc"
 
+const (
+	dataareaheight          = 150
+)
+
 type Window interface {
 	Frame() *Frame
 	SetFrame(*Frame)
@@ -60,21 +64,23 @@ func OpenFile(stw Window, filename string, readrcfile bool) error {
 	if frame != nil {
 		s = frame.Show
 	}
+	w, h := stw.GetCanvasSize()
+	frame.View.Center[0] = float64(w) * 0.5
+	frame.View.Center[1] = float64(h) * 0.5
 	switch filepath.Ext(fn) {
 	case ".inp":
 		err = newframe.ReadInp(fn, []float64{0.0, 0.0, 0.0}, 0.0, false)
 		if err != nil {
 			return err
 		}
-		stw.SetFrame(newframe)
 	case ".dxf":
 		err = newframe.ReadDxf(fn, []float64{0.0, 0.0, 0.0}, stw.EPS())
 		if err != nil {
 			return err
 		}
 		newframe.SetFocus(nil)
-		stw.SetFrame(newframe)
 	}
+	stw.SetFrame(newframe)
 	frame = stw.Frame()
 	if s != nil {
 		frame.Show = s
@@ -84,6 +90,8 @@ func OpenFile(stw Window, filename string, readrcfile bool) error {
 			}
 		}
 	}
+	frame.Show.LegendPosition[0] = int(w) - 100
+	frame.Show.LegendPosition[1] = dataareaheight - int(float64((len(RainbowColor)+1)*frame.Show.LegendSize)*frame.Show.LegendLineSep)
 	stw.History(fmt.Sprintf("OPEN: %s", fn))
 	frame.Home = stw.Home()
 	stw.SetCwd(filepath.Dir(fn))
