@@ -17,13 +17,8 @@ import (
 )
 
 var (
-	undopos     int
 	completepos int
 	completes   []string
-)
-
-const (
-	nUndo        = 10
 )
 
 var (
@@ -63,7 +58,7 @@ func NewWindow(s screen.Screen) *Window {
 		DrawOption:   st.NewDrawOption(),
 		Directory:    st.NewDirectory("", ""),
 		RecentFiles:  st.NewRecentFiles(3),
-		UndoStack:    st.UndoStack(10),
+		UndoStack:    st.NewUndoStack(10),
 		frame:        st.NewFrame(),
 		screen:       s,
 		window:       nil,
@@ -380,12 +375,6 @@ func (stw *Window) ShowRecently() {
 }
 
 func (stw *Window) ShapeData(st.Shape) {
-}
-
-func (stw *Window) Snapshot() {
-}
-
-func (stw *Window) UseUndo(bool) {
 }
 
 func (stw *Window) EPS() float64 {
