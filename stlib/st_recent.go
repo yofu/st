@@ -27,7 +27,7 @@ func (r *RecentFiles) Recent() []string {
 	return r.filenames
 }
 
-func (r *RecentFiles) AddRecently(fn string) error {
+func (r *RecentFiles) AddRecent(fn string) error {
 	fn = filepath.ToSlash(fn)
 	for i := r.size - 1; i > 0; i-- {
 		r.filenames[i] = r.filenames[i-1]

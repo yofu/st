@@ -23,7 +23,7 @@ type Window interface {
 	SetCwd(string)
 	ExecCommand(string)
 	History(string)
-	AddRecently(string) error
+	AddRecent(string) error
 	Snapshot()
 	GetCanvasSize() (int, int)
 	CanvasFitScale() float64
@@ -87,7 +87,7 @@ func OpenFile(stw Window, filename string, readrcfile bool) error {
 	stw.History(fmt.Sprintf("OPEN: %s", fn))
 	frame.Home = stw.Home()
 	stw.SetCwd(filepath.Dir(fn))
-	stw.AddRecently(fn)
+	stw.AddRecent(fn)
 	stw.Snapshot()
 	stw.Changed(false)
 	if readrcfile {
@@ -109,7 +109,7 @@ func Rebase(stw Window, fn string) {
 		frame.Path = path
 	}
 	frame.Home = stw.Home()
-	stw.AddRecently(fn)
+	stw.AddRecent(fn)
 }
 
 func Reload(stw Window) {

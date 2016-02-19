@@ -1657,7 +1657,7 @@ func (stw *Window) OpenFile(filename string, readrcfile bool) error {
 	if stw.complete != nil {
 		stw.complete.Chdir(stw.Cwd())
 	}
-	stw.AddRecently(fn)
+	stw.AddRecent(fn)
 	stw.Snapshot()
 	stw.changed = false
 	stw.HideLogo()
@@ -1752,7 +1752,7 @@ func (stw *Window) Rebase(fn string) {
 	}
 	stw.Dlg.SetAttribute("TITLE", stw.frame.Name)
 	stw.frame.Home = stw.Home()
-	stw.AddRecently(fn)
+	stw.AddRecent(fn)
 }
 
 func (stw *Window) SaveFile(fn string) error {
