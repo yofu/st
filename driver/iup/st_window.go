@@ -460,6 +460,7 @@ func NewWindow(homedir string) *Window { // {{{
 								return
 							}
 						}
+						stw.SaveRecent()
 						arg.Return = iup.CLOSE
 					},
 				),
@@ -1240,6 +1241,7 @@ func NewWindow(homedir string) *Window { // {{{
 					return
 				}
 			}
+			stw.SaveRecent()
 			arg.Return = iup.CLOSE
 		},
 		func(arg *iup.CommonGetFocus) {
@@ -1820,6 +1822,7 @@ func (stw *Window) Close(force bool) {
 			return
 		}
 	}
+	stw.SaveRecent()
 	stw.Dlg.Destroy()
 }
 
@@ -4718,6 +4721,7 @@ func (stw *Window) CMenu() {
 								return
 							}
 						}
+						stw.SaveRecent()
 						arg.Return = iup.CLOSE
 					},
 				),
