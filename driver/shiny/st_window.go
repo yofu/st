@@ -358,9 +358,6 @@ func (stw *Window) ReadFig2(string) error {
 func (stw *Window) CheckFrame() {
 }
 
-func (stw *Window) SelectConfed() {
-}
-
 func (stw *Window) ShapeData(st.Shape) {
 }
 

@@ -23,7 +23,6 @@ const (
 
 type ExModer interface {
 	Selector
-	Window
 	LastExCommand() string
 	SetLastExCommand(string)
 	CompleteFileName(string) string
@@ -42,7 +41,6 @@ type ExModer interface {
 	ReadPgp(string) error
 	ReadFig2(string) error
 	CheckFrame()
-	SelectConfed()
 	ShapeData(Shape)
 	UseUndo(bool)
 	ToggleFixRotate()

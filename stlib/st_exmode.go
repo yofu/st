@@ -807,7 +807,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			return err
 		}
 		if _, ok := argdict["CONFED"]; ok {
-			stw.SelectConfed()
+			SelectConfed(stw)
 		}
 		if !stw.NodeSelected () {
 			return errors.New(":writereaction: no selected node")

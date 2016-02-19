@@ -415,9 +415,6 @@ func (stw *Window) SelectedNodes() []*st.Node {
 	return stw.selectNode
 }
 
-func (stw *Window) SelectConfed() {
-}
-
 func (stw *Window) Deselect() {
 	stw.selectNode = make([]*st.Node, 0)
 	stw.selectElem = make([]*st.Elem, 0)

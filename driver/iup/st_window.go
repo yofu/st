@@ -6473,10 +6473,6 @@ func (stw *Window) SelectedNodes() []*st.Node {
 	return stw.selectNode
 }
 
-func (stw *Window) SelectConfed() {
-	selectconfed(stw)
-}
-
 func (stw *Window) History(str string) {
 	stw.addHistory(str)
 }

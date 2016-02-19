@@ -1,6 +1,7 @@
 package st
 
 type Selector interface {
+	Window
 	SelectedElems() []*Elem
 	SelectedNodes() []*Node
 	SelectElem([]*Elem)
@@ -8,6 +9,26 @@ type Selector interface {
 	ElemSelected() bool
 	NodeSelected() bool
 	Deselect()
+}
+
+func SelectConfed(stw Selector) {
+	stw.Deselect()
+	num := 0
+	frame := stw.Frame()
+	nodes := make([]*Node, len(frame.Nodes))
+	for _, n := range frame.Nodes {
+		if n.IsHidden(frame.Show) {
+			continue
+		}
+		for i := 0; i < 6; i++ {
+			if n.Conf[i] {
+				nodes = append(nodes, n)
+				num++
+				break
+			}
+		}
+	}
+	stw.SelectNode(nodes[:num])
 }
 
 func AddSelection(stw Selector, entity interface{}) {
