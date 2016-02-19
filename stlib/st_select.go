@@ -2,6 +2,8 @@ package st
 
 type Selector interface {
 	Window
+
+	// Selection
 	SelectedElems() []*Elem
 	SelectedNodes() []*Node
 	SelectElem([]*Elem)

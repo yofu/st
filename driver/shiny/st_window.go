@@ -44,6 +44,7 @@ type Window struct {
 	*st.RecentFiles
 	*st.UndoStack
 	*st.TagFrame
+	*st.Selection
 	frame        *st.Frame
 	screen       screen.Screen
 	window       screen.Window
@@ -61,6 +62,7 @@ func NewWindow(s screen.Screen) *Window {
 		RecentFiles:  st.NewRecentFiles(3),
 		UndoStack:    st.NewUndoStack(10),
 		TagFrame:     st.NewTagFrame(),
+		Selection:    st.NewSelection(),
 		frame:        st.NewFrame(),
 		screen:       s,
 		window:       nil,
@@ -242,31 +244,6 @@ func (stw *Window) ExecCommand(command string) {
 		// 		stw.ErrorMessage(err, st.ERROR)
 		// 	}
 	}
-}
-
-func (stw *Window) SelectedElems() []*st.Elem {
-	return nil
-}
-
-func (stw *Window) SelectedNodes() []*st.Node {
-	return nil
-}
-
-func (stw *Window) SelectElem([]*st.Elem) {
-}
-
-func (stw *Window) SelectNode([]*st.Node) {
-}
-
-func (stw *Window) ElemSelected() bool {
-	return false
-}
-
-func (stw *Window) NodeSelected() bool {
-	return false
-}
-
-func (stw *Window) Deselect() {
 }
 
 func (stw *Window) LastExCommand() string {

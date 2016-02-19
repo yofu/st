@@ -130,7 +130,7 @@ func tensegrityconnected(stw *Window) {
 		var tmpelems []*st.Elem
 		var num int
 		var el0 *st.Elem
-		for _, el := range stw.selectElem {
+		for _, el := range stw.SelectedElems() {
 			if el != nil {
 				el0 = el
 				break
@@ -182,7 +182,7 @@ func tensegrityconnected(stw *Window) {
 					}
 				}
 			}
-			stw.selectElem = tmpelems[:num]
+			stw.SelectElem(tmpelems[:num])
 			stw.Redraw()
 		}
 	}, 201, 211, 0)
@@ -195,7 +195,7 @@ func tensegrityadd(stw *Window) {
 	tensegrity(stw, func(cs, ts, sz int) {
 		var tmpelems []*st.Elem
 		var num int
-		for _, el := range stw.selectElem {
+		for _, el := range stw.SelectedElems() {
 			if el == nil {
 				continue
 			}
@@ -208,7 +208,7 @@ func tensegrityadd(stw *Window) {
 				}
 			}
 		}
-		stw.selectElem = tmpelems[:num]
+		stw.SelectElem(tmpelems[:num])
 		stw.Redraw()
 		if stw.Yn("TENSEGRITY ADD", "部材を追加しますか?") {
 			for _, el := range tmpelems[:num] {
@@ -225,8 +225,8 @@ func tensegritydelete(stw *Window) {
 	}
 	tensegrity(stw, func(cs, ts, sz int) {
 		del := false
-		stw.selectElem = make([]*st.Elem, 0)
-		for _, n := range stw.selectNode {
+		stw.SelectElem(make([]*st.Elem, 0))
+		for _, n := range stw.SelectedNodes() {
 			var tens []*st.Elem
 			var tnum int
 			for _, el := range stw.frame.SearchElem(n) {
@@ -259,8 +259,10 @@ func tensegritydelete(stw *Window) {
 				for i, k := range keys {
 					sortedelems[i] = elems[k]
 				}
-				stw.selectElem = append(stw.selectElem, sortedelems[:tnum-sz]...) // valが小さいものを削除
-				// stw.selectElem = append(stw.selectElem, sortedelems[sz:]...) // valが大きいものを削除
+				for _, el := range sortedelems[:tnum-sz] { // valが小さいものを削除
+				// for _, el := range sortedelems[sz:] { // valが大きいものを削除
+					st.AddSelection(stw, el)
+				}
 			}
 		}
 		stw.Redraw()

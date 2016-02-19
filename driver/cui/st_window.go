@@ -37,12 +37,10 @@ type Window struct {
 	*st.RecentFiles
 	*st.UndoStack
 	*st.TagFrame
+	*st.Selection
 	prompt string
 
 	frame *st.Frame
-
-	selectNode []*st.Node
-	selectElem []*st.Elem
 
 	textBox map[string]*TextBox
 
@@ -62,10 +60,9 @@ func NewWindow(homedir string) *Window {
 		RecentFiles: st.NewRecentFiles(3),
 		UndoStack:   st.NewUndoStack(10),
 		TagFrame:    st.NewTagFrame(),
+		Selection:   st.NewSelection(),
 	}
 	stw.prompt = ">"
-	stw.selectNode = make([]*st.Node, 0)
-	stw.selectElem = make([]*st.Elem, 0)
 	stw.papersize = st.A4_TATE
 	stw.textBox = make(map[string]*TextBox, 0)
 	stw.changed = false
@@ -227,7 +224,7 @@ func (stw *Window) SaveFile(fn string) error {
 }
 
 func (stw *Window) SaveFileSelected(fn string) error {
-	els := stw.selectElem
+	els := stw.SelectedElems()
 	err := st.WriteInp(fn, stw.frame.View, stw.frame.Ai, els)
 	if err != nil {
 		return err
@@ -291,43 +288,6 @@ func (stw *Window) ReadResource(filename string) error {
 
 func (stw *Window) ReadPgp(string) error {
 	return nil
-}
-
-func (stw *Window) SelectElem(els []*st.Elem) {
-	stw.selectElem = els
-}
-
-func (stw *Window) SelectNode(ns []*st.Node) {
-	stw.selectNode = ns
-}
-
-func (stw *Window) ElemSelected() bool {
-	if stw.selectElem == nil || len(stw.selectElem) == 0 {
-		return false
-	} else {
-		return true
-	}
-}
-
-func (stw *Window) NodeSelected() bool {
-	if stw.selectNode == nil || len(stw.selectNode) == 0 {
-		return false
-	} else {
-		return true
-	}
-}
-
-func (stw *Window) SelectedElems() []*st.Elem {
-	return stw.selectElem
-}
-
-func (stw *Window) SelectedNodes() []*st.Node {
-	return stw.selectNode
-}
-
-func (stw *Window) Deselect() {
-	stw.selectNode = make([]*st.Node, 0)
-	stw.selectElem = make([]*st.Elem, 0)
 }
 
 func (stw *Window) ShapeData(sh st.Shape) {

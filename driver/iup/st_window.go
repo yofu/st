@@ -196,6 +196,7 @@ type Window struct { // {{{
 	*st.RecentFiles
 	*st.UndoStack
 	*st.TagFrame
+	*st.Selection
 
 	frame                  *st.Frame
 	Dlg                    *iup.Handle
@@ -219,9 +220,6 @@ type Window struct { // {{{
 	zb *iup.Handle
 
 	lselect *iup.Handle
-
-	selectNode []*st.Node
-	selectElem []*st.Elem
 
 	textBox map[string]*TextBox
 
@@ -266,9 +264,8 @@ func NewWindow(homedir string) *Window { // {{{
 		RecentFiles: st.NewRecentFiles(3),
 		UndoStack:   st.NewUndoStack(10),
 		TagFrame:    st.NewTagFrame(),
+		Selection:   st.NewSelection(),
 	}
-	stw.selectNode = make([]*st.Node, 0)
-	stw.selectElem = make([]*st.Elem, 0)
 	stw.Labels = make(map[string]*iup.Handle)
 	stw.Labels["GAXIS"] = stw.displayLabel("GAXIS", true)
 	stw.Labels["EAXIS"] = stw.displayLabel("EAXIS", false)
@@ -1597,7 +1594,7 @@ func (stw *Window) SaveAS() {
 
 func (stw *Window) SaveFileSelected(fn string) error {
 	var v *st.View
-	els := stw.selectElem
+	els := stw.SelectedElems()
 	if !stw.frame.View.Perspective {
 		v = stw.frame.View.Copy()
 		stw.frame.View.Gfact = 1.0
@@ -2697,7 +2694,7 @@ func (stw *Window) DrawConvexHull() {
 
 func (stw *Window) SetSelectData() {
 	if stw.frame != nil {
-		stw.lselect.SetAttribute("VALUE", fmt.Sprintf("ELEM = %5d\nNODE = %5d", len(stw.selectElem), len(stw.selectNode)))
+		stw.lselect.SetAttribute("VALUE", fmt.Sprintf("ELEM = %5d\nNODE = %5d", len(stw.SelectedElems()), len(stw.SelectedNodes())))
 	} else {
 		stw.lselect.SetAttribute("VALUE", "ELEM =     0\nNODE =     0")
 	}
@@ -2740,14 +2737,14 @@ func (stw *Window) SetShowRange() {
 }
 
 func (stw *Window) HideNotSelected() {
-	if stw.selectElem != nil {
+	if stw.ElemSelected() {
 		for _, n := range stw.frame.Nodes {
 			n.Hide()
 		}
 		for _, el := range stw.frame.Elems {
 			el.Hide()
 		}
-		for _, el := range stw.selectElem {
+		for _, el := range stw.SelectedElems() {
 			if el != nil {
 				el.Show()
 				for _, en := range el.Enod {
@@ -2761,8 +2758,8 @@ func (stw *Window) HideNotSelected() {
 }
 
 func (stw *Window) HideSelected() {
-	if stw.selectElem != nil {
-		for _, el := range stw.selectElem {
+	if stw.ElemSelected() {
+		for _, el := range stw.SelectedElems() {
 			if el != nil {
 				el.Hide()
 			}
@@ -2773,14 +2770,14 @@ func (stw *Window) HideSelected() {
 }
 
 func (stw *Window) LockNotSelected() {
-	if stw.selectElem != nil {
+	if stw.ElemSelected() {
 		for _, n := range stw.frame.Nodes {
 			n.Lock = true
 		}
 		for _, el := range stw.frame.Elems {
 			el.Lock = true
 		}
-		for _, el := range stw.selectElem {
+		for _, el := range stw.SelectedElems() {
 			if el != nil {
 				el.Lock = false
 				for _, en := range el.Enod {
@@ -2793,8 +2790,8 @@ func (stw *Window) LockNotSelected() {
 }
 
 func (stw *Window) LockSelected() {
-	if stw.selectElem != nil {
-		for _, el := range stw.selectElem {
+	if stw.ElemSelected() {
+		for _, el := range stw.SelectedElems() {
 			if el != nil {
 				el.Lock = true
 				for _, en := range el.Enod {
@@ -2807,8 +2804,8 @@ func (stw *Window) LockSelected() {
 }
 
 func (stw *Window) DeleteSelected() {
-	if stw.selectElem != nil {
-		for _, el := range stw.selectElem {
+	if stw.ElemSelected() {
+		for _, el := range stw.SelectedElems() {
 			if el != nil && !el.Lock {
 				stw.frame.DeleteElem(el.Num)
 			}
@@ -2824,31 +2821,31 @@ func (stw *Window) SelectNotHidden() {
 		return
 	}
 	stw.Deselect()
-	stw.selectElem = make([]*st.Elem, len(stw.frame.Elems))
+	els := make([]*st.Elem, len(stw.frame.Elems))
 	num := 0
 	for _, el := range stw.frame.Elems {
 		if el.IsHidden(stw.frame.Show) {
 			continue
 		}
-		stw.selectElem[num] = el
+		els[num] = el
 		num++
 	}
-	stw.selectElem = stw.selectElem[:num]
+	stw.SelectElem(els[:num])
 	stw.Redraw()
 }
 
 func (stw *Window) CopyClipboard() error {
 	var rtn error
-	if stw.selectElem == nil {
+	if !stw.ElemSelected() {
 		return nil
 	}
 	var otp bytes.Buffer
-	ns := stw.frame.ElemToNode(stw.selectElem...)
+	ns := stw.frame.ElemToNode(stw.SelectedElems()...)
 	getcoord(stw, func(x, y, z float64) {
 		for _, n := range ns {
 			otp.WriteString(n.CopyString(x, y, z))
 		}
-		for _, el := range stw.selectElem {
+		for _, el := range stw.SelectedElems() {
 			if el != nil {
 				otp.WriteString(el.InpString())
 			}
@@ -2857,7 +2854,7 @@ func (stw *Window) CopyClipboard() error {
 		if err != nil {
 			rtn = err
 		}
-		stw.addHistory(fmt.Sprintf("%d ELEMs Copied", len(stw.selectElem)))
+		stw.addHistory(fmt.Sprintf("%d ELEMs Copied", len(stw.SelectedElems())))
 		stw.EscapeCB()
 	})
 	if rtn != nil {
@@ -3149,8 +3146,8 @@ func (stw *Window) SetAngle(phi, theta float64) {
 
 func (stw *Window) SetFocus() {
 	var focus []float64
-	if stw.selectElem != nil {
-		for _, el := range stw.selectElem {
+	if stw.ElemSelected() {
+		for _, el := range stw.SelectedElems() {
 			if el == nil {
 				continue
 			}
@@ -3158,8 +3155,8 @@ func (stw *Window) SetFocus() {
 		}
 	}
 	if focus == nil {
-		if stw.selectNode != nil {
-			for _, n := range stw.selectNode {
+		if stw.NodeSelected() {
+			for _, n := range stw.SelectedNodes() {
 				if n == nil {
 					continue
 				}
@@ -3193,9 +3190,9 @@ func (stw *Window) SelectNodeStart(arg *iup.MouseButton) {
 		if (right-left < nodeSelectPixel) && (top-bottom < nodeSelectPixel) {
 			n := stw.frame.PickNode(float64(left), float64(bottom), float64(nodeSelectPixel))
 			if n != nil {
-				stw.MergeSelectNode([]*st.Node{n}, isShift(arg.Status))
+				st.MergeSelectNode(stw, []*st.Node{n}, isShift(arg.Status))
 			} else {
-				stw.selectNode = make([]*st.Node, 0)
+				stw.SelectNode(make([]*st.Node, 0))
 			}
 		} else {
 			tmpselect := make([]*st.Node, len(stw.frame.Nodes))
@@ -3209,7 +3206,7 @@ func (stw *Window) SelectNodeStart(arg *iup.MouseButton) {
 					i++
 				}
 			}
-			stw.MergeSelectNode(tmpselect[:i], isShift(arg.Status))
+			st.MergeSelectNode(stw, tmpselect[:i], isShift(arg.Status))
 		}
 		stw.cdcanv.Rect(left, right, bottom, top)
 		stw.cdcanv.WriteMode(cd.CD_REPLACE)
@@ -3243,7 +3240,7 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 			if el != nil {
 				st.MergeSelectElem(stw, []*st.Elem{el}, isShift(arg.Status))
 			} else {
-				stw.selectElem = make([]*st.Elem, 0)
+				stw.SelectElem(make([]*st.Elem, 0))
 			}
 		} else {
 			tmpselectnode := make([]*st.Node, len(stw.frame.Nodes))
@@ -3345,70 +3342,6 @@ func (stw *Window) SelectElemFenceStart(arg *iup.MouseButton) {
 		stw.endX = int(arg.X)
 		stw.endY = int(arg.Y)
 		first = 1
-	}
-}
-
-func (stw *Window) MergeSelectNode(nodes []*st.Node, isshift bool) {
-	k := len(nodes)
-	if isshift {
-		for l := 0; l < k; l++ {
-			for m, el := range stw.selectNode {
-				if el == nodes[l] {
-					if m == len(stw.selectNode)-1 {
-						stw.selectNode = stw.selectNode[:m]
-					} else {
-						stw.selectNode = append(stw.selectNode[:m], stw.selectNode[m+1:]...)
-					}
-					break
-				}
-			}
-		}
-	} else {
-		var add bool
-		for l := 0; l < k; l++ {
-			add = true
-			for _, n := range stw.selectNode {
-				if n == nodes[l] {
-					add = false
-					break
-				}
-			}
-			if add {
-				stw.selectNode = append(stw.selectNode, nodes[l])
-			}
-		}
-	}
-}
-
-func (stw *Window) MergeSelectElem(elems []*st.Elem, isshift bool) {
-	k := len(elems)
-	if isshift {
-		for l := 0; l < k; l++ {
-			for m, el := range stw.selectElem {
-				if el == elems[l] {
-					if m == len(stw.selectElem)-1 {
-						stw.selectElem = stw.selectElem[:m]
-					} else {
-						stw.selectElem = append(stw.selectElem[:m], stw.selectElem[m+1:]...)
-					}
-					break
-				}
-			}
-		}
-	} else {
-		var add bool
-		for l := 0; l < k; l++ {
-			add = true
-			for _, n := range stw.selectElem {
-				if n == elems[l] {
-					add = false
-					break
-				}
-			}
-			if add {
-				stw.selectElem = append(stw.selectElem, elems[l])
-			}
-		}
 	}
 }
 
@@ -3571,11 +3504,6 @@ func (stw *Window) TailPolygon(ns []*st.Node, arg *iup.MouseMotion) {
 	stw.endY = int(arg.Y)
 }
 
-func (stw *Window) Deselect() {
-	stw.selectNode = make([]*st.Node, 0)
-	stw.selectElem = make([]*st.Elem, 0)
-}
-
 // }}}
 
 // Query// {{{
@@ -3725,7 +3653,7 @@ func (stw *Window) CB_MouseButton() {
 					stw.SelectElemStart(arg)
 					if isDouble(arg.Status) {
 						if stw.ElemSelected() {
-							if stw.selectElem[0].IsLineElem() {
+							if stw.SelectedElems()[0].IsLineElem() {
 								stw.ExecCommand(DoubleClickCommand[0])
 							} else {
 								stw.ExecCommand(DoubleClickCommand[1])
@@ -4182,7 +4110,7 @@ func (stw *Window) LinkProperty(index int, eval func()) {
 		stw.Props[index].SetAttribute("SELECTION", "1:100")
 	})
 	stw.Props[index].SetCallback(func(arg *iup.CommonKillFocus) {
-		if stw.frame != nil && stw.selectElem != nil {
+		if stw.frame != nil && stw.ElemSelected() {
 			eval()
 		}
 	})
@@ -4190,11 +4118,11 @@ func (stw *Window) LinkProperty(index int, eval func()) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		case KEY_ENTER:
-			if stw.frame != nil && stw.selectElem != nil {
+			if stw.frame != nil && stw.ElemSelected() {
 				eval()
 			}
 		case KEY_TAB:
-			if stw.frame != nil && stw.selectElem != nil {
+			if stw.frame != nil && stw.ElemSelected() {
 				eval()
 			}
 		case KEY_ESCAPE:
@@ -4217,7 +4145,7 @@ func (stw *Window) PropertyDialog() {
 		val, err := strconv.ParseInt(stw.Props[1].GetAttribute("VALUE"), 10, 64)
 		if err == nil {
 			if sec, ok := stw.frame.Sects[int(val)]; ok {
-				for _, el := range stw.selectElem {
+				for _, el := range stw.SelectedElems() {
 					if el != nil && !el.Lock {
 						el.Sect = sec
 					}
@@ -4243,7 +4171,7 @@ func (stw *Window) PropertyDialog() {
 		}
 		stw.Props[2].SetAttribute("VALUE", st.ETYPES[val])
 		if val != 0 {
-			for _, el := range stw.selectElem {
+			for _, el := range stw.SelectedElems() {
 				if el != nil && !el.Lock {
 					el.Etype = val
 				}
@@ -4255,11 +4183,11 @@ func (stw *Window) PropertyDialog() {
 }
 
 func (stw *Window) UpdatePropertyDialog() {
-	if stw.selectElem != nil {
+	if stw.ElemSelected() {
 		var selected bool
 		var lines, plates int
 		var length, area float64
-		for _, el := range stw.selectElem {
+		for _, el := range stw.SelectedElems() {
 			if el != nil {
 				if el.IsLineElem() {
 					lines++
@@ -6278,38 +6206,6 @@ func (stw *Window) IsChanged() bool {
 
 func (stw *Window) LastExCommand() string {
 	return stw.lastexcommand
-}
-
-func (stw *Window) SelectElem(els []*st.Elem) {
-	stw.selectElem = els
-}
-
-func (stw *Window) SelectNode(ns []*st.Node) {
-	stw.selectNode = ns
-}
-
-func (stw *Window) ElemSelected() bool {
-	if stw.selectElem == nil || len(stw.selectElem) == 0 {
-		return false
-	} else {
-		return true
-	}
-}
-
-func (stw *Window) NodeSelected() bool {
-	if stw.selectNode == nil || len(stw.selectNode) == 0 {
-		return false
-	} else {
-		return true
-	}
-}
-
-func (stw *Window) SelectedElems() []*st.Elem {
-	return stw.selectElem
-}
-
-func (stw *Window) SelectedNodes() []*st.Node {
-	return stw.selectNode
 }
 
 func (stw *Window) History(str string) {

@@ -34,7 +34,7 @@ func ven14rotatezero(stw *Window) {
 	maxnum := 3
 	getnnodes(stw, maxnum, func(num int) {
 		if num >= 3 {
-			ns := stw.selectNode[:3]
+			ns := stw.SelectedNodes()[:3]
 			stw.frame.Move(-ns[0].Coord[0], -ns[0].Coord[1], -ns[0].Coord[2])
 			l := 0.0
 			for i := 0; i < 2; i++ {
@@ -208,17 +208,14 @@ func ven14errorelem(stw *Window) {
 			}
 		}
 	}
-	stw.selectElem = make([]*st.Elem, i)
-	for j := 0; j < i; j++ {
-		stw.selectElem[j] = tmpels[j]
-	}
+	stw.SelectElem(tmpels[:i])
 }
 
 func ven14depth(stw *Window) {
 	ns := make([]*st.Node, 0)
 	num := 0
-	if stw.selectNode != nil {
-		for _, n := range stw.selectNode {
+	if stw.NodeSelected() {
+		for _, n := range stw.SelectedNodes() {
 			if n != nil {
 				ns = append(ns, n)
 				num++
@@ -238,9 +235,10 @@ func ven14depth(stw *Window) {
 		case 4:
 			v1 := make([]float64, 3)
 			v2 := make([]float64, 3)
+			sns := stw.SelectedNodes()
 			for i := 0; i < 3; i++ {
-				v1[i] = stw.selectNode[1].Coord[i] - stw.selectNode[0].Coord[i]
-				v2[i] = stw.selectNode[3].Coord[i] - stw.selectNode[2].Coord[i]
+				v1[i] = sns[1].Coord[i] - sns[0].Coord[i]
+				v2[i] = sns[3].Coord[i] - sns[2].Coord[i]
 			}
 			vec := st.Cross(v1, v2)
 			l := 0.0
