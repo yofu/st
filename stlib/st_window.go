@@ -1,12 +1,52 @@
 package st
 
 import (
+	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 )
+
+var (
+	CanvasFitScale = 0.9
+)
+
+type Window interface {
+	Frame() *Frame
+	ErrorMessage(error, int)
+	GetCanvasSize() (int, int)
+	Changed(bool)
+}
+
+func SaveFile(stw Window, filename string) error {
+	var v *View
+	frame := stw.Frame()
+	if !frame.View.Perspective {
+		v = frame.View.Copy()
+		frame.View.Gfact = 1.0
+		frame.View.Perspective = true
+		for _, n := range frame.Nodes {
+			frame.View.ProjectNode(n)
+		}
+		xmin, xmax, ymin, ymax := frame.Bbox2D(true)
+		w, h := stw.GetCanvasSize()
+		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * CanvasFitScale
+		frame.View.Dists[1] *= scale
+	}
+	err := frame.WriteInp(filename)
+	if v != nil {
+		frame.View = v
+	}
+	if err != nil {
+		return err
+	}
+	stw.ErrorMessage(fmt.Errorf("SAVE: %s", filename), INFO)
+	stw.Changed(true)
+	return nil
+}
 
 func CompleteFileName(str string, percent string, sharp []string) []string {
 	envval := regexp.MustCompile("[$]([a-zA-Z]+)")

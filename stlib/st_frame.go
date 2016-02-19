@@ -347,6 +347,33 @@ func (frame *Frame) Bbox(hide bool) (xmin, xmax, ymin, ymax, zmin, zmax float64)
 	return mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]
 }
 
+func (frame *Frame) Bbox2D(hide bool) (xmin, xmax, ymin, ymax float64) {
+	var mins, maxs [2]float64
+	first := true
+	for _, j := range frame.Nodes {
+		if hide && j.IsHidden(frame.Show) {
+			continue
+		}
+		if first {
+			for k := 0; k < 2; k++ {
+				mins[k] = j.Pcoord[k]
+				maxs[k] = j.Pcoord[k]
+			}
+			first = false
+		} else {
+			for k := 0; k < 2; k++ {
+				if j.Pcoord[k] < mins[k] {
+					mins[k] = j.Pcoord[k]
+				} else if maxs[k] < j.Pcoord[k] {
+					maxs[k] = j.Pcoord[k]
+				}
+			}
+		}
+	}
+	return mins[0], maxs[0], mins[1], maxs[1]
+}
+
+
 // Read
 // ReadInp// {{{
 func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, overwrite bool) error {

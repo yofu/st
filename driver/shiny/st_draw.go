@@ -255,18 +255,6 @@ func (stw *Window) SectionAlias(int) (string, bool) {
 	return "", false
 }
 
-func (stw *Window) SelectedNodes() []*st.Node {
-	return nil
-}
-
-func (stw *Window) SelectedElems() []*st.Elem {
-	return nil
-}
-
-func (stw *Window) ElemSelected() bool {
-	return false
-}
-
 func (stw *Window) DefaultStyle() {
 }
 
@@ -287,10 +275,6 @@ func (stw *Window) SelectElemStyle() {
 
 func (stw *Window) ShowPrintRange() bool {
 	return false
-}
-
-func (stw *Window) GetCanvasSize() (int, int) {
-	return 0, 0
 }
 
 func (stw *Window) CanvasPaperSize() (float64, float64, error) {

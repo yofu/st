@@ -32,8 +32,12 @@ const (
 	ButtonMiddle
 )
 
+var (
+	CanvasFitScale = 0.9
+)
+
 type Window struct {
-	Frame *st.Frame
+	frame *st.Frame
 	screen screen.Screen
 	window screen.Window
 	buffer screen.Buffer
@@ -44,7 +48,7 @@ type Window struct {
 
 func NewWindow(s screen.Screen) *Window {
 	return &Window{
-		Frame: st.NewFrame(),
+		frame: st.NewFrame(),
 		screen: s,
 		window: nil,
 		buffer: nil,
@@ -60,7 +64,7 @@ func (stw *Window) OpenFile(fn string) error {
 	if err != nil {
 		return err
 	}
-	stw.Frame = frame
+	stw.frame = frame
 	return nil
 }
 
@@ -139,8 +143,8 @@ func (stw *Window) Start() {
 					stw.window.Fill(image.Rect(startX, startY, endX, endY), red, screen.Over)
 					stw.window.Publish()
 				} else if pressed&ButtonMiddle != 0 {
-					stw.Frame.View.Angle[0] += float64(int(e.Y)-startY) * 0.01
-					stw.Frame.View.Angle[1] -= float64(int(e.X)-startX) * 0.01
+					stw.frame.View.Angle[0] += float64(int(e.Y)-startY) * 0.01
+					stw.frame.View.Angle[1] -= float64(int(e.X)-startX) * 0.01
 					stw.Redraw()
 					stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
 					stw.window.Publish()
@@ -170,8 +174,12 @@ func (stw *Window) Start() {
 	}
 }
 
+func (stw *Window) Frame() *st.Frame {
+	return stw.frame
+}
+
 func (stw *Window) Redraw() {
-	if stw.Frame == nil {
+	if stw.frame == nil {
 		return
 	}
 	if stw.buffer != nil {
@@ -183,7 +191,234 @@ func (stw *Window) Redraw() {
 		log.Fatal(err)
 	}
 	stw.buffer = b
-	stw.Frame.View.Center[0] = 512
-	stw.Frame.View.Center[1] = 512
-	st.DrawFrame(stw, stw.Frame, st.ECOLOR_SECT, true)
+	stw.frame.View.Center[0] = 512
+	stw.frame.View.Center[1] = 512
+	st.DrawFrame(stw, stw.frame, st.ECOLOR_SECT, true)
+}
+
+func (stw *Window) SelectedElems() []*st.Elem {
+	return nil
+}
+
+func (stw *Window) SelectedNodes() []*st.Node {
+	return nil
+}
+
+func (stw *Window) SelectElem([]*st.Elem) {
+}
+
+func (stw *Window) SelectNode([]*st.Node) {
+}
+
+func (stw *Window) ElemSelected() bool {
+	return false
+}
+
+func (stw *Window) NodeSelected() bool {
+	return false
+}
+
+func (stw *Window) Deselect() {
+}
+
+func (stw *Window) LastExCommand() string {
+	return ""
+}
+
+func (stw *Window) SetLastExCommand(string) {
+}
+
+func (stw *Window) History(string) {
+}
+
+func (stw *Window) ErrorMessage(error, int) {
+}
+
+func (stw *Window) CompleteFileName(string) string {
+	return ""
+}
+
+func (stw *Window) Cwd() string {
+	return ""
+}
+
+func (stw *Window) HomeDir() string {
+	return ""
+}
+
+func (stw *Window) Print() {
+}
+
+func (stw *Window) Changed(bool) {
+}
+
+func (stw *Window) IsChanged() bool {
+	return false
+}
+
+func (stw *Window) Yn(string, string) bool {
+	return false
+}
+
+func (stw *Window) Yna(string, string, string) int {
+	return 0
+}
+
+func (stw *Window) SaveAS() {
+	stw.SaveFile("hogtxt.inp")
+}
+
+func (stw *Window) SaveFile(fn string) error {
+	return st.SaveFile(stw, fn)
+}
+
+func (stw *Window) GetCanvasSize() (int, int) {
+	return 1024, 1024
+}
+
+func (stw *Window) SaveFileSelected(string) error {
+	return nil
+}
+
+func (stw *Window) SearchFile(string) (string, error) {
+	return "", nil
+}
+
+func (stw *Window) Reload() {
+}
+
+func (stw *Window) Close(bool) {
+}
+
+func (stw *Window) Checkout(string) error {
+	return nil
+}
+
+func (stw *Window) AddTag(string, bool) error {
+	return nil
+}
+
+func (stw *Window) Copylsts(string) {
+}
+
+func (stw *Window) ReadFile(string) error {
+	return nil
+}
+
+func (stw *Window) ReadAll() {
+}
+
+func (stw *Window) ReadPgp(string) error {
+	return nil
+}
+
+func (stw *Window) ReadFig2(string) error {
+	return nil
+}
+
+func (stw *Window) CheckFrame() {
+}
+
+func (stw *Window) SelectConfed() {
+}
+
+func (stw *Window) Rebase(string) {
+}
+
+func (stw *Window) ShowRecently() {
+}
+
+func (stw *Window) ShapeData(st.Shape) {
+}
+
+func (stw *Window) Snapshot() {
+}
+
+func (stw *Window) UseUndo(bool) {
+}
+
+func (stw *Window) EPS() float64 {
+	return 1e-3
+}
+
+func (stw *Window) SetEPS(float64) {
+}
+
+func (stw *Window) CanvasFitScale() float64 {
+	return CanvasFitScale
+}
+
+func (stw *Window) SetCanvasFitScale(val float64) {
+	CanvasFitScale = val
+}
+
+func (stw *Window) CanvasAnimateSpeed() float64 {
+	return 0.0
+}
+
+func (stw *Window) SetCanvasAnimateSpeed(float64) {
+}
+
+func (stw *Window) ToggleFixRotate() {
+}
+
+func (stw *Window) ToggleFixMove() {
+}
+
+func (stw *Window) ToggleAltSelectNode() {
+}
+
+func (stw *Window) AltSelectNode() bool {
+	return false
+}
+
+func (stw *Window) SetShowPrintRange(bool) {
+}
+
+func (stw *Window) ToggleShowPrintRange() {
+}
+
+func (stw *Window) CurrentLap(string, int, int) {
+}
+
+func (stw *Window) SectionData(*st.Sect) {
+}
+
+func (stw *Window) TextBox(string) st.TextBox {
+	return nil
+}
+
+func (stw *Window) AxisRange(int, float64, float64, bool) {
+}
+
+func (stw *Window) NextFloor() {
+}
+
+func (stw *Window) PrevFloor() {
+}
+
+func (stw *Window) SetAngle(float64, float64) {
+}
+
+func (stw *Window) SetPaperSize(uint) {
+}
+
+func (stw *Window) PaperSize() uint {
+	return st.A4_TATE
+}
+
+func (stw *Window) SetPeriod(string) {
+}
+
+func (stw *Window) Pivot() bool {
+	return false
+}
+
+func (stw *Window) DrawPivot([]*st.Node, chan int, chan int) {
+}
+
+func (stw *Window) SetColorMode(uint) {
+}
+
+func (stw *Window) SetConf([]bool) {
 }

@@ -3140,32 +3140,7 @@ func (stw *Window) SetViewData() {
 }
 
 func (stw *Window) Bbox() (xmin, xmax, ymin, ymax float64) {
-	if stw.Frame == nil || len(stw.Frame.Nodes) == 0 {
-		return 0.0, 0.0, 0.0, 0.0
-	}
-	var mins, maxs [2]float64
-	first := true
-	for _, j := range stw.Frame.Nodes {
-		if j.IsHidden(stw.Frame.Show) {
-			continue
-		}
-		if first {
-			for k := 0; k < 2; k++ {
-				mins[k] = j.Pcoord[k]
-				maxs[k] = j.Pcoord[k]
-			}
-			first = false
-		} else {
-			for k := 0; k < 2; k++ {
-				if j.Pcoord[k] < mins[k] {
-					mins[k] = j.Pcoord[k]
-				} else if maxs[k] < j.Pcoord[k] {
-					maxs[k] = j.Pcoord[k]
-				}
-			}
-		}
-	}
-	return mins[0], maxs[0], mins[1], maxs[1]
+	return stw.Frame.Bbox2D(true)
 }
 
 func (stw *Window) SetShowRange() {
