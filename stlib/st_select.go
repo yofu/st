@@ -11,6 +11,9 @@ type Selector interface {
 	ElemSelected() bool
 	NodeSelected() bool
 	Deselect()
+
+	ToggleAltSelectNode()
+	AltSelectNode() bool
 }
 
 func SelectConfed(stw Selector) {

@@ -42,8 +42,6 @@ type ExModer interface {
 	ShapeData(Shape)
 	ToggleFixRotate()
 	ToggleFixMove()
-	ToggleAltSelectNode()
-	AltSelectNode() bool
 	SetShowPrintRange(bool)
 	ToggleShowPrintRange()
 	CurrentLap(string, int, int)
