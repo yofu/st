@@ -473,14 +473,6 @@ func (stw *Window) ShapeData(sh st.Shape) {
 	tb.value = strings.Split(otp.String(), "\n")
 }
 
-func (stw *Window) Snapshot() {
-	stw.changed = true
-	if !stw.UndoEnabled() {
-		return
-	}
-	stw.PushUndo(stw.frame)
-}
-
 func (stw *Window) EPS() float64 {
 	return EPS
 }

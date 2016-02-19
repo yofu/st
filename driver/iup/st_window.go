@@ -1303,14 +1303,6 @@ func (stw *Window) FocusCanv() {
 	iup.SetFocus(stw.canv)
 }
 
-func (stw *Window) Snapshot() {
-	stw.changed = true
-	if !stw.UndoEnabled() {
-		return
-	}
-	stw.PushUndo(stw.frame)
-}
-
 func (stw *Window) Chdir(dir string) error {
 	if _, err := os.Stat(dir); err != nil {
 		return err
@@ -2989,7 +2981,7 @@ func (stw *Window) DeleteSelected() {
 		}
 	}
 	stw.Deselect()
-	stw.Snapshot()
+	st.Snapshot(stw)
 	stw.Redraw()
 }
 

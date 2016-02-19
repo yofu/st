@@ -28,12 +28,13 @@ type Window interface {
 	ExecCommand(string)
 	History(string)
 	AddRecent(string) error
-	Snapshot()
 	GetCanvasSize() (int, int)
 	CanvasFitScale() float64
 	SetCanvasFitScale(float64)
 	CanvasAnimateSpeed() float64
 	SetCanvasAnimateSpeed(float64)
+	UndoEnabled() bool
+	PushUndo(*Frame)
 	Changed(bool)
 	IsChanged() bool
 	Redraw()
@@ -96,7 +97,7 @@ func OpenFile(stw Window, filename string, readrcfile bool) error {
 	frame.Home = stw.Home()
 	stw.SetCwd(filepath.Dir(fn))
 	stw.AddRecent(fn)
-	stw.Snapshot()
+	Snapshot(stw)
 	stw.Changed(false)
 	if readrcfile {
 		if rcfn := filepath.Join(stw.Cwd(), ResourceFileName); FileExists(rcfn) {
@@ -159,6 +160,14 @@ func SaveFile(stw Window, filename string) error {
 	ErrorMessage(stw, fmt.Errorf("SAVE: %s", filename), INFO)
 	stw.Changed(true)
 	return nil
+}
+
+func Snapshot(stw Window) {
+	stw.Changed(true)
+	if !stw.UndoEnabled() {
+		return
+	}
+	stw.PushUndo(stw.Frame())
 }
 
 func ReadResource(stw Window, filename string) error {

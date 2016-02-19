@@ -491,7 +491,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		return Message("undo/redo is off")
 	case "undo":
 		stw.UseUndo(true)
-		stw.Snapshot()
+		Snapshot(stw)
 		return Message("undo/redo is on")
 	case "alt":
 		stw.ToggleAltSelectNode()
@@ -626,7 +626,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				stw.Copylsts(fn)
 			}
 			Rebase(stw, fn)
-			stw.Snapshot()
+			Snapshot(stw)
 			EditReadme(filepath.Dir(fn))
 		}
 	case "tag":
@@ -762,7 +762,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				return err
 			}
 			err = frame.ReadInp(fn, stw.SelectedNodes()[0].Coord, angle*math.Pi/180.0, false)
-			stw.Snapshot()
+			Snapshot(stw)
 			if err != nil {
 				return err
 			}
@@ -773,7 +773,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			return Usage(":propsect filename")
 		}
 		err := frame.AddPropAndSect(fn, true)
-		stw.Snapshot()
+		Snapshot(stw)
 		if err != nil {
 			return err
 		}
@@ -1044,7 +1044,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				}
 			}
 		}()
-		stw.Snapshot()
+		Snapshot(stw)
 	case "srcal":
 		if usage {
 			return Usage(":srcal {-fbold} {-noreload} {-tmp}")
@@ -1562,7 +1562,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			for _, n := range stw.SelectedNodes() {
 				n.Pile = p
 			}
-			stw.Snapshot()
+			Snapshot(stw)
 		} else {
 			return errors.New(fmt.Sprintf(":pile PILE %d doesn't exist", val))
 		}
@@ -1590,7 +1590,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			}
 			n.Scale([]float64{coord, 0.0, 0.0}, factor, 1.0, 1.0)
 		}
-		stw.Snapshot()
+		Snapshot(stw)
 	case "yscale":
 		if usage {
 			return Usage(":yscale factor coord")
@@ -1615,7 +1615,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			}
 			n.Scale([]float64{0.0, coord, 0.0}, 1.0, factor, 1.0)
 		}
-		stw.Snapshot()
+		Snapshot(stw)
 	case "zscale":
 		if usage {
 			return Usage(":zscale factor coord")
@@ -1640,7 +1640,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			}
 			n.Scale([]float64{0.0, 0.0, coord}, 1.0, 1.0, factor)
 		}
-		stw.Snapshot()
+		Snapshot(stw)
 	case "pload":
 		if usage {
 			return Usage(":pload position value")
@@ -1665,7 +1665,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			}
 			n.Load[int(ind)] = val
 		}
-		stw.Snapshot()
+		Snapshot(stw)
 	case "cmq":
 		if usage {
 			return Usage(":cmq period")
@@ -2004,7 +2004,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				}
 			}
 		}
-		stw.Snapshot()
+		Snapshot(stw)
 	case "section+":
 		if usage {
 			return Usage(":section+ value")
@@ -2028,7 +2028,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				el.Sect = sec
 			}
 		}
-		stw.Snapshot()
+		Snapshot(stw)
 	case "cang":
 		if usage {
 			return Usage(":cang val")
@@ -2048,7 +2048,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			el.Cang = val
 			el.SetPrincipalAxis()
 		}
-		stw.Snapshot()
+		Snapshot(stw)
 	case "axis2cang":
 		if usage {
 			return Usage(":axis2cang n1 n2 [strong,weak]")
@@ -2093,7 +2093,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				return err
 			}
 		}
-		stw.Snapshot()
+		Snapshot(stw)
 	case "invert":
 		if usage {
 			return Usage(":invert")
@@ -2102,7 +2102,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		for _, el := range els {
 			el.Invert()
 		}
-		stw.Snapshot()
+		Snapshot(stw)
 	case "resultant":
 		if !stw.ElemSelected() {
 			return errors.New(":resultant no selected elem")
@@ -2160,7 +2160,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			}
 			el.Prestress = val
 		}
-		stw.Snapshot()
+		Snapshot(stw)
 	case "thermal":
 		if usage {
 			return Usage(":thermal tmp[℃]")
@@ -2195,7 +2195,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				el.Cmq[6] -= val
 			}
 		}
-		stw.Snapshot()
+		Snapshot(stw)
 		return Message(m.String())
 	case "join":
 		if usage {
@@ -2333,7 +2333,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			}
 		}
 		stw.SelectElem(tmpels[:enum])
-		stw.Snapshot()
+		Snapshot(stw)
 	case "section":
 		if usage {
 			return Usage(":section sectcode {-nodisp}")
@@ -2928,7 +2928,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				frame.DeleteNode(n.Num)
 			}
 		}
-		stw.Snapshot()
+		Snapshot(stw)
 	case "count":
 		if usage {
 			return Usage(":count")
