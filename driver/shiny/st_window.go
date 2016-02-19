@@ -344,10 +344,6 @@ func (stw *Window) ReadPgp(string) error {
 	return nil
 }
 
-func (stw *Window) ReadFig2(string) error {
-	return nil
-}
-
 func (stw *Window) CheckFrame() {
 }
 

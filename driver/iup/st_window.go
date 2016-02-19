@@ -1826,7 +1826,7 @@ func (stw *Window) PrintFig2(filename string) error {
 		default:
 			tmp = append(tmp, words)
 		case "PAGE", "FIGURE":
-			err = stw.ParseFig2(pcanv, tmp)
+			err = st.ParseFig2(stw, tmp)
 			tmp = [][]string{words}
 		}
 		if err != nil {
@@ -1837,7 +1837,7 @@ func (stw *Window) PrintFig2(filename string) error {
 	if err != nil {
 		return err
 	}
-	err = stw.ParseFig2(pcanv, tmp)
+	err = st.ParseFig2(stw, tmp)
 	if err != nil {
 		return err
 	}
@@ -1846,79 +1846,6 @@ func (stw *Window) PrintFig2(filename string) error {
 	stw.frame.Show.BondSize /= factor
 	stw.frame.View = v
 	stw.Redraw()
-	return nil
-}
-
-func (stw *Window) ReadFig2(filename string) error {
-	if stw.frame == nil {
-		return errors.New("ReadFig2: no frame opened")
-	}
-	tmp := make([][]string, 0)
-	var err error
-	err = st.ParseFile(filename, func(words []string) error {
-		var err error
-		first := strings.ToUpper(words[0])
-		if strings.HasPrefix(first, "#") {
-			return nil
-		}
-		switch first {
-		default:
-			tmp = append(tmp, words)
-		case "PAGE", "FIGURE":
-			err = stw.ParseFig2(stw.dbuff, tmp)
-			tmp = [][]string{words}
-		}
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	err = stw.ParseFig2(stw.dbuff, tmp)
-	if err != nil {
-		return err
-	}
-	stw.Redraw()
-	return nil
-}
-
-func (stw *Window) ParseFig2(pcanv *cd.Canvas, lis [][]string) error {
-	var err error
-	if len(lis) == 0 || len(lis[0]) < 1 {
-		return nil
-	}
-	first := strings.ToUpper(lis[0][0])
-	switch first {
-	case "PAGE":
-		err = stw.ParseFig2Page(pcanv, lis)
-	case "FIGURE":
-		err = stw.ParseFig2Page(pcanv, lis)
-	}
-	return err
-}
-
-func (stw *Window) ParseFig2Page(pcanv *cd.Canvas, lis [][]string) error {
-	for _, txt := range lis {
-		if len(txt) < 1 {
-			continue
-		}
-		var un bool
-		if strings.HasPrefix(txt[0], "!") {
-			un = true
-			txt[0] = txt[0][1:]
-		} else {
-			un = false
-		}
-		err := st.Fig2Keyword(stw, txt, un)
-		if err != nil {
-			return err
-		}
-	}
-	stw.DrawFrame(pcanv, stw.frame.Show.ColorMode, false)
-	stw.DrawTexts(pcanv, true)
-	pcanv.Flush()
 	return nil
 }
 

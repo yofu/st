@@ -42,7 +42,6 @@ type ExModer interface {
 	Close(bool)
 	Copylsts(string)
 	ReadPgp(string) error
-	ReadFig2(string) error
 	CheckFrame()
 	ShapeData(Shape)
 	ToggleFixRotate()

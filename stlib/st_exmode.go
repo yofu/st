@@ -925,7 +925,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":fig2 filename")
 		}
-		err := stw.ReadFig2(fn)
+		err := ReadFig2(stw, fn)
 		if err != nil {
 			return err
 		}
