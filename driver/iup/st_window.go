@@ -123,7 +123,7 @@ var (
 		position: []float64{100.0, 100.0},
 		Angle:    0.0,
 		Font:     NewFont(),
-		hide:     false,
+		hide:     true,
 	}
 )
 
@@ -1286,7 +1286,7 @@ func NewWindow(homedir string) *Window { // {{{
 		stw.SetDefaultPgp()
 	}
 	stw.New()
-	stw.ShowLogo(3*time.Second)
+	// stw.ShowLogo(3*time.Second)
 	stw.completefunc = stw.CompleteFileName
 	if rcfn := filepath.Join(stw.Cwd(), ResourceFileName); st.FileExists(rcfn) {
 		stw.ReadResource(rcfn)
