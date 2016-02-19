@@ -104,6 +104,7 @@ func (stw *Window) Start() {
 	}
 	stw.window = w
 	defer stw.window.Release()
+	stw.ReadRecent()
 	stw.Redraw()
 	var sz size.Event
 	for {
@@ -128,7 +129,7 @@ func (stw *Window) Start() {
 				case key.CodeReturnEnter:
 					stw.FeedCommand()
 				case key.CodeEscape:
-					return
+					stw.Close(true)
 				}
 				fmt.Printf("%s\r", stw.cline)
 			}
@@ -328,7 +329,15 @@ func (stw *Window) SearchFile(string) (string, error) {
 	return "", nil
 }
 
-func (stw *Window) Close(bool) {
+func (stw *Window) Close(bang bool) {
+	if !bang && stw.changed {
+		stw.History("changes are not saved")
+		return
+	}
+	err := stw.SaveRecent()
+	if err != nil {
+		fmt.Println(err)
+	}
 	os.Exit(0)
 }
 
