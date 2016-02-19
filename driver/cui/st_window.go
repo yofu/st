@@ -25,7 +25,6 @@ var (
 )
 
 const (
-	nRecentFiles = 3
 	nUndo        = 10
 )
 
@@ -36,13 +35,13 @@ var (
 	home        = os.Getenv("HOME")
 	releasenote = filepath.Join(home, ".st/help/releasenote.html")
 	pgpfile     = filepath.Join(home, ".st/st.pgp")
-	recentfn    = filepath.Join(home, ".st/recent.dat")
 	historyfn   = filepath.Join(home, ".st/history.dat")
 	NOUNDO      = false
 )
 
 type Window struct {
 	*st.Directory
+	*st.RecentFiles
 	prompt string
 
 	frame *st.Frame
@@ -59,7 +58,6 @@ type Window struct {
 
 	changed bool
 
-	recentfiles []string
 	undostack   []*st.Frame
 	taggedFrame map[string]*st.Frame
 
@@ -69,6 +67,7 @@ type Window struct {
 func NewWindow(homedir string) *Window {
 	stw := &Window{
 		Directory: st.NewDirectory(homedir, homedir),
+		RecentFiles: st.NewRecentFiles(3),
 	}
 	stw.prompt = ">"
 	stw.selectNode = make([]*st.Node, 0)
@@ -76,8 +75,7 @@ func NewWindow(homedir string) *Window {
 	stw.papersize = st.A4_TATE
 	stw.textBox = make(map[string]*TextBox, 0)
 	stw.changed = false
-	stw.recentfiles = make([]string, nRecentFiles)
-	stw.SetRecently()
+	stw.ReadRecent()
 	stw.undostack = make([]*st.Frame, nUndo)
 	stw.taggedFrame = make(map[string]*st.Frame)
 	undopos = 0
@@ -198,7 +196,7 @@ func (stw *Window) CompleteFileName(str string) string {
 	if stw.frame != nil {
 		path = stw.frame.Path
 	}
-	completes = st.CompleteFileName(str, path, stw.recentfiles)
+	completes = st.CompleteFileName(str, path, stw.Recent())
 	completepos = 0
 	return completes[0]
 }
@@ -451,76 +449,8 @@ func (stw *Window) Deselect() {
 	stw.selectElem = make([]*st.Elem, 0)
 }
 
-func (stw *Window) AddRecently(fn string) error {
-	fn = filepath.ToSlash(fn)
-	if st.FileExists(recentfn) {
-		f, err := os.Open(recentfn)
-		if err != nil {
-			return err
-		}
-		stw.recentfiles[0] = fn
-		s := bufio.NewScanner(f)
-		num := 0
-		for s.Scan() {
-			if rfn := s.Text(); rfn != fn {
-				stw.recentfiles[num+1] = rfn
-				num++
-			}
-			if num >= nRecentFiles-1 {
-				break
-			}
-		}
-		f.Close()
-		if err := s.Err(); err != nil {
-			return err
-		}
-		w, err := os.Create(recentfn)
-		if err != nil {
-			return err
-		}
-		defer w.Close()
-		for i := 0; i < nRecentFiles; i++ {
-			w.WriteString(fmt.Sprintf("%s\n", stw.recentfiles[i]))
-		}
-		return nil
-	} else {
-		w, err := os.Create(recentfn)
-		if err != nil {
-			return err
-		}
-		defer w.Close()
-		w.WriteString(fmt.Sprintf("%s\n", fn))
-		stw.recentfiles[0] = fn
-		return nil
-	}
-}
-
-func (stw *Window) SetRecently() error {
-	if st.FileExists(recentfn) {
-		f, err := os.Open(recentfn)
-		if err != nil {
-			return err
-		}
-		s := bufio.NewScanner(f)
-		num := 0
-		for s.Scan() {
-			if fn := s.Text(); fn != "" {
-				stw.History(fmt.Sprintf("%d: %s", num, fn))
-				stw.recentfiles[num] = fn
-				num++
-			}
-		}
-		if err := s.Err(); err != nil {
-			return err
-		}
-		return nil
-	} else {
-		return errors.New(fmt.Sprintf("OpenRecently: %s doesn't exist", recentfn))
-	}
-}
-
 func (stw *Window) ShowRecently() {
-	for i, fn := range stw.recentfiles {
+	for i, fn := range stw.Recent() {
 		if fn != "" {
 			stw.History(fmt.Sprintf("%d: %s", i, fn))
 		}
