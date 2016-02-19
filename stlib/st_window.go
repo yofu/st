@@ -1,24 +1,123 @@
 package st
 
 import (
+	"bufio"
 	"fmt"
 	"math"
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 )
 
-var (
-	CanvasFitScale = 0.9
-)
+const ResourceFileName = ".strc"
 
 type Window interface {
 	Frame() *Frame
-	ErrorMessage(error, int)
+	SetFrame(*Frame)
+	Home() string
+	SetHome(string)
+	Cwd() string
+	SetCwd(string)
+	ExecCommand(string)
+	History(string)
+	AddRecently(string) error
+	Snapshot()
 	GetCanvasSize() (int, int)
+	CanvasFitScale() float64
 	Changed(bool)
+	EPS() float64
+}
+
+func ErrorMessage(stw Window, err error, level int) {
+	if err == nil {
+		return
+	}
+	var otp string
+	if level >= ERROR {
+		_, file, line, _ := runtime.Caller(1)
+		otp = fmt.Sprintf("%s:%d: [%s]: %s", filepath.Base(file), line, LOGLEVEL[level], err.Error())
+	} else {
+		otp = fmt.Sprintf("[%s]: %s", LOGLEVEL[level], err.Error())
+	}
+	stw.History(otp)
+}
+
+func OpenFile(stw Window, filename string, readrcfile bool) error {
+	var err error
+	var s *Show
+	fn := ToUtf8string(filename)
+	newframe := NewFrame()
+	frame := stw.Frame()
+	if frame != nil {
+		s = frame.Show
+	}
+	switch filepath.Ext(fn) {
+	case ".inp":
+		err = newframe.ReadInp(fn, []float64{0.0, 0.0, 0.0}, 0.0, false)
+		if err != nil {
+			return err
+		}
+		stw.SetFrame(newframe)
+	case ".dxf":
+		err = newframe.ReadDxf(fn, []float64{0.0, 0.0, 0.0}, stw.EPS())
+		if err != nil {
+			return err
+		}
+		newframe.SetFocus(nil)
+		stw.SetFrame(newframe)
+	}
+	frame = stw.Frame()
+	if s != nil {
+		frame.Show = s
+		for snum := range frame.Sects {
+			if _, ok := frame.Show.Sect[snum]; !ok {
+				frame.Show.Sect[snum] = true
+			}
+		}
+	}
+	stw.History(fmt.Sprintf("OPEN: %s", fn))
+	frame.Home = stw.Home()
+	stw.SetCwd(filepath.Dir(fn))
+	stw.AddRecently(fn)
+	stw.Snapshot()
+	stw.Changed(false)
+	if readrcfile {
+		if rcfn := filepath.Join(stw.Cwd(), ResourceFileName); FileExists(rcfn) {
+			ReadResource(stw, rcfn)
+		}
+	}
+	return nil
+}
+
+func Rebase(stw Window, fn string) {
+	frame := stw.Frame()
+	frame.Name = filepath.Base(fn)
+	frame.Project = ProjectName(fn)
+	path, err := filepath.Abs(fn)
+	if err != nil {
+		frame.Path = fn
+	} else {
+		frame.Path = path
+	}
+	frame.Home = stw.Home()
+	stw.AddRecently(fn)
+}
+
+func Reload(stw Window) {
+	frame := stw.Frame()
+	if frame != nil {
+		if s, ok := stw.(Selector); ok {
+			s.Deselect()
+		}
+		v := frame.View
+		s := frame.Show
+		OpenFile(stw, frame.Path, false)
+		frame.View = v
+		frame.Show = s
+	}
 }
 
 func SaveFile(stw Window, filename string) error {
@@ -33,7 +132,7 @@ func SaveFile(stw Window, filename string) error {
 		}
 		xmin, xmax, ymin, ymax := frame.Bbox2D(true)
 		w, h := stw.GetCanvasSize()
-		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * CanvasFitScale
+		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * stw.CanvasFitScale()
 		frame.View.Dists[1] *= scale
 	}
 	err := frame.WriteInp(filename)
@@ -43,8 +142,28 @@ func SaveFile(stw Window, filename string) error {
 	if err != nil {
 		return err
 	}
-	stw.ErrorMessage(fmt.Errorf("SAVE: %s", filename), INFO)
+	ErrorMessage(stw, fmt.Errorf("SAVE: %s", filename), INFO)
 	stw.Changed(true)
+	return nil
+}
+
+func ReadResource(stw Window, filename string) error {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		txt := s.Text()
+		if strings.HasPrefix(txt, "#") {
+			continue
+		}
+		stw.ExecCommand(txt)
+	}
+	if err := s.Err(); err != nil {
+		return err
+	}
 	return nil
 }
 

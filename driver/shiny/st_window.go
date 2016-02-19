@@ -2,17 +2,28 @@ package stshiny
 
 import (
 	"fmt"
-	"image"
-	"image/color"
+	"github.com/yofu/st/stlib"
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
 	"golang.org/x/mobile/event/mouse"
 	"golang.org/x/mobile/event/paint"
 	"golang.org/x/mobile/event/size"
-	"github.com/yofu/st/stlib"
+	"image"
+	"image/color"
 	"log"
 	"os"
+	"strings"
+)
+
+var (
+	undopos     int
+	completepos int
+	completes   []string
+)
+
+const (
+	nUndo        = 10
 )
 
 var (
@@ -21,8 +32,8 @@ var (
 
 	startX = 0
 	startY = 0
-	endX = 0
-	endY = 0
+	endX   = 0
+	endY   = 0
 
 	pressed = 0
 )
@@ -32,40 +43,38 @@ const (
 	ButtonMiddle
 )
 
-var (
-	CanvasFitScale = 0.9
-)
-
 type Window struct {
-	frame *st.Frame
-	screen screen.Screen
-	window screen.Window
-	buffer screen.Buffer
-	currentPen color.RGBA
+	*st.DrawOption
+	*st.Directory
+	*st.RecentFiles
+	frame        *st.Frame
+	screen       screen.Screen
+	window       screen.Window
+	buffer       screen.Buffer
+	currentPen   color.RGBA
 	currentBrush color.RGBA
-	cline string
+	cline        string
+	changed      bool
 }
 
 func NewWindow(s screen.Screen) *Window {
 	return &Window{
-		frame: st.NewFrame(),
-		screen: s,
-		window: nil,
-		buffer: nil,
-		currentPen: color.RGBA{0xff, 0xff, 0xff, 0xff},
+		DrawOption:   st.NewDrawOption(),
+		Directory:    st.NewDirectory("", ""),
+		RecentFiles:  st.NewRecentFiles(3),
+		frame:        st.NewFrame(),
+		screen:       s,
+		window:       nil,
+		buffer:       nil,
+		currentPen:   color.RGBA{0xff, 0xff, 0xff, 0xff},
 		currentBrush: color.RGBA{0xff, 0xff, 0xff, 0x77},
-		cline: "",
+		cline:        "",
+		changed:      false,
 	}
 }
 
-func (stw *Window) OpenFile(fn string) error {
-	frame := st.NewFrame()
-	err := frame.ReadInp(fn, []float64{0.0, 0.0, 0.0}, 0.0, false)
-	if err != nil {
-		return err
-	}
-	stw.frame = frame
-	return nil
+func (stw *Window) OpenFile(fn string, readrcfile bool) error {
+	return st.OpenFile(stw, fn, readrcfile)
 }
 
 func keymap(ev key.Event) key.Event {
@@ -80,9 +89,9 @@ func keymap(ev key.Event) key.Event {
 			r = ':'
 		}
 		return key.Event{
-			Rune: r,
-			Code: ev.Code,
-			Modifiers: ev.Modifiers^key.ModShift,
+			Rune:      r,
+			Code:      ev.Code,
+			Modifiers: ev.Modifiers ^ key.ModShift,
 			Direction: ev.Direction,
 		}
 	}
@@ -95,7 +104,7 @@ func (stw *Window) Start() {
 	}
 	stw.window = w
 	defer stw.window.Release()
-	stw.OpenFile(fmt.Sprintf("%s/Downloads/yokofolly13.inp", os.Getenv("HOME")))
+	stw.OpenFile(fmt.Sprintf("%s/Downloads/yokofolly13.inp", os.Getenv("HOME")), false)
 	stw.Redraw()
 	var sz size.Event
 	for {
@@ -119,6 +128,7 @@ func (stw *Window) Start() {
 				case key.CodeLeftShift:
 				case key.CodeLeftAlt:
 				case key.CodeReturnEnter:
+					stw.FeedCommand()
 				case key.CodeEscape:
 					return
 				}
@@ -178,6 +188,10 @@ func (stw *Window) Frame() *st.Frame {
 	return stw.frame
 }
 
+func (stw *Window) SetFrame(frame *st.Frame) {
+	stw.frame = frame
+}
+
 func (stw *Window) Redraw() {
 	if stw.frame == nil {
 		return
@@ -194,6 +208,46 @@ func (stw *Window) Redraw() {
 	stw.frame.View.Center[0] = 512
 	stw.frame.View.Center[1] = 512
 	st.DrawFrame(stw, stw.frame, st.ECOLOR_SECT, true)
+}
+
+func (stw *Window) FeedCommand() {
+	command := stw.cline
+	if command != "" {
+		stw.cline = ""
+		stw.ExecCommand(command)
+		stw.Redraw()
+	}
+}
+
+func (stw *Window) ExecCommand(command string) {
+	if stw.frame == nil {
+		if strings.HasPrefix(command, ":") {
+			err := st.ExMode(stw, stw.frame, command)
+			if err != nil {
+				stw.ErrorMessage(err, st.ERROR)
+			}
+		} else if strings.HasPrefix(command, "'") {
+			// err := st.Fig2Mode(stw, stw.frame, command)
+			// if err != nil {
+			// 	stw.ErrorMessage(err, st.ERROR)
+			// }
+		}
+		return
+	}
+	switch {
+	default:
+		stw.History(fmt.Sprintf("command doesn't exist: %s", command))
+	case strings.HasPrefix(command, ":"):
+		err := st.ExMode(stw, stw.frame, command)
+		if err != nil {
+			stw.ErrorMessage(err, st.ERROR)
+		}
+		// case strings.HasPrefix(command, "'"):
+		// 	err := st.Fig2Mode(stw, stw.frame, command)
+		// 	if err != nil {
+		// 		stw.ErrorMessage(err, st.ERROR)
+		// 	}
+	}
 }
 
 func (stw *Window) SelectedElems() []*st.Elem {
@@ -228,32 +282,37 @@ func (stw *Window) LastExCommand() string {
 func (stw *Window) SetLastExCommand(string) {
 }
 
-func (stw *Window) History(string) {
+func (stw *Window) History(str string) {
+	fmt.Println(str)
 }
 
-func (stw *Window) ErrorMessage(error, int) {
+func (stw *Window) ErrorMessage(err error, level int) {
+	st.ErrorMessage(stw, err, level)
 }
 
-func (stw *Window) CompleteFileName(string) string {
-	return ""
-}
-
-func (stw *Window) Cwd() string {
-	return ""
+func (stw *Window) CompleteFileName(str string) string {
+	path := ""
+	if stw.frame != nil {
+		path = stw.frame.Path
+	}
+	completes = st.CompleteFileName(str, path, stw.Recent())
+	completepos = 0
+	return completes[0]
 }
 
 func (stw *Window) HomeDir() string {
-	return ""
+	return stw.Home()
 }
 
 func (stw *Window) Print() {
 }
 
-func (stw *Window) Changed(bool) {
+func (stw *Window) Changed(c bool) {
+	stw.changed = c
 }
 
 func (stw *Window) IsChanged() bool {
-	return false
+	return stw.changed
 }
 
 func (stw *Window) Yn(string, string) bool {
@@ -288,6 +347,7 @@ func (stw *Window) Reload() {
 }
 
 func (stw *Window) Close(bool) {
+	os.Exit(0)
 }
 
 func (stw *Window) Checkout(string) error {
@@ -322,10 +382,16 @@ func (stw *Window) CheckFrame() {
 func (stw *Window) SelectConfed() {
 }
 
-func (stw *Window) Rebase(string) {
+func (stw *Window) Rebase(fn string) {
+	st.Rebase(stw, fn)
 }
 
 func (stw *Window) ShowRecently() {
+	for i, fn := range stw.Recent() {
+		if fn != "" {
+			stw.History(fmt.Sprintf("%d: %s", i, fn))
+		}
+	}
 }
 
 func (stw *Window) ShapeData(st.Shape) {
@@ -342,21 +408,6 @@ func (stw *Window) EPS() float64 {
 }
 
 func (stw *Window) SetEPS(float64) {
-}
-
-func (stw *Window) CanvasFitScale() float64 {
-	return CanvasFitScale
-}
-
-func (stw *Window) SetCanvasFitScale(val float64) {
-	CanvasFitScale = val
-}
-
-func (stw *Window) CanvasAnimateSpeed() float64 {
-	return 0.0
-}
-
-func (stw *Window) SetCanvasAnimateSpeed(float64) {
 }
 
 func (stw *Window) ToggleFixRotate() {
