@@ -26,7 +26,6 @@ type ExModer interface {
 	Window
 	LastExCommand() string
 	SetLastExCommand(string)
-	ErrorMessage(error, int)
 	CompleteFileName(string) string
 	Print()
 	Yn(string, string) bool
