@@ -35,17 +35,17 @@ func ven14rotatezero(stw *Window) {
 	getnnodes(stw, maxnum, func(num int) {
 		if num >= 3 {
 			ns := stw.selectNode[:3]
-			stw.Frame.Move(-ns[0].Coord[0], -ns[0].Coord[1], -ns[0].Coord[2])
+			stw.frame.Move(-ns[0].Coord[0], -ns[0].Coord[1], -ns[0].Coord[2])
 			l := 0.0
 			for i := 0; i < 2; i++ {
 				l += ns[1].Coord[i] * ns[1].Coord[i]
 			}
 			angle1 := -math.Atan2(ns[1].Coord[2], math.Sqrt(l))
-			stw.Frame.Rotate(ns[0].Coord, []float64{ns[1].Coord[1], -ns[1].Coord[0], 0.0}, angle1)
+			stw.frame.Rotate(ns[0].Coord, []float64{ns[1].Coord[1], -ns[1].Coord[0], 0.0}, angle1)
 			angle2 := math.Atan2(ns[1].Coord[0], ns[1].Coord[1])
-			stw.Frame.Rotate(ns[0].Coord, []float64{0.0, 0.0, 1.0}, angle2)
+			stw.frame.Rotate(ns[0].Coord, []float64{0.0, 0.0, 1.0}, angle2)
 			angle3 := math.Atan2(ns[2].Coord[2], ns[2].Coord[0])
-			stw.Frame.Rotate(ns[0].Coord, []float64{0.0, 1.0, 0.0}, angle3)
+			stw.frame.Rotate(ns[0].Coord, []float64{0.0, 1.0, 0.0}, angle3)
 		}
 		stw.EscapeAll()
 	})
@@ -55,12 +55,12 @@ func ven14cutter(stw *Window) {
 	axis := 0
 	compare := 1 - axis
 	pitch := 0.15
-	xmin, xmax, ymin, ymax, zmin, zmax := stw.Frame.Bbox(true)
+	xmin, xmax, ymin, ymax, zmin, zmax := stw.frame.Bbox(true)
 	max := []float64{xmax, ymax, zmax}[axis]
 	min := []float64{xmin, ymin, zmin}[axis]
 	coord := 0.0
 	for {
-		els := stw.Frame.Fence(axis, coord, false)
+		els := stw.frame.Fence(axis, coord, false)
 		var keys []float64
 		nodes := make(map[float64]*st.Node)
 		for _, el := range els {
@@ -69,7 +69,7 @@ func ven14cutter(stw *Window) {
 			keys = append(keys, n[0].Coord[compare])
 		}
 		var num int
-		for _, n := range stw.Frame.Nodes {
+		for _, n := range stw.frame.Nodes {
 			if n.Coord[axis] == coord {
 				nodes[n.Coord[compare]] = n
 				keys = append(keys, n.Coord[compare])
@@ -82,8 +82,8 @@ func ven14cutter(stw *Window) {
 			sorted[i] = nodes[k]
 		}
 		for i := 0; i < len(sorted)-1; i++ {
-			sec := stw.Frame.Sects[502]
-			stw.Frame.AddLineElem(-1, []*st.Node{sorted[i], sorted[i+1]}, sec, st.GIRDER)
+			sec := stw.frame.Sects[502]
+			stw.frame.AddLineElem(-1, []*st.Node{sorted[i], sorted[i+1]}, sec, st.GIRDER)
 		}
 		coord += pitch
 		if coord > max {
@@ -96,7 +96,7 @@ func ven14cutter(stw *Window) {
 		if coord < min {
 			break
 		}
-		els := stw.Frame.Fence(axis, coord, false)
+		els := stw.frame.Fence(axis, coord, false)
 		var keys []float64
 		nodes := make(map[float64]*st.Node)
 		for _, el := range els {
@@ -105,7 +105,7 @@ func ven14cutter(stw *Window) {
 			keys = append(keys, n[0].Coord[compare])
 		}
 		var num int
-		for _, n := range stw.Frame.Nodes {
+		for _, n := range stw.frame.Nodes {
 			if n.Coord[axis] == coord {
 				nodes[n.Coord[compare]] = n
 				keys = append(keys, n.Coord[compare])
@@ -118,30 +118,30 @@ func ven14cutter(stw *Window) {
 			sorted[i] = nodes[k]
 		}
 		for i := 0; i < len(sorted)-1; i++ {
-			sec := stw.Frame.Sects[502]
-			stw.Frame.AddLineElem(-1, []*st.Node{sorted[i], sorted[i+1]}, sec, st.GIRDER)
+			sec := stw.frame.Sects[502]
+			stw.frame.AddLineElem(-1, []*st.Node{sorted[i], sorted[i+1]}, sec, st.GIRDER)
 		}
 	}
 	stw.EscapeAll()
 }
 
 func ven14surface(stw *Window) {
-	if stw.Frame != nil {
+	if stw.frame != nil {
 		if name, ok := iup.GetSaveFile("", ""); ok {
 			var result bytes.Buffer
 			var nkeys []int
-			result.WriteString(fmt.Sprintf("_SrfPtGrid\n_KeepPoint\n11\n%d\n", len(stw.Frame.Nodes)/11))
-			for k := range stw.Frame.Nodes {
+			result.WriteString(fmt.Sprintf("_SrfPtGrid\n_KeepPoint\n11\n%d\n", len(stw.frame.Nodes)/11))
+			for k := range stw.frame.Nodes {
 				nkeys = append(nkeys, k)
 			}
 			sort.Ints(nkeys)
 			for _, k := range nkeys {
-				n := stw.Frame.Nodes[k]
+				n := stw.frame.Nodes[k]
 				result.WriteString(fmt.Sprintf("%.3f,%.3f,%.3f\n", n.Coord[0]*1000, n.Coord[1]*1000, n.Coord[2]*1000))
 			}
 			w, err := os.Create(name)
 			if err != nil {
-				stw.errormessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 				return
 			}
 			result.WriteTo(w)
@@ -152,7 +152,7 @@ func ven14surface(stw *Window) {
 
 func ven14normal(stw *Window) {
 	// stw.Show.NodeNormal = true
-	stw.Frame.Show.ElemNormal = true
+	stw.frame.Show.ElemNormal = true
 	stw.Redraw()
 	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
@@ -161,16 +161,16 @@ func ven14normal(stw *Window) {
 			stw.DefaultKeyAny(arg)
 		case KEY_ESCAPE:
 			// stw.Show.NodeNormal = false
-			stw.Frame.Show.ElemNormal = false
+			stw.frame.Show.ElemNormal = false
 			stw.EscapeAll()
 		}
 	})
 }
 
 func ven14setcang(stw *Window) {
-	for _, el := range stw.Frame.Elems {
+	for _, el := range stw.frame.Elems {
 		if el.Etype == st.GIRDER {
-			walls := stw.Frame.SearchElem(el.Enod...)
+			walls := stw.frame.SearchElem(el.Enod...)
 			vec := make([]float64, 3)
 			for _, w := range walls {
 				if w.Etype == st.WALL && (w.Sect.Num-el.Sect.Num)%100 == 0 {
@@ -190,14 +190,14 @@ func ven14errorelem(stw *Window) {
 	iup.SetFocus(stw.canv)
 	stw.Deselect()
 	stw.SetColorMode(st.ECOLOR_RATE)
-	stw.Frame.Show.ElemCaption |= st.EC_RATE_L
-	stw.Frame.Show.ElemCaption |= st.EC_RATE_S
+	stw.frame.Show.ElemCaption |= st.EC_RATE_L
+	stw.frame.Show.ElemCaption |= st.EC_RATE_S
 	stw.Labels["EC_RATE_L"].SetAttribute("FGCOLOR", labelFGColor)
 	stw.Labels["EC_RATE_S"].SetAttribute("FGCOLOR", labelFGColor)
 	stw.Redraw()
-	tmpels := make([]*st.Elem, len(stw.Frame.Elems))
+	tmpels := make([]*st.Elem, len(stw.frame.Elems))
 	i := 0
-	for _, el := range stw.Frame.Elems {
+	for _, el := range stw.frame.Elems {
 		if el.Rate != nil {
 			for _, val := range el.Rate {
 				if val > 1.15 {

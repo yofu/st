@@ -222,19 +222,19 @@ func getcoord(stw *Window, f func(x, y, z float64)) {
 	setnnum := func() {
 		nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
-			if n, ok := stw.Frame.Nodes[int(nnum)]; ok {
+			if n, ok := stw.frame.Nodes[int(nnum)]; ok {
 				f(n.Coord[0], n.Coord[1], n.Coord[2])
 			}
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
-					if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
+					if n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 						f(n.Coord[0], n.Coord[1], n.Coord[2])
 					}
 					// stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
@@ -248,7 +248,7 @@ func getcoord(stw *Window, f func(x, y, z float64)) {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -290,14 +290,14 @@ func getcoord(stw *Window, f func(x, y, z float64)) {
 		}
 	})
 	stw.canv.SetCallback(func(arg *iup.MouseMotion) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			// Snapping
 			stw.cdcanv.Foreground(cd.CD_YELLOW)
 			if snap != nil {
 				stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
 			}
-			n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
+			n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
 				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
@@ -324,19 +324,19 @@ func get1node(stw *Window, f func(n *st.Node)) {
 	setnnum := func() {
 		nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
-			if n, ok := stw.Frame.Nodes[int(nnum)]; ok {
+			if n, ok := stw.frame.Nodes[int(nnum)]; ok {
 				f(n)
 			}
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
-					if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
+					if n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 						f(n)
 					}
 					// stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
@@ -350,7 +350,7 @@ func get1node(stw *Window, f func(n *st.Node)) {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -387,20 +387,20 @@ func get1node(stw *Window, f func(n *st.Node)) {
 		case 'D', 'd':
 			x, y, z, err := stw.QueryCoord("GET COORD")
 			if err == nil {
-				n, _ := stw.Frame.CoordNode(x, y, z, EPS)
+				n, _ := stw.frame.CoordNode(x, y, z, EPS)
 				f(n)
 			}
 		}
 	})
 	stw.canv.SetCallback(func(arg *iup.MouseMotion) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			// Snapping
 			stw.cdcanv.Foreground(cd.CD_YELLOW)
 			if snap != nil {
 				stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
 			}
-			n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
+			n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
 				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
@@ -448,7 +448,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 	setnnum := func() {
 		nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
-			if n, ok := stw.Frame.Nodes[int(nnum)]; ok {
+			if n, ok := stw.frame.Nodes[int(nnum)]; ok {
 				if stw.selectNode[0] != nil {
 					f(n)
 				} else {
@@ -463,18 +463,18 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 		stw.cline.SetAttribute("VALUE", "")
 	}
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
 					if stw.selectNode[0] != nil {
-						if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
+						if n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 							f(n)
 						}
 						// stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
 					} else {
-						if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
+						if n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 							stw.selectNode[0] = n
 							stw.cdcanv.Foreground(cd.CD_DARK_RED)
 							stw.cdcanv.WriteMode(cd.CD_XOR)
@@ -492,7 +492,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -513,14 +513,14 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 		}
 	})
 	stw.canv.SetCallback(func(arg *iup.MouseMotion) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			// Snapping
 			stw.cdcanv.Foreground(cd.CD_YELLOW)
 			if snap != nil {
 				stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
 			}
-			n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
+			n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
 				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
@@ -556,7 +556,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 		case 'D', 'd':
 			x, y, z, err := stw.QueryCoord("GET COORD")
 			if err == nil {
-				n, _ := stw.Frame.CoordNode(x, y, z, EPS)
+				n, _ := stw.frame.CoordNode(x, y, z, EPS)
 				stw.Redraw()
 				if stw.selectNode[0] != nil {
 					f(n)
@@ -572,11 +572,11 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 			x, y, z, err := stw.QueryCoord("GET COORD")
 			if err == nil {
 				if stw.selectNode[0] != nil {
-					n, _ := stw.Frame.CoordNode(x+stw.selectNode[0].Coord[0], y+stw.selectNode[0].Coord[1], z+stw.selectNode[0].Coord[2], EPS)
+					n, _ := stw.frame.CoordNode(x+stw.selectNode[0].Coord[0], y+stw.selectNode[0].Coord[1], z+stw.selectNode[0].Coord[2], EPS)
 					stw.Redraw()
 					f(n)
 				} else {
-					n, _ := stw.Frame.CoordNode(x, y, z, EPS)
+					n, _ := stw.frame.CoordNode(x, y, z, EPS)
 					stw.Redraw()
 					stw.selectNode[0] = n
 					stw.cdcanv.Foreground(cd.CD_DARK_RED)
@@ -595,7 +595,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 func dists(stw *Window) {
 	get2nodes(stw, func(n *st.Node) {
 		stw.selectNode[1] = n
-		dx, dy, dz, d := stw.Frame.Distance(stw.selectNode[0], n)
+		dx, dy, dz, d := stw.frame.Distance(stw.selectNode[0], n)
 		stw.addHistory(fmt.Sprintf("NODE: %d - %d", stw.selectNode[0].Num, n.Num))
 		stw.addHistory(fmt.Sprintf("DX: %.3f DY: %.3f DZ: %.3f D: %.3f", dx, dy, dz, d))
 		// stw.cdcanv.Foreground(cd.CD_WHITE)
@@ -611,10 +611,10 @@ func dists(stw *Window) {
 func deformeddists(stw *Window) {
 	get2nodes(stw, func(n *st.Node) {
 		stw.selectNode[1] = n
-		dx, dy, dz, d := stw.Frame.Distance(stw.selectNode[0], n)
+		dx, dy, dz, d := stw.frame.Distance(stw.selectNode[0], n)
 		stw.addHistory(fmt.Sprintf("NODE: %d - %d", stw.selectNode[0].Num, n.Num))
 		stw.addHistory(fmt.Sprintf("DX: %.3f DY: %.3f DZ: %.3f D: %.3f", dx, dy, dz, d))
-		dx, dy, dz, d = stw.Frame.DeformedDistance(stw.selectNode[0], n)
+		dx, dy, dz, d = stw.frame.DeformedDistance(stw.selectNode[0], n)
 		stw.addHistory(fmt.Sprintf("dx: %.3f dy: %.3f dz: %.3f d: %.3f", dx, dy, dz, d))
 		// stw.cdcanv.Foreground(cd.CD_WHITE)
 		// stw.cdcanv.WriteMode(cd.CD_REPLACE)
@@ -647,11 +647,11 @@ func measure(stw *Window) {
 				v = st.Direction(stw.selectNode[0], stw.selectNode[1], true)
 				u = st.Cross(v, st.ZAXIS)
 			default:
-				stw.errormessage(errors.New("unknown direction"), st.ERROR)
+				st.ErrorMessage(stw, errors.New("unknown direction"), st.ERROR)
 				stw.EscapeAll()
 				return
 			}
-			m := stw.Frame.AddMeasure(stw.selectNode[0].Coord, stw.selectNode[1].Coord, u)
+			m := stw.frame.AddMeasure(stw.selectNode[0].Coord, stw.selectNode[1].Coord, u)
 			m.Text = fmt.Sprintf("%.0f", st.VectorDistance(stw.selectNode[0], stw.selectNode[1], v)*1000)
 			stw.EscapeAll()
 		}
@@ -684,11 +684,11 @@ func kijun(stw *Window) {
 		stw.selectNode[1] = n
 		name, err := stw.Query("基準線名を入力")
 		if err != nil {
-			stw.errormessage(err, st.ERROR)
+			st.ErrorMessage(stw, err, st.ERROR)
 			stw.EscapeAll()
 			return
 		}
-		stw.Frame.AddKijun(name, stw.selectNode[0].Coord, stw.selectNode[1].Coord)
+		stw.frame.AddKijun(name, stw.selectNode[0].Coord, stw.selectNode[1].Coord)
 		stw.EscapeAll()
 	},
 		func() {
@@ -701,8 +701,8 @@ func kijun(stw *Window) {
 func addlineelem(stw *Window) {
 	get2nodes(stw, func(n *st.Node) {
 		stw.selectNode[1] = n
-		sec := stw.Frame.DefaultSect()
-		el := stw.Frame.AddLineElem(-1, stw.selectNode, sec, st.NONE)
+		sec := stw.frame.DefaultSect()
+		el := stw.frame.AddLineElem(-1, stw.selectNode, sec, st.NONE)
 		stw.addHistory(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, stw.selectNode[0].Num, n.Num, sec.Num))
 		stw.Snapshot()
 		// stw.cdcanv.Foreground(cd.CD_WHITE)
@@ -733,7 +733,7 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 		}
 		nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
-			if n, ok := stw.Frame.Nodes[int(nnum)]; ok {
+			if n, ok := stw.frame.Nodes[int(nnum)]; ok {
 				if stw.selectNode[0] != nil {
 					stw.selectNode[selected] = n
 					selected++
@@ -749,12 +749,12 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 		stw.cline.SetAttribute("VALUE", "")
 	}
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
-					if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
+					if n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 						if selected >= maxnum {
 							stw.addHistory("TOO MANY NODES SELECTED")
 						} else if stw.selectNode[0] != nil {
@@ -779,7 +779,7 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -800,14 +800,14 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 		}
 	})
 	stw.canv.SetCallback(func(arg *iup.MouseMotion) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			// Snapping
 			stw.cdcanv.Foreground(cd.CD_YELLOW)
 			if snap != nil {
 				stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
 			}
-			n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
+			n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
 				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
@@ -860,8 +860,8 @@ func addplateelem(stw *Window) {
 	getnnodes(stw, maxnum, func(num int) {
 		if num >= 3 {
 			en := stw.selectNode[:num]
-			sec := stw.Frame.DefaultSect()
-			el := stw.Frame.AddPlateElem(-1, en, sec, st.NONE)
+			sec := stw.frame.DefaultSect()
+			el := stw.frame.AddPlateElem(-1, en, sec, st.NONE)
 			var buf bytes.Buffer
 			buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
 			for _, n := range en {
@@ -901,8 +901,8 @@ func addplateelembyline(stw *Window) {
 				ns[2] = els[1].Enod[1]
 				ns[3] = els[1].Enod[0]
 			}
-			sec := stw.Frame.DefaultSect()
-			el := stw.Frame.AddPlateElem(-1, ns, sec, st.NONE)
+			sec := stw.frame.DefaultSect()
+			el := stw.frame.AddPlateElem(-1, ns, sec, st.NONE)
 			var buf bytes.Buffer
 			buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
 			for _, n := range ns {
@@ -921,7 +921,7 @@ func addplateelembyline(stw *Window) {
 // SEARCHELEM// {{{
 func searchelem(stw *Window) {
 	if stw.selectNode != nil && len(stw.selectNode) >= 1 {
-		stw.selectElem = stw.Frame.SearchElem(stw.selectNode...)
+		stw.selectElem = stw.frame.SearchElem(stw.selectNode...)
 		stw.Redraw()
 		stw.EscapeCB()
 		return
@@ -929,14 +929,14 @@ func searchelem(stw *Window) {
 	stw.Deselect()
 	iup.SetFocus(stw.canv)
 	startsearch := func(n *st.Node) {
-		stw.selectElem = stw.Frame.SearchElem(n)
+		stw.selectElem = stw.frame.SearchElem(n)
 		stw.addHistory(fmt.Sprintf("Select Element Using NODE %d", n.Num))
 		stw.EscapeCB()
 	}
 	setnnum := func() {
 		nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
-			if n, ok := stw.Frame.Nodes[int(nnum)]; ok {
+			if n, ok := stw.frame.Nodes[int(nnum)]; ok {
 				startsearch(n)
 			} else {
 				stw.addHistory(fmt.Sprintf("NODE %d not found", nnum))
@@ -962,12 +962,12 @@ func searchelem(stw *Window) {
 		}
 	})
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
-					if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
+					if n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 						startsearch(n)
 					}
 					stw.Redraw()
@@ -977,7 +977,7 @@ func searchelem(stw *Window) {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -1000,20 +1000,20 @@ func searchelem(stw *Window) {
 
 // NODE <-> ELEM// {{{
 func nodetoelemany(stw *Window) {
-	stw.selectElem = stw.Frame.NodeToElemAny(stw.selectNode...)
+	stw.selectElem = stw.frame.NodeToElemAny(stw.selectNode...)
 	stw.EscapeCB()
 }
 func nodetoelemall(stw *Window) {
-	stw.selectElem = stw.Frame.NodeToElemAll(stw.selectNode...)
+	stw.selectElem = stw.frame.NodeToElemAll(stw.selectNode...)
 	stw.EscapeCB()
 }
 func elemtonode(stw *Window) {
-	stw.selectNode = stw.Frame.ElemToNode(stw.selectElem...)
+	stw.selectNode = stw.frame.ElemToNode(stw.selectElem...)
 	stw.EscapeCB()
 }
 func connected(stw *Window) {
 	if stw.selectNode != nil && len(stw.selectNode) >= 1 && stw.selectNode[0] != nil {
-		stw.selectNode = stw.Frame.LineConnected(stw.selectNode[0])
+		stw.selectNode = stw.frame.LineConnected(stw.selectNode[0])
 	}
 	stw.EscapeCB()
 }
@@ -1047,7 +1047,7 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 	setnnum := func() {
 		nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
-			if n, ok := stw.Frame.Nodes[int(nnum)]; ok {
+			if n, ok := stw.frame.Nodes[int(nnum)]; ok {
 				if startpoint != nil {
 					funcbynode(n)
 				} else {
@@ -1061,18 +1061,18 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 		stw.cline.SetAttribute("VALUE", "")
 	}
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
 					if startpoint != nil {
-						if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
+						if n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 							funcbynode(n)
 						}
 						// stw.cdcanv.Line(int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), stw.endX, stw.endY) // TODO
 					} else {
-						if n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
+						if n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel)); n != nil {
 							startpoint = n
 							stw.cdcanv.Foreground(cd.CD_DARK_RED)
 							stw.cdcanv.WriteMode(cd.CD_XOR)
@@ -1089,7 +1089,7 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -1109,14 +1109,14 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 		}
 	})
 	stw.canv.SetCallback(func(arg *iup.MouseMotion) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			// Snapping
 			stw.cdcanv.Foreground(cd.CD_YELLOW)
 			if snap != nil {
 				stw.cdcanv.FCircle(snap.Pcoord[0], snap.Pcoord[1], nodeSelectPixel)
 			}
-			n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
+			n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 			if n != nil {
 				stw.cdcanv.FCircle(n.Pcoord[0], n.Pcoord[1], nodeSelectPixel)
 				stw.SetCoord(n.Coord[0], n.Coord[1], n.Coord[2])
@@ -1169,7 +1169,7 @@ func copyelem(stw *Window) {
 	getvector(stw, func(x, y, z float64) {
 		if !(x == 0.0 && y == 0.0 && z == 0.0) {
 			for _, el := range stw.selectElem {
-				if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock {
+				if el == nil || el.IsHidden(stw.frame.Show) || el.Lock {
 					continue
 				}
 				el.Copy(x, y, z, EPS)
@@ -1190,17 +1190,17 @@ func duplicateelem(stw *Window) {
 	newels := make([]*st.Elem, len(stw.selectElem))
 	enum := 0
 	for _, el := range stw.selectElem {
-		if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock {
+		if el == nil || el.IsHidden(stw.frame.Show) || el.Lock {
 			continue
 		}
-		newel := el.Snapshot(stw.Frame)
+		newel := el.Snapshot(stw.frame)
 		newels[enum] = newel
 		enum++
 	}
 	newels = newels[:enum]
 	sort.Sort(st.ElemByNum{newels})
 	for _, el := range newels {
-		stw.Frame.AddElem(-1, el)
+		stw.frame.AddElem(-1, el)
 	}
 	stw.selectElem = newels
 	stw.Snapshot()
@@ -1218,13 +1218,13 @@ func moveelem(stw *Window) {
 	stw.addHistory("移動距離を指定[ダイアログ(D)]")
 	getvector(stw, func(x, y, z float64) {
 		for _, el := range stw.selectElem {
-			if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock {
+			if el == nil || el.IsHidden(stw.frame.Show) || el.Lock {
 				continue
 			}
 			el.Move(x, y, z, EPS)
 		}
-		for _, n := range stw.Frame.NodeNoReference() {
-			stw.Frame.DeleteNode(n.Num)
+		for _, n := range stw.frame.NodeNoReference() {
+			stw.frame.DeleteNode(n.Num)
 		}
 		stw.Snapshot()
 		stw.Redraw()
@@ -1244,7 +1244,7 @@ func movenode(stw *Window) {
 		}
 	}
 	if stw.selectElem != nil {
-		en := stw.Frame.ElemToNode(stw.selectElem...)
+		en := stw.frame.ElemToNode(stw.selectElem...)
 		var add bool
 		for _, n := range en {
 			add = true
@@ -1265,7 +1265,7 @@ func movenode(stw *Window) {
 	stw.addHistory("移動距離を指定[ダイアログ(D)]")
 	getvector(stw, func(x, y, z float64) {
 		for _, n := range ns {
-			if n == nil || n.IsHidden(stw.Frame.Show) || n.Lock {
+			if n == nil || n.IsHidden(stw.frame.Show) || n.Lock {
 				continue
 			}
 			n.Move(x, y, z)
@@ -1348,7 +1348,7 @@ func pinchnode(stw *Window) {
 		stw.dbuff.UpdateYAxis(&arg.Y)
 		switch arg.Button {
 		case BUTTON_LEFT:
-			if stw.Frame != nil {
+			if stw.frame != nil {
 				if arg.Pressed == 0 { // Released
 					if target != nil {
 						movefunc(target, float64(int(arg.X)-stw.startX), float64(int(arg.Y)-stw.startY), arg)
@@ -1356,7 +1356,7 @@ func pinchnode(stw *Window) {
 						stw.Redraw()
 					}
 				} else { // Pressed
-					target = stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
+					target = stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 					stw.startX = int(arg.X)
 					stw.startY = int(arg.Y)
 				}
@@ -1366,7 +1366,7 @@ func pinchnode(stw *Window) {
 				stw.Redraw()
 			} else { // Pressed
 				if isDouble(arg.Status) {
-					stw.Frame.SetFocus(nil)
+					stw.frame.SetFocus(nil)
 					stw.DrawFrameNode()
 					stw.ShowCenter()
 				} else {
@@ -1402,7 +1402,7 @@ func rotate(stw *Window) {
 		}
 	}
 	if stw.selectElem != nil {
-		en := stw.Frame.ElemToNode(stw.selectElem...)
+		en := stw.frame.ElemToNode(stw.selectElem...)
 		var add bool
 		for _, n := range en {
 			add = true
@@ -1430,7 +1430,7 @@ func rotate(stw *Window) {
 				stw.addHistory("回転角を指定[参照(R)]")
 				rot := func(angle float64) {
 					for _, n := range ns {
-						if n == nil || n.IsHidden(stw.Frame.Show) || n.Lock {
+						if n == nil || n.IsHidden(stw.frame.Show) || n.Lock {
 							continue
 						}
 						n.Rotate(n0.Coord, []float64{x, y, z}, angle)
@@ -1499,7 +1499,7 @@ func mirror(stw *Window) {
 	if stw.selectElem == nil || len(stw.selectElem) == 0 {
 		return
 	}
-	ns := stw.Frame.ElemToNode(stw.selectElem...)
+	ns := stw.frame.ElemToNode(stw.selectElem...)
 	stw.addHistory("対称面を指定[1点又は3点]")
 	maxnum := 3
 	createmirrors := func(coord, vec []float64) {
@@ -1507,7 +1507,7 @@ func mirror(stw *Window) {
 		for _, n := range ns {
 			c := n.MirrorCoord(coord, vec)
 			var created bool
-			nmap[n.Num], created = stw.Frame.CoordNode(c[0], c[1], c[2], EPS)
+			nmap[n.Num], created = stw.frame.CoordNode(c[0], c[1], c[2], EPS)
 			if created {
 				for i := 0; i < 6; i++ {
 					nmap[n.Num].Conf[i] = n.Conf[i]
@@ -1525,12 +1525,12 @@ func mirror(stw *Window) {
 			}
 			if add {
 				if el.IsLineElem() {
-					e := stw.Frame.AddLineElem(-1, newenod, el.Sect, el.Etype)
+					e := stw.frame.AddLineElem(-1, newenod, el.Sect, el.Etype)
 					for i := 0; i < 6*el.Enods; i++ {
 						e.Bonds[i] = el.Bonds[i]
 					}
 				} else {
-					stw.Frame.AddPlateElem(-1, newenod, el.Sect, el.Etype)
+					stw.frame.AddPlateElem(-1, newenod, el.Sect, el.Etype)
 				}
 			}
 		}
@@ -1573,7 +1573,7 @@ func scale(stw *Window) {
 		}
 	}
 	if stw.selectElem != nil {
-		en := stw.Frame.ElemToNode(stw.selectElem...)
+		en := stw.frame.ElemToNode(stw.selectElem...)
 		var add bool
 		for _, n := range en {
 			add = true
@@ -1595,16 +1595,16 @@ func scale(stw *Window) {
 	get1node(stw, func(n0 *st.Node) {
 		tmp, err := stw.Query("倍率を指定")
 		if err != nil {
-			stw.errormessage(err, st.ERROR)
+			st.ErrorMessage(stw, err, st.ERROR)
 			stw.EscapeCB()
 		}
 		val, err := strconv.ParseFloat(tmp, 64)
 		if err != nil {
-			stw.errormessage(err, st.ERROR)
+			st.ErrorMessage(stw, err, st.ERROR)
 			stw.EscapeCB()
 		}
 		for _, n := range ns {
-			if n == nil || n.IsHidden(stw.Frame.Show) || n.Lock {
+			if n == nil || n.IsHidden(stw.frame.Show) || n.Lock {
 				continue
 			}
 			n.Scale(n0.Coord, val, val, val)
@@ -1626,7 +1626,7 @@ func openinput(stw *Window) {
 
 // SAVE// {{{
 func saveinput(stw *Window) {
-	stw.SaveFile(stw.Frame.Path)
+	stw.SaveFile(stw.frame.Path)
 	stw.EscapeAll()
 }
 
@@ -1634,19 +1634,19 @@ func saveinput(stw *Window) {
 
 // WEIGHTCOPY// {{{
 func weightcopy(stw *Window) {
-	wgt := filepath.Join(stw.Home, "hogtxt.wgt")
-	fn := st.Ce(stw.Frame.Path, ".wgt")
+	wgt := filepath.Join(stw.Home(), "hogtxt.wgt")
+	fn := st.Ce(stw.frame.Path, ".wgt")
 	if !st.FileExists(fn) || stw.Yn("Copy Wgt", "上書きしますか") {
 		err := st.CopyFile(wgt, fn)
 		if err != nil {
-			stw.errormessage(err, st.ERROR)
+			st.ErrorMessage(stw, err, st.ERROR)
 			stw.EscapeAll()
 			return
 		}
 		stw.addHistory(fmt.Sprintf("COPY: %s", fn))
-		err = stw.Frame.ReadWgt(fn)
+		err = stw.frame.ReadWgt(fn)
 		if err != nil {
-			stw.errormessage(err, st.ERROR)
+			st.ErrorMessage(stw, err, st.ERROR)
 		}
 	}
 	stw.EscapeAll()
@@ -1656,7 +1656,7 @@ func weightcopy(stw *Window) {
 
 // READPGP// {{{
 func readpgp(stw *Window) {
-	if name, ok := iup.GetOpenFile(stw.cwd, "*.pgp"); ok {
+	if name, ok := iup.GetOpenFile(stw.Cwd(), "*.pgp"); ok {
 		err := stw.ReadPgp(name)
 		if err != nil {
 			stw.addHistory("ReadPgp: Cannot Read st.pgp")
@@ -1674,9 +1674,9 @@ func insert(stw *Window) {
 	if name, ok := iup.GetOpenFile("", ""); ok {
 		get1node(stw, func(n *st.Node) {
 			// TODO: 角度を指定
-			err := stw.Frame.ReadInp(name, n.Coord, 0.0, false)
+			err := stw.frame.ReadInp(name, n.Coord, 0.0, false)
 			if err != nil {
-				stw.errormessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 			}
 			stw.Snapshot()
 			stw.EscapeAll()
@@ -1691,9 +1691,9 @@ func insert(stw *Window) {
 
 // SETFOCUS// {{{
 func setfocus(stw *Window) {
-	stw.Frame.SetFocus(nil)
+	stw.frame.SetFocus(nil)
 	stw.Redraw()
-	stw.addHistory(fmt.Sprintf("FOCUS: %.1f %.1f %.1f", stw.Frame.View.Focus[0], stw.Frame.View.Focus[1], stw.Frame.View.Focus[2]))
+	stw.addHistory(fmt.Sprintf("FOCUS: %.1f %.1f %.1f", stw.frame.View.Focus[0], stw.frame.View.Focus[1], stw.frame.View.Focus[2]))
 	stw.EscapeAll()
 }
 
@@ -1704,17 +1704,17 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 	stw.selectElem = make([]*st.Elem, 1)
 	selected := false
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 {
 					if selected {
-						if el := stw.Frame.PickElem(float64(arg.X), float64(arg.Y), dotSelectPixel); el != nil {
+						if el := stw.frame.PickElem(float64(arg.X), float64(arg.Y), dotSelectPixel); el != nil {
 							f(el, int(arg.X), int(arg.Y))
 						}
 					} else {
-						if el := stw.Frame.PickElem(float64(arg.X), float64(arg.Y), dotSelectPixel); el != nil {
+						if el := stw.frame.PickElem(float64(arg.X), float64(arg.Y), dotSelectPixel); el != nil {
 							if condition(el) {
 								stw.selectElem[0] = el
 								selected = true
@@ -1729,7 +1729,7 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -1747,7 +1747,7 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 		}
 	})
 	stw.canv.SetCallback(func(arg *iup.MouseMotion) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch statusKey(arg.Status) {
 			case STATUS_CENTER:
@@ -1775,7 +1775,7 @@ func get1side(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 	stw.selectElem = make([]*st.Elem, 1)
 	selected := false
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
 			case BUTTON_LEFT:
@@ -1785,7 +1785,7 @@ func get1side(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 						selected = false
 						stw.selectElem = make([]*st.Elem, 1)
 					} else {
-						if el := stw.Frame.PickElem(float64(arg.X), float64(arg.Y), EPS); el != nil {
+						if el := stw.frame.PickElem(float64(arg.X), float64(arg.Y), EPS); el != nil {
 							if condition(el) {
 								stw.selectElem[0] = el
 								selected = true
@@ -1800,7 +1800,7 @@ func get1side(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -1818,7 +1818,7 @@ func get1side(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 		}
 	})
 	stw.canv.SetCallback(func(arg *iup.MouseMotion) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch statusKey(arg.Status) {
 			case STATUS_CENTER:
@@ -1885,7 +1885,7 @@ func axistocang(stw *Window) {
 	axisfunc := func(x, y, z float64) {
 		if !(x == 0.0 && y == 0.0 && z == 0.0) {
 			for _, el := range stw.selectElem {
-				if el == nil || el.IsHidden(stw.Frame.Show) || el.Lock {
+				if el == nil || el.IsHidden(stw.frame.Show) || el.Lock {
 					continue
 				}
 				_, err := el.AxisToCang([]float64{x, y, z}, strong)
@@ -2087,12 +2087,12 @@ func trim(stw *Window) {
 		if el.IsLineElem() {
 			var err error
 			if st.DotLine(stw.selectElem[0].Enod[0].Pcoord[0], stw.selectElem[0].Enod[0].Pcoord[1], stw.selectElem[0].Enod[1].Pcoord[0], stw.selectElem[0].Enod[1].Pcoord[1], float64(x), float64(y))*st.DotLine(stw.selectElem[0].Enod[0].Pcoord[0], stw.selectElem[0].Enod[0].Pcoord[1], stw.selectElem[0].Enod[1].Pcoord[0], stw.selectElem[0].Enod[1].Pcoord[1], el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1]) < 0.0 {
-				_, _, err = stw.Frame.Trim(stw.selectElem[0], el, 1, EPS)
+				_, _, err = stw.frame.Trim(stw.selectElem[0], el, 1, EPS)
 			} else {
-				_, _, err = stw.Frame.Trim(stw.selectElem[0], el, -1, EPS)
+				_, _, err = stw.frame.Trim(stw.selectElem[0], el, -1, EPS)
 			}
 			if err != nil {
-				stw.errormessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 			} else {
 				stw.Redraw()
 			}
@@ -2118,9 +2118,9 @@ func extend(stw *Window) {
 	get1elem(stw, func(el *st.Elem, x, y int) {
 		if el.IsLineElem() {
 			var err error
-			_, _, err = stw.Frame.Extend(stw.selectElem[0], el, EPS)
+			_, _, err = stw.frame.Extend(stw.selectElem[0], el, EPS)
 			if err != nil {
-				stw.errormessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 			} else {
 				stw.Redraw()
 			}
@@ -2145,13 +2145,13 @@ func extend(stw *Window) {
 func offset(stw *Window) {
 	tmp, err := stw.Query("オフセット距離を指定")
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
 	val, err := strconv.ParseFloat(tmp, 64)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -2196,7 +2196,7 @@ func selectnode(stw *Window) {
 	setnnum := func() {
 		nnum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
-			if n, ok := stw.Frame.Nodes[int(nnum)]; ok {
+			if n, ok := stw.frame.Nodes[int(nnum)]; ok {
 				stw.addHistory(fmt.Sprintf("NODE %d Selected", nnum))
 				stw.selectNode = make([]*st.Node, 1)
 				stw.selectNode[0] = n
@@ -2230,16 +2230,16 @@ func selectcolumnbase(stw *Window) {
 	stw.Deselect()
 	var min, max float64
 	nnum := 0
-	ns := make([]*st.Node, len(stw.Frame.Nodes))
-	if len(stw.Frame.Ai.Boundary) >= 2 {
-		min = stw.Frame.Ai.Boundary[0]
-		max = stw.Frame.Ai.Boundary[1]
+	ns := make([]*st.Node, len(stw.frame.Nodes))
+	if len(stw.frame.Ai.Boundary) >= 2 {
+		min = stw.frame.Ai.Boundary[0]
+		max = stw.frame.Ai.Boundary[1]
 	} else {
 		min = 0.0
 		max = 0.0
 	}
-	for _, el := range stw.Frame.Elems {
-		if el.Etype != st.COLUMN || el.IsHidden(stw.Frame.Show) {
+	for _, el := range stw.frame.Elems {
+		if el.Etype != st.COLUMN || el.IsHidden(stw.frame.Show) {
 			continue
 		}
 		for _, n := range el.Enod {
@@ -2259,8 +2259,8 @@ func selectcolumnbase(stw *Window) {
 func selectconfed(stw *Window) {
 	stw.Deselect()
 	num := 0
-	for _, n := range stw.Frame.Nodes {
-		if n.IsHidden(stw.Frame.Show) {
+	for _, n := range stw.frame.Nodes {
+		if n.IsHidden(stw.frame.Show) {
 			continue
 		}
 		for i := 0; i < 6; i++ {
@@ -2284,7 +2284,7 @@ func selectelem(stw *Window) {
 	setenum := func() {
 		enum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
-			if el, ok := stw.Frame.Elems[int(enum)]; ok {
+			if el, ok := stw.frame.Elems[int(enum)]; ok {
 				stw.addHistory(fmt.Sprintf("ELEM %d Selected", enum))
 				stw.selectElem = make([]*st.Elem, 1)
 				stw.selectElem[0] = el
@@ -2315,7 +2315,7 @@ func selectelem(stw *Window) {
 
 // SELECTSECT// {{{
 func selectsect(stw *Window) {
-	stw.Frame.Show.ElemCaption |= st.EC_SECT
+	stw.frame.Show.ElemCaption |= st.EC_SECT
 	stw.Labels["EC_SECT"].SetAttribute("FGCOLOR", labelFGColor)
 	stw.Deselect()
 	stw.Redraw()
@@ -2324,11 +2324,11 @@ func selectsect(stw *Window) {
 		tmp, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
 			snum := int(tmp)
-			if _, ok := stw.Frame.Sects[snum]; ok {
+			if _, ok := stw.frame.Sects[snum]; ok {
 				stw.addHistory(fmt.Sprintf("SECT %d Selected", snum))
 				stw.selectElem = make([]*st.Elem, 0)
-				for _, el := range stw.Frame.Elems {
-					if el.IsHidden(stw.Frame.Show) {
+				for _, el := range stw.frame.Elems {
+					if el.IsHidden(stw.frame.Show) {
 						continue
 					}
 					if el.Sect.Num == snum {
@@ -2368,7 +2368,7 @@ func hidesection(stw *Window) {
 		tmp, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
 			snum := int(tmp)
-			stw.Frame.Show.Sect[snum] = false
+			stw.frame.Show.Sect[snum] = false
 			stw.Redraw()
 		}
 		stw.cline.SetAttribute("VALUE", "")
@@ -2395,7 +2395,7 @@ func hidesection(stw *Window) {
 
 // HIDECURTAINWALL// {{{
 func hidecurtainwall(stw *Window) {
-	for _, sec := range stw.Frame.Sects {
+	for _, sec := range stw.frame.Sects {
 		if sec.Num > 900 {
 			continue
 		}
@@ -2403,7 +2403,7 @@ func hidecurtainwall(stw *Window) {
 			continue
 		}
 		if !sec.HasBrace() {
-			stw.Frame.Show.Sect[sec.Num] = false
+			stw.frame.Show.Sect[sec.Num] = false
 		}
 	}
 	stw.EscapeAll()
@@ -2446,13 +2446,13 @@ func selectchildren(stw *Window) {
 // NODENOREFERENCE// {{{
 func nodenoreference(stw *Window) {
 	stw.Deselect()
-	ns := stw.Frame.NodeNoReference()
+	ns := stw.frame.NodeNoReference()
 	if len(ns) != 0 {
 		stw.selectNode = ns
 		stw.Redraw()
 		if stw.Yn("NODE NO REFERENCE", "不要な節点を削除しますか?") {
 			for _, n := range ns {
-				stw.Frame.DeleteNode(n.Num)
+				stw.frame.DeleteNode(n.Num)
 			}
 			stw.Snapshot()
 		}
@@ -2465,9 +2465,9 @@ func nodenoreference(stw *Window) {
 // ELEMSAMENODE// {{{
 func elemsamenode(stw *Window) {
 	stw.Deselect()
-	els := stw.Frame.ElemSameNode()
+	els := stw.frame.ElemSameNode()
 	if len(els) != 0 {
-		stw.selectNode = stw.Frame.ElemToNode(els...)
+		stw.selectNode = stw.frame.ElemToNode(els...)
 		stw.selectElem = els
 		stw.Redraw()
 		if stw.Yn("ELEM SAME NODE", "部材を削除しますか?") {
@@ -2475,7 +2475,7 @@ func elemsamenode(stw *Window) {
 				if el.Lock {
 					continue
 				}
-				stw.Frame.DeleteElem(el.Num)
+				stw.frame.DeleteElem(el.Num)
 			}
 			stw.Snapshot()
 			stw.EscapeAll()
@@ -2491,11 +2491,11 @@ func elemsamenode(stw *Window) {
 
 func suspicious(stw *Window) {
 	stw.Deselect()
-	ns, els, err := stw.Frame.Suspicious()
+	ns, els, err := stw.frame.Suspicious()
 	if err != nil {
 		stw.selectNode = ns
 		stw.selectElem = els
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 	}
 	stw.EscapeCB()
 }
@@ -2503,7 +2503,7 @@ func suspicious(stw *Window) {
 // PRUNEENOD// {{{
 func pruneenod(stw *Window) {
 	stw.Deselect()
-	tmpels := stw.Frame.ElemSameNode()
+	tmpels := stw.frame.ElemSameNode()
 	l := len(tmpels)
 	if l != 0 {
 		els := make([]*st.Elem, l)
@@ -2534,14 +2534,14 @@ func pruneenod(stw *Window) {
 // NODEDUPLICATION// {{{
 func nodeduplication(stw *Window) {
 	stw.Deselect()
-	nm := stw.Frame.NodeDuplication(EPS)
+	nm := stw.frame.NodeDuplication(EPS)
 	if len(nm) != 0 {
 		for k := range nm {
 			stw.selectNode = append(stw.selectNode, k)
 		}
 		stw.Redraw()
 		if stw.Yn("NODE DUPLICATION", "重なった節点を削除しますか?") {
-			stw.Frame.ReplaceNode(nm)
+			stw.frame.ReplaceNode(nm)
 			stw.Snapshot()
 		} else {
 			stw.EscapeCB()
@@ -2556,7 +2556,7 @@ func nodeduplication(stw *Window) {
 // ELEMDUPLICATION// {{{
 func elemduplication(stw *Window) {
 	stw.Deselect()
-	els := stw.Frame.ElemDuplication(nil)
+	els := stw.frame.ElemDuplication(nil)
 	if len(els) != 0 {
 		for k := range els {
 			stw.selectElem = append(stw.selectElem, k)
@@ -2567,7 +2567,7 @@ func elemduplication(stw *Window) {
 				if el.Lock {
 					continue
 				}
-				stw.Frame.DeleteElem(el.Num)
+				stw.frame.DeleteElem(el.Num)
 			}
 			stw.Snapshot()
 			stw.EscapeAll()
@@ -2589,7 +2589,7 @@ func checkframe(stw *Window) {
 	elemsamenode(stw)
 	elemduplication(stw)
 	eall := true
-	ns, els, ok := stw.Frame.Check()
+	ns, els, ok := stw.frame.Check()
 	if !ok {
 		stw.selectNode = ns
 		stw.selectElem = els
@@ -2599,21 +2599,21 @@ func checkframe(stw *Window) {
 				if n.Lock {
 					continue
 				}
-				stw.Frame.DeleteNode(n.Num)
+				stw.frame.DeleteNode(n.Num)
 			}
 			for _, el := range els {
 				if el.Lock {
 					continue
 				}
-				stw.Frame.DeleteElem(el.Num)
+				stw.frame.DeleteElem(el.Num)
 			}
 		} else {
 			eall = false
 		}
 	}
-	if !stw.Frame.IsUpside() {
+	if !stw.frame.IsUpside() {
 		if stw.Yn("CHECK FRAME", "部材の向きを修正しますか？") {
-			stw.Frame.Upside()
+			stw.frame.Upside()
 		}
 		stw.Snapshot()
 	}
@@ -2628,10 +2628,10 @@ func checkframe(stw *Window) {
 
 // NODESORT// {{{
 func nodesort(stw *Window) {
-	bw := stw.Frame.BandWidth()
+	bw := stw.frame.BandWidth()
 	stw.addHistory(fmt.Sprintf("並び替え前: %d", bw))
 	ns := func(d int) {
-		bw, err := stw.Frame.NodeSort(d)
+		bw, err := stw.frame.NodeSort(d)
 		if err != nil {
 			stw.addHistory("並び替えエラー")
 			stw.EscapeAll()
@@ -2666,21 +2666,21 @@ func extractarclm(stw *Window) {
 	var name string
 	var ok bool
 	saved := true
-	stw.Frame.ExtractArclm()
+	stw.frame.ExtractArclm()
 	ans := stw.Yna("Extract Arclm", ".inl, .ihx, .ihyを保存しますか?", "別名で保存")
 	switch ans {
 	default:
 		saved = false
 	case 1:
-		name = stw.Frame.Name
-		err = stw.Frame.SaveAsArclm("")
+		name = stw.frame.Name
+		err = stw.frame.SaveAsArclm("")
 		if err != nil {
 			saved = false
 		}
 	case 3:
 		name, ok = iup.GetSaveFile("", "")
 		if ok {
-			err = stw.Frame.SaveAsArclm(name)
+			err = stw.frame.SaveAsArclm(name)
 			if err != nil {
 				saved = false
 			}
@@ -2702,9 +2702,9 @@ func extractarclm(stw *Window) {
 // ARCLM001 TODO: UNDER CONSTRUCTION // {{{
 func arclm001(stw *Window) {
 	per := "L"
-	af := stw.Frame.Arclms[per]
-	af.Arclm001([]string{st.Ce(stw.Frame.Path, ".otp")}, true, "LLS", 1e-16)
-	stw.Frame.ReadArclmData(af, per)
+	af := stw.frame.Arclms[per]
+	af.Arclm001([]string{st.Ce(stw.frame.Path, ".otp")}, true, "LLS", 1e-16)
+	stw.frame.ReadArclmData(af, per)
 	stw.EscapeAll()
 }
 
@@ -2714,7 +2714,7 @@ func arclm001(stw *Window) {
 func fence(stw *Window) {
 	iup.SetFocus(stw.canv)
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				stw.SelectElemFenceStart(arg)
@@ -2723,7 +2723,7 @@ func fence(stw *Window) {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -2736,7 +2736,7 @@ func fence(stw *Window) {
 		}
 	})
 	stw.canv.SetCallback(func(arg *iup.MouseMotion) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch statusKey(arg.Status) {
 			case STATUS_LEFT:
@@ -2757,12 +2757,12 @@ func errorelem(stw *Window) {
 	stw.SetColorMode(st.ECOLOR_RATE)
 	stw.SrcanRateOn()
 	stw.Redraw()
-	tmpels := make([]*st.Elem, len(stw.Frame.Elems))
+	tmpels := make([]*st.Elem, len(stw.frame.Elems))
 	i := 0
-	for _, el := range stw.Frame.Elems {
+	for _, el := range stw.frame.Elems {
 		switch el.Etype {
 		case st.COLUMN, st.GIRDER, st.BRACE, st.WALL, st.SLAB:
-			val, err := el.RateMax(stw.Frame.Show)
+			val, err := el.RateMax(stw.frame.Show)
 			if err != nil {
 				continue
 			}
@@ -2784,9 +2784,9 @@ func showplane(stw *Window) {
 	maxnum := 3
 	getnnodes(stw, maxnum, func(num int) {
 		if num >= 3 {
-			err := stw.Frame.ShowPlane(stw.selectNode[0], stw.selectNode[1], stw.selectNode[2], EPS)
+			err := stw.frame.ShowPlane(stw.selectNode[0], stw.selectNode[1], stw.selectNode[2], EPS)
 			if err != nil {
-				stw.errormessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 			}
 			stw.EscapeAll()
 		}
@@ -2818,7 +2818,7 @@ func cutter(stw *Window) {
 	if err != nil {
 		return
 	}
-	stw.Frame.Cutter(axis, coord, EPS)
+	stw.frame.Cutter(axis, coord, EPS)
 	stw.EscapeAll()
 }
 
@@ -2831,7 +2831,7 @@ func divide(stw *Window, divfunc func(*st.Elem) ([]*st.Node, []*st.Elem, error))
 		for _, el := range stw.selectElem {
 			_, els, err := divfunc(el)
 			if err != nil {
-				stw.errormessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 				continue
 			}
 			if err == nil && len(els) > 1 {
@@ -2856,13 +2856,13 @@ func divideatmid(stw *Window) {
 func divideinn(stw *Window) {
 	ans, err := stw.Query("分割数")
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
 	val, err := strconv.ParseInt(ans, 10, 64)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -2895,9 +2895,9 @@ func intersect(stw *Window) {
 			}
 		}
 		if num == 2 {
-			_, els, err := stw.Frame.Intersect(els[0], els[1], true, 1, 1, false, false, EPS)
+			_, els, err := stw.frame.Intersect(els[0], els[1], true, 1, 1, false, false, EPS)
 			if err != nil {
-				stw.errormessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 				stw.Deselect()
 			} else {
 				stw.Deselect()
@@ -2917,9 +2917,9 @@ func intersect(stw *Window) {
 
 // INTERSECTALL
 func intersectall(stw *Window) {
-	err := stw.Frame.IntersectAll(stw.selectElem, EPS)
+	err := stw.frame.IntersectAll(stw.selectElem, EPS)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeAll()
 		return
 	}
@@ -2954,7 +2954,7 @@ func intersectall2(stw *Window) {
 			if !el2.IsLineElem() {
 				continue
 			}
-			stw.Frame.IntersectionPoint(el1, el2, true, EPS)
+			stw.frame.IntersectionPoint(el1, el2, true, EPS)
 		}
 		_, _, err := el1.DivideAtOns(EPS)
 		if err != nil {
@@ -2973,8 +2973,8 @@ func (stw *Window) BoundedArea(arg *iup.MouseButton, f func(ns []*st.Node, els [
 	if arg.Pressed == 0 { // Released
 		var cand *st.Elem
 		xmin := 100000.0
-		for _, el := range stw.Frame.Elems {
-			if el.IsHidden(stw.Frame.Show) || !el.IsLineElem() {
+		for _, el := range stw.frame.Elems {
+			if el.IsHidden(stw.frame.Show) || !el.IsLineElem() {
 				continue
 			}
 			if el.Enod[0].Pcoord[1] == el.Enod[1].Pcoord[1] {
@@ -3014,11 +3014,11 @@ func (stw *Window) Chain(x, y float64, el *st.Elem, maxdepth int) ([]*st.Node, [
 	for {
 		minangle := 10000.0
 		var addelem *st.Elem
-		for _, cand := range stw.Frame.SearchElem(next) {
+		for _, cand := range stw.frame.SearchElem(next) {
 			if cand == nil {
 				continue
 			}
-			if cand.IsHidden(stw.Frame.Show) || !cand.IsLineElem() || cand == tmpel {
+			if cand.IsHidden(stw.frame.Show) || !cand.IsLineElem() || cand == tmpel {
 				continue
 			}
 			var otherside *st.Node
@@ -3103,13 +3103,13 @@ func hatchplateelem(stw *Window) {
 	createhatch := func(ns []*st.Node, els []*st.Elem) {
 		en := st.ModifyEnod(ns)
 		en = st.Upside(en)
-		sec := stw.Frame.DefaultSect()
+		sec := stw.frame.DefaultSect()
 		switch len(en) {
 		case 0, 1, 2:
 			return
 		case 3, 4:
-			if len(stw.Frame.SearchElem(en...)) == 0 {
-				el := stw.Frame.AddPlateElem(-1, en, sec, st.NONE)
+			if len(stw.frame.SearchElem(en...)) == 0 {
+				el := stw.frame.AddPlateElem(-1, en, sec, st.NONE)
 				var buf bytes.Buffer
 				buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
 				for _, n := range en {
@@ -3128,8 +3128,8 @@ func hatchplateelem(stw *Window) {
 		default:
 			ens := divideenods(en, 4)
 			for _, eni := range ens {
-				if len(stw.Frame.SearchElem(eni...)) == 0 {
-					el := stw.Frame.AddPlateElem(-1, eni, sec, st.NONE)
+				if len(stw.frame.SearchElem(eni...)) == 0 {
+					el := stw.frame.AddPlateElem(-1, eni, sec, st.NONE)
 					var buf bytes.Buffer
 					buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
 					for _, n := range eni {
@@ -3150,7 +3150,7 @@ func hatchplateelem(stw *Window) {
 		stw.Snapshot()
 	}
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				stw.BoundedArea(arg, createhatch)
@@ -3159,7 +3159,7 @@ func hatchplateelem(stw *Window) {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -3176,7 +3176,7 @@ func hatchplateelem(stw *Window) {
 		}
 	})
 	stw.canv.SetCallback(func(arg *iup.MouseMotion) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch statusKey(arg.Status) {
 			case STATUS_CENTER:
@@ -3232,7 +3232,7 @@ func addplateall(stw *Window) {
 		return els[:num]
 	}
 	maxsize := 4
-	sec := stw.Frame.DefaultSect()
+	sec := stw.frame.DefaultSect()
 	etype := st.NONE
 	add := 0
 	added := make([]*st.Elem, 0)
@@ -3258,8 +3258,8 @@ func addplateall(stw *Window) {
 				}
 				if found {
 					en = []*st.Node{el.Enod[0], el.Enod[1], n1}
-					if len(stw.Frame.SearchElem(en...)) == 0 {
-						el := stw.Frame.AddPlateElem(-1, en, sec, etype)
+					if len(stw.frame.SearchElem(en...)) == 0 {
+						el := stw.frame.AddPlateElem(-1, en, sec, etype)
 						added = append(added, el)
 						add++
 					}
@@ -3283,8 +3283,8 @@ func addplateall(stw *Window) {
 						}
 						if found {
 							en = []*st.Node{el.Enod[0], el.Enod[1], n2, n1}
-							if len(stw.Frame.SearchElem(en...)) == 0 {
-								el := stw.Frame.AddPlateElem(-1, en, sec, etype)
+							if len(stw.frame.SearchElem(en...)) == 0 {
+								el := stw.frame.AddPlateElem(-1, en, sec, etype)
 								added = append(added, el)
 								add++
 							}
@@ -3394,25 +3394,25 @@ func editwrect(stw *Window) {
 	setwrect := func(els ...*st.Elem) {
 		ans, err := stw.Query("開口長さ h[m]")
 		if err != nil {
-			stw.errormessage(err, st.ERROR)
+			st.ErrorMessage(stw, err, st.ERROR)
 			stw.EscapeCB()
 			return
 		}
 		w, err := strconv.ParseFloat(ans, 64)
 		if err != nil {
-			stw.errormessage(err, st.ERROR)
+			st.ErrorMessage(stw, err, st.ERROR)
 			stw.EscapeCB()
 			return
 		}
 		ans, err = stw.Query("開口高さ l[m]")
 		if err != nil {
-			stw.errormessage(err, st.ERROR)
+			st.ErrorMessage(stw, err, st.ERROR)
 			stw.EscapeCB()
 			return
 		}
 		h, err := strconv.ParseFloat(ans, 64)
 		if err != nil {
-			stw.errormessage(err, st.ERROR)
+			st.ErrorMessage(stw, err, st.ERROR)
 			stw.EscapeCB()
 			return
 		}
@@ -3464,13 +3464,13 @@ func convexhull(stw *Window) {
 func reaction(stw *Window) {
 	tmp, err := stw.Query("方向を指定[0～5]")
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
 	val, err := strconv.ParseInt(tmp, 10, 64)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -3479,10 +3479,10 @@ func reaction(stw *Window) {
 		selectconfed(stw)
 	}
 	sort.Sort(st.NodeByNum{stw.selectNode})
-	fn := st.Ce(stw.Frame.Path, ".rct")
+	fn := st.Ce(stw.frame.Path, ".rct")
 	err = st.WriteReaction(fn, stw.selectNode, d)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -3530,7 +3530,7 @@ func sumreaction(stw *Window) {
 		stw.addHistory(result.String())
 	}
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
 			case BUTTON_CENTER:
@@ -3541,7 +3541,7 @@ func sumreaction(stw *Window) {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -3598,7 +3598,7 @@ func uplift(stw *Window) {
 		}
 		fmt.Println(periods)
 		num := 0
-		for _, n := range stw.Frame.Nodes {
+		for _, n := range stw.frame.Nodes {
 			if !n.Conf[2] {
 				continue
 			}
@@ -3647,7 +3647,7 @@ func notice1459(stw *Window) {
 		var delta float64
 		ds := make([]float64, num)
 		for i := 0; i < num; i++ {
-			ds[i] = -stw.selectNode[i].ReturnDisp(stw.Frame.Show.Period, 2) * 100
+			ds[i] = -stw.selectNode[i].ReturnDisp(stw.frame.Show.Period, 2) * 100
 		}
 		var length float64
 		switch num {
@@ -3681,9 +3681,9 @@ func notice1459(stw *Window) {
 // CATBYNODE// {{{
 func catbynode(stw *Window) {
 	get1node(stw, func(n *st.Node) {
-		err := stw.Frame.CatByNode(n, true)
+		err := stw.frame.CatByNode(n, true)
 		if err != nil {
-			stw.errormessage(err, st.ERROR)
+			st.ErrorMessage(stw, err, st.ERROR)
 		} else {
 			stw.Snapshot()
 			stw.Redraw()
@@ -3698,8 +3698,8 @@ func catintermediatenode(stw *Window) {
 	stw.Deselect()
 	ns := make([]*st.Node, 0)
 	nnum := 0
-	for _, n := range stw.Frame.Nodes {
-		els := stw.Frame.SearchElem(n)
+	for _, n := range stw.frame.Nodes {
+		els := stw.frame.SearchElem(n)
 		l := len(els)
 		if l < 2 {
 			continue
@@ -3738,7 +3738,7 @@ func catintermediatenode(stw *Window) {
 		stw.Redraw()
 		if stw.Yn("CAT INTERMEDIATE NODE", "中間節点を除去しますか？") {
 			for _, n := range stw.selectNode {
-				stw.Frame.CatByNode(n, true)
+				stw.frame.CatByNode(n, true)
 			}
 			stw.Snapshot()
 		}
@@ -3763,14 +3763,14 @@ func getnelems(stw *Window, size int, f func(int)) {
 	setenum := func() {
 		enum, err := strconv.ParseInt(stw.cline.GetAttribute("VALUE"), 10, 64)
 		if err == nil {
-			if el, ok := stw.Frame.Elems[int(enum)]; ok {
+			if el, ok := stw.frame.Elems[int(enum)]; ok {
 				stw.selectElem = append(stw.selectElem, el)
 			}
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				stw.SelectElemStart(arg)
@@ -3783,7 +3783,7 @@ func getnelems(stw *Window, size int, f func(int)) {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -3838,17 +3838,17 @@ func joinlineelem(stw *Window) {
 			}
 		}
 		if num == 2 {
-			err := stw.Frame.JoinLineElem(els[0], els[1], true, true)
+			err := stw.frame.JoinLineElem(els[0], els[1], true, true)
 			if err != nil {
 				switch err.(type) {
 				default:
-					stw.errormessage(err, st.ERROR)
+					st.ErrorMessage(stw, err, st.ERROR)
 					return
 				case st.ParallelError:
 					if stw.Yn("JOIN LINE ELEM", "平行でない部材を結合しますか") {
-						err := stw.Frame.JoinLineElem(els[0], els[1], false, true)
+						err := stw.frame.JoinLineElem(els[0], els[1], false, true)
 						if err != nil {
-							stw.errormessage(err, st.ERROR)
+							st.ErrorMessage(stw, err, st.ERROR)
 							return
 						}
 					}
@@ -3877,9 +3877,9 @@ func joinplateelem(stw *Window) {
 			}
 		}
 		if num == 2 {
-			err := stw.Frame.JoinPlateElem(els[0], els[1])
+			err := stw.frame.JoinPlateElem(els[0], els[1])
 			if err != nil {
-				stw.errormessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 			} else {
 				stw.Snapshot()
 				stw.EscapeAll()
@@ -3923,7 +3923,7 @@ func mergenode(stw *Window) {
 					del = true
 				}
 			}
-			stw.Frame.ReplaceNode(delmap)
+			stw.frame.ReplaceNode(delmap)
 			stw.Snapshot()
 		}
 	}
@@ -3932,7 +3932,7 @@ func mergenode(stw *Window) {
 		stw.EscapeAll()
 		return
 	}
-	getnnodes(stw, len(stw.Frame.Nodes), func(num int) { merge(stw.selectNode); stw.EscapeAll() })
+	getnnodes(stw, len(stw.frame.Nodes), func(num int) { merge(stw.selectNode); stw.EscapeAll() })
 }
 
 // }}}
@@ -3941,10 +3941,10 @@ func mergenode(stw *Window) {
 func erase(stw *Window) {
 	stw.DeleteSelected()
 	stw.Deselect()
-	ns := stw.Frame.NodeNoReference()
+	ns := stw.frame.NodeNoReference()
 	if len(ns) != 0 {
 		for _, n := range ns {
-			stw.Frame.DeleteNode(n.Num)
+			stw.frame.DeleteNode(n.Num)
 		}
 	}
 	stw.EscapeAll()
@@ -3954,10 +3954,10 @@ func erase(stw *Window) {
 
 // FACTS// {{{
 func facts(stw *Window) {
-	fn := st.Ce(stw.Frame.Path, ".fes")
-	err := stw.Frame.Facts(fn, []int{st.COLUMN, st.GIRDER, st.BRACE, st.WBRACE, st.SBRACE}, nil, nil)
+	fn := st.Ce(stw.frame.Path, ".fes")
+	err := stw.frame.Facts(fn, []int{st.COLUMN, st.GIRDER, st.BRACE, st.WBRACE, st.SBRACE}, nil, nil)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 	} else {
 		stw.addHistory(fmt.Sprintf("Output: %s", fn))
 	}
@@ -3974,29 +3974,29 @@ func zoubundisp(stw *Window) {
 	}
 	pers, err := stw.QueryList("PERIODを指定")
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 	}
 	tmp, err := stw.Query("方向を指定[0～5]")
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 	}
 	val, err := strconv.ParseInt(tmp, 10, 64)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 	}
 	d := int(val)
 	if d < 0 || d > 5 {
-		stw.errormessage(errors.New(":zoubundisp direction should be between 0 ~ 6"), st.ERROR)
+		st.ErrorMessage(stw, errors.New(":zoubundisp direction should be between 0 ~ 6"), st.ERROR)
 		stw.EscapeCB()
 		return
 	}
-	fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
-	err = stw.Frame.ReportZoubunDisp(fn, stw.selectNode, pers, d)
+	fn := filepath.Join(filepath.Dir(stw.frame.Path), "zoubunout.txt")
+	err = stw.frame.ReportZoubunDisp(fn, stw.selectNode, pers, d)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -4010,13 +4010,13 @@ func zoubundisp(stw *Window) {
 func zoubunyield(stw *Window) {
 	var otp bytes.Buffer
 	var skeys []int
-	for k := range stw.Frame.Sects {
+	for k := range stw.frame.Sects {
 		skeys = append(skeys, k)
 	}
 	sort.Ints(skeys)
 	otp.WriteString("種別　断面番号　  　　　 Ｎ[tf]　Ｑx[tf]　 Ｑy[tf]　Ｍz[tfm]　Ｍx[tfm]　Ｍy[tfm]\n")
 	for _, k := range skeys {
-		sec := stw.Frame.Sects[k]
+		sec := stw.frame.Sects[k]
 		if sec.Num < 700 {
 			otp.WriteString(fmt.Sprintf("         %4d     最大   ", sec.Num))
 			for i := 0; i < 6; i++ {
@@ -4037,11 +4037,11 @@ func zoubunyield(stw *Window) {
 			otp.WriteString("\n")
 		}
 	}
-	fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunyield.txt")
+	fn := filepath.Join(filepath.Dir(stw.frame.Path), "zoubunyield.txt")
 	w, err := os.Create(fn)
 	defer w.Close()
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 	}
 	otp.WriteTo(w)
@@ -4059,29 +4059,29 @@ func zoubunreaction(stw *Window) {
 	}
 	pers, err := stw.QueryList("PERIODを指定")
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 	}
 	tmp, err := stw.Query("方向を指定[0～5]")
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 	}
 	val, err := strconv.ParseInt(tmp, 10, 64)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 	}
 	d := int(val)
 	if d < 0 || d > 5 {
-		stw.errormessage(errors.New(":zoubundisp direction should be between 0 ~ 6"), st.ERROR)
+		st.ErrorMessage(stw, errors.New(":zoubundisp direction should be between 0 ~ 6"), st.ERROR)
 		stw.EscapeCB()
 		return
 	}
-	fn := filepath.Join(filepath.Dir(stw.Frame.Path), "zoubunout.txt")
-	err = stw.Frame.ReportZoubunReaction(fn, stw.selectNode, pers, d)
+	fn := filepath.Join(filepath.Dir(stw.frame.Path), "zoubunout.txt")
+	err = stw.frame.ReportZoubunReaction(fn, stw.selectNode, pers, d)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -4108,10 +4108,10 @@ func amountprop(stw *Window) {
 		}
 		props[i] = int(val)
 	}
-	fn := filepath.Join(filepath.Dir(stw.Frame.Path), "amount.txt")
-	err = stw.Frame.AmountProp(fn, props...)
+	fn := filepath.Join(filepath.Dir(stw.frame.Path), "amount.txt")
+	err = stw.frame.AmountProp(fn, props...)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
 		return
 	}
@@ -4124,14 +4124,14 @@ func amountprop(stw *Window) {
 func seteps(stw *Window) {
 	ans, err := stw.Query("許容差[m]")
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
 		stw.EscapeCB()
 		return
 	}
 	val, err := strconv.ParseFloat(ans, 64)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		stw.addHistory(fmt.Sprintf("EPS=%.3E", EPS))
 		stw.EscapeCB()
 		return

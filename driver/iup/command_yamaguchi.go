@@ -27,9 +27,9 @@ func init() {
 // GRAVITY// {{{
 func gravity(stw *Window) {
 	iup.SetFocus(stw.canv)
-	stw.Frame.Show.NodeCaption |= st.NC_ZCOORD
+	stw.frame.Show.NodeCaption |= st.NC_ZCOORD
 	stw.Deselect()
-	// stw.Frame.Show.ColorMode = st.ECOLOR_HEIGHT
+	// stw.frame.Show.ColorMode = st.ECOLOR_HEIGHT
 	stw.Redraw()
 	height := 0.1
 	maxrange := 0.5
@@ -38,8 +38,8 @@ func gravity(stw *Window) {
 	gravitymode := "HEIGHT"
 	sag := func(x, y, r, m float64) {
 		var dx, dy, d float64
-		for _, n := range stw.Frame.Nodes {
-			if n.Conf[2] || n.IsHidden(stw.Frame.Show) || n.Lock {
+		for _, n := range stw.frame.Nodes {
+			if n.Conf[2] || n.IsHidden(stw.frame.Show) || n.Lock {
 				continue
 			}
 			dx = math.Abs(n.Coord[0] - x)
@@ -73,12 +73,12 @@ func gravity(stw *Window) {
 		stw.cline.SetAttribute("VALUE", "")
 	}
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				stw.dbuff.UpdateYAxis(&arg.Y)
 				if arg.Pressed == 0 {
-					n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
+					n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 					if n != nil {
 						if mousetime {
 							t = math.Min(time.Since(stw.startT).Seconds(), maxrange)
@@ -95,7 +95,7 @@ func gravity(stw *Window) {
 			case BUTTON_RIGHT:
 				stw.dbuff.UpdateYAxis(&arg.Y)
 				if arg.Pressed == 0 {
-					n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
+					n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 					if n != nil {
 						if mousetime {
 							t = math.Min(time.Since(stw.startT).Seconds(), maxrange)
@@ -114,7 +114,7 @@ func gravity(stw *Window) {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -168,17 +168,17 @@ func gravity(stw *Window) {
 // SMOOTH// {{{
 func smooth(stw *Window) {
 	iup.SetFocus(stw.canv)
-	stw.Frame.Show.NodeCaption |= st.NC_ZCOORD
+	stw.frame.Show.NodeCaption |= st.NC_ZCOORD
 	stw.Deselect()
-	// stw.Frame.Show.ColorMode = st.ECOLOR_HEIGHT
+	// stw.frame.Show.ColorMode = st.ECOLOR_HEIGHT
 	stw.Redraw()
 	ratio := 0.5
 	flatten := func(n *st.Node) {
-		if n.Conf[2] || n.IsHidden(stw.Frame.Show) || n.Lock {
+		if n.Conf[2] || n.IsHidden(stw.frame.Show) || n.Lock {
 			return
 		}
 		z0 := n.Coord[2]
-		for _, cn := range stw.Frame.LineConnected(n) {
+		for _, cn := range stw.frame.LineConnected(n) {
 			if cn.Conf[2] {
 				continue
 			}
@@ -194,12 +194,12 @@ func smooth(stw *Window) {
 		stw.cline.SetAttribute("VALUE", "")
 	}
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				stw.dbuff.UpdateYAxis(&arg.Y)
 				if arg.Pressed == 0 {
-					n := stw.Frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
+					n := stw.frame.PickNode(float64(arg.X), float64(arg.Y), float64(nodeSelectPixel))
 					if n != nil {
 						flatten(n)
 						stw.Redraw()
@@ -211,7 +211,7 @@ func smooth(stw *Window) {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -246,14 +246,14 @@ func smooth(stw *Window) {
 // HANGING// {{{
 func hanging(stw *Window) {
 	iup.SetFocus(stw.canv)
-	stw.Frame.Show.NodeCaption |= st.NC_ZCOORD
-	// stw.Frame.Show.ColorMode = st.ECOLOR_HEIGHT
+	stw.frame.Show.NodeCaption |= st.NC_ZCOORD
+	// stw.frame.Show.ColorMode = st.ECOLOR_HEIGHT
 	stw.Redraw()
 	confed := make([]*st.Node, 0)
 	height := 2.9
 	radius := 0.4
 	hangmode := "HEIGHT"
-	for _, n := range stw.Frame.Nodes {
+	for _, n := range stw.frame.Nodes {
 		if n.Conf[2] {
 			confed = append(confed, n)
 		}
@@ -273,7 +273,7 @@ func hanging(stw *Window) {
 			if n == nil {
 				continue
 			}
-			if n.Conf[2] || n.IsHidden(stw.Frame.Show) || n.Lock {
+			if n.Conf[2] || n.IsHidden(stw.frame.Show) || n.Lock {
 				continue
 			}
 			n.Coord[2] = height
@@ -386,11 +386,11 @@ func ring(stw *Window) {
 	for i, k := range keys {
 		sortednodes[i] = nodes[k]
 	}
-	sec := stw.Frame.DefaultSect()
+	sec := stw.frame.DefaultSect()
 	for i := 0; i < num-1; i++ {
-		stw.Frame.AddLineElem(-1, []*st.Node{sortednodes[i], sortednodes[i+1]}, sec, st.COLUMN)
+		stw.frame.AddLineElem(-1, []*st.Node{sortednodes[i], sortednodes[i+1]}, sec, st.COLUMN)
 	}
-	stw.Frame.AddLineElem(-1, []*st.Node{sortednodes[num-1], sortednodes[0]}, sec, st.COLUMN)
+	stw.frame.AddLineElem(-1, []*st.Node{sortednodes[num-1], sortednodes[0]}, sec, st.COLUMN)
 	stw.EscapeAll()
 }
 

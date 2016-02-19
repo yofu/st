@@ -48,7 +48,6 @@ var (
 	home            = os.Getenv("HOME")
 	releasenote     = filepath.Join(home, ".st/help/releasenote.html")
 	pgpfile         = filepath.Join(home, ".st/st.pgp")
-	recentfn        = filepath.Join(home, ".st/recent.dat")
 	historyfn       = filepath.Join(home, ".st/history.dat")
 	analysiscommand = "C:/an/an.exe"
 	NOUNDO          = false
@@ -61,7 +60,6 @@ const ResourceFileName = ".strc"
 
 const (
 	windowSize   = "FULLxFULL"
-	nRecentFiles = 3
 	nUndo        = 10
 )
 
@@ -174,19 +172,6 @@ const (
 	STATUS_RIGHT  = 4
 )
 
-// Speed
-const (
-	CanvasRotateSpeedX = 0.01
-	CanvasRotateSpeedY = 0.01
-	CanvasMoveSpeedX   = 0.05
-	CanvasMoveSpeedY   = 0.05
-	CanvasScaleSpeed   = 15
-)
-var (
-	CanvasFitScale     = 0.9
-	CanvasAnimateSpeed    = 0.02
-)
-
 // Command
 const (
 	repeatcommand      = 0.2 // sec
@@ -209,10 +194,11 @@ var (
 // }}}
 
 type Window struct { // {{{
-	Home string
-	cwd  string
+	*st.DrawOption
+	*st.Directory
+	*st.RecentFiles
 
-	Frame                  *st.Frame
+	frame                  *st.Frame
 	Dlg                    *iup.Handle
 	SideBar                *iup.Handle
 	canv                   *iup.Handle
@@ -262,10 +248,9 @@ type Window struct { // {{{
 	Props    []*iup.Handle
 
 	InpModified bool
-	Changed     bool
+	changed     bool
 
 	comhist     []string
-	recentfiles []string
 	undostack   []*st.Frame
 	taggedFrame map[string]*st.Frame
 
@@ -278,9 +263,11 @@ type Window struct { // {{{
 // }}}
 
 func NewWindow(homedir string) *Window { // {{{
-	stw := new(Window)
-	stw.Home = homedir
-	stw.cwd = homedir
+	stw := &Window{
+		DrawOption:   st.NewDrawOption(),
+		Directory:    st.NewDirectory(homedir, homedir),
+		RecentFiles:  st.NewRecentFiles(3),
+	}
 	stw.selectNode = make([]*st.Node, 0)
 	stw.selectElem = make([]*st.Elem, 0)
 	stw.Labels = make(map[string]*iup.Handle)
@@ -466,7 +453,7 @@ func NewWindow(homedir string) *Window { // {{{
 					iup.Attr("TITLE", "Quit"),
 					iup.Attr("TIP", "Exit Application"),
 					func(arg *iup.ItemAction) {
-						if stw.Changed {
+						if stw.changed {
 							if stw.Yn("CHANGED", "変更を保存しますか") {
 								stw.SaveAS()
 							} else {
@@ -507,7 +494,7 @@ func NewWindow(homedir string) *Window { // {{{
 				iup.Item(
 					iup.Attr("TITLE", "Read Pgp"),
 					func(arg *iup.ItemAction) {
-						if name, ok := iup.GetOpenFile(stw.cwd, "*.pgp"); ok {
+						if name, ok := iup.GetOpenFile(stw.Cwd(), "*.pgp"); ok {
 							err := stw.ReadPgp(name)
 							if err != nil {
 								stw.addHistory("ReadPgp: Cannot Read st.pgp")
@@ -615,52 +602,52 @@ func NewWindow(homedir string) *Window { // {{{
 			),
 		),
 		iup.SubMenu("TITLE=Command",
-			iup.Menu(iup.Item(iup.Attr("TITLE", "DISTS"), func(arg *iup.ItemAction) { stw.execAliasCommand("DISTS") }),
-				iup.Item(iup.Attr("TITLE", "SET FOCUS"), func(arg *iup.ItemAction) { stw.execAliasCommand("SETFOCUS") }),
+			iup.Menu(iup.Item(iup.Attr("TITLE", "DISTS"), func(arg *iup.ItemAction) { stw.ExecCommand("DISTS") }),
+				iup.Item(iup.Attr("TITLE", "SET FOCUS"), func(arg *iup.ItemAction) { stw.ExecCommand("SETFOCUS") }),
 				iup.Separator(),
-				iup.Item(iup.Attr("TITLE", "TOGGLEBOND"), func(arg *iup.ItemAction) { stw.execAliasCommand("TOGGLEBOND") }),
-				iup.Item(iup.Attr("TITLE", "COPYBOND"), func(arg *iup.ItemAction) { stw.execAliasCommand("COPYBOND") }),
+				iup.Item(iup.Attr("TITLE", "TOGGLEBOND"), func(arg *iup.ItemAction) { stw.ExecCommand("TOGGLEBOND") }),
+				iup.Item(iup.Attr("TITLE", "COPYBOND"), func(arg *iup.ItemAction) { stw.ExecCommand("COPYBOND") }),
 				iup.Separator(),
-				iup.Item(iup.Attr("TITLE", "SELECT NODE"), func(arg *iup.ItemAction) { stw.execAliasCommand("SELECTNODE") }),
-				iup.Item(iup.Attr("TITLE", "SELECT ELEM"), func(arg *iup.ItemAction) { stw.execAliasCommand("SELECTELEM") }),
-				iup.Item(iup.Attr("TITLE", "SELECT SECT"), func(arg *iup.ItemAction) { stw.execAliasCommand("SELECTSECT") }),
-				iup.Item(iup.Attr("TITLE", "FENCE"), func(arg *iup.ItemAction) { stw.execAliasCommand("FENCE") }),
-				iup.Item(iup.Attr("TITLE", "ERROR ELEM"), func(arg *iup.ItemAction) { stw.execAliasCommand("ERRORELEM") }),
+				iup.Item(iup.Attr("TITLE", "SELECT NODE"), func(arg *iup.ItemAction) { stw.ExecCommand("SELECTNODE") }),
+				iup.Item(iup.Attr("TITLE", "SELECT ELEM"), func(arg *iup.ItemAction) { stw.ExecCommand("SELECTELEM") }),
+				iup.Item(iup.Attr("TITLE", "SELECT SECT"), func(arg *iup.ItemAction) { stw.ExecCommand("SELECTSECT") }),
+				iup.Item(iup.Attr("TITLE", "FENCE"), func(arg *iup.ItemAction) { stw.ExecCommand("FENCE") }),
+				iup.Item(iup.Attr("TITLE", "ERROR ELEM"), func(arg *iup.ItemAction) { stw.ExecCommand("ERRORELEM") }),
 				iup.Separator(),
-				iup.Item(iup.Attr("TITLE", "ADD LINE ELEM"), func(arg *iup.ItemAction) { stw.execAliasCommand("ADDLINEELEM") }),
-				iup.Item(iup.Attr("TITLE", "ADD PLATE ELEM"), func(arg *iup.ItemAction) { stw.execAliasCommand("ADDPLATEELEM") }),
-				iup.Item(iup.Attr("TITLE", "HATCH PLATE ELEM"), func(arg *iup.ItemAction) { stw.execAliasCommand("HATCHPLATEELEM") }),
-				iup.Item(iup.Attr("TITLE", "EDIT PLATE ELEM"), func(arg *iup.ItemAction) { stw.execAliasCommand("EDITPLATEELEM") }),
+				iup.Item(iup.Attr("TITLE", "ADD LINE ELEM"), func(arg *iup.ItemAction) { stw.ExecCommand("ADDLINEELEM") }),
+				iup.Item(iup.Attr("TITLE", "ADD PLATE ELEM"), func(arg *iup.ItemAction) { stw.ExecCommand("ADDPLATEELEM") }),
+				iup.Item(iup.Attr("TITLE", "HATCH PLATE ELEM"), func(arg *iup.ItemAction) { stw.ExecCommand("HATCHPLATEELEM") }),
+				iup.Item(iup.Attr("TITLE", "EDIT PLATE ELEM"), func(arg *iup.ItemAction) { stw.ExecCommand("EDITPLATEELEM") }),
 				iup.Separator(),
-				iup.Item(iup.Attr("TITLE", "MATCH PROP"), func(arg *iup.ItemAction) { stw.execAliasCommand("MATCHPROP") }),
+				iup.Item(iup.Attr("TITLE", "MATCH PROP"), func(arg *iup.ItemAction) { stw.ExecCommand("MATCHPROP") }),
 				iup.Separator(),
-				iup.Item(iup.Attr("TITLE", "COPY ELEM"), func(arg *iup.ItemAction) { stw.execAliasCommand("COPYELEM") }),
-				iup.Item(iup.Attr("TITLE", "MOVE ELEM"), func(arg *iup.ItemAction) { stw.execAliasCommand("MOVEELEM") }),
-				iup.Item(iup.Attr("TITLE", "MOVE NODE"), func(arg *iup.ItemAction) { stw.execAliasCommand("MOVENODE") }),
+				iup.Item(iup.Attr("TITLE", "COPY ELEM"), func(arg *iup.ItemAction) { stw.ExecCommand("COPYELEM") }),
+				iup.Item(iup.Attr("TITLE", "MOVE ELEM"), func(arg *iup.ItemAction) { stw.ExecCommand("MOVEELEM") }),
+				iup.Item(iup.Attr("TITLE", "MOVE NODE"), func(arg *iup.ItemAction) { stw.ExecCommand("MOVENODE") }),
 				iup.Separator(),
-				iup.Item(iup.Attr("TITLE", "SEARCH ELEM"), func(arg *iup.ItemAction) { stw.execAliasCommand("SEARCHELEM") }),
-				iup.Item(iup.Attr("TITLE", "NODE TO ELEM"), func(arg *iup.ItemAction) { stw.execAliasCommand("NODETOELEM") }),
-				iup.Item(iup.Attr("TITLE", "ELEM TO NODE"), func(arg *iup.ItemAction) { stw.execAliasCommand("ELEMTONODE") }),
-				iup.Item(iup.Attr("TITLE", "CONNECTED"), func(arg *iup.ItemAction) { stw.execAliasCommand("CONNECTED") }),
-				iup.Item(iup.Attr("TITLE", "ON NODE"), func(arg *iup.ItemAction) { stw.execAliasCommand("ONNODE") }),
+				iup.Item(iup.Attr("TITLE", "SEARCH ELEM"), func(arg *iup.ItemAction) { stw.ExecCommand("SEARCHELEM") }),
+				iup.Item(iup.Attr("TITLE", "NODE TO ELEM"), func(arg *iup.ItemAction) { stw.ExecCommand("NODETOELEM") }),
+				iup.Item(iup.Attr("TITLE", "ELEM TO NODE"), func(arg *iup.ItemAction) { stw.ExecCommand("ELEMTONODE") }),
+				iup.Item(iup.Attr("TITLE", "CONNECTED"), func(arg *iup.ItemAction) { stw.ExecCommand("CONNECTED") }),
+				iup.Item(iup.Attr("TITLE", "ON NODE"), func(arg *iup.ItemAction) { stw.ExecCommand("ONNODE") }),
 				iup.Separator(),
-				iup.Item(iup.Attr("TITLE", "NODE NO REFERENCE"), func(arg *iup.ItemAction) { stw.execAliasCommand("NODENOREFERENCE") }),
-				iup.Item(iup.Attr("TITLE", "ELEM SAME NODE"), func(arg *iup.ItemAction) { stw.execAliasCommand("ELEMSAMENODE") }),
-				iup.Item(iup.Attr("TITLE", "NODE DUPLICATION"), func(arg *iup.ItemAction) { stw.execAliasCommand("NODEDUPLICATION") }),
+				iup.Item(iup.Attr("TITLE", "NODE NO REFERENCE"), func(arg *iup.ItemAction) { stw.ExecCommand("NODENOREFERENCE") }),
+				iup.Item(iup.Attr("TITLE", "ELEM SAME NODE"), func(arg *iup.ItemAction) { stw.ExecCommand("ELEMSAMENODE") }),
+				iup.Item(iup.Attr("TITLE", "NODE DUPLICATION"), func(arg *iup.ItemAction) { stw.ExecCommand("NODEDUPLICATION") }),
 				iup.Separator(),
-				iup.Item(iup.Attr("TITLE", "CAT BY NODE"), func(arg *iup.ItemAction) { stw.execAliasCommand("CATBYNODE") }),
-				iup.Item(iup.Attr("TITLE", "JOIN LINE ELEM"), func(arg *iup.ItemAction) { stw.execAliasCommand("JOINLINEELEM") }),
+				iup.Item(iup.Attr("TITLE", "CAT BY NODE"), func(arg *iup.ItemAction) { stw.ExecCommand("CATBYNODE") }),
+				iup.Item(iup.Attr("TITLE", "JOIN LINE ELEM"), func(arg *iup.ItemAction) { stw.ExecCommand("JOINLINEELEM") }),
 				iup.Separator(),
-				iup.Item(iup.Attr("TITLE", "EXTRACT ARCLM"), func(arg *iup.ItemAction) { stw.execAliasCommand("EXTRACTARCLM") }),
+				iup.Item(iup.Attr("TITLE", "EXTRACT ARCLM"), func(arg *iup.ItemAction) { stw.ExecCommand("EXTRACTARCLM") }),
 				iup.Separator(),
-				iup.Item(iup.Attr("TITLE", "DIVIDE AT ONS"), func(arg *iup.ItemAction) { stw.execAliasCommand("DIVIDEATONS") }),
-				iup.Item(iup.Attr("TITLE", "DIVIDE AT MID"), func(arg *iup.ItemAction) { stw.execAliasCommand("DIVIDEATMID") }),
+				iup.Item(iup.Attr("TITLE", "DIVIDE AT ONS"), func(arg *iup.ItemAction) { stw.ExecCommand("DIVIDEATONS") }),
+				iup.Item(iup.Attr("TITLE", "DIVIDE AT MID"), func(arg *iup.ItemAction) { stw.ExecCommand("DIVIDEATMID") }),
 				iup.Separator(),
-				iup.Item(iup.Attr("TITLE", "INTERSECT"), func(arg *iup.ItemAction) { stw.execAliasCommand("INTERSECT") }),
-				iup.Item(iup.Attr("TITLE", "TRIM"), func(arg *iup.ItemAction) { stw.execAliasCommand("TRIM") }),
-				iup.Item(iup.Attr("TITLE", "EXTEND"), func(arg *iup.ItemAction) { stw.execAliasCommand("EXTEND") }),
+				iup.Item(iup.Attr("TITLE", "INTERSECT"), func(arg *iup.ItemAction) { stw.ExecCommand("INTERSECT") }),
+				iup.Item(iup.Attr("TITLE", "TRIM"), func(arg *iup.ItemAction) { stw.ExecCommand("TRIM") }),
+				iup.Item(iup.Attr("TITLE", "EXTEND"), func(arg *iup.ItemAction) { stw.ExecCommand("EXTEND") }),
 				iup.Separator(),
-				iup.Item(iup.Attr("TITLE", "REACTION"), func(arg *iup.ItemAction) { stw.execAliasCommand("REACTION") }),
+				iup.Item(iup.Attr("TITLE", "REACTION"), func(arg *iup.ItemAction) { stw.ExecCommand("REACTION") }),
 			),
 		),
 		iup.SubMenu("TITLE=Tool",
@@ -764,7 +751,7 @@ func NewWindow(homedir string) *Window { // {{{
 		},
 		func(arg *iup.CanvasResize) {
 			stw.dbuff.Activate()
-			if stw.Frame != nil {
+			if stw.frame != nil {
 				stw.Redraw()
 			} else {
 				stw.dbuff.Flush()
@@ -772,7 +759,7 @@ func NewWindow(homedir string) *Window { // {{{
 		},
 		func(arg *iup.CanvasAction) {
 			stw.dbuff.Activate()
-			if stw.Frame != nil {
+			if stw.frame != nil {
 				stw.Redraw()
 			} else {
 				stw.dbuff.Flush()
@@ -784,7 +771,7 @@ func NewWindow(homedir string) *Window { // {{{
 				stw.OpenFile(arg.FileName, true)
 				stw.Redraw()
 			default:
-				if stw.Frame != nil {
+				if stw.frame != nil {
 					stw.ReadFile(arg.FileName)
 				}
 			}
@@ -904,7 +891,7 @@ func NewWindow(homedir string) *Window { // {{{
 					stw.cline.SetAttribute("CARETPOS", "100")
 					if comp != nil {
 						stw.complete = comp
-						stw.complete.Chdir(stw.cwd)
+						stw.complete.Chdir(stw.Cwd())
 						stw.completefunc = func(v string) string {
 							lis := comp.CompleteWord(str)
 							if len(lis) == 0 {
@@ -929,7 +916,7 @@ func NewWindow(homedir string) *Window { // {{{
 					stw.cline.SetAttribute("CARETPOS", "100")
 					if comp != nil {
 						stw.complete = comp
-						stw.complete.Chdir(stw.cwd)
+						stw.complete.Chdir(stw.Cwd())
 						stw.completefunc = func(v string) string {
 							lis := comp.CompleteWord(str)
 							if len(lis) == 0 {
@@ -1087,15 +1074,15 @@ func NewWindow(homedir string) *Window { // {{{
 		"BORDER=NO",
 		fmt.Sprintf("SIZE=%dx%d", datalabelwidth+datatextwidth, dataheight))
 	pers.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
 					if pers.GetAttribute("VALUE") == "  PERSPECTIVE" {
-						stw.Frame.View.Perspective = false
+						stw.frame.View.Perspective = false
 						pers.SetAttribute("VALUE", "  AXONOMETRIC")
 					} else {
-						stw.Frame.View.Perspective = true
+						stw.frame.View.Perspective = true
 						pers.SetAttribute("VALUE", "  PERSPECTIVE")
 					}
 					stw.Redraw()
@@ -1246,7 +1233,7 @@ func NewWindow(homedir string) *Window { // {{{
 			),
 		),
 		func(arg *iup.DialogClose) {
-			if stw.Changed {
+			if stw.changed {
 				if stw.Yn("CHANGED", "変更を保存しますか") {
 					stw.SaveAS()
 				} else {
@@ -1256,7 +1243,7 @@ func NewWindow(homedir string) *Window { // {{{
 			arg.Return = iup.CLOSE
 		},
 		func(arg *iup.CommonGetFocus) {
-			if stw.Frame != nil {
+			if stw.frame != nil {
 				if stw.InpModified {
 					stw.InpModified = false
 					if stw.Yn("RELOAD", fmt.Sprintf(".inpをリロードしますか？")) {
@@ -1282,12 +1269,11 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.textBox["TEXT"].position = []float64{120.0, 65.0}
 	iup.SetHandle("mainwindow", stw.Dlg)
 	stw.EscapeAll()
-	stw.Changed = false
+	stw.changed = false
 	stw.comhist = make([]string, CommandHistorySize)
 	comhistpos = -1
 	stw.SetCoord(0.0, 0.0, 0.0)
-	stw.recentfiles = make([]string, nRecentFiles)
-	stw.SetRecently()
+	stw.ReadRecent()
 	stw.SetCommandHistory()
 	stw.undostack = make([]*st.Frame, nUndo)
 	stw.taggedFrame = make(map[string]*st.Frame)
@@ -1300,7 +1286,7 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.New()
 	stw.ShowLogo(3*time.Second)
 	stw.completefunc = stw.CompleteFileName
-	if rcfn := filepath.Join(stw.cwd, ResourceFileName); st.FileExists(rcfn) {
+	if rcfn := filepath.Join(stw.Cwd(), ResourceFileName); st.FileExists(rcfn) {
 		stw.ReadResource(rcfn)
 	}
 	return stw
@@ -1308,17 +1294,24 @@ func NewWindow(homedir string) *Window { // {{{
 
 // }}}
 
+func (stw *Window) Frame() *st.Frame {
+	return stw.frame
+}
+func (stw *Window) SetFrame(frame *st.Frame) {
+	stw.frame = frame
+}
+
 func (stw *Window) FocusCanv() {
 	iup.SetFocus(stw.canv)
 }
 
 func (stw *Window) Snapshot() {
-	stw.Changed = true
+	stw.changed = true
 	if NOUNDO {
 		return
 	}
 	tmp := make([]*st.Frame, nUndo)
-	tmp[0] = stw.Frame.Snapshot()
+	tmp[0] = stw.frame.Snapshot()
 	for i := 0; i < nUndo-1-undopos; i++ {
 		tmp[i+1] = stw.undostack[i+undopos]
 	}
@@ -1337,7 +1330,7 @@ func (stw *Window) Redo() {
 		undopos = 0
 		return
 	}
-	stw.Frame = stw.undostack[undopos].Snapshot()
+	stw.frame = stw.undostack[undopos].Snapshot()
 	stw.Redraw()
 }
 
@@ -1357,7 +1350,7 @@ func (stw *Window) Undo() {
 		undopos--
 		return
 	}
-	stw.Frame = stw.undostack[undopos].Snapshot()
+	stw.frame = stw.undostack[undopos].Snapshot()
 	stw.Redraw()
 }
 
@@ -1365,7 +1358,7 @@ func (stw *Window) Chdir(dir string) error {
 	if _, err := os.Stat(dir); err != nil {
 		return err
 	} else {
-		stw.cwd = dir
+		stw.SetCwd(dir)
 		return nil
 	}
 }
@@ -1374,21 +1367,21 @@ func (stw *Window) Chdir(dir string) error {
 func (stw *Window) New() {
 	var s *st.Show
 	frame := st.NewFrame()
-	if stw.Frame != nil {
-		s = stw.Frame.Show
+	if stw.frame != nil {
+		s = stw.frame.Show
 	}
 	w, h := stw.cdcanv.GetSize()
 	stw.CanvasSize = []float64{float64(w), float64(h)}
 	frame.View.Center[0] = stw.CanvasSize[0] * 0.5
 	frame.View.Center[1] = stw.CanvasSize[1] * 0.5
 	if s != nil {
-		stw.Frame.Show = s
+		stw.frame.Show = s
 	}
-	stw.Frame = frame
+	stw.frame = frame
 	stw.Dlg.SetAttribute("TITLE", "***")
-	stw.Frame.Home = stw.Home
+	stw.frame.Home = stw.Home()
 	stw.LinkTextValue()
-	stw.Changed = false
+	stw.changed = false
 	stw.Redraw()
 }
 
@@ -1396,7 +1389,7 @@ func (stw *Window) New() {
 
 // Open// {{{
 func (stw *Window) Open() {
-	if name, ok := iup.GetOpenFile(stw.cwd, "*.inp"); ok {
+	if name, ok := iup.GetOpenFile(stw.Cwd(), "*.inp"); ok {
 		err := stw.OpenFile(name, true)
 		if err != nil {
 			fmt.Println(err)
@@ -1405,79 +1398,11 @@ func (stw *Window) Open() {
 	}
 }
 
-func (stw *Window) AddRecently(fn string) error {
-	fn = filepath.ToSlash(fn)
-	if st.FileExists(recentfn) {
-		f, err := os.Open(recentfn)
-		if err != nil {
-			return err
-		}
-		stw.recentfiles[0] = fn
-		s := bufio.NewScanner(f)
-		num := 0
-		for s.Scan() {
-			if rfn := s.Text(); rfn != fn {
-				stw.recentfiles[num+1] = rfn
-				num++
-			}
-			if num >= nRecentFiles-1 {
-				break
-			}
-		}
-		f.Close()
-		if err := s.Err(); err != nil {
-			return err
-		}
-		w, err := os.Create(recentfn)
-		if err != nil {
-			return err
-		}
-		defer w.Close()
-		for i := 0; i < nRecentFiles; i++ {
-			w.WriteString(fmt.Sprintf("%s\n", stw.recentfiles[i]))
-		}
-		return nil
-	} else {
-		w, err := os.Create(recentfn)
-		if err != nil {
-			return err
-		}
-		defer w.Close()
-		w.WriteString(fmt.Sprintf("%s\n", fn))
-		stw.recentfiles[0] = fn
-		return nil
-	}
-}
-
 func (stw *Window) ShowRecently() {
-	for i, fn := range stw.recentfiles {
+	for i, fn := range stw.Recent() {
 		if fn != "" {
 			stw.addHistory(fmt.Sprintf("%d: %s", i, fn))
 		}
-	}
-}
-
-func (stw *Window) SetRecently() error {
-	if st.FileExists(recentfn) {
-		f, err := os.Open(recentfn)
-		if err != nil {
-			return err
-		}
-		s := bufio.NewScanner(f)
-		num := 0
-		for s.Scan() {
-			if fn := s.Text(); fn != "" {
-				stw.addHistory(fmt.Sprintf("%d: %s", num, fn))
-				stw.recentfiles[num] = fn
-				num++
-			}
-		}
-		if err := s.Err(); err != nil {
-			return err
-		}
-		return nil
-	} else {
-		return errors.New(fmt.Sprintf("OpenRecently: %s doesn't exist", recentfn))
 	}
 }
 
@@ -1514,7 +1439,7 @@ func (stw *Window) SearchInp() {
 	basedir = iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
 		fmt.Sprintf("FGCOLOR=\"%s\"", labelOFFColor),
 		fmt.Sprintf("BGCOLOR=\"%s\"", labelBGColor),
-		fmt.Sprintf("VALUE=\"%s\"", stw.Home),
+		fmt.Sprintf("VALUE=\"%s\"", stw.Home()),
 		"BORDER=NO",
 		"CANFOCUS=NO",
 		fmt.Sprintf("SIZE=%dx%d", datalabelwidth*8, dataheight),
@@ -1553,7 +1478,7 @@ func (stw *Window) SearchInp() {
 	openfile := func(fn string) {
 		err := stw.OpenFile(fn, true)
 		if err != nil {
-			stw.errormessage(err, st.ERROR)
+			st.ErrorMessage(stw, err, st.ERROR)
 		}
 		// if searchinginps_r {
 		// 	brk <- true
@@ -1658,23 +1583,23 @@ func (stw *Window) SearchInp() {
 }
 
 func (stw *Window) Insert() {
-	stw.execAliasCommand("INSERT")
+	stw.ExecCommand("INSERT")
 }
 
 func (stw *Window) Reload() {
-	if stw.Frame != nil {
+	if stw.frame != nil {
 		stw.Deselect()
-		v := stw.Frame.View
-		s := stw.Frame.Show
-		stw.OpenFile(stw.Frame.Path, false)
-		stw.Frame.View = v
-		stw.Frame.Show = s
+		v := stw.frame.View
+		s := stw.frame.Show
+		stw.OpenFile(stw.frame.Path, false)
+		stw.frame.View = v
+		stw.frame.Show = s
 		stw.Redraw()
 	}
 }
 
 func (stw *Window) OpenDxf() {
-	if name, ok := iup.GetOpenFile(stw.cwd, "*.dxf"); ok {
+	if name, ok := iup.GetOpenFile(stw.Cwd(), "*.dxf"); ok {
 		err := stw.OpenFile(name, true)
 		if err != nil {
 			fmt.Println(err)
@@ -1688,8 +1613,8 @@ func (stw *Window) OpenFile(filename string, readrcfile bool) error {
 	var s *st.Show
 	fn := st.ToUtf8string(filename)
 	frame := st.NewFrame()
-	if stw.Frame != nil {
-		s = stw.Frame.Show
+	if stw.frame != nil {
+		s = stw.frame.Show
 	}
 	w, h := stw.cdcanv.GetSize()
 	stw.CanvasSize = []float64{float64(w), float64(h)}
@@ -1701,43 +1626,43 @@ func (stw *Window) OpenFile(filename string, readrcfile bool) error {
 		if err != nil {
 			return err
 		}
-		stw.Frame = frame
+		stw.frame = frame
 		stw.WatchFile(fn)
 	case ".dxf":
 		err = frame.ReadDxf(fn, []float64{0.0, 0.0, 0.0}, EPS)
 		if err != nil {
 			return err
 		}
-		stw.Frame = frame
+		stw.frame = frame
 		frame.SetFocus(nil)
 		stw.DrawFrameNode()
 		stw.ShowCenter()
 	}
 	if s != nil {
-		stw.Frame.Show = s
-		for snum := range stw.Frame.Sects {
-			if _, ok := stw.Frame.Show.Sect[snum]; !ok {
-				stw.Frame.Show.Sect[snum] = true
+		stw.frame.Show = s
+		for snum := range stw.frame.Sects {
+			if _, ok := stw.frame.Show.Sect[snum]; !ok {
+				stw.frame.Show.Sect[snum] = true
 			}
 		}
 	}
-	stw.Frame.Show.LegendPosition[0] = int(stw.CanvasSize[0]) - 100
-	stw.Frame.Show.LegendPosition[1] = dataareaheight - int(float64((len(st.RainbowColor)+1)*stw.Frame.Show.LegendSize)*stw.Frame.Show.LegendLineSep)
+	stw.frame.Show.LegendPosition[0] = int(stw.CanvasSize[0]) - 100
+	stw.frame.Show.LegendPosition[1] = dataareaheight - int(float64((len(st.RainbowColor)+1)*stw.frame.Show.LegendSize)*stw.frame.Show.LegendLineSep)
 	openstr := fmt.Sprintf("OPEN: %s", fn)
 	stw.addHistory(openstr)
-	stw.Dlg.SetAttribute("TITLE", stw.Frame.Name)
-	stw.Frame.Home = stw.Home
+	stw.Dlg.SetAttribute("TITLE", stw.frame.Name)
+	stw.frame.Home = stw.Home()
 	stw.LinkTextValue()
-	stw.cwd = filepath.Dir(fn)
+	stw.SetCwd(filepath.Dir(fn))
 	if stw.complete != nil {
-		stw.complete.Chdir(stw.cwd)
+		stw.complete.Chdir(stw.Cwd())
 	}
 	stw.AddRecently(fn)
 	stw.Snapshot()
-	stw.Changed = false
+	stw.changed = false
 	stw.HideLogo()
 	if readrcfile {
-		if rcfn := filepath.Join(stw.cwd, ResourceFileName); st.FileExists(rcfn) {
+		if rcfn := filepath.Join(stw.Cwd(), ResourceFileName); st.FileExists(rcfn) {
 			stw.ReadResource(rcfn)
 		}
 	}
@@ -1751,7 +1676,7 @@ func (stw *Window) WatchFile(fn string) {
 	}
 	watcher, err = fsnotify.NewWatcher()
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 	}
 	read := true
 	go func() {
@@ -1772,13 +1697,13 @@ func (stw *Window) WatchFile(fn string) {
 				}
 				read = !read
 			case err := <-watcher.Errors:
-				stw.errormessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 			}
 		}
 	}()
 	err = watcher.Add(fn)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 	}
 }
 
@@ -1786,15 +1711,15 @@ func (stw *Window) WatchFile(fn string) {
 
 // Save// {{{
 func (stw *Window) Save() {
-	stw.SaveFile(filepath.Join(stw.Home, "hogtxt.inp"))
+	stw.SaveFile(filepath.Join(stw.Home(), "hogtxt.inp"))
 }
 
 func (stw *Window) SaveAS() {
 	var err error
-	if name, ok := iup.GetSaveFile(filepath.Dir(stw.Frame.Path), "*.inp"); ok {
+	if name, ok := iup.GetSaveFile(filepath.Dir(stw.frame.Path), "*.inp"); ok {
 		fn := st.Ce(name, ".inp")
 		err = stw.SaveFile(fn)
-		if err == nil && fn != stw.Frame.Path {
+		if err == nil && fn != stw.frame.Path {
 			stw.Copylsts(name)
 			stw.Rebase(fn)
 		}
@@ -1804,7 +1729,7 @@ func (stw *Window) SaveAS() {
 func (stw *Window) Copylsts(name string) {
 	if stw.Yn("SAVE AS", ".lst, .fig2, .kjnファイルがあればコピーしますか?") {
 		for _, ext := range []string{".lst", ".fig2", ".kjn"} {
-			src := st.Ce(stw.Frame.Path, ext)
+			src := st.Ce(stw.frame.Path, ext)
 			dst := st.Ce(name, ext)
 			if st.FileExists(src) {
 				err := st.CopyFile(src, dst)
@@ -1817,78 +1742,78 @@ func (stw *Window) Copylsts(name string) {
 }
 
 func (stw *Window) Rebase(fn string) {
-	stw.Frame.Name = filepath.Base(fn)
-	stw.Frame.Project = st.ProjectName(fn)
+	stw.frame.Name = filepath.Base(fn)
+	stw.frame.Project = st.ProjectName(fn)
 	path, err := filepath.Abs(fn)
 	if err != nil {
-		stw.Frame.Path = fn
+		stw.frame.Path = fn
 	} else {
-		stw.Frame.Path = path
+		stw.frame.Path = path
 	}
-	stw.Dlg.SetAttribute("TITLE", stw.Frame.Name)
-	stw.Frame.Home = stw.Home
+	stw.Dlg.SetAttribute("TITLE", stw.frame.Name)
+	stw.frame.Home = stw.Home()
 	stw.AddRecently(fn)
 }
 
 func (stw *Window) SaveFile(fn string) error {
 	var v *st.View
-	if !stw.Frame.View.Perspective {
-		v = stw.Frame.View.Copy()
-		stw.Frame.View.Gfact = 1.0
-		stw.Frame.View.Perspective = true
-		for _, n := range stw.Frame.Nodes {
-			stw.Frame.View.ProjectNode(n)
+	if !stw.frame.View.Perspective {
+		v = stw.frame.View.Copy()
+		stw.frame.View.Gfact = 1.0
+		stw.frame.View.Perspective = true
+		for _, n := range stw.frame.Nodes {
+			stw.frame.View.ProjectNode(n)
 		}
 		xmin, xmax, ymin, ymax := stw.Bbox()
 		w, h := stw.cdcanv.GetSize()
-		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * CanvasFitScale
-		stw.Frame.View.Dists[1] *= scale
+		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * stw.CanvasFitScale()
+		stw.frame.View.Dists[1] *= scale
 	}
 	passwatcher = true
-	err := stw.Frame.WriteInp(fn)
+	err := stw.frame.WriteInp(fn)
 	if v != nil {
-		stw.Frame.View = v
+		stw.frame.View = v
 	}
 	if err != nil {
 		return err
 	}
-	stw.errormessage(errors.New(fmt.Sprintf("SAVE: %s", fn)), st.INFO)
-	stw.Changed = false
+	st.ErrorMessage(stw, errors.New(fmt.Sprintf("SAVE: %s", fn)), st.INFO)
+	stw.changed = false
 	return nil
 }
 
 func (stw *Window) SaveFileSelected(fn string) error {
 	var v *st.View
 	els := stw.selectElem
-	if !stw.Frame.View.Perspective {
-		v = stw.Frame.View.Copy()
-		stw.Frame.View.Gfact = 1.0
-		stw.Frame.View.Perspective = true
-		for _, n := range stw.Frame.Nodes {
-			stw.Frame.View.ProjectNode(n)
+	if !stw.frame.View.Perspective {
+		v = stw.frame.View.Copy()
+		stw.frame.View.Gfact = 1.0
+		stw.frame.View.Perspective = true
+		for _, n := range stw.frame.Nodes {
+			stw.frame.View.ProjectNode(n)
 		}
 		xmin, xmax, ymin, ymax := stw.Bbox()
 		w, h := stw.cdcanv.GetSize()
-		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * CanvasFitScale
-		stw.Frame.View.Dists[1] *= scale
+		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * stw.CanvasFitScale()
+		stw.frame.View.Dists[1] *= scale
 	}
 	passwatcher = true
-	err := st.WriteInp(fn, stw.Frame.View, stw.Frame.Ai, els)
+	err := st.WriteInp(fn, stw.frame.View, stw.frame.Ai, els)
 	if v != nil {
-		stw.Frame.View = v
+		stw.frame.View = v
 	}
 	if err != nil {
 		return err
 	}
-	stw.errormessage(errors.New(fmt.Sprintf("SAVE: %s", fn)), st.INFO)
-	stw.Changed = false
+	st.ErrorMessage(stw, errors.New(fmt.Sprintf("SAVE: %s", fn)), st.INFO)
+	stw.changed = false
 	return nil
 }
 
 // }}}
 
 func (stw *Window) Close(force bool) {
-	if !force && stw.Changed {
+	if !force && stw.changed {
 		if stw.Yn("CHANGED", "変更を保存しますか") {
 			stw.SaveAS()
 		} else {
@@ -1900,23 +1825,23 @@ func (stw *Window) Close(force bool) {
 
 // Read// {{{
 func (stw *Window) Read() {
-	if stw.Frame != nil {
+	if stw.frame != nil {
 		if name, ok := iup.GetOpenFile("", ""); ok {
 			err := stw.ReadFile(name)
 			if err != nil {
-				stw.errormessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 			}
 		}
 	}
 }
 
 func (stw *Window) ReadAll() {
-	if stw.Frame != nil {
+	if stw.frame != nil {
 		var err error
-		for _, el := range stw.Frame.Elems {
+		for _, el := range stw.frame.Elems {
 			switch el.Etype {
 			case st.WBRACE, st.SBRACE:
-				stw.Frame.DeleteElem(el.Num)
+				stw.frame.DeleteElem(el.Num)
 			case st.WALL, st.SLAB:
 				el.Children = make([]*st.Elem, 2)
 			}
@@ -1925,16 +1850,16 @@ func (stw *Window) ReadAll() {
 		read := make([]string, 10)
 		nread := 0
 		for _, ext := range exts {
-			name := st.Ce(stw.Frame.Path, ext)
+			name := st.Ce(stw.frame.Path, ext)
 			err = stw.ReadFile(name)
 			if err != nil {
 				if ext == ".rat2" {
-					err = stw.ReadFile(st.Ce(stw.Frame.Path, ".rat"))
+					err = stw.ReadFile(st.Ce(stw.frame.Path, ".rat"))
 					if err == nil {
 						continue
 					}
 				}
-				stw.errormessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 			} else {
 				read[nread] = ext
 				nread++
@@ -1957,23 +1882,23 @@ func (stw *Window) ReadFile(filename string) error {
 			y = 0.0
 			z = 0.0
 		}
-		err = stw.Frame.ReadInp(filename, []float64{x, y, z}, 0.0, false)
+		err = stw.frame.ReadInp(filename, []float64{x, y, z}, 0.0, false)
 	case ".inl", ".ihx", ".ihy":
-		err = stw.Frame.ReadData(filename)
+		err = stw.frame.ReadData(filename)
 	case ".otl", ".ohx", ".ohy":
-		err = stw.Frame.ReadResult(filename, st.UpdateResult)
+		err = stw.frame.ReadResult(filename, st.UpdateResult)
 	case ".rat", ".rat2":
-		err = stw.Frame.ReadRat(filename)
+		err = stw.frame.ReadRat(filename)
 	case ".lst":
-		err = stw.Frame.ReadLst(filename)
+		err = stw.frame.ReadLst(filename)
 	case ".wgt":
-		err = stw.Frame.ReadWgt(filename)
+		err = stw.frame.ReadWgt(filename)
 	case ".kjn":
-		err = stw.Frame.ReadKjn(filename)
+		err = stw.frame.ReadKjn(filename)
 	case ".otp":
-		err = stw.Frame.ReadBuckling(filename)
+		err = stw.frame.ReadBuckling(filename)
 	case ".otx", ".oty", ".inc":
-		err = stw.Frame.ReadZoubun(filename)
+		err = stw.frame.ReadZoubun(filename)
 	}
 	if err != nil {
 		return err
@@ -1982,8 +1907,8 @@ func (stw *Window) ReadFile(filename string) error {
 }
 
 func (stw *Window) AddPropAndSect(filename string) error {
-	if stw.Frame != nil {
-		err := stw.Frame.AddPropAndSect(filename, true)
+	if stw.frame != nil {
+		err := stw.frame.AddPropAndSect(filename, true)
 		return err
 	} else {
 		return errors.New("NO FRAME")
@@ -2007,7 +1932,7 @@ func SetPrinter(name string) (*cd.Canvas, error) {
 }
 
 func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
-	v := stw.Frame.View.Copy()
+	v := stw.frame.View.Copy()
 	pw, ph := pcanv.GetSize() // seems to be [mm]/25.4*[dpi]*2
 	w0, h0 := stw.dbuff.GetSize()
 	stw.currentCanvas = stw.dbuff
@@ -2018,14 +1943,14 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 	factor := math.Min(float64(pw)/w, float64(ph)/h)
 	stw.CanvasSize[0] = float64(pw)
 	stw.CanvasSize[1] = float64(ph)
-	stw.Frame.View.Gfact *= factor
-	stw.Frame.View.Center[0] = float64(pw)*0.5 + factor*(stw.Frame.View.Center[0]-0.5*float64(w0))
-	stw.Frame.View.Center[1] = float64(ph)*0.5 + factor*(stw.Frame.View.Center[1]-0.5*float64(h0))
-	stw.Frame.Show.ConfSize *= factor
-	stw.Frame.Show.BondSize *= factor
-	stw.Frame.Show.KijunSize = 150
-	stw.Frame.Show.MassSize *= factor
-	for _, m := range stw.Frame.Measures {
+	stw.frame.View.Gfact *= factor
+	stw.frame.View.Center[0] = float64(pw)*0.5 + factor*(stw.frame.View.Center[0]-0.5*float64(w0))
+	stw.frame.View.Center[1] = float64(ph)*0.5 + factor*(stw.frame.View.Center[1]-0.5*float64(h0))
+	stw.frame.Show.ConfSize *= factor
+	stw.frame.Show.BondSize *= factor
+	stw.frame.Show.KijunSize = 150
+	stw.frame.Show.MassSize *= factor
+	for _, m := range stw.frame.Measures {
 		m.ArrowSize = 75.0
 	}
 	for i := 0; i < 2; i++ {
@@ -2056,17 +1981,17 @@ func (stw *Window) CanvasPaperSize() (float64, float64, error) {
 }
 
 func (stw *Window) Print() {
-	if stw.Frame == nil {
+	if stw.frame == nil {
 		return
 	}
-	pcanv, err := SetPrinter(stw.Frame.Name)
+	pcanv, err := SetPrinter(stw.frame.Name)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		return
 	}
 	v, factor, err := stw.FittoPrinter(pcanv)
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		return
 	}
 	// PlateEdgeColor = cd.CD_BLACK
@@ -2078,26 +2003,26 @@ func (stw *Window) Print() {
 	// StressTextColor = cd.CD_BLACK
 	// YieldedTextColor = cd.CD_BLACK
 	// BrittleTextColor = cd.CD_BLACK
-	switch stw.Frame.Show.ColorMode {
+	switch stw.frame.Show.ColorMode {
 	default:
-		stw.DrawFrame(pcanv, stw.Frame.Show.ColorMode, false)
+		stw.DrawFrame(pcanv, stw.frame.Show.ColorMode, false)
 	case st.ECOLOR_WHITE:
-		stw.Frame.Show.ColorMode = st.ECOLOR_BLACK
+		stw.frame.Show.ColorMode = st.ECOLOR_BLACK
 		stw.DrawFrame(pcanv, st.ECOLOR_BLACK, false)
-		stw.Frame.Show.ColorMode = st.ECOLOR_WHITE
+		stw.frame.Show.ColorMode = st.ECOLOR_WHITE
 	}
 	stw.DrawTexts(pcanv, true)
 	pcanv.Kill()
 	w, h := stw.cdcanv.GetSize()
 	stw.CanvasSize = []float64{float64(w), float64(h)}
-	stw.Frame.Show.ConfSize /= factor
-	stw.Frame.Show.BondSize /= factor
-	stw.Frame.Show.KijunSize = 12.0
-	stw.Frame.Show.MassSize /= factor
-	for _, m := range stw.Frame.Measures {
+	stw.frame.Show.ConfSize /= factor
+	stw.frame.Show.BondSize /= factor
+	stw.frame.Show.KijunSize = 12.0
+	stw.frame.Show.MassSize /= factor
+	for _, m := range stw.frame.Measures {
 		m.ArrowSize = 6.0
 	}
-	stw.Frame.View = v
+	stw.frame.View = v
 	for i := 0; i < 2; i++ {
 		stw.textBox["PAGETITLE"].position[i] /= factor
 		stw.textBox["TITLE"].position[i] /= factor
@@ -2121,10 +2046,10 @@ func (stw *Window) Print() {
 }
 
 func (stw *Window) PrintFig2(filename string) error {
-	if stw.Frame == nil {
+	if stw.frame == nil {
 		return errors.New("PrintFig2: no frame opened")
 	}
-	pcanv, err := SetPrinter(stw.Frame.Name)
+	pcanv, err := SetPrinter(stw.frame.Name)
 	if err != nil {
 		return err
 	}
@@ -2159,15 +2084,15 @@ func (stw *Window) PrintFig2(filename string) error {
 		return err
 	}
 	pcanv.Kill()
-	stw.Frame.Show.ConfSize /= factor
-	stw.Frame.Show.BondSize /= factor
-	stw.Frame.View = v
+	stw.frame.Show.ConfSize /= factor
+	stw.frame.Show.BondSize /= factor
+	stw.frame.View = v
 	stw.Redraw()
 	return nil
 }
 
 func (stw *Window) ReadFig2(filename string) error {
-	if stw.Frame == nil {
+	if stw.frame == nil {
 		return errors.New("ReadFig2: no frame opened")
 	}
 	tmp := make([][]string, 0)
@@ -2228,20 +2153,20 @@ func (stw *Window) ParseFig2Page(pcanv *cd.Canvas, lis [][]string) error {
 		} else {
 			un = false
 		}
-		err := st.Fig2Keyword(stw, stw.Frame, txt, un)
+		err := st.Fig2Keyword(stw, stw.frame, txt, un)
 		if err != nil {
 			return err
 		}
 	}
-	stw.DrawFrame(pcanv, stw.Frame.Show.ColorMode, false)
+	stw.DrawFrame(pcanv, stw.frame.Show.ColorMode, false)
 	stw.DrawTexts(pcanv, true)
 	pcanv.Flush()
 	return nil
 }
 
 func (stw *Window) EditInp() {
-	if stw.Frame != nil {
-		cmd := exec.Command("cmd", "/C", "start", stw.Frame.Path)
+	if stw.frame != nil {
+		cmd := exec.Command("cmd", "/C", "start", stw.frame.Path)
 		cmd.Start()
 	}
 }
@@ -2258,7 +2183,7 @@ func (stw *Window) SearchFile(fn string) (string, error) {
 		if pos2 < 0 {
 			return fn, errors.New(fmt.Sprintf("File not fount %s", fn))
 		}
-		cand := filepath.Join(stw.Home, fn[:pos1], fn[:pos2], fn)
+		cand := filepath.Join(stw.Home(), fn[:pos1], fn[:pos2], fn)
 		if st.FileExists(cand) {
 			return cand, nil
 		} else {
@@ -2298,8 +2223,8 @@ func (stw *Window) ShowAbout() {
 	dlg := iup.MessageDlg(fmt.Sprintf("FONTFACE=%s", commandFontFace),
 		fmt.Sprintf("FONTSIZE=%s", commandFontSize))
 	dlg.SetAttribute("TITLE", "バージョン情報")
-	if stw.Frame != nil {
-		dlg.SetAttribute("VALUE", fmt.Sprintf("VERSION: %s\n%s\n\nNAME\t: %s\nPROJECT\t: %s\nPATH\t: %s", stw.Version, stw.Modified, stw.Frame.Name, stw.Frame.Project, stw.Frame.Path))
+	if stw.frame != nil {
+		dlg.SetAttribute("VALUE", fmt.Sprintf("VERSION: %s\n%s\n\nNAME\t: %s\nPROJECT\t: %s\nPATH\t: %s", stw.Version, stw.Modified, stw.frame.Name, stw.frame.Project, stw.frame.Path))
 	} else {
 		dlg.SetAttribute("VALUE", fmt.Sprintf("VERSION: %s\n%s\n\nNAME\t: -\nPROJECT\t: -\nPATH\t: -", stw.Version, stw.Modified))
 	}
@@ -2355,7 +2280,7 @@ func (stw *Window) feedCommand() {
 		stw.addCommandHistory(stw.cline.GetAttribute("VALUE"))
 		comhistpos = -1
 		stw.cline.SetAttribute("VALUE", "")
-		stw.execAliasCommand(command)
+		stw.ExecCommand(command)
 	}
 }
 
@@ -2468,38 +2393,23 @@ func (stw *Window) addHistory(str string) {
 	stw.hist.SetAttribute("SCROLLTO", setpos)
 }
 
-func (stw *Window) errormessage(err error, level uint) {
-	if err == nil {
-		return
-	}
-	var otp string
-	if level >= st.ERROR {
-		_, file, line, _ := runtime.Caller(1)
-		otp = fmt.Sprintf("%s:%d: [%s]: %s", filepath.Base(file), line, st.LOGLEVEL[level], err.Error())
-	} else {
-		otp = fmt.Sprintf("[%s]: %s", st.LOGLEVEL[level], err.Error())
-	}
-	stw.addHistory(otp)
-	logger.Println(otp)
-}
-
 func (stw *Window) SetCoord(x, y, z float64) {
 	stw.coord.SetAttribute("VALUE", fmt.Sprintf("X: %8.3f Y: %8.3f Z: %8.3f", x, y, z))
 }
 
-func (stw *Window) ExecCommand(com *Command) {
+func (stw *Window) execCommand(com *Command) {
 	stw.addHistory(com.Name)
 	stw.cname.SetAttribute("VALUE", com.Name)
 	stw.lastcommand = com
 	com.Exec(stw)
 }
 
-func (stw *Window) execAliasCommand(al string) {
-	if stw.Frame == nil {
+func (stw *Window) ExecCommand(al string) {
+	if stw.frame == nil {
 		if strings.HasPrefix(al, ":") {
-			err := st.ExMode(stw, stw.Frame, al)
+			err := st.ExMode(stw, stw.frame, al)
 			if err != nil {
-				stw.errormessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 			}
 		} else {
 			stw.Open()
@@ -2511,29 +2421,29 @@ func (stw *Window) execAliasCommand(al string) {
 	alu := strings.ToUpper(al)
 	if alu == "." {
 		if stw.lastcommand != nil {
-			stw.ExecCommand(stw.lastcommand)
+			stw.execCommand(stw.lastcommand)
 		}
 	} else if value, ok := aliases[alu]; ok {
-		stw.ExecCommand(value)
+		stw.execCommand(value)
 	} else if value, ok := Commands[alu]; ok {
-		stw.ExecCommand(value)
+		stw.execCommand(value)
 	} else {
 		switch {
 		default:
 			stw.addHistory(fmt.Sprintf("command doesn't exist: %s", al))
 		case strings.HasPrefix(al, ":"):
-			err := st.ExMode(stw, stw.Frame, al)
+			err := st.ExMode(stw, stw.frame, al)
 			if err != nil {
 				if _, ok := err.(st.NotRedraw); ok {
 					redraw = false
 				} else {
-					stw.errormessage(err, st.ERROR)
+					st.ErrorMessage(stw, err, st.ERROR)
 				}
 			}
 		case strings.HasPrefix(al, "'"):
-			err := st.Fig2Mode(stw, stw.Frame, al)
+			err := st.Fig2Mode(stw, stw.frame, al)
 			if err != nil {
-				stw.errormessage(err, st.ERROR)
+				st.ErrorMessage(stw, err, st.ERROR)
 			}
 		case axrn_minmax.MatchString(alu):
 			var axis int
@@ -2627,10 +2537,10 @@ func (stw *Window) execAliasCommand(al string) {
 
 func (stw *Window) CompleteFileName(str string) string {
 	path := ""
-	if stw.Frame != nil {
-		path = stw.Frame.Path
+	if stw.frame != nil {
+		path = stw.frame.Path
 	}
-	stw.completes = st.CompleteFileName(str, path, stw.recentfiles)
+	stw.completes = st.CompleteFileName(str, path, stw.Recent())
 	stw.completepos = 0
 	if len(stw.completes) == 0 {
 		return str
@@ -2702,45 +2612,45 @@ func (stw *Window) NextComplete(str string) string {
 }
 
 func (stw *Window) NextFloor() {
-	for _, n := range stw.Frame.Nodes {
+	for _, n := range stw.frame.Nodes {
 		n.Show()
 	}
-	for _, el := range stw.Frame.Elems {
+	for _, el := range stw.frame.Elems {
 		el.Show()
 	}
 	for i, z := range []string{"ZMIN", "ZMAX"} {
-		tmpval := stw.Frame.Show.Zrange[i]
+		tmpval := stw.frame.Show.Zrange[i]
 		ind := 0
-		for _, ht := range stw.Frame.Ai.Boundary {
+		for _, ht := range stw.frame.Ai.Boundary {
 			if ht > tmpval {
 				break
 			}
 			ind++
 		}
 		var val float64
-		l := len(stw.Frame.Ai.Boundary)
+		l := len(stw.frame.Ai.Boundary)
 		if ind >= l-1 {
-			val = stw.Frame.Ai.Boundary[l-2+i]
+			val = stw.frame.Ai.Boundary[l-2+i]
 		} else {
-			val = stw.Frame.Ai.Boundary[ind]
+			val = stw.frame.Ai.Boundary[ind]
 		}
-		stw.Frame.Show.Zrange[i] = val
+		stw.frame.Show.Zrange[i] = val
 		stw.Labels[z].SetAttribute("VALUE", fmt.Sprintf("%.3f", val))
 	}
 	stw.Redraw()
 }
 
 func (stw *Window) PrevFloor() {
-	for _, n := range stw.Frame.Nodes {
+	for _, n := range stw.frame.Nodes {
 		n.Show()
 	}
-	for _, el := range stw.Frame.Elems {
+	for _, el := range stw.frame.Elems {
 		el.Show()
 	}
 	for i, z := range []string{"ZMIN", "ZMAX"} {
-		tmpval := stw.Frame.Show.Zrange[i]
+		tmpval := stw.frame.Show.Zrange[i]
 		ind := 0
-		for _, ht := range stw.Frame.Ai.Boundary {
+		for _, ht := range stw.frame.Ai.Boundary {
 			if ht > tmpval {
 				break
 			}
@@ -2748,11 +2658,11 @@ func (stw *Window) PrevFloor() {
 		}
 		var val float64
 		if ind <= 2 {
-			val = stw.Frame.Ai.Boundary[i]
+			val = stw.frame.Ai.Boundary[i]
 		} else {
-			val = stw.Frame.Ai.Boundary[ind-2]
+			val = stw.frame.Ai.Boundary[ind-2]
 		}
-		stw.Frame.Show.Zrange[i] = val
+		stw.frame.Show.Zrange[i] = val
 		stw.Labels[z].SetAttribute("VALUE", fmt.Sprintf("%.3f", val))
 	}
 	stw.Redraw()
@@ -2760,7 +2670,7 @@ func (stw *Window) PrevFloor() {
 
 func (stw *Window) AxisRange(axis int, min, max float64, any bool) {
 	tmpnodes := make([]*st.Node, 0)
-	for _, n := range stw.Frame.Nodes {
+	for _, n := range stw.frame.Nodes {
 		if !(min <= n.Coord[axis] && n.Coord[axis] <= max) {
 			tmpnodes = append(tmpnodes, n)
 			n.Hide()
@@ -2770,11 +2680,11 @@ func (stw *Window) AxisRange(axis int, min, max float64, any bool) {
 	}
 	var tmpelems []*st.Elem
 	if !any {
-		tmpelems = stw.Frame.NodeToElemAny(tmpnodes...)
+		tmpelems = stw.frame.NodeToElemAny(tmpnodes...)
 	} else {
-		tmpelems = stw.Frame.NodeToElemAll(tmpnodes...)
+		tmpelems = stw.frame.NodeToElemAll(tmpnodes...)
 	}
-	for _, el := range stw.Frame.Elems {
+	for _, el := range stw.frame.Elems {
 		el.Show()
 	}
 	for _, el := range tmpelems {
@@ -2782,18 +2692,18 @@ func (stw *Window) AxisRange(axis int, min, max float64, any bool) {
 	}
 	switch axis {
 	case 0:
-		stw.Frame.Show.Xrange[0] = min
-		stw.Frame.Show.Xrange[1] = max
+		stw.frame.Show.Xrange[0] = min
+		stw.frame.Show.Xrange[1] = max
 		stw.Labels["XMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", min))
 		stw.Labels["XMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", max))
 	case 1:
-		stw.Frame.Show.Yrange[0] = min
-		stw.Frame.Show.Yrange[1] = max
+		stw.frame.Show.Yrange[0] = min
+		stw.frame.Show.Yrange[1] = max
 		stw.Labels["YMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", min))
 		stw.Labels["YMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", max))
 	case 2:
-		stw.Frame.Show.Zrange[0] = min
-		stw.Frame.Show.Zrange[1] = max
+		stw.frame.Show.Zrange[0] = min
+		stw.frame.Show.Zrange[1] = max
 		stw.Labels["ZMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", min))
 		stw.Labels["ZMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", max))
 	}
@@ -2807,12 +2717,12 @@ func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 	stw.currentCanvas = canv
 	canv.Hatch(cd.CD_FDIAGONAL)
 	canv.Clear()
-	st.DrawFrame(stw, stw.Frame, color, flush)
+	st.DrawFrame(stw, stw.frame, color, flush)
 	stw.SetViewData()
 }
 
 func (stw *Window) DrawRange(canv *cd.Canvas, view *st.View) {
-	if stw.Frame == nil {
+	if stw.frame == nil {
 		return
 	}
 	canv.Foreground(cd.CD_DARK_GREEN)
@@ -2825,7 +2735,7 @@ func (stw *Window) DrawRange(canv *cd.Canvas, view *st.View) {
 		coord[i] = make([]float64, 3)
 		pcoord[i] = make([]float64, 2)
 	}
-	mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2] = stw.Frame.Bbox(false)
+	mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2] = stw.frame.Bbox(false)
 	for i := 0; i < 3; i++ {
 		view.Focus[i] = 0.5 * (mins[i] + maxs[i])
 	}
@@ -2869,7 +2779,7 @@ func (stw *Window) DrawRange(canv *cd.Canvas, view *st.View) {
 	canv.FLine(pcoord[1][0], pcoord[1][1], pcoord[5][0], pcoord[5][1])
 	canv.FLine(pcoord[2][0], pcoord[2][1], pcoord[6][0], pcoord[6][1])
 	canv.FLine(pcoord[3][0], pcoord[3][1], pcoord[7][0], pcoord[7][1])
-	mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2] = stw.Frame.Bbox(true)
+	mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2] = stw.frame.Bbox(true)
 	coord[0][0] = mins[0]
 	coord[0][1] = mins[1]
 	coord[0][2] = mins[2]
@@ -2914,7 +2824,7 @@ func (stw *Window) DrawRange(canv *cd.Canvas, view *st.View) {
 
 func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
 	for _, t := range stw.textBox {
-		if !t.IsHidden(stw.Frame.Show) {
+		if !t.IsHidden(stw.frame.Show) {
 			if black {
 				col := t.Font.Color
 				t.Font.Color = cd.CD_BLACK
@@ -2925,7 +2835,7 @@ func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
 			}
 		}
 	}
-	if !STLOGO.IsHidden(stw.Frame.Show) {
+	if !STLOGO.IsHidden(stw.frame.Show) {
 		DrawText(STLOGO, canv)
 	}
 }
@@ -2953,7 +2863,7 @@ func (stw *Window) DrawPivot(nodes []*st.Node, pivot, end chan int) {
 }
 
 func (stw *Window) Redraw() {
-	stw.DrawFrame(stw.dbuff, stw.Frame.Show.ColorMode, false)
+	stw.DrawFrame(stw.dbuff, stw.frame.Show.ColorMode, false)
 	if stw.Property {
 		stw.UpdatePropertyDialog()
 	}
@@ -2964,17 +2874,17 @@ func (stw *Window) Redraw() {
 func (stw *Window) DrawFrameNode() {
 	stw.dbuff.Clear()
 	stw.currentCanvas = stw.dbuff
-	st.DrawFrameNode(stw, stw.Frame, stw.Frame.Show.ColorMode, true)
+	st.DrawFrameNode(stw, stw.frame, stw.frame.Show.ColorMode, true)
 }
 
 // TODO: implement
 func (stw *Window) DrawConvexHull() {
-	if stw.Frame == nil {
+	if stw.frame == nil {
 		return
 	}
 	var nnum int
-	nodes := make([]*st.Node, len(stw.Frame.Nodes))
-	for _, n := range stw.Frame.Nodes {
+	nodes := make([]*st.Node, len(stw.frame.Nodes))
+	for _, n := range stw.frame.Nodes {
 		nodes[nnum] = n
 		nnum++
 	}
@@ -3116,7 +3026,7 @@ func (stw *Window) DrawConvexHull() {
 }
 
 func (stw *Window) SetSelectData() {
-	if stw.Frame != nil {
+	if stw.frame != nil {
 		stw.lselect.SetAttribute("VALUE", fmt.Sprintf("ELEM = %5d\nNODE = %5d", len(stw.selectElem), len(stw.selectNode)))
 	} else {
 		stw.lselect.SetAttribute("VALUE", "ELEM =     0\nNODE =     0")
@@ -3125,32 +3035,32 @@ func (stw *Window) SetSelectData() {
 
 // DataLabel
 func (stw *Window) SetViewData() {
-	if stw.Frame != nil {
-		stw.Labels["GFACT"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Gfact))
-		stw.Labels["DISTR"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Dists[0]))
-		stw.Labels["DISTL"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Dists[1]))
-		stw.Labels["PHI"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Angle[0]))
-		stw.Labels["THETA"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Angle[1]))
-		stw.Labels["FOCUSX"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Focus[0]))
-		stw.Labels["FOCUSY"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Focus[1]))
-		stw.Labels["FOCUSZ"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Focus[2]))
-		stw.Labels["CENTERX"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Center[0]))
-		stw.Labels["CENTERY"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.Frame.View.Center[1]))
+	if stw.frame != nil {
+		stw.Labels["GFACT"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.frame.View.Gfact))
+		stw.Labels["DISTR"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.frame.View.Dists[0]))
+		stw.Labels["DISTL"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.frame.View.Dists[1]))
+		stw.Labels["PHI"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.frame.View.Angle[0]))
+		stw.Labels["THETA"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.frame.View.Angle[1]))
+		stw.Labels["FOCUSX"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.frame.View.Focus[0]))
+		stw.Labels["FOCUSY"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.frame.View.Focus[1]))
+		stw.Labels["FOCUSZ"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.frame.View.Focus[2]))
+		stw.Labels["CENTERX"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.frame.View.Center[0]))
+		stw.Labels["CENTERY"].SetAttribute("VALUE", fmt.Sprintf("%.1f", stw.frame.View.Center[1]))
 	}
 }
 
 func (stw *Window) Bbox() (xmin, xmax, ymin, ymax float64) {
-	return stw.Frame.Bbox2D(true)
+	return stw.frame.Bbox2D(true)
 }
 
 func (stw *Window) SetShowRange() {
-	xmin, xmax, ymin, ymax, zmin, zmax := stw.Frame.Bbox(true)
-	stw.Frame.Show.Xrange[0] = xmin
-	stw.Frame.Show.Xrange[1] = xmax
-	stw.Frame.Show.Yrange[0] = ymin
-	stw.Frame.Show.Yrange[1] = ymax
-	stw.Frame.Show.Zrange[0] = zmin
-	stw.Frame.Show.Zrange[1] = zmax
+	xmin, xmax, ymin, ymax, zmin, zmax := stw.frame.Bbox(true)
+	stw.frame.Show.Xrange[0] = xmin
+	stw.frame.Show.Xrange[1] = xmax
+	stw.frame.Show.Yrange[0] = ymin
+	stw.frame.Show.Yrange[1] = ymax
+	stw.frame.Show.Zrange[0] = zmin
+	stw.frame.Show.Zrange[1] = zmax
 	stw.Labels["XMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", xmax))
 	stw.Labels["XMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", xmin))
 	stw.Labels["YMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", ymax))
@@ -3161,10 +3071,10 @@ func (stw *Window) SetShowRange() {
 
 func (stw *Window) HideNotSelected() {
 	if stw.selectElem != nil {
-		for _, n := range stw.Frame.Nodes {
+		for _, n := range stw.frame.Nodes {
 			n.Hide()
 		}
-		for _, el := range stw.Frame.Elems {
+		for _, el := range stw.frame.Elems {
 			el.Hide()
 		}
 		for _, el := range stw.selectElem {
@@ -3194,10 +3104,10 @@ func (stw *Window) HideSelected() {
 
 func (stw *Window) LockNotSelected() {
 	if stw.selectElem != nil {
-		for _, n := range stw.Frame.Nodes {
+		for _, n := range stw.frame.Nodes {
 			n.Lock = true
 		}
-		for _, el := range stw.Frame.Elems {
+		for _, el := range stw.frame.Elems {
 			el.Lock = true
 		}
 		for _, el := range stw.selectElem {
@@ -3230,7 +3140,7 @@ func (stw *Window) DeleteSelected() {
 	if stw.selectElem != nil {
 		for _, el := range stw.selectElem {
 			if el != nil && !el.Lock {
-				stw.Frame.DeleteElem(el.Num)
+				stw.frame.DeleteElem(el.Num)
 			}
 		}
 	}
@@ -3240,14 +3150,14 @@ func (stw *Window) DeleteSelected() {
 }
 
 func (stw *Window) SelectNotHidden() {
-	if stw.Frame == nil {
+	if stw.frame == nil {
 		return
 	}
 	stw.Deselect()
-	stw.selectElem = make([]*st.Elem, len(stw.Frame.Elems))
+	stw.selectElem = make([]*st.Elem, len(stw.frame.Elems))
 	num := 0
-	for _, el := range stw.Frame.Elems {
-		if el.IsHidden(stw.Frame.Show) {
+	for _, el := range stw.frame.Elems {
+		if el.IsHidden(stw.frame.Show) {
 			continue
 		}
 		stw.selectElem[num] = el
@@ -3263,7 +3173,7 @@ func (stw *Window) CopyClipboard() error {
 		return nil
 	}
 	var otp bytes.Buffer
-	ns := stw.Frame.ElemToNode(stw.selectElem...)
+	ns := stw.frame.ElemToNode(stw.selectElem...)
 	getcoord(stw, func(x, y, z float64) {
 		for _, n := range ns {
 			otp.WriteString(n.CopyString(x, y, z))
@@ -3314,14 +3224,14 @@ func (stw *Window) PasteClipboard() error {
 			default:
 				tmp = append(tmp, words...)
 			case "NODE", "ELEM":
-				nodemap, err = stw.Frame.ParseInp(tmp, coord, angle, nodemap, false)
+				nodemap, err = stw.frame.ParseInp(tmp, coord, angle, nodemap, false)
 				tmp = words
 			}
 			if err != nil {
 				break
 			}
 		}
-		nodemap, err = stw.Frame.ParseInp(tmp, coord, angle, nodemap, false)
+		nodemap, err = stw.frame.ParseInp(tmp, coord, angle, nodemap, false)
 		stw.EscapeCB()
 	})
 	return nil
@@ -3361,7 +3271,7 @@ func (stw *Window) SectionData(sec *st.Sect) {
 		stw.textBox["SECTION"] = tb
 	}
 	tb.SetText(strings.Split(sec.InpString(), "\n"))
-	if al, ok := stw.Frame.Allows[sec.Num]; ok {
+	if al, ok := stw.frame.Allows[sec.Num]; ok {
 		tb.AddText(strings.Split(al.String(), "\n")...)
 	}
 	tb.ScrollToTop()
@@ -3385,13 +3295,13 @@ func (stw *Window) CurrentLap(comment string, nlap, laps int) {
 }
 
 func (stw *Window) ShowAll() {
-	for _, el := range stw.Frame.Elems {
+	for _, el := range stw.frame.Elems {
 		el.Show()
 	}
-	for _, n := range stw.Frame.Nodes {
+	for _, n := range stw.frame.Nodes {
 		n.Show()
 	}
-	for _, k := range stw.Frame.Kijuns {
+	for _, k := range stw.frame.Kijuns {
 		k.Show()
 	}
 	for i, et := range st.ETYPES {
@@ -3401,24 +3311,24 @@ func (stw *Window) ShowAll() {
 		if lb, ok := stw.Labels[et]; ok {
 			lb.SetAttribute("FGCOLOR", labelFGColor)
 		}
-		stw.Frame.Show.Etype[i] = true
+		stw.frame.Show.Etype[i] = true
 	}
 	stw.ShowAllSection()
-	stw.Frame.Show.All()
-	stw.Labels["XMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.Frame.Show.Xrange[0]))
-	stw.Labels["XMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.Frame.Show.Xrange[1]))
-	stw.Labels["YMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.Frame.Show.Yrange[0]))
-	stw.Labels["YMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.Frame.Show.Yrange[1]))
-	stw.Labels["ZMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.Frame.Show.Zrange[0]))
-	stw.Labels["ZMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.Frame.Show.Zrange[1]))
+	stw.frame.Show.All()
+	stw.Labels["XMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.frame.Show.Xrange[0]))
+	stw.Labels["XMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.frame.Show.Xrange[1]))
+	stw.Labels["YMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.frame.Show.Yrange[0]))
+	stw.Labels["YMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.frame.Show.Yrange[1]))
+	stw.Labels["ZMIN"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.frame.Show.Zrange[0]))
+	stw.Labels["ZMAX"].SetAttribute("VALUE", fmt.Sprintf("%.3f", stw.frame.Show.Zrange[1]))
 	stw.Redraw()
 }
 
 func (stw *Window) UnlockAll() {
-	for _, el := range stw.Frame.Elems {
+	for _, el := range stw.frame.Elems {
 		el.Lock = false
 	}
-	for _, n := range stw.Frame.Nodes {
+	for _, n := range stw.frame.Nodes {
 		n.Lock = false
 	}
 	stw.Redraw()
@@ -3426,21 +3336,21 @@ func (stw *Window) UnlockAll() {
 
 func (stw *Window) Animate(view *st.View) {
 	scale := 1.0
-	if stw.Frame.View.Perspective {
-		scale = math.Pow(view.Dists[1] / stw.Frame.View.Dists[1], CanvasAnimateSpeed)
+	if stw.frame.View.Perspective {
+		scale = math.Pow(view.Dists[1] / stw.frame.View.Dists[1], stw.CanvasAnimateSpeed())
 	} else {
-		scale = math.Pow(view.Gfact / stw.Frame.View.Gfact, CanvasAnimateSpeed)
+		scale = math.Pow(view.Gfact / stw.frame.View.Gfact, stw.CanvasAnimateSpeed())
 	}
 	center := make([]float64, 2)
 	angle := make([]float64, 2)
 	focus := make([]float64, 3)
 	for i:=0; i<3; i++ {
-		focus[i] = CanvasAnimateSpeed*(view.Focus[i] - stw.Frame.View.Focus[i])
+		focus[i] = stw.CanvasAnimateSpeed()*(view.Focus[i] - stw.frame.View.Focus[i])
 		if i >= 2 {
 			break
 		}
-		center[i] = CanvasAnimateSpeed*(view.Center[i] - stw.Frame.View.Center[i])
-		angle[i] = view.Angle[i] - stw.Frame.View.Angle[i]
+		center[i] = stw.CanvasAnimateSpeed()*(view.Center[i] - stw.frame.View.Center[i])
+		angle[i] = view.Angle[i] - stw.frame.View.Angle[i]
 		if i == 1 {
 			for {
 				if angle[1] <= 180.0 {
@@ -3455,30 +3365,30 @@ func (stw *Window) Animate(view *st.View) {
 				angle[1] += 360.0
 			}
 		}
-		angle[i] *= CanvasAnimateSpeed
+		angle[i] *= stw.CanvasAnimateSpeed()
 	}
-	for i:=0; i<int(1/CanvasAnimateSpeed); i++ {
-		if stw.Frame.View.Perspective {
-			stw.Frame.View.Dists[1] *= scale
+	for i:=0; i<int(1/stw.CanvasAnimateSpeed()); i++ {
+		if stw.frame.View.Perspective {
+			stw.frame.View.Dists[1] *= scale
 		} else {
-			stw.Frame.View.Gfact *= scale
+			stw.frame.View.Gfact *= scale
 		}
 		for j:=0; j<3; j++ {
-			stw.Frame.View.Focus[j] += focus[j]
+			stw.frame.View.Focus[j] += focus[j]
 			if j >= 2 {
 				break
 			}
-			stw.Frame.View.Center[j] += center[j]
-			stw.Frame.View.Angle[j] += angle[j]
+			stw.frame.View.Center[j] += center[j]
+			stw.frame.View.Angle[j] += angle[j]
 		}
 		stw.DrawFrameNode()
 	}
 }
 
 func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
-	stw.Frame.SetFocus(nil)
-	for _, n := range stw.Frame.Nodes {
-		stw.Frame.View.ProjectNode(n)
+	stw.frame.SetFocus(nil)
+	for _, n := range stw.frame.Nodes {
+		stw.frame.View.ProjectNode(n)
 	}
 	xmin, xmax, ymin, ymax := stw.Bbox()
 	if xmax == xmin && ymax == ymin {
@@ -3487,18 +3397,18 @@ func (stw *Window) ShowAtPaperCenter(canv *cd.Canvas) {
 	stw.currentCanvas = canv
 	w, h, err := stw.CanvasPaperSize()
 	if err != nil {
-		stw.errormessage(err, st.ERROR)
+		st.ErrorMessage(stw, err, st.ERROR)
 		return
 	}
-	scale := math.Min(w/(xmax-xmin), h/(ymax-ymin)) * CanvasFitScale
-	if stw.Frame.View.Perspective {
-		stw.Frame.View.Dists[1] *= scale
+	scale := math.Min(w/(xmax-xmin), h/(ymax-ymin)) * stw.CanvasFitScale()
+	if stw.frame.View.Perspective {
+		stw.frame.View.Dists[1] *= scale
 	} else {
-		stw.Frame.View.Gfact *= scale
+		stw.frame.View.Gfact *= scale
 	}
 	cw, ch := canv.GetSize()
-	stw.Frame.View.Center[0] = float64(cw)*0.5 + scale*(stw.Frame.View.Center[0]-0.5*(xmax+xmin))
-	stw.Frame.View.Center[1] = float64(ch)*0.5 + scale*(stw.Frame.View.Center[1]-0.5*(ymax+ymin))
+	stw.frame.View.Center[0] = float64(cw)*0.5 + scale*(stw.frame.View.Center[0]-0.5*(xmax+xmin))
+	stw.frame.View.Center[1] = float64(ch)*0.5 + scale*(stw.frame.View.Center[1]-0.5*(ymax+ymin))
 }
 
 func (stw *Window) CanvasCenterView(canv *cd.Canvas, angle []float64) *st.View {
@@ -3506,48 +3416,48 @@ func (stw *Window) CanvasCenterView(canv *cd.Canvas, angle []float64) *st.View {
 	f0 := make([]float64, 3)
 	focus := make([]float64, 3)
 	for i:=0; i<3; i++ {
-		f0[i] = stw.Frame.View.Focus[i]
+		f0[i] = stw.frame.View.Focus[i]
 		if i >= 2 {
 			break
 		}
-		a0[i] = stw.Frame.View.Angle[i]
-		stw.Frame.View.Angle[i] = angle[i]
+		a0[i] = stw.frame.View.Angle[i]
+		stw.frame.View.Angle[i] = angle[i]
 	}
-	stw.Frame.SetFocus(nil)
-	stw.Frame.View.Set(0)
-	for _, n := range stw.Frame.Nodes {
-		stw.Frame.View.ProjectNode(n)
+	stw.frame.SetFocus(nil)
+	stw.frame.View.Set(0)
+	for _, n := range stw.frame.Nodes {
+		stw.frame.View.ProjectNode(n)
 	}
 	xmin, xmax, ymin, ymax := stw.Bbox()
 	for i:=0; i<3; i++ {
-		focus[i] = stw.Frame.View.Focus[i]
-		stw.Frame.View.Focus[i] = f0[i]
+		focus[i] = stw.frame.View.Focus[i]
+		stw.frame.View.Focus[i] = f0[i]
 		if i >= 2 {
 			break
 		}
-		stw.Frame.View.Angle[i] = a0[i]
+		stw.frame.View.Angle[i] = a0[i]
 	}
-	stw.Frame.View.Set(0)
+	stw.frame.View.Set(0)
 	if xmax == xmin && ymax == ymin {
 		return nil
 	}
 	w, h := canv.GetSize()
-	view := stw.Frame.View.Copy()
+	view := stw.frame.View.Copy()
 	view.Focus = focus
-	scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * CanvasFitScale
-	if stw.Frame.View.Perspective {
-		view.Dists[1] = stw.Frame.View.Dists[1] * scale
+	scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * stw.CanvasFitScale()
+	if stw.frame.View.Perspective {
+		view.Dists[1] = stw.frame.View.Dists[1] * scale
 	} else {
-		view.Gfact = stw.Frame.View.Gfact * scale
+		view.Gfact = stw.frame.View.Gfact * scale
 	}
-	view.Center[0] = float64(w)*0.5 + scale*(stw.Frame.View.Center[0]-0.5*(xmax+xmin))
-	view.Center[1] = float64(h)*0.5 + scale*(stw.Frame.View.Center[1]-0.5*(ymax+ymin))
+	view.Center[0] = float64(w)*0.5 + scale*(stw.frame.View.Center[0]-0.5*(xmax+xmin))
+	view.Center[1] = float64(h)*0.5 + scale*(stw.frame.View.Center[1]-0.5*(ymax+ymin))
 	view.Angle = angle
 	return view
 }
 
 func (stw *Window) ShowAtCanvasCenter(canv *cd.Canvas) {
-	view := stw.CanvasCenterView(canv, stw.Frame.View.Angle)
+	view := stw.CanvasCenterView(canv, stw.frame.View.Angle)
 	stw.Animate(view)
 }
 
@@ -3561,7 +3471,7 @@ func (stw *Window) ShowCenter() {
 }
 
 func (stw *Window) SetAngle(phi, theta float64) {
-	if stw.Frame != nil {
+	if stw.frame != nil {
 		view := stw.CanvasCenterView(stw.cdcanv, []float64{phi, theta})
 		stw.Animate(view)
 	}
@@ -3587,14 +3497,14 @@ func (stw *Window) SetFocus() {
 			}
 		}
 	}
-	v := stw.Frame.View.Copy()
-	stw.Frame.SetFocus(focus)
+	v := stw.frame.View.Copy()
+	stw.frame.SetFocus(focus)
 	w, h := stw.cdcanv.GetSize()
 	stw.CanvasSize = []float64{float64(w), float64(h)}
-	stw.Frame.View.Center[0] = stw.CanvasSize[0] * 0.5
-	stw.Frame.View.Center[1] = stw.CanvasSize[1] * 0.5
-	view := stw.Frame.View.Copy()
-	stw.Frame.View = v
+	stw.frame.View.Center[0] = stw.CanvasSize[0] * 0.5
+	stw.frame.View.Center[1] = stw.CanvasSize[1] * 0.5
+	view := stw.frame.View.Copy()
+	stw.frame.View = v
 	stw.Animate(view)
 	stw.Redraw()
 	return
@@ -3611,17 +3521,17 @@ func (stw *Window) SelectNodeStart(arg *iup.MouseButton) {
 		bottom := min(stw.startY, stw.endY)
 		top := max(stw.startY, stw.endY)
 		if (right-left < nodeSelectPixel) && (top-bottom < nodeSelectPixel) {
-			n := stw.Frame.PickNode(float64(left), float64(bottom), float64(nodeSelectPixel))
+			n := stw.frame.PickNode(float64(left), float64(bottom), float64(nodeSelectPixel))
 			if n != nil {
 				stw.MergeSelectNode([]*st.Node{n}, isShift(arg.Status))
 			} else {
 				stw.selectNode = make([]*st.Node, 0)
 			}
 		} else {
-			tmpselect := make([]*st.Node, len(stw.Frame.Nodes))
+			tmpselect := make([]*st.Node, len(stw.frame.Nodes))
 			i := 0
-			for _, v := range stw.Frame.Nodes {
-				if v.IsHidden(stw.Frame.Show) {
+			for _, v := range stw.frame.Nodes {
+				if v.IsHidden(stw.frame.Show) {
 					continue
 				}
 				if float64(left) <= v.Pcoord[0] && v.Pcoord[0] <= float64(right) && float64(bottom) <= v.Pcoord[1] && v.Pcoord[1] <= float64(top) {
@@ -3655,9 +3565,9 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 		bottom := min(stw.startY, stw.endY)
 		top := max(stw.startY, stw.endY)
 		if (right-left < dotSelectPixel) && (top-bottom < dotSelectPixel) {
-			el := stw.Frame.PickLineElem(float64(left), float64(bottom), dotSelectPixel)
+			el := stw.frame.PickLineElem(float64(left), float64(bottom), dotSelectPixel)
 			if el == nil {
-				els := stw.Frame.PickPlateElem(float64(left), float64(bottom))
+				els := stw.frame.PickPlateElem(float64(left), float64(bottom))
 				if len(els) > 0 {
 					el = els[0]
 				}
@@ -3668,20 +3578,20 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 				stw.selectElem = make([]*st.Elem, 0)
 			}
 		} else {
-			tmpselectnode := make([]*st.Node, len(stw.Frame.Nodes))
+			tmpselectnode := make([]*st.Node, len(stw.frame.Nodes))
 			i := 0
-			for _, v := range stw.Frame.Nodes {
+			for _, v := range stw.frame.Nodes {
 				if float64(left) <= v.Pcoord[0] && v.Pcoord[0] <= float64(right) && float64(bottom) <= v.Pcoord[1] && v.Pcoord[1] <= float64(top) {
 					tmpselectnode[i] = v
 					i++
 				}
 			}
-			tmpselectelem := make([]*st.Elem, len(stw.Frame.Elems))
+			tmpselectelem := make([]*st.Elem, len(stw.frame.Elems))
 			k := 0
 			switch selectDirection {
 			case SD_FROMLEFT:
-				for _, el := range stw.Frame.Elems {
-					if el.IsHidden(stw.Frame.Show) {
+				for _, el := range stw.frame.Elems {
+					if el.IsHidden(stw.frame.Show) {
 						continue
 					}
 					add := true
@@ -3703,8 +3613,8 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 					}
 				}
 			case SD_FROMRIGHT:
-				for _, el := range stw.Frame.Elems {
-					if el.IsHidden(stw.Frame.Show) {
+				for _, el := range stw.frame.Elems {
+					if el.IsHidden(stw.frame.Show) {
 						continue
 					}
 					add := false
@@ -3753,7 +3663,7 @@ func abs(val int) int {
 func (stw *Window) SelectElemFenceStart(arg *iup.MouseButton) {
 	stw.dbuff.UpdateYAxis(&arg.Y)
 	if arg.Pressed == 0 { // Released
-		els := stw.Frame.FenceLine(float64(stw.startX), float64(stw.startY), float64(stw.endX), float64(stw.endY))
+		els := stw.frame.FenceLine(float64(stw.startX), float64(stw.startY), float64(stw.endX), float64(stw.endY))
 		st.MergeSelectElem(stw, els, isShift(arg.Status))
 		stw.cdcanv.Line(stw.startX, stw.startY, stw.endX, stw.endY)
 		stw.cdcanv.WriteMode(cd.CD_REPLACE)
@@ -4138,7 +4048,7 @@ func (stw *Window) QueryCoord(title string) (x, y, z float64, err error) {
 // Default CallBack// {{{
 func (stw *Window) CB_MouseButton() {
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if isAlt(arg.Status) == ALTSELECTNODE {
@@ -4148,9 +4058,9 @@ func (stw *Window) CB_MouseButton() {
 					if isDouble(arg.Status) {
 						if stw.ElemSelected() {
 							if stw.selectElem[0].IsLineElem() {
-								stw.execAliasCommand(DoubleClickCommand[0])
+								stw.ExecCommand(DoubleClickCommand[0])
 							} else {
-								stw.execAliasCommand(DoubleClickCommand[1])
+								stw.ExecCommand(DoubleClickCommand[1])
 							}
 						}
 					}
@@ -4162,7 +4072,7 @@ func (stw *Window) CB_MouseButton() {
 					if isDouble(arg.Status) {
 						if isAlt(arg.Status) {
 							for i:=0; i<2; i++ {
-								RangeView.Angle[i] = stw.Frame.View.Angle[i]
+								RangeView.Angle[i] = stw.frame.View.Angle[i]
 							}
 						}
 						stw.ShowCenter()
@@ -4180,12 +4090,12 @@ func (stw *Window) CB_MouseButton() {
 						if time.Since(pressed).Seconds() < repeatcommand {
 							if isShift(arg.Status) {
 								if stw.lastexcommand != "" {
-									st.ExMode(stw, stw.Frame, stw.lastexcommand)
+									st.ExMode(stw, stw.frame, stw.lastexcommand)
 									stw.Redraw()
 								}
 							} else {
 								if stw.lastcommand != nil {
-									stw.ExecCommand(stw.lastcommand)
+									stw.execCommand(stw.lastcommand)
 								}
 							}
 						} else {
@@ -4203,7 +4113,7 @@ func (stw *Window) CB_MouseButton() {
 					stw.Open()
 				}
 			case BUTTON_CENTER:
-				stw.SetRecently()
+				stw.ReadRecent()
 			}
 		}
 	})
@@ -4212,22 +4122,22 @@ func (stw *Window) CB_MouseButton() {
 func (stw *Window) MoveOrRotate(arg *iup.MouseMotion) {
 	if !fixMove && (isShift(arg.Status) || fixRotate) {
 		if isAlt(arg.Status) {
-			RangeView.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
-			RangeView.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
+			RangeView.Center[0] += float64(int(arg.X)-stw.startX) * stw.CanvasMoveSpeedX()
+			RangeView.Center[1] += float64(int(arg.Y)-stw.startY) * stw.CanvasMoveSpeedY()
 			stw.DrawRange(stw.dbuff, RangeView)
 		} else {
-			stw.Frame.View.Center[0] += float64(int(arg.X)-stw.startX) * CanvasMoveSpeedX
-			stw.Frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * CanvasMoveSpeedY
+			stw.frame.View.Center[0] += float64(int(arg.X)-stw.startX) * stw.CanvasMoveSpeedX()
+			stw.frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * stw.CanvasMoveSpeedY()
 			stw.DrawFrameNode()
 		}
 	} else if !fixRotate {
 		if isAlt(arg.Status) {
-			RangeView.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
-			RangeView.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
+			RangeView.Angle[0] -= float64(int(arg.Y)-stw.startY) * stw.CanvasRotateSpeedY()
+			RangeView.Angle[1] -= float64(int(arg.X)-stw.startX) * stw.CanvasRotateSpeedX()
 			stw.DrawRange(stw.dbuff, RangeView)
 		} else {
-			stw.Frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * CanvasRotateSpeedY
-			stw.Frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * CanvasRotateSpeedX
+			stw.frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * stw.CanvasRotateSpeedY()
+			stw.frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * stw.CanvasRotateSpeedX()
 			stw.DrawFrameNode()
 		}
 	}
@@ -4235,7 +4145,7 @@ func (stw *Window) MoveOrRotate(arg *iup.MouseMotion) {
 
 func (stw *Window) CB_MouseMotion() {
 	stw.canv.SetCallback(func(arg *iup.MouseMotion) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch statusKey(arg.Status) {
 			case STATUS_LEFT:
@@ -4253,7 +4163,7 @@ func (stw *Window) CB_MouseMotion() {
 
 func (stw *Window) CB_CanvasWheel() {
 	stw.canv.SetCallback(func(arg *iup.CanvasWheel) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			x := arg.X
 			if x > 65535 {
@@ -4270,12 +4180,12 @@ func (stw *Window) CB_CanvasWheel() {
 					return
 				}
 			}
-			val := math.Pow(2.0, float64(arg.Delta)/CanvasScaleSpeed)
+			val := math.Pow(2.0, float64(arg.Delta)/stw.CanvasScaleSpeed())
 			var v *st.View
 			if isAlt(arg.Status) {
 				v = RangeView
 			} else {
-				v = stw.Frame.View
+				v = stw.frame.View
 			}
 			if !isCtrl(arg.Status) {
 				v.Center[0] += (val - 1.0) * (v.Center[0] - float64(x))
@@ -4311,8 +4221,8 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 			stw.SearchInp()
 		}
 	case '"':
-		if stw.Frame != nil {
-			switch stw.Frame.Project {
+		if stw.frame != nil {
+			switch stw.frame.Project {
 			default:
 				stw.cline.SetAttribute("APPEND", "\"")
 			case "venhira":
@@ -4413,12 +4323,12 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", pos))
 	case 'N':
 		if key.IsCtrl() {
-			if stw.Frame != nil {
-				if strings.Contains(stw.Frame.Show.Period, "-") {
-					stw.SetPeriod(strings.Replace(stw.Frame.Show.Period, "-", "+", -1))
+			if stw.frame != nil {
+				if strings.Contains(stw.frame.Show.Period, "-") {
+					stw.SetPeriod(strings.Replace(stw.frame.Show.Period, "-", "+", -1))
 					stw.Redraw()
-				} else if strings.Contains(stw.Frame.Show.Period, "+") {
-					stw.SetPeriod(strings.Replace(stw.Frame.Show.Period, "+", "-", -1))
+				} else if strings.Contains(stw.frame.Show.Period, "+") {
+					stw.SetPeriod(strings.Replace(stw.frame.Show.Period, "+", "-", -1))
 					stw.Redraw()
 				}
 			}
@@ -4468,10 +4378,10 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 			}
 		case VIEWEDIT:
 			if key.IsCtrl() {
-				stw.Frame.View.Angle[1] += 5
+				stw.frame.View.Angle[1] += 5
 				stw.Redraw()
 			} else if key.IsAlt() {
-				stw.Frame.View.Center[0] -= 5
+				stw.frame.View.Center[0] -= 5
 				stw.Redraw()
 			}
 		}
@@ -4479,10 +4389,10 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		switch keymode {
 		case VIEWEDIT:
 			if key.IsCtrl() {
-				stw.Frame.View.Angle[0] += 5
+				stw.frame.View.Angle[0] += 5
 				stw.Redraw()
 			} else if key.IsAlt() {
-				stw.Frame.View.Center[1] -= 5
+				stw.frame.View.Center[1] -= 5
 				stw.Redraw()
 			}
 		}
@@ -4490,10 +4400,10 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		switch keymode {
 		case VIEWEDIT:
 			if key.IsCtrl() {
-				stw.Frame.View.Angle[0] -= 5
+				stw.frame.View.Angle[0] -= 5
 				stw.Redraw()
 			} else if key.IsAlt() {
-				stw.Frame.View.Center[1] += 5
+				stw.frame.View.Center[1] += 5
 				stw.Redraw()
 			}
 		}
@@ -4505,20 +4415,20 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 			}
 		case VIEWEDIT:
 			if key.IsCtrl() {
-				stw.Frame.View.Angle[1] -= 5
+				stw.frame.View.Angle[1] -= 5
 				stw.Redraw()
 			} else if key.IsAlt() {
-				stw.Frame.View.Center[0] += 5
+				stw.frame.View.Center[0] += 5
 				stw.Redraw()
 			}
 		}
 	case 'U':
 		if key.IsCtrl() {
-			if stw.Frame != nil {
-				if stw.Frame.Show.Unit[0] == 1.0 && stw.Frame.Show.Unit[1] == 1.0 {
-					st.Fig2Keyword(stw, stw.Frame, []string{"unit", "kN,m"}, false)
+			if stw.frame != nil {
+				if stw.frame.Show.Unit[0] == 1.0 && stw.frame.Show.Unit[1] == 1.0 {
+					st.Fig2Keyword(stw, stw.frame, []string{"unit", "kN,m"}, false)
 				} else {
-					st.Fig2Keyword(stw, stw.Frame, []string{"unit", "tf,m"}, false)
+					st.Fig2Keyword(stw, stw.frame, []string{"unit", "tf,m"}, false)
 				}
 				stw.Redraw()
 			}
@@ -4566,16 +4476,16 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		case VIEWEDIT:
 			var val float64
 			if key.IsCtrl() {
-				val = math.Pow(2.0, 1.0/CanvasScaleSpeed)
+				val = math.Pow(2.0, 1.0/stw.CanvasScaleSpeed())
 			} else if key.IsAlt() {
-				val = math.Pow(2.0, -1.0/CanvasScaleSpeed)
+				val = math.Pow(2.0, -1.0/stw.CanvasScaleSpeed())
 			} else {
 				break
 			}
-			if stw.Frame.View.Perspective {
-				stw.Frame.View.Dists[1] *= val
+			if stw.frame.View.Perspective {
+				stw.frame.View.Dists[1] *= val
 			} else {
-				stw.Frame.View.Gfact *= val
+				stw.frame.View.Gfact *= val
 			}
 			stw.Redraw()
 		}
@@ -4594,7 +4504,7 @@ func (stw *Window) LinkProperty(index int, eval func()) {
 		stw.Props[index].SetAttribute("SELECTION", "1:100")
 	})
 	stw.Props[index].SetCallback(func(arg *iup.CommonKillFocus) {
-		if stw.Frame != nil && stw.selectElem != nil {
+		if stw.frame != nil && stw.selectElem != nil {
 			eval()
 		}
 	})
@@ -4602,11 +4512,11 @@ func (stw *Window) LinkProperty(index int, eval func()) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		case KEY_ENTER:
-			if stw.Frame != nil && stw.selectElem != nil {
+			if stw.frame != nil && stw.selectElem != nil {
 				eval()
 			}
 		case KEY_TAB:
-			if stw.Frame != nil && stw.selectElem != nil {
+			if stw.frame != nil && stw.selectElem != nil {
 				eval()
 			}
 		case KEY_ESCAPE:
@@ -4628,7 +4538,7 @@ func (stw *Window) PropertyDialog() {
 	stw.LinkProperty(1, func() {
 		val, err := strconv.ParseInt(stw.Props[1].GetAttribute("VALUE"), 10, 64)
 		if err == nil {
-			if sec, ok := stw.Frame.Sects[int(val)]; ok {
+			if sec, ok := stw.frame.Sects[int(val)]; ok {
 				for _, el := range stw.selectElem {
 					if el != nil && !el.Lock {
 						el.Sect = sec
@@ -4801,7 +4711,7 @@ func (stw *Window) CMenu() {
 					iup.Attr("TITLE", "Quit"),
 					iup.Attr("TIP", "Exit Application"),
 					func(arg *iup.ItemAction) {
-						if stw.Changed {
+						if stw.changed {
 							if stw.Yn("CHANGED", "変更を保存しますか") {
 								stw.SaveAS()
 							} else {
@@ -4921,7 +4831,7 @@ func (stw *Window) CMenu() {
 }
 
 func (stw *Window) PeriodDialog(defval string) {
-	if stw.Frame == nil {
+	if stw.frame == nil {
 		return
 	}
 	lis := strings.Split(defval, "@")
@@ -4944,7 +4854,7 @@ func (stw *Window) PeriodDialog(defval string) {
 		per.SetAttribute("SELECTION", "1:100")
 	})
 	var max int
-	if n, ok := stw.Frame.Nlap[defpname]; ok {
+	if n, ok := stw.frame.Nlap[defpname]; ok {
 		max = n
 	} else {
 		max = 100
@@ -4959,7 +4869,7 @@ func (stw *Window) PeriodDialog(defval string) {
 	lap.SetCallback(func(arg *iup.ValueChanged) {
 		pname := fmt.Sprintf("%s@%s", strings.ToUpper(per.GetAttribute("VALUE")), strings.Split(lap.GetAttribute("VALUE"), ".")[0])
 		stw.Labels["PERIOD"].SetAttribute("VALUE", pname)
-		stw.Frame.Show.Period = pname
+		stw.frame.Show.Period = pname
 		stw.Redraw()
 	})
 	dlg := iup.Dialog(iup.Hbox(per, lap))
@@ -4971,12 +4881,12 @@ func (stw *Window) PeriodDialog(defval string) {
 }
 
 func (stw *Window) SectionDialog() {
-	if stw.Frame == nil {
+	if stw.frame == nil {
 		return
 	}
-	sects := make([]*st.Sect, len(stw.Frame.Sects))
+	sects := make([]*st.Sect, len(stw.frame.Sects))
 	nsect := 0
-	for _, sec := range stw.Frame.Sects {
+	for _, sec := range stw.frame.Sects {
 		if sec.Num >= 900 {
 			continue
 		}
@@ -5006,11 +4916,11 @@ func (stw *Window) SectionDialog() {
 				if err != nil {
 					return
 				}
-				if _, exist := stw.Frame.Sects[int(val)]; exist {
+				if _, exist := stw.frame.Sects[int(val)]; exist {
 					stw.addHistory(fmt.Sprintf("SECT: %d already exists", int(val)))
 					return
 				}
-				sec := stw.Frame.AddSect(int(val))
+				sec := stw.frame.AddSect(int(val))
 				sects = append(sects, sec)
 				code := iup.Label(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, sectiondlgFontSize),
 					fmt.Sprintf("FGCOLOR=\"%s\"", sectiondlgFGColor),
@@ -5038,12 +4948,12 @@ func (stw *Window) SectionDialog() {
 				}
 			deletesect:
 				for i := selstart; i < selend+1; i++ {
-					for _, el := range stw.Frame.Elems {
+					for _, el := range stw.frame.Elems {
 						if el.Sect.Num == sects[i].Num {
 							continue deletesect
 						}
 					}
-					stw.Frame.DeleteSect(sects[i].Num)
+					stw.frame.DeleteSect(sects[i].Num)
 					codes[i].SetAttribute("ACTIVE", "NO")
 					snames[i].SetAttribute("ACTIVE", "NO")
 					hides[i].SetAttribute("ACTIVE", "NO")
@@ -5097,7 +5007,7 @@ func (stw *Window) SectionDialog() {
 					selend = num
 				}
 				if isDouble(arg.Status) {
-					stw.SectionProperty(stw.Frame.Sects[snum])
+					stw.SectionProperty(stw.frame.Sects[snum])
 				}
 				for j := 0; j < nsect; j++ {
 					if selstart <= j && j <= selend {
@@ -5113,7 +5023,7 @@ func (stw *Window) SectionDialog() {
 			snames[num].SetCallback(mbcb)
 		}(sec.Num, i)
 		var ishide string
-		if stw.Frame.Show.Sect[sec.Num] {
+		if stw.frame.Show.Sect[sec.Num] {
 			ishide = "ON"
 		} else {
 			ishide = "OFF"
@@ -5123,18 +5033,18 @@ func (stw *Window) SectionDialog() {
 			fmt.Sprintf("SIZE=%dx%d", 25, dataheight))
 		func(snum, num int) {
 			hides[num].SetCallback(func(arg *iup.ToggleAction) {
-				if stw.Frame != nil {
+				if stw.frame != nil {
 					if arg.State == 1 {
 						if selstart <= num && num <= selend {
 							for j := selstart; j < selend+1; j++ {
 								if hides[j].GetAttribute("ACTIVE") == "NO" {
 									continue
 								}
-								stw.Frame.Show.Sect[sects[j].Num] = true
+								stw.frame.Show.Sect[sects[j].Num] = true
 								hides[j].SetAttribute("VALUE", "ON")
 							}
 						} else {
-							stw.Frame.Show.Sect[snum] = true
+							stw.frame.Show.Sect[snum] = true
 						}
 					} else {
 						if selstart <= num && num <= selend {
@@ -5142,11 +5052,11 @@ func (stw *Window) SectionDialog() {
 								if hides[j].GetAttribute("ACTIVE") == "NO" {
 									continue
 								}
-								stw.Frame.Show.Sect[sects[j].Num] = false
+								stw.frame.Show.Sect[sects[j].Num] = false
 								hides[j].SetAttribute("VALUE", "OFF")
 							}
 						} else {
-							stw.Frame.Show.Sect[snum] = false
+							stw.frame.Show.Sect[snum] = false
 						}
 					}
 					stw.Redraw()
@@ -5163,7 +5073,7 @@ func (stw *Window) SectionDialog() {
 					if err != nil {
 						return
 					}
-					stw.Frame.Sects[snum].Color = col
+					stw.frame.Sects[snum].Color = col
 					colors[num].SetAttribute("BGCOLOR", st.IntColor(col))
 				}
 			})
@@ -5272,7 +5182,7 @@ func (stw *Window) SectionProperty(sc *st.Sect) {
 	// 	cvs.End()
 	// }
 	// draw := func(s *st.Sect, cvs *cd.Canvas) {
-	// 	if al, ok := stw.Frame.Allows[s.Num]; ok {
+	// 	if al, ok := stw.frame.Allows[s.Num]; ok {
 	// 		scale := 1000.0
 	// 		w, h := cdcanv.GetSize()
 	// 		position := []float64{float64(w), float64(h)}
@@ -5415,7 +5325,7 @@ func (stw *Window) SectionProperty(sc *st.Sect) {
 	addfig = iup.Button("TITLE=\"Add Figure\"", "ACTIVE=NO", "SIZE=\"60x\"")
 	addfig.SetCallback(func(arg *iup.ButtonAction) {
 		f := st.NewFig()
-		f.Prop = stw.Frame.DefaultProp()
+		f.Prop = stw.frame.DefaultProp()
 		f.Num = len(sc.Figs) + 1
 		sc.Figs = append(sc.Figs, f)
 		updateproplist(sc)
@@ -5439,7 +5349,7 @@ func (stw *Window) SectionProperty(sc *st.Sect) {
 				var err error
 				num, err = strconv.ParseInt(dataset["PROP"].GetAttribute("VALUE"), 10, 64)
 				if err == nil {
-					if p, ok := stw.Frame.Props[int(num)]; ok {
+					if p, ok := stw.frame.Props[int(num)]; ok {
 						sc.Figs[ind].Prop = p
 					}
 				}
@@ -5467,7 +5377,7 @@ func (stw *Window) SectionProperty(sc *st.Sect) {
 				var err error
 				num, err = strconv.ParseInt(dataset["PROP"].GetAttribute("VALUE"), 10, 64)
 				if err == nil {
-					if p, ok := stw.Frame.Props[int(num)]; ok {
+					if p, ok := stw.frame.Props[int(num)]; ok {
 						sc.Figs[ind].Prop = p
 					}
 				}
@@ -5517,7 +5427,7 @@ func (stw *Window) commandButton(name string, command *Command, size string) *iu
 	// rtn.SetAttribute("IMAGE", "image")
 	rtn.SetAttribute("RASTERSIZE", size)
 	rtn.SetCallback(func(arg *iup.ButtonAction) {
-		stw.ExecCommand(command)
+		stw.execCommand(command)
 		iup.SetFocus(stw.canv)
 	})
 	return rtn
@@ -5665,20 +5575,20 @@ func datatext(defval string) *iup.Handle {
 }
 
 func (stw *Window) HideAllSection() {
-	for i, _ := range stw.Frame.Show.Sect {
+	for i, _ := range stw.frame.Show.Sect {
 		if lb, ok := stw.Labels[fmt.Sprintf("%d", i)]; ok {
 			lb.SetAttribute("FGCOLOR", labelOFFColor)
 		}
-		stw.Frame.Show.Sect[i] = false
+		stw.frame.Show.Sect[i] = false
 	}
 }
 
 func (stw *Window) ShowAllSection() {
-	for i, _ := range stw.Frame.Show.Sect {
+	for i, _ := range stw.frame.Show.Sect {
 		if lb, ok := stw.Labels[fmt.Sprintf("%d", i)]; ok {
 			lb.SetAttribute("FGCOLOR", labelFGColor)
 		}
-		stw.Frame.Show.Sect[i] = true
+		stw.frame.Show.Sect[i] = true
 	}
 }
 
@@ -5686,21 +5596,21 @@ func (stw *Window) HideSection(snum int) {
 	if lb, ok := stw.Labels[fmt.Sprintf("%d", snum)]; ok {
 		lb.SetAttribute("FGCOLOR", labelOFFColor)
 	}
-	stw.Frame.Show.Sect[snum] = false
+	stw.frame.Show.Sect[snum] = false
 }
 
 func (stw *Window) ShowSection(snum int) {
 	if lb, ok := stw.Labels[fmt.Sprintf("%d", snum)]; ok {
 		lb.SetAttribute("FGCOLOR", labelFGColor)
 	}
-	stw.Frame.Show.Sect[snum] = true
+	stw.frame.Show.Sect[snum] = true
 }
 
 func (stw *Window) HideEtype(etype int) {
 	if etype == 0 {
 		return
 	}
-	stw.Frame.Show.Etype[etype] = false
+	stw.frame.Show.Etype[etype] = false
 	if lbl, ok := stw.Labels[st.ETYPES[etype]]; ok {
 		lbl.SetAttribute("FGCOLOR", labelOFFColor)
 	}
@@ -5710,14 +5620,14 @@ func (stw *Window) ShowEtype(etype int) {
 	if etype == 0 {
 		return
 	}
-	stw.Frame.Show.Etype[etype] = true
+	stw.frame.Show.Etype[etype] = true
 	if lbl, ok := stw.Labels[st.ETYPES[etype]]; ok {
 		lbl.SetAttribute("FGCOLOR", labelFGColor)
 	}
 }
 
 func (stw *Window) ToggleEtype(etype int) {
-	if stw.Frame.Show.Etype[etype] {
+	if stw.frame.Show.Etype[etype] {
 		stw.HideEtype(etype)
 	} else {
 		stw.ShowEtype(etype)
@@ -5740,7 +5650,7 @@ func (stw *Window) etypeLabel(name string, width int, etype int, defval bool) *i
 		"BORDER=NO",
 		fmt.Sprintf("SIZE=%dx%d", width, dataheight))
 	rtn.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
@@ -5756,7 +5666,7 @@ func (stw *Window) etypeLabel(name string, width int, etype int, defval bool) *i
 
 func (stw *Window) switchLabel(etype int) *iup.Handle {
 	var col string
-	if stw.Frame != nil && stw.Frame.Show.Etype[etype] { // TODO: when stw.Frame is created, set value
+	if stw.frame != nil && stw.frame.Show.Etype[etype] { // TODO: when stw.frame is created, set value
 		col = labelFGColor
 	} else {
 		col = labelOFFColor
@@ -5770,19 +5680,19 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 		"BORDER=NO",
 		fmt.Sprintf("SIZE=%dx%d", 10, dataheight))
 	rtn.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
-					if stw.Frame.Show.Etype[etype] {
-						if !stw.Frame.Show.Etype[etype-2] {
+					if stw.frame.Show.Etype[etype] {
+						if !stw.frame.Show.Etype[etype-2] {
 							stw.HideEtype(etype)
 							stw.ShowEtype(etype-2)
 						} else {
 							stw.HideEtype(etype-2)
 						}
 					} else {
-						if stw.Frame.Show.Etype[etype-2] {
+						if stw.frame.Show.Etype[etype-2] {
 							stw.ShowEtype(etype)
 							stw.HideEtype(etype-2)
 						} else {
@@ -5815,15 +5725,15 @@ func (stw *Window) stressLabel(etype int, index uint) *iup.Handle {
 		"BORDER=NO",
 		fmt.Sprintf("SIZE=%dx%d", (datalabelwidth+datatextwidth)/6, dataheight))
 	rtn.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
-					if stw.Frame.Show.Stress[etype]&(1<<index) != 0 {
-						stw.Frame.Show.Stress[etype] &= ^(1 << index)
+					if stw.frame.Show.Stress[etype]&(1<<index) != 0 {
+						stw.frame.Show.Stress[etype] &= ^(1 << index)
 						rtn.SetAttribute("FGCOLOR", labelOFFColor)
 					} else {
-						stw.Frame.Show.Stress[etype] |= (1 << index)
+						stw.frame.Show.Stress[etype] |= (1 << index)
 						rtn.SetAttribute("FGCOLOR", labelFGColor)
 					}
 					stw.Redraw()
@@ -5851,7 +5761,7 @@ func (stw *Window) displayLabel(name string, defval bool) *iup.Handle {
 		"BORDER=NO",
 		fmt.Sprintf("SIZE=%dx%d", datalabelwidth+datatextwidth, dataheight))
 	rtn.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
@@ -5862,23 +5772,23 @@ func (stw *Window) displayLabel(name string, defval bool) *iup.Handle {
 					}
 					switch name {
 					case "GAXIS":
-						stw.Frame.Show.GlobalAxis = !stw.Frame.Show.GlobalAxis
+						stw.frame.Show.GlobalAxis = !stw.frame.Show.GlobalAxis
 					case "EAXIS":
-						stw.Frame.Show.ElementAxis = !stw.Frame.Show.ElementAxis
+						stw.frame.Show.ElementAxis = !stw.frame.Show.ElementAxis
 					case "BOND":
-						stw.Frame.Show.Bond = !stw.Frame.Show.Bond
+						stw.frame.Show.Bond = !stw.frame.Show.Bond
 					case "CONF":
-						stw.Frame.Show.Conf = !stw.Frame.Show.Conf
+						stw.frame.Show.Conf = !stw.frame.Show.Conf
 					case "PHINGE":
-						stw.Frame.Show.Phinge = !stw.Frame.Show.Phinge
+						stw.frame.Show.Phinge = !stw.frame.Show.Phinge
 					case "KIJUN":
-						stw.Frame.Show.Kijun = !stw.Frame.Show.Kijun
+						stw.frame.Show.Kijun = !stw.frame.Show.Kijun
 					case "DEFORMATION":
-						stw.Frame.Show.Deformation = !stw.Frame.Show.Deformation
+						stw.frame.Show.Deformation = !stw.frame.Show.Deformation
 					case "YIELD":
-						stw.Frame.Show.YieldFunction = !stw.Frame.Show.YieldFunction
+						stw.frame.Show.YieldFunction = !stw.frame.Show.YieldFunction
 					case "RATE":
-						if stw.Frame.Show.SrcanRate != 0 {
+						if stw.frame.Show.SrcanRate != 0 {
 							stw.SrcanRateOff()
 						} else {
 							stw.SrcanRateOn()
@@ -5895,24 +5805,24 @@ func (stw *Window) displayLabel(name string, defval bool) *iup.Handle {
 
 func (stw *Window) SetPeriod(per string) {
 	stw.Labels["PERIOD"].SetAttribute("VALUE", per)
-	stw.Frame.Show.Period = per
+	stw.frame.Show.Period = per
 }
 
 func (stw *Window) IncrementPeriod(num int) {
 	pat := regexp.MustCompile("([a-zA-Z]+)(@[0-9]+)")
-	fs := pat.FindStringSubmatch(stw.Frame.Show.Period)
+	fs := pat.FindStringSubmatch(stw.frame.Show.Period)
 	if len(fs) < 3 {
 		return
 	}
-	if nl, ok := stw.Frame.Nlap[strings.ToUpper(fs[1])]; ok {
+	if nl, ok := stw.frame.Nlap[strings.ToUpper(fs[1])]; ok {
 		tmp, _ := strconv.ParseInt(fs[2][1:], 10, 64)
 		val := int(tmp) + num
 		if val < 1 || val > nl {
 			return
 		}
-		per := strings.Replace(stw.Frame.Show.Period, fs[2], fmt.Sprintf("@%d", val), -1)
+		per := strings.Replace(stw.frame.Show.Period, fs[2], fmt.Sprintf("@%d", val), -1)
 		stw.Labels["PERIOD"].SetAttribute("VALUE", per)
-		stw.Frame.Show.Period = per
+		stw.frame.Show.Period = per
 	}
 }
 
@@ -5922,8 +5832,8 @@ func (stw *Window) NodeCaptionOn(name string) {
 			if lbl, ok := stw.Labels[name]; ok {
 				lbl.SetAttribute("FGCOLOR", labelFGColor)
 			}
-			if stw.Frame != nil {
-				stw.Frame.Show.NodeCaptionOn(1 << uint(i))
+			if stw.frame != nil {
+				stw.frame.Show.NodeCaptionOn(1 << uint(i))
 			}
 		}
 	}
@@ -5935,8 +5845,8 @@ func (stw *Window) NodeCaptionOff(name string) {
 			if lbl, ok := stw.Labels[name]; ok {
 				lbl.SetAttribute("FGCOLOR", labelOFFColor)
 			}
-			if stw.Frame != nil {
-				stw.Frame.Show.NodeCaptionOff(1 << uint(i))
+			if stw.frame != nil {
+				stw.frame.Show.NodeCaptionOff(1 << uint(i))
 			}
 		}
 	}
@@ -5948,8 +5858,8 @@ func (stw *Window) ElemCaptionOn(name string) {
 			if lbl, ok := stw.Labels[name]; ok {
 				lbl.SetAttribute("FGCOLOR", labelFGColor)
 			}
-			if stw.Frame != nil {
-				stw.Frame.Show.ElemCaptionOn(1 << uint(i))
+			if stw.frame != nil {
+				stw.frame.Show.ElemCaptionOn(1 << uint(i))
 			}
 		}
 	}
@@ -5961,8 +5871,8 @@ func (stw *Window) ElemCaptionOff(name string) {
 			if lbl, ok := stw.Labels[name]; ok {
 				lbl.SetAttribute("FGCOLOR", labelOFFColor)
 			}
-			if stw.Frame != nil {
-				stw.Frame.Show.ElemCaptionOff(1 << uint(i))
+			if stw.frame != nil {
+				stw.frame.Show.ElemCaptionOff(1 << uint(i))
 			}
 		}
 	}
@@ -5970,7 +5880,7 @@ func (stw *Window) ElemCaptionOff(name string) {
 
 func (stw *Window) SrcanRateOn(names ...string) {
 	defer func() {
-		if stw.Frame.Show.SrcanRate != 0 {
+		if stw.frame.Show.SrcanRate != 0 {
 			stw.Labels["SRCAN_RATE"].SetAttribute("FGCOLOR", labelFGColor)
 		}
 	}()
@@ -5979,8 +5889,8 @@ func (stw *Window) SrcanRateOn(names ...string) {
 			if lbl, ok := stw.Labels[j]; ok {
 				lbl.SetAttribute("FGCOLOR", labelFGColor)
 			}
-			if stw.Frame != nil {
-				stw.Frame.Show.SrcanRateOn(1 << uint(i))
+			if stw.frame != nil {
+				stw.frame.Show.SrcanRateOn(1 << uint(i))
 			}
 		}
 		return
@@ -5991,8 +5901,8 @@ func (stw *Window) SrcanRateOn(names ...string) {
 				if lbl, ok := stw.Labels[name]; ok {
 					lbl.SetAttribute("FGCOLOR", labelFGColor)
 				}
-				if stw.Frame != nil {
-					stw.Frame.Show.SrcanRateOn(1 << uint(i))
+				if stw.frame != nil {
+					stw.frame.Show.SrcanRateOn(1 << uint(i))
 				}
 			}
 		}
@@ -6001,7 +5911,7 @@ func (stw *Window) SrcanRateOn(names ...string) {
 
 func (stw *Window) SrcanRateOff(names ...string) {
 	defer func() {
-		if stw.Frame.Show.SrcanRate == 0 {
+		if stw.frame.Show.SrcanRate == 0 {
 			stw.Labels["SRCAN_RATE"].SetAttribute("FGCOLOR", labelOFFColor)
 		}
 	}()
@@ -6010,8 +5920,8 @@ func (stw *Window) SrcanRateOff(names ...string) {
 			if lbl, ok := stw.Labels[j]; ok {
 				lbl.SetAttribute("FGCOLOR", labelOFFColor)
 			}
-			if stw.Frame != nil {
-				stw.Frame.Show.SrcanRateOff(1 << uint(i))
+			if stw.frame != nil {
+				stw.frame.Show.SrcanRateOff(1 << uint(i))
 			}
 		}
 		return
@@ -6022,8 +5932,8 @@ func (stw *Window) SrcanRateOff(names ...string) {
 				if lbl, ok := stw.Labels[name]; ok {
 					lbl.SetAttribute("FGCOLOR", labelOFFColor)
 				}
-				if stw.Frame != nil {
-					stw.Frame.Show.SrcanRateOff(1 << uint(i))
+				if stw.frame != nil {
+					stw.frame.Show.SrcanRateOff(1 << uint(i))
 				}
 			}
 		}
@@ -6031,7 +5941,7 @@ func (stw *Window) SrcanRateOff(names ...string) {
 }
 
 func (stw *Window) StressOn(etype int, index uint) {
-	stw.Frame.Show.Stress[etype] |= (1 << index)
+	stw.frame.Show.Stress[etype] |= (1 << index)
 	if etype <= st.SLAB {
 		if lbl, ok := stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))]; ok {
 			lbl.SetAttribute("FGCOLOR", labelFGColor)
@@ -6040,7 +5950,7 @@ func (stw *Window) StressOn(etype int, index uint) {
 }
 
 func (stw *Window) StressOff(etype int, index uint) {
-	stw.Frame.Show.Stress[etype] &= ^(1 << index)
+	stw.frame.Show.Stress[etype] &= ^(1 << index)
 	if etype <= st.SLAB {
 		if lbl, ok := stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))]; ok {
 			lbl.SetAttribute("FGCOLOR", labelOFFColor)
@@ -6049,12 +5959,12 @@ func (stw *Window) StressOff(etype int, index uint) {
 }
 
 func (stw *Window) DeformationOn() {
-	stw.Frame.Show.Deformation = true
+	stw.frame.Show.Deformation = true
 	stw.Labels["DEFORMATION"].SetAttribute("FGCOLOR", labelFGColor)
 }
 
 func (stw *Window) DeformationOff() {
-	stw.Frame.Show.Deformation = false
+	stw.frame.Show.Deformation = false
 	stw.Labels["DEFORMATION"].SetAttribute("FGCOLOR", labelOFFColor)
 }
 
@@ -6062,7 +5972,7 @@ func (stw *Window) DispOn(direction int) {
 	name := fmt.Sprintf("NC_%s", st.DispName[direction])
 	for i, str := range st.NODECAPTIONS {
 		if name == str {
-			stw.Frame.Show.NodeCaption |= (1 << uint(i))
+			stw.frame.Show.NodeCaption |= (1 << uint(i))
 			stw.Labels[name].SetAttribute("FGCOLOR", labelFGColor)
 			return
 		}
@@ -6073,7 +5983,7 @@ func (stw *Window) DispOff(direction int) {
 	name := fmt.Sprintf("NC_%s", st.DispName[direction])
 	for i, str := range st.NODECAPTIONS {
 		if name == str {
-			stw.Frame.Show.NodeCaption &= ^(1 << uint(i))
+			stw.frame.Show.NodeCaption &= ^(1 << uint(i))
 			stw.Labels[name].SetAttribute("FGCOLOR", labelOFFColor)
 			return
 		}
@@ -6087,13 +5997,13 @@ func (stw *Window) captionLabel(ne string, name string, width int, val uint, on 
 	} else {
 		col = labelOFFColor
 	}
-	if stw.Frame != nil { // TODO: when stw.Frame is created, set value
+	if stw.frame != nil { // TODO: when stw.frame is created, set value
 		if on {
 			switch ne {
 			case "NODE":
-				stw.Frame.Show.NodeCaption |= val
+				stw.frame.Show.NodeCaption |= val
 			case "ELEM":
-				stw.Frame.Show.ElemCaption |= val
+				stw.frame.Show.ElemCaption |= val
 			}
 		}
 	}
@@ -6106,26 +6016,26 @@ func (stw *Window) captionLabel(ne string, name string, width int, val uint, on 
 		"BORDER=NO",
 		fmt.Sprintf("SIZE=%dx%d", width, dataheight))
 	rtn.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
 					switch ne {
 					case "NODE":
-						if stw.Frame.Show.NodeCaption&val != 0 {
+						if stw.frame.Show.NodeCaption&val != 0 {
 							rtn.SetAttribute("FGCOLOR", labelOFFColor)
-							stw.Frame.Show.NodeCaption &= ^val
+							stw.frame.Show.NodeCaption &= ^val
 						} else {
 							rtn.SetAttribute("FGCOLOR", labelFGColor)
-							stw.Frame.Show.NodeCaption |= val
+							stw.frame.Show.NodeCaption |= val
 						}
 					case "ELEM":
-						if stw.Frame.Show.ElemCaption&val != 0 {
+						if stw.frame.Show.ElemCaption&val != 0 {
 							rtn.SetAttribute("FGCOLOR", labelOFFColor)
-							stw.Frame.Show.ElemCaption &= ^val
+							stw.frame.Show.ElemCaption &= ^val
 						} else {
 							rtn.SetAttribute("FGCOLOR", labelFGColor)
-							stw.Frame.Show.ElemCaption |= val
+							stw.frame.Show.ElemCaption |= val
 						}
 					}
 					stw.Redraw()
@@ -6153,11 +6063,11 @@ func (stw *Window) srcanLabel(name string, width int, val uint, on bool) *iup.Ha
 		"BORDER=NO",
 		fmt.Sprintf("SIZE=%dx%d", width, dataheight))
 	rtn.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
-					if stw.Frame.Show.SrcanRate&val != 0 {
+					if stw.frame.Show.SrcanRate&val != 0 {
 						stw.SrcanRateOff(fmt.Sprintf("SRCAN_%s", strings.TrimLeft(name, " ")))
 					} else {
 						stw.SrcanRateOn(fmt.Sprintf("SRCAN_%s", strings.TrimLeft(name, " ")))
@@ -6168,7 +6078,7 @@ func (stw *Window) srcanLabel(name string, width int, val uint, on bool) *iup.Ha
 			}
 		}
 	})
-	if stw.Frame != nil { // TODO: when stw.Frame is created, set value
+	if stw.frame != nil { // TODO: when stw.frame is created, set value
 		if on {
 			stw.SrcanRateOn(st.SRCANS[val])
 		}
@@ -6188,7 +6098,7 @@ func (stw *Window) toggleLabel(def uint, values []string) *iup.Handle {
 		"BORDER=NO",
 		fmt.Sprintf("SIZE=%dx%d", datalabelwidth+datatextwidth, dataheight))
 	rtn.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
@@ -6208,7 +6118,7 @@ func (stw *Window) toggleLabel(def uint, values []string) *iup.Handle {
 						next++
 					}
 					rtn.SetAttribute("VALUE", fmt.Sprintf("  %s", values[next]))
-					stw.Frame.Show.ColorMode = uint(next)
+					stw.frame.Show.ColorMode = uint(next)
 				}
 			case BUTTON_CENTER:
 				if arg.Pressed == 0 { // Released
@@ -6228,7 +6138,7 @@ func (stw *Window) toggleLabel(def uint, values []string) *iup.Handle {
 						next--
 					}
 					rtn.SetAttribute("VALUE", fmt.Sprintf("  %s", values[next]))
-					stw.Frame.Show.ColorMode = uint(next)
+					stw.frame.Show.ColorMode = uint(next)
 				}
 			}
 			stw.Redraw()
@@ -6240,7 +6150,7 @@ func (stw *Window) toggleLabel(def uint, values []string) *iup.Handle {
 
 func (stw *Window) CB_TextValue(h *iup.Handle, valptr *float64) {
 	h.SetCallback(func(arg *iup.CommonKillFocus) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			val, err := strconv.ParseFloat(h.GetAttribute("VALUE"), 64)
 			if err != nil {
 				h.SetAttribute("VALUE", fmt.Sprintf("%.3f", *valptr))
@@ -6256,7 +6166,7 @@ func (stw *Window) CB_TextValue(h *iup.Handle, valptr *float64) {
 		case KEY_ESCAPE:
 			stw.FocusCanv()
 		case KEY_ENTER:
-			if stw.Frame != nil {
+			if stw.frame != nil {
 				val, err := strconv.ParseFloat(h.GetAttribute("VALUE"), 64)
 				if err != nil {
 					h.SetAttribute("VALUE", fmt.Sprintf("%.3f", *valptr))
@@ -6272,7 +6182,7 @@ func (stw *Window) CB_TextValue(h *iup.Handle, valptr *float64) {
 
 func (stw *Window) CB_RangeValue(h *iup.Handle, valptr *float64) {
 	h.SetCallback(func(arg *iup.CommonKillFocus) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			val, err := strconv.ParseFloat(h.GetAttribute("VALUE"), 64)
 			if err == nil {
 				*valptr = val
@@ -6284,7 +6194,7 @@ func (stw *Window) CB_RangeValue(h *iup.Handle, valptr *float64) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		case KEY_ENTER:
-			if stw.Frame != nil {
+			if stw.frame != nil {
 				val, err := strconv.ParseFloat(h.GetAttribute("VALUE"), 64)
 				if err == nil {
 					*valptr = val
@@ -6298,12 +6208,12 @@ func (stw *Window) CB_RangeValue(h *iup.Handle, valptr *float64) {
 
 func (stw *Window) SetColorMode(mode uint) {
 	stw.Labels["COLORMODE"].SetAttribute("VALUE", fmt.Sprintf("  %s", st.ECOLORS[mode]))
-	stw.Frame.Show.ColorMode = mode
+	stw.frame.Show.ColorMode = mode
 }
 
 func (stw *Window) CB_Period(h *iup.Handle, valptr *string) {
 	h.SetCallback(func(arg *iup.CommonKillFocus) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			per := strings.ToUpper(h.GetAttribute("VALUE"))
 			*valptr = per
 			h.SetAttribute("VALUE", per)
@@ -6314,7 +6224,7 @@ func (stw *Window) CB_Period(h *iup.Handle, valptr *string) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		case KEY_ENTER:
-			if stw.Frame != nil {
+			if stw.frame != nil {
 				per := strings.ToUpper(h.GetAttribute("VALUE"))
 				*valptr = per
 				h.SetAttribute("VALUE", per)
@@ -6327,31 +6237,31 @@ func (stw *Window) CB_Period(h *iup.Handle, valptr *string) {
 
 // DataLabel
 func (stw *Window) LinkTextValue() {
-	stw.CB_TextValue(stw.Labels["GFACT"], &stw.Frame.View.Gfact)
-	stw.CB_TextValue(stw.Labels["DISTR"], &stw.Frame.View.Dists[0])
-	stw.CB_TextValue(stw.Labels["DISTL"], &stw.Frame.View.Dists[1])
-	stw.CB_TextValue(stw.Labels["PHI"], &stw.Frame.View.Angle[0])
-	stw.CB_TextValue(stw.Labels["THETA"], &stw.Frame.View.Angle[1])
-	stw.CB_TextValue(stw.Labels["FOCUSX"], &stw.Frame.View.Focus[0])
-	stw.CB_TextValue(stw.Labels["FOCUSY"], &stw.Frame.View.Focus[1])
-	stw.CB_TextValue(stw.Labels["FOCUSZ"], &stw.Frame.View.Focus[2])
-	stw.CB_TextValue(stw.Labels["CENTERX"], &stw.Frame.View.Center[0])
-	stw.CB_TextValue(stw.Labels["CENTERY"], &stw.Frame.View.Center[1])
-	stw.CB_RangeValue(stw.Labels["XMAX"], &stw.Frame.Show.Xrange[1])
-	stw.CB_RangeValue(stw.Labels["XMIN"], &stw.Frame.Show.Xrange[0])
-	stw.CB_RangeValue(stw.Labels["YMAX"], &stw.Frame.Show.Yrange[1])
-	stw.CB_RangeValue(stw.Labels["YMIN"], &stw.Frame.Show.Yrange[0])
-	stw.CB_RangeValue(stw.Labels["ZMAX"], &stw.Frame.Show.Zrange[1])
-	stw.CB_RangeValue(stw.Labels["ZMIN"], &stw.Frame.Show.Zrange[0])
-	stw.CB_Period(stw.Labels["PERIOD"], &stw.Frame.Show.Period)
-	stw.CB_TextValue(stw.Labels["GAXISSIZE"], &stw.Frame.Show.GlobalAxisSize)
-	stw.CB_TextValue(stw.Labels["EAXISSIZE"], &stw.Frame.Show.ElementAxisSize)
-	stw.CB_TextValue(stw.Labels["BONDSIZE"], &stw.Frame.Show.BondSize)
-	stw.CB_TextValue(stw.Labels["CONFSIZE"], &stw.Frame.Show.ConfSize)
-	stw.CB_TextValue(stw.Labels["DFACT"], &stw.Frame.Show.Dfact)
-	stw.CB_TextValue(stw.Labels["QFACT"], &stw.Frame.Show.Qfact)
-	stw.CB_TextValue(stw.Labels["MFACT"], &stw.Frame.Show.Mfact)
-	stw.CB_TextValue(stw.Labels["RFACT"], &stw.Frame.Show.Rfact)
+	stw.CB_TextValue(stw.Labels["GFACT"], &stw.frame.View.Gfact)
+	stw.CB_TextValue(stw.Labels["DISTR"], &stw.frame.View.Dists[0])
+	stw.CB_TextValue(stw.Labels["DISTL"], &stw.frame.View.Dists[1])
+	stw.CB_TextValue(stw.Labels["PHI"], &stw.frame.View.Angle[0])
+	stw.CB_TextValue(stw.Labels["THETA"], &stw.frame.View.Angle[1])
+	stw.CB_TextValue(stw.Labels["FOCUSX"], &stw.frame.View.Focus[0])
+	stw.CB_TextValue(stw.Labels["FOCUSY"], &stw.frame.View.Focus[1])
+	stw.CB_TextValue(stw.Labels["FOCUSZ"], &stw.frame.View.Focus[2])
+	stw.CB_TextValue(stw.Labels["CENTERX"], &stw.frame.View.Center[0])
+	stw.CB_TextValue(stw.Labels["CENTERY"], &stw.frame.View.Center[1])
+	stw.CB_RangeValue(stw.Labels["XMAX"], &stw.frame.Show.Xrange[1])
+	stw.CB_RangeValue(stw.Labels["XMIN"], &stw.frame.Show.Xrange[0])
+	stw.CB_RangeValue(stw.Labels["YMAX"], &stw.frame.Show.Yrange[1])
+	stw.CB_RangeValue(stw.Labels["YMIN"], &stw.frame.Show.Yrange[0])
+	stw.CB_RangeValue(stw.Labels["ZMAX"], &stw.frame.Show.Zrange[1])
+	stw.CB_RangeValue(stw.Labels["ZMIN"], &stw.frame.Show.Zrange[0])
+	stw.CB_Period(stw.Labels["PERIOD"], &stw.frame.Show.Period)
+	stw.CB_TextValue(stw.Labels["GAXISSIZE"], &stw.frame.Show.GlobalAxisSize)
+	stw.CB_TextValue(stw.Labels["EAXISSIZE"], &stw.frame.Show.ElementAxisSize)
+	stw.CB_TextValue(stw.Labels["BONDSIZE"], &stw.frame.Show.BondSize)
+	stw.CB_TextValue(stw.Labels["CONFSIZE"], &stw.frame.Show.ConfSize)
+	stw.CB_TextValue(stw.Labels["DFACT"], &stw.frame.Show.Dfact)
+	stw.CB_TextValue(stw.Labels["QFACT"], &stw.frame.Show.Qfact)
+	stw.CB_TextValue(stw.Labels["MFACT"], &stw.frame.Show.Mfact)
+	stw.CB_TextValue(stw.Labels["RFACT"], &stw.frame.Show.Rfact)
 }
 
 func (stw *Window) EscapeCB() {
@@ -6365,7 +6275,7 @@ func (stw *Window) EscapeCB() {
 	stw.CB_MouseMotion()
 	stw.CB_CanvasWheel()
 	stw.CB_CommonKeyAny()
-	if stw.Frame != nil {
+	if stw.frame != nil {
 		stw.Redraw()
 	}
 	comhistpos = -1
@@ -6389,7 +6299,7 @@ func (stw *Window) ReadResource(filename string) error {
 		if strings.HasPrefix(txt, "#") {
 			continue
 		}
-		stw.execAliasCommand(txt)
+		stw.ExecCommand(txt)
 	}
 	if err := s.Err(); err != nil {
 		return err
@@ -6548,17 +6458,17 @@ func (stw *Window) ReadPgp(filename string) error {
 				val := int(tmp)
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
 					currentcommand := strings.Replace(command, str, fmt.Sprintf("%d", val), -1)
-					err := st.ExMode(stw, stw.Frame, currentcommand)
+					err := st.ExMode(stw, stw.frame, currentcommand)
 					if err != nil {
-						stw.errormessage(err, st.ERROR)
+						st.ErrorMessage(stw, err, st.ERROR)
 					}
 					val++
 				}}
 			} else {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					err := st.ExMode(stw, stw.Frame, command)
+					err := st.ExMode(stw, stw.frame, command)
 					if err != nil {
-						stw.errormessage(err, st.ERROR)
+						st.ErrorMessage(stw, err, st.ERROR)
 					}
 				}}
 			}
@@ -6573,9 +6483,9 @@ func (stw *Window) ReadPgp(filename string) error {
 				}}
 			} else {
 				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					err := st.Fig2Mode(stw, stw.Frame, command)
+					err := st.Fig2Mode(stw, stw.frame, command)
 					if err != nil {
-						stw.errormessage(err, st.ERROR)
+						st.ErrorMessage(stw, err, st.ERROR)
 					}
 				}}
 			}
@@ -6650,7 +6560,7 @@ func (stw *Window) Checkout(name string) error {
 	if !exists {
 		return fmt.Errorf("tag %s doesn't exist", name)
 	}
-	stw.Frame = f
+	stw.frame = f
 	return nil
 }
 
@@ -6660,7 +6570,7 @@ func (stw *Window) AddTag(name string, bang bool) error {
 			return fmt.Errorf("tag %s already exists", name)
 		}
 	}
-	stw.taggedFrame[name] = stw.Frame.Snapshot()
+	stw.taggedFrame[name] = stw.frame.Snapshot()
 	return nil
 }
 
@@ -6674,22 +6584,6 @@ func (stw *Window) EPS() float64 {
 
 func (stw *Window) SetEPS(val float64) {
 	EPS = val
-}
-
-func (stw *Window) CanvasFitScale() float64 {
-	return CanvasFitScale
-}
-
-func (stw *Window) SetCanvasFitScale(val float64) {
-	CanvasFitScale = val
-}
-
-func (stw *Window) CanvasAnimateSpeed() float64 {
-	return CanvasAnimateSpeed
-}
-
-func (stw *Window) SetCanvasAnimateSpeed(val float64) {
-	CanvasAnimateSpeed = val
 }
 
 func (stw *Window) ToggleFixRotate() {
@@ -6719,14 +6613,11 @@ func (stw *Window) TextBox(name string) st.TextBox {
 	return stw.textBox[name]
 }
 
-func (stw *Window) Cwd() string {
-	return stw.cwd
-}
-func (stw *Window) HomeDir() string {
-	return stw.Home
+func (stw *Window) Changed(c bool) {
+	stw.changed = c
 }
 func (stw *Window) IsChanged() bool {
-	return stw.Changed
+	return stw.changed
 }
 
 func (stw *Window) LastExCommand() string {
@@ -6767,10 +6658,6 @@ func (stw *Window) SelectedNodes() []*st.Node {
 
 func (stw *Window) SelectConfed() {
 	selectconfed(stw)
-}
-
-func (stw *Window) ErrorMessage(err error, level int) {
-	stw.errormessage(err, uint(level))
 }
 
 func (stw *Window) History(str string) {

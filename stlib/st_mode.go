@@ -69,14 +69,12 @@ type ExModer interface {
 }
 
 type Fig2Moder interface {
+	Window
 	LastFig2Command() string
 	SetLastFig2Command(string)
-	History(string)
-	ErrorMessage(error, int)
 	SetLabel(string, string)
 	DisableLabel(string)
 	EnableLabel(string)
-	GetCanvasSize() (int, int)
 	ShowCenter()
 	ShowEtype(int)
 	HideEtype(int)
@@ -89,7 +87,6 @@ type Fig2Moder interface {
 	NodeCaptionOn(string)
 	NodeCaptionOff(string)
 	SetColorMode(uint)
-	EPS() float64
 	AxisRange(int, float64, float64, bool)
 	SrcanRateOn(...string)
 	SrcanRateOff(...string)

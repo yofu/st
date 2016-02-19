@@ -87,7 +87,7 @@ func tensegrity(stw *Window, f func(cs, ts, sz int), csect, tsect, size int) {
 		}
 	})
 	stw.canv.SetCallback(func(arg *iup.MouseButton) {
-		if stw.Frame != nil {
+		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
 				if isAlt(arg.Status) {
@@ -100,7 +100,7 @@ func tensegrity(stw *Window, f func(cs, ts, sz int), csect, tsect, size int) {
 					stw.Redraw()
 				} else { // Pressed
 					if isDouble(arg.Status) {
-						stw.Frame.SetFocus(nil)
+						stw.frame.SetFocus(nil)
 						stw.DrawFrameNode()
 						stw.ShowCenter()
 					} else {
@@ -140,7 +140,7 @@ func tensegrityconnected(stw *Window) {
 			switch el0.Sect.Num {
 			case cs:
 			loopcs:
-				for _, el := range stw.Frame.Elems {
+				for _, el := range stw.frame.Elems {
 					if el.Sect.Num != cs {
 						continue
 					}
@@ -148,7 +148,7 @@ func tensegrityconnected(stw *Window) {
 						n1 := el0.Enod[i]
 						for j := 0; j < 2; j++ {
 							n2 := el.Enod[j]
-							els := stw.Frame.NodeToElemAll(n1, n2)
+							els := stw.frame.NodeToElemAll(n1, n2)
 							if len(els) >= 1 {
 								tmpelems = append(tmpelems, el)
 								num++
@@ -159,7 +159,7 @@ func tensegrityconnected(stw *Window) {
 				}
 			case ts:
 				found := []bool{false, false}
-				for _, el := range stw.Frame.Elems {
+				for _, el := range stw.frame.Elems {
 					if el.Sect.Num != cs {
 						continue
 					}
@@ -202,7 +202,7 @@ func tensegrityadd(stw *Window) {
 			if el.Sect.Num == cs {
 				for i := 0; i < 2; i++ {
 					for _, n := range el.BetweenNode(i, sz) {
-						tmpelems = append(tmpelems, st.NewLineElem([]*st.Node{el.Enod[i], n}, stw.Frame.Sects[ts], st.COLUMN))
+						tmpelems = append(tmpelems, st.NewLineElem([]*st.Node{el.Enod[i], n}, stw.frame.Sects[ts], st.COLUMN))
 						num++
 					}
 				}
@@ -212,7 +212,7 @@ func tensegrityadd(stw *Window) {
 		stw.Redraw()
 		if stw.Yn("TENSEGRITY ADD", "部材を追加しますか?") {
 			for _, el := range tmpelems[:num] {
-				stw.Frame.AddElem(-1, el)
+				stw.frame.AddElem(-1, el)
 			}
 		}
 		stw.EscapeAll()
@@ -229,7 +229,7 @@ func tensegritydelete(stw *Window) {
 		for _, n := range stw.selectNode {
 			var tens []*st.Elem
 			var tnum int
-			for _, el := range stw.Frame.SearchElem(n) {
+			for _, el := range stw.frame.SearchElem(n) {
 				if el.Sect.Num == ts {
 					tens = append(tens, el)
 					tnum++
@@ -279,7 +279,7 @@ func tensegritydelete(stw *Window) {
 //                         del := false
 //                         tnum := 0
 //                         ref := make(map[int]int)
-//                         for _, el := range stw.Frame.Elems {
+//                         for _, el := range stw.frame.Elems {
 //                         }
 //                         elems := make(map[float64]*st.Elem, tnum)
 //                         for _, el := range stw.selectElem {
@@ -311,7 +311,7 @@ func tensegritydelete(stw *Window) {
 //                                 count := 0
 //                                 for _, en := range el.Enod {
 //                                     var comp *st.Elem
-//                                     for _, se := range stw.Frame.SearchElem(en) {
+//                                     for _, se := range stw.frame.SearchElem(en) {
 //                                         if se.Sect.Num == cs {
 //                                             comp = se
 //                                             break

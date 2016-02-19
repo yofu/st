@@ -194,7 +194,7 @@ func Fig2Keyword(stw Fig2Moder, frame *Frame, lis []string, un bool) error {
 			}
 			return nil
 		}
-		stw.ErrorMessage(errors.New(fmt.Sprintf("no fig2 keyword: %s", key)), INFO)
+		ErrorMessage(stw, errors.New(fmt.Sprintf("no fig2 keyword: %s", key)), INFO)
 		return nil
 	case "gfact":
 		val, err := strconv.ParseFloat(lis[1], 64)
