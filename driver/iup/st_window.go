@@ -57,12 +57,12 @@ const LOGFILE = "_st.log"
 const ResourceFileName = ".strc"
 
 const (
-	windowSize   = "FULLxFULL"
+	windowSize = "FULLxFULL"
 )
 
 // Font
 var (
-	fontface = "IPA明朝"
+	fontface        = "IPA明朝"
 	commandFontFace = fontface
 	commandFontSize = "11"
 	labelFGColor    = "0 0 0"
@@ -101,17 +101,17 @@ const (
 
 // Draw
 var (
-	first                   = 1
-	fixRotate               = false
-	fixMove                 = false
-	deg10                   = 10.0 * math.Pi / 180.0
-	RangeView               = st.NewView()
-	RangeViewDists          = []float64{1000.0, 3000.0}
-	RangeViewAngle          = []float64{20.0, 225.0}
-	RangeViewCenter         = []float64{100.0, 100.0}
-	dataareaheight          = 150
-	drawpivot               = false
-	keymode                 = NORMAL
+	first           = 1
+	fixRotate       = false
+	fixMove         = false
+	deg10           = 10.0 * math.Pi / 180.0
+	RangeView       = st.NewView()
+	RangeViewDists  = []float64{1000.0, 3000.0}
+	RangeViewAngle  = []float64{20.0, 225.0}
+	RangeViewCenter = []float64{100.0, 100.0}
+	dataareaheight  = 150
+	drawpivot       = false
+	keymode         = NORMAL
 )
 
 var (
@@ -180,12 +180,12 @@ var (
 )
 
 var (
-	axrn_minmax   = regexp.MustCompile("([+-]?[-0-9.]+)<=?([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
-	axrn_min1     = regexp.MustCompile("([+-]?[-0-9.]+)<=?([XYZxyz]{1})")
-	axrn_min2     = regexp.MustCompile("([XYZxyz]{1})>=?([+-]?[-0-9.]+)")
-	axrn_max1     = regexp.MustCompile("([+-]?[-0-9.]+)>=?([XYZxyz]{1})")
-	axrn_max2     = regexp.MustCompile("([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
-	axrn_eq       = regexp.MustCompile("([XYZxyz]{1})=([+-]?[-0-9.]+)")
+	axrn_minmax = regexp.MustCompile("([+-]?[-0-9.]+)<=?([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
+	axrn_min1   = regexp.MustCompile("([+-]?[-0-9.]+)<=?([XYZxyz]{1})")
+	axrn_min2   = regexp.MustCompile("([XYZxyz]{1})>=?([+-]?[-0-9.]+)")
+	axrn_max1   = regexp.MustCompile("([+-]?[-0-9.]+)>=?([XYZxyz]{1})")
+	axrn_max2   = regexp.MustCompile("([XYZxyz]{1})<=?([+-]?[-0-9.]+)")
+	axrn_eq     = regexp.MustCompile("([XYZxyz]{1})=([+-]?[-0-9.]+)")
 )
 
 // }}}
@@ -223,7 +223,7 @@ type Window struct { // {{{
 	selectNode []*st.Node
 	selectElem []*st.Elem
 
-	textBox   map[string]*TextBox
+	textBox map[string]*TextBox
 
 	papersize uint
 
@@ -249,7 +249,7 @@ type Window struct { // {{{
 	InpModified bool
 	changed     bool
 
-	comhist     []string
+	comhist []string
 
 	complete     *complete.Complete
 	completepos  int
@@ -261,11 +261,11 @@ type Window struct { // {{{
 
 func NewWindow(homedir string) *Window { // {{{
 	stw := &Window{
-		DrawOption:   st.NewDrawOption(),
-		Directory:    st.NewDirectory(homedir, homedir),
-		RecentFiles:  st.NewRecentFiles(3),
-		UndoStack:    st.NewUndoStack(10),
-		TagFrame:     st.NewTagFrame(),
+		DrawOption:  st.NewDrawOption(),
+		Directory:   st.NewDirectory(homedir, homedir),
+		RecentFiles: st.NewRecentFiles(3),
+		UndoStack:   st.NewUndoStack(10),
+		TagFrame:    st.NewTagFrame(),
 	}
 	stw.selectNode = make([]*st.Node, 0)
 	stw.selectElem = make([]*st.Elem, 0)
@@ -2489,7 +2489,7 @@ func (stw *Window) DrawRange(canv *cd.Canvas, view *st.View) {
 	maxs := make([]float64, 3)
 	coord := make([][]float64, 8)
 	pcoord := make([][]float64, 8)
-	for i:=0; i<8; i++ {
+	for i := 0; i < 8; i++ {
 		coord[i] = make([]float64, 3)
 		pcoord[i] = make([]float64, 2)
 	}
@@ -2521,7 +2521,7 @@ func (stw *Window) DrawRange(canv *cd.Canvas, view *st.View) {
 	coord[7][0] = mins[0]
 	coord[7][1] = maxs[1]
 	coord[7][2] = maxs[2]
-	for i:=0; i<8; i++ {
+	for i := 0; i < 8; i++ {
 		pcoord[i] = view.ProjectCoord(coord[i])
 	}
 	canv.LineStyle(cd.CD_DOTTED)
@@ -2562,7 +2562,7 @@ func (stw *Window) DrawRange(canv *cd.Canvas, view *st.View) {
 	coord[7][0] = mins[0]
 	coord[7][1] = maxs[1]
 	coord[7][2] = maxs[2]
-	for i:=0; i<8; i++ {
+	for i := 0; i < 8; i++ {
 		pcoord[i] = view.ProjectCoord(coord[i])
 	}
 	canv.LineStyle(cd.CD_CONTINUOUS)
@@ -3095,19 +3095,19 @@ func (stw *Window) UnlockAll() {
 func (stw *Window) Animate(view *st.View) {
 	scale := 1.0
 	if stw.frame.View.Perspective {
-		scale = math.Pow(view.Dists[1] / stw.frame.View.Dists[1], stw.CanvasAnimateSpeed())
+		scale = math.Pow(view.Dists[1]/stw.frame.View.Dists[1], stw.CanvasAnimateSpeed())
 	} else {
-		scale = math.Pow(view.Gfact / stw.frame.View.Gfact, stw.CanvasAnimateSpeed())
+		scale = math.Pow(view.Gfact/stw.frame.View.Gfact, stw.CanvasAnimateSpeed())
 	}
 	center := make([]float64, 2)
 	angle := make([]float64, 2)
 	focus := make([]float64, 3)
-	for i:=0; i<3; i++ {
-		focus[i] = stw.CanvasAnimateSpeed()*(view.Focus[i] - stw.frame.View.Focus[i])
+	for i := 0; i < 3; i++ {
+		focus[i] = stw.CanvasAnimateSpeed() * (view.Focus[i] - stw.frame.View.Focus[i])
 		if i >= 2 {
 			break
 		}
-		center[i] = stw.CanvasAnimateSpeed()*(view.Center[i] - stw.frame.View.Center[i])
+		center[i] = stw.CanvasAnimateSpeed() * (view.Center[i] - stw.frame.View.Center[i])
 		angle[i] = view.Angle[i] - stw.frame.View.Angle[i]
 		if i == 1 {
 			for {
@@ -3125,13 +3125,13 @@ func (stw *Window) Animate(view *st.View) {
 		}
 		angle[i] *= stw.CanvasAnimateSpeed()
 	}
-	for i:=0; i<int(1/stw.CanvasAnimateSpeed()); i++ {
+	for i := 0; i < int(1/stw.CanvasAnimateSpeed()); i++ {
 		if stw.frame.View.Perspective {
 			stw.frame.View.Dists[1] *= scale
 		} else {
 			stw.frame.View.Gfact *= scale
 		}
-		for j:=0; j<3; j++ {
+		for j := 0; j < 3; j++ {
 			stw.frame.View.Focus[j] += focus[j]
 			if j >= 2 {
 				break
@@ -3173,7 +3173,7 @@ func (stw *Window) CanvasCenterView(canv *cd.Canvas, angle []float64) *st.View {
 	a0 := make([]float64, 2)
 	f0 := make([]float64, 3)
 	focus := make([]float64, 3)
-	for i:=0; i<3; i++ {
+	for i := 0; i < 3; i++ {
 		f0[i] = stw.frame.View.Focus[i]
 		if i >= 2 {
 			break
@@ -3187,7 +3187,7 @@ func (stw *Window) CanvasCenterView(canv *cd.Canvas, angle []float64) *st.View {
 		stw.frame.View.ProjectNode(n)
 	}
 	xmin, xmax, ymin, ymax := stw.Bbox()
-	for i:=0; i<3; i++ {
+	for i := 0; i < 3; i++ {
 		focus[i] = stw.frame.View.Focus[i]
 		stw.frame.View.Focus[i] = f0[i]
 		if i >= 2 {
@@ -3312,8 +3312,6 @@ func (stw *Window) SelectNodeStart(arg *iup.MouseButton) {
 		first = 1
 	}
 }
-
-
 
 func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 	stw.dbuff.UpdateYAxis(&arg.Y)
@@ -3829,7 +3827,7 @@ func (stw *Window) CB_MouseButton() {
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						if isAlt(arg.Status) {
-							for i:=0; i<2; i++ {
+							for i := 0; i < 2; i++ {
 								RangeView.Angle[i] = stw.frame.View.Angle[i]
 							}
 						}
@@ -5456,14 +5454,14 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 					if stw.frame.Show.Etype[etype] {
 						if !stw.frame.Show.Etype[etype-2] {
 							stw.HideEtype(etype)
-							stw.ShowEtype(etype-2)
+							stw.ShowEtype(etype - 2)
 						} else {
-							stw.HideEtype(etype-2)
+							stw.HideEtype(etype - 2)
 						}
 					} else {
 						if stw.frame.Show.Etype[etype-2] {
 							stw.ShowEtype(etype)
-							stw.HideEtype(etype-2)
+							stw.HideEtype(etype - 2)
 						} else {
 							stw.ShowEtype(etype)
 						}
@@ -5474,7 +5472,7 @@ func (stw *Window) switchLabel(etype int) *iup.Handle {
 			case BUTTON_CENTER:
 				if arg.Pressed == 0 {
 					stw.HideEtype(etype)
-					stw.HideEtype(etype-2)
+					stw.HideEtype(etype - 2)
 					stw.Redraw()
 					iup.SetFocus(stw.canv)
 				}

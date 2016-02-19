@@ -15,27 +15,32 @@ import (
 const ResourceFileName = ".strc"
 
 const (
-	dataareaheight          = 150
+	dataareaheight = 150
 )
 
 type Window interface {
-	Frame() *Frame
-	SetFrame(*Frame)
-	Home() string
-	SetHome(string)
-	Cwd() string
-	SetCwd(string)
-	ExecCommand(string)
-	History(string)
-	Recent() []string
-	AddRecent(string)
-	GetCanvasSize() (int, int)
+	// DrawOption
 	CanvasFitScale() float64
 	SetCanvasFitScale(float64)
 	CanvasAnimateSpeed() float64
 	SetCanvasAnimateSpeed(float64)
+	// Directory
+	Home() string
+	SetHome(string)
+	Cwd() string
+	SetCwd(string)
+	// RecentFiles
+	Recent() []string
+	AddRecent(string)
+	// UndoStack
 	UndoEnabled() bool
 	PushUndo(*Frame)
+
+	Frame() *Frame
+	SetFrame(*Frame)
+	ExecCommand(string)
+	History(string)
+	GetCanvasSize() (int, int)
 	Changed(bool)
 	IsChanged() bool
 	Redraw()

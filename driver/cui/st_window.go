@@ -48,7 +48,7 @@ type Window struct {
 
 	papersize uint
 
-	lastexcommand string
+	lastexcommand   string
 	lastfig2command string
 
 	changed bool
@@ -58,10 +58,10 @@ type Window struct {
 
 func NewWindow(homedir string) *Window {
 	stw := &Window{
-		Directory: st.NewDirectory(homedir, homedir),
+		Directory:   st.NewDirectory(homedir, homedir),
 		RecentFiles: st.NewRecentFiles(3),
-		UndoStack:    st.NewUndoStack(10),
-		TagFrame:     st.NewTagFrame(),
+		UndoStack:   st.NewUndoStack(10),
+		TagFrame:    st.NewTagFrame(),
 	}
 	stw.prompt = ">"
 	stw.selectNode = make([]*st.Node, 0)

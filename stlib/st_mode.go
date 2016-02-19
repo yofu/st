@@ -23,6 +23,13 @@ const (
 
 type ExModer interface {
 	Selector
+
+	// UndoStack
+	UseUndo(bool)
+	// TagFrame
+	Checkout(string) (*Frame, error)
+	AddTag(*Frame, string, bool) error
+
 	LastExCommand() string
 	SetLastExCommand(string)
 	CompleteFileName(string) string
@@ -33,14 +40,11 @@ type ExModer interface {
 	SaveFileSelected(string) error
 	SearchFile(string) (string, error)
 	Close(bool)
-	Checkout(string) (*Frame, error)
-	AddTag(*Frame, string, bool) error
 	Copylsts(string)
 	ReadPgp(string) error
 	ReadFig2(string) error
 	CheckFrame()
 	ShapeData(Shape)
-	UseUndo(bool)
 	ToggleFixRotate()
 	ToggleFixMove()
 	ToggleAltSelectNode()
@@ -65,6 +69,7 @@ type ExModer interface {
 
 type Fig2Moder interface {
 	Window
+
 	LastFig2Command() string
 	SetLastFig2Command(string)
 	SetLabel(string, string)

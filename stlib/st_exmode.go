@@ -21,41 +21,41 @@ import (
 
 var (
 	ExAbbrev = map[string]*complete.Complete{
-		"e/dit":             complete.MustCompile(":edit %g", nil),
-		"q/uit":             complete.MustCompile(":quit", nil),
-		"vi/m":              complete.MustCompile(":vim %g", nil),
-		"exp/lorer":         complete.MustCompile(":explorer %g", nil),
-		"hk/you":            complete.MustCompile(":hkyou _ _ _ _", nil),
-		"hw/eak":            complete.MustCompile(":hweak _ _ _ _", nil),
-		"rp/ipe":            complete.MustCompile(":rpipe _ _ _ _", nil),
-		"cp/ipe":            complete.MustCompile(":cpipe _ _", nil),
-		"tk/you":            complete.MustCompile(":tkyou _ _ _ _", nil),
-		"ck/you":            complete.MustCompile(":ckyou _ _ _ _", nil),
-		"pla/te":            complete.MustCompile(":plate _ _", nil),
-		"fixr/otate":        complete.MustCompile(":fixrotate", nil),
-		"fixm/ove":          complete.MustCompile(":fixmove", nil),
-		"noun/do":           complete.MustCompile(":noundo", nil),
-		"un/do":             complete.MustCompile(":undo", nil),
-		"w/rite":            complete.MustCompile(":write %g", nil),
-		"sav/e":             complete.MustCompile(":save [mkdir:] %g", nil),
-		"inc/rement":        complete.MustCompile(":increment [times:_] _", nil),
-		"c/heck":            complete.MustCompile(":check", nil),
-		"r/ead":             complete.MustCompile(":read %g", nil),
-		"ins/ert":           complete.MustCompile(":insert %g", nil),
-		"p/rop/s/ect":       complete.MustCompile(":propsect %g", nil),
-		"w/rite/o/utput":    complete.MustCompile(":writeoutput _", nil),
-		"w/rite/rea/ction":  complete.MustCompile(":writereaction [confed:] _", nil),
-		"w/rite/k/ijun":     complete.MustCompile(":writekijun _", nil),
-		"p/late/w/eight":    complete.MustCompile(":plateweight", nil),
-		"nmi/nteraction":    complete.MustCompile(":nminteraction [ndiv:] [output:]", nil),
-		"kabe/ryo":          complete.MustCompile(":kaberyo [half:_] [fc:_] [alpha:_] [route:$ROUTE]",
+		"e/dit":            complete.MustCompile(":edit %g", nil),
+		"q/uit":            complete.MustCompile(":quit", nil),
+		"vi/m":             complete.MustCompile(":vim %g", nil),
+		"exp/lorer":        complete.MustCompile(":explorer %g", nil),
+		"hk/you":           complete.MustCompile(":hkyou _ _ _ _", nil),
+		"hw/eak":           complete.MustCompile(":hweak _ _ _ _", nil),
+		"rp/ipe":           complete.MustCompile(":rpipe _ _ _ _", nil),
+		"cp/ipe":           complete.MustCompile(":cpipe _ _", nil),
+		"tk/you":           complete.MustCompile(":tkyou _ _ _ _", nil),
+		"ck/you":           complete.MustCompile(":ckyou _ _ _ _", nil),
+		"pla/te":           complete.MustCompile(":plate _ _", nil),
+		"fixr/otate":       complete.MustCompile(":fixrotate", nil),
+		"fixm/ove":         complete.MustCompile(":fixmove", nil),
+		"noun/do":          complete.MustCompile(":noundo", nil),
+		"un/do":            complete.MustCompile(":undo", nil),
+		"w/rite":           complete.MustCompile(":write %g", nil),
+		"sav/e":            complete.MustCompile(":save [mkdir:] %g", nil),
+		"inc/rement":       complete.MustCompile(":increment [times:_] _", nil),
+		"c/heck":           complete.MustCompile(":check", nil),
+		"r/ead":            complete.MustCompile(":read %g", nil),
+		"ins/ert":          complete.MustCompile(":insert %g", nil),
+		"p/rop/s/ect":      complete.MustCompile(":propsect %g", nil),
+		"w/rite/o/utput":   complete.MustCompile(":writeoutput _", nil),
+		"w/rite/rea/ction": complete.MustCompile(":writereaction [confed:] _", nil),
+		"w/rite/k/ijun":    complete.MustCompile(":writekijun _", nil),
+		"p/late/w/eight":   complete.MustCompile(":plateweight", nil),
+		"nmi/nteraction":   complete.MustCompile(":nminteraction [ndiv:] [output:]", nil),
+		"kabe/ryo": complete.MustCompile(":kaberyo [half:_] [fc:_] [alpha:_] [route:$ROUTE]",
 			map[string][]string{
 				"ROUTE": []string{"1", "2-1", "2-2"},
 			}),
-		"w/ei/g/htcopy":     complete.MustCompile(":weightcopy [si:]", nil),
-		"har/dcopy":         complete.MustCompile(":hardcopy", nil),
-		"fi/g2":             complete.MustCompile(":fig2", nil),
-		"dxf/":              complete.MustCompile(":dxf [dimension:$DNUM] [scale:_]",
+		"w/ei/g/htcopy": complete.MustCompile(":weightcopy [si:]", nil),
+		"har/dcopy":     complete.MustCompile(":hardcopy", nil),
+		"fi/g2":         complete.MustCompile(":fig2", nil),
+		"dxf/": complete.MustCompile(":dxf [dimension:$DNUM] [scale:_]",
 			map[string][]string{
 				"DNUM": []string{"2", "3"},
 			}),
@@ -69,17 +69,17 @@ var (
 		"z/oubun/r/eaction": complete.MustCompile(":zoubunreaction", nil),
 		"fac/ts":            complete.MustCompile(":facts [skipany:_] [skipall:_]", nil),
 		"go/han/l/st":       complete.MustCompile(":gohanlst _ _", nil),
-		"el/em":             complete.MustCompile(":elem $TYPE _",
+		"el/em": complete.MustCompile(":elem $TYPE _",
 			map[string][]string{
 				"TYPE": []string{"sect", "etype", "reaction"},
 			}),
-		"ave/rage":          complete.MustCompile(":average", nil),
-		"bo/nd":             complete.MustCompile(":bond", nil),
-		"ax/is/2//c/ang":    complete.MustCompile(":axis2cang", nil),
-		"resul/tant":        complete.MustCompile(":resultant", nil),
-		"prest/ress":        complete.MustCompile(":prestress _", nil),
-		"therm/al":          complete.MustCompile(":thermal _", nil),
-		"div/ide":           complete.MustCompile(":divide $TYPE",
+		"ave/rage":       complete.MustCompile(":average", nil),
+		"bo/nd":          complete.MustCompile(":bond", nil),
+		"ax/is/2//c/ang": complete.MustCompile(":axis2cang", nil),
+		"resul/tant":     complete.MustCompile(":resultant", nil),
+		"prest/ress":     complete.MustCompile(":prestress _", nil),
+		"therm/al":       complete.MustCompile(":thermal _", nil),
+		"div/ide": complete.MustCompile(":divide $TYPE",
 			map[string][]string{
 				"TYPE": []string{"mid", "n", "elem", "ons", "axis", "length"},
 			}),
@@ -92,40 +92,40 @@ var (
 		"len/gth":            complete.MustCompile(":length [deformed:]", nil),
 		"are/a":              complete.MustCompile(":area [deformed:]", nil),
 		"an/alysis":          complete.MustCompile(":analysis", nil),
-		"f/ilter":            complete.MustCompile(":filter $CONDITION",
+		"f/ilter": complete.MustCompile(":filter $CONDITION",
 			map[string][]string{
 				"CONDITION": []string{"//", "TT", "on", "adjoin", "cv"},
 			}),
-		"ra/nge":             complete.MustCompile(":range", nil),
-		"h/eigh/t/":          complete.MustCompile(":height _ _", nil),
-		"h/eigh/t+/":         complete.MustCompile(":height+", nil),
-		"h/eigh/t-/":         complete.MustCompile(":height-", nil),
-		"ang/le":             complete.MustCompile(":angle _ _", nil),
-		"view/":              complete.MustCompile(":view $DIRECTION",
+		"ra/nge":     complete.MustCompile(":range", nil),
+		"h/eigh/t/":  complete.MustCompile(":height _ _", nil),
+		"h/eigh/t+/": complete.MustCompile(":height+", nil),
+		"h/eigh/t-/": complete.MustCompile(":height-", nil),
+		"ang/le":     complete.MustCompile(":angle _ _", nil),
+		"view/": complete.MustCompile(":view $DIRECTION",
 			map[string][]string{
 				"DIRECTION": []string{"top", "front", "back", "right", "left"},
 			}),
-		"paper/":             complete.MustCompile(":paper $NAME",
+		"paper/": complete.MustCompile(":paper $NAME",
 			map[string][]string{
 				"NAME": []string{"a3tate", "a3yoko", "a4tate", "a4yoko"},
 			}),
-		"sec/tion/+/":        complete.MustCompile(":section+ _", nil),
-		"col/or":             complete.MustCompile(":color $NAME",
+		"sec/tion/+/": complete.MustCompile(":section+ _", nil),
+		"col/or": complete.MustCompile(":color $NAME",
 			map[string][]string{
 				"NAME": []string{"n", "sect", "rate", "white", "mono", "strong"},
 			}),
-		"ex/tractarclm":      complete.MustCompile(":extractarclm", nil),
-		"s/aveas/ar/clm":     complete.MustCompile(":saveasarclm", nil),
-		"a/rclm/001/":        complete.MustCompile(":arclm001 [period:$PERIOD] [all:] [solver:$SOLVER] [eps:_] [noinit:] _",
+		"ex/tractarclm":  complete.MustCompile(":extractarclm", nil),
+		"s/aveas/ar/clm": complete.MustCompile(":saveasarclm", nil),
+		"a/rclm/001/": complete.MustCompile(":arclm001 [period:$PERIOD] [all:] [solver:$SOLVER] [eps:_] [noinit:] _",
 			map[string][]string{
 				"PERIOD": []string{"l", "x", "y"},
 				"SOLVER": []string{"LLS", "CRS"},
 			}),
-		"a/rclm/201/":        complete.MustCompile(":arclm201 [period:$PERIOD] [lap:_] [safety:_] [max:_] [start:_] [noinit:] _",
+		"a/rclm/201/": complete.MustCompile(":arclm201 [period:$PERIOD] [lap:_] [safety:_] [max:_] [start:_] [noinit:] _",
 			map[string][]string{
 				"PERIOD": []string{"l", "x", "y"},
 			}),
-		"a/rclm/301/":        complete.MustCompile(":arclm301 [period:$PERIOD] [sects:_] [eps:_] [noinit:] _",
+		"a/rclm/301/": complete.MustCompile(":arclm301 [period:$PERIOD] [sects:_] [eps:_] [noinit:] _",
 			map[string][]string{
 				"PERIOD": []string{"l", "x", "y"},
 			}),
@@ -809,7 +809,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		if _, ok := argdict["CONFED"]; ok {
 			SelectConfed(stw)
 		}
-		if !stw.NodeSelected () {
+		if !stw.NodeSelected() {
 			return errors.New(":writereaction: no selected node")
 		}
 		ns := stw.SelectedNodes()
@@ -1677,7 +1677,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		els := currentelem(stw, exmodech, exmodeend)
 		if strings.EqualFold(args[1], "zero") {
 			for _, el := range els {
-				for i:=0; i<12; i++ {
+				for i := 0; i < 12; i++ {
 					el.Cmq[i] = 0.0
 				}
 			}
@@ -1688,8 +1688,8 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 				return errors.New(fmt.Sprintf("period %s: no data", args[1]))
 			}
 			for _, el := range els {
-				for i:=0; i<2; i++ {
-					for j:=0; j<6; j++ {
+				for i := 0; i < 2; i++ {
+					for j := 0; j < 6; j++ {
 						el.Cmq[6*i+j] = el.Stress[args[1]][el.Enod[i].Num][j]
 					}
 				}
@@ -3294,7 +3294,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		if !stw.NodeSelected() || !stw.ElemSelected() {
 			return nil
 		}
-		c := NewChain(frame, stw.SelectedNodes()[0], stw.SelectedElems()[0], Straight(1e-2), func (c *Chain) bool { return c.Elem().IsPin(c.Node().Num) })
+		c := NewChain(frame, stw.SelectedNodes()[0], stw.SelectedElems()[0], Straight(1e-2), func(c *Chain) bool { return c.Elem().IsPin(c.Node().Num) })
 		for c.Next() {
 			AddSelection(stw, c.Elem())
 		}
