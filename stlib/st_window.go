@@ -48,6 +48,7 @@ type Window interface {
 	Redraw()
 	EPS() float64
 	SetEPS(float64)
+	Close(bool)
 }
 
 func ErrorMessage(stw Window, err error, level int) {
