@@ -36,8 +36,6 @@ type ExModer interface {
 	Checkout(string) (*Frame, error)
 	AddTag(*Frame, string, bool) error
 	Copylsts(string)
-	ReadFile(string) error
-	ReadAll()
 	ReadPgp(string) error
 	ReadFig2(string) error
 	CheckFrame()

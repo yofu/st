@@ -437,7 +437,7 @@ func NewWindow(homedir string) *Window { // {{{
 					iup.Attr("TITLE", "Read All\tCtrl+R"),
 					iup.Attr("TIP", "Read all file"),
 					func(arg *iup.ItemAction) {
-						stw.ReadAll()
+						st.ReadAll(stw)
 					},
 				),
 				iup.Item(
@@ -772,7 +772,7 @@ func NewWindow(homedir string) *Window { // {{{
 				stw.Redraw()
 			default:
 				if stw.frame != nil {
-					stw.ReadFile(arg.FileName)
+					st.ReadFile(stw, arg.FileName)
 				}
 			}
 		},
@@ -1000,7 +1000,7 @@ func NewWindow(homedir string) *Window { // {{{
 				}
 			case 'R':
 				if key.IsCtrl() {
-					stw.ReadAll()
+					st.ReadAll(stw)
 				}
 			case 'E':
 				if key.IsCtrl() {
@@ -1656,83 +1656,12 @@ func (stw *Window) Close(force bool) {
 func (stw *Window) Read() {
 	if stw.frame != nil {
 		if name, ok := iup.GetOpenFile("", ""); ok {
-			err := stw.ReadFile(name)
+			err := st.ReadFile(stw, name)
 			if err != nil {
 				st.ErrorMessage(stw, err, st.ERROR)
 			}
 		}
 	}
-}
-
-func (stw *Window) ReadAll() {
-	if stw.frame != nil {
-		var err error
-		for _, el := range stw.frame.Elems {
-			switch el.Etype {
-			case st.WBRACE, st.SBRACE:
-				stw.frame.DeleteElem(el.Num)
-			case st.WALL, st.SLAB:
-				el.Children = make([]*st.Elem, 2)
-			}
-		}
-		exts := []string{".inl", ".ihx", ".ihy", ".otl", ".ohx", ".ohy", ".rat2", ".wgt", ".lst", ".kjn"}
-		read := make([]string, 10)
-		nread := 0
-		for _, ext := range exts {
-			name := st.Ce(stw.frame.Path, ext)
-			err = stw.ReadFile(name)
-			if err != nil {
-				if ext == ".rat2" {
-					err = stw.ReadFile(st.Ce(stw.frame.Path, ".rat"))
-					if err == nil {
-						continue
-					}
-				}
-				st.ErrorMessage(stw, err, st.ERROR)
-			} else {
-				read[nread] = ext
-				nread++
-			}
-		}
-		stw.addHistory(fmt.Sprintf("READ: %s", strings.Join(read, " ")))
-	}
-}
-
-func (stw *Window) ReadFile(filename string) error {
-	var err error
-	switch filepath.Ext(filename) {
-	default:
-		fmt.Println("Unknown Format")
-		return nil
-	case ".inp":
-		x, y, z, err := stw.QueryCoord("Open Input")
-		if err != nil {
-			x = 0.0
-			y = 0.0
-			z = 0.0
-		}
-		err = stw.frame.ReadInp(filename, []float64{x, y, z}, 0.0, false)
-	case ".inl", ".ihx", ".ihy":
-		err = stw.frame.ReadData(filename)
-	case ".otl", ".ohx", ".ohy":
-		err = stw.frame.ReadResult(filename, st.UpdateResult)
-	case ".rat", ".rat2":
-		err = stw.frame.ReadRat(filename)
-	case ".lst":
-		err = stw.frame.ReadLst(filename)
-	case ".wgt":
-		err = stw.frame.ReadWgt(filename)
-	case ".kjn":
-		err = stw.frame.ReadKjn(filename)
-	case ".otp":
-		err = stw.frame.ReadBuckling(filename)
-	case ".otx", ".oty", ".inc":
-		err = stw.frame.ReadZoubun(filename)
-	}
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (stw *Window) AddPropAndSect(filename string) error {
@@ -4270,7 +4199,7 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 		}
 	case 'R':
 		if key.IsCtrl() {
-			stw.ReadAll()
+			st.ReadAll(stw)
 		}
 	case 'E':
 		if key.IsCtrl() {
@@ -4536,7 +4465,7 @@ func (stw *Window) CMenu() {
 					iup.Attr("TITLE", "Read All\tCtrl+R"),
 					iup.Attr("TIP", "Read all file"),
 					func(arg *iup.ItemAction) {
-						stw.ReadAll()
+						st.ReadAll(stw)
 					},
 				),
 				iup.Item(

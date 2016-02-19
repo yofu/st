@@ -163,6 +163,73 @@ func SaveFile(stw Window, filename string) error {
 	return nil
 }
 
+func ReadFile(stw Window, filename string) error {
+	var err error
+	frame := stw.Frame()
+	switch filepath.Ext(filename) {
+	default:
+		return fmt.Errorf("Unknown Format")
+	case ".inp":
+		err = frame.ReadInp(filename, []float64{0.0, 0.0, 0.0}, 0.0, false)
+	case ".inl", ".ihx", ".ihy":
+		err = frame.ReadData(filename)
+	case ".otl", ".ohx", ".ohy":
+		err = frame.ReadResult(filename, UpdateResult)
+	case ".rat", ".rat2":
+		err = frame.ReadRat(filename)
+	case ".lst":
+		err = frame.ReadLst(filename)
+	case ".wgt":
+		err = frame.ReadWgt(filename)
+	case ".kjn":
+		err = frame.ReadKjn(filename)
+	case ".otp":
+		err = frame.ReadBuckling(filename)
+	case ".otx", ".oty", ".inc":
+		err = frame.ReadZoubun(filename)
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func ReadAll(stw Window) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	var err error
+	for _, el := range frame.Elems {
+		switch el.Etype {
+		case WBRACE, SBRACE:
+			frame.DeleteElem(el.Num)
+		case WALL, SLAB:
+			el.Children = make([]*Elem, 2)
+		}
+	}
+	exts := []string{".inl", ".ihx", ".ihy", ".otl", ".ohx", ".ohy", ".rat2", ".wgt", ".lst", ".kjn"}
+	read := make([]string, 10)
+	nread := 0
+	for _, ext := range exts {
+		name := Ce(frame.Path, ext)
+		err = ReadFile(stw, name)
+		if err != nil {
+			if ext == ".rat2" {
+				err = ReadFile(stw, Ce(frame.Path, ".rat"))
+				if err == nil {
+					continue
+				}
+			}
+			ErrorMessage(stw, err, ERROR)
+		} else {
+			read[nread] = ext
+			nread++
+		}
+	}
+	stw.History(fmt.Sprintf("READ: %s", strings.Join(read, " ")))
+}
+
 func ShowRecent(stw Window) {
 	for i, fn := range stw.Recent() {
 		if fn != "" {

@@ -665,7 +665,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 		if narg < 3 {
 			switch t {
 			case "$all":
-				stw.ReadAll()
+				ReadAll(stw)
 			case "$data":
 				for _, ext := range []string{".inl", ".ihx", ".ihy"} {
 					err := frame.ReadData(Ce(frame.Path, ext))
@@ -688,7 +688,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 					}
 				}
 			default:
-				err := stw.ReadFile(fn)
+				err := ReadFile(stw, fn)
 				if err != nil {
 					return err
 				}
@@ -1061,7 +1061,7 @@ func exCommand(stw ExModer, frame *Frame, command string, pipe bool, exmodech ch
 			reload = false
 		}
 		if reload {
-			stw.ReadFile(Ce(frame.Path, ".lst"))
+			ReadFile(stw, Ce(frame.Path, ".lst"))
 		}
 		otp := frame.Path
 		if _, ok := argdict["TMP"]; ok {

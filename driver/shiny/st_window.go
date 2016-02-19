@@ -340,13 +340,6 @@ func (stw *Window) Close(bang bool) {
 func (stw *Window) Copylsts(string) {
 }
 
-func (stw *Window) ReadFile(string) error {
-	return nil
-}
-
-func (stw *Window) ReadAll() {
-}
-
 func (stw *Window) ReadPgp(string) error {
 	return nil
 }
