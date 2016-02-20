@@ -104,6 +104,8 @@ func (stw *Window) Start() {
 	defer stw.window.Release()
 	stw.ReadRecent()
 	st.ShowRecent(stw)
+	stw.frame.View.Center[0] = 512
+	stw.frame.View.Center[1] = 512
 	stw.Redraw()
 	var sz size.Event
 	for {
