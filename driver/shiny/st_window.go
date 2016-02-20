@@ -139,6 +139,9 @@ func (stw *Window) Start() {
 				fmt.Printf("%s\r", stw.cline)
 			}
 		case mouse.Event:
+			if e.Button == 4 || e.Button == 5 {
+				e.Direction = mouse.DirNone
+			}
 			switch e.Direction {
 			case mouse.DirPress:
 				startX = int(e.X)
@@ -173,7 +176,7 @@ func (stw *Window) Start() {
 							stw.window.Publish()
 						}
 					}
-				case mouse.ButtonWheelUp:
+				case mouse.ButtonWheelUp, 4:
 					val := math.Pow(2.0, 1.0/stw.CanvasScaleSpeed())
 					stw.frame.View.Center[0] += (val - 1.0) * (stw.frame.View.Center[0] - float64(e.X))
 					stw.frame.View.Center[1] += (val - 1.0) * (stw.frame.View.Center[1] - float64(e.Y))
@@ -190,7 +193,7 @@ func (stw *Window) Start() {
 					}
 					stw.Redraw()
 					stw.window.Publish()
-				case mouse.ButtonWheelDown:
+				case mouse.ButtonWheelDown, 5:
 					val := math.Pow(2.0, -1.0/stw.CanvasScaleSpeed())
 					stw.frame.View.Center[0] += (val - 1.0) * (stw.frame.View.Center[0] - float64(e.X))
 					stw.frame.View.Center[1] += (val - 1.0) * (stw.frame.View.Center[1] - float64(e.Y))
