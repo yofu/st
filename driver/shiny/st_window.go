@@ -12,6 +12,7 @@ import (
 	"image"
 	"image/color"
 	"log"
+	"math"
 	"os"
 	"strings"
 )
@@ -113,7 +114,7 @@ func (stw *Window) Start() {
 				return
 			}
 		case key.Event:
-			if e.Direction == key.DirRelease {
+			if e.Direction == key.DirPress {
 				kc := keymap(e)
 				switch kc.Code {
 				default:
@@ -145,13 +146,59 @@ func (stw *Window) Start() {
 			case mouse.DirNone:
 				endX = int(e.X)
 				endY = int(e.Y)
-				if pressed&ButtonLeft != 0 {
-					stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
-					stw.window.Fill(image.Rect(startX, startY, endX, endY), red, screen.Over)
+				switch e.Button {
+				default:
+					if pressed&ButtonLeft != 0 {
+						stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
+						stw.window.Fill(image.Rect(startX, startY, endX, endY), red, screen.Over)
+						stw.window.Publish()
+					} else if pressed&ButtonMiddle != 0 {
+						dx := endX - startX
+						dy := endY - startY
+						if dx&7 == 0 || dy&7 == 0 {
+							if e.Modifiers&key.ModShift != 0 {
+								stw.frame.View.Center[0] += float64(dx) * stw.CanvasMoveSpeedX()
+								stw.frame.View.Center[1] += float64(dy) * stw.CanvasMoveSpeedY()
+							} else {
+								stw.frame.View.Angle[0] += float64(dy) * stw.CanvasRotateSpeedY()
+								stw.frame.View.Angle[1] -= float64(dx) * stw.CanvasRotateSpeedX()
+							}
+							stw.Redraw()
+							stw.window.Publish()
+						}
+					}
+				case mouse.ButtonWheelUp:
+					val := math.Pow(2.0, 1.0/stw.CanvasScaleSpeed())
+					stw.frame.View.Center[0] += (val - 1.0) * (stw.frame.View.Center[0] - float64(e.X))
+					stw.frame.View.Center[1] += (val - 1.0) * (stw.frame.View.Center[1] - float64(e.Y))
+					if stw.frame.View.Perspective {
+						stw.frame.View.Dists[1] *= val
+						if stw.frame.View.Dists[1] < 0.0 {
+							stw.frame.View.Dists[1] = 0.0
+						}
+					} else {
+						stw.frame.View.Gfact *= val
+						if stw.frame.View.Gfact < 0.0 {
+							stw.frame.View.Gfact = 0.0
+						}
+					}
+					stw.Redraw()
 					stw.window.Publish()
-				} else if pressed&ButtonMiddle != 0 {
-					stw.frame.View.Angle[0] += float64(int(e.Y)-startY) * 0.01
-					stw.frame.View.Angle[1] -= float64(int(e.X)-startX) * 0.01
+				case mouse.ButtonWheelDown:
+					val := math.Pow(2.0, -1.0/stw.CanvasScaleSpeed())
+					stw.frame.View.Center[0] += (val - 1.0) * (stw.frame.View.Center[0] - float64(e.X))
+					stw.frame.View.Center[1] += (val - 1.0) * (stw.frame.View.Center[1] - float64(e.Y))
+					if stw.frame.View.Perspective {
+						stw.frame.View.Dists[1] *= val
+						if stw.frame.View.Dists[1] < 0.0 {
+							stw.frame.View.Dists[1] = 0.0
+						}
+					} else {
+						stw.frame.View.Gfact *= val
+						if stw.frame.View.Gfact < 0.0 {
+							stw.frame.View.Gfact = 0.0
+						}
+					}
 					stw.Redraw()
 					stw.window.Publish()
 				}
@@ -200,8 +247,6 @@ func (stw *Window) Redraw() {
 		log.Fatal(err)
 	}
 	stw.buffer = b
-	stw.frame.View.Center[0] = 512
-	stw.frame.View.Center[1] = 512
 	st.DrawFrame(stw, stw.frame, st.ECOLOR_SECT, true)
 	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
 }
