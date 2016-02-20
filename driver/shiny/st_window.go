@@ -132,7 +132,9 @@ func (stw *Window) Start() {
 				case key.CodeReturnEnter:
 					stw.FeedCommand()
 				case key.CodeEscape:
-					stw.Close(true)
+					stw.Deselect()
+					stw.Redraw()
+					stw.window.Publish()
 				}
 				fmt.Printf("%s\r", stw.cline)
 			}
