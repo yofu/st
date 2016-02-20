@@ -65,6 +65,41 @@ func ErrorMessage(stw Window, err error, level int) {
 	stw.History(otp)
 }
 
+func ShowCenter(stw Window) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	if dw, ok := stw.(Drawer); ok {
+		w, h := stw.GetCanvasSize()
+		frame.SetFocus(nil)
+		frame.View.Set(dw.CanvasDirection())
+		for _, n := range frame.Nodes {
+			frame.View.ProjectNode(n)
+		}
+		xmin, xmax, ymin, ymax := frame.Bbox2D(true)
+		var sx, sy float64
+		if xmin == xmax {
+			sx = 1e16
+		} else {
+			sx = float64(w) / (xmax - xmin)
+		}
+		if ymin == ymax {
+			sy = 1e16
+		} else {
+			sy = float64(h) / (ymax - ymin)
+		}
+		scale := math.Min(sx, sy) * stw.CanvasFitScale()
+		if frame.View.Perspective {
+			frame.View.Dists[1] = frame.View.Dists[1] * scale
+		} else {
+			frame.View.Gfact = frame.View.Gfact * scale
+		}
+		frame.View.Center[0] = float64(w)*0.5 + scale*(frame.View.Center[0]-0.5*(xmax+xmin))
+		frame.View.Center[1] = float64(h)*0.5 + scale*(frame.View.Center[1]-0.5*(ymax+ymin))
+	}
+}
+
 func OpenFile(stw Window, filename string, readrcfile bool) error {
 	var err error
 	var s *Show
@@ -108,6 +143,7 @@ func OpenFile(stw Window, filename string, readrcfile bool) error {
 	stw.AddRecent(fn)
 	Snapshot(stw)
 	stw.Changed(false)
+	ShowCenter(stw)
 	if readrcfile {
 		if rcfn := filepath.Join(stw.Cwd(), ResourceFileName); FileExists(rcfn) {
 			ReadResource(stw, rcfn)
