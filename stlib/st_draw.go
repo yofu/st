@@ -813,6 +813,25 @@ func DrawNodeNormal(stw Drawer, node *Node, show *Show) {
 	Arrow(stw, node.Pcoord[0], node.Pcoord[1], vec[0], vec[1], arrow, deg10)
 }
 
+func InBound(el *Elem, w, h float64) bool {
+	var x1, x2, y1, y2 bool
+	for _, en := range el.Enod {
+		if en.Pcoord[0] > 0 {
+			x1 = true
+		}
+		if en.Pcoord[0] < w {
+			x2 = true
+		}
+		if en.Pcoord[1] > 0 {
+			y1 = true
+		}
+		if en.Pcoord[1] < h {
+			y2 = true
+		}
+	}
+	return x1 && x2 && y1 && y2
+}
+
 func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 	if frame == nil {
 		if flush {
@@ -826,6 +845,9 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 	if show.GlobalAxis {
 		DrawGlobalAxis(stw, frame, color)
 	}
+	wi, hi := stw.GetCanvasSize()
+	w := float64(wi)
+	h := float64(hi)
 	if show.Kijun {
 		stw.Foreground(show.KijunColor)
 		for _, k := range frame.Kijuns {
@@ -895,6 +917,9 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 					continue loop
 				}
 			}
+			if !InBound(el, w, h) {
+				continue
+			}
 			stw.DefaultStyle()
 			if el.Lock {
 				stw.Foreground(LOCKED_ELEM_COLOR)
@@ -957,6 +982,9 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 	show.NoShearValue = false
 	for _, el := range stw.SelectedElems() {
 		if el == nil || el.IsHidden(frame.Show) {
+			continue
+		}
+		if !InBound(el, w, h) {
 			continue
 		}
 		stw.SelectElemStyle()
@@ -1028,6 +1056,9 @@ func DrawFrameNode(stw Drawer, frame *Frame, color uint, flush bool) {
 	if show.GlobalAxis {
 		DrawGlobalAxis(stw, frame, color)
 	}
+	wi, hi := stw.GetCanvasSize()
+	w := float64(wi)
+	h := float64(hi)
 	for _, n := range frame.Nodes {
 		frame.View.ProjectNode(n)
 		if show.Deformation {
@@ -1075,6 +1106,9 @@ func DrawFrameNode(stw Drawer, frame *Frame, color uint, flush bool) {
 		for _, el := range stw.SelectedElems() {
 			stw.LineStyle(DOTTED)
 			if el == nil || el.IsHidden(show) {
+				continue
+			}
+			if !InBound(el, w, h) {
 				continue
 			}
 			if el.Lock {
