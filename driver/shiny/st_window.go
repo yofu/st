@@ -54,6 +54,7 @@ type Window struct {
 	currentBrush color.RGBA
 	cline        string
 	changed      bool
+	lastexcommand string
 }
 
 func NewWindow(s screen.Screen) *Window {
@@ -72,6 +73,7 @@ func NewWindow(s screen.Screen) *Window {
 		currentBrush: color.RGBA{0xff, 0xff, 0xff, 0x77},
 		cline:        "",
 		changed:      false,
+		lastexcommand: "",
 	}
 }
 
@@ -294,10 +296,11 @@ func (stw *Window) ExecCommand(command string) {
 }
 
 func (stw *Window) LastExCommand() string {
-	return ""
+	return stw.lastexcommand
 }
 
-func (stw *Window) SetLastExCommand(string) {
+func (stw *Window) SetLastExCommand(command string) {
+	stw.lastexcommand = command
 }
 
 func (stw *Window) History(str string) {
