@@ -209,14 +209,15 @@ func (stw *Window) Start() {
 			case mouse.DirRelease:
 				endX = int(e.X)
 				endY = int(e.Y)
-				stw.Redraw()
-				stw.window.Publish()
 				switch e.Button {
 				case mouse.ButtonLeft:
 					pressed &= ^ButtonLeft
+					st.PickElem(stw, startX, startY, endX, endY, e.Modifiers&key.ModShift != 0)
 				case mouse.ButtonMiddle:
 					pressed &= ^ButtonMiddle
 				}
+				stw.Redraw()
+				stw.window.Publish()
 			}
 		case paint.Event:
 			stw.window.Fill(sz.Bounds(), blue0, screen.Src)
