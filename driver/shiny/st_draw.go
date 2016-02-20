@@ -6,6 +6,10 @@ import (
 	"github.com/yofu/st/stlib"
 )
 
+var (
+	PLATE_OPACITY uint8 = 0x77
+)
+
 func (stw *Window) Line(x1, y1, x2, y2 float64) {
 	dx := int(x2) - int(x1)
 	if dx < 0 {
@@ -239,7 +243,7 @@ func (stw *Window) Text(float64, float64, string) {
 func (stw *Window) Foreground(fg int) {
 	col := st.IntColorList(fg)
 	stw.currentPen = color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), 0xff}
-	stw.currentBrush = color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), 0x77}
+	stw.currentBrush = color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), PLATE_OPACITY}
 }
 
 func (stw *Window) LineStyle(int) {
@@ -256,6 +260,7 @@ func (stw *Window) SectionAlias(int) (string, bool) {
 }
 
 func (stw *Window) DefaultStyle() {
+	PLATE_OPACITY = 0x77
 }
 
 func (stw *Window) BondStyle(*st.Show) {
@@ -271,6 +276,7 @@ func (stw *Window) SelectNodeStyle() {
 }
 
 func (stw *Window) SelectElemStyle() {
+	PLATE_OPACITY = 0xcc
 }
 
 func (stw *Window) ShowPrintRange() bool {
