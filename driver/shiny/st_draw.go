@@ -193,12 +193,173 @@ func (stw *Window) filltriangle(c1, c2, c3 []float64) {
 	return
 }
 
+func (stw *Window) fillquadrangle(c1, c2, c3, c4 []float64) {
+	ind := 0
+	maxy := 0.0
+	coords := [][]float64{c1, c2, c3, c4}
+	for i, c := range coords {
+		if c[1] > maxy {
+			maxy = c[1]
+			ind = i
+		}
+	}
+	i1 := ind - 2
+	if i1 < 0 {
+		i1 += 4
+	}
+	i2 := ind - 3
+	if i2 < 0 {
+		i2 += 4
+	}
+	i3 := ind - 1
+	if i3 < 0 {
+		i3 += 4
+	}
+	i4 := ind
+	if i4 < 0 {
+		i4 += 4
+	}
+	x1 := int(coords[i1][0])
+	y1 := int(coords[i1][1])
+	x2 := int(coords[i2][0])
+	y2 := int(coords[i2][1])
+	x3 := int(coords[i3][0])
+	y3 := int(coords[i3][1])
+	x4 := int(coords[i4][0])
+	y4 := int(coords[i4][1])
+	dx12 := x2 - x1
+	dy12 := y2 - y1
+	dx13 := x3 - x1
+	dy13 := y3 - y1
+	dx24 := x4 - x2
+	dy24 := y4 - y2
+	dx34 := x4 - x3
+	dy34 := y4 - y3
+	endy12 := y2
+	endy13 := y3
+	dx14 := x4 - x1
+	if dx14 < 0 {
+		dx14 = -dx14
+	}
+	dy14 := y4 - y1
+	if dy14 < 0 {
+		dy14 = -dy14
+	}
+	var sx12 int
+	if x1 < x2 {
+		sx12 = 1
+	} else {
+		sx12 = -1
+	}
+	var sx13 int
+	if x1 < x3 {
+		sx13 = 1
+	} else {
+		sx13 = -1
+	}
+	var sx14 int
+	if x1 < x4 {
+		sx14 = 1
+	} else {
+		sx14 = -1
+	}
+	var sx24 int
+	if x2 < x4 {
+		sx24 = 1
+	} else {
+		sx24 = -1
+	}
+	var sx34 int
+	if x3 < x4 {
+		sx34 = 1
+	} else {
+		sx34 = -1
+	}
+	sy14 := 1
+	eps14 := dx14 - dy14
+	x14 := x1
+	y14 := y1
+	endx14 := x4
+	endy14 := y4
+	var e14 int
+	cvs := stw.buffer.RGBA()
+	x12 := x1
+	x24 := x2
+	x13 := x1
+	x34 := x3
+	// TODO: fix
+	for {
+		// Blend(cvs, x14, y14, stw.currentBrush)
+		if x14 == endx14 && y14 == endy14 {
+			break
+		}
+		e14 = eps14 << 1
+		if e14 > -dy14 {
+			eps14 = eps14 - dy14
+			x14 = x14 + sx14
+		}
+		if e14 < dx14 {
+			var sx, ex int
+			if y14 < endy12 {
+				for {
+					if ((x12 - x1) * dy12 - dx12 * (y14 - y1)) * sx12 >= 0 {
+						break
+					}
+					x12 = x12 + sx12
+				}
+				sx = x12
+			} else if dy24 > 0 {
+				for {
+					if ((x24 - x2) * dy24 - dx24 * (y14 - y2)) * sx24 >= 0 {
+						break
+					}
+					x24 = x24 + sx24
+				}
+				sx = x24
+			}
+			if y14 < endy13 {
+				for {
+					if ((x13 - x1) * dy13 - dx13 * (y14 - y1)) * sx13 >= 0 {
+						break
+					}
+					x13 = x13 + sx13
+				}
+				ex = x13
+			} else if dy34 > 0 {
+				for {
+					if ((x34 - x3) * dy34 - dx34 * (y14 - y3)) * sx34 >= 0 {
+						break
+					}
+					x34 = x34 + sx34
+				}
+				ex = x34
+			}
+			if sx > ex {
+				sx, ex = ex, sx
+			}
+			for x := sx; x <= ex; x++ {
+				Blend(cvs, x, y14, stw.currentBrush)
+			}
+			eps14 = eps14 + dx14
+			y14 = y14 + sy14
+		}
+	}
+	return
+}
+
 func (stw *Window) Polygon(coords [][]float64) {
 	if len(coords) < 3 {
 		return
 	}
-	for i := 0; i< len(coords)-2; i++ {
-		stw.filltriangle(coords[0], coords[i+1], coords[i+2])
+	switch len(coords) {
+	case 3:
+		stw.filltriangle(coords[0], coords[1], coords[2])
+	case 4:
+		stw.fillquadrangle(coords[0], coords[1], coords[2], coords[3])
+	default:
+		for i := 0; i< len(coords)-2; i++ {
+			stw.filltriangle(coords[0], coords[i+1], coords[i+2])
+		}
 	}
 }
 
