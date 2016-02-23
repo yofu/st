@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/yofu/st/stlib"
 	"golang.org/x/exp/shiny/screen"
+	"golang.org/x/image/font"
+	"golang.org/x/image/font/basicfont"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
 	"golang.org/x/mobile/event/mouse"
@@ -52,6 +54,7 @@ type Window struct {
 	buffer       screen.Buffer
 	currentPen   color.RGBA
 	currentBrush color.RGBA
+	fontFace     font.Face
 	cline        string
 	changed      bool
 	lastexcommand string
@@ -71,6 +74,7 @@ func NewWindow(s screen.Screen) *Window {
 		buffer:       nil,
 		currentPen:   color.RGBA{0xff, 0xff, 0xff, 0xff},
 		currentBrush: color.RGBA{0xff, 0xff, 0xff, 0x77},
+		fontFace:     basicfont.Face7x13,
 		cline:        "",
 		changed:      false,
 		lastexcommand: "",
