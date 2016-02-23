@@ -7,7 +7,6 @@ import (
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/math/fixed"
-	"golang.org/x/image/math/f64"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
 	"golang.org/x/mobile/event/mouse"
@@ -36,6 +35,9 @@ var (
 	endY   = 0
 
 	pressed = 0
+
+	commandbuffer  screen.Buffer
+	commandtexture screen.Texture
 )
 
 const (
@@ -140,11 +142,12 @@ func (stw *Window) Start() {
 				case key.CodeReturnEnter:
 					stw.FeedCommand()
 				case key.CodeEscape:
+					stw.cline = ""
 					stw.Deselect()
 					stw.Redraw()
 					stw.window.Publish()
 				}
-				stw.Typewrite(100, 924, stw.cline)
+				stw.Typewrite(25, 700, stw.cline)
 			}
 		case mouse.Event:
 			if e.Button == 4 || e.Button == 5 {
@@ -269,31 +272,37 @@ func (stw *Window) Redraw() {
 	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
 }
 
-// TODO: doesn't work well
 func (stw *Window) Typewrite(x, y float64, str string) {
 	if str == "" {
+		stw.Redraw()
 		return
+	}
+	if commandbuffer != nil {
+		commandbuffer.Release()
 	}
 	b, err := stw.screen.NewBuffer(image.Point{1024, 1024})
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer b.Release()
-	t, err := stw.screen.NewTexture(image.Point{1024, 1024})
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer t.Release()
-	t.Upload(image.Point{}, b, b.Bounds())
+	commandbuffer = b
 	d := &font.Drawer{
-		Dst: b.RGBA(),
+		Dst: commandbuffer.RGBA(),
 		Src: image.NewUniform(color.RGBA{0xff, 0xff, 0xff, 0xff}),
 		Face: stw.fontFace,
 		Dot: fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
 	}
 	d.DrawString(str)
-	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
-	stw.window.Draw(f64.Aff3{0, 0, 0, 0, 0, 0}, t, t.Bounds(), screen.Over, nil)
+	t, err := stw.screen.NewTexture(image.Point{1024, 1024})
+	if err != nil {
+		log.Fatal(err)
+	}
+	if commandtexture != nil {
+		commandtexture.Release()
+	}
+	commandtexture = t
+	t.Upload(image.Point{}, commandbuffer, commandbuffer.Bounds())
+	stw.window.Fill(image.Rect(20, 690, 500, 705), color.RGBA{0x33, 0x33, 0x33, 0xff}, screen.Over)
+	stw.window.Copy(image.Point{0, 0}, commandtexture, commandtexture.Bounds(), screen.Over, nil)
 	stw.window.Publish()
 }
 
