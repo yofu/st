@@ -7,6 +7,7 @@ import (
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/math/fixed"
+	"golang.org/x/image/math/f64"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
 	"golang.org/x/mobile/event/mouse"
@@ -143,7 +144,7 @@ func (stw *Window) Start() {
 					stw.Redraw()
 					stw.window.Publish()
 				}
-				fmt.Printf("%s\r", stw.cline)
+				stw.Typewrite(100, 924, stw.cline)
 			}
 		case mouse.Event:
 			if e.Button == 4 || e.Button == 5 {
@@ -266,6 +267,34 @@ func (stw *Window) Redraw() {
 	stw.buffer = b
 	st.DrawFrame(stw, stw.frame, st.ECOLOR_SECT, true)
 	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
+}
+
+// TODO: doesn't work well
+func (stw *Window) Typewrite(x, y float64, str string) {
+	if str == "" {
+		return
+	}
+	b, err := stw.screen.NewBuffer(image.Point{1024, 1024})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer b.Release()
+	t, err := stw.screen.NewTexture(image.Point{1024, 1024})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer t.Release()
+	t.Upload(image.Point{}, b, b.Bounds())
+	d := &font.Drawer{
+		Dst: b.RGBA(),
+		Src: image.NewUniform(color.RGBA{0xff, 0xff, 0xff, 0xff}),
+		Face: stw.fontFace,
+		Dot: fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
+	}
+	d.DrawString(str)
+	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
+	stw.window.Draw(f64.Aff3{0, 0, 0, 0, 0, 0}, t, t.Bounds(), screen.Over, nil)
+	stw.window.Publish()
 }
 
 func (stw *Window) FeedCommand() {
