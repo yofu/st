@@ -6,6 +6,7 @@ import (
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/basicfont"
+	"golang.org/x/image/math/fixed"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
 	"golang.org/x/mobile/event/mouse"
@@ -55,6 +56,7 @@ type Window struct {
 	currentPen   color.RGBA
 	currentBrush color.RGBA
 	fontFace     font.Face
+	fontHeight   fixed.Int26_6
 	cline        string
 	changed      bool
 	lastexcommand string
@@ -75,6 +77,7 @@ func NewWindow(s screen.Screen) *Window {
 		currentPen:   color.RGBA{0xff, 0xff, 0xff, 0xff},
 		currentBrush: color.RGBA{0xff, 0xff, 0xff, 0x77},
 		fontFace:     basicfont.Face7x13,
+		fontHeight:   13,
 		cline:        "",
 		changed:      false,
 		lastexcommand: "",

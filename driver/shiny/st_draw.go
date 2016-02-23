@@ -6,6 +6,7 @@ import (
 	"github.com/yofu/st/stlib"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
+	"strings"
 )
 
 var (
@@ -400,15 +401,22 @@ func (stw *Window) Circle(x1, y1, d float64) {
 func (stw *Window) FilledCircle(float64, float64, float64) {
 }
 
-// TODO: fix(TrimSuffix?)
 func (stw *Window) Text(x, y float64, str string) {
+	if str == "" {
+		return
+	}
 	d := &font.Drawer{
 		Dst: stw.buffer.RGBA(),
 		Src: image.NewUniform(stw.currentPen),
 		Face: stw.fontFace,
 		Dot: fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
 	}
-	d.DrawString(str)
+	ss := strings.Split(str, "\n")
+	d.Dot.Y += stw.fontHeight * fixed.Int26_6(len(ss) - 1)
+	for _, s := range ss {
+		d.DrawString(s)
+		d.Dot.Y -= stw.fontHeight
+	}
 }
 
 func (stw *Window) Foreground(fg int) {
