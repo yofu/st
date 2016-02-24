@@ -248,10 +248,15 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 	args = unnamed[:tmpnarg]
 	narg = tmpnarg
 	var fn string
+	frame := stw.Frame()
 	if narg < 2 {
 		fn = ""
 	} else {
-		fn = stw.CompleteFileName(args[1])
+		if frame == nil {
+			fn = CompleteFileName(args[1], "", stw.Recent())[0]
+		} else {
+			fn = CompleteFileName(args[1], frame.Path, stw.Recent())[0]
+		}
 		if filepath.Dir(fn) == "." {
 			fn = filepath.Join(stw.Cwd(), fn)
 		}
@@ -526,7 +531,6 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 	if evaluated {
 		return nil
 	}
-	frame := stw.Frame()
 	if frame == nil {
 		return Message("frame is nil")
 	}
@@ -696,7 +700,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 			return nil
 		}
-		fn = stw.CompleteFileName(args[2])
+		fn = CompleteFileName(args[2], frame.Path, stw.Recent())[0]
 		if filepath.Dir(fn) == "." {
 			fn = filepath.Join(stw.Cwd(), fn)
 		}

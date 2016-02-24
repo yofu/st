@@ -32,7 +32,6 @@ type ExModer interface {
 
 	LastExCommand() string
 	SetLastExCommand(string)
-	CompleteFileName(string) string
 	Print()
 	SaveAS()
 	SaveFileSelected(string) error
