@@ -36,33 +36,39 @@ func (cb *CommandBuffer) Execute(q chan bool) {
 	}
 	cb.on = true
 	cb.quit = q
-	cb.elem = make(chan *Elem)
-	cb.node = make(chan *Node)
-	cb.click = make(chan Click)
 }
 
 func (cb *CommandBuffer) GetElem() chan *Elem {
+	cb.elem = make(chan *Elem)
 	return cb.elem
 }
 
 func (cb *CommandBuffer) SendElem(el *Elem) {
-	cb.elem <- el
+	if cb.elem != nil {
+		cb.elem <- el
+	}
 }
 
 func (cb *CommandBuffer) GetNode() chan *Node {
+	cb.node = make(chan *Node)
 	return cb.node
 }
 
 func (cb *CommandBuffer) SendNode(n *Node) {
-	cb.node <- n
+	if cb.node != nil {
+		cb.node <- n
+	}
 }
 
 func (cb *CommandBuffer) GetClick() chan Click {
+	cb.click = make(chan Click)
 	return cb.click
 }
 
 func (cb *CommandBuffer) SendClick(c Click) {
-	cb.click <- c
+	if cb.click != nil {
+		cb.click <- c
+	}
 }
 
 func (cb *CommandBuffer) EndCommand() {
