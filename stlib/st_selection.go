@@ -49,3 +49,10 @@ func (s *Selection) Deselect() {
 	s.nodes = make([]*Node, 0)
 }
 
+func (s *Selection) DeselectElem() {
+	s.elems = make([]*Elem, 0)
+}
+
+func (s *Selection) DeselectNode() {
+	s.nodes = make([]*Node, 0)
+}

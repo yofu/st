@@ -237,7 +237,12 @@ func (stw *Window) Start() {
 				switch e.Button {
 				case mouse.ButtonLeft:
 					pressed &= ^ButtonLeft
-					st.PickElem(stw, startX, startY, endX, endY, e.Modifiers&key.ModShift != 0)
+					els, picked := st.PickElem(stw, startX, startY, endX, endY)
+					if !picked {
+						stw.DeselectElem()
+					} else {
+						st.MergeSelectElem(stw, els, e.Modifiers&key.ModShift != 0)
+					}
 				case mouse.ButtonMiddle:
 					pressed &= ^ButtonMiddle
 				}

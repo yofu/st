@@ -465,3 +465,94 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 	}
 	return completes
 }
+
+func PickElem(stw Window, x1, y1, x2, y2 int) ([]*Elem, bool) {
+	frame := stw.Frame()
+	if frame == nil {
+		return nil, false
+	}
+	fromleft := true
+	left, right := x1, x2
+	if left > right {
+		fromleft = false
+		left, right = right, left
+	}
+	bottom, top := y1, y2
+	if bottom > top {
+		bottom, top = top, bottom
+	}
+	if (right-left < elemSelectPixel) && (top-bottom < elemSelectPixel) {
+		el := frame.PickLineElem(float64(left), float64(bottom), elemSelectPixel)
+		if el == nil {
+			els := frame.PickPlateElem(float64(left), float64(bottom))
+			if len(els) > 0 {
+				el = els[0]
+			}
+		}
+		if el != nil {
+			return []*Elem{el}, true
+		} else {
+			return nil, false
+		}
+	} else {
+		tmpselectnode := make([]*Node, len(frame.Nodes))
+		i := 0
+		for _, v := range frame.Nodes {
+			if float64(left) <= v.Pcoord[0] && v.Pcoord[0] <= float64(right) && float64(bottom) <= v.Pcoord[1] && v.Pcoord[1] <= float64(top) {
+				tmpselectnode[i] = v
+				i++
+			}
+		}
+		tmpselectelem := make([]*Elem, len(frame.Elems))
+		k := 0
+		if fromleft {
+			for _, el := range frame.Elems {
+				if el.IsHidden(frame.Show) {
+					continue
+				}
+				add := true
+				for _, en := range el.Enod {
+					var j int
+					for j = 0; j < i; j++ {
+						if en == tmpselectnode[j] {
+							break
+						}
+					}
+					if j == i {
+						add = false
+						break
+					}
+				}
+				if add {
+					tmpselectelem[k] = el
+					k++
+				}
+			}
+		} else {
+			for _, el := range frame.Elems {
+				if el.IsHidden(frame.Show) {
+					continue
+				}
+				add := false
+				for _, en := range el.Enod {
+					found := false
+					for j := 0; j < i; j++ {
+						if en == tmpselectnode[j] {
+							found = true
+							break
+						}
+					}
+					if found {
+						add = true
+						break
+					}
+				}
+				if add {
+					tmpselectelem[k] = el
+					k++
+				}
+			}
+		}
+		return tmpselectelem[:k], true
+	}
+}
