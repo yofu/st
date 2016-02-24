@@ -52,6 +52,7 @@ var (
 		"D": st.Dists,
 		"Q": st.MatchProperty,
 		"J": st.JoinLineElem,
+		"E": st.Erase,
 	}
 )
 

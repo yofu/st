@@ -144,3 +144,42 @@ func JoinLineElem(stw Commander) chan bool {
 	}()
 	return quit
 }
+
+func Erase(stw Commander) chan bool {
+	del := func() {
+		DeleteSelected(stw)
+		stw.Deselect()
+		frame := stw.Frame()
+		ns := frame.NodeNoReference()
+		if len(ns) != 0 {
+			for _, n := range ns {
+				frame.DeleteNode(n.Num)
+			}
+		}
+	}
+	if stw.ElemSelected() {
+		del()
+		return nil
+	}
+	quit := make(chan bool)
+	go func() {
+		elch := stw.GetElem()
+		clickch := stw.GetClick()
+	erase:
+		for {
+			select {
+			case el := <-elch:
+				AddSelection(stw, el)
+			case c := <-clickch:
+				if c == ClickRight {
+					del()
+					stw.EndCommand()
+					break erase
+				}
+			case <-quit:
+				break erase
+			}
+		}
+	}()
+	return quit
+}

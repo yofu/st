@@ -245,3 +245,15 @@ func MergeSelectNode(stw Selector, nodes []*Node, isshift bool) {
 	}
 	stw.SelectNode(ns)
 }
+
+func DeleteSelected(stw Selector) {
+	if stw.ElemSelected() {
+		frame := stw.Frame()
+		for _, el := range stw.SelectedElems() {
+			if el != nil && !el.Lock {
+				frame.DeleteElem(el.Num)
+			}
+		}
+	}
+	stw.Deselect()
+}

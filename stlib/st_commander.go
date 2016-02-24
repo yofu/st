@@ -31,6 +31,9 @@ func (cb *CommandBuffer) Executing() bool {
 }
 
 func (cb *CommandBuffer) Execute(q chan bool) {
+	if q == nil {
+		return
+	}
 	cb.on = true
 	cb.quit = q
 	cb.elem = make(chan *Elem)
