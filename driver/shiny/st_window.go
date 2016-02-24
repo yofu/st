@@ -29,6 +29,10 @@ var (
 )
 
 var (
+	altselectnode = true
+)
+
+var (
 	blue0 = color.RGBA{0x00, 0x00, 0x1f, 0xff}
 	red   = color.RGBA{0x7f, 0x00, 0x00, 0x7f}
 
@@ -214,16 +218,31 @@ func (stw *Window) Start() {
 				switch e.Button {
 				case mouse.ButtonLeft:
 					pressed &= ^ButtonLeft
-					els, picked := st.PickElem(stw, startX, startY, endX, endY)
-					if stw.Executing() {
-						for _, el := range els {
-							stw.SendElem(el)
+					if (e.Modifiers&key.ModAlt == 0) == altselectnode {
+						els, picked := st.PickElem(stw, startX, startY, endX, endY)
+						if stw.Executing() {
+							for _, el := range els {
+								stw.SendElem(el)
+							}
+						} else {
+							if !picked {
+								stw.DeselectElem()
+							} else {
+								st.MergeSelectElem(stw, els, e.Modifiers&key.ModShift != 0)
+							}
 						}
 					} else {
-						if !picked {
-							stw.DeselectElem()
+						ns, picked := st.PickNode(stw, startX, startY, endX, endY)
+						if stw.Executing() {
+							for _, n := range ns {
+								stw.SendNode(n)
+							}
 						} else {
-							st.MergeSelectElem(stw, els, e.Modifiers&key.ModShift != 0)
+							if !picked {
+								stw.DeselectNode()
+							} else {
+								st.MergeSelectNode(stw, ns, e.Modifiers&key.ModShift != 0)
+							}
 						}
 					}
 				case mouse.ButtonMiddle:
@@ -389,6 +408,8 @@ func (stw *Window) ExecCommand(command string) {
 		// 	if err != nil {
 		// 		stw.ErrorMessage(err, st.ERROR)
 		// 	}
+	case strings.EqualFold(command, "D"):
+		stw.Execute(st.Dists(stw))
 	case strings.EqualFold(command, "Q"):
 		stw.Execute(st.MatchProperty(stw))
 	}
@@ -484,10 +505,15 @@ func (stw *Window) ToggleFixMove() {
 }
 
 func (stw *Window) ToggleAltSelectNode() {
+	altselectnode = !altselectnode
 }
 
 func (stw *Window) AltSelectNode() bool {
-	return false
+	return altselectnode
+}
+
+func (stw *Window) SetAltSelectNode(a bool) {
+	altselectnode = a
 }
 
 func (stw *Window) SetShowPrintRange(bool) {

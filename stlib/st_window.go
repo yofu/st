@@ -556,3 +556,39 @@ func PickElem(stw Window, x1, y1, x2, y2 int) ([]*Elem, bool) {
 		return tmpselectelem[:k], true
 	}
 }
+
+func PickNode(stw Window, x1, y1, x2, y2 int) ([]*Node, bool) {
+	frame := stw.Frame()
+	if frame == nil {
+		return nil, false
+	}
+	left, right := x1, x2
+	if left > right {
+		left, right = right, left
+	}
+	bottom, top := y1, y2
+	if bottom > top {
+		bottom, top = top, bottom
+	}
+	if (right-left < nodeSelectPixel) && (top-bottom < nodeSelectPixel) {
+		n := frame.PickNode(float64(left), float64(bottom), float64(nodeSelectPixel))
+		if n != nil {
+			return []*Node{n}, true
+		} else {
+			return nil, false
+		}
+	} else {
+		tmpselect := make([]*Node, len(frame.Nodes))
+		i := 0
+		for _, v := range frame.Nodes {
+			if v.IsHidden(frame.Show) {
+				continue
+			}
+			if float64(left) <= v.Pcoord[0] && v.Pcoord[0] <= float64(right) && float64(bottom) <= v.Pcoord[1] && v.Pcoord[1] <= float64(top) {
+				tmpselect[i] = v
+				i++
+			}
+		}
+		return tmpselect[:i], true
+	}
+}

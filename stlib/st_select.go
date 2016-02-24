@@ -21,6 +21,7 @@ type Selector interface {
 
 	ToggleAltSelectNode()
 	AltSelectNode() bool
+	SetAltSelectNode(bool)
 }
 
 func SelectConfed(stw Selector) {
