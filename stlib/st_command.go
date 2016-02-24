@@ -17,6 +17,7 @@ func Dists(stw Commander) chan bool {
 	go func () {
 		var n0 *Node
 		nch := stw.GetNode()
+		clickch := stw.GetClick()
 		as := stw.AltSelectNode()
 		stw.SetAltSelectNode(false)
 	dists:
@@ -35,6 +36,16 @@ func Dists(stw Commander) chan bool {
 					stw.EndCommand()
 					break dists
 				}
+			case c := <-clickch:
+				if c == ClickRight {
+					stw.SetAltSelectNode(as)
+					stw.Deselect()
+					stw.EndCommand()
+					break dists
+				}
+			case <-quit:
+				stw.SetAltSelectNode(as)
+				break dists
 			}
 		}
 	}()
@@ -47,6 +58,7 @@ func MatchProperty(stw Commander) chan bool {
 		var sect *Sect
 		var etype int
 		elch := stw.GetElem()
+		clickch := stw.GetClick()
 		if !stw.ElemSelected() {
 		matchproperty_get:
 			for {
@@ -56,6 +68,14 @@ func MatchProperty(stw Commander) chan bool {
 					sect = el.Sect
 					etype = el.Etype
 					break matchproperty_get
+				case c := <-clickch:
+					if c == ClickRight {
+						stw.Deselect()
+						stw.EndCommand()
+						return
+					}
+				case <-quit:
+					return
 				}
 			}
 		} else {
@@ -69,6 +89,12 @@ func MatchProperty(stw Commander) chan bool {
 			case el := <-elch:
 				el.Sect = sect
 				el.Etype = etype
+			case c := <-clickch:
+				if c == ClickRight {
+					stw.Deselect()
+					stw.EndCommand()
+					break matchproperty_paste
+				}
 			case <-quit:
 				break matchproperty_paste
 			}
@@ -111,6 +137,8 @@ func JoinLineElem(stw Commander) chan bool {
 						break joinlineelem
 					}
 				}
+			case <-quit:
+				break joinlineelem
 			}
 		}
 	}()
