@@ -3,6 +3,7 @@ package stshiny
 import (
 	"fmt"
 	"github.com/golang/freetype/truetype"
+	"github.com/yofu/abbrev"
 	"github.com/yofu/st/stlib"
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/image/font"
@@ -20,12 +21,12 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
 var (
-	completepos int
-	completes   []string
+	prevkey key.Code
 )
 
 var (
@@ -69,6 +70,7 @@ type Window struct {
 	*st.TagFrame
 	*st.Selection
 	*st.CommandBuffer
+	*st.CommandLine
 	frame        *st.Frame
 	screen       screen.Screen
 	window       screen.Window
@@ -78,7 +80,6 @@ type Window struct {
 	fontFace     font.Face
 	fontHeight   fixed.Int26_6
 	fontColor    color.RGBA
-	cline        string
 	changed      bool
 	lastexcommand string
 	lastcommand  func(st.Commander) chan bool
@@ -93,6 +94,7 @@ func NewWindow(s screen.Screen) *Window {
 		TagFrame:      st.NewTagFrame(),
 		Selection:     st.NewSelection(),
 		CommandBuffer: st.NewCommandBuffer(),
+		CommandLine:   st.NewCommandLine(),
 		frame:         st.NewFrame(),
 		screen:        s,
 		window:        nil,
@@ -102,7 +104,6 @@ func NewWindow(s screen.Screen) *Window {
 		fontFace:      basicfont.Face7x13,
 		fontHeight:    13,
 		fontColor:     color.RGBA{0xff, 0xff, 0xff, 0xff},
-		cline:         "",
 		changed:       false,
 		lastexcommand:  "",
 		lastcommand:   nil,
@@ -158,10 +159,18 @@ func (stw *Window) Start() {
 				kc := keymap(e)
 				switch kc.Code {
 				default:
-					stw.cline = fmt.Sprintf("%s%s", stw.cline, string(kc.Rune))
+					stw.TypeCommandLine(string(kc.Rune))
 				case key.CodeDeleteBackspace:
-					if len(stw.cline) >= 1 {
-						stw.cline = stw.cline[:len(stw.cline)-1]
+					stw.BackspaceCommandLine()
+				case key.CodeTab:
+					if prevkey == key.CodeTab {
+						if e.Modifiers&key.ModShift != 0 {
+							stw.PrevComplete()
+						} else {
+							stw.NextComplete()
+						}
+					} else {
+						stw.Complete()
 					}
 				case key.CodeLeftShift:
 				case key.CodeLeftAlt:
@@ -169,13 +178,14 @@ func (stw *Window) Start() {
 					stw.FeedCommand()
 				case key.CodeEscape:
 					stw.EndCommand()
-					stw.cline = ""
+					stw.ClearCommandLine()
 					stw.Deselect()
 					stw.Redraw()
 					stw.window.Publish()
 				}
-				stw.Typewrite(25, 700, stw.cline)
+				stw.Typewrite(25, 700, stw.CommandLineString())
 			}
+			prevkey = e.Code
 		case mouse.Event:
 			if e.Button == 4 || e.Button == 5 {
 				e.Direction = mouse.DirNone
@@ -262,7 +272,7 @@ func (stw *Window) Start() {
 					if stw.Executing() {
 						stw.SendClick(st.ClickRight)
 					} else {
-						if stw.cline != "" {
+						if stw.CommandLineString() != "" {
 							stw.FeedCommand()
 						} else if stw.lastcommand != nil {
 							stw.Execute(stw.lastcommand(stw))
@@ -386,9 +396,9 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 }
 
 func (stw *Window) FeedCommand() {
-	command := stw.cline
+	command := stw.CommandLineString()
 	if command != "" {
-		stw.cline = ""
+		stw.ClearCommandLine()
 		stw.ExecCommand(command)
 		stw.Redraw()
 	}
@@ -440,16 +450,6 @@ func (stw *Window) SetLastExCommand(command string) {
 
 func (stw *Window) History(str string) {
 	fmt.Println(str)
-}
-
-func (stw *Window) CompleteFileName(str string) string {
-	path := ""
-	if stw.frame != nil {
-		path = stw.frame.Path
-	}
-	completes = st.CompleteFileName(str, path, stw.Recent())
-	completepos = 0
-	return completes[0]
 }
 
 func (stw *Window) Print() {
@@ -580,4 +580,45 @@ func (stw *Window) SetColorMode(uint) {
 }
 
 func (stw *Window) SetConf([]bool) {
+}
+
+func (stw *Window) Complete() string {
+	var rtn []string
+	str := stw.PopLastWord()
+	switch {
+	case strings.HasPrefix(str, ":"):
+		i := 0
+		rtn = make([]string, len(st.ExAbbrev))
+		for ab := range st.ExAbbrev {
+			pat := abbrev.MustCompile(ab)
+			l := fmt.Sprintf(":%s", pat.Longest())
+			if strings.HasPrefix(l, str) {
+				rtn[i] = l
+				i++
+			}
+		}
+		rtn = rtn[:i]
+		sort.Strings(rtn)
+	case strings.HasPrefix(str, "'"):
+		i := 0
+		rtn = make([]string, len(st.Fig2Abbrev))
+		for ab := range st.Fig2Abbrev {
+			pat := abbrev.MustCompile(ab)
+			l := fmt.Sprintf("'%s", pat.Longest())
+			if strings.HasPrefix(l, str) {
+				rtn[i] = l
+				i++
+			}
+		}
+		rtn = rtn[:i]
+		sort.Strings(rtn)
+	default:
+		rtn = st.CompleteFileName(str, stw.frame.Path, stw.Recent())
+	}
+	if len(rtn) == 0 {
+		return str
+	} else {
+		stw.StartCompletion(rtn)
+		return rtn[0]
+	}
 }
