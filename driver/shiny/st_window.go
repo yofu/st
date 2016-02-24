@@ -55,6 +55,7 @@ type Window struct {
 	*st.UndoStack
 	*st.TagFrame
 	*st.Selection
+	*st.CommandBuffer
 	frame        *st.Frame
 	screen       screen.Screen
 	window       screen.Window
@@ -67,30 +68,29 @@ type Window struct {
 	cline        string
 	changed      bool
 	lastexcommand string
-	elemch       chan *st.Elem
-	commandch    chan bool
 }
 
 func NewWindow(s screen.Screen) *Window {
 	return &Window{
-		DrawOption:   st.NewDrawOption(),
-		Directory:    st.NewDirectory("", ""),
-		RecentFiles:  st.NewRecentFiles(3),
-		UndoStack:    st.NewUndoStack(10),
-		TagFrame:     st.NewTagFrame(),
-		Selection:    st.NewSelection(),
-		frame:        st.NewFrame(),
-		screen:       s,
-		window:       nil,
-		buffer:       nil,
-		currentPen:   color.RGBA{0xff, 0xff, 0xff, 0xff},
-		currentBrush: color.RGBA{0xff, 0xff, 0xff, 0x77},
-		fontFace:     basicfont.Face7x13,
-		fontHeight:   13,
-		fontColor:    color.RGBA{0xff, 0xff, 0xff, 0xff},
-		cline:        "",
-		changed:      false,
-		lastexcommand: "",
+		DrawOption:    st.NewDrawOption(),
+		Directory:     st.NewDirectory("", ""),
+		RecentFiles:   st.NewRecentFiles(3),
+		UndoStack:     st.NewUndoStack(10),
+		TagFrame:      st.NewTagFrame(),
+		Selection:     st.NewSelection(),
+		CommandBuffer: st.NewCommandBuffer(),
+		frame:         st.NewFrame(),
+		screen:        s,
+		window:        nil,
+		buffer:        nil,
+		currentPen:    color.RGBA{0xff, 0xff, 0xff, 0xff},
+		currentBrush:  color.RGBA{0xff, 0xff, 0xff, 0x77},
+		fontFace:      basicfont.Face7x13,
+		fontHeight:    13,
+		fontColor:     color.RGBA{0xff, 0xff, 0xff, 0xff},
+		cline:         "",
+		changed:       false,
+		lastexcommand:  "",
 	}
 }
 
@@ -241,9 +241,9 @@ func (stw *Window) Start() {
 				case mouse.ButtonLeft:
 					pressed &= ^ButtonLeft
 					els, picked := st.PickElem(stw, startX, startY, endX, endY)
-					if stw.elemch != nil {
+					if stw.Executing() {
 						for _, el := range els {
-							stw.elemch <- el
+							stw.SendElem(el)
 						}
 					} else {
 						if !picked {
@@ -386,7 +386,7 @@ func (stw *Window) ExecCommand(command string) {
 		// 		stw.ErrorMessage(err, st.ERROR)
 		// 	}
 	case strings.EqualFold(command, "Q"):
-		stw.commandch = st.MatchProperty(stw)
+		stw.Execute(st.MatchProperty(stw))
 	}
 }
 
@@ -535,17 +535,4 @@ func (stw *Window) SetColorMode(uint) {
 }
 
 func (stw *Window) SetConf([]bool) {
-}
-
-func (stw *Window) GetElem() chan *st.Elem {
-	stw.elemch = make(chan *st.Elem)
-	return stw.elemch
-}
-
-func (stw *Window) EndCommand() {
-	if stw.commandch != nil {
-		stw.commandch <- true
-		stw.commandch = nil
-		stw.elemch = nil
-	}
 }
