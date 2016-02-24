@@ -200,37 +200,11 @@ func (stw *Window) Start() {
 						}
 					}
 				case mouse.ButtonWheelUp, 4:
-					val := math.Pow(2.0, 1.0/stw.CanvasScaleSpeed())
-					stw.frame.View.Center[0] += (val - 1.0) * (stw.frame.View.Center[0] - float64(e.X))
-					stw.frame.View.Center[1] += (val - 1.0) * (stw.frame.View.Center[1] - float64(e.Y))
-					if stw.frame.View.Perspective {
-						stw.frame.View.Dists[1] *= val
-						if stw.frame.View.Dists[1] < 0.0 {
-							stw.frame.View.Dists[1] = 0.0
-						}
-					} else {
-						stw.frame.View.Gfact *= val
-						if stw.frame.View.Gfact < 0.0 {
-							stw.frame.View.Gfact = 0.0
-						}
-					}
+					stw.ZoomIn(float64(e.X), float64(e.Y))
 					stw.Redraw()
 					stw.window.Publish()
 				case mouse.ButtonWheelDown, 5:
-					val := math.Pow(2.0, -1.0/stw.CanvasScaleSpeed())
-					stw.frame.View.Center[0] += (val - 1.0) * (stw.frame.View.Center[0] - float64(e.X))
-					stw.frame.View.Center[1] += (val - 1.0) * (stw.frame.View.Center[1] - float64(e.Y))
-					if stw.frame.View.Perspective {
-						stw.frame.View.Dists[1] *= val
-						if stw.frame.View.Dists[1] < 0.0 {
-							stw.frame.View.Dists[1] = 0.0
-						}
-					} else {
-						stw.frame.View.Gfact *= val
-						if stw.frame.View.Gfact < 0.0 {
-							stw.frame.View.Gfact = 0.0
-						}
-					}
+					stw.ZoomOut(float64(e.X), float64(e.Y))
 					stw.Redraw()
 					stw.window.Publish()
 				}
@@ -268,6 +242,31 @@ func (stw *Window) Start() {
 			sz = e
 		case error:
 			log.Print(e)
+		}
+	}
+}
+
+func (stw *Window) ZoomIn(x, y float64) {
+	stw.Zoom(1.0, x, y)
+}
+
+func (stw *Window) ZoomOut(x, y float64) {
+	stw.Zoom(-1.0, x, y)
+}
+
+func (stw *Window) Zoom(factor float64, x, y float64) {
+	val := math.Pow(2.0, factor/stw.CanvasScaleSpeed())
+	stw.frame.View.Center[0] += (val - 1.0) * (stw.frame.View.Center[0] - x)
+	stw.frame.View.Center[1] += (val - 1.0) * (stw.frame.View.Center[1] - y)
+	if stw.frame.View.Perspective {
+		stw.frame.View.Dists[1] *= val
+		if stw.frame.View.Dists[1] < 0.0 {
+			stw.frame.View.Dists[1] = 0.0
+		}
+	} else {
+		stw.frame.View.Gfact *= val
+		if stw.frame.View.Gfact < 0.0 {
+			stw.frame.View.Gfact = 0.0
 		}
 	}
 }
