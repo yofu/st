@@ -8,6 +8,7 @@ type Commander interface {
 	Selector
 	GetElem() chan *Elem
 	GetNode() chan *Node
+	GetClick() chan Click
 	EndCommand()
 }
 
@@ -70,6 +71,46 @@ func MatchProperty(stw Commander) chan bool {
 				el.Etype = etype
 			case <-quit:
 				break matchproperty_paste
+			}
+		}
+	}()
+	return quit
+}
+
+func JoinLineElem(stw Commander) chan bool {
+	quit := make(chan bool)
+	go func() {
+		elch := stw.GetElem()
+		clickch := stw.GetClick()
+	joinlineelem:
+		for {
+			select {
+			case el := <-elch:
+				AddSelection(stw, el)
+			case c := <-clickch:
+				if c == ClickRight {
+					els := make([]*Elem, 2)
+					num := 0
+					for _, el := range stw.SelectedElems() {
+						if el != nil && el.IsLineElem() {
+							els[num] = el
+							num++
+							if num >= 2 {
+								break
+							}
+						}
+					}
+					if num == 2 {
+						frame := stw.Frame()
+						err := frame.JoinLineElem(els[0], els[1], true, true)
+						if err != nil {
+							ErrorMessage(stw, err, ERROR)
+						}
+						stw.Deselect()
+						stw.EndCommand()
+						break joinlineelem
+					}
+				}
 			}
 		}
 	}()

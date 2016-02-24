@@ -51,6 +51,7 @@ var (
 	Commands = map[string] func(st.Commander) chan bool {
 		"D": st.Dists,
 		"Q": st.MatchProperty,
+		"J": st.JoinLineElem,
 	}
 )
 
@@ -257,13 +258,14 @@ func (stw *Window) Start() {
 				case mouse.ButtonMiddle:
 					pressed &= ^ButtonMiddle
 				case mouse.ButtonRight:
-					if stw.cline != "" {
-						stw.FeedCommand()
-					} else if stw.Executing() {
-						stw.EndCommand()
-						stw.Deselect()
-					} else if stw.lastcommand != nil {
-						stw.Execute(stw.lastcommand(stw))
+					if stw.Executing() {
+						stw.SendClick(st.ClickRight)
+					} else {
+						if stw.cline != "" {
+							stw.FeedCommand()
+						} else if stw.lastcommand != nil {
+							stw.Execute(stw.lastcommand(stw))
+						}
 					}
 				}
 				stw.Redraw()
