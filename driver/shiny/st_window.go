@@ -47,6 +47,13 @@ var (
 	commandtexture screen.Texture
 )
 
+var (
+	Commands = map[string] func(st.Commander) chan bool {
+		"D": st.Dists,
+		"Q": st.MatchProperty,
+	}
+)
+
 const (
 	ButtonLeft = 1 << iota
 	ButtonMiddle
@@ -401,7 +408,12 @@ func (stw *Window) ExecCommand(command string) {
 	}
 	switch {
 	default:
-		stw.History(fmt.Sprintf("command doesn't exist: %s", command))
+		if c, ok := Commands[strings.ToUpper(command)]; ok {
+			stw.lastcommand = c
+			stw.Execute(c(stw))
+		} else {
+			stw.History(fmt.Sprintf("command doesn't exist: %s", command))
+		}
 	case strings.HasPrefix(command, ":"):
 		err := st.ExMode(stw, command)
 		if err != nil {
@@ -412,12 +424,6 @@ func (stw *Window) ExecCommand(command string) {
 		// 	if err != nil {
 		// 		stw.ErrorMessage(err, st.ERROR)
 		// 	}
-	case strings.EqualFold(command, "D"):
-		stw.lastcommand = st.Dists
-		stw.Execute(st.Dists(stw))
-	case strings.EqualFold(command, "Q"):
-		stw.lastcommand = st.MatchProperty
-		stw.Execute(st.MatchProperty(stw))
 	}
 }
 
