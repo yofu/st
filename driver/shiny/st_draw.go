@@ -407,7 +407,7 @@ func (stw *Window) Text(x, y float64, str string) {
 	}
 	d := &font.Drawer{
 		Dst: stw.buffer.RGBA(),
-		Src: image.NewUniform(stw.currentPen),
+		Src: image.NewUniform(stw.fontColor),
 		Face: stw.fontFace,
 		Dot: fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
 	}
@@ -423,6 +423,7 @@ func (stw *Window) Foreground(fg int) {
 	col := st.IntColorList(fg)
 	stw.currentPen = color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), 0xff}
 	stw.currentBrush = color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), PLATE_OPACITY}
+	stw.fontColor = color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), 0xff}
 }
 
 func (stw *Window) LineStyle(int) {
@@ -439,6 +440,9 @@ func (stw *Window) SectionAlias(int) (string, bool) {
 }
 
 func (stw *Window) DefaultStyle() {
+	stw.currentPen = color.RGBA{0xff, 0xff, 0xff, 0xff}
+	stw.currentBrush = color.RGBA{0xff, 0xff, 0xff, 0x77}
+	stw.fontColor = color.RGBA{0xff, 0xff, 0xff, 0xff}
 	PLATE_OPACITY = 0x77
 }
 
@@ -452,6 +456,7 @@ func (stw *Window) ConfStyle(*st.Show) {
 }
 
 func (stw *Window) SelectNodeStyle() {
+	stw.fontColor = color.RGBA{0xff, 0x00, 0x00, 0xff}
 }
 
 func (stw *Window) SelectElemStyle() {

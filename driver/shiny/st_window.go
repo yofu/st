@@ -63,6 +63,7 @@ type Window struct {
 	currentBrush color.RGBA
 	fontFace     font.Face
 	fontHeight   fixed.Int26_6
+	fontColor    color.RGBA
 	cline        string
 	changed      bool
 	lastexcommand string
@@ -84,6 +85,7 @@ func NewWindow(s screen.Screen) *Window {
 		currentBrush: color.RGBA{0xff, 0xff, 0xff, 0x77},
 		fontFace:     basicfont.Face7x13,
 		fontHeight:   13,
+		fontColor:    color.RGBA{0xff, 0xff, 0xff, 0xff},
 		cline:        "",
 		changed:      false,
 		lastexcommand: "",
@@ -311,7 +313,7 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 	commandbuffer = b
 	d := &font.Drawer{
 		Dst: commandbuffer.RGBA(),
-		Src: image.NewUniform(color.RGBA{0xff, 0xff, 0xff, 0xff}),
+		Src: image.NewUniform(stw.fontColor),
 		Face: stw.fontFace,
 		Dot: fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
 	}
