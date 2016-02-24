@@ -72,6 +72,7 @@ type Window struct {
 	cline        string
 	changed      bool
 	lastexcommand string
+	lastcommand  func(st.Commander) chan bool
 }
 
 func NewWindow(s screen.Screen) *Window {
@@ -95,6 +96,7 @@ func NewWindow(s screen.Screen) *Window {
 		cline:         "",
 		changed:       false,
 		lastexcommand:  "",
+		lastcommand:   nil,
 	}
 }
 
@@ -250,9 +252,11 @@ func (stw *Window) Start() {
 				case mouse.ButtonRight:
 					if stw.cline != "" {
 						stw.FeedCommand()
-					} else {
+					} else if stw.Executing() {
 						stw.EndCommand()
 						stw.Deselect()
+					} else if stw.lastcommand != nil {
+						stw.Execute(stw.lastcommand(stw))
 					}
 				}
 				stw.Redraw()
@@ -409,8 +413,10 @@ func (stw *Window) ExecCommand(command string) {
 		// 		stw.ErrorMessage(err, st.ERROR)
 		// 	}
 	case strings.EqualFold(command, "D"):
+		stw.lastcommand = st.Dists
 		stw.Execute(st.Dists(stw))
 	case strings.EqualFold(command, "Q"):
+		stw.lastcommand = st.MatchProperty
 		stw.Execute(st.MatchProperty(stw))
 	}
 }
