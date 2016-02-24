@@ -229,7 +229,12 @@ func (stw *Window) Start() {
 				case mouse.ButtonMiddle:
 					pressed &= ^ButtonMiddle
 				case mouse.ButtonRight:
-					stw.EndCommand()
+					if stw.cline != "" {
+						stw.FeedCommand()
+					} else {
+						stw.EndCommand()
+						stw.Deselect()
+					}
 				}
 				stw.Redraw()
 				stw.window.Publish()
