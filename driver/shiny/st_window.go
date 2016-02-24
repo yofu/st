@@ -2,6 +2,7 @@ package stshiny
 
 import (
 	"fmt"
+	"github.com/golang/freetype/truetype"
 	"github.com/yofu/st/stlib"
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/image/font"
@@ -14,9 +15,11 @@ import (
 	"golang.org/x/mobile/event/size"
 	"image"
 	"image/color"
+	"io/ioutil"
 	"log"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -114,6 +117,10 @@ func (stw *Window) Start() {
 	}
 	stw.window = w
 	defer stw.window.Release()
+	err = stw.LoadFontFace(filepath.Join(os.Getenv("HOME"), ".fonts/ipam.ttf"), 14)
+	if err != nil {
+		log.Fatal(err)
+	}
 	stw.ReadRecent()
 	st.ShowRecent(stw)
 	stw.frame.View.Center[0] = 512
@@ -270,6 +277,23 @@ func (stw *Window) Redraw() {
 	stw.buffer = b
 	st.DrawFrame(stw, stw.frame, st.ECOLOR_SECT, true)
 	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
+}
+
+func (stw *Window) LoadFontFace(path string, point float64) error {
+	f, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	ttf, err := truetype.Parse(f)
+	if err != nil {
+		return err
+	}
+	stw.fontFace = truetype.NewFace(ttf, &truetype.Options{
+		Size: point,
+		Hinting: font.HintingFull,
+	})
+	stw.fontHeight = fixed.Int26_6(int(point * 3) >> 2) // * 72/96
+	return nil
 }
 
 func (stw *Window) Typewrite(x, y float64, str string) {
