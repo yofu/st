@@ -67,6 +67,8 @@ type Window struct {
 	cline        string
 	changed      bool
 	lastexcommand string
+	elemch       chan *st.Elem
+	commandch    chan bool
 }
 
 func NewWindow(s screen.Screen) *Window {
@@ -151,6 +153,7 @@ func (stw *Window) Start() {
 				case key.CodeReturnEnter:
 					stw.FeedCommand()
 				case key.CodeEscape:
+					stw.EndCommand()
 					stw.cline = ""
 					stw.Deselect()
 					stw.Redraw()
@@ -238,13 +241,21 @@ func (stw *Window) Start() {
 				case mouse.ButtonLeft:
 					pressed &= ^ButtonLeft
 					els, picked := st.PickElem(stw, startX, startY, endX, endY)
-					if !picked {
-						stw.DeselectElem()
+					if stw.elemch != nil {
+						for _, el := range els {
+							stw.elemch <- el
+						}
 					} else {
-						st.MergeSelectElem(stw, els, e.Modifiers&key.ModShift != 0)
+						if !picked {
+							stw.DeselectElem()
+						} else {
+							st.MergeSelectElem(stw, els, e.Modifiers&key.ModShift != 0)
+						}
 					}
 				case mouse.ButtonMiddle:
 					pressed &= ^ButtonMiddle
+				case mouse.ButtonRight:
+					stw.EndCommand()
 				}
 				stw.Redraw()
 				stw.window.Publish()
@@ -374,6 +385,8 @@ func (stw *Window) ExecCommand(command string) {
 		// 	if err != nil {
 		// 		stw.ErrorMessage(err, st.ERROR)
 		// 	}
+	case strings.EqualFold(command, "Q"):
+		stw.commandch = st.MatchProperty(stw)
 	}
 }
 
@@ -522,4 +535,17 @@ func (stw *Window) SetColorMode(uint) {
 }
 
 func (stw *Window) SetConf([]bool) {
+}
+
+func (stw *Window) GetElem() chan *st.Elem {
+	stw.elemch = make(chan *st.Elem)
+	return stw.elemch
+}
+
+func (stw *Window) EndCommand() {
+	if stw.commandch != nil {
+		stw.commandch <- true
+		stw.commandch = nil
+		stw.elemch = nil
+	}
 }
