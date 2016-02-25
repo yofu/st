@@ -128,6 +128,8 @@ func Erase(stw Commander) chan bool {
 	}
 	if stw.ElemSelected() {
 		del()
+		Snapshot(stw)
+		stw.EndCommand()
 		return nil
 	}
 	quit := make(chan bool)
@@ -142,6 +144,7 @@ func Erase(stw Commander) chan bool {
 			case c := <-clickch:
 				if c.Button == ButtonRight {
 					del()
+					Snapshot(stw)
 					stw.EndCommand()
 					break erase
 				}

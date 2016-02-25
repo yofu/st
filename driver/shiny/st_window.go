@@ -226,6 +226,26 @@ func (stw *Window) Start() {
 					stw.Deselect()
 					stw.Redraw()
 					stw.window.Publish()
+				case key.CodeLeftControl:
+				case key.CodeRightControl:
+				case key.CodeY:
+					if e.Modifiers&key.ModControl != 0 {
+						f, err := stw.Redo()
+						if err != nil {
+							st.ErrorMessage(stw, err, st.ERROR)
+						} else {
+							stw.frame = f
+						}
+					}
+				case key.CodeZ:
+					if e.Modifiers&key.ModControl != 0 {
+						f, err := stw.Undo()
+						if err != nil {
+							st.ErrorMessage(stw, err, st.ERROR)
+						} else {
+							stw.frame = f
+						}
+					}
 				}
 				stw.Typewrite(25, 700, stw.CommandLineString())
 			}
