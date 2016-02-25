@@ -257,3 +257,33 @@ func DeleteSelected(stw Selector) {
 	}
 	stw.Deselect()
 }
+
+func HideNotSelected(stw Selector) {
+	if stw.ElemSelected() {
+		frame := stw.Frame()
+		for _, n := range frame.Nodes {
+			n.Hide()
+		}
+		for _, el := range frame.Elems {
+			el.Hide()
+		}
+		for _, el := range stw.SelectedElems() {
+			if el != nil {
+				el.Show()
+				for _, en := range el.Enod {
+					en.Show()
+				}
+			}
+		}
+	}
+}
+
+func HideSelected(stw Selector) {
+	if stw.ElemSelected() {
+		for _, el := range stw.SelectedElems() {
+			if el != nil {
+				el.Hide()
+			}
+		}
+	}
+}
