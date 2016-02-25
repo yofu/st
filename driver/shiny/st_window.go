@@ -54,6 +54,7 @@ var (
 		"Q": st.MatchProperty,
 		"J": st.JoinLineElem,
 		"E": st.Erase,
+		"H": st.HatchPlateElem,
 	}
 )
 

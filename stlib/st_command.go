@@ -183,3 +183,51 @@ func Erase(stw Commander) chan bool {
 	}()
 	return quit
 }
+
+func HatchPlateElem(stw Commander) chan bool {
+	quit := make(chan bool)
+	createhatch := func(ns []*Node) error {
+		en := ModifyEnod(ns)
+		en = Upside(en)
+		frame := stw.Frame()
+		sec := frame.DefaultSect()
+		switch len(en) {
+		case 0, 1, 2:
+			return fmt.Errorf("too few nodes")
+		case 3, 4:
+			if len(frame.SearchElem(en...)) != 0 {
+				return fmt.Errorf("elem already exists")
+			}
+			frame.AddPlateElem(-1, en, sec, NONE)
+			return nil
+		default:
+			return fmt.Errorf("too many nodes")
+		}
+	}
+	go func() {
+		clickch := stw.GetClick()
+	hatchplateelem:
+		for {
+			select {
+			case c := <-clickch:
+				if c.Button == ButtonLeft {
+					ns, _, err := stw.Frame().BoundedArea(float64(c.X), float64(c.Y), 100)
+					if err != nil {
+						ErrorMessage(stw, err, ERROR)
+						stw.EndCommand()
+						break hatchplateelem
+					}
+					err = createhatch(ns)
+					if err != nil {
+						ErrorMessage(stw, err, ERROR)
+						stw.EndCommand()
+						break hatchplateelem
+					}
+				}
+			case <-quit:
+				break hatchplateelem
+			}
+		}
+	}()
+	return quit
+}
