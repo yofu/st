@@ -60,13 +60,15 @@ type ExModer interface {
 type Fig2Moder interface {
 	Selector
 
+	// Alias
+	AddSectionAlias(int, string)
+	DeleteSectionAlias(int)
+	ClearSectionAlias()
+
 	LastFig2Command() string
 	SetLastFig2Command(string)
 	ShowCenter()
 	SetColorMode(uint)
 	AxisRange(int, float64, float64, bool)
-	AddSectionAlias(int, string)
-	DeleteSectionAlias(int)
-	ClearSectionAlias()
 	TextBox(string) TextBox
 }
