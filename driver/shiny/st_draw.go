@@ -446,10 +446,6 @@ func (stw *Window) TextAlignment(int) {
 func (stw *Window) TextOrientation(float64) {
 }
 
-func (stw *Window) SectionAlias(int) (string, bool) {
-	return "", false
-}
-
 func (stw *Window) DefaultStyle() {
 	stw.currentPen = color.RGBA{0xff, 0xff, 0xff, 0xff}
 	stw.currentBrush = color.RGBA{0xff, 0xff, 0xff, 0x77}

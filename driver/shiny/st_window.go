@@ -504,10 +504,10 @@ func (stw *Window) ExecCommand(command string) {
 				st.ErrorMessage(stw, err, st.ERROR)
 			}
 		} else if strings.HasPrefix(command, "'") {
-			// err := st.Fig2Mode(stw, stw.frame, command)
-			// if err != nil {
-			// 	stw.ErrorMessage(err, st.ERROR)
-			// }
+			err := st.Fig2Mode(stw, command)
+			if err != nil {
+				st.ErrorMessage(stw, err, st.ERROR)
+			}
 		}
 		return
 	}
@@ -524,11 +524,11 @@ func (stw *Window) ExecCommand(command string) {
 		if err != nil {
 			st.ErrorMessage(stw, err, st.ERROR)
 		}
-		// case strings.HasPrefix(command, "'"):
-		// 	err := st.Fig2Mode(stw, stw.frame, command)
-		// 	if err != nil {
-		// 		stw.ErrorMessage(err, st.ERROR)
-		// 	}
+	case strings.HasPrefix(command, "'"):
+		err := st.Fig2Mode(stw, command)
+		if err != nil {
+			st.ErrorMessage(stw, err, st.ERROR)
+		}
 	}
 }
 
@@ -719,4 +719,36 @@ func (stw *Window) Complete() string {
 		stw.StartCompletion(rtn)
 		return rtn[0]
 	}
+}
+
+func (stw *Window) LastFig2Command() string {
+	return ""
+}
+
+func (stw *Window) SetLastFig2Command(string) {
+}
+
+func (stw *Window) ShowCenter() {
+}
+
+func (stw *Window) EnableLabel(string) {
+}
+
+func (stw *Window) DisableLabel(string) {
+}
+
+func (stw *Window) SetLabel(k, v string) {
+}
+
+func (stw *Window) AddSectionAlias(int, string) {
+}
+
+func (stw *Window) DeleteSectionAlias(int) {
+}
+
+func (stw *Window) ClearSectionAlias() {
+}
+
+func (stw *Window) SectionAlias(int) (string, bool) {
+	return "", false
 }
