@@ -74,6 +74,7 @@ type Window struct {
 	*st.Selection
 	*st.CommandBuffer
 	*st.CommandLine
+	*st.Alias
 	frame         *st.Frame
 	screen        screen.Screen
 	window        screen.Window
@@ -98,6 +99,7 @@ func NewWindow(s screen.Screen) *Window {
 		Selection:     st.NewSelection(),
 		CommandBuffer: st.NewCommandBuffer(),
 		CommandLine:   st.NewCommandLine(),
+		Alias:         st.NewAlias(),
 		frame:         st.NewFrame(),
 		screen:        s,
 		window:        nil,
@@ -738,17 +740,4 @@ func (stw *Window) DisableLabel(string) {
 }
 
 func (stw *Window) SetLabel(k, v string) {
-}
-
-func (stw *Window) AddSectionAlias(int, string) {
-}
-
-func (stw *Window) DeleteSectionAlias(int) {
-}
-
-func (stw *Window) ClearSectionAlias() {
-}
-
-func (stw *Window) SectionAlias(int) (string, bool) {
-	return "", false
 }
