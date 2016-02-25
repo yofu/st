@@ -407,13 +407,13 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		stw.DisableLabel("EAXIS")
 	case "elem":
 		for i, _ := range ETYPES {
-			stw.HideEtype(i)
+			HideEtype(stw, i)
 		}
 		for _, val := range lis[1:] {
 			et := strings.ToUpper(val)
 			for i, e := range ETYPES {
 				if et == e {
-					stw.ShowEtype(i)
+					ShowEtype(stw, i)
 				}
 			}
 		}
@@ -422,7 +422,7 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			et := strings.ToUpper(val)
 			for i, e := range ETYPES {
 				if et == e {
-					stw.ShowEtype(i)
+					ShowEtype(stw, i)
 				}
 			}
 		}
@@ -431,18 +431,18 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			et := strings.ToUpper(val)
 			for i, e := range ETYPES {
 				if et == e {
-					stw.HideEtype(i)
+					HideEtype(stw, i)
 				}
 			}
 		}
 	case "section":
-		stw.HideAllSection()
+		HideAllSection(stw)
 		for _, tmp := range lis[1:] {
 			val, err := strconv.ParseInt(tmp, 10, 64)
 			if err != nil {
 				continue
 			}
-			stw.ShowSection(int(val))
+			ShowSection(stw, int(val))
 		}
 	case "section+":
 		for _, tmp := range lis[1:] {
@@ -450,7 +450,7 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			if err != nil {
 				continue
 			}
-			stw.ShowSection(int(val))
+			ShowSection(stw, int(val))
 		}
 	case "section-":
 		for _, tmp := range lis[1:] {
@@ -458,7 +458,7 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			if err != nil {
 				continue
 			}
-			stw.HideSection(int(val))
+			HideSection(stw, int(val))
 		}
 	case "kijun":
 		if usage {
@@ -607,27 +607,27 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		}
 	case "elemcode":
 		if un {
-			stw.ElemCaptionOff("EC_NUM")
+			ElemCaptionOff(stw, "EC_NUM")
 		} else {
-			stw.ElemCaptionOn("EC_NUM")
+			ElemCaptionOn(stw, "EC_NUM")
 		}
 	case "sectcode":
 		if un {
-			stw.ElemCaptionOff("EC_SECT")
+			ElemCaptionOff(stw, "EC_SECT")
 		} else {
-			stw.ElemCaptionOn("EC_SECT")
+			ElemCaptionOn(stw, "EC_SECT")
 		}
 	case "width":
 		if un {
-			stw.ElemCaptionOff("EC_WIDTH")
+			ElemCaptionOff(stw, "EC_WIDTH")
 		} else {
-			stw.ElemCaptionOn("EC_WIDTH")
+			ElemCaptionOn(stw, "EC_WIDTH")
 		}
 	case "height":
 		if un {
-			stw.ElemCaptionOff("EC_HEIGHT")
+			ElemCaptionOff(stw, "EC_HEIGHT")
 		} else {
-			stw.ElemCaptionOn("EC_HEIGHT")
+			ElemCaptionOn(stw, "EC_HEIGHT")
 		}
 	case "srcancolor":
 		if un {
@@ -673,9 +673,9 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		}
 		names = names[:ind]
 		if un {
-			stw.SrcanRateOff(names...)
+			SrcanRateOff(stw, names...)
 		} else {
-			stw.SrcanRateOn(names...)
+			SrcanRateOn(stw, names...)
 		}
 	case "energy":
 		if un {
@@ -695,7 +695,7 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			if un {
 				for etype := COLUMN; etype <= SLAB; etype++ {
 					for i := 0; i < 6; i++ {
-						stw.StressOff(etype, uint(i))
+						StressOff(stw, etype, uint(i))
 					}
 				}
 				return nil
@@ -766,13 +766,13 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 				} else {
 					for _, snum := range sects {
 						for i := 0; i < 6; i++ {
-							stw.StressOff(snum, uint(i))
+							StressOff(stw, snum, uint(i))
 						}
 					}
 				}
 			} else {
 				for i := 0; i < 6; i++ {
-					stw.StressOff(etype, uint(i))
+					StressOff(stw, etype, uint(i))
 				}
 			}
 			break
@@ -781,7 +781,7 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			return NotEnoughArgs("STRESS")
 		}
 		period := strings.ToUpper(lis[2])
-		stw.SetPeriod(period)
+		SetPeriod(stw, period)
 		index := -1
 		val := strings.ToUpper(lis[3])
 		for i, str := range []string{"N", "QX", "QY", "MZ", "MX", "MY"} {
@@ -796,25 +796,25 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		if un {
 			if sects != nil && len(sects) > 0 {
 				for _, snum := range sects {
-					stw.StressOff(snum, uint(index))
+					StressOff(stw, snum, uint(index))
 				}
 			} else {
-				stw.StressOff(etype, uint(index))
+				StressOff(stw, etype, uint(index))
 			}
 		} else {
 			if sects != nil && len(sects) > 0 {
 				for _, snum := range sects {
-					stw.StressOn(snum, uint(index))
+					StressOn(stw, snum, uint(index))
 				}
 			} else {
-				stw.StressOn(etype, uint(index))
+				StressOn(stw, etype, uint(index))
 			}
 		}
 	case "prestress":
 		if un {
-			stw.ElemCaptionOff("EC_PREST")
+			ElemCaptionOff(stw, "EC_PREST")
 		} else {
-			stw.ElemCaptionOn("EC_PREST")
+			ElemCaptionOn(stw, "EC_PREST")
 		}
 	case "stiff":
 		if usage {
@@ -823,8 +823,8 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		}
 		if len(lis) < 2 {
 			if un {
-				stw.ElemCaptionOff("EC_STIFF_X")
-				stw.ElemCaptionOff("EC_STIFF_Y")
+				ElemCaptionOff(stw, "EC_STIFF_X")
+				ElemCaptionOff(stw, "EC_STIFF_Y")
 				return nil
 			} else {
 				return NotEnoughArgs("stiff")
@@ -835,15 +835,15 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			return errors.New("unknown period")
 		case "X":
 			if un {
-				stw.ElemCaptionOff("EC_STIFF_X")
+				ElemCaptionOff(stw, "EC_STIFF_X")
 			} else {
-				stw.ElemCaptionOn("EC_STIFF_X")
+				ElemCaptionOn(stw, "EC_STIFF_X")
 			}
 		case "Y":
 			if un {
-				stw.ElemCaptionOff("EC_STIFF_Y")
+				ElemCaptionOff(stw, "EC_STIFF_Y")
 			} else {
-				stw.ElemCaptionOn("EC_STIFF_Y")
+				ElemCaptionOn(stw, "EC_STIFF_Y")
 			}
 		}
 	case "drift":
@@ -853,8 +853,8 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		}
 		if len(lis) < 2 {
 			if un {
-				stw.ElemCaptionOff("EC_DRIFT_X")
-				stw.ElemCaptionOff("EC_DRIFT_Y")
+				ElemCaptionOff(stw, "EC_DRIFT_X")
+				ElemCaptionOff(stw, "EC_DRIFT_Y")
 				return nil
 			} else {
 				return NotEnoughArgs("drift")
@@ -865,38 +865,38 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			return errors.New("unknown period")
 		case "X":
 			if un {
-				stw.ElemCaptionOff("EC_DRIFT_X")
+				ElemCaptionOff(stw, "EC_DRIFT_X")
 			} else {
-				stw.ElemCaptionOn("EC_DRIFT_X")
+				ElemCaptionOn(stw, "EC_DRIFT_X")
 			}
 		case "Y":
 			if un {
-				stw.ElemCaptionOff("EC_DRIFT_Y")
+				ElemCaptionOff(stw, "EC_DRIFT_Y")
 			} else {
-				stw.ElemCaptionOn("EC_DRIFT_Y")
+				ElemCaptionOn(stw, "EC_DRIFT_Y")
 			}
 		}
 	case "deformation":
 		if un {
-			stw.DeformationOff()
+			DeformationOff(stw)
 		} else {
 			if len(lis) >= 2 {
-				stw.SetPeriod(strings.ToUpper(lis[1]))
+				SetPeriod(stw, strings.ToUpper(lis[1]))
 			}
-			stw.DeformationOn()
+			DeformationOn(stw)
 		}
 	case "disp":
 		if un {
 			if len(lis) < 2 {
 				for i := 0; i < 6; i++ {
-					stw.DispOff(i)
+					DispOff(stw, i)
 				}
 			} else {
-				stw.SetPeriod(strings.ToUpper(lis[1]))
+				SetPeriod(stw, strings.ToUpper(lis[1]))
 				dir := strings.ToUpper(lis[2])
 				for i, str := range []string{"X", "Y", "Z", "TX", "TY", "TZ"} {
 					if dir == str {
-						stw.DispOff(i)
+						DispOff(stw, i)
 						break
 					}
 				}
@@ -905,11 +905,11 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			if len(lis) < 3 {
 				return NotEnoughArgs("DISP")
 			}
-			stw.SetPeriod(strings.ToUpper(lis[1]))
+			SetPeriod(stw, strings.ToUpper(lis[1]))
 			dir := strings.ToUpper(lis[2])
 			for i, str := range []string{"X", "Y", "Z", "TX", "TY", "TZ"} {
 				if dir == str {
-					stw.DispOn(i)
+					DispOn(stw, i)
 					break
 				}
 			}
@@ -1009,15 +1009,15 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		}
 	case "nodecode":
 		if un {
-			stw.NodeCaptionOff("NC_NUM")
+			NodeCaptionOff(stw, "NC_NUM")
 		} else {
-			stw.NodeCaptionOn("NC_NUM")
+			NodeCaptionOn(stw, "NC_NUM")
 		}
 	case "weight":
 		if un {
-			stw.NodeCaptionOff("NC_WEIGHT")
+			NodeCaptionOff(stw, "NC_WEIGHT")
 		} else {
-			stw.NodeCaptionOn("NC_WEIGHT")
+			NodeCaptionOn(stw, "NC_WEIGHT")
 		}
 	case "conf":
 		if un {
@@ -1037,9 +1037,9 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		}
 	case "pilecode":
 		if un {
-			stw.NodeCaptionOff("NC_PILE")
+			NodeCaptionOff(stw, "NC_PILE")
 		} else {
-			stw.NodeCaptionOn("NC_PILE")
+			NodeCaptionOn(stw, "NC_PILE")
 		}
 	case "fence":
 		if len(lis) < 3 {
@@ -1061,26 +1061,26 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			return err
 		}
 		stw.SelectElem(frame.Fence(axis, val, false))
-		stw.HideNotSelected()
+		HideNotSelected(stw)
 	case "period":
 		if len(lis) < 2 {
 			return NotEnoughArgs("PERIOD")
 		}
-		stw.SetPeriod(strings.ToUpper(lis[1]))
+		SetPeriod(stw, strings.ToUpper(lis[1]))
 	case "period++":
-		stw.IncrementPeriod(1)
+		IncrementPeriod(stw, 1)
 	case "period--":
-		stw.IncrementPeriod(-1)
+		IncrementPeriod(stw, -1)
 	case "nocaption":
 		for _, nc := range NODECAPTIONS {
-			stw.NodeCaptionOff(nc)
+			NodeCaptionOff(stw, nc)
 		}
 		for _, ec := range ELEMCAPTIONS {
-			stw.ElemCaptionOff(ec)
+			ElemCaptionOff(stw, ec)
 		}
 		for etype := range ETYPES[1:] {
 			for i := 0; i < 6; i++ {
-				stw.StressOff(etype, uint(i))
+				StressOff(stw, etype, uint(i))
 			}
 		}
 	case "nolegend":

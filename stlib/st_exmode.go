@@ -3443,7 +3443,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 						end <- 1
 					}
 					stw.CurrentLap("Completed", lap, lap)
-					stw.SetPeriod(per)
+					SetPeriod(stw, per)
 					stw.Redraw()
 					break read001
 				}
