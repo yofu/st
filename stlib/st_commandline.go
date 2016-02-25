@@ -2,6 +2,7 @@ package st
 
 import (
 	"fmt"
+	"github.com/yofu/complete"
 	"strings"
 )
 
@@ -10,19 +11,21 @@ type CommandLine struct {
 	completing bool
 	completes []string
 	completepos int
+	comp *complete.Complete
 }
 
 func NewCommandLine() *CommandLine {
 	return &CommandLine{
-		words: make([]string, 0),
+		words: []string{""},
 		completing: false,
 		completes:  make([]string, 0),
 		completepos: 0,
+		comp: nil,
 	}
 }
 
 func (c *CommandLine) ClearCommandLine() {
-	c.words = make([]string, 0)
+	c.words = []string{""}
 	c.completing = false
 	c.completes = make([]string, 0)
 	c.completepos = 0
@@ -30,22 +33,25 @@ func (c *CommandLine) ClearCommandLine() {
 
 func (c *CommandLine) CommandLineString() string {
 	if c.completing {
-		return strings.Join(append(c.words, c.completes[c.completepos]), " ")
+		return strings.Join(append(c.words[:len(c.words) - 1], c.completes[c.completepos]), " ")
 	} else {
 		return strings.Join(c.words, " ")
 	}
 }
 
-func (c *CommandLine) PopLastWord() string {
+func (c *CommandLine) LastWord() string {
 	if c.completing {
 		c.EndCompletion()
 	}
 	if len(c.words) == 0 {
 		return ""
 	}
-	rtn := c.words[len(c.words) - 1]
-	c.words = c.words[:len(c.words) - 1]
-	return rtn
+	return c.words[len(c.words) - 1]
+}
+
+func (c *CommandLine) SetCommandLineString(s string) {
+	c.ClearCommandLine()
+	c.words = strings.Split(s, " ")
 }
 
 func (c *CommandLine) TypeCommandLine(s string) {
@@ -69,11 +75,15 @@ func (c *CommandLine) BackspaceCommandLine() {
 	}
 	if len(c.words) == 0 {
 		return
-	} else {
-		if c.words[len(c.words) - 1] == "" {
+	}
+	if c.words[len(c.words) - 1] == "" {
+		if len(c.words) > 1 {
 			c.words = c.words[:len(c.words) - 1]
-		} else {
-			c.words[len(c.words) - 1] = c.words[len(c.words) - 1][:len(c.words[len(c.words) - 1]) - 1]
+		}
+	} else {
+		c.words[len(c.words) - 1] = c.words[len(c.words) - 1][:len(c.words[len(c.words) - 1]) - 1]
+		if len(c.words) == 1 && len(c.words[0]) == 0 {
+			c.ClearCommandLine()
 		}
 	}
 }
@@ -99,6 +109,9 @@ func (c *CommandLine) NextComplete() {
 }
 
 func (c *CommandLine) StartCompletion(lis []string) {
+	if len(lis) == 0 {
+		return
+	}
 	c.completepos = 0
 	c.completes = lis
 	c.completing = true
@@ -106,5 +119,24 @@ func (c *CommandLine) StartCompletion(lis []string) {
 
 func (c *CommandLine) EndCompletion() {
 	c.completing = false
-	c.words = append(c.words, c.completes[c.completepos])
+	if c.completes != nil && len(c.completes) > c.completepos {
+		c.words[len(c.words) - 1] = c.completes[c.completepos]
+	}
+}
+
+func (c *CommandLine) SetComplete(comp *complete.Complete) {
+	c.comp = comp
+}
+
+func (c *CommandLine) ContextComplete() ([]string, bool) {
+	str := c.CommandLineString()
+	if c.comp == nil || c.comp.Context(str) == complete.FileName {
+		return nil, false
+	}
+	lis := c.comp.CompleteWord(str)
+	if len(lis) == 0 {
+		return nil, false
+	} else {
+		return lis, true
+	}
 }

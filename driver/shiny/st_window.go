@@ -172,6 +172,47 @@ func (stw *Window) Start() {
 					} else {
 						stw.Complete()
 					}
+				case key.CodeSpacebar:
+					stw.EndCompletion()
+					cl := stw.CommandLineString()
+					if strings.Contains(cl, " ") {
+						stw.TypeCommandLine(" ")
+					} else if strings.HasPrefix(cl, ":") {
+						c, bang, usage, comp := st.ExModeComplete(cl)
+						var b, u string
+						if bang {
+							b = "!"
+						} else {
+							b = ""
+						}
+						if usage {
+							u = "?"
+						} else {
+							u = ""
+						}
+						if comp != nil {
+							str := fmt.Sprintf(":%s%s%s ", c, b, u)
+							stw.SetCommandLineString(str)
+							comp.Chdir(stw.Cwd())
+							stw.SetComplete(comp)
+						}
+					} else if strings.HasPrefix(cl, "'") {
+						c, usage, comp := st.Fig2KeywordComplete(cl)
+						var u string
+						if usage {
+							u = "?"
+						} else {
+							u = ""
+						}
+						if comp != nil {
+							str := fmt.Sprintf("'%s%s ", c, u)
+							stw.SetCommandLineString(str)
+							comp.Chdir(stw.Cwd())
+							stw.SetComplete(comp)
+						}
+					} else {
+						stw.TypeCommandLine(" ")
+					}
 				case key.CodeLeftShift:
 				case key.CodeLeftAlt:
 				case key.CodeReturnEnter:
@@ -584,7 +625,7 @@ func (stw *Window) SetConf([]bool) {
 
 func (stw *Window) Complete() string {
 	var rtn []string
-	str := stw.PopLastWord()
+	str := stw.LastWord()
 	switch {
 	case strings.HasPrefix(str, ":"):
 		i := 0
@@ -613,7 +654,11 @@ func (stw *Window) Complete() string {
 		rtn = rtn[:i]
 		sort.Strings(rtn)
 	default:
-		rtn = st.CompleteFileName(str, stw.frame.Path, stw.Recent())
+		if lis, ok := stw.ContextComplete(); ok {
+			rtn = lis
+		} else {
+			rtn = st.CompleteFileName(str, stw.frame.Path, stw.Recent())
+		}
 	}
 	if len(rtn) == 0 {
 		return str
