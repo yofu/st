@@ -301,17 +301,20 @@ func Trim(stw Commander) chan bool {
 				switch c.Button {
 				case ButtonLeft:
 					el := <-elch
-					if DotLine(el0.Enod[0].Pcoord[0], el0.Enod[0].Pcoord[1], el0.Enod[1].Pcoord[0], el0.Enod[1].Pcoord[1], float64(c.X), float64(c.Y))*DotLine(el0.Enod[0].Pcoord[0], el0.Enod[0].Pcoord[1], el0.Enod[1].Pcoord[0], el0.Enod[1].Pcoord[1], el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1]) < 0.0 {
-						_, _, err = frame.Trim(el0, el, 1, eps)
+					if el == nil {
+						ErrorMessage(stw, fmt.Errorf("no elem"), ERROR)
 					} else {
-						_, _, err = frame.Trim(el0, el, -1, eps)
-					}
-					if err != nil {
-						ErrorMessage(stw, err, ERROR)
-						stw.EndCommand()
-						break trim_click
+						if DotLine(el0.Enod[0].Pcoord[0], el0.Enod[0].Pcoord[1], el0.Enod[1].Pcoord[0], el0.Enod[1].Pcoord[1], float64(c.X), float64(c.Y))*DotLine(el0.Enod[0].Pcoord[0], el0.Enod[0].Pcoord[1], el0.Enod[1].Pcoord[0], el0.Enod[1].Pcoord[1], el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1]) < 0.0 {
+							_, _, err = frame.Trim(el0, el, 1, eps)
+						} else {
+							_, _, err = frame.Trim(el0, el, -1, eps)
+						}
+						if err != nil {
+							ErrorMessage(stw, err, ERROR)
+						}
 					}
 				case ButtonRight:
+					stw.Deselect()
 					stw.EndCommand()
 					break trim_click
 				}
