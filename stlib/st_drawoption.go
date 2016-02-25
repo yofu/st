@@ -104,7 +104,7 @@ func (d *DrawOption) LineStyle(ls int) {
 	case CONTINUOUS:
 		d.SetLineDash([]int{1})
 	case DOTTED:
-		d.SetLineDash([]int{2, 2})
+		d.SetLineDash([]int{3, 3})
 	case DASHED:
 		d.SetLineDash([]int{10, 5})
 	case DASH_DOT:
