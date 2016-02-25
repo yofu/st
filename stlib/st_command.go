@@ -12,7 +12,7 @@ type Commander interface {
 	EndCommand()
 }
 
-func Dists(stw Commander) chan bool {
+func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 	quit := make(chan bool)
 	go func () {
 		var n0 *Node
@@ -20,7 +20,7 @@ func Dists(stw Commander) chan bool {
 		clickch := stw.GetClick()
 		as := stw.AltSelectNode()
 		stw.SetAltSelectNode(false)
-	dists:
+	twonodes:
 		for {
 			select {
 			case n := <-nch:
@@ -28,28 +28,48 @@ func Dists(stw Commander) chan bool {
 					stw.SelectNode([]*Node{n})
 					n0 = n
 				} else {
-					dx, dy, dz, d := stw.Frame().Distance(n0, n)
-					stw.History(fmt.Sprintf("NODE: %d - %d", n0.Num, n.Num))
-					stw.History(fmt.Sprintf("DX: %.3f DY: %.3f DZ: %.3f D: %.3f", dx, dy, dz, d))
+					err := f(n0, n)
+					if err != nil {
+						ErrorMessage(stw, err, ERROR)
+					}
 					stw.SetAltSelectNode(as)
 					stw.DeselectNode()
 					stw.EndCommand()
-					break dists
+					break twonodes
 				}
 			case c := <-clickch:
 				if c.Button == ButtonRight {
 					stw.SetAltSelectNode(as)
 					stw.Deselect()
 					stw.EndCommand()
-					break dists
+					break twonodes
 				}
 			case <-quit:
 				stw.SetAltSelectNode(as)
-				break dists
+				break twonodes
 			}
 		}
 	}()
 	return quit
+}
+
+func Dists(stw Commander) chan bool {
+	return twonodes(stw, func(n0, n *Node) error {
+		dx, dy, dz, d := stw.Frame().Distance(n0, n)
+		stw.History(fmt.Sprintf("NODE: %d - %d", n0.Num, n.Num))
+		stw.History(fmt.Sprintf("DX: %.3f DY: %.3f DZ: %.3f D: %.3f", dx, dy, dz, d))
+		return nil
+	})
+}
+
+func AddLineElem(stw Commander) chan bool {
+	return twonodes(stw, func(n0, n *Node) error {
+		frame := stw.Frame()
+		sec := frame.DefaultSect()
+		el := frame.AddLineElem(-1, []*Node{n0, n}, sec, NONE)
+		stw.History(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, n0.Num, n.Num, sec.Num))
+		return nil
+	})
 }
 
 func MatchProperty(stw Commander) chan bool {
