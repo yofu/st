@@ -210,7 +210,8 @@ func HatchPlateElem(stw Commander) chan bool {
 		for {
 			select {
 			case c := <-clickch:
-				if c.Button == ButtonLeft {
+				switch c.Button {
+				case ButtonLeft:
 					ns, _, err := stw.Frame().BoundedArea(float64(c.X), float64(c.Y), 100)
 					if err != nil {
 						ErrorMessage(stw, err, ERROR)
@@ -223,6 +224,9 @@ func HatchPlateElem(stw Commander) chan bool {
 						stw.EndCommand()
 						break hatchplateelem
 					}
+				case ButtonRight:
+					stw.EndCommand()
+					break hatchplateelem
 				}
 			case <-quit:
 				break hatchplateelem
