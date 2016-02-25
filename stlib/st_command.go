@@ -34,6 +34,7 @@ func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 					}
 					stw.SetAltSelectNode(as)
 					stw.DeselectNode()
+					Snapshot(stw)
 					stw.EndCommand()
 					break twonodes
 				}
@@ -68,6 +69,7 @@ func AddLineElem(stw Commander) chan bool {
 		sec := frame.DefaultSect()
 		el := frame.AddLineElem(-1, []*Node{n0, n}, sec, NONE)
 		stw.History(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, n0.Num, n.Num, sec.Num))
+		Snapshot(stw)
 		return nil
 	})
 }
@@ -100,6 +102,8 @@ func JoinLineElem(stw Commander) chan bool {
 						err := frame.JoinLineElem(els[0], els[1], true, true)
 						if err != nil {
 							ErrorMessage(stw, err, ERROR)
+						} else {
+							Snapshot(stw)
 						}
 						stw.Deselect()
 						stw.EndCommand()
@@ -197,6 +201,7 @@ func HatchPlateElem(stw Commander) chan bool {
 						break hatchplateelem
 					}
 				case ButtonRight:
+					Snapshot(stw)
 					stw.EndCommand()
 					break hatchplateelem
 				}
@@ -257,6 +262,7 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 					}
 				case ButtonRight:
 					stw.Deselect()
+					Snapshot(stw)
 					stw.EndCommand()
 					break trim_click
 				}
