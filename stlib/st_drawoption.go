@@ -8,6 +8,8 @@ type DrawOption struct {
 	scaleSpeed   float64
 	fitScale     float64
 	animateSpeed float64
+	linedash     []int
+	dashlength   int
 }
 
 func NewDrawOption() *DrawOption {
@@ -19,6 +21,8 @@ func NewDrawOption() *DrawOption {
 		scaleSpeed:   15.0,
 		fitScale:     0.9,
 		animateSpeed: 0.02,
+		linedash:     []int{1},
+		dashlength:   1,
 	}
 }
 
@@ -76,4 +80,34 @@ func (d *DrawOption) CanvasAnimateSpeed() float64 {
 
 func (d *DrawOption) SetCanvasAnimateSpeed(val float64) {
 	d.animateSpeed = val
+}
+
+func (d *DrawOption) LineDash() []int {
+	return d.linedash
+}
+
+func (d *DrawOption) SetLineDash(lis []int) {
+	d.linedash = lis
+	sum := 0
+	for _, l := range lis {
+		sum += l
+	}
+	d.dashlength = sum
+}
+
+func (d *DrawOption) LineDashProperty() ([]int, int) {
+	return d.linedash, d.dashlength
+}
+
+func (d *DrawOption) LineStyle(ls int) {
+	switch ls {
+	case CONTINUOUS:
+		d.SetLineDash([]int{1})
+	case DOTTED:
+		d.SetLineDash([]int{2, 2})
+	case DASHED:
+		d.SetLineDash([]int{10, 5})
+	case DASH_DOT:
+		d.SetLineDash([]int{10, 5, 2, 5})
+	}
 }

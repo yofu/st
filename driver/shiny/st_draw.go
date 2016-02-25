@@ -40,8 +40,22 @@ func (stw *Window) Line(x1, y1, x2, y2 float64) {
 	endy := int(y2)
 	var e2 int
 	cvs := stw.buffer.RGBA()
-	for {
-		cvs.SetRGBA(x, y, stw.currentPen)
+	linedash, dashlen := stw.LineDashProperty()
+	ind := 0
+	for i := 0; ; i++ {
+		if i >= dashlen {
+			i = 0
+		}
+		if i == linedash[ind] {
+			i = 0
+			ind++
+			if ind >= len(linedash) {
+				ind = 0
+			}
+		}
+		if ind&1 == 0 {
+			cvs.SetRGBA(x, y, stw.currentPen)
+		}
 		if x == endx && y == endy {
 			break
 		}
@@ -426,9 +440,6 @@ func (stw *Window) Foreground(fg int) {
 	stw.fontColor = color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), 0xff}
 }
 
-func (stw *Window) LineStyle(int) {
-}
-
 func (stw *Window) TextAlignment(int) {
 }
 
@@ -460,6 +471,7 @@ func (stw *Window) SelectNodeStyle() {
 }
 
 func (stw *Window) SelectElemStyle() {
+	stw.LineStyle(st.DOTTED)
 	PLATE_OPACITY = 0xcc
 }
 
