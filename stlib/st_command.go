@@ -72,57 +72,6 @@ func AddLineElem(stw Commander) chan bool {
 	})
 }
 
-func MatchProperty(stw Commander) chan bool {
-	quit := make(chan bool)
-	go func() {
-		var sect *Sect
-		var etype int
-		elch := stw.GetElem()
-		clickch := stw.GetClick()
-		if !stw.ElemSelected() {
-		matchproperty_get:
-			for {
-				select {
-				case el := <-elch:
-					stw.SelectElem([]*Elem{el})
-					sect = el.Sect
-					etype = el.Etype
-					break matchproperty_get
-				case c := <-clickch:
-					if c.Button == ButtonRight {
-						stw.Deselect()
-						stw.EndCommand()
-						return
-					}
-				case <-quit:
-					return
-				}
-			}
-		} else {
-			el := stw.SelectedElems()[0]
-			sect = el.Sect
-			etype = el.Etype
-		}
-	matchproperty_paste:
-		for {
-			select {
-			case el := <-elch:
-				el.Sect = sect
-				el.Etype = etype
-			case c := <-clickch:
-				if c.Button == ButtonRight {
-					stw.Deselect()
-					stw.EndCommand()
-					break matchproperty_paste
-				}
-			case <-quit:
-				break matchproperty_paste
-			}
-		}
-	}()
-	return quit
-}
-
 func JoinLineElem(stw Commander) chan bool {
 	quit := make(chan bool)
 	go func() {
@@ -256,7 +205,7 @@ func HatchPlateElem(stw Commander) chan bool {
 	return quit
 }
 
-func Trim(stw Commander) chan bool {
+func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *Elem)) chan bool {
 	quit := make(chan bool)
 	var el0 *Elem
 	if stw.ElemSelected() {
@@ -275,7 +224,7 @@ func Trim(stw Commander) chan bool {
 			for {
 				select {
 				case el := <-elch:
-					if el.IsLineElem() {
+					if cond(el) {
 						el0 = el
 						break trim_elem
 					}
@@ -291,9 +240,6 @@ func Trim(stw Commander) chan bool {
 			}
 		}
 		AddSelection(stw, el0)
-		frame := stw.Frame()
-		eps := stw.EPS()
-		var err error
 	trim_click:
 		for {
 			select {
@@ -304,14 +250,7 @@ func Trim(stw Commander) chan bool {
 					if el == nil {
 						ErrorMessage(stw, fmt.Errorf("no elem"), ERROR)
 					} else {
-						if DotLine(el0.Enod[0].Pcoord[0], el0.Enod[0].Pcoord[1], el0.Enod[1].Pcoord[0], el0.Enod[1].Pcoord[1], float64(c.X), float64(c.Y))*DotLine(el0.Enod[0].Pcoord[0], el0.Enod[0].Pcoord[1], el0.Enod[1].Pcoord[0], el0.Enod[1].Pcoord[1], el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1]) < 0.0 {
-							_, _, err = frame.Trim(el0, el, 1, eps)
-						} else {
-							_, _, err = frame.Trim(el0, el, -1, eps)
-						}
-						if err != nil {
-							ErrorMessage(stw, err, ERROR)
-						}
+						f(c, el0, el)
 					}
 				case ButtonRight:
 					stw.Deselect()
@@ -324,4 +263,31 @@ func Trim(stw Commander) chan bool {
 		}
 	}()
 	return quit
+}
+
+func MatchProperty(stw Commander) chan bool {
+	return onemultielem(stw, func(el *Elem) bool {
+		return true
+	}, func(c Click, el0 *Elem, el *Elem) {
+		el.Sect = el0.Sect
+		el.Etype = el0.Etype
+	})
+}
+
+func Trim(stw Commander) chan bool {
+	return onemultielem(stw, func(el *Elem) bool {
+		return el.IsLineElem()
+	}, func(c Click, el0 *Elem, el *Elem) {
+		frame := stw.Frame()
+		eps := stw.EPS()
+		var err error
+		if DotLine(el0.Enod[0].Pcoord[0], el0.Enod[0].Pcoord[1], el0.Enod[1].Pcoord[0], el0.Enod[1].Pcoord[1], float64(c.X), float64(c.Y))*DotLine(el0.Enod[0].Pcoord[0], el0.Enod[0].Pcoord[1], el0.Enod[1].Pcoord[0], el0.Enod[1].Pcoord[1], el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1]) < 0.0 {
+			_, _, err = frame.Trim(el0, el, 1, eps)
+		} else {
+			_, _, err = frame.Trim(el0, el, -1, eps)
+		}
+		if err != nil {
+			ErrorMessage(stw, err, ERROR)
+		}
+	})
 }
