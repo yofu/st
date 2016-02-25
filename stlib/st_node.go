@@ -573,6 +573,22 @@ func DeformedDirection(n1, n2 *Node, normalize bool, p string) []float64 {
 }
 
 func ModifyEnod(ns []*Node) []*Node {
+	ns2 := make([]*Node, len(ns))
+	ind := 0
+	for _, n := range ns {
+		add := true
+		for _, n2 := range ns2 {
+			if n == n2 {
+				add = false
+				break
+			}
+		}
+		if add {
+			ns2[ind] = n
+			ind++
+		}
+	}
+	ns = ns2[:ind]
 	l := len(ns)
 	vecs := make([][]float64, l)
 	for i := 0; i < l-1; i++ {
@@ -591,8 +607,16 @@ func ModifyEnod(ns []*Node) []*Node {
 		vecs[i] = tmp
 	}
 	tmp := make([]float64, 3)
+	sum := 0.0
 	for j := 0; j < 3; j++ {
 		tmp[j] = ns[0].Coord[j] - ns[l-1].Coord[j]
+		sum += tmp[j] * tmp[j]
+	}
+	if sum != 0.0 {
+		sum = math.Sqrt(sum)
+		for j := 0; j< 3; j++ {
+			tmp[j] /= sum
+		}
 	}
 	vecs[l-1] = tmp
 	rtn := make([]*Node, l)
