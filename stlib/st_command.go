@@ -255,3 +255,70 @@ func HatchPlateElem(stw Commander) chan bool {
 	}()
 	return quit
 }
+
+func Trim(stw Commander) chan bool {
+	quit := make(chan bool)
+	var el0 *Elem
+	if stw.ElemSelected() {
+		for _, el := range stw.SelectedElems() {
+			if el.IsLineElem() {
+				el0 = el
+				break
+			}
+		}
+	}
+	go func() {
+		elch := stw.GetElem()
+		clickch := stw.GetClick()
+		if el0 == nil {
+		trim_elem:
+			for {
+				select {
+				case el := <-elch:
+					if el.IsLineElem() {
+						el0 = el
+						break trim_elem
+					}
+				case c := <-clickch:
+					if c.Button == ButtonRight {
+						stw.Deselect()
+						stw.EndCommand()
+						return
+					}
+				case <-quit:
+					return
+				}
+			}
+		}
+		AddSelection(stw, el0)
+		frame := stw.Frame()
+		eps := stw.EPS()
+		var err error
+	trim_click:
+		for {
+			select {
+			case c := <-clickch:
+				switch c.Button {
+				case ButtonLeft:
+					el := <-elch
+					if DotLine(el0.Enod[0].Pcoord[0], el0.Enod[0].Pcoord[1], el0.Enod[1].Pcoord[0], el0.Enod[1].Pcoord[1], float64(c.X), float64(c.Y))*DotLine(el0.Enod[0].Pcoord[0], el0.Enod[0].Pcoord[1], el0.Enod[1].Pcoord[0], el0.Enod[1].Pcoord[1], el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1]) < 0.0 {
+						_, _, err = frame.Trim(el0, el, 1, eps)
+					} else {
+						_, _, err = frame.Trim(el0, el, -1, eps)
+					}
+					if err != nil {
+						ErrorMessage(stw, err, ERROR)
+						stw.EndCommand()
+						break trim_click
+					}
+				case ButtonRight:
+					stw.EndCommand()
+					break trim_click
+				}
+			case <-quit:
+				break trim_click
+			}
+		}
+	}()
+	return quit
+}

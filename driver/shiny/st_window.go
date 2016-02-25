@@ -56,6 +56,7 @@ var (
 		"E": st.Erase,
 		"A": st.AddLineElem,
 		"H": st.HatchPlateElem,
+		"Z": st.Trim,
 	}
 )
 
