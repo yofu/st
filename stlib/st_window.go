@@ -46,6 +46,7 @@ type Window interface {
 	Changed(bool)
 	IsChanged() bool
 	Redraw()
+	RedrawNode()
 	EPS() float64
 	SetEPS(float64)
 	Close(bool)
@@ -592,3 +593,114 @@ func PickNode(stw Window, x1, y1, x2, y2 int) ([]*Node, bool) {
 		return tmpselect[:i], true
 	}
 }
+
+func Animate(stw Window, view *View) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	scale := 1.0
+	speed := stw.CanvasAnimateSpeed()
+	if frame.View.Perspective {
+		scale = math.Pow(view.Dists[1]/frame.View.Dists[1], speed)
+	} else {
+		scale = math.Pow(view.Gfact/frame.View.Gfact, speed)
+	}
+	center := make([]float64, 2)
+	angle := make([]float64, 2)
+	focus := make([]float64, 3)
+	for i := 0; i < 3; i++ {
+		focus[i] = speed * (view.Focus[i] - frame.View.Focus[i])
+		if i >= 2 {
+			break
+		}
+		center[i] = speed * (view.Center[i] - frame.View.Center[i])
+		angle[i] = view.Angle[i] - frame.View.Angle[i]
+		if i == 1 {
+			for {
+				if angle[1] <= 180.0 {
+					break
+				}
+				angle[1] -= 360.0
+			}
+			for {
+				if angle[1] >= -180.0 {
+					break
+				}
+				angle[1] += 360.0
+			}
+		}
+		angle[i] *= speed
+	}
+	for i := 0; i < int(1/speed); i++ {
+		if frame.View.Perspective {
+			frame.View.Dists[1] *= scale
+		} else {
+			frame.View.Gfact *= scale
+		}
+		for j := 0; j < 3; j++ {
+			frame.View.Focus[j] += focus[j]
+			if j >= 2 {
+				break
+			}
+			frame.View.Center[j] += center[j]
+			frame.View.Angle[j] += angle[j]
+		}
+		stw.RedrawNode()
+	}
+}
+
+func CanvasCenterView(stw Window, angle []float64) *View {
+	frame := stw.Frame()
+	if frame == nil {
+		return nil
+	}
+	if dw, ok := stw.(Drawer); ok {
+		dir := dw.CanvasDirection()
+		a0 := make([]float64, 2)
+		f0 := make([]float64, 3)
+		focus := make([]float64, 3)
+		for i := 0; i < 3; i++ {
+			f0[i] = frame.View.Focus[i]
+			if i >= 2 {
+				break
+			}
+			a0[i] = frame.View.Angle[i]
+			frame.View.Angle[i] = angle[i]
+		}
+		frame.SetFocus(nil)
+		frame.View.Set(dir)
+		for _, n := range frame.Nodes {
+			frame.View.ProjectNode(n)
+		}
+		xmin, xmax, ymin, ymax := frame.Bbox2D(true)
+		for i := 0; i < 3; i++ {
+			focus[i] = frame.View.Focus[i]
+			frame.View.Focus[i] = f0[i]
+			if i >= 2 {
+				break
+			}
+			frame.View.Angle[i] = a0[i]
+		}
+		frame.View.Set(dir)
+		if xmax == xmin && ymax == ymin {
+			return frame.View
+		}
+		w, h := dw.GetCanvasSize()
+		view := frame.View.Copy()
+		view.Focus = focus
+		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * stw.CanvasFitScale()
+		if frame.View.Perspective {
+			view.Dists[1] = frame.View.Dists[1] * scale
+		} else {
+			view.Gfact = frame.View.Gfact * scale
+		}
+		view.Center[0] = float64(w)*0.5 + scale*(frame.View.Center[0]-0.5*(xmax+xmin))
+		view.Center[1] = float64(h)*0.5 + scale*(frame.View.Center[1]-0.5*(ymax+ymin))
+		view.Angle = angle
+		return view
+	} else {
+		return frame.View
+	}
+}
+

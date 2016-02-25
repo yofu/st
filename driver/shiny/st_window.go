@@ -419,6 +419,23 @@ func (stw *Window) Redraw() {
 	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
 }
 
+func (stw *Window) RedrawNode() {
+	if stw.frame == nil {
+		return
+	}
+	if stw.buffer != nil {
+		stw.buffer.Release()
+	}
+	winSize := image.Point{1024, 1024}
+	b, err := stw.screen.NewBuffer(winSize)
+	if err != nil {
+		log.Fatal(err)
+	}
+	stw.buffer = b
+	st.DrawFrameNode(stw, stw.frame, st.ECOLOR_SECT, true)
+	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
+}
+
 func (stw *Window) LoadFontFace(path string, point float64) error {
 	f, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -631,7 +648,9 @@ func (stw *Window) NextFloor() {
 func (stw *Window) PrevFloor() {
 }
 
-func (stw *Window) SetAngle(float64, float64) {
+func (stw *Window) SetAngle(phi, theta float64) {
+	view := st.CanvasCenterView(stw, []float64{phi, theta})
+	st.Animate(stw, view)
 }
 
 func (stw *Window) SetPaperSize(uint) {
