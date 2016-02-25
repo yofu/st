@@ -528,8 +528,8 @@ func (stw *Window) SaveFileSelected(string) error {
 	return nil
 }
 
-func (stw *Window) SearchFile(string) (string, error) {
-	return "", nil
+func (stw *Window) SearchFile(fn string) (string, error) {
+	return fn, fmt.Errorf("file not found: %s", fn)
 }
 
 func (stw *Window) Close(bang bool) {
