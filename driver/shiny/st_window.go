@@ -137,7 +137,7 @@ func (stw *Window) Start() {
 	}
 	stw.window = w
 	defer stw.window.Release()
-	err = stw.LoadFontFace(filepath.Join(os.Getenv("HOME"), ".st/fonts/NotoSans-Regular.ttf"), 12)
+	err = stw.LoadFontFace(filepath.Join(os.Getenv("HOME"), ".st/fonts/GenShinGothic-Regular.ttf"), 12)
 	if err != nil {
 		log.Fatal(err)
 	}
