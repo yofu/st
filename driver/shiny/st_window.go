@@ -142,7 +142,7 @@ func (stw *Window) Start() {
 	defer stw.window.Release()
 	err = stw.LoadFontFace(filepath.Join(os.Getenv("HOME"), ".st/fonts/GenShinGothic-Regular.ttf"), 12)
 	if err != nil {
-		log.Fatal(err)
+		st.ErrorMessage(stw, err, st.ERROR)
 	}
 	stw.ReadRecent()
 	st.ShowRecent(stw)
