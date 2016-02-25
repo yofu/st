@@ -14,7 +14,7 @@ func (stw *SVGCanvas) Line(x1, y1, x2, y2 float64) {
 func (stw *SVGCanvas) Polyline(coord [][]float64) {
 	xs := make([]int, len(coord))
 	ys := make([]int, len(coord))
-	for i := 0; i< len(coord); i++ {
+	for i := 0; i < len(coord); i++ {
 		xs[i] = int(coord[i][0])
 		ys[i] = int(coord[i][1])
 	}
@@ -26,7 +26,7 @@ func (stw *SVGCanvas) Polyline(coord [][]float64) {
 func (stw *SVGCanvas) Polygon(coord [][]float64) {
 	xs := make([]int, len(coord))
 	ys := make([]int, len(coord))
-	for i := 0; i< len(coord); i++ {
+	for i := 0; i < len(coord); i++ {
 		xs[i] = int(coord[i][0])
 		ys[i] = int(coord[i][1])
 	}
@@ -75,17 +75,17 @@ func (stw *SVGCanvas) TextAlignment(ta int) {
 	switch ta {
 	case SOUTH:
 		stw.currentStyle.Set("alignment-baseline", "central")
-        stw.currentStyle.Set("text-anchor", "middle")
+		stw.currentStyle.Set("text-anchor", "middle")
 	case NORTH:
 		stw.currentStyle.Set("alignment-baseline", "hanging")
-        stw.currentStyle.Set("text-anchor", "middle")
+		stw.currentStyle.Set("text-anchor", "middle")
 	case WEST:
-        stw.currentStyle.Set("text-anchor", "start")
+		stw.currentStyle.Set("text-anchor", "start")
 	case EAST:
-        stw.currentStyle.Set("text-anchor", "end")
+		stw.currentStyle.Set("text-anchor", "end")
 	case CENTER:
 		stw.currentStyle.Set("alignment-baseline", "central")
-        stw.currentStyle.Set("text-anchor", "middle")
+		stw.currentStyle.Set("text-anchor", "middle")
 	}
 }
 
@@ -167,7 +167,7 @@ func (stw *SVGCanvas) CanvasDirection() int {
 
 type SVGCanvas struct {
 	currentCanvas *svg.SVG
-	currentStyle *Style
+	currentStyle  *Style
 }
 
 func PrintSVG(frame *Frame, otp string) error {

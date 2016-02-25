@@ -373,7 +373,6 @@ func (frame *Frame) Bbox2D(hide bool) (xmin, xmax, ymin, ymax float64) {
 	return mins[0], maxs[0], mins[1], maxs[1]
 }
 
-
 // Read
 // ReadInp// {{{
 func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, overwrite bool) error {
@@ -4824,7 +4823,7 @@ func (frame *Frame) BoundedArea(x, y float64, maxdepth int) ([]*Node, []*Elem, e
 	if err := c.Err(); err != nil {
 		return nil, nil, err
 	}
-	return rtnns[:len(rtnns) - 1], rtnels, nil
+	return rtnns[:len(rtnns)-1], rtnels, nil
 }
 
 // Projection// {{{

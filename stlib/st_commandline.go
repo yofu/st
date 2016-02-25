@@ -7,20 +7,20 @@ import (
 )
 
 type CommandLine struct {
-	words []string
-	completing bool
-	completes []string
+	words       []string
+	completing  bool
+	completes   []string
 	completepos int
-	comp *complete.Complete
+	comp        *complete.Complete
 }
 
 func NewCommandLine() *CommandLine {
 	return &CommandLine{
-		words: []string{""},
-		completing: false,
-		completes:  make([]string, 0),
+		words:       []string{""},
+		completing:  false,
+		completes:   make([]string, 0),
 		completepos: 0,
-		comp: nil,
+		comp:        nil,
 	}
 }
 
@@ -33,7 +33,7 @@ func (c *CommandLine) ClearCommandLine() {
 
 func (c *CommandLine) CommandLineString() string {
 	if c.completing {
-		return strings.Join(append(c.words[:len(c.words) - 1], c.completes[c.completepos]), " ")
+		return strings.Join(append(c.words[:len(c.words)-1], c.completes[c.completepos]), " ")
 	} else {
 		return strings.Join(c.words, " ")
 	}
@@ -46,7 +46,7 @@ func (c *CommandLine) LastWord() string {
 	if len(c.words) == 0 {
 		return ""
 	}
-	return c.words[len(c.words) - 1]
+	return c.words[len(c.words)-1]
 }
 
 func (c *CommandLine) SetCommandLineString(s string) {
@@ -64,7 +64,7 @@ func (c *CommandLine) TypeCommandLine(s string) {
 		if s == " " {
 			c.words = append(c.words, "")
 		} else {
-			c.words[len(c.words) - 1] = fmt.Sprintf("%s%s", c.words[len(c.words) - 1], s)
+			c.words[len(c.words)-1] = fmt.Sprintf("%s%s", c.words[len(c.words)-1], s)
 		}
 	}
 }
@@ -76,12 +76,12 @@ func (c *CommandLine) BackspaceCommandLine() {
 	if len(c.words) == 0 {
 		return
 	}
-	if c.words[len(c.words) - 1] == "" {
+	if c.words[len(c.words)-1] == "" {
 		if len(c.words) > 1 {
-			c.words = c.words[:len(c.words) - 1]
+			c.words = c.words[:len(c.words)-1]
 		}
 	} else {
-		c.words[len(c.words) - 1] = c.words[len(c.words) - 1][:len(c.words[len(c.words) - 1]) - 1]
+		c.words[len(c.words)-1] = c.words[len(c.words)-1][:len(c.words[len(c.words)-1])-1]
 		if len(c.words) == 1 && len(c.words[0]) == 0 {
 			c.ClearCommandLine()
 		}
@@ -120,7 +120,7 @@ func (c *CommandLine) StartCompletion(lis []string) {
 func (c *CommandLine) EndCompletion() {
 	c.completing = false
 	if c.completes != nil && len(c.completes) > c.completepos {
-		c.words[len(c.words) - 1] = c.completes[c.completepos]
+		c.words[len(c.words)-1] = c.completes[c.completepos]
 	}
 }
 

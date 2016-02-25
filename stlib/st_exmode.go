@@ -304,13 +304,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				if err != nil {
 					return err
 				}
-				// stw.Redraw()
 			} else {
 				err := OpenFile(stw, fn, readrc)
 				if err != nil {
 					return err
 				}
-				// stw.Redraw()
 			}
 		} else {
 			Reload(stw)
@@ -772,7 +770,6 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			if err != nil {
 				return err
 			}
-			// stw.EscapeAll()
 		}
 	case "propsect":
 		if usage {

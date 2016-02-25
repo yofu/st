@@ -1,28 +1,28 @@
 package st
 
 type Chain struct {
-	frame *Frame
-	current *Node
-	next *Elem
-	condition func(*Chain, *Elem) bool
-	terminate func(*Chain) bool
+	frame      *Frame
+	current    *Node
+	next       *Elem
+	condition  func(*Chain, *Elem) bool
+	terminate  func(*Chain) bool
 	checkerror func(*Chain) error
-	sorter func(*Chain, []*Elem) []*Elem
-	num int
-	err error
+	sorter     func(*Chain, []*Elem) []*Elem
+	num        int
+	err        error
 }
 
 func NewChain(frame *Frame, node *Node, elem *Elem, cond func(*Chain, *Elem) bool, terminate func(*Chain) bool, checkerror func(*Chain) error, sorter func(*Chain, []*Elem) []*Elem) *Chain {
 	return &Chain{
-		frame: frame,
-		current: node,
-		next: elem,
-		condition: cond,
-		terminate: terminate,
+		frame:      frame,
+		current:    node,
+		next:       elem,
+		condition:  cond,
+		terminate:  terminate,
 		checkerror: checkerror,
-		sorter: sorter,
-		num: 0,
-		err: nil,
+		sorter:     sorter,
+		num:        0,
+		err:        nil,
 	}
 }
 

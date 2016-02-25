@@ -18,7 +18,7 @@ type RecentFiles struct {
 
 func NewRecentFiles(size int) *RecentFiles {
 	return &RecentFiles{
-		size: size,
+		size:      size,
 		filenames: make([]string, size),
 	}
 }

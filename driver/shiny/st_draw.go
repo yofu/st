@@ -1,11 +1,11 @@
 package stshiny
 
 import (
-	"image"
-	"image/color"
 	"github.com/yofu/st/stlib"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
+	"image"
+	"image/color"
 	"strings"
 )
 
@@ -78,11 +78,11 @@ func (stw *Window) Polyline([][]float64) {
 func Blend(cvs *image.RGBA, x, y int, src color.RGBA) {
 	dst := cvs.RGBAAt(x, y)
 	sa := int(src.A)
-	da := (int(dst.A) * int(255 - src.A)) >> 8
+	da := (int(dst.A) * int(255-src.A)) >> 8
 	cvs.SetRGBA(x, y, color.RGBA{
-		uint8((int(src.R) * sa + int(dst.R) * da) >> 8),
-		uint8((int(src.G) * sa + int(dst.G) * da) >> 8),
-		uint8((int(src.B) * sa + int(dst.B) * da) >> 8),
+		uint8((int(src.R)*sa + int(dst.R)*da) >> 8),
+		uint8((int(src.G)*sa + int(dst.G)*da) >> 8),
+		uint8((int(src.B)*sa + int(dst.B)*da) >> 8),
 		uint8(sa + da),
 	})
 }
@@ -164,7 +164,7 @@ func (stw *Window) filltriangle(c1, c2, c3 []float64) {
 		if e13 < dx13 {
 			if y13 < endy12 {
 				for {
-					if ((x12 - x1) * dy12 - dx12 * (y13 - y1)) * sx12 >= 0 {
+					if ((x12-x1)*dy12-dx12*(y13-y1))*sx12 >= 0 {
 						break
 					}
 					x12 = x12 + sx12
@@ -184,7 +184,7 @@ func (stw *Window) filltriangle(c1, c2, c3 []float64) {
 				}
 			} else if dy23 > 0 {
 				for {
-					if ((x23 - x2) * dy23 - dx23 * (y13 - y2)) * sx23 >= 0 {
+					if ((x23-x2)*dy23-dx23*(y13-y2))*sx23 >= 0 {
 						break
 					}
 					x23 = x23 + sx23
@@ -319,7 +319,7 @@ func (stw *Window) fillquadrangle(c1, c2, c3, c4 []float64) {
 			var sx, ex int
 			if y14 < endy12 {
 				for {
-					if ((x12 - x1) * dy12 - dx12 * (y14 - y1)) * sx12 >= 0 {
+					if ((x12-x1)*dy12-dx12*(y14-y1))*sx12 >= 0 {
 						break
 					}
 					x12 = x12 + sx12
@@ -327,7 +327,7 @@ func (stw *Window) fillquadrangle(c1, c2, c3, c4 []float64) {
 				sx = x12
 			} else if dy24 > 0 {
 				for {
-					if ((x24 - x2) * dy24 - dx24 * (y14 - y2)) * sx24 >= 0 {
+					if ((x24-x2)*dy24-dx24*(y14-y2))*sx24 >= 0 {
 						break
 					}
 					x24 = x24 + sx24
@@ -336,7 +336,7 @@ func (stw *Window) fillquadrangle(c1, c2, c3, c4 []float64) {
 			}
 			if y14 < endy13 {
 				for {
-					if ((x13 - x1) * dy13 - dx13 * (y14 - y1)) * sx13 >= 0 {
+					if ((x13-x1)*dy13-dx13*(y14-y1))*sx13 >= 0 {
 						break
 					}
 					x13 = x13 + sx13
@@ -344,7 +344,7 @@ func (stw *Window) fillquadrangle(c1, c2, c3, c4 []float64) {
 				ex = x13
 			} else if dy34 > 0 {
 				for {
-					if ((x34 - x3) * dy34 - dx34 * (y14 - y3)) * sx34 >= 0 {
+					if ((x34-x3)*dy34-dx34*(y14-y3))*sx34 >= 0 {
 						break
 					}
 					x34 = x34 + sx34
@@ -374,7 +374,7 @@ func (stw *Window) Polygon(coords [][]float64) {
 	case 4:
 		stw.fillquadrangle(coords[0], coords[1], coords[2], coords[3])
 	default:
-		for i := 0; i< len(coords)-2; i++ {
+		for i := 0; i < len(coords)-2; i++ {
 			stw.filltriangle(coords[0], coords[i+1], coords[i+2])
 		}
 	}
@@ -382,13 +382,13 @@ func (stw *Window) Polygon(coords [][]float64) {
 
 func (stw *Window) Circle(x1, y1, d float64) {
 	cx := 0
-	cy := int(0.5 * float64(d) + 1)
-	dd := - int(d) * int(d) + 4*cy*cy - 4*cy + 2
+	cy := int(0.5*float64(d) + 1)
+	dd := -int(d)*int(d) + 4*cy*cy - 4*cy + 2
 	dx := 4
 	dy := -8*cy + 8
 	x := int(x1)
 	y := int(y1)
-	if (int(d)&1) == 0 {
+	if (int(d) & 1) == 0 {
 		x++
 		y++
 	}
@@ -420,13 +420,13 @@ func (stw *Window) Text(x, y float64, str string) {
 		return
 	}
 	d := &font.Drawer{
-		Dst: stw.buffer.RGBA(),
-		Src: image.NewUniform(stw.fontColor),
+		Dst:  stw.buffer.RGBA(),
+		Src:  image.NewUniform(stw.fontColor),
 		Face: stw.fontFace,
-		Dot: fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
+		Dot:  fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
 	}
 	ss := strings.Split(str, "\n")
-	d.Dot.Y += stw.fontHeight * fixed.Int26_6(len(ss) - 1)
+	d.Dot.Y += stw.fontHeight * fixed.Int26_6(len(ss)-1)
 	for _, s := range ss {
 		d.DrawString(s)
 		d.Dot.Y -= stw.fontHeight
@@ -489,4 +489,3 @@ func (stw *Window) Flush() {
 func (stw *Window) CanvasDirection() int {
 	return 1
 }
-

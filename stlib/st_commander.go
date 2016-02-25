@@ -2,8 +2,8 @@ package st
 
 type Click struct {
 	Button int
-	X int
-	Y int
+	X      int
+	Y      int
 }
 
 const (
@@ -13,31 +13,31 @@ const (
 )
 
 func ClickLeft(x, y int) Click {
-	return Click{ ButtonLeft, x, y }
+	return Click{ButtonLeft, x, y}
 }
 
 func ClickMiddle(x, y int) Click {
-	return Click{ ButtonMiddle, x, y }
+	return Click{ButtonMiddle, x, y}
 }
 
 func ClickRight(x, y int) Click {
-	return Click{ ButtonRight, x, y }
+	return Click{ButtonRight, x, y}
 }
 
 type CommandBuffer struct {
-	on   bool
-	quit chan bool
-	elem chan *Elem
-	node chan *Node
+	on    bool
+	quit  chan bool
+	elem  chan *Elem
+	node  chan *Node
 	click chan Click
 }
 
 func NewCommandBuffer() *CommandBuffer {
 	return &CommandBuffer{
-		on:   false,
-		quit: nil,
-		elem: nil,
-		node: nil,
+		on:    false,
+		quit:  nil,
+		elem:  nil,
+		node:  nil,
 		click: nil,
 	}
 }

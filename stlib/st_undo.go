@@ -5,18 +5,18 @@ import (
 )
 
 type UndoStack struct {
-	size int
+	size     int
 	position int
-	stack []*Frame
-	enabled bool
+	stack    []*Frame
+	enabled  bool
 }
 
 func NewUndoStack(size int) *UndoStack {
 	return &UndoStack{
-		size: size,
+		size:     size,
 		position: 0,
-		stack: make([]*Frame, size),
-		enabled: true,
+		stack:    make([]*Frame, size),
+		enabled:  true,
 	}
 }
 

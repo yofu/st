@@ -110,9 +110,9 @@ type Show struct { // {{{
 	Phinge    bool
 
 	DeformationColor int
-	KijunColor int
-	MeasureColor int
-	CanvasFontColor int
+	KijunColor       int
+	MeasureColor     int
+	CanvasFontColor  int
 
 	Draw     map[int]bool
 	DrawSize float64
@@ -130,17 +130,17 @@ type Show struct { // {{{
 	MomentFigure  bool
 	ShearArrow    bool
 
-	NoLegend bool
+	NoLegend       bool
 	LegendPosition []int
-	LegendSize int
-	LegendLineSep float64
+	LegendSize     int
+	LegendLineSep  float64
 
 	YieldFunction bool
 
-	Mfact           float64
-	Qfact           float64
-	MomentColor     int
-	StressTextColor int
+	Mfact            float64
+	Qfact            float64
+	MomentColor      int
+	StressTextColor  int
 	YieldedTextColor int
 	BrittleTextColor int
 
@@ -178,7 +178,7 @@ func NewShow(frame *Frame) *Show {
 
 	s.NodeCaption = NC_NUM
 	s.ElemCaption = 0
-	s.SrcanRate   = 0
+	s.SrcanRate = 0
 
 	s.GlobalAxis = true
 	s.GlobalAxisSize = 1.0
@@ -281,7 +281,7 @@ func (show *Show) Copy() *Show {
 	s.ColorMode = show.ColorMode
 	s.NodeCaption = show.NodeCaption
 	s.ElemCaption = show.ElemCaption
-	s.SrcanRate   = show.SrcanRate
+	s.SrcanRate = show.SrcanRate
 	s.GlobalAxis = show.GlobalAxis
 	s.GlobalAxisSize = show.GlobalAxisSize
 	s.ElementAxis = show.ElementAxis

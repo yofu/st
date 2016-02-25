@@ -88,7 +88,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 	}
 	if show.ElemCaption&EC_PREST != 0 {
 		if elem.Prestress != 0.0 {
-			ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Prestress * show.Unit[0]))
+			ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Prestress*show.Unit[0]))
 			oncap = true
 		}
 	}
@@ -217,7 +217,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 				if flag&st != 0 {
 					switch i {
 					case 0:
-						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i) * show.Unit[0]))
+						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)*show.Unit[0]))
 					case 1, 2:
 						vali := elem.ReturnStress(show.Period, 0, i) * show.Unit[0]
 						valj := elem.ReturnStress(show.Period, 1, i) * show.Unit[0]
@@ -238,13 +238,13 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 								vec = elem.Weak
 							}
 							if val >= 0.0 {
-								for j:=0; j<3; j++ {
+								for j := 0; j < 3; j++ {
 									qcoord[j] -= show.Qfact * val * vec[j]
 								}
 								pqcoord := elem.Frame.View.ProjectCoord(qcoord)
 								Arrow(stw, pqcoord[0], pqcoord[1], prcoord[0], prcoord[1], arrow, deg10)
 							} else {
-								for j:=0; j<3; j++ {
+								for j := 0; j < 3; j++ {
 									qcoord[j] += show.Qfact * val * vec[j]
 								}
 								pqcoord := elem.Frame.View.ProjectCoord(qcoord)
@@ -252,12 +252,12 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 							}
 						}
 					case 3:
-						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i) * show.Unit[0] * show.Unit[1]))
-						sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i) * show.Unit[0] * show.Unit[1]))
+						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)*show.Unit[0]*show.Unit[1]))
+						sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i)*show.Unit[0]*show.Unit[1]))
 					case 4, 5:
 						if !show.NoMomentValue {
-							sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i) * show.Unit[0] * show.Unit[1]))
-							sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i) * show.Unit[0] * show.Unit[1]))
+							sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)*show.Unit[0]*show.Unit[1]))
+							sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i)*show.Unit[0]*show.Unit[1]))
 						}
 						if show.MomentFigure {
 							mcoord := elem.MomentCoord(show, i)
@@ -397,13 +397,13 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 						rcoord := elem.MidPoint()
 						prcoord := elem.Frame.View.ProjectCoord(rcoord)
 						if val >= 0.0 {
-							for j:=0; j<3; j++ {
+							for j := 0; j < 3; j++ {
 								qcoord[j] -= show.Qfact * val * vec[j]
 							}
 							pqcoord := elem.Frame.View.ProjectCoord(qcoord)
 							Arrow(stw, pqcoord[0], pqcoord[1], prcoord[0], prcoord[1], arrow, deg10)
 						} else {
-							for j:=0; j<3; j++ {
+							for j := 0; j < 3; j++ {
 								qcoord[j] += show.Qfact * val * vec[j]
 							}
 							pqcoord := elem.Frame.View.ProjectCoord(qcoord)
@@ -663,7 +663,7 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 	}
 	if show.NodeCaption&NC_WEIGHT != 0 {
 		if !node.Conf[2] || show.NodeCaption&NC_RZ == 0 {
-			ncap.WriteString(fmt.Sprintf("%.3f\n", node.Weight[1] * show.Unit[0]))
+			ncap.WriteString(fmt.Sprintf("%.3f\n", node.Weight[1]*show.Unit[0]))
 			oncap = true
 		}
 	}
@@ -758,8 +758,8 @@ func PinFigure(stw Drawer, x, y, size float64) {
 	val := y + d*0.5*math.Sqrt(3)*size
 	coords := make([][]float64, 3)
 	coords[0] = []float64{x, y}
-	coords[1] = []float64{x+0.5*size, val}
-	coords[2] = []float64{x-0.5*size, val}
+	coords[1] = []float64{x + 0.5*size, val}
+	coords[2] = []float64{x - 0.5*size, val}
 	stw.Polygon(coords)
 }
 
@@ -774,8 +774,8 @@ func RollerFigure(stw Drawer, x, y, size float64, direction int) {
 		val2 := y + d*0.75*math.Sqrt(3)*size
 		coords := make([][]float64, 3)
 		coords[0] = []float64{x, y}
-		coords[1] = []float64{x+0.5*size, val1}
-		coords[2] = []float64{x-0.5*size, val1}
+		coords[1] = []float64{x + 0.5*size, val1}
+		coords[2] = []float64{x - 0.5*size, val1}
 		stw.Polygon(coords)
 		stw.Line(x-0.5*size, val2, x+0.5*size, val2)
 	case 1:
@@ -783,8 +783,8 @@ func RollerFigure(stw Drawer, x, y, size float64, direction int) {
 		val2 := x - 0.75*math.Sqrt(3)*size
 		coords := make([][]float64, 3)
 		coords[0] = []float64{x, y}
-		coords[1] = []float64{val1, y+0.5*size}
-		coords[2] = []float64{val1, y-0.5*size}
+		coords[1] = []float64{val1, y + 0.5*size}
+		coords[2] = []float64{val1, y - 0.5*size}
 		stw.Polygon(coords)
 		stw.Line(val2, y-0.5*size, val2, y+0.5*size)
 	}
@@ -1139,10 +1139,10 @@ func DrawPrintRange(stw Drawer) {
 	width *= 0.5
 	height *= 0.5
 	coords := make([][]float64, 4)
-	coords[0] = []float64{centrex-width, centrey-height}
-	coords[1] = []float64{centrex+width, centrey-height}
-	coords[2] = []float64{centrex+width, centrey+height}
-	coords[3] = []float64{centrex-width, centrey+height}
+	coords[0] = []float64{centrex - width, centrey - height}
+	coords[1] = []float64{centrex + width, centrey - height}
+	coords[2] = []float64{centrex + width, centrey + height}
+	coords[3] = []float64{centrex - width, centrey + height}
 	stw.Polyline(coords)
 }
 
@@ -1155,9 +1155,9 @@ func DrawLegend(stw Drawer, show *Show) {
 			stw.Foreground(col)
 			coords := make([][]float64, 4)
 			coords[0] = []float64{ox, oy}
-			coords[1] = []float64{ox, oy+sz}
-			coords[2] = []float64{ox+sz, oy+sz}
-			coords[3] = []float64{ox+sz, oy}
+			coords[1] = []float64{ox, oy + sz}
+			coords[2] = []float64{ox + sz, oy + sz}
+			coords[3] = []float64{ox + sz, oy}
 			stw.Polygon(coords)
 			oy += show.LegendLineSep * sz
 		}
@@ -1175,7 +1175,7 @@ func DrawLegend(stw Drawer, show *Show) {
 			}
 			oy += show.LegendLineSep * sz
 		}
-		stw.Text(ox - 2*sz, oy + sz, "安全率の凡例")
+		stw.Text(ox-2*sz, oy+sz, "安全率の凡例")
 		stw.TextAlignment(show.DefaultTextAlignment)
 	}
 }

@@ -66,7 +66,7 @@ type Elem struct {
 	Stress        map[string]map[int][]float64
 	InitialStress map[int][]float64
 
-	Values map[string]float64
+	Values    map[string]float64
 	Prestress float64
 
 	Phinge map[string]map[int]bool
@@ -648,7 +648,7 @@ func (elem *Elem) Distribute() error {
 		if elem.Enods < 3 {
 			return errors.New(fmt.Sprintf("Distribute: ELEM %d too few enods", elem.Num))
 		}
-		for i:=0; i<3; i++ {
+		for i := 0; i < 3; i++ {
 			w[i] += elem.Sect.Lload[i]
 			// val := w[i] + elem.Sect.Lload[i]
 			// for _, en := range elem.Enod {
@@ -796,8 +796,8 @@ func (elem *Elem) PlateDivision() ([]*Elem, error) {
 		d1 := elem.EdgeDirection(i, true)
 		d2 := elem.EdgeDirection(j, true)
 		mid[i] = make([]float64, 3)
-		for k:=0; k<3; k++ {
-			mid[i][k] = 0.5*(d1[k] + d2[k])
+		for k := 0; k < 3; k++ {
+			mid[i][k] = 0.5 * (d1[k] + d2[k])
 		}
 	}
 	return nil, nil
@@ -1213,8 +1213,8 @@ func (elem *Elem) Offset(value, angle, eps float64) *Elem {
 	vec := make([]float64, 3)
 	c := math.Cos(angle)
 	s := math.Sin(angle)
-	for i:=0; i<3; i++ {
-		vec[i] = value * (elem.Strong[i] * c + elem.Weak[i] * s)
+	for i := 0; i < 3; i++ {
+		vec[i] = value * (elem.Strong[i]*c + elem.Weak[i]*s)
 	}
 	return elem.Copy(vec[0], vec[1], vec[2], eps)
 }
@@ -1227,9 +1227,9 @@ func (elem *Elem) Invert() {
 	newbonds := make([]bool, 6*elem.Enods)
 	newcmq := make([]float64, 6*elem.Enods)
 	ind := elem.Enods - 1
-	for i:=0; i<elem.Enods; i++ {
+	for i := 0; i < elem.Enods; i++ {
 		newenod[i] = elem.Enod[ind]
-		for j:=0; j<6; j++ {
+		for j := 0; j < 6; j++ {
 			newbonds[i] = elem.Bonds[6*ind+j]
 			newcmq[i] = elem.Cmq[6*ind+j]
 		}
@@ -1542,7 +1542,7 @@ func (elem *Elem) DivideAtOns(eps float64) (rn []*Node, els []*Elem, err error) 
 		if elem.Enods != 4 {
 			return nil, nil, errors.New("DivideAtOns: Enod != 4")
 		}
-		for i:=0; i<2; i++ {
+		for i := 0; i < 2; i++ {
 			rn1 := elem.OnNode(i, eps)
 			rn2 := elem.OnNode(i+2, eps)
 			if len(rn1) != 1 || len(rn2) != 1 {
@@ -2133,7 +2133,7 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 		}
 		if show.SrcanRate == 0 {
 			val := 0.0
-			for i:=0; i<l; i++ {
+			for i := 0; i < l; i++ {
 				tmp := 0.0
 				for _, el := range els {
 					tmp += el.Rate[i]
@@ -2145,8 +2145,8 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 			return val / float64(len(els)), nil
 		} else if l%3 != 0 {
 			val := 0.0
-			for i:=0; i<l; i++ {
-				if i<2 && (show.SrcanRate&SRCAN_Q != 0) || i>=2 && (show.SrcanRate&SRCAN_M != 0) {
+			for i := 0; i < l; i++ {
+				if i < 2 && (show.SrcanRate&SRCAN_Q != 0) || i >= 2 && (show.SrcanRate&SRCAN_M != 0) {
 					tmp := 0.0
 					for _, el := range els {
 						tmp += el.Rate[i]
@@ -2160,8 +2160,8 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 		} else {
 			vall := 0.0
 			vals := 0.0
-			for i:=0; i<l; i++ {
-				if i<3 && (show.SrcanRate&SRCAN_Q != 0) || i>=3 && (show.SrcanRate&SRCAN_M != 0) {
+			for i := 0; i < l; i++ {
+				if i < 3 && (show.SrcanRate&SRCAN_Q != 0) || i >= 3 && (show.SrcanRate&SRCAN_M != 0) {
 					tmpl := 0.0
 					tmps := 0.0
 					for _, el := range els {
@@ -2211,7 +2211,7 @@ func (elem *Elem) Energy() (float64, error) {
 			if val == 0.0 {
 				return 0.0, nil
 			} else {
-				return (val-valb) / val, nil
+				return (val - valb) / val, nil
 			}
 		}
 	}

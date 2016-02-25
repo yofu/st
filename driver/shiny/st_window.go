@@ -49,7 +49,7 @@ var (
 )
 
 var (
-	Commands = map[string] func(st.Commander) chan bool {
+	Commands = map[string]func(st.Commander) chan bool{
 		"D": st.Dists,
 		"Q": st.MatchProperty,
 		"J": st.JoinLineElem,
@@ -74,18 +74,18 @@ type Window struct {
 	*st.Selection
 	*st.CommandBuffer
 	*st.CommandLine
-	frame        *st.Frame
-	screen       screen.Screen
-	window       screen.Window
-	buffer       screen.Buffer
-	currentPen   color.RGBA
-	currentBrush color.RGBA
-	fontFace     font.Face
-	fontHeight   fixed.Int26_6
-	fontColor    color.RGBA
-	changed      bool
+	frame         *st.Frame
+	screen        screen.Screen
+	window        screen.Window
+	buffer        screen.Buffer
+	currentPen    color.RGBA
+	currentBrush  color.RGBA
+	fontFace      font.Face
+	fontHeight    fixed.Int26_6
+	fontColor     color.RGBA
+	changed       bool
 	lastexcommand string
-	lastcommand  func(st.Commander) chan bool
+	lastcommand   func(st.Commander) chan bool
 }
 
 func NewWindow(s screen.Screen) *Window {
@@ -108,7 +108,7 @@ func NewWindow(s screen.Screen) *Window {
 		fontHeight:    13,
 		fontColor:     color.RGBA{0xff, 0xff, 0xff, 0xff},
 		changed:       false,
-		lastexcommand:  "",
+		lastexcommand: "",
 		lastcommand:   nil,
 	}
 }
@@ -429,10 +429,10 @@ func (stw *Window) LoadFontFace(path string, point float64) error {
 		return err
 	}
 	stw.fontFace = truetype.NewFace(ttf, &truetype.Options{
-		Size: point,
+		Size:    point,
 		Hinting: font.HintingFull,
 	})
-	stw.fontHeight = fixed.Int26_6(int(point * 3) >> 2) // * 72/96
+	stw.fontHeight = fixed.Int26_6(int(point*3) >> 2) // * 72/96
 	return nil
 }
 
@@ -450,10 +450,10 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 	}
 	commandbuffer = b
 	d := &font.Drawer{
-		Dst: commandbuffer.RGBA(),
-		Src: image.NewUniform(stw.fontColor),
+		Dst:  commandbuffer.RGBA(),
+		Src:  image.NewUniform(stw.fontColor),
 		Face: stw.fontFace,
-		Dot: fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
+		Dot:  fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
 	}
 	d.DrawString(str)
 	t, err := stw.screen.NewTexture(image.Point{1024, 1024})
@@ -465,7 +465,7 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 	}
 	commandtexture = t
 	t.Upload(image.Point{}, commandbuffer, commandbuffer.Bounds())
-	stw.window.Fill(image.Rect(int(x - 5), int(y - float64(stw.fontHeight) - 5), 500, int(y + 5)), color.RGBA{0x33, 0x33, 0x33, 0xff}, screen.Over)
+	stw.window.Fill(image.Rect(int(x-5), int(y-float64(stw.fontHeight)-5), 500, int(y+5)), color.RGBA{0x33, 0x33, 0x33, 0xff}, screen.Over)
 	stw.window.Copy(image.Point{0, 0}, commandtexture, commandtexture.Bounds(), screen.Over, nil)
 	stw.window.Publish()
 }

@@ -13,7 +13,7 @@ type PngCanvas struct {
 	currentCanvas *draw2dimg.GraphicContext
 }
 
-func PrintPNG (frame *Frame, otp string) error {
+func PrintPNG(frame *Frame, otp string) error {
 	dest := image.NewRGBA(image.Rect(0.0, 0.0, 210.0, 297.0))
 	gc := draw2dimg.NewGraphicContext(dest)
 	pc := &PngCanvas{

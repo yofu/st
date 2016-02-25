@@ -14,7 +14,7 @@ type Commander interface {
 
 func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 	quit := make(chan bool)
-	go func () {
+	go func() {
 		var n0 *Node
 		nch := stw.GetNode()
 		clickch := stw.GetClick()
