@@ -280,6 +280,9 @@ func (stw *Window) Start() {
 				switch e.Button {
 				case mouse.ButtonLeft:
 					pressed &= ^ButtonLeft
+					if stw.Executing() {
+						stw.SendClick(st.ClickLeft(endX, endY))
+					}
 					if (e.Modifiers&key.ModAlt == 0) == altselectnode {
 						els, picked := st.PickElem(stw, startX, startY, endX, endY)
 						if stw.Executing() {
@@ -311,7 +314,7 @@ func (stw *Window) Start() {
 					pressed &= ^ButtonMiddle
 				case mouse.ButtonRight:
 					if stw.Executing() {
-						stw.SendClick(st.ClickRight)
+						stw.SendClick(st.ClickRight(endX, endY))
 					} else {
 						if stw.CommandLineString() != "" {
 							stw.FeedCommand()

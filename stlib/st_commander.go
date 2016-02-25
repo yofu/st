@@ -1,12 +1,28 @@
 package st
 
-type Click int
+type Click struct {
+	Button int
+	X int
+	Y int
+}
 
 const (
-	ClickLeft Click = iota
-	ClickMiddle
-	ClickRight
+	ButtonLeft int = iota
+	ButtonMiddle
+	ButtonRight
 )
+
+func ClickLeft(x, y int) Click {
+	return Click{ ButtonLeft, x, y }
+}
+
+func ClickMiddle(x, y int) Click {
+	return Click{ ButtonMiddle, x, y }
+}
+
+func ClickRight(x, y int) Click {
+	return Click{ ButtonRight, x, y }
+}
 
 type CommandBuffer struct {
 	on   bool

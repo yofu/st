@@ -37,7 +37,7 @@ func Dists(stw Commander) chan bool {
 					break dists
 				}
 			case c := <-clickch:
-				if c == ClickRight {
+				if c.Button == ButtonRight {
 					stw.SetAltSelectNode(as)
 					stw.Deselect()
 					stw.EndCommand()
@@ -69,7 +69,7 @@ func MatchProperty(stw Commander) chan bool {
 					etype = el.Etype
 					break matchproperty_get
 				case c := <-clickch:
-					if c == ClickRight {
+					if c.Button == ButtonRight {
 						stw.Deselect()
 						stw.EndCommand()
 						return
@@ -90,7 +90,7 @@ func MatchProperty(stw Commander) chan bool {
 				el.Sect = sect
 				el.Etype = etype
 			case c := <-clickch:
-				if c == ClickRight {
+				if c.Button == ButtonRight {
 					stw.Deselect()
 					stw.EndCommand()
 					break matchproperty_paste
@@ -114,7 +114,7 @@ func JoinLineElem(stw Commander) chan bool {
 			case el := <-elch:
 				AddSelection(stw, el)
 			case c := <-clickch:
-				if c == ClickRight {
+				if c.Button == ButtonRight {
 					els := make([]*Elem, 2)
 					num := 0
 					for _, el := range stw.SelectedElems() {
@@ -171,7 +171,7 @@ func Erase(stw Commander) chan bool {
 			case el := <-elch:
 				AddSelection(stw, el)
 			case c := <-clickch:
-				if c == ClickRight {
+				if c.Button == ButtonRight {
 					del()
 					stw.EndCommand()
 					break erase
