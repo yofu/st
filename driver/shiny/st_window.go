@@ -289,8 +289,12 @@ func (stw *Window) Start() {
 					if (e.Modifiers&key.ModAlt == 0) == altselectnode {
 						els, picked := st.PickElem(stw, startX, startY, endX, endY)
 						if stw.Executing() {
-							for _, el := range els {
-								stw.SendElem(el)
+							if !picked {
+								stw.SendElem(nil)
+							} else {
+								for _, el := range els {
+									stw.SendElem(el)
+								}
 							}
 						} else {
 							if !picked {
@@ -302,8 +306,12 @@ func (stw *Window) Start() {
 					} else {
 						ns, picked := st.PickNode(stw, startX, startY, endX, endY)
 						if stw.Executing() {
-							for _, n := range ns {
-								stw.SendNode(n)
+							if !picked {
+								stw.SendNode(nil)
+							} else {
+								for _, n := range ns {
+									stw.SendNode(n)
+								}
 							}
 						} else {
 							if !picked {
