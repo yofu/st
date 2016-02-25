@@ -42,6 +42,9 @@ type Window interface {
 	History(string)
 	Yn(string, string) bool
 	Yna(string, string, string) int
+	EnableLabel(string)
+	DisableLabel(string)
+	SetLabel(string, string)
 	GetCanvasSize() (int, int)
 	Changed(bool)
 	IsChanged() bool
@@ -704,3 +707,288 @@ func CanvasCenterView(stw Window, angle []float64) *View {
 	}
 }
 
+func SetPeriod(stw Window, per string) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	frame.Show.Period = per
+	stw.SetLabel("PERIOD", per)
+}
+
+func IncrementPeriod(stw Window, num int) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	pat := regexp.MustCompile("([a-zA-Z]+)(@[0-9]+)")
+	fs := pat.FindStringSubmatch(frame.Show.Period)
+	if len(fs) < 3 {
+		return
+	}
+	if nl, ok := frame.Nlap[strings.ToUpper(fs[1])]; ok {
+		tmp, _ := strconv.ParseInt(fs[2][1:], 10, 64)
+		val := int(tmp) + num
+		if val < 1 || val > nl {
+			return
+		}
+		per := strings.Replace(frame.Show.Period, fs[2], fmt.Sprintf("@%d", val), -1)
+		SetPeriod(stw, per)
+	}
+}
+
+func NodeCaptionOn(stw Window, name string) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	for i, j := range NODECAPTIONS {
+		if j == name {
+			stw.EnableLabel(name)
+			frame.Show.NodeCaptionOn(1 << uint(i))
+			return
+		}
+	}
+}
+
+func NodeCaptionOff(stw Window, name string) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	for i, j := range NODECAPTIONS {
+		if j == name {
+			stw.DisableLabel(name)
+			frame.Show.NodeCaptionOff(1 << uint(i))
+			return
+		}
+	}
+}
+
+func ElemCaptionOn(stw Window, name string) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	for i, j := range ELEMCAPTIONS {
+		if j == name {
+			stw.EnableLabel(name)
+			frame.Show.ElemCaptionOn(1 << uint(i))
+			return
+		}
+	}
+}
+
+func ElemCaptionOff(stw Window, name string) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	for i, j := range ELEMCAPTIONS {
+		if j == name {
+			stw.DisableLabel(name)
+			frame.Show.ElemCaptionOff(1 << uint(i))
+			return
+		}
+	}
+}
+
+func SrcanRateOn(stw Window, names ...string) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	defer func() {
+		if frame.Show.SrcanRate != 0 {
+			stw.EnableLabel("SRCAN_RATE")
+		}
+	}()
+	if len(names) == 0 {
+		for i, j := range SRCANS {
+			frame.Show.SrcanRateOn(1 << uint(i))
+			stw.EnableLabel(j)
+		}
+		return
+	}
+	for _, name := range names {
+		for i, j := range SRCANS {
+			if j == name {
+				frame.Show.SrcanRateOn(1 << uint(i))
+				stw.EnableLabel(j)
+			}
+		}
+	}
+}
+
+func SrcanRateOff(stw Window, names ...string) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	defer func() {
+		if frame.Show.SrcanRate == 0 {
+			stw.DisableLabel("SRCAN_RATE")
+		}
+	}()
+	if len(names) == 0 {
+		for i, j := range SRCANS {
+			frame.Show.SrcanRateOff(1 << uint(i))
+			stw.DisableLabel(j)
+		}
+		return
+	}
+	for _, name := range names {
+		for i, j := range SRCANS {
+			if j == name {
+				frame.Show.SrcanRateOff(1 << uint(i))
+				stw.DisableLabel(j)
+			}
+		}
+	}
+}
+
+func StressOn(stw Window, etype int, index uint) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	frame.Show.Stress[etype] |= (1 << index)
+	if etype <= SLAB {
+		stw.EnableLabel(fmt.Sprintf("%s_%s", ETYPES[etype], strings.ToUpper(StressName[index])))
+	}
+}
+
+func StressOff(stw Window, etype int, index uint) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	frame.Show.Stress[etype] &= ^(1 << index)
+	if etype <= SLAB {
+		stw.DisableLabel(fmt.Sprintf("%s_%s", ETYPES[etype], strings.ToUpper(StressName[index])))
+	}
+}
+
+func DeformationOn(stw Window) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	frame.Show.Deformation = true
+	stw.EnableLabel("DEFORMATION")
+}
+
+func DeformationOff(stw Window) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	frame.Show.Deformation = false
+	stw.DisableLabel("DEFORMATION")
+}
+
+func DispOn(stw Window, direction int) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	name := fmt.Sprintf("NC_%s", DispName[direction])
+	for i, str := range NODECAPTIONS {
+		if name == str {
+			frame.Show.NodeCaption |= (1 << uint(i))
+			stw.EnableLabel(name)
+			return
+		}
+	}
+}
+
+func DispOff(stw Window, direction int) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	name := fmt.Sprintf("NC_%s", DispName[direction])
+	for i, str := range NODECAPTIONS {
+		if name == str {
+			frame.Show.NodeCaption &= ^(1 << uint(i))
+			stw.DisableLabel(name)
+			return
+		}
+	}
+}
+
+func HideAllSection(stw Window) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	for i, _ := range frame.Show.Sect {
+		frame.Show.Sect[i] = false
+		stw.DisableLabel(fmt.Sprintf("%d", i))
+	}
+}
+
+func ShowAllSection(stw Window) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	for i, _ := range frame.Show.Sect {
+		frame.Show.Sect[i] = true
+		stw.EnableLabel(fmt.Sprintf("%d", i))
+	}
+}
+
+func HideSection(stw Window, snum int) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	frame.Show.Sect[snum] = false
+	stw.DisableLabel(fmt.Sprintf("%d", snum))
+}
+
+func ShowSection(stw Window, snum int) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	frame.Show.Sect[snum] = true
+	stw.EnableLabel(fmt.Sprintf("%d", snum))
+}
+
+func HideEtype(stw Window, etype int) {
+	if etype == 0 {
+		return
+	}
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	frame.Show.Etype[etype] = false
+	stw.DisableLabel(ETYPES[etype])
+}
+
+func ShowEtype(stw Window, etype int) {
+	if etype == 0 {
+		return
+	}
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	frame.Show.Etype[etype] = true
+	stw.EnableLabel(ETYPES[etype])
+}
+
+func ToggleEtype(stw Window, etype int) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	if frame.Show.Etype[etype] {
+		HideEtype(stw, etype)
+	} else {
+		ShowEtype(stw, etype)
+	}
+}
