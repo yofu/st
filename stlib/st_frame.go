@@ -4769,6 +4769,64 @@ func (frame *Frame) PickNode(x, y, eps float64) *Node {
 	return rtn
 }
 
+func (frame *Frame) BoundedArea(x, y float64, maxdepth int) ([]*Node, []*Elem, error) {
+	var cand *Elem
+	xmin := 1e6
+	for _, el := range frame.Elems {
+		if el.IsHidden(frame.Show) || !el.IsLineElem() {
+			continue
+		}
+		if el.Enod[0].Pcoord[1] == el.Enod[1].Pcoord[1] {
+			continue
+		}
+		if (el.Enod[0].Pcoord[1]-y)*(el.Enod[1].Pcoord[1]-y) < 0 {
+			xval := el.Enod[0].Pcoord[0] + (el.Enod[1].Pcoord[0]-el.Enod[0].Pcoord[0])*((y-el.Enod[0].Pcoord[1])/(el.Enod[1].Pcoord[1]-el.Enod[0].Pcoord[1])) - x
+			if xval > 0 && xval < xmin {
+				cand = el
+				xmin = xval
+			}
+		}
+	}
+	if cand == nil {
+		return nil, nil, fmt.Errorf("no candidate")
+	}
+	origin := []float64{x, y}
+	_, cw := ClockWise(origin, cand.Enod[0].Pcoord, cand.Enod[1].Pcoord)
+	c := NewChain(frame, cand.Enod[1], cand, func(c *Chain, el *Elem) bool {
+		return true
+	}, func(c *Chain) bool {
+		return c.Node().Num == cand.Enod[0].Num
+	}, func(c *Chain) error {
+		if c.Num() > maxdepth {
+			return fmt.Errorf("too much recursion")
+		}
+		return nil
+	}, func(c *Chain, els []*Elem) []*Elem {
+		minangle := 1e6
+		ind := 0
+		for i, el := range els {
+			angle, tmpcw := ClockWise(c.Node().Pcoord, origin, el.Otherside(c.Node()).Pcoord)
+			angle = math.Abs(angle)
+			if cw != tmpcw && angle < minangle {
+				ind = i
+				minangle = angle
+			}
+		}
+		els[0], els[ind] = els[ind], els[0]
+		return els
+	})
+	rtnns := []*Node{cand.Enod[0], cand.Enod[1]}
+	rtnels := []*Elem{cand}
+	for c.Next() {
+		rtnns = append(rtnns, c.Node())
+		rtnels = append(rtnels, c.Elem())
+	}
+	if err := c.Err(); err != nil {
+		return nil, nil, err
+	}
+	return rtnns[:len(rtnns) - 1], rtnels, nil
+}
+
 // Projection// {{{
 // direction: 0 -> origin=bottomleft, x=[1,0], y=[0,1]
 //            1 -> origin=topleft,    x=[1,0], y=[0,-1]
