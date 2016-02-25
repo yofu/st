@@ -3299,7 +3299,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if !stw.NodeSelected() || !stw.ElemSelected() {
 			return nil
 		}
-		c := NewChain(frame, stw.SelectedNodes()[0], stw.SelectedElems()[0], Straight(1e-2), func(c *Chain) bool { return c.Elem().IsPin(c.Node().Num) })
+		c := NewChain(frame, stw.SelectedNodes()[0], stw.SelectedElems()[0], Straight(1e-2), func(c *Chain) bool { return c.Elem().IsPin(c.Node().Num) }, nil, nil)
 		for c.Next() {
 			AddSelection(stw, c.Elem())
 		}
