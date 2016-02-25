@@ -203,7 +203,7 @@ func SaveFile(stw Window, filename string) error {
 		return err
 	}
 	ErrorMessage(stw, fmt.Errorf("SAVE: %s", filename), INFO)
-	stw.Changed(true)
+	stw.Changed(false)
 	return nil
 }
 
