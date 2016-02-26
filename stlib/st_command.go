@@ -144,72 +144,15 @@ func AddPlateElem(stw Commander) chan bool {
 	})
 }
 
-func JoinLineElem(stw Commander) chan bool {
-	quit := make(chan bool)
-	go func() {
-		elch := stw.GetElem()
-		clickch := stw.GetClick()
-	joinlineelem:
-		for {
-			select {
-			case el := <-elch:
-				if el != nil {
-					AddSelection(stw, el)
-				}
-			case c := <-clickch:
-				if c.Button == ButtonRight {
-					els := make([]*Elem, 2)
-					num := 0
-					for _, el := range stw.SelectedElems() {
-						if el != nil && el.IsLineElem() {
-							els[num] = el
-							num++
-							if num >= 2 {
-								break
-							}
-						}
-					}
-					if num == 2 {
-						frame := stw.Frame()
-						err := frame.JoinLineElem(els[0], els[1], true, true)
-						if err != nil {
-							ErrorMessage(stw, err, ERROR)
-						} else {
-							Snapshot(stw)
-						}
-						stw.Deselect()
-						stw.EndCommand()
-						break joinlineelem
-					}
-				}
-			case <-quit:
-				break joinlineelem
-			}
-		}
-	}()
-	return quit
-}
-
-func Erase(stw Commander) chan bool {
-	del := func() {
-		DeleteSelected(stw)
-		stw.Deselect()
-		frame := stw.Frame()
-		ns := frame.NodeNoReference()
-		if len(ns) != 0 {
-			for _, n := range ns {
-				frame.DeleteNode(n.Num)
-			}
-		}
-	}
+func multielem(stw Commander, f func([]*Elem) error) chan bool {
 	if stw.ElemSelected() {
-		del()
-		Snapshot(stw)
+		f(stw.SelectedElems())
 		stw.EndCommand()
 		return nil
 	}
 	quit := make(chan bool)
 	go func() {
+		elems := make([]*Elem, 0)
 		elch := stw.GetElem()
 		clickch := stw.GetClick()
 	erase:
@@ -217,12 +160,18 @@ func Erase(stw Commander) chan bool {
 			select {
 			case el := <-elch:
 				if el != nil {
+					elems = append(elems, el)
 					AddSelection(stw, el)
 				}
 			case c := <-clickch:
 				if c.Button == ButtonRight {
-					del()
-					Snapshot(stw)
+					if len(elems) > 0 {
+						err := f(elems)
+						if err != nil {
+							ErrorMessage(stw, err, ERROR)
+						}
+					}
+					stw.Deselect()
 					stw.EndCommand()
 					break erase
 				}
@@ -232,6 +181,52 @@ func Erase(stw Commander) chan bool {
 		}
 	}()
 	return quit
+}
+
+func JoinLineElem(stw Commander) chan bool {
+	return multielem(stw, func(elems []*Elem) error {
+		els := make([]*Elem, 2)
+		num := 0
+		for _, el := range elems {
+			if el != nil && el.IsLineElem() {
+				els[num] = el
+				num++
+				if num >= 2 {
+					break
+				}
+			}
+		}
+		if num < 2 {
+			return fmt.Errorf("too few elems")
+		}
+		frame := stw.Frame()
+		err := frame.JoinLineElem(els[0], els[1], true, true)
+		if err != nil {
+			return err
+		}
+		Snapshot(stw)
+		return nil
+	})
+}
+
+func Erase(stw Commander) chan bool {
+	return multielem(stw, func(elems []*Elem) error {
+		frame := stw.Frame()
+		for _, el := range elems {
+			if el != nil && !el.Lock {
+				frame.DeleteElem(el.Num)
+			}
+		}
+		stw.Deselect()
+		ns := frame.NodeNoReference()
+		if len(ns) != 0 {
+			for _, n := range ns {
+				frame.DeleteNode(n.Num)
+			}
+		}
+		Snapshot(stw)
+		return nil
+	})
 }
 
 func HatchPlateElem(stw Commander) chan bool {
