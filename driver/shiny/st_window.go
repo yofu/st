@@ -56,13 +56,14 @@ var (
 
 var (
 	Commands = map[string]func(st.Commander) chan bool{
-		"D": st.Dists,
-		"Q": st.MatchProperty,
-		"J": st.JoinLineElem,
-		"E": st.Erase,
-		"A": st.AddLineElem,
-		"H": st.HatchPlateElem,
-		"Z": st.Trim,
+		"D":  st.Dists,
+		"Q":  st.MatchProperty,
+		"J":  st.JoinLineElem,
+		"E":  st.Erase,
+		"A":  st.AddLineElem,
+		"AA": st.AddPlateElem,
+		"H":  st.HatchPlateElem,
+		"Z":  st.Trim,
 	}
 )
 
@@ -306,10 +307,7 @@ func (stw *Window) Start() {
 							dx := endX - startX
 							dy := endY - startY
 							if dx&3 == 0 || dy&3 == 0 {
-								for i := 0; i< len(tailnodes) - 1; i++ {
-									stw.TailLine(int(tailnodes[i].Pcoord[0]), int(tailnodes[i].Pcoord[1]), int(tailnodes[i+1].Pcoord[0]), int(tailnodes[i+1].Pcoord[1]))
-								}
-								stw.TailLine(int(tailnodes[len(tailnodes)-1].Pcoord[0]), int(tailnodes[len(tailnodes)-1].Pcoord[1]), endX, endY)
+								stw.TailLine()
 							}
 						}
 					}
@@ -524,7 +522,7 @@ func (stw *Window) EndTail() {
 	tailnodes = nil
 }
 
-func (stw *Window) TailLine(x1, y1, x2, y2 int) {
+func (stw *Window) TailLine() {
 	if tailbuffer != nil {
 		tailbuffer.Release()
 	}
@@ -533,7 +531,11 @@ func (stw *Window) TailLine(x1, y1, x2, y2 int) {
 		log.Fatal(err)
 	}
 	tailbuffer = b
-	line(b.RGBA(), x1, y1, x2, y2, tailColor)
+	cvs := b.RGBA()
+	for i := 0; i< len(tailnodes) - 1; i++ {
+		line(cvs, int(tailnodes[i].Pcoord[0]), int(tailnodes[i].Pcoord[1]), int(tailnodes[i+1].Pcoord[0]), int(tailnodes[i+1].Pcoord[1]), tailColor)
+	}
+	line(cvs, int(tailnodes[len(tailnodes)-1].Pcoord[0]), int(tailnodes[len(tailnodes)-1].Pcoord[1]), endX, endY, tailColor)
 	t, err := stw.screen.NewTexture(image.Point{1024, 1024})
 	if err != nil {
 		log.Fatal(err)

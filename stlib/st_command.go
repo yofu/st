@@ -1,6 +1,7 @@
 package st
 
 import (
+	"bytes"
 	"fmt"
 )
 
@@ -77,6 +78,67 @@ func AddLineElem(stw Commander) chan bool {
 		sec := frame.DefaultSect()
 		el := frame.AddLineElem(-1, []*Node{n0, n}, sec, NONE)
 		stw.History(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, n0.Num, n.Num, sec.Num))
+		Snapshot(stw)
+		return nil
+	})
+}
+
+func multinodes(stw Commander, f func([]*Node) error) chan bool {
+	quit := make(chan bool)
+	go func() {
+		nodes := make([]*Node, 0)
+		nch := stw.GetNode()
+		clickch := stw.GetClick()
+		as := stw.AltSelectNode()
+		stw.SetAltSelectNode(false)
+	multinodes:
+		for {
+			select {
+			case n := <-nch:
+				if n != nil {
+					nodes = append(nodes, n)
+					AddSelection(stw, n)
+					stw.AddTail(n)
+				}
+			case c := <-clickch:
+				if c.Button == ButtonRight {
+					if len(nodes) > 0 {
+						err := f(nodes)
+						if err != nil {
+							ErrorMessage(stw, err, ERROR)
+						}
+					}
+					stw.SetAltSelectNode(as)
+					stw.Deselect()
+					stw.EndTail()
+					stw.EndCommand()
+					break multinodes
+				}
+			case <-quit:
+				stw.SetAltSelectNode(as)
+				stw.EndTail()
+				break multinodes
+			}
+		}
+	}()
+	return quit
+}
+
+func AddPlateElem(stw Commander) chan bool {
+	return multinodes(stw, func(ns []*Node) error {
+		if len(ns) < 3 {
+			return fmt.Errorf("too few nodes")
+		}
+		frame := stw.Frame()
+		sec := frame.DefaultSect()
+		el := frame.AddPlateElem(-1, ns, sec, NONE)
+		var buf bytes.Buffer
+		buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
+		for _, n := range ns {
+			buf.WriteString(fmt.Sprintf("%d ", n.Num))
+		}
+		buf.WriteString(fmt.Sprintf(", SECT: %d)", sec.Num))
+		stw.History(buf.String())
 		Snapshot(stw)
 		return nil
 	})
