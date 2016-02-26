@@ -144,7 +144,7 @@ func AddPlateElem(stw Commander) chan bool {
 	})
 }
 
-func multielem(stw Commander, f func([]*Elem) error) chan bool {
+func multielems(stw Commander, f func([]*Elem) error) chan bool {
 	if stw.ElemSelected() {
 		f(stw.SelectedElems())
 		stw.EndCommand()
@@ -184,7 +184,7 @@ func multielem(stw Commander, f func([]*Elem) error) chan bool {
 }
 
 func JoinLineElem(stw Commander) chan bool {
-	return multielem(stw, func(elems []*Elem) error {
+	return multielems(stw, func(elems []*Elem) error {
 		els := make([]*Elem, 2)
 		num := 0
 		for _, el := range elems {
@@ -210,7 +210,7 @@ func JoinLineElem(stw Commander) chan bool {
 }
 
 func Erase(stw Commander) chan bool {
-	return multielem(stw, func(elems []*Elem) error {
+	return multielems(stw, func(elems []*Elem) error {
 		frame := stw.Frame()
 		for _, el := range elems {
 			if el != nil && !el.Lock {
