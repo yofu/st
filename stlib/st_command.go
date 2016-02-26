@@ -26,21 +26,23 @@ func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 		for {
 			select {
 			case n := <-nch:
-				if n0 == nil {
-					stw.SelectNode([]*Node{n})
-					n0 = n
-					stw.AddTail(n0)
-				} else {
-					err := f(n0, n)
-					if err != nil {
-						ErrorMessage(stw, err, ERROR)
+				if n != nil {
+					if n0 == nil {
+						stw.SelectNode([]*Node{n})
+						n0 = n
+						stw.AddTail(n0)
+					} else {
+						err := f(n0, n)
+						if err != nil {
+							ErrorMessage(stw, err, ERROR)
+						}
+						stw.SetAltSelectNode(as)
+						stw.DeselectNode()
+						Snapshot(stw)
+						stw.EndTail()
+						stw.EndCommand()
+						break twonodes
 					}
-					stw.SetAltSelectNode(as)
-					stw.DeselectNode()
-					Snapshot(stw)
-					stw.EndTail()
-					stw.EndCommand()
-					break twonodes
 				}
 			case c := <-clickch:
 				if c.Button == ButtonRight {
@@ -89,7 +91,9 @@ func JoinLineElem(stw Commander) chan bool {
 		for {
 			select {
 			case el := <-elch:
-				AddSelection(stw, el)
+				if el != nil {
+					AddSelection(stw, el)
+				}
 			case c := <-clickch:
 				if c.Button == ButtonRight {
 					els := make([]*Elem, 2)
@@ -150,7 +154,9 @@ func Erase(stw Commander) chan bool {
 		for {
 			select {
 			case el := <-elch:
-				AddSelection(stw, el)
+				if el != nil {
+					AddSelection(stw, el)
+				}
 			case c := <-clickch:
 				if c.Button == ButtonRight {
 					del()
@@ -238,7 +244,7 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 			for {
 				select {
 				case el := <-elch:
-					if cond(el) {
+					if el != nil && cond(el) {
 						el0 = el
 						break trim_elem
 					}
