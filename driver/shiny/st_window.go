@@ -54,19 +54,6 @@ var (
 	selectrightColor = color.RGBA{0x00, 0x77, 0x00, 0x22}
 )
 
-var (
-	Commands = map[string]func(st.Commander) chan bool{
-		"D":  st.Dists,
-		"Q":  st.MatchProperty,
-		"J":  st.JoinLineElem,
-		"E":  st.Erase,
-		"A":  st.AddLineElem,
-		"AA": st.AddPlateElem,
-		"H":  st.HatchPlateElem,
-		"Z":  st.Trim,
-	}
-)
-
 const (
 	ButtonLeft = 1 << iota
 	ButtonMiddle
@@ -576,7 +563,7 @@ func (stw *Window) ExecCommand(command string) {
 	}
 	switch {
 	default:
-		if c, ok := Commands[strings.ToUpper(command)]; ok {
+		if c, ok := stw.CommandAlias(strings.ToUpper(command)); ok {
 			stw.lastcommand = c
 			stw.Execute(c(stw))
 		} else {
