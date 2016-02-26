@@ -9,6 +9,8 @@ type Commander interface {
 	GetElem() chan *Elem
 	GetNode() chan *Node
 	GetClick() chan Click
+	AddTail(*Node)
+	EndTail()
 	EndCommand()
 }
 
@@ -27,6 +29,7 @@ func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 				if n0 == nil {
 					stw.SelectNode([]*Node{n})
 					n0 = n
+					stw.AddTail(n0)
 				} else {
 					err := f(n0, n)
 					if err != nil {
@@ -35,6 +38,7 @@ func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 					stw.SetAltSelectNode(as)
 					stw.DeselectNode()
 					Snapshot(stw)
+					stw.EndTail()
 					stw.EndCommand()
 					break twonodes
 				}
@@ -42,11 +46,13 @@ func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 				if c.Button == ButtonRight {
 					stw.SetAltSelectNode(as)
 					stw.Deselect()
+					stw.EndTail()
 					stw.EndCommand()
 					break twonodes
 				}
 			case <-quit:
 				stw.SetAltSelectNode(as)
+				stw.EndTail()
 				break twonodes
 			}
 		}

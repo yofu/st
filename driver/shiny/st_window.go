@@ -35,7 +35,6 @@ var (
 
 var (
 	blue0 = color.RGBA{0x00, 0x00, 0x1f, 0xff}
-	red   = color.RGBA{0x7f, 0x00, 0x00, 0x7f}
 
 	startX = 0
 	startY = 0
@@ -46,6 +45,13 @@ var (
 
 	commandbuffer  screen.Buffer
 	commandtexture screen.Texture
+	tailbuffer     screen.Buffer
+	tailtexture    screen.Texture
+	tailnodes      []*st.Node
+
+	tailColor        = color.RGBA{0xff, 0xff, 0x00, 0x22}
+	selectleftColor  = color.RGBA{0x00, 0x00, 0x77, 0x22}
+	selectrightColor = color.RGBA{0x00, 0x77, 0x00, 0x22}
 )
 
 var (
@@ -272,8 +278,14 @@ func (stw *Window) Start() {
 				switch e.Button {
 				default:
 					if pressed&ButtonLeft != 0 {
+						var col color.Color
+						if endX >= startX {
+							col = selectleftColor
+						} else {
+							col = selectrightColor
+						}
 						stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
-						stw.window.Fill(image.Rect(startX, startY, endX, endY), red, screen.Over)
+						stw.window.Fill(image.Rect(startX, startY, endX, endY), col, screen.Over)
 						stw.window.Publish()
 					} else if pressed&ButtonMiddle != 0 {
 						dx := endX - startX
@@ -288,6 +300,17 @@ func (stw *Window) Start() {
 							}
 							stw.Redraw()
 							stw.window.Publish()
+						}
+					} else {
+						if tailnodes != nil {
+							dx := endX - startX
+							dy := endY - startY
+							if dx&3 == 0 || dy&3 == 0 {
+								for i := 0; i< len(tailnodes) - 1; i++ {
+									stw.TailLine(int(tailnodes[i].Pcoord[0]), int(tailnodes[i].Pcoord[1]), int(tailnodes[i+1].Pcoord[0]), int(tailnodes[i+1].Pcoord[1]))
+								}
+								stw.TailLine(int(tailnodes[len(tailnodes)-1].Pcoord[0]), int(tailnodes[len(tailnodes)-1].Pcoord[1]), endX, endY)
+							}
 						}
 					}
 				case mouse.ButtonWheelUp, 4:
@@ -486,6 +509,42 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 	t.Upload(image.Point{}, commandbuffer, commandbuffer.Bounds())
 	stw.window.Fill(image.Rect(int(x-5), int(y-float64(stw.fontHeight)-5), 500, int(y+5)), color.RGBA{0x33, 0x33, 0x33, 0xff}, screen.Over)
 	stw.window.Copy(image.Point{0, 0}, commandtexture, commandtexture.Bounds(), screen.Over, nil)
+	stw.window.Publish()
+}
+
+func (stw *Window) AddTail(n *st.Node) {
+	if tailnodes == nil {
+		tailnodes = []*st.Node{n}
+	} else {
+		tailnodes = append(tailnodes, n)
+	}
+}
+
+func (stw *Window) EndTail() {
+	tailnodes = nil
+}
+
+func (stw *Window) TailLine(x1, y1, x2, y2 int) {
+	if tailbuffer != nil {
+		tailbuffer.Release()
+	}
+	b, err := stw.screen.NewBuffer(image.Point{1024, 1024})
+	if err != nil {
+		log.Fatal(err)
+	}
+	tailbuffer = b
+	line(b.RGBA(), x1, y1, x2, y2, tailColor)
+	t, err := stw.screen.NewTexture(image.Point{1024, 1024})
+	if err != nil {
+		log.Fatal(err)
+	}
+	if tailtexture != nil {
+		tailtexture.Release()
+	}
+	tailtexture = t
+	t.Upload(image.Point{}, tailbuffer, tailbuffer.Bounds())
+	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
+	stw.window.Copy(image.Point{0, 0}, tailtexture, tailtexture.Bounds(), screen.Over, nil)
 	stw.window.Publish()
 }
 

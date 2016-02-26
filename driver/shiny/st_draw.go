@@ -13,6 +13,50 @@ var (
 	PLATE_OPACITY uint8 = 0x77
 )
 
+func line(cvs *image.RGBA, x1, y1, x2, y2 int, color color.RGBA) {
+	dx := x2 - x1
+	if dx < 0 {
+		dx = -dx
+	}
+	dy := y2 - y1
+	if dy < 0 {
+		dy = -dy
+	}
+	var sx, sy int
+	if x1 < x2 {
+		sx = 1
+	} else {
+		sx = -1
+	}
+	if y1 < y2 {
+		sy = 1
+	} else {
+		sy = -1
+	}
+	eps := dx - dy
+	x := x1
+	y := y1
+	endx := x2
+	endy := y2
+	var e2 int
+	for i := 0; ; i++ {
+		cvs.SetRGBA(x, y, color)
+		if x == endx && y == endy {
+			break
+		}
+		e2 = eps << 1
+		if e2 > -dy {
+			eps = eps - dy
+			x = x + sx
+		}
+		if e2 < dx {
+			eps = eps + dx
+			y = y + sy
+		}
+	}
+	return
+}
+
 func (stw *Window) Line(x1, y1, x2, y2 float64) {
 	dx := int(x2) - int(x1)
 	if dx < 0 {
