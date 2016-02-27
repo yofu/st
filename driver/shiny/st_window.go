@@ -217,7 +217,7 @@ func (stw *Window) Start() {
 				case key.CodeReturnEnter:
 					stw.FeedCommand()
 				case key.CodeEscape:
-					stw.EndCommand()
+					stw.QuitCommand()
 					stw.ClearCommandLine()
 					stw.Deselect()
 					stw.Redraw()

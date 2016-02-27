@@ -87,12 +87,19 @@ func (cb *CommandBuffer) SendClick(c Click) {
 	}
 }
 
+
+func (cb *CommandBuffer) QuitCommand() {
+	if cb.on && cb.quit != nil {
+		cb.quit <- true
+	}
+}
+
 func (cb *CommandBuffer) EndCommand() {
 	if cb.on {
 		cb.on = false
-		cb.quit <- true
-		cb.quit = nil
 		cb.elem = nil
 		cb.node = nil
+		cb.click = nil
+		cb.quit = nil
 	}
 }

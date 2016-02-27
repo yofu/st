@@ -56,6 +56,7 @@ func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 			case <-quit:
 				stw.SetAltSelectNode(as)
 				stw.EndTail()
+				stw.EndCommand()
 				break twonodes
 			}
 		}
@@ -117,6 +118,7 @@ func multinodes(stw Commander, f func([]*Node) error) chan bool {
 			case <-quit:
 				stw.SetAltSelectNode(as)
 				stw.EndTail()
+				stw.EndCommand()
 				break multinodes
 			}
 		}
@@ -176,6 +178,7 @@ func multielems(stw Commander, f func([]*Elem) error) chan bool {
 					break erase
 				}
 			case <-quit:
+				stw.EndCommand()
 				break erase
 			}
 		}
@@ -275,6 +278,7 @@ func HatchPlateElem(stw Commander) chan bool {
 					break hatchplateelem
 				}
 			case <-quit:
+				stw.EndCommand()
 				break hatchplateelem
 			}
 		}
@@ -312,6 +316,7 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 						return
 					}
 				case <-quit:
+					stw.EndCommand()
 					return
 				}
 			}
@@ -336,6 +341,7 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 					break trim_click
 				}
 			case <-quit:
+				stw.EndCommand()
 				break trim_click
 			}
 		}
