@@ -232,6 +232,8 @@ func (stw *Window) Start() {
 						} else {
 							stw.frame = f
 						}
+					} else {
+						stw.TypeCommandLine(string(kc.Rune))
 					}
 				case key.CodeZ:
 					if e.Modifiers&key.ModControl != 0 {
@@ -241,6 +243,8 @@ func (stw *Window) Start() {
 						} else {
 							stw.frame = f
 						}
+					} else {
+						stw.TypeCommandLine(string(kc.Rune))
 					}
 				}
 				stw.Typewrite(25, 700, stw.CommandLineString())
