@@ -405,6 +405,125 @@ func (stw *Window) fillquadrangle(c1, c2, c3, c4 []float64) {
 			y14 = y14 + sy14
 		}
 	}
+	if y1 > y2 {
+		if dx12 < 0 {
+			dx12 = -dx12
+		}
+		if dy12 < 0 {
+			dy12 = -dy12
+		}
+		eps := dx12 - dy12
+		x := x1
+		y := y1
+		x12 = x1
+		endx := x2
+		endy := y2
+		var sy12 int
+		if y1 < y2 {
+			sy12 = 1
+		} else {
+			sy12 = -1
+		}
+		var e12 int
+		for {
+			if x == endx && y == endy {
+				break
+			}
+			if y < y1 {
+				cvs.SetRGBA(x, y, stw.currentPen)
+			}
+			e12 = eps << 1
+			if e12 > -dy12 {
+				eps = eps - dy12
+				x = x + sx12
+			}
+			if e12 < dx12 {
+				for {
+					if ((x12-x2)*dy24-dx24*(y-y2))*sx12 >= 0 {
+						break
+					}
+					x12 = x12 + sx12
+				}
+				cx := x12
+				var sx int
+				if x12 < x {
+					sx = 1
+				} else {
+					sx = -1
+				}
+				for {
+					if y < y1 {
+						Blend(cvs, cx, y, stw.currentBrush)
+					}
+					if cx == x {
+						break
+					}
+					cx = cx + sx
+				}
+				eps = eps + dx12
+				y = y + sy12
+			}
+		}
+	} else if y1 > y3 {
+		if dx13 < 0 {
+			dx13 = -dx13
+		}
+		if dy13 < 0 {
+			dy13 = -dy13
+		}
+		eps := dx13 - dy13
+		x := x1
+		y := y1
+		x13 = x1
+		endx := x3
+		endy := y3
+		var sy13 int
+		if y1 < y3 {
+			sy13 = 1
+		} else {
+			sy13 = -1
+		}
+		var e13 int
+		for {
+			if x == endx && y == endy {
+				break
+			}
+			if y < y1 {
+				cvs.SetRGBA(x, y, stw.currentPen)
+			}
+			e13 = eps << 1
+			if e13 > -dy13 {
+				eps = eps - dy13
+				x = x + sx13
+			}
+			if e13 < dx13 {
+				for {
+					if ((x13-x3)*dy34-dx34*(y-y3))*sx13 >= 0 {
+						break
+					}
+					x13 = x13 + sx13
+				}
+				cx := x13
+				var sx int
+				if x13 < x {
+					sx = 1
+				} else {
+					sx = -1
+				}
+				for {
+					if y < y1 {
+						Blend(cvs, cx, y, stw.currentBrush)
+					}
+					if cx == x {
+						break
+					}
+					cx = cx + sx
+				}
+				eps = eps + dx13
+				y = y + sy13
+			}
+		}
+	}
 	return
 }
 
