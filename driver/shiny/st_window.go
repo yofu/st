@@ -354,12 +354,8 @@ func (stw *Window) Start() {
 					}
 				case mouse.ButtonWheelUp:
 					stw.ZoomIn(float64(e.X), float64(e.Y))
-					stw.Redraw()
-					stw.window.Publish()
 				case mouse.ButtonWheelDown:
 					stw.ZoomOut(float64(e.X), float64(e.Y))
-					stw.Redraw()
-					stw.window.Publish()
 				}
 				stw.Redraw()
 				stw.window.Publish()
