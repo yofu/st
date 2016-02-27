@@ -247,6 +247,9 @@ func (stw *Window) Start() {
 			}
 			prevkey = e.Code
 		case mouse.Event:
+			if (e.Button == mouse.ButtonWheelUp || e.Button == mouse.ButtonWheelDown) && e.Direction == mouse.DirNone {
+				e.Direction = mouse.DirRelease
+			}
 			switch e.Direction {
 			case mouse.DirPress:
 				startX = int(e.X)
