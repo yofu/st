@@ -247,9 +247,6 @@ func (stw *Window) Start() {
 			}
 			prevkey = e.Code
 		case mouse.Event:
-			if e.Button == 4 || e.Button == 5 {
-				e.Direction = mouse.DirNone
-			}
 			switch e.Direction {
 			case mouse.DirPress:
 				startX = int(e.X)
@@ -263,49 +260,38 @@ func (stw *Window) Start() {
 			case mouse.DirNone:
 				endX = int(e.X)
 				endY = int(e.Y)
-				switch e.Button {
-				default:
-					if pressed&ButtonLeft != 0 {
-						var col color.Color
-						if endX >= startX {
-							col = selectleftColor
+				if pressed&ButtonLeft != 0 {
+					var col color.Color
+					if endX >= startX {
+						col = selectleftColor
+					} else {
+						col = selectrightColor
+					}
+					stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
+					stw.window.Fill(image.Rect(startX, startY, endX, endY), col, screen.Over)
+					stw.window.Publish()
+				} else if pressed&ButtonMiddle != 0 {
+					dx := endX - startX
+					dy := endY - startY
+					if dx&7 == 0 || dy&7 == 0 {
+						if e.Modifiers&key.ModShift != 0 {
+							stw.frame.View.Center[0] += float64(dx) * stw.CanvasMoveSpeedX()
+							stw.frame.View.Center[1] += float64(dy) * stw.CanvasMoveSpeedY()
 						} else {
-							col = selectrightColor
+							stw.frame.View.Angle[0] += float64(dy) * stw.CanvasRotateSpeedY()
+							stw.frame.View.Angle[1] -= float64(dx) * stw.CanvasRotateSpeedX()
 						}
-						stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
-						stw.window.Fill(image.Rect(startX, startY, endX, endY), col, screen.Over)
+						stw.Redraw()
 						stw.window.Publish()
-					} else if pressed&ButtonMiddle != 0 {
+					}
+				} else {
+					if tailnodes != nil {
 						dx := endX - startX
 						dy := endY - startY
-						if dx&7 == 0 || dy&7 == 0 {
-							if e.Modifiers&key.ModShift != 0 {
-								stw.frame.View.Center[0] += float64(dx) * stw.CanvasMoveSpeedX()
-								stw.frame.View.Center[1] += float64(dy) * stw.CanvasMoveSpeedY()
-							} else {
-								stw.frame.View.Angle[0] += float64(dy) * stw.CanvasRotateSpeedY()
-								stw.frame.View.Angle[1] -= float64(dx) * stw.CanvasRotateSpeedX()
-							}
-							stw.Redraw()
-							stw.window.Publish()
-						}
-					} else {
-						if tailnodes != nil {
-							dx := endX - startX
-							dy := endY - startY
-							if dx&3 == 0 || dy&3 == 0 {
-								stw.TailLine()
-							}
+						if dx&3 == 0 || dy&3 == 0 {
+							stw.TailLine()
 						}
 					}
-				case mouse.ButtonWheelUp, 4:
-					stw.ZoomIn(float64(e.X), float64(e.Y))
-					stw.Redraw()
-					stw.window.Publish()
-				case mouse.ButtonWheelDown, 5:
-					stw.ZoomOut(float64(e.X), float64(e.Y))
-					stw.Redraw()
-					stw.window.Publish()
 				}
 			case mouse.DirRelease:
 				endX = int(e.X)
@@ -363,6 +349,14 @@ func (stw *Window) Start() {
 							stw.Execute(stw.lastcommand(stw))
 						}
 					}
+				case mouse.ButtonWheelUp:
+					stw.ZoomIn(float64(e.X), float64(e.Y))
+					stw.Redraw()
+					stw.window.Publish()
+				case mouse.ButtonWheelDown:
+					stw.ZoomOut(float64(e.X), float64(e.Y))
+					stw.Redraw()
+					stw.window.Publish()
 				}
 				stw.Redraw()
 				stw.window.Publish()
