@@ -1,5 +1,25 @@
 package st
 
+import (
+	"bufio"
+	"os"
+	"strings"
+)
+
+type Commander interface {
+	Selector
+	GetElem() chan *Elem
+	GetNode() chan *Node
+	GetClick() chan Click
+	AddTail(*Node)
+	EndTail()
+	EndCommand()
+	AddCommandAlias(key string, value func(Commander) chan bool)
+	DeleteCommandAlias(key string)
+	ClearCommandAlias()
+	CommandAlias(key string) (func(Commander) chan bool, bool)
+}
+
 type Click struct {
 	Button int
 	X      int
@@ -102,4 +122,62 @@ func (cb *CommandBuffer) EndCommand() {
 		cb.click = nil
 		cb.quit = nil
 	}
+}
+
+func ReadPgp(stw Commander, filename string) error {
+	aliases := make(map[string]func(Commander) chan bool)
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	s := bufio.NewScanner(f)
+	for s.Scan() {
+		txt := s.Text()
+		if strings.HasPrefix(txt, "#") {
+			continue
+		}
+		var words []string
+		for _, k := range strings.Split(txt, " ") {
+			if k != "" {
+				words = append(words, k)
+			}
+		}
+		if len(words) < 2 {
+			continue
+		}
+		if value, ok := Commands[strings.ToUpper(words[1])]; ok {
+			aliases[strings.ToUpper(words[0])] = value
+		} else if strings.HasPrefix(words[1], ":") {
+			command := strings.Join(words[1:], " ")
+			aliases[strings.ToUpper(words[0])] = func(stw Commander) chan bool {
+				if ew, ok := stw.(ExModer); ok {
+					err := ExMode(ew, command)
+					if err != nil {
+						ErrorMessage(stw, err, ERROR)
+					}
+				}
+				return nil
+			}
+		} else if strings.HasPrefix(words[1], "'") {
+			command := strings.Join(words[1:], " ")
+			aliases[strings.ToUpper(words[0])] = func(stw Commander) chan bool {
+				if fw, ok := stw.(Fig2Moder); ok {
+					err := Fig2Mode(fw, command)
+					if err != nil {
+						ErrorMessage(stw, err, ERROR)
+					}
+				}
+				return nil
+			}
+		}
+	}
+	if err := s.Err(); err != nil {
+		return err
+	}
+	stw.ClearCommandAlias()
+	for k, v := range aliases {
+		stw.AddCommandAlias(k, v)
+	}
+	return nil
 }

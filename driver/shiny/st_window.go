@@ -644,10 +644,6 @@ func (stw *Window) Close(bang bool) {
 	os.Exit(0)
 }
 
-func (stw *Window) ReadPgp(string) error {
-	return nil
-}
-
 func (stw *Window) ShapeData(st.Shape) {
 }
 

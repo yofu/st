@@ -36,7 +36,6 @@ type ExModer interface {
 	SaveAS()
 	SaveFileSelected(string) error
 	SearchFile(string) (string, error)
-	ReadPgp(string) error
 	ShapeData(Shape)
 	ToggleFixRotate()
 	ToggleFixMove()

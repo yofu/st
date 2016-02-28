@@ -5,15 +5,18 @@ import (
 	"fmt"
 )
 
-type Commander interface {
-	Selector
-	GetElem() chan *Elem
-	GetNode() chan *Node
-	GetClick() chan Click
-	AddTail(*Node)
-	EndTail()
-	EndCommand()
-}
+var (
+	Commands = map[string]func(Commander) chan bool{
+		"DISTS":          Dists,
+		"MATCHPROPERTY":  MatchProperty,
+		"JOINLINEELEM":   JoinLineElem,
+		"ERASE":          Erase,
+		"ADDLINEELEM":    AddLineElem,
+		"ADDPLATEELEM":   AddPlateElem,
+		"HATCHPLATEELEM": HatchPlateElem,
+		"TRIM":           Trim,
+	}
+)
 
 func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 	quit := make(chan bool)

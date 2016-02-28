@@ -751,9 +751,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				return err
 			}
 		case t == "pgp":
-			err := stw.ReadPgp(fn)
-			if err != nil {
-				return err
+			if cw, ok := stw.(Commander); ok {
+				err := ReadPgp(cw, fn)
+				if err != nil {
+					return err
+				}
+			} else {
+				return fmt.Errorf("Window doesn't implement Commander interface")
 			}
 		}
 	case "insert":
