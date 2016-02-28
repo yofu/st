@@ -106,7 +106,7 @@ func NewWindow(s screen.Screen) *Window {
 		fontColor:     color.RGBA{0xff, 0xff, 0xff, 0xff},
 		changed:       false,
 		lastexcommand: "",
-		LastFig2Command: "",
+		lastfig2command: "",
 		lastcommand:   nil,
 	}
 }
