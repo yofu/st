@@ -194,6 +194,8 @@ func (stw *Window) Start() {
 							stw.SetCommandLineString(str)
 							comp.Chdir(stw.Cwd())
 							stw.SetComplete(comp)
+						} else {
+							stw.TypeCommandLine(" ")
 						}
 					} else if strings.HasPrefix(cl, "'") {
 						c, usage, comp := st.Fig2KeywordComplete(cl)
@@ -208,6 +210,8 @@ func (stw *Window) Start() {
 							stw.SetCommandLineString(str)
 							comp.Chdir(stw.Cwd())
 							stw.SetComplete(comp)
+						} else {
+							stw.TypeCommandLine(" ")
 						}
 					} else {
 						stw.TypeCommandLine(" ")
