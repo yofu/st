@@ -688,9 +688,6 @@ func (stw *Window) TextBox(string) st.TextBox {
 	return nil
 }
 
-func (stw *Window) AxisRange(int, float64, float64, bool) {
-}
-
 func (stw *Window) NextFloor() {
 }
 
