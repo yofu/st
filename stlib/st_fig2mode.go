@@ -178,9 +178,9 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			}
 			d := k.Direction()
 			if IsParallel(d, XAXIS, EPS) {
-				stw.AxisRange(1, k.Start[1]+min, k.Start[1]+max, false)
+				AxisRange(stw, 1, k.Start[1]+min, k.Start[1]+max, false)
 			} else if IsParallel(d, YAXIS, EPS) {
-				stw.AxisRange(0, k.Start[0]+min, k.Start[0]+max, false)
+				AxisRange(stw, 0, k.Start[0]+min, k.Start[0]+max, false)
 			} else {
 				for _, n := range frame.Nodes {
 					n.Hide()

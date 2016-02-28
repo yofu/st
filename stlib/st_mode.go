@@ -45,7 +45,6 @@ type ExModer interface {
 	CurrentLap(string, int, int)
 	SectionData(*Sect)
 	TextBox(string) TextBox
-	AxisRange(int, float64, float64, bool)
 	NextFloor()
 	PrevFloor()
 	SetAngle(float64, float64)
@@ -69,6 +68,5 @@ type Fig2Moder interface {
 	SetLastFig2Command(string)
 	ShowCenter()
 	SetColorMode(uint)
-	AxisRange(int, float64, float64, bool)
 	TextBox(string) TextBox
 }

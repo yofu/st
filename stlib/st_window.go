@@ -992,3 +992,48 @@ func ToggleEtype(stw Window, etype int) {
 		ShowEtype(stw, etype)
 	}
 }
+
+func AxisRange(stw Window, axis int, min, max float64, any bool) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	tmpnodes := make([]*Node, 0)
+	for _, n := range frame.Nodes {
+		if !(min <= n.Coord[axis] && n.Coord[axis] <= max) {
+			tmpnodes = append(tmpnodes, n)
+			n.Hide()
+		} else {
+			n.Show()
+		}
+	}
+	var tmpelems []*Elem
+	if !any {
+		tmpelems = frame.NodeToElemAny(tmpnodes...)
+	} else {
+		tmpelems = frame.NodeToElemAll(tmpnodes...)
+	}
+	for _, el := range frame.Elems {
+		el.Show()
+	}
+	for _, el := range tmpelems {
+		el.Hide()
+	}
+	switch axis {
+	case 0:
+		frame.Show.Xrange[0] = min
+		frame.Show.Xrange[1] = max
+		stw.SetLabel("XMIN", fmt.Sprintf("%.3f", min))
+		stw.SetLabel("XMAX", fmt.Sprintf("%.3f", max))
+	case 1:
+		frame.Show.Yrange[0] = min
+		frame.Show.Yrange[1] = max
+		stw.SetLabel("YMIN", fmt.Sprintf("%.3f", min))
+		stw.SetLabel("YMAX", fmt.Sprintf("%.3f", max))
+	case 2:
+		frame.Show.Zrange[0] = min
+		frame.Show.Zrange[1] = max
+		stw.SetLabel("ZMIN", fmt.Sprintf("%.3f", min))
+		stw.SetLabel("ZMAX", fmt.Sprintf("%.3f", max))
+	}
+}

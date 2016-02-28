@@ -3040,7 +3040,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		if narg == 1 {
 			for i := 0; i < 3; i++ {
-				stw.AxisRange(i, -100.0, 1000.0, false)
+				AxisRange(stw, i, -100.0, 1000.0, false)
 			}
 			return nil
 		}
@@ -3056,7 +3056,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return errors.New(":range unknown axis")
 		}
 		if narg == 2 {
-			stw.AxisRange(axis, -100.0, 1000.0, false)
+			AxisRange(stw, axis, -100.0, 1000.0, false)
 			return nil
 		}
 		var min, max float64
@@ -3074,13 +3074,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		} else {
 			max = min
 		}
-		stw.AxisRange(axis, min, max, false)
+		AxisRange(stw, axis, min, max, false)
 	case "height":
 		if usage {
 			return Usage(":height f1 f2")
 		}
 		if narg == 1 {
-			stw.AxisRange(2, -100.0, 1000.0, false)
+			AxisRange(stw, 2, -100.0, 1000.0, false)
 			return nil
 		}
 		if narg < 3 {
@@ -3109,7 +3109,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if min < 0 || min >= l || max < 0 || max >= l {
 			return errors.New(":height out of boundary")
 		}
-		stw.AxisRange(2, frame.Ai.Boundary[min], frame.Ai.Boundary[max], false)
+		AxisRange(stw, 2, frame.Ai.Boundary[min], frame.Ai.Boundary[max], false)
 	case "story", "storey":
 		if usage {
 			return Usage(":storey n")
