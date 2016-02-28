@@ -688,12 +688,6 @@ func (stw *Window) TextBox(string) st.TextBox {
 	return nil
 }
 
-func (stw *Window) NextFloor() {
-}
-
-func (stw *Window) PrevFloor() {
-}
-
 func (stw *Window) SetAngle(phi, theta float64) {
 	view := st.CanvasCenterView(stw, []float64{phi, theta})
 	st.Animate(stw, view)

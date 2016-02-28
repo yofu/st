@@ -44,8 +44,6 @@ type ExModer interface {
 	CurrentLap(string, int, int)
 	SectionData(*Sect)
 	TextBox(string) TextBox
-	NextFloor()
-	PrevFloor()
 	SetAngle(float64, float64)
 	SetPaperSize(uint)
 	PaperSize() uint

@@ -993,6 +993,69 @@ func ToggleEtype(stw Window, etype int) {
 	}
 }
 
+func NextFloor(stw Window) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	for _, n := range frame.Nodes {
+		n.Show()
+	}
+	for _, el := range frame.Elems {
+		el.Show()
+	}
+	for i, z := range []string{"ZMIN", "ZMAX"} {
+		tmpval := frame.Show.Zrange[i]
+		ind := 0
+		for _, ht := range frame.Ai.Boundary {
+			if ht > tmpval {
+				break
+			}
+			ind++
+		}
+		var val float64
+		l := len(frame.Ai.Boundary)
+		if ind >= l-1 {
+			val = frame.Ai.Boundary[l-2+i]
+		} else {
+			val = frame.Ai.Boundary[ind]
+		}
+		frame.Show.Zrange[i] = val
+		stw.SetLabel(z, fmt.Sprintf("%.3f", val))
+	}
+}
+
+func PrevFloor(stw Window) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	for _, n := range frame.Nodes {
+		n.Show()
+	}
+	for _, el := range frame.Elems {
+		el.Show()
+	}
+	for i, z := range []string{"ZMIN", "ZMAX"} {
+		tmpval := frame.Show.Zrange[i]
+		ind := 0
+		for _, ht := range frame.Ai.Boundary {
+			if ht > tmpval {
+				break
+			}
+			ind++
+		}
+		var val float64
+		if ind <= 2 {
+			val = frame.Ai.Boundary[i]
+		} else {
+			val = frame.Ai.Boundary[ind-2]
+		}
+		frame.Show.Zrange[i] = val
+		stw.SetLabel(z, fmt.Sprintf("%.3f", val))
+	}
+}
+
 func AxisRange(stw Window, axis int, min, max float64, any bool) {
 	frame := stw.Frame()
 	if frame == nil {

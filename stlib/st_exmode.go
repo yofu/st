@@ -3155,9 +3155,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		return ExMode(stw, fmt.Sprintf("height %d %d", n-1, n))
 	case "height+":
-		stw.NextFloor()
+		NextFloor(stw)
 	case "height-":
-		stw.PrevFloor()
+		PrevFloor(stw)
 	case "angle":
 		if usage {
 			return Usage(":angle phi theta")
