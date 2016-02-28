@@ -26,7 +26,8 @@ import (
 )
 
 var (
-	prevkey key.Code
+	prevkey key.Event
+	cline   string
 )
 
 var (
@@ -164,7 +165,7 @@ func (stw *Window) Start() {
 				case key.CodeDeleteBackspace:
 					stw.BackspaceCommandLine()
 				case key.CodeTab:
-					if prevkey == key.CodeTab {
+					if prevkey.Code == key.CodeTab {
 						if e.Modifiers&key.ModShift != 0 {
 							stw.PrevComplete()
 						} else {
@@ -238,6 +239,24 @@ func (stw *Window) Start() {
 					stw.SeekLast()
 				case key.CodeUpArrow:
 					stw.SeekHead()
+				case key.CodeP:
+					if e.Modifiers&key.ModControl != 0 {
+						if !((prevkey.Code == key.CodeP || prevkey.Code == key.CodeN) && prevkey.Modifiers&key.ModControl != 0) {
+							cline = stw.CommandLineString()
+						}
+						stw.PrevCommandHistory(cline)
+					} else {
+						stw.TypeCommandLine(string(kc.Rune))
+					}
+				case key.CodeN:
+					if e.Modifiers&key.ModControl != 0 {
+						if !((prevkey.Code == key.CodeP || prevkey.Code == key.CodeN) && prevkey.Modifiers&key.ModControl != 0) {
+							cline = stw.CommandLineString()
+						}
+						stw.NextCommandHistory(cline)
+					} else {
+						stw.TypeCommandLine(string(kc.Rune))
+					}
 				case key.CodeY:
 					if e.Modifiers&key.ModControl != 0 {
 						f, err := stw.Redo()
@@ -263,7 +282,7 @@ func (stw *Window) Start() {
 				}
 				stw.Typewrite(25, 700, stw.CommandLineString())
 			}
-			prevkey = e.Code
+			prevkey = e
 		case mouse.Event:
 			if (e.Button == mouse.ButtonWheelUp || e.Button == mouse.ButtonWheelDown) && e.Direction == mouse.DirNone {
 				e.Direction = mouse.DirRelease
@@ -551,6 +570,7 @@ func (stw *Window) TailLine() {
 func (stw *Window) FeedCommand() {
 	command := stw.CommandLineString()
 	if command != "" {
+		stw.AddCommandHistory(command)
 		stw.ClearCommandLine()
 		stw.ExecCommand(command)
 		stw.Redraw()

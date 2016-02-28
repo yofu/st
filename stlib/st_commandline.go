@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+const (
+	historysize = 100
+)
+
 type CommandLine struct {
 	words       []string
 	position    int
@@ -13,6 +17,8 @@ type CommandLine struct {
 	completes   []string
 	completepos int
 	comp        *complete.Complete
+	history     []string
+	historypos  int
 }
 
 func NewCommandLine() *CommandLine {
@@ -23,6 +29,8 @@ func NewCommandLine() *CommandLine {
 		completes:   make([]string, 0),
 		completepos: 0,
 		comp:        nil,
+		history:     make([]string, historysize),
+		historypos:  0,
 	}
 }
 
@@ -227,5 +235,44 @@ func (c *CommandLine) ContextComplete() ([]string, bool) {
 		return nil, false
 	} else {
 		return lis, true
+	}
+}
+
+func (c *CommandLine) AddCommandHistory(str string) {
+	tmp := make([]string, historysize)
+	tmp[0] = str
+	for i := 0; i < historysize-1; i++ {
+		tmp[i+1] = c.history[i]
+	}
+	c.history = tmp
+	c.historypos = -1
+}
+
+func (c *CommandLine) PrevCommandHistory(str string) {
+	last := c.historypos
+	for {
+		c.historypos++
+		if c.historypos >= historysize {
+			c.historypos = last
+			return
+		}
+		if strings.HasPrefix(c.history[c.historypos], str) {
+			c.SetCommandLineString(c.history[c.historypos])
+			return
+		}
+	}
+}
+
+func (c *CommandLine) NextCommandHistory(str string) {
+	for {
+		c.historypos--
+		if c.historypos < 0 {
+			c.historypos = 0
+			return
+		}
+		if strings.HasPrefix(c.history[c.historypos], str) {
+			c.SetCommandLineString(c.history[c.historypos])
+			return
+		}
 	}
 }
