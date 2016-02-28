@@ -230,6 +230,14 @@ func (stw *Window) Start() {
 					stw.window.Publish()
 				case key.CodeLeftControl:
 				case key.CodeRightControl:
+				case key.CodeRightArrow:
+					stw.SeekForward()
+				case key.CodeLeftArrow:
+					stw.SeekBackward()
+				case key.CodeDownArrow:
+					stw.SeekLast()
+				case key.CodeUpArrow:
+					stw.SeekHead()
 				case key.CodeY:
 					if e.Modifiers&key.ModControl != 0 {
 						f, err := stw.Redo()

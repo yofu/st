@@ -8,6 +8,7 @@ import (
 
 type CommandLine struct {
 	words       []string
+	position    int
 	completing  bool
 	completes   []string
 	completepos int
@@ -17,6 +18,7 @@ type CommandLine struct {
 func NewCommandLine() *CommandLine {
 	return &CommandLine{
 		words:       []string{""},
+		position:    0,
 		completing:  false,
 		completes:   make([]string, 0),
 		completepos: 0,
@@ -26,6 +28,7 @@ func NewCommandLine() *CommandLine {
 
 func (c *CommandLine) ClearCommandLine() {
 	c.words = []string{""}
+	c.position = 0
 	c.completing = false
 	c.completes = make([]string, 0)
 	c.completepos = 0
@@ -52,6 +55,7 @@ func (c *CommandLine) LastWord() string {
 func (c *CommandLine) SetCommandLineString(s string) {
 	c.ClearCommandLine()
 	c.words = strings.Split(s, " ")
+	c.SeekLast()
 }
 
 func (c *CommandLine) TypeCommandLine(s string) {
@@ -61,10 +65,25 @@ func (c *CommandLine) TypeCommandLine(s string) {
 	if len(c.words) == 0 {
 		c.words = append(c.words, s)
 	} else {
-		if s == " " {
-			c.words = append(c.words, "")
+		if c.AtLast() {
+			if s == " " {
+				c.words = append(c.words, "")
+			} else {
+				c.words[len(c.words)-1] = fmt.Sprintf("%s%s", c.words[len(c.words)-1], s)
+			}
+			c.position++
 		} else {
-			c.words[len(c.words)-1] = fmt.Sprintf("%s%s", c.words[len(c.words)-1], s)
+			pos := c.position
+			for i, w := range c.words {
+				l := len(w)
+				if pos < l {
+					c.words[i] = fmt.Sprintf("%s%s%s", c.words[i][:pos], s, c.words[i][pos:])
+					c.position++
+					break
+				}
+				pos -= l
+				pos--
+			}
 		}
 	}
 }
@@ -76,16 +95,85 @@ func (c *CommandLine) BackspaceCommandLine() {
 	if len(c.words) == 0 {
 		return
 	}
-	if c.words[len(c.words)-1] == "" {
-		if len(c.words) > 1 {
-			c.words = c.words[:len(c.words)-1]
+	if c.AtLast() {
+		c.position--
+		if c.words[len(c.words)-1] == "" {
+			if len(c.words) > 1 {
+				c.words = c.words[:len(c.words)-1]
+			}
+		} else {
+			c.words[len(c.words)-1] = c.words[len(c.words)-1][:len(c.words[len(c.words)-1])-1]
+			if len(c.words) == 1 && len(c.words[0]) == 0 {
+				c.ClearCommandLine()
+			}
 		}
 	} else {
-		c.words[len(c.words)-1] = c.words[len(c.words)-1][:len(c.words[len(c.words)-1])-1]
-		if len(c.words) == 1 && len(c.words[0]) == 0 {
-			c.ClearCommandLine()
+		pos := c.position
+		c.position--
+		for i, w := range c.words {
+			l := len(w)
+			if pos < l {
+				c.words[i] = fmt.Sprintf("%s%s", c.words[i][:pos-1], c.words[i][pos:])
+			}
+			pos -= l
+			pos--
+			if pos == 0 {
+				c.words[i] = fmt.Sprintf("%s%s", c.words[i], c.words[i+1])
+				for j := i+1; j < len(c.words); j++ {
+					c.words[j] = c.words[j+1]
+				}
+				return
+			}
 		}
 	}
+}
+
+func (c *CommandLine) SeekHead() {
+	if c.completing {
+		c.EndCompletion()
+	}
+	c.position = 0
+}
+
+func (c *CommandLine) SeekForward() {
+	if c.completing {
+		c.EndCompletion()
+	}
+	if c.AtLast() {
+		return
+	}
+	c.position++
+}
+
+func (c *CommandLine) SeekBackward() {
+	if c.completing {
+		c.EndCompletion()
+	}
+	if c.position == 0 {
+		return
+	}
+	c.position--
+}
+
+func (c *CommandLine) SeekLast() {
+	if c.completing {
+		c.EndCompletion()
+	}
+	pos := -1
+	for _, w := range c.words {
+		pos++
+		pos += len(w)
+	}
+	c.position = pos
+}
+
+func (c *CommandLine) AtLast() bool {
+	pos := -1
+	for _, w := range c.words {
+		pos++
+		pos += len(w)
+	}
+	return c.position == pos
 }
 
 func (c *CommandLine) PrevComplete() {
@@ -121,6 +209,7 @@ func (c *CommandLine) EndCompletion() {
 	c.completing = false
 	if c.completes != nil && len(c.completes) > c.completepos {
 		c.words[len(c.words)-1] = c.completes[c.completepos]
+		c.SeekLast()
 	}
 }
 
