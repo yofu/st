@@ -80,6 +80,7 @@ type Window struct {
 	fontColor     color.RGBA
 	changed       bool
 	lastexcommand string
+	lastfig2command string
 	lastcommand   func(st.Commander) chan bool
 }
 
@@ -105,6 +106,7 @@ func NewWindow(s screen.Screen) *Window {
 		fontColor:     color.RGBA{0xff, 0xff, 0xff, 0xff},
 		changed:       false,
 		lastexcommand: "",
+		LastFig2Command: "",
 		lastcommand:   nil,
 	}
 }
@@ -773,10 +775,11 @@ func (stw *Window) Complete() string {
 }
 
 func (stw *Window) LastFig2Command() string {
-	return ""
+	return stw.lastfig2command
 }
 
-func (stw *Window) SetLastFig2Command(string) {
+func (stw *Window) SetLastFig2Command(c string) {
+	stw.lastfig2command = c
 }
 
 func (stw *Window) ShowCenter() {
