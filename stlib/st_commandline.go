@@ -50,6 +50,19 @@ func (c *CommandLine) CommandLineString() string {
 	}
 }
 
+func (c *CommandLine) CommandLineStringWithPosition() string {
+	if c.completing {
+		return strings.Join(append(c.words[:len(c.words)-1], c.completes[c.completepos]), " ") + "|"
+	} else {
+		str := strings.Join(c.words, " ")
+		if str == "" {
+			return ""
+		} else {
+			return fmt.Sprintf("%s|%s", str[:c.position], str[c.position:])
+		}
+	}
+}
+
 func (c *CommandLine) LastWord() string {
 	if c.completing {
 		c.EndCompletion()

@@ -280,7 +280,7 @@ func (stw *Window) Start() {
 						stw.TypeCommandLine(string(kc.Rune))
 					}
 				}
-				stw.Typewrite(25, 700, stw.CommandLineString())
+				stw.Typewrite(25, 700, stw.CommandLineStringWithPosition())
 			}
 			prevkey = e
 		case mouse.Event:
