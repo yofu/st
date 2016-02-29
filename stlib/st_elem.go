@@ -620,21 +620,12 @@ func (elem *Elem) DeformedArea(p string) float64 {
 
 func (elem *Elem) Weight() []float64 {
 	rtn := make([]float64, 3)
-	if elem.IsLineElem() {
-		l := elem.Length()
-		w := elem.Sect.Weight()
-		for i := 0; i < 3; i++ {
-			rtn[i] = l * w[i]
-		}
-		return rtn
-	} else {
-		a := elem.Area()
-		w := elem.Sect.Weight()
-		for i := 0; i < 3; i++ {
-			rtn[i] = a * w[i]
-		}
-		return rtn
+	a := elem.Amount()
+	w := elem.Sect.Weight()
+	for i := 0; i < 3; i++ {
+		rtn[i] = a * w[i]
 	}
+	return rtn
 }
 
 // }}}
