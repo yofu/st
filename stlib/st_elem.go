@@ -771,28 +771,105 @@ func (elem *Elem) Height() float64 {
 	}
 }
 
-// TODO: implement
+// TODO: test
 func (elem *Elem) PlateDivision() ([]*Elem, error) {
 	if elem.Enods < 3 {
-		return nil, errors.New(fmt.Sprintf("PlateDivision: ELEM %d too few enods", elem.Num))
+		return nil, fmt.Errorf("PlateDivision: too few enods: ELEM %d", elem.Num)
 	}
-	var jinds []int
 	switch elem.Enods {
+	default:
+		return nil, fmt.Errorf("PlateDivision: too many enods: ELEM %d", elem.Num)
 	case 3:
-		jinds = []int{1, 2, 0}
+		d := make([]float64, 3)
+		sum := 0.0
+		for i := 0; i < 3; i++ {
+			j := i + 1
+			k := i + 2
+			if j >= 3 {
+				j -= 3
+			}
+			if k >= 3 {
+				k -= 3
+			}
+			d[i] = Distance(elem.Enod[j], elem.Enod[k])
+			sum += d[i]
+		}
+		if sum == 0.0 {
+			return nil, fmt.Errorf("PlateDivision: zero area: ELEM %d", elem.Num)
+		}
+		coord := make([]float64, 3)
+		for i := 0; i< 3; i++ {
+			for j := 0; j < 3; j++ {
+				coord[i] = d[j] * elem.Enod[j].Coord[i] / sum
+			}
+		}
+		n := NewNode() // inner centre
+		n.Coord = coord
+		return []*Elem{
+			NewPlateElem([]*Node{elem.Enod[0], elem.Enod[1], n}, elem.Sect, elem.Etype),
+			NewPlateElem([]*Node{elem.Enod[1], elem.Enod[2], n}, elem.Sect, elem.Etype),
+			NewPlateElem([]*Node{elem.Enod[2], elem.Enod[0], n}, elem.Sect, elem.Etype),
+		}, nil
 	case 4:
-		jinds = []int{1, 2, 3, 0}
-	}
-	var mid [][]float64
-	for i, j := range jinds {
-		d1 := elem.EdgeDirection(i, true)
-		d2 := elem.EdgeDirection(j, true)
-		mid[i] = make([]float64, 3)
-		for k := 0; k < 3; k++ {
-			mid[i][k] = 0.5 * (d1[k] + d2[k])
+		cand := make([][]*Elem, 2)
+		for i := 0; i < 2; i++ {
+			nodes := make([]*Node, 2)
+			for j := 0; j < 2; j++ {
+				i0 := i + 2*j
+				i1 := i0 + 1
+				if i1 >= 4 {
+					i1 -= 4
+				}
+				i2 := i0 + 2
+				if i2 >= 4 {
+					i2 -= 4
+				}
+				im := i0 - 1
+				if im < 0 {
+					im += 4
+				}
+				v := Direction(elem.Enod[i0], elem.Enod[i1], true)
+				l := Distance(elem.Enod[i0], elem.Enod[i1])
+				v1 := Direction(elem.Enod[i0], elem.Enod[im], true)
+				v2 := Direction(elem.Enod[i1], elem.Enod[i2], true)
+				tanA := 2.0/(1.0 + Dot(v, v1, 3)) - 1.0
+				tanB := 2.0/(1.0 + Dot(v, v2, 3)) - 1.0
+				t := tanB / (tanA + tanB)
+				h := t * tanA
+				vh1 := RotateVector(elem.Enod[i1].Coord, elem.Enod[i0].Coord, Cross(v, v1), 0.5 * math.Pi)
+				vh2 := RotateVector(elem.Enod[i0].Coord, elem.Enod[i1].Coord, Cross(v2, v), 0.5 * math.Pi)
+				vec := make([]float64, 3)
+				coord := make([]float64, 3)
+				for k := 0; k < 3; k++ {
+					vec[k] = 0.5 * (vh1[k] + vh2[k]) * h
+					coord[k] = elem.Enod[i0].Coord[k] + t * l * v[k] + vec[k]
+				}
+				n := NewNode()
+				n.Coord = coord
+				nodes[j] = n
+			}
+			i0 := i
+			i1 := i0 + 1
+			i2 := i0 + 2
+			i3 := i0 + 3 - i*4
+			cand[i] = []*Elem{
+				NewPlateElem([]*Node{elem.Enod[i0], elem.Enod[i1], nodes[0]}, elem.Sect, elem.Etype),
+				NewPlateElem([]*Node{elem.Enod[i1], elem.Enod[i2], nodes[1], nodes[0]}, elem.Sect, elem.Etype),
+				NewPlateElem([]*Node{elem.Enod[i2], elem.Enod[i3], nodes[1]}, elem.Sect, elem.Etype),
+				NewPlateElem([]*Node{elem.Enod[i3], elem.Enod[i0], nodes[0], nodes[1]}, elem.Sect, elem.Etype),
+			}
+		}
+		var sum0, sum1 float64
+		for i := 0; i < 4; i++ {
+			sum0 += cand[0][i].Area()
+			sum1 += cand[1][i].Area()
+		}
+		if sum0 <= sum1 {
+			return cand[0], nil
+		} else {
+			return cand[1], nil
 		}
 	}
-	return nil, nil
 }
 
 func (elem *Elem) IsBraced() bool {
