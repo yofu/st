@@ -530,7 +530,6 @@ func DeformedDistance(n1, n2 *Node, p string) float64 {
 }
 
 func VectorDistance(n1, n2 *Node, vec []float64) float64 {
-	fmt.Println(vec)
 	rtn := 0.0
 	for i := 0; i < 3; i++ {
 		rtn += (n2.Coord[i] - n1.Coord[i]) * vec[i]
