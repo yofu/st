@@ -799,7 +799,7 @@ func (elem *Elem) PlateDivision() ([]*Elem, error) {
 		coord := make([]float64, 3)
 		for i := 0; i< 3; i++ {
 			for j := 0; j < 3; j++ {
-				coord[i] = d[j] * elem.Enod[j].Coord[i] / sum
+				coord[i] += d[j] * elem.Enod[j].Coord[i] / sum
 			}
 		}
 		n := NewNode() // inner centre
@@ -831,8 +831,8 @@ func (elem *Elem) PlateDivision() ([]*Elem, error) {
 				l := Distance(elem.Enod[i0], elem.Enod[i1])
 				v1 := Direction(elem.Enod[i0], elem.Enod[im], true)
 				v2 := Direction(elem.Enod[i1], elem.Enod[i2], true)
-				tanA := 2.0/(1.0 + Dot(v, v1, 3)) - 1.0
-				tanB := 2.0/(1.0 + Dot(v, v2, 3)) - 1.0
+				tanA := math.Sqrt(2.0/(1.0 + Dot(v, v1, 3)) - 1.0)
+				tanB := math.Sqrt(2.0/(1.0 - Dot(v, v2, 3)) - 1.0)
 				t := tanB / (tanA + tanB)
 				h := t * tanA
 				vh1 := RotateVector(elem.Enod[i1].Coord, elem.Enod[i0].Coord, Cross(v, v1), 0.5 * math.Pi)
@@ -840,7 +840,7 @@ func (elem *Elem) PlateDivision() ([]*Elem, error) {
 				vec := make([]float64, 3)
 				coord := make([]float64, 3)
 				for k := 0; k < 3; k++ {
-					vec[k] = 0.5 * (vh1[k] + vh2[k]) * h
+					vec[k] = 0.5 * (vh1[k]-elem.Enod[i0].Coord[k] + vh2[k]-elem.Enod[i1].Coord[k]) * h
 					coord[k] = elem.Enod[i0].Coord[k] + t * l * v[k] + vec[k]
 				}
 				n := NewNode()
