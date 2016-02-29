@@ -632,16 +632,43 @@ func (elem *Elem) Weight() []float64 {
 
 // Analysis// {{{
 func (elem *Elem) Distribute() error {
-	// TODO: implement SLAB, WALL
-	w := elem.Weight()
+	var err error
+	w := elem.Sect.Weight() // tf/m or tf/m2
 	switch elem.Etype {
 	case SLAB:
 		if elem.Enods < 3 {
 			return fmt.Errorf("Distribute: too few enods: ELEM %d", elem.Num)
 		}
-		for _, en := range elem.Enod {
+		els, err := elem.PlateDivision(false)
+		if err != nil {
+			return err
+		}
+		for _, el := range els {
+			c := make([]*Cmq, 3)
 			for i := 0; i < 3; i++ {
-				en.Weight[i] += w[i] / float64(elem.Enods)
+				c[i], err = Polygon(el, w[i])
+				if err != nil {
+					return err
+				}
+			}
+			var edge *Elem
+			for _, e := range elem.Frame.SearchElem(el.Enod[0], el.Enod[1]) {
+				if e == elem {
+					continue
+				}
+				if e.Etype == GIRDER {
+					edge = e
+					break
+				}
+			}
+			if edge != nil {
+				if ok, _ := edge.IsEdgeOfWall(); ok {
+					edge.DistributeWeight(c)
+				} else {
+					edge.DistributeGirder(c)
+				}
+			} else {
+				el.DistributeWeight(c)
 			}
 		}
 		return nil
@@ -649,80 +676,96 @@ func (elem *Elem) Distribute() error {
 		if elem.Enods < 3 {
 			return fmt.Errorf("Distribute: too few enods: ELEM %d", elem.Num)
 		}
-		for _, en := range elem.Enod {
+		els, err := elem.PlateDivision(false)
+		if err != nil {
+			return err
+		}
+		for _, el := range els {
+			c := make([]*Cmq, 3)
 			for i := 0; i < 3; i++ {
-				en.Weight[i] += w[i] / float64(elem.Enods)
+				c[i], err = Polygon(el, w[i])
+				if err != nil {
+					return err
+				}
 			}
+			el.DistributeWeight(c)
 		}
 		return nil
 	case GIRDER:
-		l := elem.Length()
 		if elem.Enods > 2 {
 			return fmt.Errorf("Distribute: too many enods: ELEM %d", elem.Num)
 		}
-		edge := false
-		plates, err := elem.EdgeOf()
-		if err != nil {
-			return err
-		}
-		for _, plate := range plates {
-			if plate.Etype == WALL && plate.IsBraced() {
-				edge = true
-				break
-			}
-		}
-		if edge {
-			return elem.DistributeLineElem(w)
-		}
-		c, err := Uniform(elem.Length(), w[1])
-		if err != nil {
-			return err
-		}
-		if lis, ok := elem.InitialStress[elem.Enod[0].Num]; ok {
-			lis[2] += c.Qi0
-			lis[4] += c.Ci
-		} else {
-			elem.InitialStress[elem.Enod[0].Num] = make([]float64, 6)
-			elem.InitialStress[elem.Enod[0].Num][2] = c.Qi0
-			elem.InitialStress[elem.Enod[0].Num][4] = c.Ci
-		}
-		if lis, ok := elem.InitialStress[elem.Enod[1].Num]; ok {
-			lis[2] += c.Qj0
-			lis[4] += c.Cj
-		} else {
-			elem.InitialStress[elem.Enod[1].Num] = make([]float64, 6)
-			elem.InitialStress[elem.Enod[1].Num][2] = c.Qj0
-			elem.InitialStress[elem.Enod[1].Num][4] = c.Cj
-		}
-		for _, i := range []int{0, 2} {
-			c, err := Uniform(l, w[i])
+		l := elem.Length()
+		c := make([]*Cmq, 3)
+		for i := 0; i < 3; i++ {
+			c[i], err = Uniform(l, w[i])
 			if err != nil {
 				return err
 			}
-			elem.Enod[0].Weight[i] += c.Qi0
-			elem.Enod[1].Weight[i] += c.Qj0
+		}
+		if ok, _ := elem.IsEdgeOfWall(); ok {
+			elem.DistributeWeight(c)
+		} else {
+			elem.DistributeGirder(c)
 		}
 		return nil
 	case COLUMN, BRACE:
-		return elem.DistributeLineElem(w)
+		l := elem.Length()
+		c := make([]*Cmq, 3)
+		for i := 0; i < 3; i++ {
+			c[i], err = Uniform(l, w[i])
+			if err != nil {
+				return err
+			}
+		}
+		elem.DistributeWeight(c)
+		return nil
 	default:
 		return fmt.Errorf("Distribute: unknown etype: ELEM %d ETYPE %d", elem.Num, elem.Etype)
 	}
 }
 
-func (elem *Elem) DistributeLineElem(w []float64) error {
-	if elem.Enods > 2 {
-		return fmt.Errorf("Distribute: too many enods: ELEM %d", elem.Num)
-	}
+func (elem *Elem) DistributeWeight(c []*Cmq) {
 	for i := 0; i < 3; i++ {
-		c, err := Uniform(elem.Length(), w[i])
-		if err != nil {
-			return err
-		}
-		elem.Enod[0].Weight[i] += c.Qi0
-		elem.Enod[1].Weight[i] += c.Qj0
+		elem.Enod[0].Weight[i] += c[i].Qi0
+		elem.Enod[1].Weight[i] += c[i].Qj0
 	}
-	return nil
+}
+
+func (elem *Elem) DistributeGirder(c []*Cmq) {
+	if lis, ok := elem.InitialStress[elem.Enod[0].Num]; ok {
+		lis[2] += c[1].Qi0
+		lis[4] += c[1].Ci
+	} else {
+		elem.InitialStress[elem.Enod[0].Num] = make([]float64, 6)
+		elem.InitialStress[elem.Enod[0].Num][2] = c[1].Qi0
+		elem.InitialStress[elem.Enod[0].Num][4] = c[1].Ci
+	}
+	if lis, ok := elem.InitialStress[elem.Enod[1].Num]; ok {
+		lis[2] += c[1].Qj0
+		lis[4] += c[1].Cj
+	} else {
+		elem.InitialStress[elem.Enod[1].Num] = make([]float64, 6)
+		elem.InitialStress[elem.Enod[1].Num][2] = c[1].Qj0
+		elem.InitialStress[elem.Enod[1].Num][4] = c[1].Cj
+	}
+	for _, i := range []int{0, 2} {
+		elem.Enod[0].Weight[i] += c[i].Qi0
+		elem.Enod[1].Weight[i] += c[i].Qj0
+	}
+}
+
+func (elem *Elem) IsEdgeOfWall() (bool, error) {
+	plates, err := elem.EdgeOf()
+	if err != nil {
+		return false, err
+	}
+	for _, plate := range plates {
+		if plate.Etype == WALL && plate.IsBraced() {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (elem *Elem) Width() float64 {
