@@ -814,8 +814,9 @@ func (elem *Elem) PlateDivision(add bool) ([]*Elem, error) {
 		}, nil
 	case 4:
 		cand := make([][]*Elem, 2)
+		nodes := make([][]*Node, 2)
 		for i := 0; i < 2; i++ {
-			nodes := make([]*Node, 2)
+			nodes[i] = make([]*Node, 2)
 			for j := 0; j < 2; j++ {
 				i0 := i + 2*j
 				i1 := i0 + 1
@@ -851,17 +852,17 @@ func (elem *Elem) PlateDivision(add bool) ([]*Elem, error) {
 				if add {
 					n = elem.Frame.AddNode(coord[0], coord[1], coord[2])
 				}
-				nodes[j] = n
+				nodes[i][j] = n
 			}
 			i0 := i
 			i1 := i0 + 1
 			i2 := i0 + 2
 			i3 := i0 + 3 - i*4
 			cand[i] = []*Elem{
-				NewPlateElem([]*Node{elem.Enod[i0], elem.Enod[i1], nodes[0]}, elem.Sect, elem.Etype),
-				NewPlateElem([]*Node{elem.Enod[i1], elem.Enod[i2], nodes[1], nodes[0]}, elem.Sect, elem.Etype),
-				NewPlateElem([]*Node{elem.Enod[i2], elem.Enod[i3], nodes[1]}, elem.Sect, elem.Etype),
-				NewPlateElem([]*Node{elem.Enod[i3], elem.Enod[i0], nodes[0], nodes[1]}, elem.Sect, elem.Etype),
+				NewPlateElem([]*Node{elem.Enod[i0], elem.Enod[i1], nodes[i][0]}, elem.Sect, elem.Etype),
+				NewPlateElem([]*Node{elem.Enod[i1], elem.Enod[i2], nodes[i][1], nodes[i][0]}, elem.Sect, elem.Etype),
+				NewPlateElem([]*Node{elem.Enod[i2], elem.Enod[i3], nodes[i][1]}, elem.Sect, elem.Etype),
+				NewPlateElem([]*Node{elem.Enod[i3], elem.Enod[i0], nodes[i][0], nodes[i][1]}, elem.Sect, elem.Etype),
 			}
 		}
 		var sum0, sum1 float64
@@ -870,8 +871,18 @@ func (elem *Elem) PlateDivision(add bool) ([]*Elem, error) {
 			sum1 += cand[1][i].Area()
 		}
 		if sum0 <= sum1 {
+			if add {
+				for i := 0; i < 2; i++ {
+					elem.Frame.DeleteNode(nodes[1][i].Num)
+				}
+			}
 			return cand[0], nil
 		} else {
+			if add {
+				for i := 0; i < 2; i++ {
+					elem.Frame.DeleteNode(nodes[0][i].Num)
+				}
+			}
 			return cand[1], nil
 		}
 	}
