@@ -752,7 +752,6 @@ func (elem *Elem) EffectiveWidth() float64 {
 	}
 }
 
-// TODO: implement Height
 func (elem *Elem) Height() float64 {
 	if elem.IsLineElem() {
 		return math.Abs(elem.Enod[1].Coord[2] - elem.Enod[0].Coord[2])
