@@ -641,7 +641,7 @@ func (elem *Elem) Distribute() error {
 		}
 		for _, en := range elem.Enod {
 			for i := 0; i < 3; i++ {
-				en.Load[i] += w[i] / float64(elem.Enods)
+				en.Weight[i] += w[i] / float64(elem.Enods)
 			}
 		}
 		return nil
@@ -651,7 +651,7 @@ func (elem *Elem) Distribute() error {
 		}
 		for _, en := range elem.Enod {
 			for i := 0; i < 3; i++ {
-				en.Load[i] += w[i] / float64(elem.Enods)
+				en.Weight[i] += w[i] / float64(elem.Enods)
 			}
 		}
 		return nil
@@ -699,8 +699,8 @@ func (elem *Elem) Distribute() error {
 			if err != nil {
 				return err
 			}
-			elem.Enod[0].Load[i] += c.Qi0
-			elem.Enod[1].Load[i] += c.Qj0
+			elem.Enod[0].Weight[i] += c.Qi0
+			elem.Enod[1].Weight[i] += c.Qj0
 		}
 		return nil
 	case COLUMN, BRACE:
@@ -719,8 +719,8 @@ func (elem *Elem) DistributeLineElem(w []float64) error {
 		if err != nil {
 			return err
 		}
-		elem.Enod[0].Load[i] += c.Qi0
-		elem.Enod[1].Load[i] += c.Qj0
+		elem.Enod[0].Weight[i] += c.Qi0
+		elem.Enod[1].Weight[i] += c.Qj0
 	}
 	return nil
 }
