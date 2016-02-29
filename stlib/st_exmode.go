@@ -3304,6 +3304,17 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		for c.Next() {
 			AddSelection(stw, c.Elem())
 		}
+	case "pdiv":
+		if !stw.ElemSelected() {
+			return nil
+		}
+		els, err := stw.SelectedElems()[0].PlateDivision(true)
+		if err != nil {
+			return err
+		}
+		for _, el := range els {
+			frame.AddElem(-1, el)
+		}
 	// case "analysis":
 	// 	if usage {
 	// 		return Usage(":analysis")

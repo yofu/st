@@ -771,7 +771,7 @@ func (elem *Elem) Height() float64 {
 }
 
 // TODO: test
-func (elem *Elem) PlateDivision() ([]*Elem, error) {
+func (elem *Elem) PlateDivision(add bool) ([]*Elem, error) {
 	if elem.Enods < 3 {
 		return nil, fmt.Errorf("PlateDivision: too few enods: ELEM %d", elem.Num)
 	}
@@ -804,6 +804,9 @@ func (elem *Elem) PlateDivision() ([]*Elem, error) {
 		}
 		n := NewNode() // inner centre
 		n.Coord = coord
+		if add {
+			n = elem.Frame.AddNode(coord[0], coord[1], coord[2])
+		}
 		return []*Elem{
 			NewPlateElem([]*Node{elem.Enod[0], elem.Enod[1], n}, elem.Sect, elem.Etype),
 			NewPlateElem([]*Node{elem.Enod[1], elem.Enod[2], n}, elem.Sect, elem.Etype),
@@ -845,6 +848,9 @@ func (elem *Elem) PlateDivision() ([]*Elem, error) {
 				}
 				n := NewNode()
 				n.Coord = coord
+				if add {
+					n = elem.Frame.AddNode(coord[0], coord[1], coord[2])
+				}
 				nodes[j] = n
 			}
 			i0 := i
