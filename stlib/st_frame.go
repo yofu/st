@@ -3624,18 +3624,18 @@ func (frame *Frame) Upside() {
 
 // ExtractArclm// {{{
 func (frame *Frame) ExtractArclm() {
-	// frame.WeightDistribution()
-	// for _, el := range frame.Elems {
-	// 	if !el.IsLineElem() {
-	// 		brs := el.RectToBrace(2, 1.0)
-	// 		if brs != nil {
-	// 			for _, br := range brs {
-	// 				frame.AddElem(-1, br)
-	// 				el.Adopt(br)
-	// 			}
-	// 		}
-	// 	}
-	// }
+	frame.WeightDistribution()
+	for _, el := range frame.Elems {
+		if !el.IsLineElem() {
+			brs := el.RectToBrace(2, 1.0)
+			if brs != nil {
+				for _, br := range brs {
+					frame.AddElem(-1, br)
+					el.Adopt(br)
+				}
+			}
+		}
+	}
 	sects := make([]*Sect, 0)
 	snum := 0
 	for _, sect := range frame.Sects {

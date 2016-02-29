@@ -637,89 +637,90 @@ func (elem *Elem) Distribute() error {
 	switch elem.Etype {
 	case SLAB:
 		if elem.Enods < 3 {
-			return errors.New(fmt.Sprintf("Distribute: ELEM %d too few enods", elem.Num))
+			return fmt.Errorf("Distribute: too few enods: ELEM %d", elem.Num)
 		}
-		for i := 0; i < 3; i++ {
-			w[i] += elem.Sect.Lload[i]
-			// val := w[i] + elem.Sect.Lload[i]
-			// for _, en := range elem.Enod {
-			// 	en.Load[i] += val / float64(elem.Enods)
-			// }
+		for _, en := range elem.Enod {
+			for i := 0; i < 3; i++ {
+				en.Load[i] += w[i] / float64(elem.Enods)
+			}
 		}
+		return nil
 	case WALL:
 		if elem.Enods < 3 {
-			return errors.New(fmt.Sprintf("Distribute: ELEM %d too few enods", elem.Num))
+			return fmt.Errorf("Distribute: too few enods: ELEM %d", elem.Num)
 		}
-		l := elem.Width()
-		h := elem.Height()
-		fmt.Println(l, h)
+		for _, en := range elem.Enod {
+			for i := 0; i < 3; i++ {
+				en.Load[i] += w[i] / float64(elem.Enods)
+			}
+		}
+		return nil
 	case GIRDER:
 		l := elem.Length()
 		if elem.Enods > 2 {
-			return errors.New(fmt.Sprintf("Distribute: ELEM %d too many enods", elem.Num))
+			return fmt.Errorf("Distribute: too many enods: ELEM %d", elem.Num)
 		}
-		cs := make([]*Cmq, 3)
 		edge := false
-		walls, err := elem.EdgeOf()
+		plates, err := elem.EdgeOf()
 		if err != nil {
 			return err
 		}
-		for _, wall := range walls {
-			if wall.IsBraced() {
+		for _, plate := range plates {
+			if plate.Etype == WALL && plate.IsBraced() {
 				edge = true
 				break
 			}
 		}
 		if edge {
-			cs[1], err = Uniform(l, w[1])
+			return elem.DistributeLineElem(w)
+		}
+		c, err := Uniform(elem.Length(), w[1])
+		if err != nil {
+			return err
+		}
+		if lis, ok := elem.InitialStress[elem.Enod[0].Num]; ok {
+			lis[2] += c.Qi0
+			lis[4] += c.Ci
+		} else {
+			elem.InitialStress[elem.Enod[0].Num] = make([]float64, 6)
+			elem.InitialStress[elem.Enod[0].Num][2] = c.Qi0
+			elem.InitialStress[elem.Enod[0].Num][4] = c.Ci
+		}
+		if lis, ok := elem.InitialStress[elem.Enod[1].Num]; ok {
+			lis[2] += c.Qj0
+			lis[4] += c.Cj
+		} else {
+			elem.InitialStress[elem.Enod[1].Num] = make([]float64, 6)
+			elem.InitialStress[elem.Enod[1].Num][2] = c.Qj0
+			elem.InitialStress[elem.Enod[1].Num][4] = c.Cj
+		}
+		for _, i := range []int{0, 2} {
+			c, err := Uniform(l, w[i])
 			if err != nil {
 				return err
 			}
-			elem.Enod[0].Load[1] += cs[1].Qi0
-			elem.Enod[1].Load[1] += cs[1].Qj0
-		} else {
-			// TODO: make InitialStress before adding
-			elem.InitialStress[elem.Enod[0].Num][2] += cs[1].Qi0
-			elem.InitialStress[elem.Enod[1].Num][2] += cs[1].Qj0
-			elem.InitialStress[elem.Enod[0].Num][4] += cs[1].Ci
-			elem.InitialStress[elem.Enod[1].Num][4] += cs[1].Cj
-		}
-		cs[0], err = Uniform(l, w[0])
-		if err != nil {
-			return err
-		}
-		elem.Enod[0].Load[0] += cs[0].Qi0
-		elem.Enod[1].Load[0] += cs[0].Qj0
-		cs[2], err = Uniform(l, w[2])
-		if err != nil {
-			return err
-		}
-		elem.Enod[0].Load[2] += cs[2].Qi0
-		elem.Enod[1].Load[2] += cs[2].Qj0
-	case COLUMN:
-		if elem.Enods > 2 {
-			return errors.New(fmt.Sprintf("Distribute: ELEM %d too many enods", elem.Num))
-		}
-		c, err := Uniform(elem.Length(), w[0])
-		if err != nil {
-			return err
-		}
-		for i := 0; i < 3; i++ {
 			elem.Enod[0].Load[i] += c.Qi0
 			elem.Enod[1].Load[i] += c.Qj0
 		}
-	case BRACE:
-		if elem.Enods > 2 {
-			return errors.New(fmt.Sprintf("Distribute: ELEM %d too many enods", elem.Num))
-		}
-		c, err := Uniform(elem.Length(), w[0])
+		return nil
+	case COLUMN, BRACE:
+		return elem.DistributeLineElem(w)
+	default:
+		return fmt.Errorf("Distribute: unknown etype: ELEM %d ETYPE %d", elem.Num, elem.Etype)
+	}
+}
+
+func (elem *Elem) DistributeLineElem(w []float64) error {
+	if elem.Enods > 2 {
+		return fmt.Errorf("Distribute: too many enods: ELEM %d", elem.Num)
+	}
+	for i := 0; i < 3; i++ {
+		c, err := Uniform(elem.Length(), w[i])
 		if err != nil {
 			return err
 		}
-		for i := 0; i < 3; i++ {
-			elem.Enod[0].Load[i] += c.Qi0
-			elem.Enod[1].Load[i] += c.Qj0
-		}
+		elem.Enod[0].Load[i] += c.Qi0
+		elem.Enod[1].Load[i] += c.Qj0
 	}
 	return nil
 }
