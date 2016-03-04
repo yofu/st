@@ -3939,24 +3939,12 @@ func (frame *Frame) AiDistribution() string {
 			n.Factor = facts[size-1]
 			continue
 		}
-		for i := 0; i < size-1; i++ {
+		for i := 0; i < size; i++ {
 			if height < frame.Ai.Boundary[i+1] {
 				n.Factor = facts[i]
 				break
 			}
 		}
-		// if height < frame.Level[0] {
-		//     n.Factor = facts[0]
-		// } else if height >= frame.Level[size-2] {
-		//     n.Factor = facts[size-1]
-		// } else {
-		//     for i:=1; i<size-1; i++ {
-		//         if height < frame.Level[i] {
-		//             n.Factor = facts[i]
-		//             break
-		//         }
-		//     }
-		// }
 	}
 	var rtn bytes.Buffer
 	rtn.WriteString("3.3 : Ai分布型地震荷重\n\n")
