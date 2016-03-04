@@ -64,7 +64,6 @@ type Elem struct {
 
 	Rate          []float64
 	Stress        map[string]map[int][]float64
-	InitialStress map[int][]float64
 
 	Values    map[string]float64
 	Prestress float64
@@ -95,7 +94,6 @@ func NewLineElem(ns []*Node, sect *Sect, etype int) *Elem {
 	el.Cmq = make([]float64, 12)
 	el.Stress = make(map[string]map[int][]float64)
 	el.Values = make(map[string]float64)
-	el.InitialStress = make(map[int][]float64)
 	el.Phinge = make(map[string]map[int]bool)
 	el.Strong = make([]float64, 3)
 	el.Weak = make([]float64, 3)
@@ -733,26 +731,11 @@ func (elem *Elem) DistributeWeight(c []*Cmq) {
 }
 
 func (elem *Elem) DistributeGirder(c []*Cmq) {
-	if lis, ok := elem.InitialStress[elem.Enod[0].Num]; ok {
-		lis[2] += c[1].Qi0
-		lis[4] += c[1].Ci
-	} else {
-		elem.InitialStress[elem.Enod[0].Num] = make([]float64, 6)
-		elem.InitialStress[elem.Enod[0].Num][2] = c[1].Qi0
-		elem.InitialStress[elem.Enod[0].Num][4] = c[1].Ci
-	}
-	if lis, ok := elem.InitialStress[elem.Enod[1].Num]; ok {
-		lis[2] += c[1].Qj0
-		lis[4] += c[1].Cj
-	} else {
-		elem.InitialStress[elem.Enod[1].Num] = make([]float64, 6)
-		elem.InitialStress[elem.Enod[1].Num][2] = c[1].Qj0
-		elem.InitialStress[elem.Enod[1].Num][4] = c[1].Cj
-	}
-	for _, i := range []int{0, 2} {
-		elem.Enod[0].Weight[i] += c[i].Qi0
-		elem.Enod[1].Weight[i] += c[i].Qj0
-	}
+	elem.Cmq[2] += c[1].Qi0
+	elem.Cmq[4] += c[1].Ci
+	elem.Cmq[8] += c[1].Qj0
+	elem.Cmq[10] += c[1].Cj
+	elem.DistributeWeight(c)
 }
 
 func (elem *Elem) IsEdgeOfWall() (bool, error) {
