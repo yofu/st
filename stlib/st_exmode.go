@@ -3315,47 +3315,23 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		for _, el := range els {
 			frame.AddElem(-1, el)
 		}
-	// case "analysis":
-	// 	if usage {
-	// 		return Usage(":analysis")
-	// 	}
-	// 	err := stw.SaveFile(frame.Path)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	var anarg string
-	// 	if narg >= 3 {
-	// 		anarg = args[2]
-	// 	} else {
-	// 		anarg = "-a"
-	// 	}
-	// 	err = stw.Analysis(filepath.ToSlash(frame.Path), anarg)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	stw.Reload()
-	// 	stw.ReadAll()
-	// 	stw.Redraw()
 	case "extractarclm":
 		if usage {
 			return Usage(":extractarclm")
 		}
 		frame.ExtractArclm()
-		// err = stw.Analysis(filepath.ToSlash(frame.Path), "")
-		// if err != nil {
-		// 	return err
-		// }
-		// for _, ext := range []string{".inl", ".ihx", ".ihy"} {
-		// 	err := frame.ReadData(Ce(frame.Path, ext))
-		// 	if err != nil {
-		// 		stw.errormessage(err, ERROR)
-		// 	}
-		// }
 	case "saveasarclm":
 		if usage {
 			return Usage(":saveasarclm")
 		}
 		frame.SaveAsArclm("")
+	case "all":
+		frame.ExtractArclm()
+		frame.SaveAsArclm("")
+		err := exCommand(stw, ":arclm001 -all", false, exmodech, exmodeend)
+		if err != nil {
+			return err
+		}
 	case "arclm001":
 		if usage {
 			return Usage(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} filename")
