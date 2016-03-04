@@ -3625,7 +3625,7 @@ func (frame *Frame) Upside() {
 // ExtractArclm// {{{
 func (frame *Frame) ExtractArclm() {
 	frame.WeightDistribution()
-	for _, el := range frame.Elems {
+	for _, el := range SortedElem(frame.Elems, func(e *Elem) float64 { return float64(e.Num) }) {
 		if !el.IsLineElem() {
 			brs := el.RectToBrace(2, 1.0)
 			if brs != nil {
@@ -3714,7 +3714,6 @@ func (frame *Frame) ExtractArclm() {
 			}
 			for j := 0; j < 6; j++ {
 				an.Conf[j] = n.Conf[j]
-				// an.Force[j] = n.Force[p][j]
 				an.Force[j] = n.Load[j]
 				if disp != nil {
 					an.Disp[j] = n.Disp[p][j]
@@ -3725,6 +3724,15 @@ func (frame *Frame) ExtractArclm() {
 					}
 				}
 			}
+			switch p {
+			case "L":
+				an.Force[2] -= n.Weight[1]
+			case "X":
+				an.Force[0] += n.Factor * n.Weight[2]
+			case "Y":
+				an.Force[1] += n.Factor * n.Weight[2]
+			}
+			n.Force[p] = an.Force
 			an.Index = i
 			af.Nodes[i] = an
 			arclmnodes[n.Num] = i
@@ -3742,13 +3750,23 @@ func (frame *Frame) ExtractArclm() {
 			if s, ok := el.Stress[p]; ok {
 				stress = s
 			}
+			if p == "L" {
+				for k, en := range ae.Enod {
+					en.Force[2] += el.Cmq[2+6*k]
+				}
+				for k, en := range el.Enod {
+					en.Force[p][2] += el.Cmq[2+6*k]
+				}
+			}
 			for j := 0; j < 12; j++ {
 				if el.Bonds[j] {
 					ae.Bonds[j] = 1
 				} else {
 					ae.Bonds[j] = 0
 				}
-				ae.Cmq[j] = el.Cmq[j]
+				if p == "L" {
+					ae.Cmq[j] = el.Cmq[j]
+				}
 				if stress != nil {
 					if j < 6 {
 						ae.Stress[j] = stress[el.Enod[0].Num][j]
@@ -3756,7 +3774,9 @@ func (frame *Frame) ExtractArclm() {
 						ae.Stress[j] = stress[el.Enod[1].Num][j-6]
 					}
 				} else {
-					ae.Stress[j] = el.Cmq[j]
+					if p == "L" {
+						ae.Stress[j] = el.Cmq[j]
+					}
 				}
 			}
 			af.Elems[i] = ae
