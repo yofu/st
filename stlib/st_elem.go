@@ -813,6 +813,17 @@ func (elem *Elem) Height() float64 {
 	}
 }
 
+func (elem *Elem) PlateSize() (float64, float64) {
+	if elem.Enods != 4 {
+		return 0.0, 0.0
+	}
+	w1 := Distance(elem.Enod[0], elem.Enod[1])
+	w2 := Distance(elem.Enod[2], elem.Enod[3])
+	h1 := Distance(elem.Enod[1], elem.Enod[2])
+	h2 := Distance(elem.Enod[3], elem.Enod[0])
+	return 0.5*(w1+w2), 0.5*(h1+h2)
+}
+
 // TODO: test
 func (elem *Elem) PlateDivision(add bool) ([]*Elem, error) {
 	if elem.Enods < 3 {
@@ -945,8 +956,7 @@ func (elem *Elem) RectToBrace(nbrace int, rfact float64) []*Elem {
 	}
 	if thick, ok := elem.Sect.Figs[0].Value["THICK"]; ok {
 		poi := elem.Sect.Figs[0].Prop.Poi
-		l := elem.Width()
-		h := elem.Height()
+		l, h := elem.PlateSize()
 		// TODO: check wrate calculation
 		wrate1 := elem.Wrect[0] / l
 		wrate2 := 1.25 * math.Sqrt((elem.Wrect[0]*elem.Wrect[1])/(l*h))
