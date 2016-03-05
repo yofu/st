@@ -3726,13 +3726,22 @@ func (frame *Frame) ExtractArclm() {
 			}
 			switch p {
 			case "L":
-				an.Force[2] -= n.Weight[1]
+				if !an.Conf[2] {
+					an.Force[2] -= n.Weight[1]
+				}
 			case "X":
-				an.Force[0] += n.Factor * n.Weight[2]
+				if !an.Conf[0] {
+					an.Force[0] += n.Factor * n.Weight[2]
+				}
 			case "Y":
-				an.Force[1] += n.Factor * n.Weight[2]
+				if !an.Conf[1] {
+					an.Force[1] += n.Factor * n.Weight[2]
+				}
 			}
-			n.Force[p] = an.Force
+			n.Force[p] = make([]float64, 6)
+			for j := 0; j < 6; j++ {
+				n.Force[p][j] = an.Force[j]
+			}
 			an.Index = i
 			af.Nodes[i] = an
 			arclmnodes[n.Num] = i
@@ -3752,10 +3761,14 @@ func (frame *Frame) ExtractArclm() {
 			}
 			if p == "L" {
 				for k, en := range ae.Enod {
-					en.Force[2] += el.Cmq[2+6*k]
+					if !en.Conf[2] {
+						en.Force[2] += el.Cmq[2+6*k]
+					}
 				}
 				for k, en := range el.Enod {
-					en.Force[p][2] += el.Cmq[2+6*k]
+					if !en.Conf[2] {
+						en.Force[p][2] += el.Cmq[2+6*k]
+					}
 				}
 			}
 			for j := 0; j < 12; j++ {
