@@ -28,6 +28,7 @@ import (
 var (
 	prevkey key.Event
 	cline   string
+	drawing bool
 )
 
 var (
@@ -443,9 +444,13 @@ func (stw *Window) SetFrame(frame *st.Frame) {
 }
 
 func (stw *Window) Redraw() {
+	if drawing {
+		return
+	}
 	if stw.frame == nil {
 		return
 	}
+	drawing = true
 	if stw.buffer != nil {
 		stw.buffer.Release()
 	}
@@ -457,12 +462,17 @@ func (stw *Window) Redraw() {
 	stw.buffer = b
 	st.DrawFrame(stw, stw.frame, st.ECOLOR_SECT, true)
 	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
+	drawing = false
 }
 
 func (stw *Window) RedrawNode() {
+	if drawing {
+		return
+	}
 	if stw.frame == nil {
 		return
 	}
+	drawing = true
 	if stw.buffer != nil {
 		stw.buffer.Release()
 	}
@@ -474,6 +484,7 @@ func (stw *Window) RedrawNode() {
 	stw.buffer = b
 	st.DrawFrameNode(stw, stw.frame, st.ECOLOR_SECT, true)
 	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
+	drawing = false
 }
 
 func (stw *Window) LoadFontFace(path string, point float64) error {
