@@ -52,7 +52,7 @@ func (r *RecentFiles) ReadRecent() error {
 	for s.Scan() {
 		r.filenames[num] = s.Text()
 		num++
-		if num >= r.size-1 {
+		if num >= r.size {
 			break
 		}
 	}
