@@ -953,6 +953,18 @@ func FilterElem(frame *Frame, els []*Elem, str string) ([]*Elem, error) {
 			return f(el.CurrentValue(frame.Show, true, false), val)
 		}
 		hstr = fmt.Sprintf("CURRENT VALUE %s %.3f", fs[1], val)
+	case strings.EqualFold(str, "confed"):
+		filterfunc = func(el *Elem) bool {
+			for _, en := range el.Enod {
+				for _, c := range en.Conf {
+					if c {
+						return true
+					}
+				}
+			}
+			return false
+		}
+		hstr = "CONFED"
 	}
 	if filterfunc != nil {
 		tmpels := make([]*Elem, l)
