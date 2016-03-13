@@ -1719,7 +1719,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 	case "elem":
 		if usage {
-			return Usage(":elem [elemcode,sect sectcode,etype,reaction,locked]")
+			return Usage(":elem [elemcode,sect sectcode,etype,reaction,locked,isolated]")
 		}
 		stw.Deselect()
 		var f func(*Elem) bool
@@ -1800,6 +1800,18 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			case strings.EqualFold(condition, "locked"):
 				f = func(el *Elem) bool {
 					return el.Lock
+				}
+			case strings.EqualFold(condition, "isolated"):
+				f = func(el *Elem) bool {
+					for _, en := range el.Enod {
+						for _, elem := range el.Frame.SearchElem(en) {
+							if el.Num == elem.Num {
+								continue
+							}
+							return false
+						}
+					}
+					return true
 				}
 			}
 			if f != nil {
