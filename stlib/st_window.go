@@ -1100,3 +1100,72 @@ func AxisRange(stw Window, axis int, min, max float64, any bool) {
 		stw.SetLabel("ZMAX", fmt.Sprintf("%.3f", max))
 	}
 }
+
+func ShowAll(stw Window) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	for _, el := range frame.Elems {
+		el.Show()
+	}
+	for _, n := range frame.Nodes {
+		n.Show()
+	}
+	for _, k := range frame.Kijuns {
+		k.Show()
+	}
+	for i, et := range ETYPES {
+		if i == WBRACE || i == SBRACE {
+			continue
+		}
+		frame.Show.Etype[i] = true
+		stw.EnableLabel(et)
+	}
+	ShowAllSection(stw)
+	frame.Show.All()
+	stw.SetLabel("XMIN", fmt.Sprintf("%.3f", frame.Show.Xrange[0]))
+	stw.SetLabel("XMAX", fmt.Sprintf("%.3f", frame.Show.Xrange[1]))
+	stw.SetLabel("YMIN", fmt.Sprintf("%.3f", frame.Show.Yrange[0]))
+	stw.SetLabel("YMAX", fmt.Sprintf("%.3f", frame.Show.Yrange[1]))
+	stw.SetLabel("ZMIN", fmt.Sprintf("%.3f", frame.Show.Zrange[0]))
+	stw.SetLabel("ZMAX", fmt.Sprintf("%.3f", frame.Show.Zrange[1]))
+	stw.Redraw()
+}
+
+func SetFocus(stw Window) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	var focus []float64
+	if sel, ok := stw.(Selector); ok {
+		if sel.ElemSelected() {
+			for _, el := range sel.SelectedElems() {
+				if el == nil {
+					continue
+				}
+				focus = el.MidPoint()
+			}
+		}
+		if focus == nil {
+			if sel.NodeSelected() {
+				for _, n := range sel.SelectedNodes() {
+					if n == nil {
+						continue
+					}
+					focus = n.Coord
+				}
+			}
+		}
+	}
+	v := frame.View.Copy()
+	frame.SetFocus(focus)
+	w, h := stw.GetCanvasSize()
+	frame.View.Center[0] = float64(w) * 0.5
+	frame.View.Center[1] = float64(h) * 0.5
+	view := frame.View.Copy()
+	frame.View = v
+	Animate(stw, view)
+	stw.Redraw()
+}
