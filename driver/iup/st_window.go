@@ -6186,6 +6186,10 @@ func (stw *Window) AltSelectNode() bool {
 	return ALTSELECTNODE
 }
 
+func (stw *Window) SetAltSelectNode(v bool) {
+	ALTSELECTNODE = v
+}
+
 func (stw *Window) CheckFrame() {
 	checkframe(stw)
 }
