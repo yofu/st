@@ -240,6 +240,24 @@ func (stw *Window) Start() {
 					stw.SeekLast()
 				case key.CodeUpArrow:
 					stw.SeekHead()
+				case key.CodeD:
+					if e.Modifiers&key.ModControl != 0 {
+						st.HideNotSelected(stw)
+					} else {
+						stw.TypeCommandLine(string(kc.Rune))
+					}
+				case key.CodeF:
+					if e.Modifiers&key.ModControl != 0 {
+						st.SetFocus(stw)
+					} else {
+						stw.TypeCommandLine(string(kc.Rune))
+					}
+				case key.CodeS:
+					if e.Modifiers&key.ModControl != 0 {
+						st.ShowAll(stw)
+					} else {
+						stw.TypeCommandLine(string(kc.Rune))
+					}
 				case key.CodeP:
 					if e.Modifiers&key.ModControl != 0 {
 						if !((prevkey.Code == key.CodeP || prevkey.Code == key.CodeN) && prevkey.Modifiers&key.ModControl != 0) {
