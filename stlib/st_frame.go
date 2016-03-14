@@ -3810,7 +3810,7 @@ func (frame *Frame) WeightDistribution() {
 	sort.Sort(NodeByNum{nodes})
 	for _, n := range nodes {
 		for i := 0; i < 3; i++ {
-			n.Weight[i] -= n.Load[2]
+			n.Weight[i] = 0.0
 		}
 	}
 	amount := make(map[int]float64)
