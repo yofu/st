@@ -221,6 +221,7 @@ func (stw *Window) Start() {
 					} else {
 						stw.TypeCommandLine(" ")
 					}
+				case key.CodeUnknown:
 				case key.CodeLeftShift:
 				case key.CodeLeftAlt:
 				case key.CodeReturnEnter:
