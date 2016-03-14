@@ -796,9 +796,9 @@ func FixFigure(stw Drawer, x, y, size float64) {
 		d = -1.0
 	}
 	stw.Line(x-size, y, x+size, y)
-	stw.Line(x-0.25*size, d*y, x-0.75*size, d*(y-0.5*size))
-	stw.Line(x+0.25*size, d*y, x-0.25*size, d*(y-0.5*size))
-	stw.Line(x+0.75*size, d*y, x+0.25*size, d*(y-0.5*size))
+	stw.Line(x-0.25*size, y, x-0.75*size, y-d*0.5*size)
+	stw.Line(x+0.25*size, y, x-0.25*size, y-d*0.5*size)
+	stw.Line(x+0.75*size, y, x+0.25*size, y-d*0.5*size)
 }
 
 func DrawNodeNormal(stw Drawer, node *Node, show *Show) {
