@@ -249,7 +249,7 @@ func getcoord(stw *Window, f func(x, y, z float64)) {
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.startX = int(arg.X)
@@ -351,7 +351,7 @@ func get1node(stw *Window, f func(n *st.Node)) {
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.startX = int(arg.X)
@@ -493,7 +493,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.startX = int(arg.X)
@@ -785,7 +785,7 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.startX = int(arg.X)
@@ -984,7 +984,7 @@ func searchelem(stw *Window) {
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.startX = int(arg.X)
@@ -1098,7 +1098,7 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.startX = int(arg.X)
@@ -1376,7 +1376,7 @@ func pinchnode(stw *Window) {
 			} else { // Pressed
 				if isDouble(arg.Status) {
 					stw.frame.SetFocus(nil)
-					stw.DrawFrameNode()
+					stw.RedrawNode()
 					stw.ShowCenter()
 				} else {
 					stw.startX = int(arg.X)
@@ -1741,7 +1741,7 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.startX = int(arg.X)
@@ -1812,7 +1812,7 @@ func get1side(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.startX = int(arg.X)
@@ -2736,7 +2736,7 @@ func fence(stw *Window) {
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.dbuff.UpdateYAxis(&arg.Y)
@@ -3174,7 +3174,7 @@ func hatchplateelem(stw *Window) {
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.dbuff.UpdateYAxis(&arg.Y)
@@ -3557,7 +3557,7 @@ func sumreaction(stw *Window) {
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.startX = int(arg.X)
@@ -3799,7 +3799,7 @@ func getnelems(stw *Window, size int, f func(int)) {
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.startX = int(arg.X)

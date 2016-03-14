@@ -2508,7 +2508,7 @@ func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
 }
 
 func (stw *Window) DrawPivot(nodes []*st.Node, pivot, end chan int) {
-	stw.DrawFrameNode()
+	stw.RedrawNode()
 	stw.DrawTexts(stw.cdcanv, false)
 	stw.cdcanv.Foreground(pivotColor)
 	ind := 0
@@ -2538,7 +2538,7 @@ func (stw *Window) Redraw() {
 	stw.dbuff.Flush()
 }
 
-func (stw *Window) DrawFrameNode() {
+func (stw *Window) RedrawNode() {
 	stw.dbuff.Clear()
 	stw.currentCanvas = stw.dbuff
 	st.DrawFrameNode(stw, stw.frame, stw.frame.Show.ColorMode, true)
@@ -3048,7 +3048,7 @@ func (stw *Window) Animate(view *st.View) {
 			stw.frame.View.Center[j] += center[j]
 			stw.frame.View.Angle[j] += angle[j]
 		}
-		stw.DrawFrameNode()
+		stw.RedrawNode()
 	}
 }
 
@@ -3724,7 +3724,7 @@ func (stw *Window) MoveOrRotate(arg *iup.MouseMotion) {
 		} else {
 			stw.frame.View.Center[0] += float64(int(arg.X)-stw.startX) * stw.CanvasMoveSpeedX()
 			stw.frame.View.Center[1] += float64(int(arg.Y)-stw.startY) * stw.CanvasMoveSpeedY()
-			stw.DrawFrameNode()
+			stw.RedrawNode()
 		}
 	} else if !fixRotate {
 		if isAlt(arg.Status) {
@@ -3734,7 +3734,7 @@ func (stw *Window) MoveOrRotate(arg *iup.MouseMotion) {
 		} else {
 			stw.frame.View.Angle[0] -= float64(int(arg.Y)-stw.startY) * stw.CanvasRotateSpeedY()
 			stw.frame.View.Angle[1] -= float64(int(arg.X)-stw.startX) * stw.CanvasRotateSpeedX()
-			stw.DrawFrameNode()
+			stw.RedrawNode()
 		}
 	}
 }

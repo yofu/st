@@ -115,7 +115,7 @@ func gravity(stw *Window) {
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.dbuff.UpdateYAxis(&arg.Y)
@@ -212,7 +212,7 @@ func smooth(stw *Window) {
 				} else { // Pressed
 					if isDouble(arg.Status) {
 						stw.frame.SetFocus(nil)
-						stw.DrawFrameNode()
+						stw.RedrawNode()
 						stw.ShowCenter()
 					} else {
 						stw.dbuff.UpdateYAxis(&arg.Y)
