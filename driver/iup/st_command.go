@@ -1304,7 +1304,7 @@ func movetoline(stw *Window) {
 	stw.addHistory("直線を指定[Xを固定]")
 	get2nodes(stw, func(n *st.Node) {
 		sns := stw.SelectedNodes()
-		sns[2] = n
+		sns = append(sns, n)
 		for _, n := range ns {
 			n.MoveToLine(sns[0], sns[1], fixed)
 		}
