@@ -42,7 +42,6 @@ func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 						}
 						stw.SetAltSelectNode(as)
 						stw.DeselectNode()
-						Snapshot(stw)
 						stw.EndTail()
 						stw.EndCommand()
 						break twonodes
