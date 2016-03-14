@@ -158,7 +158,8 @@ func (stw *Window) Start() {
 				return
 			}
 		case key.Event:
-			if e.Direction == key.DirPress {
+			switch e.Direction {
+			case key.DirPress:
 				kc := keymap(e)
 				switch kc.Code {
 				default:
@@ -298,6 +299,13 @@ func (stw *Window) Start() {
 					} else {
 						stw.TypeCommandLine(string(kc.Rune))
 					}
+				}
+				stw.Typewrite(25, 700, stw.CommandLineStringWithPosition())
+			case key.DirNone:
+				kc := keymap(e)
+				switch kc.Code {
+				case key.CodeDeleteBackspace:
+					stw.BackspaceCommandLine()
 				}
 				stw.Typewrite(25, 700, stw.CommandLineStringWithPosition())
 			}
