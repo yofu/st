@@ -1865,6 +1865,12 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 		material = S_E70
 	case "H-E90", "E90HINOKI":
 		material = H_E90
+	case "E95-F270":
+		material = E95_F270
+	case "E95-F315":
+		material = E95_F315
+	case "E120-F330":
+		material = E120_F330
 	}
 	switch lis[0][3] {
 	case "COLUMN":
