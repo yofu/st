@@ -3360,8 +3360,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		pers := []string{"L", "X", "Y"}
 		af := frame.Arclms["L"]
+		otps := []string{Ce(otp, "otl"), Ce(otp, "ohx"), Ce(otp, "ohy")}
 		go func() {
-			err := af.Arclm001([]string{Ce(otp, "otl"), Ce(otp, "ohx"), Ce(otp, "ohy")}, init, sol, eps, extra...)
+			err := af.Arclm001(otps, init, sol, eps, extra...)
 			af.Endch <- err
 		}()
 		ex_all:
@@ -3370,6 +3371,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			case <-af.Pivot:
 			case nlap := <-af.Lapch:
 				frame.ReadArclmData(af, pers[nlap])
+				frame.ResultFileName[pers[nlap]] = otps[nlap]
 				af.Lapch <- 1
 			case <-af.Endch:
 				break ex_all
