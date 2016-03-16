@@ -141,6 +141,11 @@ func OpenFile(stw Window, filename string, readrcfile bool) error {
 	}
 	frame.Show.LegendPosition[0] = int(w) - 100
 	frame.Show.LegendPosition[1] = dataareaheight - int(float64((len(RainbowColor)+1)*frame.Show.LegendSize)*frame.Show.LegendLineSep)
+	if dw, ok := stw.(Drawer); ok {
+		if dw.CanvasDirection() == 1 {
+			frame.Show.LegendPosition[1] = h - frame.Show.LegendPosition[1]
+		}
+	}
 	stw.History(fmt.Sprintf("OPEN: %s", fn))
 	frame.Home = stw.Home()
 	stw.SetCwd(filepath.Dir(fn))

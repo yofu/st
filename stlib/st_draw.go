@@ -1148,6 +1148,10 @@ func DrawPrintRange(stw Drawer) {
 
 func DrawLegend(stw Drawer, show *Show) {
 	if !show.NoLegend && show.ColorMode == ECOLOR_RATE {
+		d := 1.0
+		if stw.CanvasDirection() == 1 {
+			d = -1.0
+		}
 		ox := float64(show.LegendPosition[0])
 		oy := float64(show.LegendPosition[1])
 		sz := float64(show.LegendSize)
@@ -1155,27 +1159,27 @@ func DrawLegend(stw Drawer, show *Show) {
 			stw.Foreground(col)
 			coords := make([][]float64, 4)
 			coords[0] = []float64{ox, oy}
-			coords[1] = []float64{ox, oy + sz}
-			coords[2] = []float64{ox + sz, oy + sz}
+			coords[1] = []float64{ox, oy + d*sz}
+			coords[2] = []float64{ox + sz, oy + d*sz}
 			coords[3] = []float64{ox + sz, oy}
 			stw.Polygon(coords)
-			oy += show.LegendLineSep * sz
+			oy += d * show.LegendLineSep * sz
 		}
 		stw.Foreground(GRAY)
 		stw.TextAlignment(WEST)
 		ox += 2 * sz
-		oy = float64(show.LegendPosition[1]) - 0.5*(show.LegendLineSep-1.0)*sz
+		oy = float64(show.LegendPosition[1]) - 0.5*(show.LegendLineSep-1.0)*sz*d
 		stw.Text(ox, oy, "0.0")
-		oy += show.LegendLineSep * sz
+		oy += d*show.LegendLineSep * sz
 		for i, val := range RateBoundary {
 			if i == 3 {
 				stw.Text(ox, oy, fmt.Sprintf("%.5f", val))
 			} else {
 				stw.Text(ox, oy, fmt.Sprintf("%.1f", val))
 			}
-			oy += show.LegendLineSep * sz
+			oy += d*show.LegendLineSep * sz
 		}
-		stw.Text(ox-2*sz, oy+sz, "安全率の凡例")
+		stw.Text(ox-2*sz, oy+d*sz, "安全率の凡例")
 		stw.TextAlignment(show.DefaultTextAlignment)
 	}
 }
