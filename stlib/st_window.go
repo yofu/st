@@ -801,6 +801,7 @@ func SrcanRateOn(stw Window, names ...string) {
 	defer func() {
 		if frame.Show.SrcanRate != 0 {
 			stw.EnableLabel("SRCAN_RATE")
+			frame.Show.ColorMode = ECOLOR_RATE
 		}
 	}()
 	if len(names) == 0 {
@@ -828,6 +829,7 @@ func SrcanRateOff(stw Window, names ...string) {
 	defer func() {
 		if frame.Show.SrcanRate == 0 {
 			stw.DisableLabel("SRCAN_RATE")
+			frame.Show.ColorMode = ECOLOR_SECT
 		}
 	}()
 	if len(names) == 0 {
