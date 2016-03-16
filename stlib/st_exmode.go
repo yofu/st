@@ -3340,10 +3340,44 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 	case "all":
 		frame.ExtractArclm()
 		frame.SaveAsArclm("")
-		err := exCommand(stw, ":arclm001 -all", false, exmodech, exmodeend)
-		if err != nil {
-			return err
+		init := false
+		sol := "LLS"
+		eps := 1e-16
+		extra := make([][]float64, 2)
+		for i, eper := range []string{"X", "Y"} {
+			eaf := frame.Arclms[eper]
+			_, _, vec, err := eaf.AssemGlobalVector(1.0)
+			if err != nil {
+				return err
+			}
+			extra[i] = vec
 		}
+		var otp string
+		if fn == "" {
+			otp = Ce(frame.Path, ".otp")
+		} else {
+			otp = fn
+		}
+		pers := []string{"L", "X", "Y"}
+		af := frame.Arclms["L"]
+		go func() {
+			err := af.Arclm001([]string{Ce(otp, "otl"), Ce(otp, "ohx"), Ce(otp, "ohy")}, init, sol, eps, extra...)
+			af.Endch <- err
+		}()
+		ex_all:
+		for {
+			select {
+			case <-af.Pivot:
+			case nlap := <-af.Lapch:
+				frame.ReadArclmData(af, pers[nlap])
+				af.Lapch <- 1
+			case <-af.Endch:
+				break ex_all
+			}
+		}
+		ReadFile(stw, Ce(frame.Path, ".lst"))
+		cond := NewCondition()
+		frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
 	case "arclm001":
 		if usage {
 			return Usage(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} filename")
