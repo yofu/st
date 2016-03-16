@@ -4067,9 +4067,19 @@ func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
 
 // SectionRate
 func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 string, sign float64, cond *Condition) error {
+	var enum int
+	elems := make([]*Elem, len(frame.Elems))
+	for _, el := range frame.Elems {
+		if !el.IsLineElem() {
+			continue
+		}
+		elems[enum] = el
+		enum++
+	}
+	if enum == 0 {
+		return nil
+	}
 	var otp, rat, rlt bytes.Buffer
-	var stl, stx1, stx2, sty1, sty2 []float64
-	var nl, nx1, nx2, ny1, ny2 float64
 	var rate []float64
 	var rate2 float64
 	var err error
@@ -4078,12 +4088,14 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	MFACT := 1.0
 	BFACT := 1.0
 	WFACT := 2.0
-	calc1 := func(allow SectionRate, st1, st2, fact []float64) ([]float64, error) {
+	stname := []string{"鉛直時Z    :", "水平時X    :", "水平時X負  :", "水平時Y    :", "水平時Y負  :"}
+	pername := []string{"長期       :", "短期X正方向:", "短期X負方向:", "短期Y正方向:", "短期Y負方向:"}
+	calc1 := func(allow SectionRate, st1, st2, fact []float64, sign float64) ([]float64, error) {
 		stress := make([]float64, 12)
 		if st2 != nil {
 			for i := 0; i < 2; i++ {
 				for j := 0; j < 6; j++ {
-					stress[6*i+j] = st1[6*i+j] + fact[j]*st2[6*i+j]
+					stress[6*i+j] = st1[6*i+j] + sign*fact[j]*st2[6*i+j]
 				}
 			}
 		} else {
@@ -4096,8 +4108,8 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 		otp.WriteString(txt)
 		return rate, nil
 	}
-	calc2 := func(allow SectionRate, n1, n2, fact float64) (float64, error) {
-		stress := n1 + fact*n2
+	calc2 := func(allow SectionRate, n1, n2, fact, sign float64) (float64, error) {
+		stress := n1 + sign*fact*n2
 		rate, txt, err := Rate2(allow, stress, cond)
 		if err != nil {
 			return rate, err
@@ -4114,17 +4126,19 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 		}
 		return rtn
 	}
-	plus := []float64{NFACT, QFACT, QFACT, 1.0, MFACT, MFACT}
-	minus := []float64{sign * NFACT, sign * QFACT, sign * QFACT, sign, sign * MFACT, sign * MFACT}
-	var enum int
-	elems := make([]*Elem, len(frame.Elems))
-	for _, el := range frame.Elems {
-		if !el.IsLineElem() {
-			continue
-		}
-		elems[enum] = el
-		enum++
-	}
+	factor := []float64{NFACT, QFACT, QFACT, 1.0, MFACT, MFACT}
+	otp.WriteString("断面算定 \"S,RC,SRC\" 長期,短期,終局\n")
+	otp.WriteString("使用ファイル\n")
+	otp.WriteString(fmt.Sprintf("入力データ               =%s\n", frame.DataFileName["L"]))
+	otp.WriteString(fmt.Sprintf("鉛直荷重時解析結果       =%s\n", frame.ResultFileName["L"]))
+	otp.WriteString(fmt.Sprintf("水平荷重時解析結果 X方向 =%s\n", frame.ResultFileName["X"]))
+	otp.WriteString(fmt.Sprintf("                   Y方向 =%s\n", frame.ResultFileName["Y"]))
+	otp.WriteString(fmt.Sprintf("仮定断面                 =%s\n", frame.LstFileName))
+	otp.WriteString("\n単位系 tf(kN),tfm(kNm)\n")
+	otp.WriteString("\nAs:鉄骨 Ar:主筋 Ac:コンクリート Ap:ＰＣストランド\n")
+	otp.WriteString("N:軸力 Q:せん断力 Mt:ねじりモーメント M:曲げモーメント\n")
+	otp.WriteString("添字 i:始端 j:終端 c:中央\n")
+	otp.WriteString("a:許容 u:終局\n")
 	elems = elems[:enum]
 	sort.Sort(ElemByNum{elems})
 	for _, el := range elems {
@@ -4149,103 +4163,39 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				isrc = false
 			}
 			var qlrate, qsrate, qurate, mlrate, msrate, murate float64
-			var msrate1, msrate2, msrate3, msrate4 float64
-			stl = make([]float64, 12)
-			stx1 = make([]float64, 12)
-			stx2 = make([]float64, 12)
-			sty1 = make([]float64, 12)
-			sty2 = make([]float64, 12)
-			if st, ok := el.Stress[long]; ok {
-				for i := 0; i < 2; i++ {
-					for j := 0; j < 6; j++ {
-						stl[6*i+j] = st[el.Enod[i].Num][j]
-					}
-				}
-			}
-			if st, ok := el.Stress[x1]; ok {
-				for i := 0; i < 2; i++ {
-					for j := 0; j < 6; j++ {
-						stx1[6*i+j] = st[el.Enod[i].Num][j]
-					}
-				}
-			}
-			if st, ok := el.Stress[x1]; ok {
-				for i := 0; i < 2; i++ {
-					for j := 0; j < 6; j++ {
-						stx2[6*i+j] = st[el.Enod[i].Num][j]
-					}
-				}
-			}
-			if st, ok := el.Stress[y1]; ok {
-				for i := 0; i < 2; i++ {
-					for j := 0; j < 6; j++ {
-						sty1[6*i+j] = st[el.Enod[i].Num][j]
-					}
-				}
-			}
-			if st, ok := el.Stress[y1]; ok {
-				for i := 0; i < 2; i++ {
-					for j := 0; j < 6; j++ {
-						sty2[6*i+j] = st[el.Enod[i].Num][j]
-					}
-				}
-			}
+			msrates := make([]float64, 4)
 			cond.Length = el.Length() * 100.0 // [cm]
 			otp.WriteString(strings.Repeat("-", 202))
 			otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, al.TypeString(), cond.Length, cond.Length, cond.Length))
 			otp.WriteString("応力       :        N                Qxi                Qxj                Qyi                Qyj                 Mt                Mxi                Mxj                Myi                Myj\n")
-			otp.WriteString("鉛直時Z    :")
-			for i := 0; i < 6; i++ {
-				for j := 0; j < 2; j++ {
-					otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stl[6*j+i], stl[6*j+i]*SI))
-					if i == 0 || i == 3 {
-						break
+			stress := make([][]float64, 5)
+			for p, per := range []string{long, x1, x2, y1, y2} {
+				stress[p] = make([]float64, 12)
+				if st, ok := el.Stress[per]; ok {
+					for i := 0; i < 2; i++ {
+						for j := 0; j < 6; j++ {
+							stress[p][6*i+j] = st[el.Enod[i].Num][j]
+						}
 					}
 				}
-			}
-			otp.WriteString("\n水平時X    :")
-			for i := 0; i < 6; i++ {
-				for j := 0; j < 2; j++ {
-					otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stx1[6*j+i], stx1[6*j+i]*SI))
-					if i == 0 || i == 3 {
-						break
-					}
+				if (p == 2 && x1 == x2) || (p == 4 && y1 == y2) {
+					continue
 				}
-			}
-			if x1 != x2 {
-				otp.WriteString("\n水平時X負  :")
+				otp.WriteString(stname[p])
 				for i := 0; i < 6; i++ {
 					for j := 0; j < 2; j++ {
-						otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stx2[6*j+i], stx2[6*j+i]*SI))
+						otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[p][6*j+i], stress[p][6*j+i]*SI))
 						if i == 0 || i == 3 {
 							break
 						}
 					}
 				}
+				otp.WriteString("\n")
 			}
-			otp.WriteString("\n水平時Y    :")
-			for i := 0; i < 6; i++ {
-				for j := 0; j < 2; j++ {
-					otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", sty1[6*j+i], sty1[6*j+i]*SI))
-					if i == 0 || i == 3 {
-						break
-					}
-				}
-			}
-			if y1 != y2 {
-				otp.WriteString("\n水平時Y負  :")
-				for i := 0; i < 6; i++ {
-					for j := 0; j < 2; j++ {
-						otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", sty2[6*j+i], sty2[6*j+i]*SI))
-						if i == 0 || i == 3 {
-							break
-						}
-					}
-				}
-			}
+			otp.WriteString("\n")
 			cond.Period = "L"
-			otp.WriteString("\n\n長期       :")
-			rate, err = calc1(al, stl, nil, nil)
+			otp.WriteString(pername[0])
+			rate, err = calc1(al, stress[0], nil, nil, 1.0)
 			qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
 			if isrc {
 				mlrate = maxrate(rate[4], rate[5], rate[10], rate[11])
@@ -4257,55 +4207,28 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				}
 			}
 			cond.Period = "S"
-			otp.WriteString("\n短期X正方向:")
-			rate, err = calc1(al, stl, stx1, plus)
-			qsrate = maxrate(rate[1], rate[2], rate[7], rate[8])
-			if isrc {
-				msrate1 = maxrate(rate[4], rate[5], rate[10], rate[11])
-			} else {
-				if rate[0] >= 1.0 {
-					msrate1 = 10.0
+			var s float64
+			for p := 1; p < 5; p++ {
+				if p%2 == 1 {
+					otp.WriteString("\n")
+					s = 1.0
 				} else {
-					msrate1 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+					s = sign
+				}
+				otp.WriteString(pername[p])
+				rate, err = calc1(al, stress[0], stress[p], factor, s)
+				qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
+				if isrc {
+					msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11])
+				} else {
+					if rate[0] >= 1.0 {
+						msrates[p-1] = 10.0
+					} else {
+						msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+					}
 				}
 			}
-			otp.WriteString("短期X負方向:")
-			rate, err = calc1(al, stl, stx2, minus)
-			qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
-			if isrc {
-				msrate2 = maxrate(rate[4], rate[5], rate[10], rate[11])
-			} else {
-				if rate[0] >= 1.0 {
-					msrate2 = 10.0
-				} else {
-					msrate2 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
-				}
-			}
-			otp.WriteString("\n短期Y正方向:")
-			rate, err = calc1(al, stl, sty1, plus)
-			qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
-			if isrc {
-				msrate3 = maxrate(rate[4], rate[5], rate[10], rate[11])
-			} else {
-				if rate[0] >= 1.0 {
-					msrate3 = 10.0
-				} else {
-					msrate3 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
-				}
-			}
-			otp.WriteString("短期Y負方向:")
-			rate, err = calc1(al, stl, sty2, minus)
-			qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
-			if isrc {
-				msrate4 = maxrate(rate[4], rate[5], rate[10], rate[11])
-			} else {
-				if rate[0] >= 1.0 {
-					msrate4 = 10.0
-				} else {
-					msrate4 = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
-				}
-			}
-			msrate = maxrate(msrate1, msrate2, msrate3, msrate4)
+			msrate = maxrate(msrates...)
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
 			el.Rate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 		case BRACE, WBRACE, SBRACE:
@@ -4315,26 +4238,6 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				fact = BFACT
 			} else {
 				fact = WFACT
-			}
-			nl = 0.0
-			nx1 = 0.0
-			nx2 = 0.0
-			ny1 = 0.0
-			ny2 = 0.0
-			if st, ok := el.Stress[long]; ok {
-				nl = st[el.Enod[0].Num][0]
-			}
-			if st, ok := el.Stress[x1]; ok {
-				nx1 = st[el.Enod[0].Num][0]
-			}
-			if st, ok := el.Stress[x2]; ok {
-				nx2 = st[el.Enod[0].Num][0]
-			}
-			if st, ok := el.Stress[y1]; ok {
-				ny1 = st[el.Enod[0].Num][0]
-			}
-			if st, ok := el.Stress[y2]; ok {
-				ny2 = st[el.Enod[0].Num][0]
 			}
 			cond.Length = el.Length() * 100.0 // [cm]
 			cond.Width = el.Width() * 100.0   // [cm]
@@ -4347,37 +4250,36 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			}
 			otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, sectstring, al.TypeString(), cond.Length, cond.Length, cond.Length))
 			otp.WriteString("応力       :        N\n")
-			otp.WriteString("鉛直時Z    :")
-			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", nl, nl*SI))
-			otp.WriteString("\n水平時X    :")
-			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", nx1, nx1*SI))
-			if x1 != x2 {
-				otp.WriteString("\n水平時X負  :")
-				otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", nx2, nx2*SI))
+			stress := make([]float64, 5)
+			for p, per := range []string{long, x1, x2, y1, y2} {
+				if st, ok := el.Stress[per]; ok {
+					stress[p] = st[el.Enod[0].Num][0]
+				}
+				if (p == 2 && x1 == x2) || (p == 4 && y1 == y2) {
+					continue
+				}
+				otp.WriteString(stname[p])
+				otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[p], stress[p]*SI))
+				otp.WriteString("\n")
 			}
-			otp.WriteString("\n水平時Y    :")
-			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", ny1, ny1*SI))
-			if y1 != y2 {
-				otp.WriteString("\n水平時Y負  :")
-				otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", ny2, ny2*SI))
-			}
+			otp.WriteString("\n")
 			cond.Period = "L"
-			otp.WriteString("\n\n長期       :")
-			rate2, err = calc2(al, nl, 0.0, 0.0)
+			otp.WriteString(pername[0])
+			rate2, err = calc2(al, stress[0], 0.0, 0.0, 1.0)
 			qlrate = rate2
 			cond.Period = "S"
-			otp.WriteString("\n短期X正方向:")
-			rate2, err = calc2(al, nl, nx1, fact)
-			qsrate = rate2
-			otp.WriteString("短期X負方向:")
-			rate2, err = calc2(al, nl, nx2, sign*fact)
-			qsrate = maxrate(qsrate, rate2)
-			otp.WriteString("\n短期Y正方向:")
-			rate2, err = calc2(al, nl, ny1, fact)
-			qsrate = maxrate(qsrate, rate2)
-			otp.WriteString("短期Y負方向:")
-			rate2, err = calc2(al, nl, ny2, sign*fact)
-			qsrate = maxrate(qsrate, rate2)
+			var s float64
+			for p := 1; p < 5; p++ {
+				if p%2 == 1 {
+					otp.WriteString("\n")
+					s = 1.0
+				} else {
+					s = sign
+				}
+				otp.WriteString(pername[p])
+				rate2, err = calc2(al, stress[0], stress[p], fact, s)
+				qsrate = maxrate(qsrate, rate2)
+			}
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
 			el.Rate = []float64{qlrate, qsrate, qurate}
 		}
