@@ -3331,14 +3331,14 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":extractarclm")
 		}
-		frame.ExtractArclm()
+		frame.ExtractArclm("")
 	case "saveasarclm":
 		if usage {
 			return Usage(":saveasarclm")
 		}
 		frame.SaveAsArclm("")
 	case "all":
-		frame.ExtractArclm()
+		frame.ExtractArclm(Ce(frame.Path, ".wgt"))
 		frame.SaveAsArclm("")
 		init := false
 		sol := "LLS"

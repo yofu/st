@@ -3631,8 +3631,8 @@ func (frame *Frame) Upside() {
 // }}}
 
 // ExtractArclm// {{{
-func (frame *Frame) ExtractArclm() {
-	frame.WeightDistribution()
+func (frame *Frame) ExtractArclm(fn string) {
+	frame.WeightDistribution(fn)
 	for _, el := range SortedElem(frame.Elems, func(e *Elem) float64 { return float64(e.Num) }) {
 		if !el.IsLineElem() {
 			brs := el.RectToBrace(2, 1.0)
@@ -3806,7 +3806,7 @@ func (frame *Frame) ExtractArclm() {
 	}
 }
 
-func (frame *Frame) WeightDistribution() {
+func (frame *Frame) WeightDistribution(fn string) {
 	var otp bytes.Buffer
 	var ekeys []int
 	nodes := make([]*Node, len(frame.Nodes))
@@ -3860,7 +3860,10 @@ func (frame *Frame) WeightDistribution() {
 		otp.WriteString(fmt.Sprintf("Unit Factor  =%7.5f \"SI Units [%s]\"\n\n", frame.Show.Unit[0], frame.Show.UnitName[0]))
 	}
 	otp.WriteString(frame.AiDistribution())
-	w, err := os.Create(filepath.Join(frame.Home, DefaultWgt))
+	if fn == "" {
+		fn = filepath.Join(frame.Home, DefaultWgt)
+	}
+	w, err := os.Create(fn)
 	defer w.Close()
 	if err != nil {
 		return

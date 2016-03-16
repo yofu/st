@@ -2678,7 +2678,7 @@ func extractarclm(stw *Window) {
 	var name string
 	var ok bool
 	saved := true
-	stw.frame.ExtractArclm()
+	stw.frame.ExtractArclm("")
 	ans := stw.Yna("Extract Arclm", ".inl, .ihx, .ihyを保存しますか?", "別名で保存")
 	switch ans {
 	default:
