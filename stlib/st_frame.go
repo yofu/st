@@ -1875,6 +1875,8 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 	switch lis[0][3] {
 	case "COLUMN":
 		sr = NewWoodColumn(num, shape, material)
+	case "GIRDER":
+		sr = NewWoodGirder(num, shape, material)
 	default:
 		return nil
 	}

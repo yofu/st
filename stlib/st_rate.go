@@ -2103,6 +2103,19 @@ func (wc *WoodColumn) Amount() Amount {
 	return nil
 }
 
+type WoodGirder struct {
+	WoodColumn
+}
+
+func NewWoodGirder(num int, shape Shape, material Wood) *WoodGirder {
+	wc := NewWoodColumn(num, shape, material)
+	wc.Etype = "GIRDER"
+	return &WoodGirder{*wc}
+}
+func (wg *WoodGirder) TypeString() string {
+	return "木大梁"
+}
+
 // Condition
 type Condition struct {
 	Period      string
