@@ -4019,10 +4019,12 @@ func (frame *Frame) SaveAsArclm(name string) error {
 		name = frame.Path
 	}
 	for i, p := range []string{"L", "X", "Y"} {
-		err := frame.Arclms[p].SaveInput(Ce(name, InputExt[i]))
+		fn := Ce(name, InputExt[i])
+		err := frame.Arclms[p].SaveInput(fn)
 		if err != nil {
 			return err
 		}
+		frame.DataFileName[p] = fn
 	}
 	return nil
 }
