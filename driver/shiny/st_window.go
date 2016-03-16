@@ -487,7 +487,7 @@ func (stw *Window) Redraw() {
 		log.Fatal(err)
 	}
 	stw.buffer = b
-	st.DrawFrame(stw, stw.frame, st.ECOLOR_SECT, true)
+	st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, true)
 	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
 	drawing = false
 }
@@ -509,7 +509,7 @@ func (stw *Window) RedrawNode() {
 		log.Fatal(err)
 	}
 	stw.buffer = b
-	st.DrawFrameNode(stw, stw.frame, st.ECOLOR_SECT, true)
+	st.DrawFrameNode(stw, stw.frame, stw.frame.Show.ColorMode, true)
 	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
 	drawing = false
 }
