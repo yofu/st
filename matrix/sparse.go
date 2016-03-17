@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math"
+	"math/rand"
 	"strconv"
 	"strings"
 	"sync"
@@ -778,6 +779,10 @@ func NewLLSNode(row, col int, val float64) *LLSNode {
 	return rtn
 }
 
+func (ln *LLSNode) Copy() *LLSNode {
+	return NewLLSNode(ln.row, ln.column, ln.value)
+}
+
 func (ln *LLSNode) String() string {
 	return fmt.Sprintf("ROW: %d COL: %d VAL: %25.18f", ln.row, ln.column, ln.value)
 }
@@ -825,6 +830,38 @@ func (ll *LLSMatrix) Print() string {
 		rtn.WriteString("\n")
 	}
 	return rtn.String()
+}
+
+// TODO: check
+func (ll *LLSMatrix) Copy() *LLSMatrix {
+	rtn := NewLLSMatrix(ll.Size)
+	var n, r *LLSNode
+	for i := 0; i < ll.Size; i++ {
+		n = ll.diag[i]
+		r = rtn.diag[i]
+		r.value = n.value
+		for {
+			n = n.down
+			if n == nil {
+				break
+			}
+			r.down = n.Copy()
+			r.down.up = r
+			r = r.down
+		}
+		n = ll.diag[i]
+		r = rtn.diag[i]
+		for {
+			n = n.up
+			if n == nil {
+				break
+			}
+			r.up = n.Copy()
+			r.up.down = r
+			r = r.up
+		}
+	}
+	return rtn
 }
 
 func (ll *LLSMatrix) String() string {
@@ -961,7 +998,9 @@ func (ll *LLSMatrix) LDLT(ch chan int) (*LLSMatrix, error) {
 				ni = ni.down
 			}
 		}
-		ch <- col
+		if ch != nil {
+			ch <- col
+		}
 	}
 	return ll, nil
 }
@@ -1127,6 +1166,18 @@ func (ll *LLSMatrix) MulV(vec []float64) []float64 {
 	return rtn
 }
 
+// TODO: implement
+// return MatT*ll*Mat
+func (ll *LLSMatrix) MulMatMat(M *LLSMatrix) *LLSMatrix {
+	return NewLLSMatrix(ll.Size)
+}
+
+// TODO: implement
+// return ll - val*M
+func (ll *LLSMatrix) MinusMat(M *LLSMatrix, val float64) *LLSMatrix {
+	return NewLLSMatrix(ll.Size)
+}
+
 func (ll *LLSMatrix) CG(vec []float64, eps float64) []float64 {
 	size := ll.Size
 	var alpha, beta float64
@@ -1234,42 +1285,99 @@ func (ll *LLSMatrix) PCG(C *LLSMatrix, vec []float64) []float64 {
 // 	}
 // }
 
-// func BisectionSilvester(A, B, M *LLSMatrix, m int) ([]float64, [][]float64, error) {
-// 	N := A.Size
-// 	if B.Size != N {
-// 		return nil, nil, errors.New("size error")
-// 	}
-// 	eigval := make([]float64, m)
-// 	eigvec := make([][]float64, m)
-// 	init := make([]float64, N)
-// 	Lmin, Lmax := Gershgorin(A, B)
-// 	for i:=0; i<m; i++ {
-// 		for j:=0; j<N; j++ {
-// 			init[j] = rand.Float64()
-// 		}
-// 		Bphi := B.MulV(init)
-// 		dot := Dot(Bphi, init)
-// 		for j:=0; j<N; j++ {
-// 			init[j] /= dot
-// 		}
-// 		Lk = 0.5*(Lmin+Lmax)
-// 		for {
-// 		}
-// 	}
-// 	return eigval, eigvec, nil
-// }
+func (ll *LLSMatrix) Gershgorin() (float64, float64) {
+	var n *LLSNode
+	r := 0.0
+	for col := 0; col < ll.Size; col++ {
+		n = ll.diag[col]
+		tmp := 0.0
+		for {
+			n = n.down
+			if n == nil {
+				break
+			}
+			n.value += math.Abs(tmp)
+		}
+		n = ll.diag[col]
+		for {
+			n = n.up
+			if n == nil {
+				break
+			}
+			n.value += math.Abs(tmp)
+		}
+		if tmp > r {
+			r = tmp
+		}
+	}
+	return 0.0, r
+}
 
-// func MinresSilvester(A, B, M *LLSMatrix, b []float64, phi [][]float64, l) ([]float64, int, error) {
-// 	N := A.Size
-// 	if B.Size != N || len(b) != N {
-// 		return nil, nil, errors.New("size error")
-// 	}
-// 	p := make([]float64, N)
-// 	for i:=0; i<N; i++ {
-// 		val = b[i]
-// 		p[i] = val
-// 		z[i] = val*M[i]
-// }
+func BisectionSilvester(A, B, M *LLSMatrix, m int) ([]float64, [][]float64, error) {
+	N := A.Size
+	if B.Size != N {
+		return nil, nil, errors.New("size error")
+	}
+	eigval := make([]float64, m)
+	eigvec := make([][]float64, m)
+	init := make([]float64, N)
+	BB := B.Copy()
+	C, _ := BB.LDLT(nil)
+	A2 := A.MulMatMat(C)
+	Lmin0, Lmax0 := A2.Gershgorin()
+	Lmin := Lmin0
+	Lmax := Lmax0
+	var Lk float64
+	for i:=0; i<m; i++ {
+		for j:=0; j<N; j++ {
+			init[j] = rand.Float64()
+		}
+		Bphi := B.MulV(init)
+		dot := Dot(Bphi, init, N)
+		for j:=0; j<N; j++ {
+			init[j] /= dot
+		}
+		Lk = 0.5*(Lmin+Lmax)
+		var xk []float64
+		var sign int
+		for {
+			Ak := A.MinusMat(B, Lk)
+			xk, sign = MinresSilvester(Ak, B, M, init, eigvec, i)
+			if sign > 0 {
+				Lmin = Lk
+			} else {
+				Lmax = Lk
+			}
+			tmpLk := 0.5*(Lmin+Lmax)
+			if math.Abs(tmpLk - Lk) < 1e-10 {
+				break
+			}
+			Lk = tmpLk
+		}
+		eigval[i] = Lk
+		eigvec[i] = xk
+		Lmin = Lk
+		Lmax = Lmax0
+	}
+	return eigval, eigvec, nil
+}
+
+// TODO: implement
+func MinresSilvester(A, B, M *LLSMatrix, b []float64, phi [][]float64, l int) ([]float64, int) {
+	N := A.Size
+	p := make([]float64, N)
+	z := make([]float64, N)
+	var sign int
+	var beta float64
+	for i:=0; i<N; i++ {
+		val := b[i]
+		p[i] = val
+		z[i] = val
+		beta += p[i] * p[i]
+	}
+	beta = math.Sqrt(beta)
+	return p, sign
+}
 
 func Dot(x, y []float64, size int) float64 {
 	rtn := 0.0
