@@ -9,9 +9,13 @@ import (
 type Commander interface {
 	Selector
 	GetElem() chan *Elem
+	SendElem(*Elem)
 	GetNode() chan *Node
+	SendNode(*Node)
 	GetClick() chan Click
+	SendClick(Click)
 	GetModifier() chan Modifier
+	SendModifier(Modifier)
 	AddTail(*Node)
 	EndTail()
 	EndCommand()
