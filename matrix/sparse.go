@@ -112,6 +112,30 @@ func (co *COOMatrix) Add(row, col int, val float64) {
 	}
 }
 
+func (co *COOMatrix) AddMat(M *COOMatrix, factor float64) *COOMatrix {
+	rtn := co.Copy()
+	for row := 0; row < co.Size; row++ {
+		if Mdata, ok := M.data[row]; ok {
+			var rdata map[int]float64
+			if _, ok := rtn.data[row]; ok {
+				rdata = rtn.data[row]
+			} else {
+				rdata = make(map[int]float64)
+				rtn.data[row] = rdata
+			}
+			for col, val := range Mdata {
+				if _, cok := rdata[col]; cok {
+					rdata[col] += factor * val
+				} else {
+					rdata[col] = factor * val
+					rtn.nz++
+				}
+			}
+		}
+	}
+	return rtn
+}
+
 func (co *COOMatrix) MulV(csize int, conf []bool, vec []float64) []float64 {
 	size := co.Size - csize
 	rtn := make([]float64, size)
@@ -778,6 +802,10 @@ func NewLLSNode(row, col int, val float64) *LLSNode {
 	return rtn
 }
 
+func (ln *LLSNode) Copy() *LLSNode {
+	return NewLLSNode(ln.row, ln.column, ln.value)
+}
+
 func (ln *LLSNode) String() string {
 	return fmt.Sprintf("ROW: %d COL: %d VAL: %25.18f", ln.row, ln.column, ln.value)
 }
@@ -825,6 +853,38 @@ func (ll *LLSMatrix) Print() string {
 		rtn.WriteString("\n")
 	}
 	return rtn.String()
+}
+
+// TODO: check
+func (ll *LLSMatrix) Copy() *LLSMatrix {
+	rtn := NewLLSMatrix(ll.Size)
+	var n, r *LLSNode
+	for i := 0; i < ll.Size; i++ {
+		n = ll.diag[i]
+		r = rtn.diag[i]
+		r.value = n.value
+		for {
+			n = n.down
+			if n == nil {
+				break
+			}
+			r.down = n.Copy()
+			r.down.up = r
+			r = r.down
+		}
+		n = ll.diag[i]
+		r = rtn.diag[i]
+		for {
+			n = n.up
+			if n == nil {
+				break
+			}
+			r.up = n.Copy()
+			r.up.down = r
+			r = r.up
+		}
+	}
+	return rtn
 }
 
 func (ll *LLSMatrix) String() string {
@@ -961,7 +1021,9 @@ func (ll *LLSMatrix) LDLT(ch chan int) (*LLSMatrix, error) {
 				ni = ni.down
 			}
 		}
-		ch <- col
+		if ch != nil {
+			ch <- col
+		}
 	}
 	return ll, nil
 }
@@ -1079,13 +1141,12 @@ func (ll *LLSMatrix) BSUpper(vec []float64) []float64 {
 	return vec
 }
 
-func (ll *LLSMatrix) Solve(ch chan int, vecs ...[]float64) ([][]float64, int, int, int, error) {
+func (ll *LLSMatrix) Solve(ch chan int, vecs ...[]float64) ([][]float64, error) {
 	size := ll.Size
 	C, err := ll.LDLT(ch)
 	if err != nil {
-		return nil, 0, 0, 0, err
+		return nil, err
 	}
-	npos, nzero, nneg := C.Sylvester()
 	rtn := make([][]float64, len(vecs))
 	C.DiagUp()
 	for v, vec := range vecs {
@@ -1099,7 +1160,7 @@ func (ll *LLSMatrix) Solve(ch chan int, vecs ...[]float64) ([][]float64, int, in
 		}
 		rtn[v] = C.BSUpper(tmp)
 	}
-	return rtn, npos, nzero, nneg, nil
+	return rtn, nil
 }
 
 func (ll *LLSMatrix) MulV(vec []float64) []float64 {
@@ -1211,65 +1272,6 @@ func (ll *LLSMatrix) PCG(C *LLSMatrix, vec []float64) []float64 {
 		}
 	}
 }
-
-// func (ll *LLSMatrix) Householder() { // underconstruction
-// 	size := ll.Size
-// 	for i:=0; i<size; i++ {
-// 		ss := 0.0
-// 		n := ll.diag[i]
-// 		for {
-// 			n = n.down
-// 			if n == nil {
-// 				break
-// 			}
-// 			ss += n.value * n.value
-// 		}
-// 		sign := 1
-// 		val := ll.diag[i].down.value
-// 		if val < 0.0 {
-// 			sign = -1
-// 		}
-// 		s := sign * math.Sqrt(ss)
-// 		c := 1.0/(ss+val*s)
-// 	}
-// }
-
-// func BisectionSilvester(A, B, M *LLSMatrix, m int) ([]float64, [][]float64, error) {
-// 	N := A.Size
-// 	if B.Size != N {
-// 		return nil, nil, errors.New("size error")
-// 	}
-// 	eigval := make([]float64, m)
-// 	eigvec := make([][]float64, m)
-// 	init := make([]float64, N)
-// 	Lmin, Lmax := Gershgorin(A, B)
-// 	for i:=0; i<m; i++ {
-// 		for j:=0; j<N; j++ {
-// 			init[j] = rand.Float64()
-// 		}
-// 		Bphi := B.MulV(init)
-// 		dot := Dot(Bphi, init)
-// 		for j:=0; j<N; j++ {
-// 			init[j] /= dot
-// 		}
-// 		Lk = 0.5*(Lmin+Lmax)
-// 		for {
-// 		}
-// 	}
-// 	return eigval, eigvec, nil
-// }
-
-// func MinresSilvester(A, B, M *LLSMatrix, b []float64, phi [][]float64, l) ([]float64, int, error) {
-// 	N := A.Size
-// 	if B.Size != N || len(b) != N {
-// 		return nil, nil, errors.New("size error")
-// 	}
-// 	p := make([]float64, N)
-// 	for i:=0; i<N; i++ {
-// 		val = b[i]
-// 		p[i] = val
-// 		z[i] = val*M[i]
-// }
 
 func Dot(x, y []float64, size int) float64 {
 	rtn := 0.0
