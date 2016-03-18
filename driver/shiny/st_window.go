@@ -382,6 +382,9 @@ func (stw *Window) Start() {
 							if !picked {
 								stw.SendElem(nil)
 							} else {
+								stw.SendModifier(st.Modifier{
+									Shift: e.Modifiers&key.ModShift != 0,
+								})
 								for _, el := range els {
 									stw.SendElem(el)
 								}
@@ -399,6 +402,9 @@ func (stw *Window) Start() {
 							if !picked {
 								stw.SendNode(nil)
 							} else {
+								stw.SendModifier(st.Modifier{
+									Shift: e.Modifiers&key.ModShift != 0,
+								})
 								for _, n := range ns {
 									stw.SendNode(n)
 								}

@@ -18,6 +18,47 @@ var (
 	}
 )
 
+func Select(stw Commander) chan bool {
+	quit := make(chan bool)
+	go func() {
+		nch := stw.GetNode()
+		elch := stw.GetElem()
+		mch := stw.GetModifier()
+		shift := false
+	sel:
+		for {
+			select {
+			case n := <-nch:
+				if n == nil {
+					stw.DeselectNode()
+				} else {
+					if shift {
+						RemoveSelection(stw, n)
+					} else {
+						AddSelection(stw, n)
+					}
+				}
+			case el := <-elch:
+				if el == nil {
+					stw.DeselectElem()
+				} else {
+					if shift {
+						RemoveSelection(stw, el)
+					} else {
+						AddSelection(stw, el)
+					}
+				}
+			case m := <-mch:
+				shift = m.Shift
+			case <-quit:
+				stw.EndCommand()
+				break sel
+			}
+		}
+	}()
+	return quit
+}
+
 func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 	quit := make(chan bool)
 	go func() {
