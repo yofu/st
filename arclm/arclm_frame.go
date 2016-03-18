@@ -1275,6 +1275,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int) error { // TODO: spee
 			}
 			lastsign = sign
 			tmp := frame.FillConf(answers[0])
+			tmp = Normalize(tmp)
 			lastvec = tmp
 			_, _, err := frame.UpdateStressEnergy(tmp)
 			if err != nil {
@@ -1288,14 +1289,6 @@ func (frame *Frame) Bclng001(otp string, init bool, n int) error { // TODO: spee
 			<-frame.Lapch
 		}
 		laptime(fmt.Sprintf("\nEIG %d: %.14f", i, lastlambda))
-		sum := 0.0
-		for j := 0; j < len(lastvec); j++ {
-			sum += lastvec[j] * lastvec[j]
-		}
-		sum = math.Sqrt(sum)
-		for j := 0; j < len(lastvec); j++ {
-			lastvec[j] /= sum
-		}
 		eigvalues[i] = lastlambda
 		eigvectors[i] = lastvec
 		frame.UpdateReaction(kemtx, lastvec)
