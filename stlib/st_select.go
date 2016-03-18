@@ -161,6 +161,11 @@ func AddSelection(stw Selector, entity interface{}) {
 		var ns []*Node
 		if stw.NodeSelected() {
 			ns = stw.SelectedNodes()
+			for _, n := range ns {
+				if en == n {
+					return
+				}
+			}
 			ns = append(ns, en)
 		} else {
 			ns = []*Node{en}
@@ -170,6 +175,11 @@ func AddSelection(stw Selector, entity interface{}) {
 		var els []*Elem
 		if stw.ElemSelected() {
 			els = stw.SelectedElems()
+			for _, el := range els {
+				if en == el {
+					return
+				}
+			}
 			els = append(els, en)
 		} else {
 			els = []*Elem{en}
