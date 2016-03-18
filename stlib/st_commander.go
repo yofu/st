@@ -11,6 +11,7 @@ type Commander interface {
 	GetElem() chan *Elem
 	GetNode() chan *Node
 	GetClick() chan Click
+	GetModifier() chan Modifier
 	AddTail(*Node)
 	EndTail()
 	EndCommand()
@@ -24,6 +25,12 @@ type Click struct {
 	Button int
 	X      int
 	Y      int
+}
+
+type Modifier struct {
+	Shift bool
+	Ctrl  bool
+	Alt   bool
 }
 
 const (
@@ -50,6 +57,7 @@ type CommandBuffer struct {
 	elem  chan *Elem
 	node  chan *Node
 	click chan Click
+	mod   chan Modifier
 }
 
 func NewCommandBuffer() *CommandBuffer {
@@ -59,6 +67,7 @@ func NewCommandBuffer() *CommandBuffer {
 		elem:  nil,
 		node:  nil,
 		click: nil,
+		mod:   nil,
 	}
 }
 
@@ -107,6 +116,16 @@ func (cb *CommandBuffer) SendClick(c Click) {
 	}
 }
 
+func (cb *CommandBuffer) GetModifier() chan Modifier {
+	cb.mod = make(chan Modifier)
+	return cb.mod
+}
+
+func (cb *CommandBuffer) SendModifier(m Modifier) {
+	if cb.mod != nil {
+		cb.mod <- m
+	}
+}
 
 func (cb *CommandBuffer) QuitCommand() {
 	if cb.on && cb.quit != nil {
@@ -120,6 +139,7 @@ func (cb *CommandBuffer) EndCommand() {
 		cb.elem = nil
 		cb.node = nil
 		cb.click = nil
+		cb.mod = nil
 		cb.quit = nil
 	}
 }
