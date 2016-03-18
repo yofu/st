@@ -254,6 +254,12 @@ func (stw *Window) Start() {
 					} else {
 						stw.TypeCommandLine(string(kc.Rune))
 					}
+				case key.CodeA:
+					if e.Modifiers&key.ModControl != 0 {
+						st.SelectNotHidden(stw)
+					} else {
+						stw.TypeCommandLine(string(kc.Rune))
+					}
 				case key.CodeS:
 					if e.Modifiers&key.ModControl != 0 {
 						st.ShowAll(stw)

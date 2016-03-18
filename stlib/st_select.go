@@ -287,3 +287,21 @@ func HideSelected(stw Selector) {
 		}
 	}
 }
+
+func SelectNotHidden(stw Selector) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	stw.Deselect()
+	els := make([]*Elem, len(frame.Elems))
+	num := 0
+	for _, el := range frame.Elems {
+		if el.IsHidden(frame.Show) {
+			continue
+		}
+		els[num] = el
+		num++
+	}
+	stw.SelectElem(els[:num])
+}
