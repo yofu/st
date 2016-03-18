@@ -1205,7 +1205,7 @@ func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int
 	return nil
 }
 
-func (frame *Frame) Bclng001(otp string, init bool, n int) error { // TODO: speed up
+func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { // TODO: speed up
 	if init {
 		frame.Initialise()
 	}
@@ -1266,7 +1266,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int) error { // TODO: spee
 			for j := 0; j < len(vec); j++ {
 				sign += answers[0][j] * vec[j]
 			}
-			if sign < 0.0 && dlambda < 1e-12 {
+			if sign < 0.0 && dlambda < eps {
 				break
 			}
 			if lap > 0 && (sign - lastsign)/math.Abs(lastsign) < -0.1 {

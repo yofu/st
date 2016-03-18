@@ -3840,7 +3840,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		return ArclmStart(m.String())
 	case "bclng001":
 		if usage {
-			return Usage(":bclng001 {-period=name} {-noinit} {-mode=1} filename")
+			return Usage(":bclng001 {-period=name} {-eps=1e-12} {-noinit} {-mode=1} filename")
 		}
 		var otp string
 		if fn == "" {
@@ -3850,6 +3850,15 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		if o, ok := argdict["OTP"]; ok {
 			otp = o
+		}
+		eps := 1e-12
+		if e, ok := argdict["EPS"]; ok {
+			if e != "" {
+				tmp, err := strconv.ParseFloat(e, 64)
+				if err == nil {
+					eps = tmp
+				}
+			}
 		}
 		per := "L"
 		if p, ok := argdict["PERIOD"]; ok {
@@ -3874,7 +3883,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		af := frame.Arclms[per]
 		go func() {
-			err := af.Bclng001(otp, init, nmode)
+			err := af.Bclng001(otp, init, nmode, eps)
 			if err != nil {
 				fmt.Println(err)
 			}
