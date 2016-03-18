@@ -393,6 +393,21 @@ func (frame *Frame) FillConf(vec []float64) []float64 {
 	return rtn
 }
 
+func (frame *Frame) RemoveConf(vec []float64) []float64 {
+	ind := 0
+	rtn := make([]float64, 6*len(frame.Nodes))
+	for i, n := range frame.Nodes {
+		for j := 0; j < 6; j++ {
+			if n.Conf[j] {
+				continue
+			}
+			rtn[ind] = vec[6*i+j]
+			ind++
+		}
+	}
+	return rtn[:ind]
+}
+
 func (frame *Frame) UpdateStress(vec []float64) ([][]float64, error) {
 	rtn := make([][]float64, len(frame.Elems))
 	for enum, el := range frame.Elems {
@@ -1296,7 +1311,18 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 		eigvectors[i] = lastvec
 		frame.UpdateReaction(kemtx, lastvec)
 		frame.UpdateForm(lastvec)
-		shift = math.Ceil(lambda) // TODO: if eigvalue is near, failes
+		tmp := frame.FillConf(vec)
+		for j := 0; j < i; j++ {
+			sum := 0.0
+			for k := 0; k < len(tmp); k++ {
+				sum += eigvectors[j][k] * tmp[k]
+			}
+			for k := 0; k < len(tmp); k++ {
+				tmp[k] -= sum * eigvectors[j][k]
+			}
+		}
+		vec = frame.RemoveConf(tmp)
+		shift = lambda
 		frame.Lapch <- i + 1
 		<-frame.Lapch
 	}
