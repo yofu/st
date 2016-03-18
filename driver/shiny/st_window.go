@@ -776,7 +776,8 @@ func (stw *Window) Pivot() bool {
 func (stw *Window) DrawPivot([]*st.Node, chan int, chan int) {
 }
 
-func (stw *Window) SetColorMode(uint) {
+func (stw *Window) SetColorMode(mode uint) {
+	stw.frame.Show.ColorMode = mode
 }
 
 func (stw *Window) SetConf([]bool) {
