@@ -1220,6 +1220,7 @@ func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int
 	return nil
 }
 
+// TODO: not accurate for higher order
 func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { // TODO: speed up
 	if init {
 		frame.Initialise()
@@ -1289,6 +1290,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 				dlambda /= 10.0
 			}
 			if math.Abs(sign - lastsign) < eps && dlambda < eps {
+				lambda += eps * 10.0
 				break
 			}
 			lastsign = sign
