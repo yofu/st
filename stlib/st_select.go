@@ -188,6 +188,39 @@ func AddSelection(stw Selector, entity interface{}) {
 	}
 }
 
+func RemoveSelection(stw Selector, entity interface{}) {
+	switch en := entity.(type) {
+	case *Node:
+		if stw.NodeSelected() {
+			ns := stw.SelectedNodes()
+			newns := make([]*Node, len(ns))
+			num := 0
+			for _, n := range ns {
+				if en == n {
+					continue
+				}
+				newns[num] = n
+				num++
+			}
+			stw.SelectNode(newns[:num])
+		}
+	case *Elem:
+		if stw.ElemSelected() {
+			els := stw.SelectedElems()
+			newels := make([]*Elem, len(els))
+			num := 0
+			for _, el := range els {
+				if en == el {
+					continue
+				}
+				newels[num] = el
+				num++
+			}
+			stw.SelectElem(newels[:num])
+		}
+	}
+}
+
 func MergeSelectElem(stw Selector, elems []*Elem, deselect bool) {
 	k := len(elems)
 	els := stw.SelectedElems()
