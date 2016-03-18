@@ -1269,9 +1269,12 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 			if sign < 0.0 && dlambda < eps {
 				break
 			}
-			if lap > 0 && (sign - lastsign)/math.Abs(lastsign) < -0.1 {
+			if lap > 0 && (sign - lastsign)/math.Abs(lastsign) < -1e-3 {
 				lambda = lastlambda
 				dlambda /= 10.0
+			}
+			if math.Abs(sign - lastsign) < eps && dlambda < eps {
+				break
 			}
 			lastsign = sign
 			tmp := frame.FillConf(answers[0])
