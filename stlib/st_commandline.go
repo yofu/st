@@ -138,6 +138,7 @@ func (c *CommandLine) BackspaceCommandLine() {
 			l := len(w)
 			if pos < l {
 				c.words[i] = fmt.Sprintf("%s%s", c.words[i][:pos-1], c.words[i][pos:])
+				return
 			}
 			pos -= l
 			pos--
