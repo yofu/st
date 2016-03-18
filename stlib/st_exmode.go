@@ -3838,6 +3838,89 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 		}()
 		return ArclmStart(m.String())
+	case "bclng001":
+		if usage {
+			return Usage(":bclng001 {-period=name} {-noinit} {-mode=1} filename")
+		}
+		var otp string
+		if fn == "" {
+			otp = Ce(frame.Path, ".otp")
+		} else {
+			otp = fn
+		}
+		if o, ok := argdict["OTP"]; ok {
+			otp = o
+		}
+		per := "L"
+		if p, ok := argdict["PERIOD"]; ok {
+			if p != "" {
+				per = strings.ToUpper(p)
+			}
+		}
+		nmode := 1
+		if n, ok := argdict["MODE"]; ok {
+			val, err := strconv.ParseInt(n, 10, 64)
+			if err == nil {
+				nmode = int(val)
+			}
+		}
+		var m bytes.Buffer
+		m.WriteString(fmt.Sprintf("PERIOD: %s MODE: %d", per, nmode))
+		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
+		init := true
+		if _, ok := argdict["NOINIT"]; ok {
+			init = false
+			m.WriteString("NO INITIALISATION")
+		}
+		af := frame.Arclms[per]
+		go func() {
+			err := af.Bclng001(otp, init, nmode)
+			if err != nil {
+				fmt.Println(err)
+			}
+			af.Endch <- err
+		}()
+		stw.CurrentLap("Calculating...", 0, 1)
+		pivot := make(chan int)
+		end := make(chan int)
+		nodes := make([]*Node, len(frame.Nodes))
+		i := 0
+		for _, n := range frame.Nodes {
+			nodes[i] = n
+			i++
+		}
+		sort.Sort(NodeByNum{nodes})
+		if stw.Pivot() {
+			go stw.DrawPivot(nodes, pivot, end)
+		} else {
+			stw.Redraw()
+		}
+		go func() {
+		readb001:
+			for {
+				select {
+				case <-af.Pivot:
+					if stw.Pivot() {
+						pivot <- 1
+					}
+				case nlap := <-af.Lapch:
+					frame.ReadArclmData(af, per)
+					af.Lapch <- 1
+					stw.CurrentLap("Calculating...", nlap, 1)
+					if stw.Pivot() {
+						end <- 1
+						go stw.DrawPivot(nodes, pivot, end)
+					} else {
+						stw.Redraw()
+					}
+				case <-af.Endch:
+					stw.CurrentLap("Completed", 1, 1)
+					stw.Redraw()
+					break readb001
+				}
+			}
+		}()
+		return ArclmStart(m.String())
 	}
 	return nil
 }

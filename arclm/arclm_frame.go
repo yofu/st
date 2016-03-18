@@ -319,6 +319,18 @@ func (frame *Frame) KP(safety float64) (*matrix.COOMatrix, []float64, error) { /
 	return frame.AssemGlobalMatrix(matf, vecf, safety)
 }
 
+func (frame *Frame) KG(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
+	matf := func(elem *Elem) ([][]float64, error) {
+		return elem.GeoStiffMatrix()
+	}
+	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
+		gvct = elem.AssemCMQ(tmatrix, gvct, safety)
+		gvct = elem.ModifyTrueForce(tmatrix, gvct)
+		return gvct
+	}
+	return frame.AssemGlobalMatrix(matf, vecf, safety)
+}
+
 func (frame *Frame) KEKG(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
 	matf := func(elem *Elem) ([][]float64, error) {
 		estiff, err := elem.StiffMatrix()
@@ -559,7 +571,7 @@ func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, e
 	case LLS:
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, _, _, _, err = mtx.Solve(frame.Pivot, vecs...)
+		answers, err = mtx.Solve(frame.Pivot, vecs...)
 		if err != nil {
 			return err
 		}
@@ -646,7 +658,7 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, _, _, _, err = mtx.Solve(frame.Pivot, vec)
+		answers, err = mtx.Solve(frame.Pivot, vec)
 		if err != nil {
 			return err
 		}
@@ -691,7 +703,7 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 	var csize int
 	var conf []bool
 	var eotp bytes.Buffer
-	var npos, np, nz, nn int
+	var sign float64
 	safety := min
 	for lap := 0; lap < nlap; lap++ {
 		safety += delta
@@ -721,18 +733,20 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, np, nz, nn, err = mtx.Solve(frame.Pivot, vec)
+		answers, err = mtx.Solve(frame.Pivot, vec)
 		if err != nil {
 			return err
 		}
+		sign = 0.0
+		for i := 0; i < len(vec); i++ {
+			sign += answers[0][i] * vec[i]
+		}
 		if lap == 0 {
-			npos = np
-			fmt.Printf("sylvester's law of inertia: LAP %d %d -> %d (%d %d)\n", lap, npos, np, nz, nn)
+			fmt.Printf("sylvester's law of inertia: LAP %d %.3f\n", lap, sign)
 		} else {
-			if npos != np {
-				fmt.Printf("sylvester's law of inertia: LAP %d %d -> %d (%d %d)\n", lap, npos, np, nz, nn)
-				npos = np
-				// return errors.New(fmt.Sprintf("sylvester's law of inertia: %d -> %d", npos, np))
+			fmt.Printf("sylvester's law of inertia: LAP %d %.3f\n", lap, sign)
+			if sign < 0.0 {
+				return errors.New(fmt.Sprintf("sylvester's law of inertia: %.3f", sign))
 			}
 		}
 		laptime("Solve")
@@ -877,7 +891,7 @@ func (frame *Frame) Arclm202(otp string, init bool, nlap int, delta, min, max fl
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, _, _, _, err = mtx.Solve(frame.Pivot, vec)
+		answers, err = mtx.Solve(frame.Pivot, vec)
 		if err != nil {
 			return err
 		}
@@ -1040,7 +1054,7 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 		laptime("Assem")
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, _, _, _, err = mtx.Solve(frame.Pivot, vec)
+		answers, err = mtx.Solve(frame.Pivot, vec)
 		if err != nil {
 			return err
 		}
@@ -1120,7 +1134,7 @@ func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int
 		var answers [][]float64
 		mtx := gmtx.ToLLS(csize, conf)
 		laptime("ToLLS")
-		answers, _, _, _, err = mtx.Solve(frame.Pivot, vec)
+		answers, err = mtx.Solve(frame.Pivot, vec)
 		if err != nil {
 			return err
 		}
@@ -1191,3 +1205,113 @@ func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int
 	return nil
 }
 
+func (frame *Frame) Bclng001(otp string, init bool, n int) error { // TODO: speed up
+	if init {
+		frame.Initialise()
+	}
+	start := time.Now()
+	laptime := func(message string) {
+		end := time.Now()
+		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+	}
+	var err error
+	var answers [][]float64
+	var kemtx, kgmtx *matrix.COOMatrix
+	var gvct, vec []float64
+	var csize int
+	var conf []bool
+	var sign float64
+	kemtx, gvct, err = frame.KE(1.0)
+	if err != nil {
+		return err
+	}
+	csize, conf, vec = frame.AssemConf(gvct, 1.0)
+	for _, el := range frame.Elems {
+		for i := 0; i < 12; i++ {
+			el.Stress[i] = 0.0
+		}
+	}
+	mtx := kemtx.ToLLS(csize, conf)
+	answers, err = mtx.Solve(frame.Pivot, vec)
+	if err != nil {
+		return err
+	}
+	tmp := frame.FillConf(answers[0])
+	_, err = frame.UpdateStress(tmp)
+	if err != nil {
+		return err
+	}
+	kgmtx, _, err = frame.KG(1.0)
+	if err != nil {
+		return err
+	}
+	shift := 0.0
+	eigvalues := make([]float64, n)
+	eigvectors := make([][]float64, n)
+	for i := 0; i < n; i++ {
+		lap := 0
+		lambda := shift
+		lastlambda := shift
+		dlambda := 1.0
+		lastsign := 0.0
+		var lastvec []float64
+		for {
+			gmtx := kemtx.AddMat(kgmtx, lambda)
+			mtx := gmtx.ToLLS(csize, conf)
+			answers, err = mtx.Solve(frame.Pivot, vec)
+			if err != nil {
+				return err
+			}
+			sign = 0.0
+			for j := 0; j < len(vec); j++ {
+				sign += answers[0][j] * vec[j]
+			}
+			if sign < 0.0 && dlambda < 1e-12 {
+				break
+			}
+			if lap > 0 && (sign - lastsign)/math.Abs(lastsign) < -0.1 {
+				lambda = lastlambda
+				dlambda /= 10.0
+			}
+			lastsign = sign
+			tmp := frame.FillConf(answers[0])
+			lastvec = tmp
+			_, _, err := frame.UpdateStressEnergy(tmp)
+			if err != nil {
+				return err
+			}
+			lastlambda = lambda
+			lambda += dlambda
+			fmt.Printf("LAMBDA %.14f SIGN= %.3f\r", lambda, sign)
+			lap++
+			frame.Lapch <- lap + 1
+			<-frame.Lapch
+		}
+		laptime(fmt.Sprintf("\nEIG %d: %.14f", i, lastlambda))
+		sum := 0.0
+		for j := 0; j < len(lastvec); j++ {
+			sum += lastvec[j] * lastvec[j]
+		}
+		sum = math.Sqrt(sum)
+		for j := 0; j < len(lastvec); j++ {
+			lastvec[j] /= sum
+		}
+		eigvalues[i] = lastlambda
+		eigvectors[i] = lastvec
+		frame.UpdateReaction(kemtx, lastvec)
+		frame.UpdateForm(lastvec)
+		shift = math.Ceil(lambda) // TODO: if eigvalue is near, failes
+		frame.Lapch <- i + 1
+		<-frame.Lapch
+	}
+	if otp == "" {
+		otp = "hogtxt.otp"
+	}
+	w, err := os.Create(otp)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+	frame.WriteTo(w)
+	return nil
+}
