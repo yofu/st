@@ -495,6 +495,9 @@ func (stw *Window) Redraw() {
 	stw.buffer = b
 	st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, true)
 	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
+	if stw.Executing() {
+		stw.window.Fill(image.Rect(0, 0, 10, 10), color.RGBA{0xff, 0x00, 0x00, 0x22}, screen.Over)
+	}
 	drawing = false
 }
 
