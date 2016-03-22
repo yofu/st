@@ -12,6 +12,7 @@ import (
 	"github.com/yofu/complete"
 	"github.com/yofu/st/stlib"
 	"gopkg.in/fsnotify.v1"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -6214,6 +6215,10 @@ func (stw *Window) LastExCommand() string {
 
 func (stw *Window) History(str string) {
 	stw.addHistory(str)
+}
+
+func (stw *Window) HistoryWriter() io.Writer {
+	return os.Stdout
 }
 
 func (stw *Window) SetPaperSize(s uint) {
