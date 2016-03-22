@@ -165,6 +165,7 @@ func (stw *Window) Start() {
 		case key.Event:
 			switch e.Direction {
 			case key.DirPress:
+				setprev := true
 				kc := keymap(e)
 				switch kc.Code {
 				default:
@@ -227,8 +228,11 @@ func (stw *Window) Start() {
 						stw.TypeCommandLine(" ")
 					}
 				case key.CodeUnknown:
+					setprev = false
 				case key.CodeLeftShift:
+					setprev = false
 				case key.CodeLeftAlt:
+					setprev = false
 				case key.CodeReturnEnter:
 					stw.FeedCommand()
 				case key.CodeEscape:
@@ -238,7 +242,9 @@ func (stw *Window) Start() {
 					stw.Redraw()
 					stw.window.Publish()
 				case key.CodeLeftControl:
+					setprev = false
 				case key.CodeRightControl:
+					setprev = false
 				case key.CodeRightArrow:
 					stw.SeekForward()
 				case key.CodeLeftArrow:
@@ -319,6 +325,9 @@ func (stw *Window) Start() {
 					}
 				}
 				stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
+				if setprev {
+					prevkey = e
+				}
 			case key.DirNone:
 				kc := keymap(e)
 				switch kc.Code {
@@ -327,7 +336,6 @@ func (stw *Window) Start() {
 				}
 				stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
 			}
-			prevkey = e
 		case mouse.Event:
 			if (e.Button == mouse.ButtonWheelUp || e.Button == mouse.ButtonWheelDown) && e.Direction == mouse.DirNone {
 				e.Direction = mouse.DirRelease
