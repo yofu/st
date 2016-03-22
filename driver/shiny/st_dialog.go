@@ -25,6 +25,8 @@ type Dialog struct {
 	window   screen.Window
 	buffer   screen.Buffer
 	position int
+	index    int
+	maxindex int
 	text     []string
 }
 
@@ -33,6 +35,9 @@ func NewDialog(w *Window) *Dialog {
 		parent: w,
 		window: nil,
 		buffer: nil,
+		position: linenum,
+		index: 0,
+		maxindex: 0,
 		text:   nil,
 	}
 }
@@ -62,6 +67,16 @@ func (d *Dialog) Start() chan bool {
 				switch e.Direction {
 				case key.DirPress:
 					switch e.Code {
+					case key.CodeRightArrow:
+						d.index++
+						if d.index > d.maxindex {
+							d.index = d.maxindex
+						}
+					case key.CodeLeftArrow:
+						d.index--
+						if d.index < 0 {
+							d.index = 0
+						}
 					case key.CodeDownArrow:
 						d.position++
 						if d.position > len(d.text) {
@@ -130,7 +145,9 @@ func (d *Dialog) Text(x, y float64, str string) {
 		Face: d.parent.fontFace,
 		Dot:  fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
 	}
-	dr.DrawString(str)
+	if len(str) > d.index {
+		dr.DrawString(str[d.index:])
+	}
 }
 
 func (d *Dialog) ClearString() {
@@ -140,8 +157,12 @@ func (d *Dialog) ClearString() {
 func (d *Dialog) TypeString(str string) {
 	if d.text == nil {
 		d.text = []string{str}
+		d.maxindex = len(str)
 	} else {
 		d.text = append(d.text, str)
+		if len(str) > d.maxindex {
+			d.maxindex = len(str)
+		}
 	}
 	d.position = len(d.text)
 	d.Redraw()
