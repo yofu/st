@@ -16,6 +16,7 @@ import (
 	"golang.org/x/mobile/event/size"
 	"image"
 	"image/color"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
@@ -702,11 +703,19 @@ func (stw *Window) PopHistoryDialog() {
 }
 
 func (stw *Window) History(str string) {
-	if stw.history == nil {
+	if stw.history == nil || str == "" {
 		return
 	}
 	stw.history.TypeString(str)
 	stw.history.Redraw()
+}
+
+func (stw *Window) HistoryWriter() io.Writer {
+	if stw.history != nil {
+		return stw.history
+	} else {
+		return os.Stdout
+	}
 }
 
 func (stw *Window) Print() {

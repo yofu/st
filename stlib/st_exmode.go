@@ -3912,6 +3912,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			m.WriteString("NO INITIALISATION")
 		}
 		af := frame.Arclms[per]
+		af.Output = stw.HistoryWriter()
 		go func() {
 			err := af.Bclng001(otp, init, nmode, eps)
 			if err != nil {

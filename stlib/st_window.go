@@ -3,6 +3,7 @@ package st
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
@@ -40,6 +41,7 @@ type Window interface {
 	SetFrame(*Frame)
 	ExecCommand(string)
 	History(string)
+	HistoryWriter() io.Writer
 	Yn(string, string) bool
 	Yna(string, string, string) int
 	EnableLabel(string)
