@@ -7,9 +7,7 @@ import (
 	"github.com/yofu/st/stlib"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
 )
 
@@ -33,11 +31,15 @@ var (
 )
 
 type Window struct {
+	*st.DrawOption
 	*st.Directory
 	*st.RecentFiles
 	*st.UndoStack
 	*st.TagFrame
 	*st.Selection
+	*st.CommandBuffer
+	*st.CommandLine
+	*st.Alias
 	prompt string
 
 	frame *st.Frame
@@ -56,11 +58,15 @@ type Window struct {
 
 func NewWindow(homedir string) *Window {
 	stw := &Window{
+		DrawOption:    st.NewDrawOption(),
 		Directory:   st.NewDirectory(homedir, homedir),
 		RecentFiles: st.NewRecentFiles(3),
 		UndoStack:   st.NewUndoStack(10),
 		TagFrame:    st.NewTagFrame(),
 		Selection:   st.NewSelection(),
+		CommandBuffer: st.NewCommandBuffer(),
+		CommandLine:   st.NewCommandLine(),
+		Alias:         st.NewAlias(),
 	}
 	stw.prompt = ">"
 	stw.papersize = st.A4_TATE
@@ -134,6 +140,11 @@ func (stw *Window) ExecCommand(command string) {
 }
 
 func (stw *Window) Redraw() {
+	stw.DrawTexts()
+	fmt.Printf("%s ", stw.prompt)
+}
+
+func (stw *Window) RedrawNode() {
 	stw.DrawTexts()
 	fmt.Printf("%s ", stw.prompt)
 }
@@ -321,20 +332,6 @@ func (stw *Window) SetEPS(val float64) {
 	EPS = val
 }
 
-func (stw *Window) CanvasFitScale() float64 {
-	return 0.0
-}
-
-func (stw *Window) SetCanvasFitScale(val float64) {
-}
-
-func (stw *Window) CanvasAnimateSpeed() float64 {
-	return 0.0
-}
-
-func (stw *Window) SetCanvasAnimateSpeed(val float64) {
-}
-
 func (stw *Window) ToggleFixRotate() {
 }
 
@@ -346,6 +343,9 @@ func (stw *Window) ToggleAltSelectNode() {
 
 func (stw *Window) AltSelectNode() bool {
 	return false
+}
+
+func (stw *Window) SetAltSelectNode(a bool) {
 }
 
 func (stw *Window) SetShowPrintRange(val bool) {
@@ -436,39 +436,6 @@ func (stw *Window) SetColorMode(mode uint) {
 func (stw *Window) SetConf(lis []bool) {
 }
 
-func (stw *Window) AddSectionAlias(int, string) {
-}
-
-func (stw *Window) DeleteSectionAlias(int) {
-}
-
-func (stw *Window) ClearSectionAlias() {
-}
-
-func (stw *Window) DeformationOn() {
-}
-
-func (stw *Window) DeformationOff() {
-}
-
-func (stw *Window) DispOn(int) {
-}
-
-func (stw *Window) DispOff(int) {
-}
-
-func (stw *Window) SrcanRateOn(...string) {
-}
-
-func (stw *Window) SrcanRateOff(...string) {
-}
-
-func (stw *Window) StressOn(int, uint) {
-}
-
-func (stw *Window) StressOff(int, uint) {
-}
-
 func (stw *Window) SetLabel(string, string) {
 }
 
@@ -478,69 +445,8 @@ func (stw *Window) EnableLabel(string) {
 func (stw *Window) DisableLabel(string) {
 }
 
-func (stw *Window) ElemCaptionOn(string) {
-}
-
-func (stw *Window) ElemCaptionOff(string) {
-}
-
-func (stw *Window) NodeCaptionOn(name string) {
-	for i, j := range st.NODECAPTIONS {
-		if j == name {
-			if stw.frame != nil {
-				stw.frame.Show.NodeCaptionOn(1 << uint(i))
-			}
-		}
-	}
-}
-
-func (stw *Window) NodeCaptionOff(name string) {
-	for i, j := range st.NODECAPTIONS {
-		if j == name {
-			if stw.frame != nil {
-				stw.frame.Show.NodeCaptionOff(1 << uint(i))
-			}
-		}
-	}
-}
-
 func (stw *Window) GetCanvasSize() (int, int) {
 	return 0, 0
-}
-
-func (stw *Window) HideAllSection() {
-}
-
-func (stw *Window) HideNotSelected() {
-}
-
-func (stw *Window) HideEtype(int) {
-}
-
-func (stw *Window) HideSection(int) {
-}
-
-func (stw *Window) ShowEtype(int) {
-}
-
-func (stw *Window) ShowSection(int) {
-}
-
-func (stw *Window) IncrementPeriod(num int) {
-	pat := regexp.MustCompile("([a-zA-Z]+)(@[0-9]+)")
-	fs := pat.FindStringSubmatch(stw.frame.Show.Period)
-	if len(fs) < 3 {
-		return
-	}
-	if nl, ok := stw.frame.Nlap[strings.ToUpper(fs[1])]; ok {
-		tmp, _ := strconv.ParseInt(fs[2][1:], 10, 64)
-		val := int(tmp) + num
-		if val < 1 || val > nl {
-			return
-		}
-		per := strings.Replace(stw.frame.Show.Period, fs[2], fmt.Sprintf("@%d", val), -1)
-		stw.frame.Show.Period = per
-	}
 }
 
 func (stw *Window) LastFig2Command() string {
