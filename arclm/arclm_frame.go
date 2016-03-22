@@ -24,12 +24,14 @@ const (
 )
 
 type Frame struct {
-	Sects []*Sect
-	Nodes []*Node
-	Elems []*Elem
-	Pivot chan int
-	Lapch chan int
-	Endch chan error
+	Sects       []*Sect
+	Nodes       []*Node
+	Elems       []*Elem
+	EigenValue  []float64
+	EigenVector [][]float64
+	Pivot       chan int
+	Lapch       chan int
+	Endch       chan error
 }
 
 func NewFrame() *Frame {
@@ -1262,8 +1264,8 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 		return err
 	}
 	shift := 0.0
-	eigvalues := make([]float64, n)
-	eigvectors := make([][]float64, n)
+	frame.EigenValue = make([]float64, n)
+	frame.EigenVector = make([][]float64, n)
 	for i := 0; i < n; i++ {
 		lap := 0
 		lambda := shift
@@ -1309,18 +1311,18 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 			<-frame.Lapch
 		}
 		laptime(fmt.Sprintf("\nEIG %d: %.14f", i, lastlambda))
-		eigvalues[i] = lastlambda
-		eigvectors[i] = lastvec
+		frame.EigenValue[i] = lastlambda
+		frame.EigenVector[i] = lastvec
 		frame.UpdateReaction(kemtx, lastvec)
 		frame.UpdateForm(lastvec)
 		tmp := frame.FillConf(vec)
 		for j := 0; j < i; j++ {
 			sum := 0.0
 			for k := 0; k < len(tmp); k++ {
-				sum += eigvectors[j][k] * tmp[k]
+				sum += frame.EigenVector[j][k] * tmp[k]
 			}
 			for k := 0; k < len(tmp); k++ {
-				tmp[k] -= sum * eigvectors[j][k]
+				tmp[k] -= sum * frame.EigenVector[j][k]
 			}
 		}
 		vec = frame.RemoveConf(tmp)
