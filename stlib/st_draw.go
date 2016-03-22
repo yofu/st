@@ -139,7 +139,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 	if show.Energy {
 		val, err := elem.Energy()
 		if err == nil {
-			ecap.WriteString(fmt.Sprintf("%.6f", val))
+			ecap.WriteString(fmt.Sprintf("%.3f", val))
 			oncap = true
 		}
 	}
