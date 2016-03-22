@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	width   = 1024
-	linenum = 5
+	width   = 300
+	linenum = 30
 	linesep = 15
 	margin  = 10
 )
