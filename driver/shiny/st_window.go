@@ -71,47 +71,47 @@ type Window struct {
 	*st.CommandBuffer
 	*st.CommandLine
 	*st.Alias
-	frame         *st.Frame
-	screen        screen.Screen
-	window        screen.Window
-	history       *Dialog
-	buffer        screen.Buffer
-	currentPen    color.RGBA
-	currentBrush  color.RGBA
-	fontFace      font.Face
-	fontHeight    fixed.Int26_6
-	fontColor     color.RGBA
-	changed       bool
-	lastexcommand string
+	frame           *st.Frame
+	screen          screen.Screen
+	window          screen.Window
+	history         *Dialog
+	buffer          screen.Buffer
+	currentPen      color.RGBA
+	currentBrush    color.RGBA
+	fontFace        font.Face
+	fontHeight      fixed.Int26_6
+	fontColor       color.RGBA
+	changed         bool
+	lastexcommand   string
 	lastfig2command string
-	lastcommand   func(st.Commander) chan bool
+	lastcommand     func(st.Commander) chan bool
 }
 
 func NewWindow(s screen.Screen) *Window {
 	return &Window{
-		DrawOption:    st.NewDrawOption(),
-		Directory:     st.NewDirectory("", ""),
-		RecentFiles:   st.NewRecentFiles(3),
-		UndoStack:     st.NewUndoStack(10),
-		TagFrame:      st.NewTagFrame(),
-		Selection:     st.NewSelection(),
-		CommandBuffer: st.NewCommandBuffer(),
-		CommandLine:   st.NewCommandLine(),
-		Alias:         st.NewAlias(),
-		frame:         st.NewFrame(),
-		screen:        s,
-		window:        nil,
-		history:       nil,
-		buffer:        nil,
-		currentPen:    color.RGBA{0xff, 0xff, 0xff, 0xff},
-		currentBrush:  color.RGBA{0xff, 0xff, 0xff, 0x77},
-		fontFace:      basicfont.Face7x13,
-		fontHeight:    13,
-		fontColor:     color.RGBA{0xff, 0xff, 0xff, 0xff},
-		changed:       false,
-		lastexcommand: "",
+		DrawOption:      st.NewDrawOption(),
+		Directory:       st.NewDirectory("", ""),
+		RecentFiles:     st.NewRecentFiles(3),
+		UndoStack:       st.NewUndoStack(10),
+		TagFrame:        st.NewTagFrame(),
+		Selection:       st.NewSelection(),
+		CommandBuffer:   st.NewCommandBuffer(),
+		CommandLine:     st.NewCommandLine(),
+		Alias:           st.NewAlias(),
+		frame:           st.NewFrame(),
+		screen:          s,
+		window:          nil,
+		history:         nil,
+		buffer:          nil,
+		currentPen:      color.RGBA{0xff, 0xff, 0xff, 0xff},
+		currentBrush:    color.RGBA{0xff, 0xff, 0xff, 0x77},
+		fontFace:        basicfont.Face7x13,
+		fontHeight:      13,
+		fontColor:       color.RGBA{0xff, 0xff, 0xff, 0xff},
+		changed:         false,
+		lastexcommand:   "",
 		lastfig2command: "",
-		lastcommand:   nil,
+		lastcommand:     nil,
 	}
 }
 
@@ -613,7 +613,7 @@ func (stw *Window) TailLine() {
 	}
 	tailbuffer = b
 	cvs := b.RGBA()
-	for i := 0; i< len(tailnodes) - 1; i++ {
+	for i := 0; i < len(tailnodes)-1; i++ {
 		line(cvs, int(tailnodes[i].Pcoord[0]), int(tailnodes[i].Pcoord[1]), int(tailnodes[i+1].Pcoord[0]), int(tailnodes[i+1].Pcoord[1]), tailColor)
 	}
 	line(cvs, int(tailnodes[len(tailnodes)-1].Pcoord[0]), int(tailnodes[len(tailnodes)-1].Pcoord[1]), endX, endY, tailColor)

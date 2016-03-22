@@ -32,13 +32,13 @@ type Dialog struct {
 
 func NewDialog(w *Window) *Dialog {
 	return &Dialog{
-		parent: w,
-		window: nil,
-		buffer: nil,
+		parent:   w,
+		window:   nil,
+		buffer:   nil,
 		position: linenum,
-		index: 0,
+		index:    0,
 		maxindex: 0,
-		text:   nil,
+		text:     nil,
 	}
 }
 
@@ -47,7 +47,7 @@ func (d *Dialog) Start() chan bool {
 	go func() {
 		w, err := d.parent.screen.NewWindow(&screen.NewWindowOptions{
 			Width:  width,
-			Height: margin + linenum * linesep,
+			Height: margin + linenum*linesep,
 		})
 		if err != nil {
 			log.Fatal(err)
@@ -111,7 +111,7 @@ func (d *Dialog) Redraw() {
 	if d.buffer != nil {
 		d.buffer.Release()
 	}
-	winSize := image.Point{width, margin + linenum * linesep}
+	winSize := image.Point{width, margin + linenum*linesep}
 	b, err := d.parent.screen.NewBuffer(winSize)
 	if err != nil {
 		log.Fatal(err)

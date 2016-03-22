@@ -194,18 +194,18 @@ const (
 )
 
 type Elem struct {
-	Num     int
-	Sect    *Sect
-	Enod    []*Node
-	Cang    float64
-	Bonds   []int
-	Strong  []float64
-	Weak    []float64
-	Cmq     []float64
-	Stress  []float64
-	Energy  float64
-	Energyb float64
-	IsValid bool
+	Num       int
+	Sect      *Sect
+	Enod      []*Node
+	Cang      float64
+	Bonds     []int
+	Strong    []float64
+	Weak      []float64
+	Cmq       []float64
+	Stress    []float64
+	Energy    float64
+	Energyb   float64
+	IsValid   bool
 	CheckFunc func() int
 }
 
@@ -403,7 +403,7 @@ func (elem *Elem) SetIncompressible(val float64) {
 		} else {
 			if elem.Stress[0] > val { // Comressed
 				elem.IsValid = false
-				for i:=0; i<12; i++ {
+				for i := 0; i < 12; i++ {
 					elem.Stress[i] = 0.0
 				}
 				return DELETED

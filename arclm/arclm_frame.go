@@ -815,7 +815,7 @@ func (frame *Frame) Arclm202(otp string, init bool, nlap int, delta, min, max fl
 	var gvct, vec []float64
 	var csize int
 	var conf []bool
-	incomp:
+incomp:
 	for _, el := range frame.Elems {
 		for _, sec := range sects {
 			if el.Sect.Num == sec {
@@ -862,7 +862,7 @@ func (frame *Frame) Arclm202(otp string, init bool, nlap int, delta, min, max fl
 		rtn := make([][]float64, len(f.Elems))
 		for enum, el := range f.Elems {
 			if !el.IsValid {
-				for i:=0; i<12; i++ {
+				for i := 0; i < 12; i++ {
 					el.Stress[i] = 0.0
 				}
 				continue
@@ -934,7 +934,7 @@ func (frame *Frame) Arclm202(otp string, init bool, nlap int, delta, min, max fl
 		laptime(fmt.Sprintf("LAP = %d SAFETY = %.3f", lap+1, safety))
 		fmt.Printf("DEL: %v\n", del)
 		fmt.Printf("RES: %v\n", res)
-		if lap > nlap - 1 {
+		if lap > nlap-1 {
 			frame.Lapch <- lap + 1
 			break
 		}
@@ -1126,7 +1126,7 @@ func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int
 		if n.Conf[2] {
 			confed[nnum] = n
 			confdata[nnum] = make([]bool, 6)
-			for i:=0; i<6; i++ {
+			for i := 0; i < 6; i++ {
 				confdata[nnum][i] = n.Conf[i]
 			}
 			nnum++
@@ -1185,7 +1185,7 @@ func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int
 				if n.Disp[2] < 0.0 {
 					uplift++
 					released[i] = false
-					for j:=0; j<6; j++ {
+					for j := 0; j < 6; j++ {
 						n.Conf[j] = confdata[i][j]
 					}
 				}
@@ -1201,7 +1201,7 @@ func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int
 	}
 	var nodes bytes.Buffer
 	nodes.WriteString(":node")
-	for i:=0; i<nnum; i++ {
+	for i := 0; i < nnum; i++ {
 		if released[i] {
 			nodes.WriteString(fmt.Sprintf(" %d", confed[i].Num))
 		}
@@ -1285,11 +1285,11 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 			if sign < 0.0 && dlambda < eps {
 				break
 			}
-			if lap > 0 && (sign - lastsign)/math.Abs(lastsign) < -1e-3 {
+			if lap > 0 && (sign-lastsign)/math.Abs(lastsign) < -1e-3 {
 				lambda = lastlambda
 				dlambda /= 10.0
 			}
-			if math.Abs(sign - lastsign) < eps && dlambda < eps {
+			if math.Abs(sign-lastsign) < eps && dlambda < eps {
 				lambda += eps * 10.0
 				break
 			}
