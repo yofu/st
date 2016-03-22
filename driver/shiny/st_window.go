@@ -74,6 +74,7 @@ type Window struct {
 	frame         *st.Frame
 	screen        screen.Screen
 	window        screen.Window
+	history       *Dialog
 	buffer        screen.Buffer
 	currentPen    color.RGBA
 	currentBrush  color.RGBA
@@ -100,6 +101,7 @@ func NewWindow(s screen.Screen) *Window {
 		frame:         st.NewFrame(),
 		screen:        s,
 		window:        nil,
+		history:       nil,
 		buffer:        nil,
 		currentPen:    color.RGBA{0xff, 0xff, 0xff, 0xff},
 		currentBrush:  color.RGBA{0xff, 0xff, 0xff, 0x77},
@@ -242,6 +244,12 @@ func (stw *Window) Start() {
 					stw.SeekLast()
 				case key.CodeUpArrow:
 					stw.SeekHead()
+				case key.CodeH:
+					if e.Modifiers&key.ModControl != 0 {
+						stw.PopHistoryDialog()
+					} else {
+						stw.TypeCommandLine(string(kc.Rune))
+					}
 				case key.CodeD:
 					if e.Modifiers&key.ModControl != 0 {
 						st.HideNotSelected(stw)
@@ -674,8 +682,20 @@ func (stw *Window) SetLastExCommand(command string) {
 	stw.lastexcommand = command
 }
 
+func (stw *Window) PopHistoryDialog() {
+	if stw.history != nil {
+		return
+	}
+	stw.history = NewDialog(stw)
+	stw.history.Start()
+}
+
 func (stw *Window) History(str string) {
-	fmt.Println(str)
+	if stw.history == nil {
+		return
+	}
+	stw.history.TypeString(str)
+	stw.history.Redraw()
 }
 
 func (stw *Window) Print() {
