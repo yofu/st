@@ -30,15 +30,15 @@ func (r *RecentFiles) Recent() []string {
 func (r *RecentFiles) AddRecent(fn string) {
 	fn = filepath.ToSlash(fn)
 	skip := 0
+	rtn := make([]string, r.size)
 	for i := 1; i < r.size; i++ {
 		if r.filenames[i-1] == fn {
 			skip = 1
-			continue
 		}
-		r.filenames[i] = r.filenames[i-1+skip]
+		rtn[i] = r.filenames[i-1+skip]
 	}
-	r.filenames[0] = fn
-	return
+	rtn[0] = fn
+	r.filenames = rtn
 }
 
 func (r *RecentFiles) ReadRecent() error {
