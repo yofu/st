@@ -6,6 +6,7 @@ import (
 	"github.com/yofu/st/arclm"
 	"math"
 	"regexp"
+	"sort"
 	"sync"
 )
 
@@ -904,6 +905,23 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 			}
 		}
 		DrawNode(stw, n, show)
+	}
+	if color == ECOLOR_ENERGY {
+		vals := make([]float64, len(frame.Elems))
+		num := 0
+		for _, el := range frame.Elems {
+			val, err := el.Energy()
+			if err == nil {
+				vals[num] = val
+				num++
+			}
+		}
+		if num > 0 {
+			vals = vals[:num]
+			sort.Float64s(vals)
+			ind := num/6
+			EnergyBoundary = []float64{vals[ind], vals[ind*2], vals[ind*3], vals[ind*4], vals[ind*5], vals[ind*6]}
+		}
 	}
 	if !frame.Show.Select {
 		els := SortedElem(frame.Elems, func(e *Elem) float64 { return -e.DistFromProjection(frame.View) })
