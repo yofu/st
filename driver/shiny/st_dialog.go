@@ -65,7 +65,7 @@ func (d *Dialog) Start() chan bool {
 				}
 			case key.Event:
 				switch e.Direction {
-				case key.DirPress:
+				case key.DirPress, key.DirNone:
 					switch e.Code {
 					case key.CodeRightArrow:
 						d.index++
