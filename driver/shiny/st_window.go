@@ -852,6 +852,7 @@ func (stw *Window) SetLastFig2Command(c string) {
 }
 
 func (stw *Window) ShowCenter() {
+	stw.SetAngle(stw.frame.View.Angle[0], stw.frame.View.Angle[1])
 }
 
 func (stw *Window) EnableLabel(string) {
