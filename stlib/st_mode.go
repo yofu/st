@@ -22,7 +22,7 @@ const (
 )
 
 type ExModer interface {
-	Commander
+	Selector
 
 	// UndoStack
 	UseUndo(bool)

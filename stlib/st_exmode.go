@@ -1336,9 +1336,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				nods := 0
 				for i, nnum := range nnums {
 					if n, ok := frame.Nodes[nnum]; ok {
-						stw.SendNode(n)
 						ns[i] = n
 						nods++
+					}
+				}
+				if cm, ok := stw.(Commander); ok {
+					for _, n := range ns[:nods] {
+						cm.SendNode(n)
 					}
 				}
 				stw.SelectNode(ns[:nods])
@@ -1502,9 +1506,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				num := 0
 				for _, n := range frame.Nodes {
 					if f(n) {
-						stw.SendNode(n)
 						ns[num] = n
 						num++
+					}
+				}
+				if cm, ok := stw.(Commander); ok {
+					for _, n := range ns[:num] {
+						cm.SendNode(n)
 					}
 				}
 				stw.SelectNode(ns[:num])
@@ -1513,9 +1521,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			ns := make([]*Node, len(frame.Nodes))
 			num := 0
 			for _, n := range frame.Nodes {
-				stw.SendNode(n)
 				ns[num] = n
 				num++
+			}
+			if cm, ok := stw.(Commander); ok {
+				for _, n := range ns[:num] {
+					cm.SendNode(n)
+				}
 			}
 			stw.SelectNode(ns[:num])
 		}
@@ -1738,9 +1750,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				els := 0
 				for i, enum := range enums {
 					if el, ok := frame.Elems[enum]; ok {
-						stw.SendElem(el)
 						elems[i] = el
 						els++
+					}
+				}
+				if cm, ok := stw.(Commander); ok {
+					for _, el := range elems[:els] {
+						cm.SendElem(el)
 					}
 				}
 				stw.SelectElem(elems[:els])
@@ -1823,9 +1839,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				num := 0
 				for _, el := range frame.Elems {
 					if f(el) {
-						stw.SendElem(el)
 						els[num] = el
 						num++
+					}
+				}
+				if cm, ok := stw.(Commander); ok {
+					for _, el := range els[:num] {
+						cm.SendElem(el)
 					}
 				}
 				stw.SelectElem(els[:num])
@@ -1834,9 +1854,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			els := make([]*Elem, len(frame.Elems))
 			num := 0
 			for _, el := range frame.Elems {
-				stw.SendElem(el)
 				els[num] = el
 				num++
+			}
+			if cm, ok := stw.(Commander); ok {
+				for _, el := range els[:num] {
+					cm.SendElem(el)
+				}
 			}
 			stw.SelectElem(els[:num])
 		}
