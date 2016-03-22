@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/yofu/st/stlib"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -167,6 +168,10 @@ func (stw *Window) DrawTexts() {
 
 func (stw *Window) History(str string) {
 	fmt.Println(str)
+}
+
+func (stw *Window) HistoryWriter() io.Writer {
+	return os.Stdout
 }
 
 func (stw *Window) ErrorMessage(err error, level int) {
