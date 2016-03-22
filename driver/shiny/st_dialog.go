@@ -11,6 +11,7 @@ import (
 	"golang.org/x/mobile/event/size"
 	"image"
 	"log"
+	"strings"
 )
 
 const (
@@ -27,6 +28,8 @@ type Dialog struct {
 	position int
 	index    int
 	maxindex int
+	cr       bool
+	nl       bool
 	text     []string
 }
 
@@ -38,6 +41,8 @@ func NewDialog(w *Window) *Dialog {
 		position: linenum,
 		index:    0,
 		maxindex: 0,
+		cr:       false,
+		nl:       false,
 		text:     nil,
 	}
 }
@@ -155,15 +160,45 @@ func (d *Dialog) ClearString() {
 }
 
 func (d *Dialog) TypeString(str string) {
+	cr := false
+	nl := false
+	if strings.HasSuffix(str, "\r") {
+		str = strings.TrimSuffix(str, "\r")
+		cr = true
+	}
+	lis := strings.Split(str, "\n")
+	if lis[len(lis)-1] == "" {
+		nl = true
+	}
+	if len(lis) == 0 {
+		return
+	}
 	if d.text == nil {
-		d.text = []string{str}
-		d.maxindex = len(str)
+		d.text = lis
 	} else {
-		d.text = append(d.text, str)
-		if len(str) > d.maxindex {
-			d.maxindex = len(str)
+		if d.cr || d.nl {
+			if lis[0] != "" {
+				d.text[len(d.text) - 1] = lis[0]
+			}
+			if len(lis) > 1 {
+				d.text = append(d.text, lis[1:]...)
+			}
+		} else {
+			d.text = append(d.text, lis...)
+		}
+	}
+	for _, s := range lis {
+		if len(s) > d.maxindex {
+			d.maxindex = len(s)
 		}
 	}
 	d.position = len(d.text)
+	d.cr = cr
+	d.nl = nl
 	d.Redraw()
+}
+
+func (d *Dialog) Write(p []byte) (int, error) {
+	d.TypeString(string(p))
+	return len(p), nil
 }
