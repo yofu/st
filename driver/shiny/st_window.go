@@ -136,7 +136,10 @@ func keymap(ev key.Event) key.Event {
 }
 
 func (stw *Window) Start() {
-	w, err := stw.screen.NewWindow(nil)
+	w, err := stw.screen.NewWindow(&screen.NewWindowOptions{
+		Width:  1024,
+		Height: 1024,
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -315,14 +318,14 @@ func (stw *Window) Start() {
 						stw.TypeCommandLine(string(kc.Rune))
 					}
 				}
-				stw.Typewrite(25, 700, stw.CommandLineStringWithPosition())
+				stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
 			case key.DirNone:
 				kc := keymap(e)
 				switch kc.Code {
 				case key.CodeDeleteBackspace:
 					stw.BackspaceCommandLine()
 				}
-				stw.Typewrite(25, 700, stw.CommandLineStringWithPosition())
+				stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
 			}
 			prevkey = e
 		case mouse.Event:
