@@ -32,6 +32,7 @@ type Frame struct {
 	Pivot       chan int
 	Lapch       chan int
 	Endch       chan error
+	Output      io.Writer
 }
 
 func NewFrame() *Frame {
@@ -42,6 +43,7 @@ func NewFrame() *Frame {
 	af.Pivot = make(chan int)
 	af.Lapch = make(chan int)
 	af.Endch = make(chan error)
+	af.Output = os.Stdout
 	return af
 }
 
@@ -555,7 +557,7 @@ func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, e
 	start := time.Now()
 	laptime := func(message string) {
 		end := time.Now()
-		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
 	gmtx, gvct, err := frame.KE(1.0)
 	laptime("ASSEM")
@@ -656,7 +658,7 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 	start := time.Now()
 	laptime := func(message string) {
 		end := time.Now()
-		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
 	var err error
 	var answers [][]float64
@@ -759,9 +761,9 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 			sign += answers[0][i] * vec[i]
 		}
 		if lap == 0 {
-			fmt.Printf("sylvester's law of inertia: LAP %d %.3f\n", lap, sign)
+			fmt.Fprintf(frame.Output, "sylvester's law of inertia: LAP %d %.3f\n", lap, sign)
 		} else {
-			fmt.Printf("sylvester's law of inertia: LAP %d %.3f\n", lap, sign)
+			fmt.Fprintf(frame.Output, "sylvester's law of inertia: LAP %d %.3f\n", lap, sign)
 			if sign < 0.0 {
 				return errors.New(fmt.Sprintf("sylvester's law of inertia: %.3f", sign))
 			}
@@ -809,7 +811,7 @@ func (frame *Frame) Arclm202(otp string, init bool, nlap int, delta, min, max fl
 	start := time.Now()
 	laptime := func(message string) {
 		end := time.Now()
-		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
 	var err error
 	var answers [][]float64
@@ -934,8 +936,8 @@ incomp:
 			}
 		}
 		laptime(fmt.Sprintf("LAP = %d SAFETY = %.3f", lap+1, safety))
-		fmt.Printf("DEL: %v\n", del)
-		fmt.Printf("RES: %v\n", res)
+		fmt.Fprintf(frame.Output, "DEL: %v\n", del)
+		fmt.Fprintf(frame.Output, "RES: %v\n", res)
 		if lap > nlap-1 {
 			frame.Lapch <- lap + 1
 			break
@@ -976,7 +978,7 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 	start := time.Now()
 	laptime := func(message string) {
 		end := time.Now()
-		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
 	var err error
 	var answers [][]float64
@@ -1119,7 +1121,7 @@ func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int
 	start := time.Now()
 	laptime := func(message string) {
 		end := time.Now()
-		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
 	confed := make([]*Node, len(frame.Nodes))
 	confdata := make([][]bool, len(frame.Nodes))
@@ -1230,7 +1232,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 	start := time.Now()
 	laptime := func(message string) {
 		end := time.Now()
-		fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
 	var err error
 	var answers [][]float64
@@ -1305,7 +1307,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 			}
 			lastlambda = lambda
 			lambda += dlambda
-			fmt.Printf("LAMBDA %.14f SIGN= %.3f\r", lambda, sign)
+			fmt.Fprintf(frame.Output, "LAMBDA %.14f SIGN= %.3f\r", lambda, sign)
 			lap++
 			frame.Lapch <- lap + 1
 			<-frame.Lapch
