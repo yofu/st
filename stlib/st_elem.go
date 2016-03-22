@@ -2395,6 +2395,13 @@ func (elem *Elem) CurrentValue(show *Show, max, abs bool) float64 {
 		}
 		return val
 	}
+	if show.Energy {
+		val, err := elem.Energy()
+		if err != nil {
+			return 0.0
+		}
+		return val
+	}
 	if show.YieldFunction {
 		f, err := elem.YieldFunction(show.Period)
 		if err[0] != nil || err[1] != nil {
