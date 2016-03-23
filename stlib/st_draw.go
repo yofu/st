@@ -498,62 +498,66 @@ func DrawWrect(stw Drawer, elem *Elem, show *Show) {
 func DrawElemNormal(stw Drawer, elem *Elem, show *Show) {
 }
 
-// func DrawClosedLine(elem *Elem, cvs *cd.Canvas, position []float64, scale float64, vertices [][]float64) {
 func DrawClosedLine(stw Drawer, elem *Elem, position []float64, scale float64, vertices [][]float64) {
-	// coord := make([]float64, 3)
-	// cvs.Begin(cd.CD_CLOSED_LINES)
-	// for _, v := range vertices {
-	// 	if v == nil {
-	// 		cvs.End()
-	// 		cvs.Begin(cd.CD_CLOSED_LINES)
-	// 		continue
-	// 	}
-	// 	coord[0] = position[0] + (v[0]*elem.Strong[0]+v[1]*elem.Weak[0])*0.01*scale
-	// 	coord[1] = position[1] + (v[0]*elem.Strong[1]+v[1]*elem.Weak[1])*0.01*scale
-	// 	coord[2] = position[2] + (v[0]*elem.Strong[2]+v[1]*elem.Weak[2])*0.01*scale
-	// 	pc := elem.Frame.View.ProjectCoord(coord)
-	// 	cvs.FVertex(pc[0], pc[1])
-	// }
-	// cvs.End()
+	coords := make([][]float64, len(vertices))
+	coord := make([]float64, 3)
+	num := 0
+	for _, v := range vertices {
+		if v == nil {
+			if num > 0 {
+				stw.Polyline(append(coords[:num], coords[0]))
+				coords = make([][]float64, len(vertices) - num)
+				num = 0
+			}
+			continue
+		}
+		coord[0] = position[0] + (v[0]*elem.Strong[0]+v[1]*elem.Weak[0])*0.01*scale
+		coord[1] = position[1] + (v[0]*elem.Strong[1]+v[1]*elem.Weak[1])*0.01*scale
+		coord[2] = position[2] + (v[0]*elem.Strong[2]+v[1]*elem.Weak[2])*0.01*scale
+		coords[num] = elem.Frame.View.ProjectCoord(coord)
+		num++
+	}
+	if num > 0 {
+		stw.Polyline(append(coords[:num], coords[0]))
+	}
 }
 
-// func DrawSection(elem *Elem, cvs *cd.Canvas, show *Show) {
 func DrawSection(stw Drawer, elem *Elem, show *Show) {
-	// if al, ok := elem.Frame.Allows[elem.Sect.Num]; ok {
-	// 	position := elem.MidPoint()
-	// 	switch al.(type) {
-	// 	case *SColumn:
-	// 		sh := al.(*SColumn).Shape
-	// 		switch sh.(type) {
-	// 		case HKYOU, HWEAK, RPIPE, CPIPE, PLATE:
-	// 			vertices := sh.Vertices()
-	// 			DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
-	// 		}
-	// 	case *RCColumn:
-	// 		rc := al.(*RCColumn)
-	// 		vertices := rc.CShape.Vertices()
-	// 		DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
-	// 		for _, reins := range rc.Reins {
-	// 			vertices = reins.Vertices()
-	// 			DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
-	// 		}
-	// 	case *RCGirder:
-	// 		rg := al.(*RCGirder)
-	// 		vertices := rg.CShape.Vertices()
-	// 		DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
-	// 		for _, reins := range rg.Reins {
-	// 			vertices = reins.Vertices()
-	// 			DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
-	// 		}
-	// 	case *WoodColumn:
-	// 		sh := al.(*WoodColumn).Shape
-	// 		switch sh.(type) {
-	// 		case PLATE:
-	// 			vertices := sh.Vertices()
-	// 			DrawClosedLine(elem, cvs, position, show.DrawSize, vertices)
-	// 		}
-	// 	}
-	// }
+	if al, ok := elem.Frame.Allows[elem.Sect.Num]; ok {
+		position := elem.MidPoint()
+		switch al.(type) {
+		case *SColumn:
+			sh := al.(*SColumn).Shape
+			switch sh.(type) {
+			case HKYOU, HWEAK, RPIPE, CPIPE, PLATE:
+				vertices := sh.Vertices()
+				DrawClosedLine(stw, elem, position, show.DrawSize, vertices)
+			}
+		case *RCColumn:
+			rc := al.(*RCColumn)
+			vertices := rc.CShape.Vertices()
+			DrawClosedLine(stw, elem, position, show.DrawSize, vertices)
+			for _, reins := range rc.Reins {
+				vertices = reins.Vertices()
+				DrawClosedLine(stw, elem, position, show.DrawSize, vertices)
+			}
+		case *RCGirder:
+			rg := al.(*RCGirder)
+			vertices := rg.CShape.Vertices()
+			DrawClosedLine(stw, elem, position, show.DrawSize, vertices)
+			for _, reins := range rg.Reins {
+				vertices = reins.Vertices()
+				DrawClosedLine(stw, elem, position, show.DrawSize, vertices)
+			}
+		case *WoodColumn:
+			sh := al.(*WoodColumn).Shape
+			switch sh.(type) {
+			case PLATE:
+				vertices := sh.Vertices()
+				DrawClosedLine(stw, elem, position, show.DrawSize, vertices)
+			}
+		}
+	}
 }
 
 // KIJUN
