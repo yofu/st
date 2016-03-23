@@ -1616,7 +1616,7 @@ func (elem *Elem) OnNode(num int, eps float64) []*Node {
 		num2 = num + 1
 	}
 	candidate := elem.Frame.NodeInBox(elem.Enod[num], elem.Enod[num2], eps)
-	direction := elem.Frame.Direction(elem.Enod[num], elem.Enod[num2], false)
+	direction := elem.Frame.Direction(elem.Enod[num], elem.Enod[num2], true)
 	ons := make([]*Node, len(candidate))
 	i := 0
 	nodes := make(map[float64]*Node, 0)
@@ -1627,7 +1627,12 @@ func (elem *Elem) OnNode(num int, eps float64) []*Node {
 		}
 		d := elem.Frame.Direction(elem.Enod[num], n, false)
 		_, _, _, l := elem.Frame.Distance(elem.Enod[num], n)
-		if IsParallel(direction, d, eps) {
+		fac := Dot(direction, d, 3)
+		sum := 0.0
+		for j := 0; j < 3; j++ {
+			sum += math.Pow(d[j] - fac * direction[j], 2.0)
+		}
+		if math.Sqrt(sum) < eps {
 			nodes[l] = n
 			keys = append(keys, l)
 			ons[i] = n
