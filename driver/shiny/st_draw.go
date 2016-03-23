@@ -116,7 +116,10 @@ func (stw *Window) Line(x1, y1, x2, y2 float64) {
 	return
 }
 
-func (stw *Window) Polyline([][]float64) {
+func (stw *Window) Polyline(coords [][]float64) {
+	for i := 0; i < len(coords) - 1; i++ {
+		stw.Line(coords[i][0], coords[i][1], coords[i+1][0], coords[i+1][1])
+	}
 }
 
 func Blend(cvs *image.RGBA, x, y int, src color.RGBA) {
