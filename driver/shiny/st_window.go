@@ -251,9 +251,17 @@ func (stw *Window) Start() {
 				case key.CodeLeftArrow:
 					stw.SeekBackward()
 				case key.CodeDownArrow:
-					stw.SeekLast()
+					if e.Modifiers&key.ModControl != 0 {
+						st.PrevFloor(stw)
+					} else {
+						stw.SeekLast()
+					}
 				case key.CodeUpArrow:
-					stw.SeekHead()
+					if e.Modifiers&key.ModControl != 0 {
+						st.NextFloor(stw)
+					} else {
+						stw.SeekHead()
+					}
 				case key.CodeH:
 					if e.Modifiers&key.ModControl != 0 {
 						stw.PopHistoryDialog()
