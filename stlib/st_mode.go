@@ -13,14 +13,6 @@ const (
 	CRITICAL
 )
 
-// Paper Size
-const (
-	A4_TATE = iota
-	A4_YOKO
-	A3_TATE
-	A3_YOKO
-)
-
 type ExModer interface {
 	Selector
 

@@ -82,6 +82,7 @@ type Window struct {
 	fontFace        font.Face
 	fontHeight      fixed.Int26_6
 	fontColor       color.RGBA
+	papersize       uint
 	changed         bool
 	lastexcommand   string
 	lastfig2command string
@@ -109,6 +110,7 @@ func NewWindow(s screen.Screen) *Window {
 		fontFace:        basicfont.Face7x13,
 		fontHeight:      13,
 		fontColor:       color.RGBA{0xff, 0xff, 0xff, 0xff},
+		papersize:       st.A4_TATE,
 		changed:         false,
 		lastexcommand:   "",
 		lastfig2command: "",
@@ -822,11 +824,12 @@ func (stw *Window) SetAngle(phi, theta float64) {
 	st.Animate(stw, view)
 }
 
-func (stw *Window) SetPaperSize(uint) {
+func (stw *Window) SetPaperSize(name uint) {
+	stw.papersize = name
 }
 
 func (stw *Window) PaperSize() uint {
-	return st.A4_TATE
+	return stw.papersize
 }
 
 func (stw *Window) SetPeriod(string) {

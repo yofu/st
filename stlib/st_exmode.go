@@ -938,24 +938,18 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":svg {-size=a4tate} filename")
 		}
-		wmm := 210.0
-		hmm := 297.0
 		if name, ok := argdict["SIZE"]; ok {
 			switch strings.ToUpper(name) {
 			case "A4TATE":
 			case "A4YOKO":
-				wmm, hmm = hmm, wmm
+				stw.SetPaperSize(A4_YOKO)
 			case "A3TATE":
-				w2 := 2.0 * wmm
-				wmm = hmm
-				hmm = w2
+				stw.SetPaperSize(A3_TATE)
 			case "A3YOKO":
-				w2 := 2.0 * wmm
-				wmm = hmm
-				hmm = w2
-				wmm, hmm = hmm, wmm
+				stw.SetPaperSize(A3_YOKO)
 			}
 		}
+		wmm, hmm := PaperSizemm(stw.PaperSize())
 		w, _ := math.Modf(wmm*90.0/25.4)
 		h, _ := math.Modf(hmm*90.0/25.4)
 		err := PrintSVG(frame, fn, int(w), int(h))
