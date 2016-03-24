@@ -1822,16 +1822,14 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					return el.Lock
 				}
 			case strings.EqualFold(condition, "isolated"):
+				_, els := frame.Isolated()
 				f = func(el *Elem) bool {
-					for _, en := range el.Enod {
-						for _, elem := range el.Frame.SearchElem(en) {
-							if el.Num == elem.Num {
-								continue
-							}
-							return false
+					for _, iel := range els {
+						if el == iel {
+							return true
 						}
 					}
-					return true
+					return false
 				}
 			}
 			if f != nil {

@@ -2816,6 +2816,65 @@ func (frame *Frame) ElemToNode(els ...*Elem) []*Node {
 	return ns[:num]
 }
 
+func (frame *Frame) Isolated() ([]*Node, []*Elem) {
+	current := make([]*Node, 0)
+	for _, n := range frame.Nodes {
+		for i := 0; i < 6; i++ {
+			if n.Conf[i] {
+				current = append(current, n)
+				break
+			}
+		}
+	}
+	checked := current
+	for {
+		next := make([]*Node, 0)
+		for _, n := range current {
+			for _, el := range frame.SearchElem(n) {
+				if !el.IsLineElem() {
+					continue
+				}
+				cand := el.Otherside(n)
+				add := true
+				for _, cn := range current {
+					if cand == cn {
+						add = false
+						break
+					}
+				}
+				for _, cn := range checked {
+					if cand == cn {
+						add = false
+						break
+					}
+				}
+				if add {
+					next = append(next, cand)
+				}
+			}
+		}
+		if len(next) == 0 {
+			break
+		} else {
+			checked = append(checked, next...)
+			current = next
+		}
+	}
+	inodes := make([]*Node, 0)
+	for _, n := range frame.Nodes {
+		add := true
+		for _, cn := range checked {
+			if cn == n {
+				add = false
+			}
+		}
+		if add {
+			inodes = append(inodes, n)
+		}
+	}
+	return inodes, frame.NodeToElemAll(inodes...)
+}
+
 func abs(val int) int {
 	if val >= 0 {
 		return val
