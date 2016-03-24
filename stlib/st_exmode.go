@@ -936,9 +936,29 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 	case "svg":
 		if usage {
-			return Usage(":svg filename")
+			return Usage(":svg {-size=a4tate} filename")
 		}
-		err := PrintSVG(frame, fn)
+		wmm := 210.0
+		hmm := 297.0
+		if name, ok := argdict["SIZE"]; ok {
+			switch strings.ToUpper(name) {
+			case "A4TATE":
+			case "A4YOKO":
+				wmm, hmm = hmm, wmm
+			case "A3TATE":
+				w2 := 2.0 * wmm
+				wmm = hmm
+				hmm = w2
+			case "A3YOKO":
+				w2 := 2.0 * wmm
+				wmm = hmm
+				hmm = w2
+				wmm, hmm = hmm, wmm
+			}
+		}
+		w, _ := math.Modf(wmm*90.0/25.4)
+		h, _ := math.Modf(hmm*90.0/25.4)
+		err := PrintSVG(frame, fn, int(w), int(h))
 		if err != nil {
 			return err
 		}

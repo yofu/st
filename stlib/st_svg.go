@@ -150,11 +150,11 @@ func (stw *SVGCanvas) ShowPrintRange() bool {
 }
 
 func (stw *SVGCanvas) GetCanvasSize() (int, int) {
-	return 0, 0
+	return stw.width, stw.height
 }
 
 func (stw *SVGCanvas) CanvasPaperSize() (float64, float64, error) {
-	return 0.0, 0.0, nil
+	return float64(stw.width), float64(stw.height), nil
 }
 
 func (stw *SVGCanvas) Flush() {
@@ -168,47 +168,46 @@ func (stw *SVGCanvas) CanvasDirection() int {
 type SVGCanvas struct {
 	currentCanvas *svg.SVG
 	currentStyle  *Style
+	writer        *os.File
+	width         int
+	height        int
 }
 
-func PrintSVG(frame *Frame, otp string) error {
-	s := frame.Show.Copy()
-	v := frame.View.Copy()
+func NewSVGCanvas(otp string, width, height int) (*SVGCanvas, error) {
 	w, err := os.Create(otp)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer w.Close()
 	cvs := svg.New(w)
-	cvs.Start(210, 297)
-	sc := new(SVGCanvas)
-	sc.currentCanvas = cvs
-	w.WriteString(`<style>
-    .ndcap {
-        font-family: "IPAmincho";
-        font-size: 8pt;
-    }
-    .elcap {
-        font-family: "IPAmincho";
-        font-size: 8pt;
-    }
-    .sttext {
-        font-family: "IPAmincho";
-        font-size: 8pt;
-    }
-    .kijun {
-        font-family: "IPAmincho";
-        font-size: 8pt;
-        text-anchor: middle;
-        alignment-baseline: central;
-    }
-</style>
-`)
-	DrawFrame(sc, frame, ECOLOR_SECT, true)
-	frame.Show = s
-	frame.View = v
+	cvs.Start(width, height)
+	return &SVGCanvas{
+		currentCanvas: cvs,
+		currentStyle:  nil,
+		writer:        w,
+		width:         width,
+		height:        height,
+	}, nil
+}
+
+func (stw *SVGCanvas) Close() {
+	stw.writer.Close()
+}
+
+func (stw *SVGCanvas) Draw(frame *Frame) {
+	DrawFrame(stw, frame, frame.Show.ColorMode, true)
+}
+
+func PrintSVG(frame *Frame, otp string, width, height int) error {
+	sc, err := NewSVGCanvas(otp, width, height)
 	if err != nil {
 		return err
 	}
+	v := frame.View.Copy()
+	frame.View.Center[0] = 0.5*float64(width)
+	frame.View.Center[1] = 0.5*float64(height)
+	sc.Draw(frame)
+	sc.Close()
+	frame.View = v
 	return nil
 }
 
