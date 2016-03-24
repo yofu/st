@@ -74,7 +74,7 @@ const (
 	ECOLOR_ENERGY
 )
 
-type Show struct { // {{{
+type Show struct {
 	Frame *Frame
 
 	Unit     []float64
@@ -98,21 +98,12 @@ type Show struct { // {{{
 	ElemNormal     bool
 	ElemNormalSize float64
 
-	PlateEdgeColor int
+	Conf     bool
+	ConfSize float64
 
-	Conf      bool
-	ConfSize  float64
-	ConfColor int
-
-	Bond      bool
-	BondSize  float64
-	BondColor int
-	Phinge    bool
-
-	DeformationColor int
-	KijunColor       int
-	MeasureColor     int
-	CanvasFontColor  int
+	Bond     bool
+	Phinge   bool
+	BondSize float64
 
 	Draw     map[int]bool
 	DrawSize float64
@@ -129,6 +120,8 @@ type Show struct { // {{{
 	NoShearValue  bool
 	MomentFigure  bool
 	ShearArrow    bool
+	Mfact         float64
+	Qfact         float64
 
 	NoLegend       bool
 	LegendPosition []int
@@ -136,15 +129,6 @@ type Show struct { // {{{
 	LegendLineSep  float64
 
 	YieldFunction bool
-
-	Mfact            float64
-	Qfact            float64
-	MomentColor      int
-	StressTextColor  int
-	YieldedTextColor int
-	BrittleTextColor int
-
-	DefaultTextAlignment int
 
 	Fes      bool
 	MassSize float64
@@ -163,110 +147,108 @@ type Show struct { // {{{
 	Yrange []float64
 	Zrange []float64
 
-	Formats map[string]string
+	DefaultTextAlignment int
+	Formats              map[string]string
+
+	CanvasFontColor  int
+	PlateEdgeColor   int
+	ConfColor        int
+	BondColor        int
+	DeformationColor int
+	KijunColor       int
+	MeasureColor     int
+	MomentColor      int
+	StressTextColor  int
+	YieldedTextColor int
+	BrittleTextColor int
 }
 
 func NewShow(frame *Frame) *Show {
-	s := new(Show)
-
-	s.Frame = frame
-
-	s.Unit = []float64{1.0, 1.0}
-	s.UnitName = []string{"tf", "m"}
-
-	s.ColorMode = ECOLOR_SECT
-
-	s.NodeCaption = NC_NUM
-	s.ElemCaption = 0
-	s.SrcanRate = 0
-
-	s.GlobalAxis = true
-	s.GlobalAxisSize = 1.0
-	s.ElementAxis = false
-	s.ElementAxisSize = 0.5
-
-	s.NodeNormal = false
-	s.NodeNormalSize = 0.2
-	s.ElemNormal = false
-	s.ElemNormalSize = 0.2
-
-	s.Bond = true
-	s.Phinge = true
-	s.BondSize = 3.0
-	s.Conf = true
-	s.ConfSize = 9.0
-
-	s.Period = "L"
-
-	s.Deformation = false
-	s.Dfact = 100.0
-
-	s.Rfact = 0.5
-
-	s.Stress = map[int]uint{COLUMN: 0, GIRDER: 0, BRACE: 0, WBRACE: 0, SBRACE: 0}
-	s.NoMomentValue = false
-	s.NoShearValue = false
-	s.MomentFigure = true
-	s.ShearArrow = false
-	s.Mfact = 0.5
-	s.Qfact = 0.5
-
-	s.NoLegend = false
-	s.LegendPosition = []int{30, 30}
-	s.LegendSize = 10
-	s.LegendLineSep = 1.3
-
-	s.Fes = false
-	s.MassSize = 0.5
-
-	s.Kijun = false
-	s.KijunSize = 12.0
-
-	s.Measure = true
-
-	s.Select = false
-
-	s.Sect = make(map[int]bool)
+	sects := make(map[int]bool)
 	for snum := range frame.Sects {
-		s.Sect[snum] = true
+		sects[snum] = true
 	}
-	s.Etype = make(map[int]bool)
-	s.Draw = make(map[int]bool)
-	s.DrawSize = 1.0
+	etypes := make(map[int]bool)
+	draws := make(map[int]bool)
 	for i, _ := range ETYPES {
 		if i == WBRACE || i == SBRACE {
-			s.Etype[i] = false
+			etypes[i] = false
 		} else {
-			s.Etype[i] = true
+			etypes[i] = true
 		}
-		s.Draw[i] = false
+		draws[i] = false
 	}
-
-	s.Xrange = []float64{-100.0, 1000.0}
-	s.Yrange = []float64{-100.0, 1000.0}
-	s.Zrange = []float64{-100.0, 1000.0}
-
-	s.Formats = make(map[string]string)
-
-	s.Formats["STRESS"] = "%.3f"
-	s.Formats["RATE"] = "%.3f"
-	s.Formats["DISP"] = "%.3f"
-	s.Formats["THETA"] = "%.3e"
-	s.Formats["REACTION"] = "%.3f"
-
-	s.CanvasFontColor = GRAY
-	s.PlateEdgeColor = GRAY
-	s.ConfColor = GRAY
-	s.BondColor = GRAY
-	s.DeformationColor = GRAY
-	s.KijunColor = GRAY
-	s.MeasureColor = GRAY
-	s.MomentColor = DARK_MAGENTA
-	s.StressTextColor = GRAY
-	s.YieldedTextColor = YELLOW
-	s.BrittleTextColor = RED
-
-	return s
+	formats := make(map[string]string)
+	formats["STRESS"] = "%.3f"
+	formats["RATE"] = "%.3f"
+	formats["DISP"] = "%.3f"
+	formats["THETA"] = "%.3e"
+	formats["REACTION"] = "%.3f"
+	return &Show{
+		Frame:                frame,
+		Unit:                 []float64{1.0, 1.0},
+		UnitName:             []string{"tf", "m"},
+		ColorMode:            ECOLOR_SECT,
+		NodeCaption:          NC_NUM,
+		ElemCaption:          0,
+		SrcanRate:            0,
+		Energy:               false,
+		GlobalAxis:           true,
+		GlobalAxisSize:       1.0,
+		ElementAxis:          false,
+		ElementAxisSize:      0.5,
+		NodeNormal:           false,
+		NodeNormalSize:       0.2,
+		ElemNormal:           false,
+		ElemNormalSize:       0.2,
+		Conf:                 true,
+		ConfSize:             9.0,
+		Bond:                 true,
+		Phinge:               true,
+		BondSize:             3.0,
+		Draw:                 draws,
+		DrawSize:             1.0,
+		Period:               "L",
+		Deformation:          false,
+		Dfact:                100.0,
+		Rfact:                0.5,
+		Stress:               map[int]uint{COLUMN: 0, GIRDER: 0, BRACE: 0, WBRACE: 0, SBRACE: 0},
+		NoMomentValue:        false,
+		NoShearValue:         false,
+		MomentFigure:         true,
+		ShearArrow:           false,
+		Mfact:                0.5,
+		Qfact:                0.5,
+		NoLegend:             false,
+		LegendPosition:       []int{30, 30},
+		LegendSize:           10,
+		LegendLineSep:        1.3,
+		YieldFunction:        false,
+		Fes:                  false,
+		MassSize:             0.5,
+		Kijun:                false,
+		KijunSize:            12.0,
+		Measure:              true,
+		Select:               false,
+		Sect:                 sects,
+		Etype:                etypes,
+		Xrange:               []float64{-100.0, 1000.0},
+		Yrange:               []float64{-100.0, 1000.0},
+		Zrange:               []float64{-100.0, 1000.0},
+		DefaultTextAlignment: WEST,
+		Formats:              formats,
+		CanvasFontColor:      GRAY,
+		PlateEdgeColor:       GRAY,
+		ConfColor:            GRAY,
+		BondColor:            GRAY,
+		DeformationColor:     GRAY,
+		KijunColor:           GRAY,
+		MeasureColor:         GRAY,
+		MomentColor:          DARK_MAGENTA,
+		StressTextColor:      GRAY,
+		YieldedTextColor:     YELLOW,
+		BrittleTextColor:     RED,
+	}
 }
 
 func (show *Show) Copy() *Show {
@@ -360,5 +342,3 @@ func (show *Show) SrcanRateOn(val uint) {
 func (show *Show) SrcanRateOff(val uint) {
 	show.SrcanRate &= ^val
 }
-
-// }}}
