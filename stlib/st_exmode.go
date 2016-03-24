@@ -941,6 +941,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if name, ok := argdict["SIZE"]; ok {
 			switch strings.ToUpper(name) {
 			case "A4TATE":
+				stw.SetPaperSize(A4_TATE)
 			case "A4YOKO":
 				stw.SetPaperSize(A4_YOKO)
 			case "A3TATE":
