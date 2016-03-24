@@ -983,6 +983,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if err != nil {
 			return err
 		}
+	case "pdf":
+		pdf, err := NewPDFCanvas(595.28, 841.89)
+		if err != nil {
+			return err
+		}
+		pdf.Draw(frame)
+		pdf.SaveAs(Ce(fn, ".pdf"))
 	case "check":
 		if usage {
 			return Usage(":check")
