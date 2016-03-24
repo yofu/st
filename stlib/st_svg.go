@@ -35,8 +35,8 @@ func (stw *SVGCanvas) Polygon(coord [][]float64) {
 	stw.currentCanvas.Polygon(xs, ys, s.Fill())
 }
 
-func (stw *SVGCanvas) Circle(x, y, r float64) {
-	stw.currentCanvas.Circle(int(x), int(y), int(r), stw.currentStyle.Fill())
+func (stw *SVGCanvas) Circle(x, y, d float64) {
+	stw.currentCanvas.Circle(int(x), int(y), int(0.5*d), stw.currentStyle.Fill())
 }
 
 func (stw *SVGCanvas) FilledCircle(x, y, r float64) {
