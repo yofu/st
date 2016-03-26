@@ -950,10 +950,8 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				stw.SetPaperSize(A3_YOKO)
 			}
 		}
-		wmm, hmm := PaperSizemm(stw.PaperSize())
-		w, _ := math.Modf(wmm*90.0/25.4)
-		h, _ := math.Modf(hmm*90.0/25.4)
-		err := PrintSVG(frame, fn, int(w), int(h))
+		w, h := PaperSizemm(stw.PaperSize())
+		err := PrintSVG(frame, fn, w, h)
 		if err != nil {
 			return err
 		}

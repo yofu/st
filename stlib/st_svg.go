@@ -150,11 +150,11 @@ func (stw *SVGCanvas) ShowPrintRange() bool {
 }
 
 func (stw *SVGCanvas) GetCanvasSize() (int, int) {
-	return stw.width, stw.height
+	return int(stw.width), int(stw.height)
 }
 
 func (stw *SVGCanvas) CanvasPaperSize() (float64, float64, error) {
-	return float64(stw.width), float64(stw.height), nil
+	return stw.width, stw.height, nil
 }
 
 func (stw *SVGCanvas) Flush() {
@@ -169,23 +169,23 @@ type SVGCanvas struct {
 	currentCanvas *svg.SVG
 	currentStyle  *Style
 	writer        *os.File
-	width         int
-	height        int
+	width         float64
+	height        float64
 }
 
-func NewSVGCanvas(otp string, width, height int) (*SVGCanvas, error) {
+func NewSVGCanvas(otp string, width, height float64) (*SVGCanvas, error) {
 	w, err := os.Create(otp)
 	if err != nil {
 		return nil, err
 	}
 	cvs := svg.New(w)
-	cvs.Start(width, height)
+	cvs.Startunit(int(width), int(height), "mm")
 	return &SVGCanvas{
 		currentCanvas: cvs,
 		currentStyle:  nil,
 		writer:        w,
-		width:         width,
-		height:        height,
+		width:         width*90.0/25.4,
+		height:        height*90.0/25.4,
 	}, nil
 }
 
@@ -197,14 +197,14 @@ func (stw *SVGCanvas) Draw(frame *Frame) {
 	DrawFrame(stw, frame, frame.Show.ColorMode, true)
 }
 
-func PrintSVG(frame *Frame, otp string, width, height int) error {
+func PrintSVG(frame *Frame, otp string, width, height float64) error {
 	sc, err := NewSVGCanvas(otp, width, height)
 	if err != nil {
 		return err
 	}
 	v := frame.View.Copy()
-	frame.View.Center[0] = 0.5*float64(width)
-	frame.View.Center[1] = 0.5*float64(height)
+	frame.View.Center[0] = 0.5*sc.width
+	frame.View.Center[1] = 0.5*sc.height
 	sc.Draw(frame)
 	sc.Close()
 	frame.View = v
