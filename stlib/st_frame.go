@@ -3877,12 +3877,18 @@ func (frame *Frame) WeightDistribution(fn string) {
 	sort.Sort(NodeByNum{nodes})
 	for _, n := range nodes {
 		for i := 0; i < 3; i++ {
-			n.Weight[i] = 0.0
+			if !n.Distributed {
+				n.Weight[i] = 0.0
+				n.Distributed = true
+			}
 		}
 	}
 	amount := make(map[int]float64)
 	for _, el := range frame.Elems {
-		el.Distribute()
+		if !el.Distributed {
+			el.Distribute()
+			el.Distributed = true
+		}
 		if el.Etype != WBRACE || el.Etype != SBRACE {
 			amount[el.Sect.Num] += el.Amount()
 		}

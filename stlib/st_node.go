@@ -42,6 +42,8 @@ type Node struct {
 
 	hide bool
 	Lock bool
+
+	Distributed bool
 }
 
 // Sort// {{{
