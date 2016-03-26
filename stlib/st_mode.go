@@ -35,7 +35,7 @@ type ExModer interface {
 	ToggleShowPrintRange()
 	CurrentLap(string, int, int)
 	SectionData(*Sect)
-	TextBox(string) TextBox
+	TextBox(string) *TextBox
 	SetAngle(float64, float64)
 	SetPaperSize(uint)
 	PaperSize() uint
@@ -57,5 +57,5 @@ type Fig2Moder interface {
 	SetLastFig2Command(string)
 	ShowCenter()
 	SetColorMode(uint)
-	TextBox(string) TextBox
+	TextBox(string) *TextBox
 }

@@ -645,17 +645,19 @@ func DrawMeasure(stw Drawer, m *Measure, show *Show) {
 }
 
 // TEXT
-func DrawText(stw Drawer, t TextBox) {
-	// s := cvs.SaveState()
-	// cvs.Font(t.Font.Face, cd.CD_PLAIN, t.Font.Size)
-	// cvs.Foreground(t.Font.Color)
-	fsize := 8
-	for i, txt := range t.Text() {
-		xpos, ypos := t.Position()
-		ypos -= float64(i*fsize)*1.5 + float64(fsize)
-		stw.Text(xpos, ypos, txt)
+func DrawText(stw Drawer, t *TextBox) {
+	fsize := t.Height()
+	xpos, ypos := t.Position()
+	d := -1.0
+	if stw.CanvasDirection() == 1 {
+		d = 1.0
 	}
-	// cvs.RestoreState(s)
+	ypos += d*fsize
+	for _, txt := range t.Text() {
+		fmt.Println(xpos, ypos, txt)
+		stw.Text(xpos, ypos, txt)
+		ypos += d*fsize*1.5
+	}
 }
 
 func DrawNode(stw Drawer, node *Node, show *Show) {

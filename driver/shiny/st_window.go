@@ -2,12 +2,10 @@ package stshiny
 
 import (
 	"fmt"
-	"github.com/golang/freetype/truetype"
 	"github.com/yofu/abbrev"
 	"github.com/yofu/st/stlib"
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/image/font"
-	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/math/fixed"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
@@ -17,7 +15,6 @@ import (
 	"image"
 	"image/color"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -79,14 +76,13 @@ type Window struct {
 	buffer          screen.Buffer
 	currentPen      color.RGBA
 	currentBrush    color.RGBA
-	fontFace        font.Face
-	fontHeight      fixed.Int26_6
-	fontColor       color.RGBA
+	font            *Font
 	papersize       uint
 	changed         bool
 	lastexcommand   string
 	lastfig2command string
 	lastcommand     func(st.Commander) chan bool
+	textBox         map[string]*st.TextBox
 }
 
 func NewWindow(s screen.Screen) *Window {
@@ -107,14 +103,13 @@ func NewWindow(s screen.Screen) *Window {
 		buffer:          nil,
 		currentPen:      color.RGBA{0xff, 0xff, 0xff, 0xff},
 		currentBrush:    color.RGBA{0xff, 0xff, 0xff, 0x77},
-		fontFace:        basicfont.Face7x13,
-		fontHeight:      13,
-		fontColor:       color.RGBA{0xff, 0xff, 0xff, 0xff},
+		font:            basicFont,
 		papersize:       st.A4_TATE,
 		changed:         false,
 		lastexcommand:   "",
 		lastfig2command: "",
 		lastcommand:     nil,
+		textBox:         make(map[string]*st.TextBox),
 	}
 }
 
@@ -530,6 +525,12 @@ func (stw *Window) Redraw() {
 	}
 	stw.buffer = b
 	st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, true)
+	for _, t := range stw.textBox {
+		if t.IsHidden(stw.frame.Show) {
+			continue
+		}
+		st.DrawText(stw, t)
+	}
 	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
 	if stw.Executing() {
 		stw.window.Fill(image.Rect(0, 0, 10, 10), color.RGBA{0xff, 0x00, 0x00, 0x22}, screen.Over)
@@ -560,19 +561,11 @@ func (stw *Window) RedrawNode() {
 }
 
 func (stw *Window) LoadFontFace(path string, point float64) error {
-	f, err := ioutil.ReadFile(path)
+	font, err := LoadFontFace(path, point)
 	if err != nil {
 		return err
 	}
-	ttf, err := truetype.Parse(f)
-	if err != nil {
-		return err
-	}
-	stw.fontFace = truetype.NewFace(ttf, &truetype.Options{
-		Size:    point,
-		Hinting: font.HintingFull,
-	})
-	stw.fontHeight = fixed.Int26_6(int(point*3) >> 2) // * 72/96
+	stw.font = font
 	return nil
 }
 
@@ -591,8 +584,8 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 	commandbuffer = b
 	d := &font.Drawer{
 		Dst:  commandbuffer.RGBA(),
-		Src:  image.NewUniform(stw.fontColor),
-		Face: stw.fontFace,
+		Src:  image.NewUniform(stw.font.color),
+		Face: stw.font.face,
 		Dot:  fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
 	}
 	d.DrawString(str)
@@ -605,7 +598,7 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 	}
 	commandtexture = t
 	t.Upload(image.Point{}, commandbuffer, commandbuffer.Bounds())
-	stw.window.Fill(image.Rect(int(x-5), int(y-float64(stw.fontHeight)-5), 500, int(y+5)), color.RGBA{0x33, 0x33, 0x33, 0xff}, screen.Over)
+	stw.window.Fill(image.Rect(int(x-5), int(y-float64(stw.font.height)-5), 500, int(y+5)), color.RGBA{0x33, 0x33, 0x33, 0xff}, screen.Over)
 	stw.window.Copy(image.Point{0, 0}, commandtexture, commandtexture.Bounds(), screen.Over, nil)
 	stw.window.Publish()
 }
@@ -815,8 +808,11 @@ func (stw *Window) CurrentLap(string, int, int) {
 func (stw *Window) SectionData(*st.Sect) {
 }
 
-func (stw *Window) TextBox(string) st.TextBox {
-	return nil
+func (stw *Window) TextBox(name string) *st.TextBox {
+	if _, tok := stw.textBox[name]; !tok {
+		stw.textBox[name] = st.NewTextBox(stw.font)
+	}
+	return stw.textBox[name]
 }
 
 func (stw *Window) SetAngle(phi, theta float64) {
