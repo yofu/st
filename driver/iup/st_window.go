@@ -116,13 +116,7 @@ var (
 )
 
 var (
-	STLOGO = &TextBox{
-		value:    []string{"         software", "     forstructural", "   analysisthename", "  ofwhichstandsfor", "", " sigmatau  stress", "structure  steel", "andsometh  ing", " likethat"},
-		position: []float64{100.0, 100.0},
-		Angle:    0.0,
-		Font:     NewFont(),
-		hide:     true,
-	}
+	STLOGO = st.STLOGO(NewFont(), 100.0, 100.0, 0.0)
 )
 
 var (
@@ -222,7 +216,7 @@ type Window struct { // {{{
 
 	lselect *iup.Handle
 
-	textBox map[string]*TextBox
+	textBox map[string]*st.TextBox
 
 	papersize uint
 
@@ -1258,14 +1252,14 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.CanvasSize = []float64{float64(w), float64(h)}
 	stw.dbuff.TextAlignment(DefaultTextAlignment)
 	stw.papersize = st.A4_TATE
-	stw.textBox = make(map[string]*TextBox, 0)
-	stw.textBox["PAGETITLE"] = NewTextBox()
-	stw.textBox["PAGETITLE"].Font.Size = 16
-	stw.textBox["PAGETITLE"].position = []float64{30.0, stw.CanvasSize[1] - 30.0}
-	stw.textBox["TITLE"] = NewTextBox()
-	stw.textBox["TITLE"].position = []float64{30.0, stw.CanvasSize[1] - 80.0}
-	stw.textBox["TEXT"] = NewTextBox()
-	stw.textBox["TEXT"].position = []float64{120.0, 65.0}
+	stw.textBox = make(map[string]*st.TextBox, 0)
+	stw.textBox["PAGETITLE"] = st.NewTextBox(NewFont())
+	stw.textBox["PAGETITLE"].Font.SetSize(16)
+	stw.textBox["PAGETITLE"].SetPosition(30.0, stw.CanvasSize[1] - 30.0)
+	stw.textBox["TITLE"] = st.NewTextBox(NewFont())
+	stw.textBox["TITLE"].SetPosition(30.0, stw.CanvasSize[1] - 80.0)
+	stw.textBox["TEXT"] = st.NewTextBox(NewFont())
+	stw.textBox["TEXT"].SetPosition(120.0, 65.0)
 	iup.SetHandle("mainwindow", stw.Dlg)
 	stw.EscapeAll()
 	stw.changed = false
@@ -1694,15 +1688,11 @@ func (stw *Window) FittoPrinter(pcanv *cd.Canvas) (*st.View, float64, error) {
 	for _, m := range stw.frame.Measures {
 		m.ArrowSize = 75.0
 	}
-	for i := 0; i < 2; i++ {
-		stw.textBox["PAGETITLE"].position[i] *= factor
-		stw.textBox["TITLE"].position[i] *= factor
-		stw.textBox["TEXT"].position[i] *= factor
-	}
 	for _, t := range stw.textBox {
-		for i := 0; i < 2; i++ {
-			t.position[i] *= factor
-		}
+		x, y := t.Position()
+		x *= factor
+		y *= factor
+		t.SetPosition(x, y)
 	}
 	return v, factor, nil
 }
@@ -1764,15 +1754,11 @@ func (stw *Window) Print() {
 		m.ArrowSize = 6.0
 	}
 	stw.frame.View = v
-	for i := 0; i < 2; i++ {
-		stw.textBox["PAGETITLE"].position[i] /= factor
-		stw.textBox["TITLE"].position[i] /= factor
-		stw.textBox["TEXT"].position[i] /= factor
-	}
 	for _, t := range stw.textBox {
-		for i := 0; i < 2; i++ {
-			t.position[i] /= factor
-		}
+		x, y := t.Position()
+		x /= factor
+		y /= factor
+		t.SetPosition(x, y)
 	}
 	// PlateEdgeColor = defaultPlateEdgeColor
 	// BondColor = defaultBondColor
@@ -1868,7 +1854,7 @@ func ShowReleaseNote() {
 
 func (stw *Window) ShowLogo(t time.Duration) {
 	w, h := stw.dbuff.GetSize()
-	STLOGO.position = []float64{float64(w) * 0.5, float64(h) * 0.5}
+	STLOGO.SetPosition(float64(w) * 0.5, float64(h) * 0.5)
 	STLOGO.Show()
 	// go func() {
 	// logo:
@@ -2494,10 +2480,10 @@ func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
 	for _, t := range stw.textBox {
 		if !t.IsHidden(stw.frame.Show) {
 			if black {
-				col := t.Font.Color
-				t.Font.Color = cd.CD_BLACK
+				col := t.Font.Color()
+				t.Font.SetColor(cd.CD_BLACK)
 				DrawText(t, canv)
-				t.Font.Color = col
+				t.Font.SetColor(col)
 			} else {
 				DrawText(t, canv)
 			}
@@ -2906,13 +2892,13 @@ func (stw *Window) PasteClipboard() error {
 }
 
 func (stw *Window) ShapeData(sh st.Shape) {
-	var tb *TextBox
+	var tb *st.TextBox
 	if t, tok := stw.textBox["SHAPE"]; tok {
 		tb = t
 	} else {
-		tb = NewTextBox()
+		tb = st.NewTextBox(NewFont())
 		tb.Show()
-		tb.position = []float64{stw.CanvasSize[0] - 300.0, 200.0}
+		tb.SetPosition(stw.CanvasSize[0] - 300.0, 200.0)
 		stw.textBox["SHAPE"] = tb
 	}
 	var otp bytes.Buffer
@@ -2929,13 +2915,13 @@ func (stw *Window) ShapeData(sh st.Shape) {
 }
 
 func (stw *Window) SectionData(sec *st.Sect) {
-	var tb *TextBox
+	var tb *st.TextBox
 	if t, tok := stw.textBox["SECTION"]; tok {
 		tb = t
 	} else {
-		tb = NewTextBox()
+		tb = st.NewTextBox(NewFont())
 		tb.Show()
-		tb.position = []float64{stw.CanvasSize[0] - 500.0, float64(dataareaheight)}
+		tb.SetPosition(stw.CanvasSize[0] - 500.0, float64(dataareaheight))
 		stw.textBox["SECTION"] = tb
 	}
 	tb.SetText(strings.Split(sec.InpString(), "\n"))
@@ -2946,13 +2932,13 @@ func (stw *Window) SectionData(sec *st.Sect) {
 }
 
 func (stw *Window) CurrentLap(comment string, nlap, laps int) {
-	var tb *TextBox
+	var tb *st.TextBox
 	if t, tok := stw.textBox["LAP"]; tok {
 		tb = t
 	} else {
-		tb = NewTextBox()
+		tb = st.NewTextBox(NewFont())
 		tb.Show()
-		tb.position = []float64{30.0, stw.CanvasSize[1] - 30.0}
+		tb.SetPosition(30.0, stw.CanvasSize[1] - 30.0)
 		stw.textBox["LAP"] = tb
 	}
 	if comment == "" {
@@ -6195,9 +6181,9 @@ func (stw *Window) CheckFrame() {
 	checkframe(stw)
 }
 
-func (stw *Window) TextBox(name string) st.TextBox {
+func (stw *Window) TextBox(name string) *st.TextBox {
 	if _, tok := stw.textBox[name]; !tok {
-		stw.textBox[name] = NewTextBox()
+		stw.textBox[name] = st.NewTextBox(NewFont())
 	}
 	return stw.textBox[name]
 }
