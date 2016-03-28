@@ -1058,7 +1058,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				select {
 				case nlap = <-frame.Lapch:
 					stw.CurrentLap("Calculating...", nlap, l)
-					stw.Redraw()
+					fmt.Printf("LAP: %3d / %3d\r", nlap, l)
 				case err = <-frame.Endch:
 					if err != nil {
 						stw.CurrentLap("Error", nlap, l)
