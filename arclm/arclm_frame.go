@@ -1286,16 +1286,23 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 			for j := 0; j < len(vec); j++ {
 				sign += answers[0][j] * vec[j]
 			}
-			if sign < 0.0 && dlambda < eps {
-				break
-			}
-			if lap > 0 && (sign-lastsign)/math.Abs(lastsign) < -1e-3 {
-				lambda = lastlambda
-				dlambda /= 10.0
-			}
-			if math.Abs(sign-lastsign) < eps && dlambda < eps {
-				lambda += eps * 10.0
-				break
+			fmt.Fprintf(frame.Output, "LAMBDA %.14f SIGN= %.3f\n", lambda, sign)
+			if sign < 0.0 {
+				if dlambda < eps {
+					break
+				} else {
+					lambda = lastlambda
+					dlambda /= 10.0
+				}
+			} else {
+				if lap > 0 && (sign-lastsign)/math.Abs(lastsign) < -1e-3 {
+					lambda = lastlambda
+					dlambda /= 10.0
+				}
+				if math.Abs(sign-lastsign) < eps && dlambda < eps {
+					lambda += eps * 10.0
+					break
+				}
 			}
 			lastsign = sign
 			tmp := frame.FillConf(answers[0])
@@ -1307,7 +1314,6 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 			}
 			lastlambda = lambda
 			lambda += dlambda
-			fmt.Fprintf(frame.Output, "LAMBDA %.14f SIGN= %.3f\r", lambda, sign)
 			lap++
 			frame.Lapch <- lap + 1
 			<-frame.Lapch
