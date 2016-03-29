@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -1272,9 +1273,22 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 		lap := 0
 		lambda := shift
 		lastlambda := shift
-		dlambda := 1.0
-		lastsign := 0.0
+		dlambda := 100.0
 		var lastvec []float64
+		for j := 0; j < len(vec); j++ {
+			vec[j] = rand.Float64()
+		}
+		tmp := frame.FillConf(vec)
+		for j := 0; j < i; j++ {
+			sum := 0.0
+			for k := 0; k < len(tmp); k++ {
+				sum += frame.EigenVector[j][k] * tmp[k]
+			}
+			for k := 0; k < len(tmp); k++ {
+				tmp[k] -= sum * frame.EigenVector[j][k]
+			}
+		}
+		vec = frame.RemoveConf(tmp)
 		for {
 			gmtx := kemtx.AddMat(kgmtx, lambda)
 			mtx := gmtx.ToLLS(csize, conf)
@@ -1286,7 +1300,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 			for j := 0; j < len(vec); j++ {
 				sign += answers[0][j] * vec[j]
 			}
-			fmt.Fprintf(frame.Output, "LAMBDA %.14f SIGN= %.3f\n", lambda, sign)
+			fmt.Fprintf(frame.Output, "LAMBDA %.14f SIGN= %.3f\r", lambda, sign)
 			if sign < 0.0 {
 				if dlambda < eps {
 					break
@@ -1294,17 +1308,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 					lambda = lastlambda
 					dlambda /= 10.0
 				}
-			} else {
-				if lap > 0 && (sign-lastsign)/math.Abs(lastsign) < -1e-3 {
-					lambda = lastlambda
-					dlambda /= 10.0
-				}
-				if math.Abs(sign-lastsign) < eps && dlambda < eps {
-					lambda += eps * 10.0
-					break
-				}
 			}
-			lastsign = sign
 			tmp := frame.FillConf(answers[0])
 			tmp = Normalize(tmp)
 			lastvec = tmp
@@ -1323,17 +1327,6 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 		frame.EigenVector[i] = lastvec
 		frame.UpdateReaction(kemtx, lastvec)
 		frame.UpdateForm(lastvec)
-		tmp := frame.FillConf(vec)
-		for j := 0; j < i; j++ {
-			sum := 0.0
-			for k := 0; k < len(tmp); k++ {
-				sum += frame.EigenVector[j][k] * tmp[k]
-			}
-			for k := 0; k < len(tmp); k++ {
-				tmp[k] -= sum * frame.EigenVector[j][k]
-			}
-		}
-		vec = frame.RemoveConf(tmp)
 		shift = lambda
 		frame.Lapch <- i + 1
 		<-frame.Lapch
