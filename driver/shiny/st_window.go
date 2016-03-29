@@ -706,11 +706,15 @@ func (stw *Window) PopHistoryDialog() {
 }
 
 func (stw *Window) History(str string) {
-	if stw.history == nil || str == "" {
+	if str == "" {
 		return
 	}
-	stw.history.TypeString(str)
-	stw.history.Redraw()
+	if stw.history == nil {
+		fmt.Print(str)
+	} else {
+		stw.history.TypeString(str)
+		stw.history.Redraw()
+	}
 }
 
 func (stw *Window) HistoryWriter() io.Writer {
