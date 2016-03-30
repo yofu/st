@@ -188,14 +188,19 @@ func ExMode(stw ExModer, command string) error {
 	stw.SetLastExCommand(command)
 	if !strings.Contains(command, "|") {
 		err := exCommand(stw, command, false, exmodech, exmodeend)
-		if n, ok := err.(NotRedraw); ok {
-			stw.History(n.Message())
-			return err
-		} else if u, ok := err.(Messager); ok {
-			stw.History(u.Message())
-			return nil
+		if err != nil {
+			switch e := err.(type) {
+			case NotRedraw:
+				stw.History(e.Message())
+				return err
+			case Messager:
+				stw.History(e.Message())
+				return nil
+			default:
+				return err
+			}
 		} else {
-			return err
+			return nil
 		}
 	}
 	excms := strings.Split(command, "|")
@@ -3483,14 +3488,14 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 		}
 		var m bytes.Buffer
-		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
-		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
-		m.WriteString(fmt.Sprintf("SOLVER: %s", sol))
+		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
+		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
+		m.WriteString(fmt.Sprintf("SOLVER: %s\n", sol))
 		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
-			m.WriteString("NO INITIALISATION")
+			m.WriteString("\nNO INITIALISATION")
 		}
 		af := frame.Arclms[per]
 		go func() {
@@ -3585,13 +3590,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 		}
 		var m bytes.Buffer
-		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
-		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
+		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
+		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
 		m.WriteString(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f, MAX: %.3f", lap, safety, start, max))
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
-			m.WriteString("NO INITIALISATION")
+			m.WriteString("\nNO INITIALISATION")
 		}
 		af := frame.Arclms[per]
 		go func() {
@@ -3698,17 +3703,17 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 		}
 		var m bytes.Buffer
-		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
-		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
+		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
+		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
 		m.WriteString(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f, MAX: %.3f, COMP: %.3f", lap, safety, start, max, comp))
 		if s, ok := argdict["SECTS"]; ok {
 			sects = SplitNums(s)
-			m.WriteString(fmt.Sprintf("INCOMPRESSIBLE: %v", sects))
+			m.WriteString(fmt.Sprintf("\nINCOMPRESSIBLE: %v", sects))
 		}
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
-			m.WriteString("NO INITIALISATION")
+			m.WriteString("\nNO INITIALISATION")
 		}
 		af := frame.Arclms[per]
 		go func() {
@@ -3776,7 +3781,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		if s, ok := argdict["SECTS"]; ok {
 			sects = SplitNums(s)
-			m.WriteString(fmt.Sprintf("SOIL SPRING: %v", sects))
+			m.WriteString(fmt.Sprintf("SOIL SPRING: %v\n", sects))
 		}
 		eps := 1E-3
 		if s, ok := argdict["EPS"]; ok {
@@ -3791,14 +3796,14 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				per = strings.ToUpper(p)
 			}
 		}
-		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
-		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
+		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
+		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
 		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
 		af := frame.Arclms[per]
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
-			m.WriteString("NO INITIALISATION")
+			m.WriteString("\nNO INITIALISATION")
 		}
 		go func() {
 			err := af.Arclm301(otp, init, sects, eps)
@@ -3850,14 +3855,14 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				per = strings.ToUpper(p)
 			}
 		}
-		m.WriteString(fmt.Sprintf("PERIOD: %s", per))
-		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
+		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
+		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
 		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
 		af := frame.Arclms[per]
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
-			m.WriteString("NO INITIALISATION")
+			m.WriteString("\nNO INITIALISATION")
 		}
 		wgtdict := make(map[int]float64)
 		for _, n := range frame.Nodes {
@@ -3922,12 +3927,12 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 		}
 		var m bytes.Buffer
-		m.WriteString(fmt.Sprintf("PERIOD: %s MODE: %d", per, nmode))
+		m.WriteString(fmt.Sprintf("PERIOD: %s MODE: %d\n", per, nmode))
 		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
-			m.WriteString("NO INITIALISATION")
+			m.WriteString("\nNO INITIALISATION")
 		}
 		af := frame.Arclms[per]
 		af.Output = stw.HistoryWriter()

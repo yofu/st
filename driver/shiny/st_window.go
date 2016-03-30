@@ -658,7 +658,11 @@ func (stw *Window) ExecCommand(command string) {
 		if strings.HasPrefix(command, ":") {
 			err := st.ExMode(stw, command)
 			if err != nil {
-				st.ErrorMessage(stw, err, st.ERROR)
+				if _, ok := err.(st.NotRedraw); ok {
+					return
+				} else {
+					st.ErrorMessage(stw, err, st.ERROR)
+				}
 			}
 		} else if strings.HasPrefix(command, "'") {
 			err := st.Fig2Mode(stw, command)
@@ -679,7 +683,11 @@ func (stw *Window) ExecCommand(command string) {
 	case strings.HasPrefix(command, ":"):
 		err := st.ExMode(stw, command)
 		if err != nil {
-			st.ErrorMessage(stw, err, st.ERROR)
+			if _, ok := err.(st.NotRedraw); ok {
+				return
+			} else {
+				st.ErrorMessage(stw, err, st.ERROR)
+			}
 		}
 	case strings.HasPrefix(command, "'"):
 		err := st.Fig2Mode(stw, command)
