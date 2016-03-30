@@ -1023,8 +1023,9 @@ func (ll *LLSMatrix) LDLT(ch chan int) (*LLSMatrix, error) {
 		}
 		if ch != nil {
 			ch <- col
+		} else {
+			fmt.Printf("%d/%d\r", col, size)
 		}
-		fmt.Printf("%d/%d\r", col, size)
 	}
 	return ll, nil
 }
