@@ -12,16 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
-)
-
-const (
-	CRS = iota
-	CRS_CG
-	LLS
-	LLS_CG
-	LLS_PCG
 )
 
 type Frame struct {
@@ -542,23 +533,23 @@ func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, e
 	if init {
 		frame.Initialise()
 	}
-	var solver int
-	switch sol {
-	default:
-		solver = LLS
-	case "CRS":
-		solver = CRS_CG
-	case "LLS":
-		solver = LLS
-	case "CG":
-		solver = LLS_CG
-	case "PCG":
-		solver = LLS_PCG
-	}
 	start := time.Now()
 	laptime := func(message string) {
 		end := time.Now()
 		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
+	}
+	var solver Solver
+	switch sol {
+	default:
+		solver = LLS(frame, laptime)
+	case "CRS":
+		solver = CRS_CG(eps, laptime)
+	case "LLS":
+		solver = LLS(frame, laptime)
+	case "CG":
+		solver = LLS_CG(eps, laptime)
+	case "PCG":
+		solver = LLS_PCG(eps, laptime)
 	}
 	gmtx, gvct, err := frame.KE(1.0)
 	laptime("ASSEM")
@@ -573,54 +564,9 @@ func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, e
 		vecs[i+1] = extra[i]
 	}
 	laptime("VEC")
-	var answers [][]float64
-	switch solver {
-	case CRS:
-		mtx := gmtx.ToCRS(csize, conf)
-		laptime("ToCRS")
-		answers = mtx.Solve(vecs...)
-		laptime("Solve")
-	case CRS_CG:
-		mtx := gmtx.ToCRS(csize, conf)
-		laptime("ToCRS")
-		answers = make([][]float64, len(vecs))
-		for i, vec := range vecs {
-			answers[i] = mtx.CG(vec, eps)
-		}
-		laptime("Solve")
-	case LLS:
-		mtx := gmtx.ToLLS(csize, conf)
-		laptime("ToLLS")
-		answers, err = mtx.Solve(frame.Pivot, vecs...)
-		if err != nil {
-			return err
-		}
-		laptime("Solve")
-	case LLS_CG:
-		mtx := gmtx.ToLLS(csize, conf)
-		mtx.DiagUp()
-		laptime("ToLLS")
-		answers = make([][]float64, len(vecs))
-		var wg sync.WaitGroup
-		for i, vec := range vecs {
-			wg.Add(1)
-			go func(ind int, v []float64) {
-				answers[ind] = mtx.CG(v, eps)
-				wg.Done()
-			}(i, vec)
-		}
-		wg.Wait()
-		laptime("Solve")
-	case LLS_PCG:
-		mtx := gmtx.ToLLS(csize, conf)
-		C := gmtx.ToLLS(csize, conf)
-		mtx.DiagUp()
-		laptime("ToLLS")
-		answers = make([][]float64, len(vecs))
-		for i, vec := range vecs {
-			answers[i] = mtx.PCG(C, vec)
-		}
-		laptime("Solve")
+	answers, err := solver.Solve(gmtx, csize, conf, vecs...)
+	if err != nil {
+		return err
 	}
 	if otp == nil || len(otp) < l+1 {
 		otp = make([]string, l+1)
@@ -661,6 +607,7 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 		end := time.Now()
 		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
+	solver := LLS(frame, laptime)
 	var err error
 	var answers [][]float64
 	var gmtx *matrix.COOMatrix
@@ -676,13 +623,10 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 			return err
 		}
 		laptime("Assem")
-		mtx := gmtx.ToLLS(csize, conf)
-		laptime("ToLLS")
-		answers, err = mtx.Solve(frame.Pivot, vec)
+		answers, err = solver.Solve(gmtx, csize, conf, vec)
 		if err != nil {
 			return err
 		}
-		laptime("Solve")
 		tmp := frame.FillConf(answers[0])
 		_, err = frame.UpdateStressPlastic(tmp)
 		if err != nil {
@@ -715,6 +659,7 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 		// end := time.Now()
 		// fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
+	solver := LLS(frame, laptime)
 	var err error
 	var answers [][]float64
 	var gmtx *matrix.COOMatrix
@@ -751,9 +696,7 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 			rnorm = math.Sqrt(Dot(vec, vec, len(vec)))
 		}
 		laptime("Assem")
-		mtx := gmtx.ToLLS(csize, conf)
-		laptime("ToLLS")
-		answers, err = mtx.Solve(frame.Pivot, vec)
+		answers, err = solver.Solve(gmtx, csize, conf, vec)
 		if err != nil {
 			return err
 		}
@@ -769,7 +712,6 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 				return errors.New(fmt.Sprintf("sylvester's law of inertia: %.3f", sign))
 			}
 		}
-		laptime("Solve")
 		tmp := frame.FillConf(answers[0])
 		_, eng, err := frame.UpdateStressEnergy(tmp)
 		if err != nil {
@@ -814,6 +756,7 @@ func (frame *Frame) Arclm202(otp string, init bool, nlap int, delta, min, max fl
 		end := time.Now()
 		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
+	solver := LLS(frame, laptime)
 	var err error
 	var answers [][]float64
 	var gmtx *matrix.COOMatrix
@@ -909,13 +852,10 @@ incomp:
 			return err
 		}
 		laptime("Assem")
-		mtx := gmtx.ToLLS(csize, conf)
-		laptime("ToLLS")
-		answers, err = mtx.Solve(frame.Pivot, vec)
+		answers, err = solver.Solve(gmtx, csize, conf, vec)
 		if err != nil {
 			return err
 		}
-		laptime("Solve")
 		tmp := frame.FillConf(answers[0])
 		_, err = updatestress(frame, tmp, sects)
 		if err != nil {
@@ -981,6 +921,7 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 		end := time.Now()
 		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
+	solver := LLS(frame, laptime)
 	var err error
 	var answers [][]float64
 	var gmtx *matrix.COOMatrix
@@ -1072,13 +1013,10 @@ func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) er
 			return err
 		}
 		laptime("Assem")
-		mtx := gmtx.ToLLS(csize, conf)
-		laptime("ToLLS")
-		answers, err = mtx.Solve(frame.Pivot, vec)
+		answers, err = solver.Solve(gmtx, csize, conf, vec)
 		if err != nil {
 			return err
 		}
-		laptime("Solve")
 		tmp := frame.FillConf(answers[0])
 		_, err = kpilestress(frame, tmp, sects)
 		if err != nil {
@@ -1124,6 +1062,7 @@ func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int
 		end := time.Now()
 		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
+	solver := LLS(frame, laptime)
 	confed := make([]*Node, len(frame.Nodes))
 	confdata := make([][]bool, len(frame.Nodes))
 	nnum := 0
@@ -1152,13 +1091,10 @@ func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int
 		csize, conf, vec := frame.AssemConf(gvct, 1.0)
 		laptime("VEC")
 		var answers [][]float64
-		mtx := gmtx.ToLLS(csize, conf)
-		laptime("ToLLS")
-		answers, err = mtx.Solve(frame.Pivot, vec)
+		answers, err = solver.Solve(gmtx, csize, conf, vec)
 		if err != nil {
 			return err
 		}
-		laptime("Solve")
 		ans := frame.FillConf(answers[0])
 		_, err = frame.UpdateStress(ans)
 		if err != nil {
@@ -1235,6 +1171,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 		end := time.Now()
 		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
+	solver := LLS(frame, func(string){})
 	var err error
 	var answers [][]float64
 	var kemtx, kgmtx *matrix.COOMatrix
@@ -1252,8 +1189,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 			el.Stress[i] = 0.0
 		}
 	}
-	mtx := kemtx.ToLLS(csize, conf)
-	answers, err = mtx.Solve(frame.Pivot, vec)
+	answers, err = solver.Solve(kemtx, csize, conf, vec)
 	if err != nil {
 		return err
 	}
@@ -1291,8 +1227,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 		vec = frame.RemoveConf(tmp)
 		for {
 			gmtx := kemtx.AddMat(kgmtx, lambda)
-			mtx := gmtx.ToLLS(csize, conf)
-			answers, err = mtx.Solve(frame.Pivot, vec)
+			answers, err = solver.Solve(gmtx, csize, conf, vec)
 			if err != nil {
 				return err
 			}
