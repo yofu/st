@@ -710,7 +710,7 @@ func (stw *Window) History(str string) {
 		return
 	}
 	if stw.history == nil {
-		fmt.Print(str)
+		fmt.Println(str)
 	} else {
 		stw.history.TypeString(str)
 		stw.history.Redraw()
