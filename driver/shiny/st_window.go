@@ -27,6 +27,7 @@ var (
 	prevkey key.Event
 	cline   string
 	drawing bool
+	drawch chan int
 )
 
 var (
@@ -35,6 +36,8 @@ var (
 
 var (
 	blue0 = color.RGBA{0x00, 0x00, 0x1f, 0xff}
+
+	winsize = 1024
 
 	startX = 0
 	startY = 0
@@ -142,16 +145,17 @@ func (stw *Window) Start() {
 		log.Fatal(err)
 	}
 	stw.window = w
-	defer stw.window.Release()
 	err = stw.LoadFontFace(filepath.Join(os.Getenv("HOME"), ".st/fonts/GenShinGothic-Regular.ttf"), 12)
 	if err != nil {
 		st.ErrorMessage(stw, err, st.ERROR)
 	}
 	stw.ReadRecent()
 	st.ShowRecent(stw)
-	stw.frame.View.Center[0] = 512
-	stw.frame.View.Center[1] = 512
-	stw.Redraw()
+	stw.frame.View.Center[0] = float64(winsize / 2)
+	stw.frame.View.Center[1] = float64(winsize / 2)
+	defer func() {
+		stw.window.Release()
+	}()
 	var sz size.Event
 	for {
 		e := stw.window.NextEvent()
@@ -159,6 +163,14 @@ func (stw *Window) Start() {
 		case lifecycle.Event:
 			if e.To == lifecycle.StageDead {
 				return
+			}
+			switch e.Crosses(lifecycle.StageVisible) {
+			case lifecycle.CrossOn:
+				drawch = stw.drawing()
+				stw.window.Fill(sz.Bounds(), blue0, screen.Src)
+				stw.Redraw()
+			case lifecycle.CrossOff:
+				drawch <- -1
 			}
 		case key.Event:
 			switch e.Direction {
@@ -238,7 +250,6 @@ func (stw *Window) Start() {
 					stw.ClearCommandLine()
 					stw.Deselect()
 					stw.Redraw()
-					stw.window.Publish()
 				case key.CodeLeftControl:
 					setprev = false
 				case key.CodeRightControl:
@@ -368,7 +379,6 @@ func (stw *Window) Start() {
 					}
 					stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
 					stw.window.Fill(image.Rect(startX, startY, endX, endY), col, screen.Over)
-					stw.window.Publish()
 				} else if pressed&ButtonMiddle != 0 {
 					dx := endX - startX
 					dy := endY - startY
@@ -381,7 +391,6 @@ func (stw *Window) Start() {
 							stw.frame.View.Angle[1] -= float64(dx) * stw.CanvasRotateSpeedX()
 						}
 						stw.Redraw()
-						stw.window.Publish()
 					}
 				} else {
 					if tailnodes != nil {
@@ -460,11 +469,8 @@ func (stw *Window) Start() {
 					stw.ZoomOut(float64(e.X), float64(e.Y))
 				}
 				stw.Redraw()
-				stw.window.Publish()
 			}
 		case paint.Event:
-			stw.window.Fill(sz.Bounds(), blue0, screen.Src)
-			stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
 			stw.window.Publish()
 		case size.Event:
 			sz = e
@@ -507,57 +513,54 @@ func (stw *Window) SetFrame(frame *st.Frame) {
 	stw.frame = frame
 }
 
-func (stw *Window) Redraw() {
-	if drawing {
-		return
-	}
-	if stw.frame == nil {
-		return
-	}
-	drawing = true
-	if stw.buffer != nil {
-		stw.buffer.Release()
-	}
-	winSize := image.Point{1024, 1024}
-	b, err := stw.screen.NewBuffer(winSize)
-	if err != nil {
-		log.Fatal(err)
-	}
-	stw.buffer = b
-	st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, true)
-	for _, t := range stw.textBox {
-		if t.IsHidden(stw.frame.Show) {
-			continue
+func (stw *Window) drawing() chan int {
+	ch := make(chan int)
+	go func() {
+	stwdrawing:
+		for {
+			select {
+			case mode := <-ch:
+				if mode == -1 {
+					break stwdrawing
+				}
+				if stw.frame != nil {
+					if stw.buffer != nil {
+						stw.buffer.Release()
+					}
+					b, err := stw.screen.NewBuffer(image.Point{winsize, winsize})
+					if err != nil {
+						log.Fatal(err)
+					}
+					stw.buffer = b
+					switch mode {
+					case 1:
+						st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, true)
+						for _, t := range stw.textBox {
+							if t.IsHidden(stw.frame.Show) {
+								continue
+							}
+							st.DrawText(stw, t)
+						}
+					case 2:
+						st.DrawFrameNode(stw, stw.frame, stw.frame.Show.ColorMode, true)
+					}
+					stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
+					if stw.Executing() {
+						stw.window.Fill(image.Rect(0, 0, 10, 10), color.RGBA{0xff, 0x00, 0x00, 0x22}, screen.Over)
+					}
+				}
+			}
 		}
-		st.DrawText(stw, t)
-	}
-	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
-	if stw.Executing() {
-		stw.window.Fill(image.Rect(0, 0, 10, 10), color.RGBA{0xff, 0x00, 0x00, 0x22}, screen.Over)
-	}
-	drawing = false
+	}()
+	return ch
+}
+
+func (stw *Window) Redraw() {
+	drawch <-1
 }
 
 func (stw *Window) RedrawNode() {
-	if drawing {
-		return
-	}
-	if stw.frame == nil {
-		return
-	}
-	drawing = true
-	if stw.buffer != nil {
-		stw.buffer.Release()
-	}
-	winSize := image.Point{1024, 1024}
-	b, err := stw.screen.NewBuffer(winSize)
-	if err != nil {
-		log.Fatal(err)
-	}
-	stw.buffer = b
-	st.DrawFrameNode(stw, stw.frame, stw.frame.Show.ColorMode, true)
-	stw.window.Upload(image.Point{}, stw.buffer, stw.buffer.Bounds())
-	drawing = false
+	drawch <-2
 }
 
 func (stw *Window) LoadFontFace(path string, point float64) error {
@@ -577,7 +580,7 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 	if commandbuffer != nil {
 		commandbuffer.Release()
 	}
-	b, err := stw.screen.NewBuffer(image.Point{1024, 1024})
+	b, err := stw.screen.NewBuffer(image.Point{winsize, winsize})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -589,7 +592,7 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 		Dot:  fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
 	}
 	d.DrawString(str)
-	t, err := stw.screen.NewTexture(image.Point{1024, 1024})
+	t, err := stw.screen.NewTexture(image.Point{winsize, winsize})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -619,7 +622,7 @@ func (stw *Window) TailLine() {
 	if tailbuffer != nil {
 		tailbuffer.Release()
 	}
-	b, err := stw.screen.NewBuffer(image.Point{1024, 1024})
+	b, err := stw.screen.NewBuffer(image.Point{winsize, winsize})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -629,7 +632,7 @@ func (stw *Window) TailLine() {
 		line(cvs, int(tailnodes[i].Pcoord[0]), int(tailnodes[i].Pcoord[1]), int(tailnodes[i+1].Pcoord[0]), int(tailnodes[i+1].Pcoord[1]), tailColor)
 	}
 	line(cvs, int(tailnodes[len(tailnodes)-1].Pcoord[0]), int(tailnodes[len(tailnodes)-1].Pcoord[1]), endX, endY, tailColor)
-	t, err := stw.screen.NewTexture(image.Point{1024, 1024})
+	t, err := stw.screen.NewTexture(image.Point{winsize, winsize})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -757,7 +760,7 @@ func (stw *Window) SaveAS() {
 }
 
 func (stw *Window) GetCanvasSize() (int, int) {
-	return 1024, 1024
+	return winsize, winsize
 }
 
 func (stw *Window) SaveFileSelected(string) error {
