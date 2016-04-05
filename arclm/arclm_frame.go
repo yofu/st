@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
-	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -1202,46 +1201,43 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 	if err != nil {
 		return err
 	}
-	shift := 0.0
 	frame.EigenValue = make([]float64, n)
 	frame.EigenVector = make([][]float64, n)
+	EL := 0.0
+	ER := 100.0
+	vecs, err := OrthoNormalBasis(len(vec))
+	if err != nil {
+		return err
+	}
 	for i := 0; i < n; i++ {
+		neg := 0
 		lap := 0
-		lambda := shift
-		lastlambda := shift
-		dlambda := 100.0
+		lambda := 0.5*(EL+ER)
+		lastlambda := lambda
 		var lastvec []float64
-		for j := 0; j < len(vec); j++ {
-			vec[j] = rand.Float64()
-		}
-		tmp := frame.FillConf(vec)
-		for j := 0; j < i; j++ {
-			sum := 0.0
-			for k := 0; k < len(tmp); k++ {
-				sum += frame.EigenVector[j][k] * tmp[k]
-			}
-			for k := 0; k < len(tmp); k++ {
-				tmp[k] -= sum * frame.EigenVector[j][k]
-			}
-		}
-		vec = frame.RemoveConf(tmp)
+		bclng:
 		for {
-			gmtx := kemtx.AddMat(kgmtx, lambda)
-			answers, err = solver.Solve(gmtx, csize, conf, vec)
+			gmtx := kgmtx.AddMat(kemtx, lambda)
+			answers, err = solver.Solve(gmtx, csize, conf, vecs...)
 			if err != nil {
 				return err
 			}
-			sign = 0.0
-			for j := 0; j < len(vec); j++ {
-				sign += answers[0][j] * vec[j]
-			}
-			fmt.Fprintf(frame.Output, "LAMBDA %.14f SIGN= %.3f\r", lambda, sign)
-			if sign < 0.0 {
-				if dlambda < eps {
-					break
-				} else {
-					lambda = lastlambda
-					dlambda /= 10.0
+			for l := 0; l < len(vec); l++ {
+				sign = 0.0
+				for j := 0; j < len(vec); j++ {
+					sign += answers[l][j] * vecs[l][j]
+				}
+				fmt.Fprintf(frame.Output, "LAMBDA %.14f %d SIGN= %.3f\r", lambda, l, sign)
+				if sign < 0.0 {
+					neg++
+					if neg > i {
+						if ER - EL < eps {
+							break bclng
+						}
+						EL = lambda
+						lambda = 0.5*(EL+ER)
+						continue bclng
+					}
 				}
 			}
 			tmp := frame.FillConf(answers[0])
@@ -1252,17 +1248,29 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 				return err
 			}
 			lastlambda = lambda
-			lambda += dlambda
+			ER = lambda
+			lambda = 0.5*(EL+ER)
 			lap++
 			frame.Lapch <- lap + 1
 			<-frame.Lapch
 		}
-		laptime(fmt.Sprintf("\nEIG %d: %.14f", i, lastlambda))
-		frame.EigenValue[i] = lastlambda
+		laptime(fmt.Sprintf("\nEIG %d: %.14f", i+1, 1.0/lastlambda))
+		frame.EigenValue[i] = 1.0/lastlambda
 		frame.EigenVector[i] = lastvec
+		if i < n-1 {
+			for _, v := range vecs[i:] {
+				sum := 0.0
+				for j := 0; j < len(vec); j++ {
+					sum += v[j]*lastvec[j]
+				}
+				for j := 0; j < len(vec); j++ {
+					v[j] -= sum*lastvec[j]
+				}
+			}
+		}
+		EL = 0.0
 		frame.UpdateReaction(kemtx, lastvec)
 		frame.UpdateForm(lastvec)
-		shift = lambda
 		frame.Lapch <- i + 1
 		<-frame.Lapch
 	}
