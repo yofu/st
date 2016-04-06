@@ -321,6 +321,7 @@ func (frame *Frame) Snapshot() *Frame {
 	return f
 }
 
+// Bbox returns the bounding box of nodes in 3D space.
 func (frame *Frame) Bbox(hide bool) (xmin, xmax, ymin, ymax, zmin, zmax float64) {
 	var mins, maxs [3]float64
 	first := true
@@ -347,6 +348,7 @@ func (frame *Frame) Bbox(hide bool) (xmin, xmax, ymin, ymax, zmin, zmax float64)
 	return mins[0], maxs[0], mins[1], maxs[1], mins[2], maxs[2]
 }
 
+// Bbox returns the bounding box of nodes in a projected 2D space.
 func (frame *Frame) Bbox2D(hide bool) (xmin, xmax, ymin, ymax float64) {
 	var mins, maxs [2]float64
 	first := true
@@ -373,8 +375,7 @@ func (frame *Frame) Bbox2D(hide bool) (xmin, xmax, ymin, ymax float64) {
 	return mins[0], maxs[0], mins[1], maxs[1]
 }
 
-// Read
-// ReadInp// {{{
+// ReadInp reads an input file for st frame.
 func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, overwrite bool) error {
 	tmp := make([]string, 0)
 	nodemap := make(map[int]int)
@@ -490,6 +491,7 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, ove
 	return nil
 }
 
+// ParseInp parses a list of strings and switches to each parsing function according to the first string.
 func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodemap map[int]int, overwrite bool) (map[int]int, error) {
 	var err error
 	var def int
@@ -516,6 +518,7 @@ func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodem
 	return nodemap, err
 }
 
+// ParseProp parses PROP information.
 func (frame *Frame) ParseProp(lis []string, overwrite bool) (*Prop, error) {
 	var num int64
 	var err error
@@ -555,6 +558,7 @@ func (frame *Frame) ParseProp(lis []string, overwrite bool) (*Prop, error) {
 	return p, nil
 }
 
+// ParseProp parses PILE information.
 func (frame *Frame) ParsePile(lis []string, overwrite bool) (*Pile, error) {
 	var num int64
 	var err error
@@ -582,6 +586,7 @@ func (frame *Frame) ParsePile(lis []string, overwrite bool) (*Pile, error) {
 	return p, nil
 }
 
+// ParseProp parses SECT information.
 func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 	var num int64
 	var err error
@@ -641,6 +646,7 @@ func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 	return s, nil
 }
 
+// ParseProp parses FIG information.
 func (sect *Sect) ParseFig(frame *Frame, lis []string) error {
 	var num int64
 	if len(lis) == 0 {
@@ -734,6 +740,7 @@ func (sect *Sect) ParseFig(frame *Frame, lis []string) error {
 	return err
 }
 
+// ParseProp parses NODE information.
 func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (*Node, int, error) {
 	var num int64
 	var err error
@@ -813,6 +820,7 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (*No
 	}
 }
 
+// ParseProp parses ELEM information.
 func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) (*Elem, error) {
 	var num int64
 	var err error
@@ -931,9 +939,7 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) (*Elem, error) 
 	return el, nil
 }
 
-// }}}
-
-// ReadConfigure// {{{
+// ReadConfigure reads a configuration file.
 func (frame *Frame) ReadConfigure(filename string) error {
 	tmp := make([]string, 0)
 	err := ParseFile(filename, func(words []string) error {
@@ -961,6 +967,7 @@ func (frame *Frame) ReadConfigure(filename string) error {
 	return nil
 }
 
+// ParseConfigure parses list of strings as configuration.
 func (frame *Frame) ParseConfigure(lis []string) (err error) {
 	if len(lis) == 0 {
 		return nil
@@ -973,6 +980,7 @@ func (frame *Frame) ParseConfigure(lis []string) (err error) {
 	return err
 }
 
+// ParseLevel parses LEVEL information.
 func (frame *Frame) ParseLevel(lis []string) (err error) {
 	size := len(lis)
 	val := make([]float64, size+2)
@@ -990,9 +998,7 @@ func (frame *Frame) ParseLevel(lis []string) (err error) {
 	return nil
 }
 
-// }}}
-
-// ReadData// {{{
+// ReadData reads an input file for arclm frame.
 func (frame *Frame) ReadData(filename string) error {
 	ext := filepath.Ext(filename)
 	var period string
@@ -1168,9 +1174,7 @@ func (frame *Frame) ReadData(filename string) error {
 	return nil
 }
 
-// }}}
-
-// ReadResult// {{{
+// ReadResult reads an output file of analysis.
 func (frame *Frame) ReadResult(filename string, mode uint) error {
 	f, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -1404,9 +1408,7 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 	return nil
 }
 
-// }}}
-
-// ReadBuckling// {{{
+// ReadBuckling reads an output file of bucling analysis.
 func (frame *Frame) ReadBuckling(filename string) error {
 	tmp := make([][]string, 0)
 	err := ParseFile(filename, func(words []string) error {
@@ -1434,6 +1436,7 @@ func (frame *Frame) ReadBuckling(filename string) error {
 	return nil
 }
 
+// ParseEigen parses eigenvalues and eigenvectors.
 func (frame *Frame) ParseEigen(lis [][]string) (err error) {
 	if strings.ToUpper(lis[0][0]) == "EIGEN" {
 		eig := strings.Split(lis[0][2], "=")
@@ -1465,9 +1468,7 @@ func (frame *Frame) ParseEigen(lis [][]string) (err error) {
 	return nil
 }
 
-// }}}
-
-// ReadZoubun// {{{
+// ReadZoubun reads an output file of push-over analysis.
 func (frame *Frame) ReadZoubun(filename string) error {
 	tmp := make([][]string, 0)
 	var period string
@@ -1509,6 +1510,7 @@ func (frame *Frame) ReadZoubun(filename string) error {
 	return nil
 }
 
+// ParseZoubun parses a list of strings and switches to each parsing function according to the first string.
 func (frame *Frame) ParseZoubun(lis [][]string, period string) error {
 	var err error
 	if len(lis) == 0 {
@@ -1526,6 +1528,7 @@ func (frame *Frame) ParseZoubun(lis [][]string, period string) error {
 	return err
 }
 
+// ParseZoubunStress parses stress information.
 func (frame *Frame) ParseZoubunStress(lis [][]string, period string) error {
 	for _, l := range lis {
 		if strings.ToUpper(l[0]) == "ELEM" {
@@ -1575,6 +1578,7 @@ func (frame *Frame) ParseZoubunStress(lis [][]string, period string) error {
 	return nil
 }
 
+// ParseZoubunReaction parses reaction information.
 func (frame *Frame) ParseZoubunReaction(lis [][]string, period string) error {
 	for _, l := range lis {
 		if strings.ToUpper(l[0]) == "NODE:" {
@@ -1601,6 +1605,7 @@ func (frame *Frame) ParseZoubunReaction(lis [][]string, period string) error {
 	return nil
 }
 
+// ParseZoubunForm parses current form information.
 func (frame *Frame) ParseZoubunForm(lis [][]string, period string) error {
 	for _, l := range lis {
 		if strings.ToUpper(l[0]) == "NODE:" {
@@ -1631,9 +1636,7 @@ func (frame *Frame) ParseZoubunForm(lis [][]string, period string) error {
 	return nil
 }
 
-// }}}
-
-// ReadLst// {{{
+// ReadLst reads an input file for section list.
 func (frame *Frame) ReadLst(filename string) error {
 	tmp := make([][]string, 0)
 	err := ParseFile(filename, func(words []string) error {
@@ -1665,6 +1668,7 @@ func (frame *Frame) ReadLst(filename string) error {
 	return nil
 }
 
+// ParseLst parses section lists.
 func (frame *Frame) ParseLst(lis [][]string) error {
 	var err error
 	if len(lis) == 0 || len(lis[0]) <= 2 {
@@ -1686,6 +1690,7 @@ func (frame *Frame) ParseLst(lis [][]string) error {
 	return err
 }
 
+// ParseLstSteel parses steel sections.
 func (frame *Frame) ParseLstSteel(lis [][]string) error {
 	var num int
 	var sr SectionRate
@@ -1764,6 +1769,7 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 	return nil
 }
 
+// ParseLstSteel parses RC sections.
 func (frame *Frame) ParseLstRC(lis [][]string) error {
 	var num int
 	var sr SectionRate
@@ -1839,6 +1845,7 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 	return nil
 }
 
+// ParseLstSteel parses wood sections.
 func (frame *Frame) ParseLstWood(lis [][]string) error {
 	var num int
 	var sr SectionRate
@@ -1905,9 +1912,7 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 	return nil
 }
 
-// }}}
-
-// ReadRat// {{{
+// ReadRat reads an output file for section rate.
 func (frame *Frame) ReadRat(filename string) error {
 	err := ParseFile(filename, func(words []string) error {
 		enum, err := strconv.ParseInt(words[1], 10, 64)
@@ -1930,9 +1935,7 @@ func (frame *Frame) ReadRat(filename string) error {
 	return nil
 }
 
-// }}}
-
-// ReadWgt// {{{
+// ReadWgt reads an output file for node weight.
 func (frame *Frame) ReadWgt(filename string) error {
 	f, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -1982,9 +1985,7 @@ rwgtloop:
 	return nil
 }
 
-// }}}
-
-// ReadKjn// {{{
+// ReadKjn reads an input file for kijun.
 func (frame *Frame) ReadKjn(filename string) error {
 	err := ParseFile(filename, func(words []string) error {
 		if strings.HasPrefix(words[0], "#") {
@@ -2003,6 +2004,7 @@ func (frame *Frame) ReadKjn(filename string) error {
 	return nil
 }
 
+// ParseKjn parses kijun information.
 func (frame *Frame) ParseKjn(lis []string) error {
 	k := NewKijun()
 	k.Name = lis[0]
@@ -2024,10 +2026,7 @@ func (frame *Frame) ParseKjn(lis []string) error {
 	return nil
 }
 
-// }}}
-
-// Write
-// WriteInp// {{{
+// WriteInp writes an input file for st frame.
 func (frame *Frame) WriteInp(fn string) error {
 	var pnum, snum, inum, nnum, enum int
 	// Prop
@@ -2079,9 +2078,7 @@ func (frame *Frame) WriteInp(fn string) error {
 	return writeinp(fn, frame.Title, frame.View, frame.Ai, props, sects, piles, nodes, elems)
 }
 
-// }}}
-
-// WriteOutput// {{{
+// WriteOutput writes an output file of analysis.
 func (frame *Frame) WriteOutput(fn string, p string) error {
 	var otp bytes.Buffer
 	var nkeys, ekeys []int
@@ -2128,6 +2125,7 @@ func (frame *Frame) WriteOutput(fn string, p string) error {
 	return nil
 }
 
+// WriteReaction writes an output file of reaction.
 func (frame *Frame) WriteReaction(fn string, direction int) error {
 	ns := make([]*Node, len(frame.Nodes))
 	for nnum, n := range frame.Nodes {
@@ -2137,6 +2135,7 @@ func (frame *Frame) WriteReaction(fn string, direction int) error {
 	return WriteReaction(fn, ns, direction)
 }
 
+// ReportZoubunDisp writes an output file which reports displacement data of push-over analysis.
 func (frame *Frame) ReportZoubunDisp(fn string, ns []*Node, pers []string, direction int) error {
 	var otp bytes.Buffer
 	sort.Sort(NodeByZCoord{ns})
@@ -2177,6 +2176,7 @@ func (frame *Frame) ReportZoubunDisp(fn string, ns []*Node, pers []string, direc
 	return nil
 }
 
+// ReportZoubunReaction writes an output file which reports reaction data of push-over analysis.
 func (frame *Frame) ReportZoubunReaction(fn string, ns []*Node, pers []string, direction int) error {
 	var otp bytes.Buffer
 	sort.Sort(NodeByNum{ns})
@@ -2217,9 +2217,7 @@ func (frame *Frame) ReportZoubunReaction(fn string, ns []*Node, pers []string, d
 	return nil
 }
 
-// }}}
-
-// WriteKjn
+// WriteKjn writes an input file for kijun.
 func (frame *Frame) WriteKjn(fn string) error {
 	var otp bytes.Buffer
 	ks := make([]string, len(frame.Kijuns))
@@ -2242,6 +2240,7 @@ func (frame *Frame) WriteKjn(fn string) error {
 	return nil
 }
 
+// WritePlateWeight reports weight data of plate elements.
 func (frame *Frame) WritePlateWeight(fn string) error {
 	sects := make([]*Sect, len(frame.Sects))
 	snum := 0
@@ -2274,6 +2273,7 @@ func (frame *Frame) WritePlateWeight(fn string) error {
 	return nil
 }
 
+// WriteDxf2D writes a dxf file of frame with projected coordinates.
 func (frame *Frame) WriteDxf2D(filename string, scale float64) error {
 	d := dxf.NewDrawing()
 	for _, n := range frame.Nodes {
@@ -2295,6 +2295,7 @@ func (frame *Frame) WriteDxf2D(filename string, scale float64) error {
 	return nil
 }
 
+// WriteDxf3D writes a dxf file of frame with 3D coordinates.
 func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 	d := dxf.NewDrawing()
 	for _, n := range frame.Nodes {
@@ -2434,6 +2435,7 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 	return nil
 }
 
+// Check checks whether all elements are valid or not.
 func (frame *Frame) Check() ([]*Node, []*Elem, bool) {
 	ok := true
 	ns := make([]*Node, len(frame.Nodes))
@@ -2451,6 +2453,7 @@ func (frame *Frame) Check() ([]*Node, []*Elem, bool) {
 	return ns[:nnum], els[:enum], ok
 }
 
+// Distance measures the distance between n1 and n2 with original coordinates.
 func (frame *Frame) Distance(n1, n2 *Node) (dx, dy, dz, d float64) {
 	dx = n2.Coord[0] - n1.Coord[0]
 	dy = n2.Coord[1] - n1.Coord[1]
@@ -2459,6 +2462,7 @@ func (frame *Frame) Distance(n1, n2 *Node) (dx, dy, dz, d float64) {
 	return
 }
 
+// DeformedDistance measures the distance between n1 and n2 with deformed coordinates.
 func (frame *Frame) DeformedDistance(n1, n2 *Node) (dx, dy, dz, d float64) {
 	dx = n2.Coord[0] + n2.ReturnDisp(frame.Show.Period, 0) - n1.Coord[0] - n1.ReturnDisp(frame.Show.Period, 0)
 	dy = n2.Coord[1] + n2.ReturnDisp(frame.Show.Period, 1) - n1.Coord[1] - n1.ReturnDisp(frame.Show.Period, 1)
@@ -2467,6 +2471,7 @@ func (frame *Frame) DeformedDistance(n1, n2 *Node) (dx, dy, dz, d float64) {
 	return
 }
 
+// Direction returns a vector from n1 to n2.
 func (frame *Frame) Direction(n1, n2 *Node, normalize bool) []float64 {
 	var l float64
 	d := make([]float64, 3)
@@ -2487,24 +2492,28 @@ func (frame *Frame) Direction(n1, n2 *Node, normalize bool) []float64 {
 	}
 }
 
+// Move moves frame.
 func (frame *Frame) Move(x, y, z float64) {
 	for _, n := range frame.Nodes {
 		n.Move(x, y, z)
 	}
 }
 
+// Scale scales frame.
 func (frame *Frame) Scale(center []float64, factor float64) {
 	for _, n := range frame.Nodes {
 		n.Scale(center, factor, factor, factor)
 	}
 }
 
+// Rotate rotates frame.
 func (frame *Frame) Rotate(center, vector []float64, angle float64) {
 	for _, n := range frame.Nodes {
 		n.Rotate(center, vector, angle)
 	}
 }
 
+// DefaultProp returns the first PROP.
 func (frame *Frame) DefaultProp() *Prop {
 	pnums := make([]int, len(frame.Props))
 	i := 0
@@ -2516,6 +2525,7 @@ func (frame *Frame) DefaultProp() *Prop {
 	return frame.Props[pnums[0]]
 }
 
+// DefaultSect returns the first SECT.
 func (frame *Frame) DefaultSect() *Sect {
 	l := len(frame.Sects)
 	if l == 0 {
@@ -2532,7 +2542,7 @@ func (frame *Frame) DefaultSect() *Sect {
 	return frame.Sects[snums[0]]
 }
 
-// Add// {{{
+// AddSect adds SECT.
 func (frame *Frame) AddSect(num int) *Sect {
 	sec := NewSect()
 	sec.Num = num
@@ -2541,6 +2551,7 @@ func (frame *Frame) AddSect(num int) *Sect {
 	return sec
 }
 
+// AddPropAndSect adds PROP & SECT from an input file for st frame.
 func (frame *Frame) AddPropAndSect(filename string, overwrite bool) error {
 	newsects := make(map[int]*Sect)
 	tmp := make([]string, 0)
@@ -2589,6 +2600,7 @@ func (frame *Frame) AddPropAndSect(filename string, overwrite bool) error {
 	return nil
 }
 
+// ParsePropAndSect parses PROP & SECT.
 func (frame *Frame) ParsePropAndSect(lis []string, overwrite bool) (*Sect, error) {
 	var err error
 	var sec *Sect
@@ -2605,6 +2617,7 @@ func (frame *Frame) ParsePropAndSect(lis []string, overwrite bool) (*Sect, error
 	return sec, err
 }
 
+// AddNode adds NODE at (x, y, z).
 func (frame *Frame) AddNode(x, y, z float64) *Node {
 	node := NewNode()
 	node.Coord[0] = x
@@ -2616,6 +2629,7 @@ func (frame *Frame) AddNode(x, y, z float64) *Node {
 	return node
 }
 
+// SearchNode searches NODE at (x, y, z).
 func (frame *Frame) SearchNode(x, y, z float64) *Node {
 	for _, n := range frame.Nodes {
 		if math.Sqrt(math.Pow(x-n.Coord[0], 2)+math.Pow(y-n.Coord[1], 2)+math.Pow(z-n.Coord[2], 2)) <= 1e-4 {
@@ -2625,6 +2639,8 @@ func (frame *Frame) SearchNode(x, y, z float64) *Node {
 	return nil
 }
 
+// CoordNode returns NODE at (x, y, z).
+// If not found, it creates new NODE.
 func (frame *Frame) CoordNode(x, y, z, eps float64) (*Node, bool) {
 	for _, n := range frame.Nodes {
 		if math.Sqrt(math.Pow(x-n.Coord[0], 2)+math.Pow(y-n.Coord[1], 2)+math.Pow(z-n.Coord[2], 2)) <= eps {
@@ -2634,6 +2650,7 @@ func (frame *Frame) CoordNode(x, y, z, eps float64) (*Node, bool) {
 	return frame.AddNode(x, y, z), true
 }
 
+// AddElem adds ELEM to frame.
 func (frame *Frame) AddElem(enum int, el *Elem) {
 	if enum < 0 {
 		frame.Maxenum++
@@ -2652,18 +2669,21 @@ func (frame *Frame) AddElem(enum int, el *Elem) {
 	}
 }
 
+// AddLineElem adds a line element to frame.
 func (frame *Frame) AddLineElem(enum int, ns []*Node, sect *Sect, etype int) (elem *Elem) {
 	elem = NewLineElem(ns, sect, etype)
 	frame.AddElem(enum, elem)
 	return elem
 }
 
+// AddPlateElem adds a plate element to frame.
 func (frame *Frame) AddPlateElem(enum int, ns []*Node, sect *Sect, etype int) (elem *Elem) {
 	elem = NewPlateElem(ns, sect, etype)
 	frame.AddElem(enum, elem)
 	return elem
 }
 
+// AddKijun adds a kijun to frame.
 func (frame *Frame) AddKijun(name string, start, end []float64) (*Kijun, error) {
 	if _, exists := frame.Kijuns[name]; exists {
 		return nil, errors.New(fmt.Sprintf("kijun %s already exists", name))
@@ -2676,6 +2696,7 @@ func (frame *Frame) AddKijun(name string, start, end []float64) (*Kijun, error) 
 	return k, nil
 }
 
+// AddMeasure adds a measure to frame.
 func (frame *Frame) AddMeasure(start, end, direction []float64) *Measure {
 	m := NewMeasure(start, end, direction)
 	m.Frame = frame
@@ -2683,9 +2704,7 @@ func (frame *Frame) AddMeasure(start, end, direction []float64) *Measure {
 	return m
 }
 
-// }}}
-
-// Search// {{{
+// NodeInBox returns nodes contained in the box which has n1 and n2 on both ends of its diagonal.
 func (frame *Frame) NodeInBox(n1, n2 *Node, eps float64) []*Node {
 	var minx, miny, minz float64
 	var maxx, maxy, maxz float64
@@ -2721,6 +2740,9 @@ func (frame *Frame) NodeInBox(n1, n2 *Node, eps float64) []*Node {
 	return rtn[:i]
 }
 
+// SearchElem searches such element that has all nodes of ns in its ENOD.
+// ENOD ⊇ ns
+// If len(ns) == 0, it returns all elements.
 func (frame *Frame) SearchElem(ns ...*Node) []*Elem {
 	els := make([]*Elem, 0, len(frame.Elems))
 	num := 0
@@ -2749,6 +2771,9 @@ func (frame *Frame) SearchElem(ns ...*Node) []*Elem {
 	return els[:num]
 }
 
+// NodeToElemAny searches such element that any of its ENOD is in ns.
+// ENOD ∩ ns ≠ φ
+// If len(ns) == 0, it returns no element.
 func (frame *Frame) NodeToElemAny(ns ...*Node) []*Elem {
 	els := make([]*Elem, 0, len(frame.Elems))
 	num := 0
@@ -2767,6 +2792,9 @@ func (frame *Frame) NodeToElemAny(ns ...*Node) []*Elem {
 	return els[:num]
 }
 
+// NodeToElemAll searches such element that all of its ENOD is in ns.
+// ENOD ⊆ ns
+// If len(ns) == 0, it returns no element.
 func (frame *Frame) NodeToElemAll(ns ...*Node) []*Elem {
 	var add, found bool
 	num := 0
@@ -2794,6 +2822,10 @@ func (frame *Frame) NodeToElemAll(ns ...*Node) []*Elem {
 	return els[:num]
 }
 
+// ElemToNode collects such node that is used by elements in els.
+// In other words, it returns the union of ENOD of elements in els.
+// ∪ ENOD
+// If len(els) == 0, it returns no node.
 func (frame *Frame) ElemToNode(els ...*Elem) []*Node {
 	var add bool
 	ns := make([]*Node, 0, len(frame.Nodes))
@@ -2816,6 +2848,7 @@ func (frame *Frame) ElemToNode(els ...*Elem) []*Node {
 	return ns[:num]
 }
 
+// Isolated searches such element that is not connected to supported nodes.
 func (frame *Frame) Isolated() ([]*Node, []*Elem) {
 	current := make([]*Node, 0)
 	for _, n := range frame.Nodes {
@@ -3037,8 +3070,6 @@ func (frame *Frame) SearchBraceSect(f *Fig, t int) *Sect {
 	}
 	return nil
 }
-
-// }}}
 
 // Modify Frame// {{{
 func (frame *Frame) DeleteNode(num int) {
