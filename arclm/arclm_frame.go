@@ -1227,7 +1227,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 				for j := 0; j < len(vec); j++ {
 					sign += answers[l][j] * vecs[l][j]
 				}
-				fmt.Fprintf(frame.Output, "LAMBDA %.14f %d SIGN= %.3f\r", lambda, l, sign)
+				fmt.Fprintf(frame.Output, "LAMBDA %.14f %d SIGN= %.3f\r", 1.0/lambda, l, sign)
 				if sign < 0.0 {
 					neg++
 					if neg > i {
