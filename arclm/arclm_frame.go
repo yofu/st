@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -1242,6 +1243,11 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 					}
 				}
 			}
+			ans := make([]float64, len(vec))
+			for j := 0; j < len(vec); j++ {
+				ans[j] = rand.Float64()
+			}
+			answers, err = solver.Solve(gmtx, csize, conf, ans)
 			tmp := frame.FillConf(answers[0])
 			tmp = Normalize(tmp)
 			lastvec = tmp
