@@ -1,10 +1,7 @@
 package arclm
 
 import (
-	"fmt"
 	"math"
-	"math/rand"
-	"sync"
 )
 
 func Normalize(vec []float64) []float64 {
@@ -41,52 +38,9 @@ func Cross(x, y []float64) []float64 {
 // vecs are assumed to be part of orthonomal basis
 func OrthoNormalBasis(size int, vecs ...[]float64) ([][]float64, error) {
 	rtn := make([][]float64, size)
-	num := 0
-	for _, v := range vecs {
-		if len(v) != size {
-			return nil, fmt.Errorf("size error")
-		}
-		rtn[num] = make([]float64, size)
-		for i := 0; i < size; i++ {
-			rtn[num][i] = v[i]
-		}
-		num++
-		if num >= size {
-			return rtn, nil
-		}
-	}
-	var wg sync.WaitGroup
-	for ind := num; ind < size; ind++ {
-		wg.Add(1)
-		go func(i int) {
-			rtn[i] = make([]float64, size)
-			for j := 0; j < size; j++ {
-				rtn[i][j] = rand.Float64()
-			}
-			// NORMALIZATION
-			sum := 0.0
-			for j := 0; j < size; j++ {
-				sum += rtn[i][j] * rtn[i][j]
-			}
-			sum = math.Sqrt(sum)
-			for j := 0; j < size; j++ {
-				rtn[i][j] /= sum
-			}
-			wg.Done()
-		}(ind)
-	}
-	wg.Wait()
-	for i := num; i < size; i++ {
-		// GRAM-SCHMIDT ORTHONORMALIZATION
-		for j := 0; j < i; j++ {
-			sum := 0.0
-			for k := 0; k < size; k++ {
-				sum += rtn[i][k]*rtn[j][k]
-			}
-			for k := 0; k < size; k++ {
-				rtn[i][k] -= sum*rtn[j][k]
-			}
-		}
+	for i := 0; i < size; i++ {
+		rtn[i] = make([]float64, size)
+		rtn[i][i] = 1.0
 	}
 	return rtn, nil
 }
