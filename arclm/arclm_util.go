@@ -34,3 +34,13 @@ func Cross(x, y []float64) []float64 {
 	rtn[2] = x[0]*y[1] - x[1]*y[0]
 	return rtn
 }
+
+// vecs are assumed to be part of orthonomal basis
+func OrthoNormalBasis(size int, vecs ...[]float64) ([][]float64, error) {
+	rtn := make([][]float64, size)
+	for i := 0; i < size; i++ {
+		rtn[i] = make([]float64, size)
+		rtn[i][i] = 1.0
+	}
+	return rtn, nil
+}
