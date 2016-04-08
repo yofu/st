@@ -1209,7 +1209,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 		lap := 0
 		lambda := shift
 		lastlambda := shift
-		dlambda := 100.0
+		dlambda := 0.01
 		var lastvec []float64
 		for j := 0; j < len(vec); j++ {
 			vec[j] = rand.Float64()
