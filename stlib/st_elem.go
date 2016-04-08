@@ -359,6 +359,7 @@ func (elem *Elem) setEtype(str string) error {
 	return errors.New("setEtype: Etype not found")
 }
 
+// IsLineElem reports whether the element is line element or not.
 func (elem *Elem) IsLineElem() bool {
 	return elem.Etype <= SBRACE && elem.Enods == 2
 }
@@ -1874,6 +1875,8 @@ func (elem *Elem) RefNnum(nnum int) (int, error) {
 	return 0, errors.New("RefNnum: Not Found")
 }
 
+// Otherside returns the other ENOD.
+// If given node is not found in ENOD, it returns nil.
 func (elem *Elem) Otherside(n *Node) *Node {
 	for i, en := range elem.Enod {
 		if en == n {
