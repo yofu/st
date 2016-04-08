@@ -1178,7 +1178,6 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 	var gvct, vec []float64
 	var csize int
 	var conf []bool
-	var sign float64
 	kemtx, gvct, err = frame.KE(1.0)
 	if err != nil {
 		return err
@@ -1221,17 +1220,26 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 		bclng:
 		for {
 			gmtx := kgmtx.AddMat(kemtx, lambda)
-			answers, err = solver.Solve(gmtx, csize, conf, vecs...)
+			mtx := gmtx.ToLLS(csize, conf)
+			size := mtx.Size
+			C, err := mtx.LDLT(frame.Pivot)
 			if err != nil {
 				return err
 			}
-			for l := 0; l < len(vec); l++ {
-				sign = 0.0
-				for j := 0; j < len(vec); j++ {
-					sign += answers[l][j] * vecs[l][j]
+			answers := make([][]float64, len(vecs))
+			C.DiagUp()
+			for v, vec := range vecs {
+				tmp := make([]float64, size)
+				for j := 0; j < size; j++ {
+					tmp[j] = vec[j]
 				}
-				fmt.Fprintf(frame.Output, "LAMBDA %.14f %d SIGN= %.3f\r", 1.0/lambda, l, sign)
-				if sign < 0.0 {
+				tmp = C.FELower(tmp)
+				for j := 0; j < size; j++ {
+					tmp[j] /= C.Query(j, j)
+				}
+				answers[v] = C.BSUpper(tmp)
+				fmt.Fprintf(frame.Output, "LAMBDA %.14f %d SIGN= %.3f\r", 1.0/lambda, v, answers[v][v])
+				if answers[v][v] < 0.0 {
 					neg++
 					if neg > i {
 						if ER - EL < eps {
@@ -1251,7 +1259,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 			tmp := frame.FillConf(answers[0])
 			tmp = Normalize(tmp)
 			lastvec = tmp
-			_, _, err := frame.UpdateStressEnergy(tmp)
+			_, _, err = frame.UpdateStressEnergy(tmp)
 			if err != nil {
 				return err
 			}
