@@ -1201,14 +1201,16 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 	if err != nil {
 		return err
 	}
+	laptime("initial analysis solved")
 	frame.EigenValue = make([]float64, n)
 	frame.EigenVector = make([][]float64, n)
 	EL := 0.0
-	ER := 100.0
+	ER := 10.0
 	vecs, err := OrthoNormalBasis(len(vec))
 	if err != nil {
 		return err
 	}
+	laptime("orthonormal basis")
 	for i := 0; i < n; i++ {
 		neg := 0
 		lap := 0
