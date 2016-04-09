@@ -1211,6 +1211,18 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 		return err
 	}
 	laptime("orthonormal basis")
+	FB := func(C *matrix.LLSMatrix, vec []float64, size int) []float64 {
+		tmp := make([]float64, size)
+		for j := 0; j < size; j++ {
+			tmp[j] = vec[j]
+		}
+		tmp = C.FELower(tmp)
+		for j := 0; j < size; j++ {
+			tmp[j] /= C.Query(j, j)
+		}
+		return C.BSUpper(tmp)
+	}
+	var answer []float64
 	for i := 0; i < n; i++ {
 		neg := 0
 		lap := 0
@@ -1226,20 +1238,11 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 			if err != nil {
 				return err
 			}
-			answers := make([][]float64, len(vecs))
 			C.DiagUp()
 			for v, vec := range vecs {
-				tmp := make([]float64, size)
-				for j := 0; j < size; j++ {
-					tmp[j] = vec[j]
-				}
-				tmp = C.FELower(tmp)
-				for j := 0; j < size; j++ {
-					tmp[j] /= C.Query(j, j)
-				}
-				answers[v] = C.BSUpper(tmp)
-				fmt.Fprintf(frame.Output, "LAMBDA %.14f %d SIGN= %.3f\r", 1.0/lambda, v, answers[v][v])
-				if answers[v][v] < 0.0 {
+				answer = FB(C, vec, size)
+				fmt.Fprintf(frame.Output, "LAMBDA %.14f %d SIGN= %.3f\r", 1.0/lambda, v, answer[v])
+				if answer[v] < 0.0 {
 					neg++
 					if neg > i {
 						if ER - EL < eps {
@@ -1255,8 +1258,8 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 			for j := 0; j < len(vec); j++ {
 				ans[j] = rand.Float64()
 			}
-			answers, err = solver.Solve(gmtx, csize, conf, ans)
-			tmp := frame.FillConf(answers[0])
+			answer = FB(C, ans, size)
+			tmp := frame.FillConf(answer)
 			tmp = Normalize(tmp)
 			lastvec = tmp
 			_, _, err = frame.UpdateStressEnergy(tmp)
