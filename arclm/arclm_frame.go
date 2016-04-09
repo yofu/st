@@ -1224,13 +1224,13 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 	}
 	var answer []float64
 	for i := 0; i < n; i++ {
-		neg := 0
 		lap := 0
 		lambda := 0.5*(EL+ER)
 		lastlambda := lambda
 		var lastvec []float64
 		bclng:
 		for {
+			neg := 0
 			gmtx := kgmtx.AddMat(kemtx, lambda)
 			mtx := gmtx.ToLLS(csize, conf)
 			size := mtx.Size
@@ -1242,7 +1242,11 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 			for v, vec := range vecs {
 				answer = FB(C, vec, size)
 				fmt.Fprintf(frame.Output, "LAMBDA %.14f %d SIGN= %.3f\r", 1.0/lambda, v, answer[v])
-				if answer[v] < 0.0 {
+				quad := 0.0
+				for j := 0; j < len(vec); j++ {
+					quad += answer[j] * vec[j]
+				}
+				if quad < 0.0 {
 					neg++
 					if neg > i {
 						if ER - EL < eps {
@@ -1277,7 +1281,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 		frame.EigenValue[i] = 1.0/lastlambda
 		frame.EigenVector[i] = lastvec
 		if i < n-1 {
-			for _, v := range vecs[i:] {
+			for _, v := range vecs {
 				sum := 0.0
 				for j := 0; j < len(vec); j++ {
 					sum += v[j]*lastvec[j]
@@ -1287,6 +1291,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 				}
 			}
 		}
+		ER = EL
 		EL = 0.0
 		frame.UpdateReaction(kemtx, lastvec)
 		frame.UpdateForm(lastvec)
