@@ -1239,25 +1239,45 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 				return err
 			}
 			C.DiagUp()
+			ch := make(chan float64)
 			for v, vec := range vecs {
-				answer = FB(C, vec, size)
-				fmt.Fprintf(frame.Output, "LAMBDA %.14f %d SIGN= %.3f\r", 1.0/lambda, v, answer[v])
-				quad := 0.0
-				for j := 0; j < len(vec); j++ {
-					quad += answer[j] * vec[j]
-				}
-				if quad < 0.0 {
-					neg++
-					if neg > i {
-						if ER - EL < eps {
-							break bclng
+				go func(mat *matrix.LLSMatrix, ind int, vector []float64){
+					answer := FB(mat, vector, size)
+					quad := 0.0
+					for j := 0; j < len(vector); j++ {
+						quad += answer[j] * vector[j]
+					}
+					if ch != nil {
+						ch <-quad
+					}
+				}(C, v, vec)
+			}
+			num := 0
+			quadloop:
+			for {
+				select {
+				case val := <-ch:
+					if val < 0.0 {
+						neg++
+						if neg > i {
+							ch = nil
+							if ER - EL < eps {
+								break bclng
+							}
+							EL = lambda
+							lambda = 0.5*(EL+ER)
+							fmt.Fprintf(frame.Output, "LAMBDA<%.14f\n", 1.0/lambda)
+							continue bclng
 						}
-						EL = lambda
-						lambda = 0.5*(EL+ER)
-						continue bclng
+					}
+					num++
+					if num >= len(vecs) {
+						ch = nil
+						break quadloop
 					}
 				}
 			}
+			fmt.Fprintf(frame.Output, "LAMBDA>%.14f\n", 1.0/lambda)
 			ans := make([]float64, len(vec))
 			for j := 0; j < len(vec); j++ {
 				ans[j] = rand.Float64()
