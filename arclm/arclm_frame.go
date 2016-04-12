@@ -1264,9 +1264,9 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 							if ER - EL < eps {
 								break bclng
 							}
+							fmt.Fprintf(frame.Output, "LAMBDA<%.14f\n", 1.0/lambda)
 							EL = lambda
 							lambda = 0.5*(EL+ER)
-							fmt.Fprintf(frame.Output, "LAMBDA<%.14f\n", 1.0/lambda)
 							continue bclng
 						}
 					}
