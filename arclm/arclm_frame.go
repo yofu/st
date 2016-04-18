@@ -529,6 +529,23 @@ func (frame *Frame) WriteTo(w io.Writer) (int64, error) {
 	return rtn + tmp, err
 }
 
+func (frame *Frame) WriteBclngTo(w io.Writer) (int64, error) {
+	var otp bytes.Buffer
+	otp.WriteString(fmt.Sprintf("NODES=%d ELEMS=%d SECTS=%d\n", len(frame.Nodes), len(frame.Elems), len(frame.Sects)))
+	for i := 0; i < len(frame.EigenValue); i++ {
+		otp.WriteString(fmt.Sprintf("EIGEN VALUE %d=%12.5E\n", i+1, frame.EigenValue[i]))
+		for j, n := range frame.Nodes {
+			otp.WriteString(fmt.Sprintf("NODE: %4d {dU}=", n.Num))
+			for k := 0; k < 6; k++ {
+				otp.WriteString(fmt.Sprintf(" %12.5E", frame.EigenVector[i][6*j+k]))
+			}
+			otp.WriteString("\n")
+		}
+	}
+	otp.WriteString("COMPLETED.\n")
+	return otp.WriteTo(w)
+}
+
 func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, extra ...[]float64) error { // TODO: speed up
 	if init {
 		frame.Initialise()
@@ -1326,6 +1343,6 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 		return err
 	}
 	defer w.Close()
-	frame.WriteTo(w)
+	frame.WriteBclngTo(w)
 	return nil
 }
