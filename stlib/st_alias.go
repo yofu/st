@@ -16,6 +16,7 @@ func NewAlias() *Alias {
 			"A":  AddLineElem,
 			"AA": AddPlateElem,
 			"H":  HatchPlateElem,
+			"C":  CopyElem,
 			"Z":  Trim,
 		},
 	}

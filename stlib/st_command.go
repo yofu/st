@@ -14,6 +14,7 @@ var (
 		"ADDLINEELEM":    AddLineElem,
 		"ADDPLATEELEM":   AddPlateElem,
 		"HATCHPLATEELEM": HatchPlateElem,
+		"COPYELEM":       CopyElem,
 		"TRIM":           Trim,
 	}
 )
@@ -127,7 +128,7 @@ func AddLineElem(stw Commander) chan bool {
 	})
 }
 
-func multinodes(stw Commander, f func([]*Node) error) chan bool {
+func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 	quit := make(chan bool)
 	go func() {
 		nodes := make([]*Node, 0)
@@ -140,16 +141,32 @@ func multinodes(stw Commander, f func([]*Node) error) chan bool {
 			select {
 			case n := <-nch:
 				if n != nil {
-					nodes = append(nodes, n)
-					AddSelection(stw, n)
-					stw.AddTail(n)
-				}
-			case c := <-clickch:
-				if c.Button == ButtonRight {
-					if len(nodes) > 0 {
+					if each {
+						if len(nodes) == 0 {
+							nodes = []*Node{n}
+							stw.AddTail(n)
+						} else {
+							nodes = []*Node{nodes[0], n}
+						}
+						stw.SelectNode(nodes)
 						err := f(nodes)
 						if err != nil {
 							ErrorMessage(stw, err, ERROR)
+						}
+					} else {
+						nodes = append(nodes, n)
+						AddSelection(stw, n)
+						stw.AddTail(n)
+					}
+				}
+			case c := <-clickch:
+				if c.Button == ButtonRight {
+					if !each {
+						if len(nodes) > 0 {
+							err := f(nodes)
+							if err != nil {
+								ErrorMessage(stw, err, ERROR)
+							}
 						}
 					}
 					stw.SetAltSelectNode(as)
@@ -186,7 +203,28 @@ func AddPlateElem(stw Commander) chan bool {
 		stw.History(buf.String())
 		Snapshot(stw)
 		return nil
-	})
+	}, false)
+}
+
+func CopyElem(stw Commander) chan bool {
+	return multinodes(stw, func(ns []*Node) error {
+		if len(ns) < 2 {
+			return nil
+		}
+		frame := stw.Frame()
+		vec := Direction(ns[0], ns[len(ns)-1], false)
+		if !(vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0) {
+			eps := stw.EPS()
+			for _, el := range stw.SelectedElems() {
+				if el == nil || el.IsHidden(frame.Show) || el.Lock {
+					continue
+				}
+				el.Copy(vec[0], vec[1], vec[2], eps)
+			}
+			Snapshot(stw)
+		}
+		return nil
+	}, true)
 }
 
 func multielems(stw Commander, f func([]*Elem) error) chan bool {
