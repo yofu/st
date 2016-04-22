@@ -1334,6 +1334,30 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if err != nil {
 			return err
 		}
+	case "coord":
+		if usage {
+			return Usage(":coord x y z")
+		}
+		if narg < 4 {
+			return NotEnoughArgs(":node")
+		}
+		coord := make([]float64, 3)
+		for i := 0; i < 3; i++ {
+			tmp, err := strconv.ParseFloat(args[i+1], 64)
+			if err != nil {
+				return err
+			}
+			coord[i] = tmp
+		}
+		n, _ := frame.CoordNode(coord[0], coord[1], coord[2], EPS)
+		if cm, ok := stw.(Commander); ok {
+			cm.SendNode(n)
+		}
+		stw.SelectNode([]*Node{n})
+		if pipe {
+			sender = make([]interface{}, 1)
+			sender[0] = n
+		}
 	case "node":
 		if usage {
 			var m bytes.Buffer
