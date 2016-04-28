@@ -6219,10 +6219,6 @@ func (stw *Window) Pivot() bool {
 	return drawpivot
 }
 
-func (stw *Window) SetConf(lis []bool) {
-	setconf(stw, lis)
-}
-
 func (stw *Window) SetLastExCommand(c string) {
 	stw.lastexcommand = c
 }

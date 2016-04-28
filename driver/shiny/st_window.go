@@ -854,9 +854,6 @@ func (stw *Window) SetColorMode(mode uint) {
 	stw.frame.Show.ColorMode = mode
 }
 
-func (stw *Window) SetConf([]bool) {
-}
-
 func (stw *Window) Complete() string {
 	var rtn []string
 	str := stw.LastWord()

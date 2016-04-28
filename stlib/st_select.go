@@ -348,3 +348,17 @@ func SelectNotHidden(stw Selector) {
 	}
 	stw.SelectElem(els[:num])
 }
+
+func SetConf(stw Selector, lis []bool) {
+	if !stw.NodeSelected() {
+		return
+	}
+	for _, n := range stw.SelectedNodes() {
+		if n == nil || n.Lock {
+			continue
+		}
+		for i := 0; i < 6; i++ {
+			n.Conf[i] = lis[i]
+		}
+	}
+}

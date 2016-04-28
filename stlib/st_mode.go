@@ -42,7 +42,6 @@ type ExModer interface {
 	Pivot() bool
 	DrawPivot([]*Node, chan int, chan int)
 	SetColorMode(uint)
-	SetConf([]bool)
 }
 
 type Fig2Moder interface {

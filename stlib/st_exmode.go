@@ -1608,7 +1608,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					lis[i] = !lis[i]
 				}
 			}
-			stw.SetConf(lis)
+			SetConf(stw, lis)
 		} else {
 			return NotEnoughArgs(":conf")
 		}
