@@ -34,6 +34,11 @@ var (
 )
 
 var (
+	home = os.Getenv("HOME")
+	pgpfile = filepath.Join(home, ".st/st.pgp")
+)
+
+var (
 	blue0 = color.RGBA{0x00, 0x00, 0x1f, 0xff}
 
 	startX = 0
@@ -143,12 +148,13 @@ func (stw *Window) Start() {
 	}
 	stw.window = w
 	defer stw.window.Release()
-	err = stw.LoadFontFace(filepath.Join(os.Getenv("HOME"), ".st/fonts/GenShinGothic-Regular.ttf"), 12)
+	err = stw.LoadFontFace(filepath.Join(home, ".st/fonts/GenShinGothic-Regular.ttf"), 12)
 	if err != nil {
 		st.ErrorMessage(stw, err, st.ERROR)
 	}
 	stw.ReadRecent()
 	st.ShowRecent(stw)
+	st.ReadPgp(stw, pgpfile)
 	stw.frame.View.Center[0] = 512
 	stw.frame.View.Center[1] = 512
 	stw.Redraw()
