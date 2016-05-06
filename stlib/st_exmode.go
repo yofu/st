@@ -1743,28 +1743,46 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		Snapshot(stw)
 	case "cmq":
 		if usage {
-			return Usage(":cmq period")
+			return Usage(":cmq [period, zero, value]")
 		}
 		if narg < 2 {
 			return NotEnoughArgs(":cmq")
 		}
 		els := currentelem(stw, exmodech, exmodeend)
-		if strings.EqualFold(args[1], "zero") {
+		switch strings.ToUpper(args[1]) {
+		case "ZERO":
 			for _, el := range els {
 				for i := 0; i < 12; i++ {
 					el.Cmq[i] = 0.0
 				}
 			}
-			return nil
-		}
-		if s, ok := frame.ResultFileName[args[1]]; ok {
-			if s == "" {
-				return errors.New(fmt.Sprintf("period %s: no data", args[1]))
+		case "VALUE":
+			if narg < 14 {
+				return NotEnoughArgs(":cmq value")
+			}
+			cmq := make([]float64, 12)
+			for i := 0; i < 12; i++ {
+				tmp, err := strconv.ParseFloat(args[2+i], 64)
+				if err != nil {
+					return err
+				}
+				cmq[i] = tmp
 			}
 			for _, el := range els {
-				for i := 0; i < 2; i++ {
-					for j := 0; j < 6; j++ {
-						el.Cmq[6*i+j] = el.Stress[args[1]][el.Enod[i].Num][j]
+				for i := 0; i < 12; i++ {
+					el.Cmq[i] = cmq[i]
+				}
+			}
+		default:
+			if s, ok := frame.ResultFileName[args[1]]; ok {
+				if s == "" {
+					return errors.New(fmt.Sprintf("period %s: no data", args[1]))
+				}
+				for _, el := range els {
+					for i := 0; i < 2; i++ {
+						for j := 0; j < 6; j++ {
+							el.Cmq[6*i+j] = el.Stress[args[1]][el.Enod[i].Num][j]
+						}
 					}
 				}
 			}
