@@ -23,6 +23,7 @@ var (
 	ExAbbrev = map[string]*complete.Complete{
 		"e/dit":            complete.MustCompile(":edit %g", nil),
 		"q/uit":            complete.MustCompile(":quit", nil),
+		"res/ource":        complete.MustCompile(":resource %g", nil),
 		"vi/m":             complete.MustCompile(":vim %g", nil),
 		"exp/lorer":        complete.MustCompile(":explorer %g", nil),
 		"hk/you":           complete.MustCompile(":hkyou _ _ _ _", nil),
@@ -327,6 +328,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return Usage(":quit")
 		}
 		stw.Close(bang)
+	case "resource":
+		if usage {
+			return Usage(":resource filename")
+		}
+		ReadResource(stw, fn)
 	case "eps":
 		if usage {
 			return Usage(":eps val")
