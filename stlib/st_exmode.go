@@ -83,6 +83,10 @@ var (
 			map[string][]string{
 				"TYPE": []string{"mid", "n", "elem", "ons", "axis", "length"},
 			}),
+		"se/t": complete.MustCompile(":set [sect:_] [etype:$ETYPE]",
+			map[string][]string{
+				"ETYPE": []string{"column", "girder", "brace", "slab", "wall"},
+			}),
 		"e/lem/dup/lication": complete.MustCompile(":elemduplication [ignoresect:]", nil),
 		"i/ntersect/a/ll":    complete.MustCompile(":intersectall", nil),
 		"co/nf":              complete.MustCompile(":conf", nil),
@@ -2738,6 +2742,57 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					as.Num = snum
 					frame.Sects[snum] = as
 					frame.Show.Sect[snum] = true
+				}
+			}
+		}
+	case "set":
+		if usage {
+			return Usage(":set {-sect=} {-etype=}")
+		}
+		var fs []func(*Elem)
+		if val, ok := argdict["SECT"]; ok {
+			snum, err := strconv.ParseInt(val, 10, 64)
+			if err != nil {
+				return err
+			}
+			if sec, ok := frame.Sects[int(snum)]; ok {
+				fs = append(fs, func(el *Elem) {
+					el.Sect = sec
+				})
+			} else {
+				return fmt.Errorf("sect %d doesn't exist", snum)
+			}
+		}
+		if et, ok := argdict["ETYPE"]; ok {
+			var etype int
+			switch {
+			case Re_column.MatchString(et):
+				etype = COLUMN
+			case Re_girder.MatchString(et):
+				etype = GIRDER
+			case Re_slab.MatchString(et):
+				etype = BRACE
+			case Re_wall.MatchString(et):
+				etype = WALL
+			case Re_slab.MatchString(et):
+				etype = SLAB
+			default:
+				tmp, err := strconv.ParseInt(et, 10, 64)
+				if err != nil {
+					return err
+				}
+				etype = int(tmp)
+			}
+			if etype != NONE {
+				fs = append(fs, func(el *Elem) {
+					el.Etype = etype
+				})
+			}
+		}
+		if len(fs) > 0 {
+			for _, el := range currentelem(stw, exmodech, exmodeend) {
+				for _, f := range fs {
+					f(el)
 				}
 			}
 		}
