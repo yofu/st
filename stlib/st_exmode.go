@@ -3463,7 +3463,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":extractarclm")
 		}
-		frame.ExtractArclm("")
+		return frame.ExtractArclm("")
 	case "saveasarclm":
 		if usage {
 			return Usage(":saveasarclm")

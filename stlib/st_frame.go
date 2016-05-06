@@ -3721,8 +3721,11 @@ func (frame *Frame) Upside() {
 // }}}
 
 // ExtractArclm// {{{
-func (frame *Frame) ExtractArclm(fn string) {
-	frame.WeightDistribution(fn)
+func (frame *Frame) ExtractArclm(fn string) error {
+	err := frame.WeightDistribution(fn)
+	if err != nil {
+		return err
+	}
 	for _, el := range SortedElem(frame.Elems, func(e *Elem) float64 { return float64(e.Num) }) {
 		if !el.IsLineElem() {
 			brs := el.RectToBrace(2, 1.0)
@@ -3894,9 +3897,14 @@ func (frame *Frame) ExtractArclm(fn string) {
 		}
 		frame.Arclms[p] = af
 	}
+	return nil
 }
 
-func (frame *Frame) WeightDistribution(fn string) {
+func (frame *Frame) WeightDistribution(fn string) error {
+	aistr, err := frame.AiDistribution()
+	if err != nil {
+		return err
+	}
 	var otp bytes.Buffer
 	var ekeys []int
 	nodes := make([]*Node, len(frame.Nodes))
@@ -3955,20 +3963,24 @@ func (frame *Frame) WeightDistribution(fn string) {
 	case "kN":
 		otp.WriteString(fmt.Sprintf("Unit Factor  =%7.5f \"SI Units [%s]\"\n\n", frame.Show.Unit[0], frame.Show.UnitName[0]))
 	}
-	otp.WriteString(frame.AiDistribution())
+	otp.WriteString(aistr)
 	if fn == "" {
 		fn = filepath.Join(frame.Home, DefaultWgt)
 	}
 	w, err := os.Create(fn)
 	defer w.Close()
 	if err != nil {
-		return
+		return err
 	}
 	otp = AddCR(otp)
 	otp.WriteTo(w)
+	return nil
 }
 
-func (frame *Frame) AiDistribution() string {
+func (frame *Frame) AiDistribution() (string, error) {
+	if frame.Ai.Nfloor == 0 && len(frame.Ai.Boundary) == 0 {
+		return "", fmt.Errorf("level isn't set up")
+	}
 	size := frame.Ai.Nfloor
 	frame.Ai.Wi = make([]float64, size)
 	frame.Ai.Level = make([]float64, size)
@@ -4110,7 +4122,7 @@ func (frame *Frame) AiDistribution() string {
 		rtn.WriteString(fmt.Sprintf(" %10.3f", facts[i]))
 	}
 	rtn.WriteString("\n")
-	return rtn.String()
+	return rtn.String(), nil
 }
 
 func (frame *Frame) SaveAsArclm(name string) error {
