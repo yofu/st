@@ -386,7 +386,7 @@ func (stw *Window) Start() {
 							stw.frame.View.Angle[0] += float64(dy) * stw.CanvasRotateSpeedY()
 							stw.frame.View.Angle[1] -= float64(dx) * stw.CanvasRotateSpeedX()
 						}
-						stw.Redraw()
+						stw.RedrawNode()
 						stw.window.Publish()
 					}
 				} else {
