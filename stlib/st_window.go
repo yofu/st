@@ -693,7 +693,7 @@ func CanvasCenterView(stw Window, angle []float64) *View {
 			frame.View.Angle[i] = a0[i]
 		}
 		frame.View.Set(dir)
-		if xmax == xmin && ymax == ymin {
+		if xmax - xmin <= 1e-6 && ymax - ymin <= 1e-6 {
 			return frame.View
 		}
 		w, h := dw.GetCanvasSize()
