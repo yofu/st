@@ -341,6 +341,24 @@ func (stw *Window) Start() {
 					} else {
 						stw.TypeCommandLine(string(kc.Rune))
 					}
+				case key.CodeC:
+					if e.Modifiers&key.ModControl != 0 {
+						err := st.CopyClipboard(stw)
+						if err != nil {
+							st.ErrorMessage(stw, err, st.ERROR)
+						}
+					} else {
+						stw.TypeCommandLine(string(kc.Rune))
+					}
+				case key.CodeV:
+					if e.Modifiers&key.ModControl != 0 {
+						err := st.PasteClipboard(stw)
+						if err != nil {
+							st.ErrorMessage(stw, err, st.ERROR)
+						}
+					} else {
+						stw.TypeCommandLine(string(kc.Rune))
+					}
 				}
 				stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
 				if setprev {

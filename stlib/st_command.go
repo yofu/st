@@ -60,6 +60,44 @@ func Select(stw Commander) chan bool {
 	return quit
 }
 
+func onenode(stw Commander, f func(*Node) error) chan bool {
+	quit := make(chan bool)
+	go func() {
+		nch := stw.GetNode()
+		clickch := stw.GetClick()
+		as := stw.AltSelectNode()
+		stw.SetAltSelectNode(false)
+	onenode:
+		for {
+			select {
+			case n := <-nch:
+				if n != nil {
+					err := f(n)
+					if err != nil {
+						ErrorMessage(stw, err, ERROR)
+					}
+					stw.SetAltSelectNode(as)
+					stw.DeselectNode()
+					stw.EndCommand()
+					break onenode
+				}
+			case c := <-clickch:
+				if c.Button == ButtonRight {
+					stw.SetAltSelectNode(as)
+					stw.Deselect()
+					stw.EndCommand()
+					break onenode
+				}
+			case <-quit:
+				stw.SetAltSelectNode(as)
+				stw.EndCommand()
+				break onenode
+			}
+		}
+	}()
+	return quit
+}
+
 func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 	quit := make(chan bool)
 	go func() {

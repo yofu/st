@@ -2,12 +2,17 @@ package st
 
 import (
 	"bufio"
+	"bytes"
+	"fmt"
 	"os"
 	"strings"
+
+	"github.com/atotto/clipboard"
 )
 
 type Commander interface {
 	Selector
+	Execute(chan bool)
 	GetElem() chan *Elem
 	SendElem(*Elem)
 	GetNode() chan *Node
@@ -203,5 +208,79 @@ func ReadPgp(stw Commander, filename string) error {
 	for k, v := range aliases {
 		stw.AddCommandAlias(k, v)
 	}
+	return nil
+}
+
+func CopyClipboard(stw Commander) error {
+	frame := stw.Frame()
+	if !stw.ElemSelected() {
+		return nil
+	}
+	var otp bytes.Buffer
+	ns := frame.ElemToNode(stw.SelectedElems()...)
+	stw.Execute(onenode(stw, func(n0 * Node) error {
+		for _, n := range ns {
+			otp.WriteString(n.CopyString(n0.Coord[0], n0.Coord[1], n0.Coord[2]))
+		}
+		for _, el := range stw.SelectedElems() {
+			if el != nil {
+				otp.WriteString(el.InpString())
+			}
+		}
+		err := clipboard.WriteAll(otp.String())
+		if err != nil {
+			return err
+		}
+		stw.History(fmt.Sprintf("%d ELEMs Copied", len(stw.SelectedElems())))
+		return nil
+	}))
+	return nil
+}
+
+// TODO: Test
+func PasteClipboard(stw Commander) error {
+	frame := stw.Frame()
+	text, err := clipboard.ReadAll()
+	if err != nil {
+		return err
+	}
+	stw.Execute(onenode(stw, func(n *Node) error {
+		s := bufio.NewScanner(strings.NewReader(text))
+		coord := make([]float64, 3)
+		for i := 0; i < 3; i++ {
+			coord[i] = n.Coord[i]
+		}
+		angle := 0.0
+		tmp := make([]string, 0)
+		nodemap := make(map[int]int)
+		var err error
+		for s.Scan() {
+			var words []string
+			for _, k := range strings.Split(s.Text(), " ") {
+				if k != "" {
+					words = append(words, k)
+				}
+			}
+			if len(words) == 0 {
+				continue
+			}
+			first := words[0]
+			switch first {
+			default:
+				tmp = append(tmp, words...)
+			case "NODE", "ELEM":
+				nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, false)
+				tmp = words
+			}
+			if err != nil {
+				break
+			}
+		}
+		if err != nil {
+			return err
+		}
+		nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, false)
+		return err
+	}))
 	return nil
 }
