@@ -274,6 +274,32 @@ func Rainbow(val float64, boundary []float64) int {
 		ind++
 	}
 	return RainbowColor[ind]
+	// return PseudoColor(val, boundary[len(boundary) - 1], boundary[0])
+}
+
+func PseudoColor(val0, max, min float64) int {
+	var val float64
+	if max == min {
+		val = val0
+	} else {
+		if min > max {
+			max, min = min, max
+		}
+		val = (val0 - min) / (max - min)
+	}
+	if val > 1.0 {
+		return 0xff0000
+	} else if val > 0.75 {
+		return 0xff0000 + int(255*4*(1.0-val))<<8
+	} else if val > 0.5 {
+		return 0x00ff00 + int(255*4*(val-0.5))<<16
+	} else if val > 0.25 {
+		return 0x00ff00 + int(255*4*(0.5-val))
+	} else if val > 0.0 {
+		return 0x0000ff + int(255*4*val)<<8
+	} else {
+		return 0x0000ff
+	}
 }
 
 func ListMax(list []float64) float64 {
