@@ -23,10 +23,16 @@ import (
 	"strings"
 )
 
+const (
+	NORMAL = iota
+	VIEWEDIT
+)
+
 var (
 	prevkey key.Event
 	cline   string
 	drawing bool
+	keymode = NORMAL
 )
 
 var (
@@ -170,199 +176,254 @@ func (stw *Window) Start() {
 			switch e.Direction {
 			case key.DirPress:
 				setprev := true
-				kc := keymap(e)
-				switch kc.Code {
-				default:
-					stw.TypeCommandLine(string(kc.Rune))
-				case key.CodeDeleteBackspace:
-					stw.BackspaceCommandLine()
-				case key.CodeTab:
-					if prevkey.Code == key.CodeTab {
+				if keymode == NORMAL {
+					kc := keymap(e)
+					switch kc.Code {
+					default:
+						stw.TypeCommandLine(string(kc.Rune))
+					case key.CodeDeleteBackspace:
+						stw.BackspaceCommandLine()
+					case key.CodeTab:
+						if prevkey.Code == key.CodeTab {
+							if e.Modifiers&key.ModShift != 0 {
+								stw.PrevComplete()
+							} else {
+								stw.NextComplete()
+							}
+						} else {
+							stw.Complete()
+						}
+					case key.CodeSpacebar:
+						stw.EndCompletion()
+						cl := stw.CommandLineString()
+						if strings.Contains(cl, " ") {
+							if lis, ok := stw.ContextComplete(); ok {
+								cls := strings.Split(cl, " ")
+								cls[len(cls) - 1] = lis[0] + " "
+								stw.SetCommandLineString(strings.Join(cls, " "))
+							} else {
+								stw.TypeCommandLine(" ")
+							}
+						} else if strings.HasPrefix(cl, ":") {
+							c, bang, usage, comp := st.ExModeComplete(cl)
+							var b, u string
+							if bang {
+								b = "!"
+							} else {
+								b = ""
+							}
+							if usage {
+								u = "?"
+							} else {
+								u = ""
+							}
+							if comp != nil {
+								str := fmt.Sprintf(":%s%s%s ", c, b, u)
+								stw.SetCommandLineString(str)
+								comp.Chdir(stw.Cwd())
+								stw.SetComplete(comp)
+							} else {
+								stw.TypeCommandLine(" ")
+							}
+						} else if strings.HasPrefix(cl, "'") {
+							c, usage, comp := st.Fig2KeywordComplete(cl)
+							var u string
+							if usage {
+								u = "?"
+							} else {
+								u = ""
+							}
+							if comp != nil {
+								str := fmt.Sprintf("'%s%s ", c, u)
+								stw.SetCommandLineString(str)
+								comp.Chdir(stw.Cwd())
+								stw.SetComplete(comp)
+							} else {
+								stw.TypeCommandLine(" ")
+							}
+						} else {
+							stw.TypeCommandLine(" ")
+						}
+					case key.CodeUnknown:
+						setprev = false
+					case key.CodeLeftShift:
+						setprev = false
+					case key.CodeLeftAlt:
+						setprev = false
+					case key.CodeReturnEnter:
+						stw.FeedCommand()
+					case key.CodeEscape:
+						stw.QuitCommand()
+						stw.ClearCommandLine()
+						stw.Deselect()
+						stw.Redraw()
+						stw.window.Publish()
+					case key.CodeLeftControl:
+						setprev = false
+					case key.CodeRightControl:
+						setprev = false
+					case key.CodeRightArrow:
+						stw.SeekForward()
+					case key.CodeLeftArrow:
+						stw.SeekBackward()
+					case key.CodeDownArrow:
+						if e.Modifiers&key.ModControl != 0 {
+							st.PrevFloor(stw)
+						} else {
+							stw.SeekLast()
+						}
+					case key.CodeUpArrow:
+						if e.Modifiers&key.ModControl != 0 {
+							st.NextFloor(stw)
+						} else {
+							stw.SeekHead()
+						}
+					case key.CodeW:
+						if e.Modifiers&key.ModControl != 0 {
+							stw.PopHistoryDialog()
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
+					case key.CodeM:
+						if e.Modifiers&key.ModControl != 0 {
+							keymode = VIEWEDIT
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
+					case key.CodeD:
+						if e.Modifiers&key.ModControl != 0 {
+							st.HideNotSelected(stw)
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
+					case key.CodeF:
+						if e.Modifiers&key.ModControl != 0 {
+							st.SetFocus(stw)
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
+					case key.CodeA:
+						if e.Modifiers&key.ModControl != 0 {
+							st.SelectNotHidden(stw)
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
+					case key.CodeS:
+						if e.Modifiers&key.ModControl != 0 {
+							st.ShowAll(stw)
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
+					case key.CodeP:
+						if e.Modifiers&key.ModControl != 0 {
+							if !((prevkey.Code == key.CodeP || prevkey.Code == key.CodeN) && prevkey.Modifiers&key.ModControl != 0) {
+								cline = stw.CommandLineString()
+							}
+							stw.PrevCommandHistory(cline)
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
+					case key.CodeN:
+						if e.Modifiers&key.ModControl != 0 {
+							if !((prevkey.Code == key.CodeP || prevkey.Code == key.CodeN) && prevkey.Modifiers&key.ModControl != 0) {
+								cline = stw.CommandLineString()
+							}
+							stw.NextCommandHistory(cline)
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
+					case key.CodeY:
+						if e.Modifiers&key.ModControl != 0 {
+							f, err := stw.Redo()
+							if err != nil {
+								st.ErrorMessage(stw, err, st.ERROR)
+							} else {
+								stw.frame = f
+							}
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
+					case key.CodeZ:
+						if e.Modifiers&key.ModControl != 0 {
+							f, err := stw.Undo()
+							if err != nil {
+								st.ErrorMessage(stw, err, st.ERROR)
+							} else {
+								stw.frame = f
+							}
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
+					case key.CodeC:
+						if e.Modifiers&key.ModControl != 0 {
+							err := st.CopyClipboard(stw)
+							if err != nil {
+								st.ErrorMessage(stw, err, st.ERROR)
+							}
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
+					case key.CodeV:
+						if e.Modifiers&key.ModControl != 0 {
+							err := st.PasteClipboard(stw)
+							if err != nil {
+								st.ErrorMessage(stw, err, st.ERROR)
+							}
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
+					}
+					stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
+					if setprev {
+						prevkey = e
+					}
+				} else if keymode == VIEWEDIT {
+					redraw := true
+					switch e.Code {
+					default:
+						redraw = false
+					case key.CodeM:
+						if e.Modifiers&key.ModControl != 0 {
+							keymode = NORMAL
+						}
+					case key.CodeH:
+						dx := 100.0
 						if e.Modifiers&key.ModShift != 0 {
-							stw.PrevComplete()
+							stw.frame.View.Center[0] += dx * stw.CanvasMoveSpeedX()
 						} else {
-							stw.NextComplete()
+							stw.frame.View.Angle[1] -= dx * stw.CanvasRotateSpeedX()
 						}
-					} else {
-						stw.Complete()
-					}
-				case key.CodeSpacebar:
-					stw.EndCompletion()
-					cl := stw.CommandLineString()
-					if strings.Contains(cl, " ") {
-						if lis, ok := stw.ContextComplete(); ok {
-							cls := strings.Split(cl, " ")
-							cls[len(cls) - 1] = lis[0] + " "
-							stw.SetCommandLineString(strings.Join(cls, " "))
+					case key.CodeJ:
+						dy := 100.0
+						if e.Modifiers&key.ModShift != 0 {
+							stw.frame.View.Center[1] += dy * stw.CanvasMoveSpeedY()
 						} else {
-							stw.TypeCommandLine(" ")
+							stw.frame.View.Angle[0] += dy * stw.CanvasRotateSpeedY()
 						}
-					} else if strings.HasPrefix(cl, ":") {
-						c, bang, usage, comp := st.ExModeComplete(cl)
-						var b, u string
-						if bang {
-							b = "!"
+					case key.CodeK:
+						dy := -100.0
+						if e.Modifiers&key.ModShift != 0 {
+							stw.frame.View.Center[1] += dy * stw.CanvasMoveSpeedY()
 						} else {
-							b = ""
+							stw.frame.View.Angle[0] += dy * stw.CanvasRotateSpeedY()
 						}
-						if usage {
-							u = "?"
+					case key.CodeL:
+						dx := -100.0
+						if e.Modifiers&key.ModShift != 0 {
+							stw.frame.View.Center[0] += dx * stw.CanvasMoveSpeedX()
 						} else {
-							u = ""
+							stw.frame.View.Angle[1] -= dx * stw.CanvasRotateSpeedX()
 						}
-						if comp != nil {
-							str := fmt.Sprintf(":%s%s%s ", c, b, u)
-							stw.SetCommandLineString(str)
-							comp.Chdir(stw.Cwd())
-							stw.SetComplete(comp)
+					case key.CodeZ:
+						if e.Modifiers&key.ModShift != 0 {
+							stw.ZoomOut(stw.frame.View.Center[0], stw.frame.View.Center[1])
 						} else {
-							stw.TypeCommandLine(" ")
+							stw.ZoomIn(stw.frame.View.Center[0], stw.frame.View.Center[1])
 						}
-					} else if strings.HasPrefix(cl, "'") {
-						c, usage, comp := st.Fig2KeywordComplete(cl)
-						var u string
-						if usage {
-							u = "?"
-						} else {
-							u = ""
-						}
-						if comp != nil {
-							str := fmt.Sprintf("'%s%s ", c, u)
-							stw.SetCommandLineString(str)
-							comp.Chdir(stw.Cwd())
-							stw.SetComplete(comp)
-						} else {
-							stw.TypeCommandLine(" ")
-						}
-					} else {
-						stw.TypeCommandLine(" ")
 					}
-				case key.CodeUnknown:
-					setprev = false
-				case key.CodeLeftShift:
-					setprev = false
-				case key.CodeLeftAlt:
-					setprev = false
-				case key.CodeReturnEnter:
-					stw.FeedCommand()
-				case key.CodeEscape:
-					stw.QuitCommand()
-					stw.ClearCommandLine()
-					stw.Deselect()
-					stw.Redraw()
-					stw.window.Publish()
-				case key.CodeLeftControl:
-					setprev = false
-				case key.CodeRightControl:
-					setprev = false
-				case key.CodeRightArrow:
-					stw.SeekForward()
-				case key.CodeLeftArrow:
-					stw.SeekBackward()
-				case key.CodeDownArrow:
-					if e.Modifiers&key.ModControl != 0 {
-						st.PrevFloor(stw)
-					} else {
-						stw.SeekLast()
+					if redraw {
+						stw.Redraw()
 					}
-				case key.CodeUpArrow:
-					if e.Modifiers&key.ModControl != 0 {
-						st.NextFloor(stw)
-					} else {
-						stw.SeekHead()
-					}
-				case key.CodeW:
-					if e.Modifiers&key.ModControl != 0 {
-						stw.PopHistoryDialog()
-					} else {
-						stw.TypeCommandLine(string(kc.Rune))
-					}
-				case key.CodeD:
-					if e.Modifiers&key.ModControl != 0 {
-						st.HideNotSelected(stw)
-					} else {
-						stw.TypeCommandLine(string(kc.Rune))
-					}
-				case key.CodeF:
-					if e.Modifiers&key.ModControl != 0 {
-						st.SetFocus(stw)
-					} else {
-						stw.TypeCommandLine(string(kc.Rune))
-					}
-				case key.CodeA:
-					if e.Modifiers&key.ModControl != 0 {
-						st.SelectNotHidden(stw)
-					} else {
-						stw.TypeCommandLine(string(kc.Rune))
-					}
-				case key.CodeS:
-					if e.Modifiers&key.ModControl != 0 {
-						st.ShowAll(stw)
-					} else {
-						stw.TypeCommandLine(string(kc.Rune))
-					}
-				case key.CodeP:
-					if e.Modifiers&key.ModControl != 0 {
-						if !((prevkey.Code == key.CodeP || prevkey.Code == key.CodeN) && prevkey.Modifiers&key.ModControl != 0) {
-							cline = stw.CommandLineString()
-						}
-						stw.PrevCommandHistory(cline)
-					} else {
-						stw.TypeCommandLine(string(kc.Rune))
-					}
-				case key.CodeN:
-					if e.Modifiers&key.ModControl != 0 {
-						if !((prevkey.Code == key.CodeP || prevkey.Code == key.CodeN) && prevkey.Modifiers&key.ModControl != 0) {
-							cline = stw.CommandLineString()
-						}
-						stw.NextCommandHistory(cline)
-					} else {
-						stw.TypeCommandLine(string(kc.Rune))
-					}
-				case key.CodeY:
-					if e.Modifiers&key.ModControl != 0 {
-						f, err := stw.Redo()
-						if err != nil {
-							st.ErrorMessage(stw, err, st.ERROR)
-						} else {
-							stw.frame = f
-						}
-					} else {
-						stw.TypeCommandLine(string(kc.Rune))
-					}
-				case key.CodeZ:
-					if e.Modifiers&key.ModControl != 0 {
-						f, err := stw.Undo()
-						if err != nil {
-							st.ErrorMessage(stw, err, st.ERROR)
-						} else {
-							stw.frame = f
-						}
-					} else {
-						stw.TypeCommandLine(string(kc.Rune))
-					}
-				case key.CodeC:
-					if e.Modifiers&key.ModControl != 0 {
-						err := st.CopyClipboard(stw)
-						if err != nil {
-							st.ErrorMessage(stw, err, st.ERROR)
-						}
-					} else {
-						stw.TypeCommandLine(string(kc.Rune))
-					}
-				case key.CodeV:
-					if e.Modifiers&key.ModControl != 0 {
-						err := st.PasteClipboard(stw)
-						if err != nil {
-							st.ErrorMessage(stw, err, st.ERROR)
-						}
-					} else {
-						stw.TypeCommandLine(string(kc.Rune))
-					}
-				}
-				stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
-				if setprev {
-					prevkey = e
 				}
 			case key.DirNone:
 				kc := keymap(e)
