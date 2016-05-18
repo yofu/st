@@ -190,7 +190,13 @@ func (stw *Window) Start() {
 					stw.EndCompletion()
 					cl := stw.CommandLineString()
 					if strings.Contains(cl, " ") {
-						stw.TypeCommandLine(" ")
+						if lis, ok := stw.ContextComplete(); ok {
+							cls := strings.Split(cl, " ")
+							cls[len(cls) - 1] = lis[0] + " "
+							stw.SetCommandLineString(strings.Join(cls, " "))
+						} else {
+							stw.TypeCommandLine(" ")
+						}
 					} else if strings.HasPrefix(cl, ":") {
 						c, bang, usage, comp := st.ExModeComplete(cl)
 						var b, u string

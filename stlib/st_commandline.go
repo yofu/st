@@ -237,6 +237,8 @@ func (c *CommandLine) EndCompletion() {
 		c.words[len(c.words)-1] = c.completes[c.completepos]
 		c.SeekLast()
 	}
+	c.completes = make([]string, 0)
+	c.completepos = 0
 }
 
 func (c *CommandLine) SetComplete(comp *complete.Complete) {
