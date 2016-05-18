@@ -1083,12 +1083,12 @@ func DrawFrameNode(stw Drawer, frame *Frame, color uint, flush bool) {
 	wi, hi := stw.GetCanvasSize()
 	w := float64(wi)
 	h := float64(hi)
+	stw.Foreground(GREEN)
 	for _, n := range frame.Nodes {
 		frame.View.ProjectNode(n)
 		if show.Deformation {
 			frame.View.ProjectDeformation(n, show)
 		}
-		stw.Foreground(GREEN)
 		for _, j := range stw.SelectedNodes() {
 			if j == n {
 				DrawNode(stw, n, show)
@@ -1105,6 +1105,9 @@ func DrawFrameNode(stw Drawer, frame *Frame, color uint, flush bool) {
 			go func(el *Elem) {
 				defer wg.Done()
 				if el.Etype >= WBRACE || el.Etype < COLUMN {
+					return
+				}
+				if !InBound(el, w, h) {
 					return
 				}
 				for _, j := range stw.SelectedElems() {
