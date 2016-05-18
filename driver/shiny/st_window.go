@@ -379,12 +379,29 @@ func (stw *Window) Start() {
 					}
 				} else if keymode == VIEWEDIT {
 					redraw := true
-					switch e.Code {
+					kc := keymap(e)
+					switch kc.Code {
 					default:
 						redraw = false
 					case key.CodeM:
 						if e.Modifiers&key.ModControl != 0 {
 							keymode = NORMAL
+						}
+					case key.CodeI, key.CodeA, key.CodeC, key.CodeS:
+						keymode = NORMAL
+					case key.CodeSemicolon:
+						if kc.Rune == ':' {
+							keymode = NORMAL
+							stw.TypeCommandLine(":")
+							stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
+							redraw = false
+						}
+					case key.CodeApostrophe:
+						if kc.Rune == '\'' {
+							keymode = NORMAL
+							stw.TypeCommandLine("'")
+							stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
+							redraw = false
 						}
 					case key.CodeH:
 						dx := 100.0
