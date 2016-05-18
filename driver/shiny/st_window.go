@@ -271,7 +271,7 @@ func (stw *Window) Start() {
 					} else {
 						stw.SeekHead()
 					}
-				case key.CodeH:
+				case key.CodeW:
 					if e.Modifiers&key.ModControl != 0 {
 						stw.PopHistoryDialog()
 					} else {
