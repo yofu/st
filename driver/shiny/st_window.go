@@ -96,7 +96,7 @@ type Window struct {
 	textBox         map[string]*st.TextBox
 }
 
-func NewWindow(s screen.Screen) *Window {
+func NewWindow(s screen.Screen, w screen.Window) *Window {
 	return &Window{
 		DrawOption:      st.NewDrawOption(),
 		Directory:       st.NewDirectory("", ""),
@@ -109,7 +109,7 @@ func NewWindow(s screen.Screen) *Window {
 		Alias:           st.NewAlias(),
 		frame:           st.NewFrame(),
 		screen:          s,
-		window:          nil,
+		window:          w,
 		history:         nil,
 		buffer:          nil,
 		currentPen:      color.RGBA{0xff, 0xff, 0xff, 0xff},
@@ -145,16 +145,7 @@ func keymap(ev key.Event) key.Event {
 }
 
 func (stw *Window) Start() {
-	w, err := stw.screen.NewWindow(&screen.NewWindowOptions{
-		Width:  1024,
-		Height: 1024,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	stw.window = w
-	defer stw.window.Release()
-	err = stw.LoadFontFace(filepath.Join(home, ".st/fonts/GenShinGothic-Regular.ttf"), 12)
+	err := stw.LoadFontFace(filepath.Join(home, ".st/fonts/GenShinGothic-Regular.ttf"), 12)
 	if err != nil {
 		st.ErrorMessage(stw, err, st.ERROR)
 	}
