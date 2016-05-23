@@ -3720,6 +3720,46 @@ func (frame *Frame) Upside() {
 
 // }}}
 
+func (frame *Frame) SetBoundary(num int, eps float64) error {
+	nodes := make([]*Node, 0)
+	nnum := 0
+	for _, n := range frame.Nodes {
+		nodes = append(nodes, n)
+		nnum++
+	}
+	nodes = nodes[:nnum]
+	sort.Sort(NodeByZCoord{nodes})
+	dhs := make([]float64, num-1)
+	bounds := make([]float64, num+1)
+	var dh float64
+	for i := 0; i < nnum - 1; i++ {
+		dh = nodes[i+1].Coord[2] - nodes[i].Coord[2]
+		for j := num - 2; j > 0; j-- {
+			if dh > dhs[j] {
+				for k := 0; k < j; k++ {
+					dhs[k] = dhs[k+1]
+					bounds[k+1] = bounds[k+2]
+				}
+				dhs[j] = dh
+				bounds[j+1] = nodes[i].Coord[2]
+				break
+			}
+		}
+	}
+	bounds[0] = nodes[0].Coord[2] - eps
+	bounds[num] = nodes[nnum-1].Coord[2] + eps
+	for i := 1; i < num-1; i++ {
+		bounds[i] += eps
+	}
+	sort.Float64s(bounds)
+	frame.Ai.Nfloor = num
+	frame.Ai.Boundary = make([]float64, num+1)
+	for i := 0; i < num + 1; i++ {
+		frame.Ai.Boundary[i] = bounds[i]
+	}
+	return nil
+}
+
 // ExtractArclm// {{{
 func (frame *Frame) ExtractArclm(fn string) error {
 	err := frame.WeightDistribution(fn)

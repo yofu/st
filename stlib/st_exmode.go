@@ -68,6 +68,7 @@ var (
 		"pl/oad":            complete.MustCompile(":pload _", nil),
 		"z/oubun/d/isp":     complete.MustCompile(":zoubundisp", nil),
 		"z/oubun/r/eaction": complete.MustCompile(":zoubunreaction", nil),
+		"setb/oundary":      complete.MustCompile(":setboundary [eps:_]", nil),
 		"fac/ts":            complete.MustCompile(":facts [skipany:_] [skipall:_]", nil),
 		"go/han/l/st":       complete.MustCompile(":gohanlst _ _", nil),
 		"el/em": complete.MustCompile(":elem $TYPE _",
@@ -1262,6 +1263,27 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		total := alpha * (ccol*sumcol + cwall*sumwall)
 		m.WriteString(fmt.Sprintf("COLUMN: %.3f WALL: %.3f TOTAL: %.3f", sumcol, sumwall, total))
 		return Message(m.String())
+	case "setboundary":
+		if usage {
+			return Usage(":setboundary nfloor")
+		}
+		if narg < 2 {
+			return NotEnoughArgs(":setboundary")
+		}
+		val, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		eps := 0.001
+		if e, ok := argdict["EPS"]; ok {
+			if e != "" {
+				tmp, err := strconv.ParseFloat(e, 64)
+				if err == nil {
+					eps = tmp
+				}
+			}
+		}
+		frame.SetBoundary(int(val), eps)
 	case "facts":
 		if usage {
 			return Usage(":facts {-skipany=code} {-skipall=code}")
