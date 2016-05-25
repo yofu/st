@@ -544,46 +544,50 @@ func (elem *Elem) StiffMatrix() ([][]float64, error) {
 	for i := 0; i < 12; i++ {
 		estiff[i] = make([]float64, 12)
 	}
+	// K11
 	estiff[0][0] = E * A * il
-	estiff[0][6] = -estiff[0][0]
 	estiff[1][1] = 12.0 * E * IY * il * il * il
 	estiff[1][5] = 6.0 * E * IY * il * il
-	estiff[1][7] = -estiff[1][1]
-	estiff[1][11] = estiff[1][5]
 	estiff[2][2] = 12.0 * E * IX * il * il * il
 	estiff[2][4] = -6.0 * E * IX * il * il
+	estiff[3][3] = G * J * il
+	estiff[4][4] = 4.0 * E * IX * il
+	estiff[5][5] = 4.0 * E * IY * il
+	// K12
+	estiff[0][6] = -estiff[0][0]
+	estiff[1][7] = -estiff[1][1]
+	estiff[1][11] = estiff[1][5]
 	estiff[2][8] = -estiff[2][2]
 	estiff[2][10] = estiff[2][4]
-	estiff[3][3] = G * J * il
 	estiff[3][9] = -estiff[3][3]
-	estiff[4][2] = estiff[2][4]
-	estiff[4][4] = 4.0 * E * IX * il
 	estiff[4][8] = -estiff[2][4]
 	estiff[4][10] = 2.0 * E * IX * il
-	estiff[5][1] = estiff[1][5]
-	estiff[5][5] = 4.0 * E * IY * il
 	estiff[5][7] = -estiff[1][5]
 	estiff[5][11] = 2.0 * E * IY * il
-	estiff[6][0] = estiff[0][6]
+	// K22
 	estiff[6][6] = estiff[0][0]
+	estiff[7][7] = estiff[1][1]
+	estiff[7][11] = -estiff[1][5]
+	estiff[8][8] = estiff[2][2]
+	estiff[8][10] = -estiff[2][4]
+	estiff[9][9] = estiff[3][3]
+	estiff[10][10] = estiff[4][4]
+	estiff[11][11] = estiff[5][5]
+	// SYM
+	estiff[4][2] = estiff[2][4]
+	estiff[5][1] = estiff[1][5]
+	estiff[6][0] = estiff[0][6]
 	estiff[7][1] = estiff[1][7]
 	estiff[7][5] = estiff[5][7]
-	estiff[7][7] = estiff[1][1]
-	estiff[7][11] = estiff[5][7]
 	estiff[8][2] = estiff[2][8]
 	estiff[8][4] = estiff[4][8]
-	estiff[8][8] = estiff[2][2]
-	estiff[8][10] = estiff[4][8]
 	estiff[9][3] = estiff[3][9]
-	estiff[9][9] = estiff[3][3]
 	estiff[10][2] = estiff[2][10]
 	estiff[10][4] = estiff[4][10]
 	estiff[10][8] = estiff[8][10]
-	estiff[10][10] = estiff[4][4]
 	estiff[11][1] = estiff[1][11]
 	estiff[11][5] = estiff[5][11]
 	estiff[11][7] = estiff[7][11]
-	estiff[11][11] = estiff[5][5]
 	return estiff, nil
 }
 
