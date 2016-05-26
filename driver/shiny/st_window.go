@@ -242,7 +242,16 @@ func (stw *Window) Start() {
 					case key.CodeLeftAlt:
 						setprev = false
 					case key.CodeReturnEnter:
-						stw.FeedCommand()
+						if e.Modifiers&key.ModControl != 0 {
+							fn := filepath.Join(stw.Cwd(), "command.txt")
+							if st.FileExists(fn) {
+								st.ReadResource(stw, fn)
+							} else {
+								stw.History(fmt.Sprintf("%s doesn't exist", fn))
+							}
+						} else {
+							stw.FeedCommand()
+						}
 					case key.CodeEscape:
 						stw.QuitCommand()
 						stw.ClearCommandLine()
