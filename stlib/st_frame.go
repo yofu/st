@@ -5127,7 +5127,7 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, props []*Prop, sect
 		otp.WriteString(fmt.Sprintf("NFLOOR %d\n", ai.Nfloor))
 		otp.WriteString("HEIGHT")
 		for i := 0; i < ai.Nfloor+1; i++ {
-			otp.WriteString(fmt.Sprintf(" %.1f", ai.Boundary[i]))
+			otp.WriteString(fmt.Sprintf(" %.3f", ai.Boundary[i]))
 		}
 		otp.WriteString("\n")
 	}
