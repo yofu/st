@@ -3560,7 +3560,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
 	case "arclm001":
 		if usage {
-			return Usage(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} filename")
+			return Usage(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} {-wait} filename")
 		}
 		var otp string
 		if fn == "" {
@@ -3586,6 +3586,12 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					eps = tmp
 				}
 			}
+		}
+		wait := false
+		var wch chan int
+		if _, ok := argdict["WAIT"]; ok {
+			wait = true
+			wch = make(chan int)
 		}
 		per := "L"
 		if p, ok := argdict["PERIOD"]; ok {
@@ -3662,10 +3668,16 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					stw.CurrentLap("Completed", lap, lap)
 					SetPeriod(stw, per)
 					stw.Redraw()
+					if wait {
+						wch <- 1
+					}
 					break read001
 				}
 			}
 		}()
+		if wait {
+			<-wch
+		}
 		return ArclmStart(m.String())
 	case "arclm201":
 		if usage {
