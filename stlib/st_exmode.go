@@ -1047,7 +1047,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			es := make([]*Elem, len(els))
 			enum := 0
 			for k := range els {
-				es = append(es, k)
+				es[enum] = k
 				enum++
 			}
 			stw.SelectElem(es[:enum])
