@@ -2709,11 +2709,32 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 	case "copy":
 		if narg < 2 {
 			if usage {
-				return Usage(":copy [sect]")
+				return Usage(":copy [amount,elem,sect,stress]")
 			}
 			return NotEnoughArgs(":copy")
 		}
 		switch strings.ToLower(args[1]) {
+		case "elem":
+			if usage {
+				return Usage(":copy elem x y z")
+			}
+			if narg < 5 {
+				return NotEnoughArgs(":copy elem")
+			}
+			vec := make([]float64, 3)
+			for i := 0; i < 3; i++ {
+				val, err := strconv.ParseFloat(args[2+i], 64)
+				if err != nil {
+					return err
+				}
+				vec[i] = val
+			}
+			for _, el := range currentelem(stw, exmodech, exmodeend) {
+				if el == nil || el.IsHidden(frame.Show) || el.Lock {
+					continue
+				}
+				el.Copy(vec[0], vec[1], vec[2], EPS)
+			}
 		case "stress":
 			if usage {
 				return Usage(":copy stress {-format=%.3f} [01]{0,12}")
