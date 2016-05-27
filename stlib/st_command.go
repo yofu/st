@@ -16,6 +16,7 @@ var (
 		"HATCHPLATEELEM": HatchPlateElem,
 		"COPYELEM":       CopyElem,
 		"TRIM":           Trim,
+		"MOVEUPDOWN":     MoveUpDown,
 	}
 )
 
@@ -517,4 +518,44 @@ func Trim(stw Commander) chan bool {
 			ErrorMessage(stw, err, ERROR)
 		}
 	})
+}
+
+func MoveUpDown(stw Commander) chan bool {
+	quit := make(chan bool)
+	go func() {
+		clickch := stw.GetClick()
+		wheelch := stw.GetWheel()
+	moveupdown:
+		for {
+			select {
+			case w := <-wheelch:
+				var val float64
+				switch w {
+				case WheelUp:
+					val = 0.1
+				case WheelDown:
+					val = -0.1
+				}
+				pos := stw.CurrentPointerPosition()
+				ns, picked := PickNode(stw, pos[0], pos[1], pos[0], pos[1])
+				if picked {
+					ns[0].Coord[2] += val
+				}
+				stw.Redraw()
+			case c := <-clickch:
+				switch c.Button {
+				case ButtonRight:
+					Snapshot(stw)
+					stw.EndCommand()
+					stw.Redraw()
+					break moveupdown
+				}
+			case <-quit:
+				stw.EndCommand()
+				stw.Redraw()
+				break moveupdown
+			}
+		}
+	}()
+	return quit
 }
