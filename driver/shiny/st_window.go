@@ -563,9 +563,27 @@ func (stw *Window) Start() {
 						}
 					}
 				case mouse.ButtonWheelUp:
-					stw.ZoomIn(float64(e.X), float64(e.Y))
+					if stw.Executing() {
+						sent := stw.SendWheel(st.WheelUp)
+						if !sent {
+							stw.ZoomIn(float64(e.X), float64(e.Y))
+							stw.Redraw()
+							stw.window.Publish()
+						}
+					} else {
+						stw.ZoomIn(float64(e.X), float64(e.Y))
+					}
 				case mouse.ButtonWheelDown:
-					stw.ZoomOut(float64(e.X), float64(e.Y))
+					if stw.Executing() {
+						sent := stw.SendWheel(st.WheelDown)
+						if !sent {
+							stw.ZoomOut(float64(e.X), float64(e.Y))
+							stw.Redraw()
+							stw.window.Publish()
+						}
+					} else {
+						stw.ZoomOut(float64(e.X), float64(e.Y))
+					}
 				}
 				if !stw.Executing() {
 					stw.Redraw()
