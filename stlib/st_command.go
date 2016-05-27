@@ -79,6 +79,7 @@ func onenode(stw Commander, f func(*Node) error) chan bool {
 					stw.SetAltSelectNode(as)
 					stw.DeselectNode()
 					stw.EndCommand()
+					stw.Redraw()
 					break onenode
 				}
 			case c := <-clickch:
@@ -86,11 +87,13 @@ func onenode(stw Commander, f func(*Node) error) chan bool {
 					stw.SetAltSelectNode(as)
 					stw.Deselect()
 					stw.EndCommand()
+					stw.Redraw()
 					break onenode
 				}
 			case <-quit:
 				stw.SetAltSelectNode(as)
 				stw.EndCommand()
+				stw.Redraw()
 				break onenode
 			}
 		}
@@ -124,6 +127,7 @@ func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 						stw.DeselectNode()
 						stw.EndTail()
 						stw.EndCommand()
+						stw.Redraw()
 						break twonodes
 					}
 				}
@@ -133,12 +137,14 @@ func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 					stw.Deselect()
 					stw.EndTail()
 					stw.EndCommand()
+					stw.Redraw()
 					break twonodes
 				}
 			case <-quit:
 				stw.SetAltSelectNode(as)
 				stw.EndTail()
 				stw.EndCommand()
+				stw.Redraw()
 				break twonodes
 			}
 		}
@@ -191,10 +197,12 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 						if err != nil {
 							ErrorMessage(stw, err, ERROR)
 						}
+						stw.Redraw()
 					} else {
 						nodes = append(nodes, n)
 						AddSelection(stw, n)
 						stw.AddTail(n)
+						stw.Redraw()
 					}
 				}
 			case c := <-clickch:
@@ -211,12 +219,14 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 					stw.Deselect()
 					stw.EndTail()
 					stw.EndCommand()
+					stw.Redraw()
 					break multinodes
 				}
 			case <-quit:
 				stw.SetAltSelectNode(as)
 				stw.EndTail()
 				stw.EndCommand()
+				stw.Redraw()
 				break multinodes
 			}
 		}
@@ -283,6 +293,7 @@ func multielems(stw Commander, f func([]*Elem) error) chan bool {
 				if el != nil {
 					elems = append(elems, el)
 					AddSelection(stw, el)
+					stw.Redraw()
 				}
 			case c := <-clickch:
 				if c.Button == ButtonRight {
@@ -294,10 +305,12 @@ func multielems(stw Commander, f func([]*Elem) error) chan bool {
 					}
 					stw.Deselect()
 					stw.EndCommand()
+					stw.Redraw()
 					break erase
 				}
 			case <-quit:
 				stw.EndCommand()
+				stw.Redraw()
 				break erase
 			}
 		}
@@ -383,21 +396,26 @@ func HatchPlateElem(stw Commander) chan bool {
 					if err != nil {
 						ErrorMessage(stw, err, ERROR)
 						stw.EndCommand()
+						stw.Redraw()
 						break hatchplateelem
 					}
 					err = createhatch(ns)
 					if err != nil {
 						ErrorMessage(stw, err, ERROR)
 						stw.EndCommand()
+						stw.Redraw()
 						break hatchplateelem
 					}
+					stw.Redraw()
 				case ButtonRight:
 					Snapshot(stw)
 					stw.EndCommand()
+					stw.Redraw()
 					break hatchplateelem
 				}
 			case <-quit:
 				stw.EndCommand()
+				stw.Redraw()
 				break hatchplateelem
 			}
 		}
@@ -432,15 +450,18 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 					if c.Button == ButtonRight {
 						stw.Deselect()
 						stw.EndCommand()
+						stw.Redraw()
 						return
 					}
 				case <-quit:
 					stw.EndCommand()
+					stw.Redraw()
 					return
 				}
 			}
 		}
 		AddSelection(stw, el0)
+		stw.Redraw()
 	trim_click:
 		for {
 			select {
@@ -452,15 +473,18 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 						ErrorMessage(stw, fmt.Errorf("no elem"), ERROR)
 					} else {
 						f(c, el0, el)
+						stw.Redraw()
 					}
 				case ButtonRight:
 					stw.Deselect()
 					Snapshot(stw)
 					stw.EndCommand()
+					stw.Redraw()
 					break trim_click
 				}
 			case <-quit:
 				stw.EndCommand()
+				stw.Redraw()
 				break trim_click
 			}
 		}
