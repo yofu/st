@@ -325,11 +325,14 @@ func SortedElem(els map[int]*Elem, compare func(*Elem) float64) []*Elem {
 			elems[val] = append(elems[val], el)
 		}
 	}
-	for k := range elems {
-		keys = append(keys, k)
-	}
-	sort.Float64s(keys)
 	i := 0
+	for k := range elems {
+		keys[i] = k
+		i++
+	}
+	keys = keys[:i]
+	sort.Float64s(keys)
+	i = 0
 	for _, k := range keys {
 		for _, el := range elems[k] {
 			sortedelems[i] = el
