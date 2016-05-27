@@ -567,8 +567,10 @@ func (stw *Window) Start() {
 				case mouse.ButtonWheelDown:
 					stw.ZoomOut(float64(e.X), float64(e.Y))
 				}
-				stw.Redraw()
-				stw.window.Publish()
+				if !stw.Executing() {
+					stw.Redraw()
+					stw.window.Publish()
+				}
 			}
 		case paint.Event:
 			stw.window.Fill(sz.Bounds(), blue0, screen.Src)
