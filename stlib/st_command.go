@@ -3,6 +3,7 @@ package st
 import (
 	"bytes"
 	"fmt"
+	"math"
 )
 
 var (
@@ -522,6 +523,27 @@ func Trim(stw Commander) chan bool {
 
 func MoveUpDown(stw Commander) chan bool {
 	quit := make(chan bool)
+	frame := stw.Frame()
+	mv := func(n0 *Node, r, m float64) {
+		var dx, dy, d float64
+		for _, n := range frame.Nodes {
+			if n.IsHidden(frame.Show) || n.Lock {
+				continue
+			}
+			dx = math.Abs(n.Coord[0] - n0.Coord[0])
+			if dx <= 2*r {
+				dy = math.Abs(n.Coord[1] - n0.Coord[1])
+				if dy <= 2*r {
+					d = math.Sqrt(math.Pow(dx, 2.0) + math.Pow(dy, 2.0))
+					if d <= r {
+						n.Coord[2] += -0.5*m*math.Pow(d, 2.0)/math.Pow(r, 3.0) + m/r
+					} else if d <= 2*r {
+						n.Coord[2] += m/d - 0.5*m/r
+					}
+				}
+			}
+		}
+	}
 	go func() {
 		clickch := stw.GetClick()
 		wheelch := stw.GetWheel()
@@ -532,14 +554,14 @@ func MoveUpDown(stw Commander) chan bool {
 				var val float64
 				switch w {
 				case WheelUp:
-					val = 0.1
+					val = 0.05
 				case WheelDown:
-					val = -0.1
+					val = -0.05
 				}
 				pos := stw.CurrentPointerPosition()
 				ns, picked := PickNode(stw, pos[0], pos[1], pos[0], pos[1])
 				if picked {
-					ns[0].Coord[2] += val
+					mv(ns[0], 0.5, val)
 				}
 				stw.Redraw()
 			case c := <-clickch:
