@@ -404,7 +404,7 @@ func (stw *Window) Start() {
 							redraw = false
 						}
 					case key.CodeH:
-						dx := 100.0
+						dx := -100.0
 						if e.Modifiers&key.ModShift != 0 {
 							stw.frame.View.Center[0] += dx * stw.CanvasMoveSpeedX()
 						} else {
@@ -425,7 +425,7 @@ func (stw *Window) Start() {
 							stw.frame.View.Angle[0] += dy * stw.CanvasRotateSpeedY()
 						}
 					case key.CodeL:
-						dx := -100.0
+						dx := 100.0
 						if e.Modifiers&key.ModShift != 0 {
 							stw.frame.View.Center[0] += dx * stw.CanvasMoveSpeedX()
 						} else {
