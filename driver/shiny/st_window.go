@@ -392,6 +392,7 @@ func (stw *Window) Start() {
 					case key.CodeSemicolon:
 						if kc.Rune == ':' {
 							keymode = NORMAL
+							stw.Redraw()
 							stw.TypeCommandLine(":")
 							stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
 							redraw = false
@@ -399,6 +400,7 @@ func (stw *Window) Start() {
 					case key.CodeApostrophe:
 						if kc.Rune == '\'' {
 							keymode = NORMAL
+							stw.Redraw()
 							stw.TypeCommandLine("'")
 							stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
 							redraw = false
@@ -640,6 +642,10 @@ func (stw *Window) SetFrame(frame *st.Frame) {
 }
 
 func (stw *Window) Redraw() {
+	if keymode == VIEWEDIT {
+		stw.RedrawNode()
+		return
+	}
 	if drawing {
 		return
 	}
