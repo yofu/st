@@ -2706,6 +2706,55 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 			}
 		}
+	case "move":
+		if usage {
+			return Usage(":move x y z")
+		}
+		if narg < 4 {
+			return NotEnoughArgs(":move")
+		}
+		vec := make([]float64, 3)
+		for i := 0; i < 3; i++ {
+			val, err := strconv.ParseFloat(args[1+i], 64)
+			if err != nil {
+				return err
+			}
+			vec[i] = val
+		}
+		ns := make([]*Node, 0)
+		if stw.NodeSelected() {
+			for _, n := range stw.SelectedNodes() {
+				if n != nil {
+					ns = append(ns, n)
+				}
+			}
+		}
+		els := currentelem(stw, exmodech, exmodeend)
+		if len(els) > 0 {
+			en := frame.ElemToNode(els...)
+			var add bool
+			for _, n := range en {
+				add = true
+				for _, m := range ns {
+					if m == n {
+						add = false
+						break
+					}
+				}
+				if add {
+					ns = append(ns, n)
+				}
+			}
+		}
+		if len(ns) == 0 {
+			return nil
+		}
+		for _, n := range ns {
+			if n == nil || n.IsHidden(frame.Show) || n.Lock {
+				continue
+			}
+			n.Move(vec[0], vec[1], vec[2])
+		}
 	case "copy":
 		if narg < 2 {
 			if usage {
