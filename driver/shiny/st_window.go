@@ -584,6 +584,10 @@ func (stw *Window) Start() {
 	}
 }
 
+func (stw *Window) CurrentPointerPosition() []int {
+	return []int{endX, endY}
+}
+
 func (stw *Window) ZoomIn(x, y float64) {
 	stw.Zoom(1.0, x, y)
 }

@@ -28,6 +28,7 @@ type Commander interface {
 	DeleteCommandAlias(key string)
 	ClearCommandAlias()
 	CommandAlias(key string) (func(Commander) chan bool, bool)
+	CurrentPointerPosition() []int
 }
 
 type Click struct {
