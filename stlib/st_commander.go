@@ -19,6 +19,8 @@ type Commander interface {
 	SendNode(*Node)
 	GetClick() chan Click
 	SendClick(Click)
+	GetWheel() chan Wheel
+	SendWheel(Wheel) bool
 	GetModifier() chan Modifier
 	SendModifier(Modifier)
 	AddTail(*Node)
@@ -37,6 +39,8 @@ type Click struct {
 	Y      int
 }
 
+type Wheel int
+
 type Modifier struct {
 	Shift bool
 	Ctrl  bool
@@ -47,6 +51,11 @@ const (
 	ButtonLeft int = iota
 	ButtonMiddle
 	ButtonRight
+)
+
+const (
+	WheelUp Wheel = iota
+	WheelDown
 )
 
 func ClickLeft(x, y int) Click {
@@ -67,6 +76,7 @@ type CommandBuffer struct {
 	elem  chan *Elem
 	node  chan *Node
 	click chan Click
+	wheel chan Wheel
 	mod   chan Modifier
 }
 
@@ -77,6 +87,7 @@ func NewCommandBuffer() *CommandBuffer {
 		elem:  nil,
 		node:  nil,
 		click: nil,
+		wheel: nil,
 		mod:   nil,
 	}
 }
@@ -126,6 +137,19 @@ func (cb *CommandBuffer) SendClick(c Click) {
 	}
 }
 
+func (cb *CommandBuffer) GetWheel() chan Wheel {
+	cb.wheel = make(chan Wheel)
+	return cb.wheel
+}
+
+func (cb *CommandBuffer) SendWheel(w Wheel) bool {
+	if cb.wheel != nil {
+		cb.wheel <- w
+		return true
+	}
+	return false
+}
+
 func (cb *CommandBuffer) GetModifier() chan Modifier {
 	cb.mod = make(chan Modifier)
 	return cb.mod
@@ -149,6 +173,7 @@ func (cb *CommandBuffer) EndCommand() {
 		cb.elem = nil
 		cb.node = nil
 		cb.click = nil
+		cb.wheel = nil
 		cb.mod = nil
 		cb.quit = nil
 	}
