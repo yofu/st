@@ -19,6 +19,7 @@ func (t *TagFrame) Checkout(name string) (*Frame, error) {
 	if !exists {
 		return nil, fmt.Errorf("tag %s doesn't exist", name)
 	}
+	t.dict[name] = f.Snapshot()
 	return f, nil
 }
 
