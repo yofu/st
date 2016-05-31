@@ -165,7 +165,7 @@ func (stw *Window) Start() {
 			}
 		case key.Event:
 			switch e.Direction {
-			case key.DirPress:
+			case key.DirPress, key.DirNone:
 				setprev := true
 				if keymode == NORMAL {
 					kc := keymap(e)
@@ -444,13 +444,6 @@ func (stw *Window) Start() {
 						stw.Redraw()
 					}
 				}
-			case key.DirNone:
-				kc := keymap(e)
-				switch kc.Code {
-				case key.CodeDeleteBackspace:
-					stw.BackspaceCommandLine()
-				}
-				stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
 			}
 		case mouse.Event:
 			if (e.Button == mouse.ButtonWheelUp || e.Button == mouse.ButtonWheelDown) && e.Direction == mouse.DirNone {
