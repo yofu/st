@@ -4193,10 +4193,26 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		return ArclmStart(m.String())
 	case "camber":
 		if usage {
-			return Usage(":camber period factor")
+			return Usage(":camber [axis] period factor")
 		}
 		if narg < 2 {
 			return NotEnoughArgs(":camber")
+		}
+		axis := []bool{true, true, true}
+		if ax, ok := argdict["AXIS"]; ok {
+			for i := 0; i < 3; i++ {
+				axis[i] = false
+			}
+			for _, a := range strings.Split(ax, ",") {
+				a2 := strings.TrimSpace(a)
+				if strings.EqualFold(a2, "x") {
+					axis[0] = true
+				} else if strings.EqualFold(a2, "y") {
+					axis[1] = true
+				} else if strings.EqualFold(a2, "z") {
+					axis[2] = true
+				}
+			}
 		}
 		period := strings.ToUpper(args[1])
 		factor, err := strconv.ParseFloat(args[2], 64)
@@ -4206,7 +4222,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		factor *= -1.0
 		for _, n := range frame.Nodes {
 			for i := 0; i < 3; i++ {
-				n.Coord[i] += n.Disp[period][i] * factor
+				if axis[i] {
+					n.Coord[i] += n.Disp[period][i] * factor
+				}
 			}
 		}
 		Snapshot(stw)
