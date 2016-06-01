@@ -570,11 +570,13 @@ func MoveUpDown(stw Commander) chan bool {
 					Snapshot(stw)
 					stw.EndCommand()
 					stw.Redraw()
+					Snapshot(stw)
 					break moveupdown
 				}
 			case <-quit:
 				stw.EndCommand()
 				stw.Redraw()
+				Snapshot(stw)
 				break moveupdown
 			}
 		}
