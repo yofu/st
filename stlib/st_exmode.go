@@ -4191,6 +4191,25 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 		}()
 		return ArclmStart(m.String())
+	case "camber":
+		if usage {
+			return Usage(":camber period factor")
+		}
+		if narg < 2 {
+			return NotEnoughArgs(":camber")
+		}
+		period := strings.ToUpper(args[1])
+		factor, err := strconv.ParseFloat(args[2], 64)
+		if err != nil {
+			return err
+		}
+		factor *= -1.0
+		for _, n := range frame.Nodes {
+			for i := 0; i < 3; i++ {
+				n.Coord[i] += n.Disp[period][i] * factor
+			}
+		}
+		Snapshot(stw)
 	}
 	return nil
 }
