@@ -4100,8 +4100,10 @@ func (frame *Frame) AiDistribution() (string, error) {
 			}
 		}
 	}
-	frame.Ai.Hi[size-1] = frame.Ai.Qi[size-1]
-	facts[size-1] = frame.Ai.Hi[size-1] / frame.Ai.Wi[size-1]
+	if size > 1 {
+		frame.Ai.Hi[size-1] = frame.Ai.Qi[size-1]
+		facts[size-1] = frame.Ai.Hi[size-1] / frame.Ai.Wi[size-1]
+	}
 	for _, n := range frame.Nodes {
 		height := n.Coord[2]
 		if height < frame.Ai.Boundary[0] {
