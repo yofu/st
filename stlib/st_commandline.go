@@ -97,7 +97,8 @@ func (c *CommandLine) TypeCommandLine(s string) {
 			pos := c.position
 			for i, w := range c.words {
 				l := len(w)
-				if pos < l {
+				fmt.Println(i, w, l, pos)
+				if pos <= l {
 					c.words[i] = fmt.Sprintf("%s%s%s", c.words[i][:pos], s, c.words[i][pos:])
 					c.position++
 					break
@@ -136,7 +137,7 @@ func (c *CommandLine) BackspaceCommandLine() {
 		c.position--
 		for i, w := range c.words {
 			l := len(w)
-			if pos < l {
+			if pos <= l {
 				c.words[i] = fmt.Sprintf("%s%s", c.words[i][:pos-1], c.words[i][pos:])
 				return
 			}
