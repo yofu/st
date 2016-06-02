@@ -73,7 +73,7 @@ var (
 		"go/han/l/st":       complete.MustCompile(":gohanlst _ _", nil),
 		"el/em": complete.MustCompile(":elem $TYPE _",
 			map[string][]string{
-				"TYPE": []string{"sect", "etype", "reaction"},
+				"TYPE": []string{"sect", "etype", "curtain", "isgohan", "error", "reaction", "locked", "isolated"},
 			}),
 		"ave/rage":       complete.MustCompile(":average", nil),
 		"bo/nd":          complete.MustCompile(":bond", nil),
@@ -1833,7 +1833,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 	case "elem":
 		if usage {
-			return Usage(":elem [elemcode,sect sectcode,etype,reaction,locked,isolated]")
+			return Usage(":elem [elemcode,sect sectcode,etype,curtain,isgohan,error,reaction,locked,isolated]")
 		}
 		stw.Deselect()
 		var f func(*Elem) bool
