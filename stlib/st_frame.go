@@ -3762,6 +3762,25 @@ func (frame *Frame) SetBoundary(num int, eps float64) error {
 
 // ExtractArclm// {{{
 func (frame *Frame) ExtractArclm(fn string) error {
+	cmqs := make(map[int][]float64)
+	for _, el := range frame.Elems {
+		cmqs[el.Num] = make([]float64, 12)
+		for i := 0; i < 12; i++ {
+			cmqs[el.Num][i] = el.Cmq[i]
+		}
+	}
+	defer func() {
+		for _, n := range frame.Nodes {
+			for i := 0; i < 3; i++ {
+				n.Weight[i] = 0.0
+			}
+		}
+		for _, el := range frame.Elems {
+			for i := 0; i < 12; i++ {
+				el.Cmq[i] = cmqs[el.Num][i]
+			}
+		}
+	}()
 	err := frame.WeightDistribution(fn)
 	if err != nil {
 		return err
@@ -3954,20 +3973,9 @@ func (frame *Frame) WeightDistribution(fn string) error {
 		nnum++
 	}
 	sort.Sort(NodeByNum{nodes})
-	for _, n := range nodes {
-		for i := 0; i < 3; i++ {
-			if !n.Distributed {
-				n.Weight[i] = 0.0
-				n.Distributed = true
-			}
-		}
-	}
 	amount := make(map[int]float64)
 	for _, el := range frame.Elems {
-		if !el.Distributed {
-			el.Distribute()
-			el.Distributed = true
-		}
+		el.Distribute()
 		if el.Etype != WBRACE || el.Etype != SBRACE {
 			amount[el.Sect.Num] += el.Amount()
 		}
@@ -3979,6 +3987,11 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	otp.WriteString(fmt.Sprintf(" 節点番号          積載荷重別の重量 [%s]\n\n", frame.Show.UnitName[0]))
 	otp.WriteString("                 床用     柱梁用     地震用\n")
 	for _, n := range nodes {
+		if n.Load[2] != 0.0 {
+			for i := 0; i < 3; i++ {
+				n.Weight[i] -= n.Load[2]
+			}
+		}
 		otp.WriteString(n.WgtString())
 		for i := 0; i < 3; i++ {
 			total[i] += n.Weight[i]

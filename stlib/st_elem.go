@@ -79,8 +79,6 @@ type Elem struct {
 
 	hide bool
 	Lock bool
-
-	Distributed bool
 }
 
 func NewLineElem(ns []*Node, sect *Sect, etype int) *Elem {
