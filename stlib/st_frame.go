@@ -3764,9 +3764,11 @@ func (frame *Frame) SetBoundary(num int, eps float64) error {
 func (frame *Frame) ExtractArclm(fn string) error {
 	cmqs := make(map[int][]float64)
 	for _, el := range frame.Elems {
-		cmqs[el.Num] = make([]float64, 12)
-		for i := 0; i < 12; i++ {
-			cmqs[el.Num][i] = el.Cmq[i]
+		if el.IsLineElem() {
+			cmqs[el.Num] = make([]float64, 12)
+			for i := 0; i < 12; i++ {
+				cmqs[el.Num][i] = el.Cmq[i]
+			}
 		}
 	}
 	defer func() {
@@ -3776,8 +3778,10 @@ func (frame *Frame) ExtractArclm(fn string) error {
 			}
 		}
 		for _, el := range frame.Elems {
-			for i := 0; i < 12; i++ {
-				el.Cmq[i] = cmqs[el.Num][i]
+			if el.IsLineElem() {
+				for i := 0; i < 12; i++ {
+					el.Cmq[i] = cmqs[el.Num][i]
+				}
 			}
 		}
 	}()
