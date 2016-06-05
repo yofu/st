@@ -97,7 +97,6 @@ func (c *CommandLine) TypeCommandLine(s string) {
 			pos := c.position
 			for i, w := range c.words {
 				l := len(w)
-				fmt.Println(i, w, l, pos)
 				if pos <= l {
 					c.words[i] = fmt.Sprintf("%s%s%s", c.words[i][:pos], s, c.words[i][pos:])
 					c.position++
