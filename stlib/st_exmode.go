@@ -3441,6 +3441,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":view [top,front,back,right,left]")
 		}
+		if narg < 2 {
+			return NotEnoughArgs(":view")
+		}
 		switch strings.ToUpper(args[1]) {
 		case "TOP":
 			stw.SetAngle(90.0, -90.0)
