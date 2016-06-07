@@ -911,7 +911,16 @@ func (stw *Window) Close(bang bool) {
 	os.Exit(0)
 }
 
-func (stw *Window) ShapeData(st.Shape) {
+func (stw *Window) ShapeData(sh st.Shape) {
+	stw.History(fmt.Sprintf("%s\n", sh.String()))
+	stw.History(fmt.Sprintf("A   = %10.4f [cm2]\n", sh.A()))
+	stw.History(fmt.Sprintf("Asx = %10.4f [cm2]\n", sh.Asx()))
+	stw.History(fmt.Sprintf("Asy = %10.4f [cm2]\n", sh.Asy()))
+	stw.History(fmt.Sprintf("Ix  = %10.4f [cm4]\n", sh.Ix()))
+	stw.History(fmt.Sprintf("Iy  = %10.4f [cm4]\n", sh.Iy()))
+	stw.History(fmt.Sprintf("J   = %10.4f [cm4]\n", sh.J()))
+	stw.History(fmt.Sprintf("Zx  = %10.4f [cm3]\n", sh.Zx()))
+	stw.History(fmt.Sprintf("Zy  = %10.4f [cm3]\n", sh.Zy()))
 }
 
 func (stw *Window) EPS() float64 {
