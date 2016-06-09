@@ -442,6 +442,8 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 			if len(sfs) >= 2 {
 				tmp, err := strconv.ParseInt(sfs[1], 10, 64)
 				if err == nil && int(tmp) < len(sharp) {
+					str = strings.Replace(str, fmt.Sprintf("%s:h", sfs[0]), filepath.Dir(sharp[int(tmp)]), 1)
+					str = strings.Replace(str, fmt.Sprintf("%s<", sfs[0]), PruneExt(sharp[int(tmp)]), 1)
 					str = strings.Replace(str, sfs[0], sharp[int(tmp)], 1)
 				}
 			}
