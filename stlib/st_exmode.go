@@ -4196,7 +4196,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		return ArclmStart(m.String())
 	case "camber":
 		if usage {
-			return Usage(":camber [axis] period factor")
+			return Usage(":camber [axis] [add] period factor")
 		}
 		if narg < 2 {
 			return NotEnoughArgs(":camber")
@@ -4217,6 +4217,10 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 			}
 		}
+		add := false
+		if _, ok := argdict["ADD"]; ok {
+			add = true
+		}
 		period := strings.ToUpper(args[1])
 		factor, err := strconv.ParseFloat(args[2], 64)
 		if err != nil {
@@ -4226,7 +4230,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		for _, n := range frame.Nodes {
 			for i := 0; i < 3; i++ {
 				if axis[i] {
-					n.Coord[i] += n.Disp[period][i] * factor
+					if add {
+						n.Coord[i] += n.Disp[period][i] * factor
+					} else {
+						n.Coord[i] = n.Disp[period][i] * factor
+					}
 				}
 			}
 		}
