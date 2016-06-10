@@ -383,6 +383,8 @@ func (stw *Window) Start() {
 					switch kc.Code {
 					default:
 						redraw = false
+					case key.CodeEscape:
+						keymode = NORMAL
 					case key.CodeM:
 						if e.Modifiers&key.ModControl != 0 {
 							keymode = NORMAL
