@@ -404,7 +404,7 @@ func Increment(fn, div string, pos, times int) (string, error) {
 		}
 		ls[pos] = fmt.Sprintf("%02d", int(val)+times)
 	}
-	return strings.Join(ls, "_") + ext, nil
+	return strings.Join(ls, div) + ext, nil
 }
 
 func PruneExt(fn string) string {
