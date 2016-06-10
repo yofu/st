@@ -430,10 +430,28 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 			str = strings.Replace(str, "~", home, 1)
 		}
 	}
+	var complete func(string, string, string) string
+	complete = func(orig, repl, fn string) string {
+		rtn := orig
+		successor := orig[strings.Index(orig, repl)+len(repl):]
+		switch {
+		case strings.HasPrefix(successor, ":h"):
+			rtn = strings.Replace(orig, fmt.Sprintf("%s:h", repl), filepath.Dir(fn), 1)
+		case strings.HasPrefix(successor, ":+"):
+			inc, err := Increment(fn, "_", 1, 1)
+			if err != nil {
+				return rtn
+			}
+			return complete(strings.Replace(rtn, fmt.Sprintf("%s:+", repl), repl, 1), repl, inc)
+		case strings.HasPrefix(successor, "<"):
+			rtn = strings.Replace(rtn, fmt.Sprintf("%s<", repl), PruneExt(fn), 1)
+		default:
+			rtn = strings.Replace(rtn, repl, fn, 1)
+		}
+		return rtn
+	}
 	if strings.Contains(str, "%") && percent != "" {
-		str = strings.Replace(str, "%:h", filepath.Dir(percent), 1)
-		str = strings.Replace(str, "%<", PruneExt(percent), 1)
-		str = strings.Replace(str, "%", percent, 1)
+		str = complete(str, "%", percent)
 	}
 	if len(sharp) > 0 {
 		sh := regexp.MustCompile("#([0-9]+)")
@@ -442,9 +460,7 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 			if len(sfs) >= 2 {
 				tmp, err := strconv.ParseInt(sfs[1], 10, 64)
 				if err == nil && int(tmp) < len(sharp) {
-					str = strings.Replace(str, fmt.Sprintf("%s:h", sfs[0]), filepath.Dir(sharp[int(tmp)]), 1)
-					str = strings.Replace(str, fmt.Sprintf("%s<", sfs[0]), PruneExt(sharp[int(tmp)]), 1)
-					str = strings.Replace(str, sfs[0], sharp[int(tmp)], 1)
+					str = complete(str, sfs[0], sharp[int(tmp)])
 				}
 			}
 		}
@@ -455,28 +471,25 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 		path = filepath.Join(filepath.Dir(percent), path)
 	}
 	var err error
-	var completes []string
+	completes := []string{path}
+	num := 1
 	tmp, err := filepath.Glob(path + "*")
 	if err != nil || len(tmp) == 0 {
-		completes = make([]string, 0)
-	} else {
-		completes = make([]string, len(tmp))
-		for i := 0; i < len(tmp); i++ {
-			stat, err := os.Stat(tmp[i])
-			if err != nil {
-				continue
-			}
-			if stat.IsDir() {
-				tmp[i] += string(os.PathSeparator)
-			}
-			lis[len(lis)-1] = tmp[i]
-			completes[i] = strings.Join(lis, " ")
+		return completes
+	}
+	for i := 0; i < len(tmp); i++ {
+		stat, err := os.Stat(tmp[i])
+		if err != nil {
+			continue
 		}
+		if stat.IsDir() {
+			tmp[i] += string(os.PathSeparator)
+		}
+		lis[len(lis)-1] = tmp[i]
+		completes = append(completes, strings.Join(lis, " "))
+		num++
 	}
-	if len(completes) == 0 {
-		completes = []string{path}
-	}
-	return completes
+	return completes[:num]
 }
 
 func PickElem(stw Window, x1, y1, x2, y2 int) ([]*Elem, bool) {
