@@ -125,11 +125,14 @@ func NewWindow(s screen.Screen, w screen.Window) *Window {
 	}
 }
 
-func keymap(ev key.Event) key.Event {
+func (stw *Window) keymap(ev key.Event) key.Event {
 	switch ev.Code {
 	default:
 		return ev
 	case key.CodeSemicolon:
+		if !stw.CommandLineStringIsEmpty() {
+			return ev
+		}
 		r := ev.Rune
 		if ev.Modifiers&key.ModShift != 0 {
 			r = ';'
@@ -169,7 +172,7 @@ func (stw *Window) Start() {
 			case key.DirPress, key.DirNone:
 				setprev := true
 				if keymode == NORMAL {
-					kc := keymap(e)
+					kc := stw.keymap(e)
 					switch kc.Code {
 					default:
 						stw.TypeCommandLine(string(kc.Rune))
@@ -380,7 +383,7 @@ func (stw *Window) Start() {
 					}
 				} else if keymode == VIEWEDIT {
 					redraw := true
-					kc := keymap(e)
+					kc := stw.keymap(e)
 					switch kc.Code {
 					default:
 						redraw = false
