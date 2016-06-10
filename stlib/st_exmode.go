@@ -3731,6 +3731,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			m.WriteString("\nNO INITIALISATION")
 		}
 		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":arclm001: frame isn't extracted to period %s", per)
+		}
 		go func() {
 			err := af.Arclm001(otps, init, sol, eps, extra...)
 			af.Endch <- err
@@ -3838,6 +3841,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			m.WriteString("\nNO INITIALISATION")
 		}
 		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":arclm201: frame isn't extracted to period %s", per)
+		}
 		go func() {
 			err := af.Arclm201(otp, init, lap, safety, start, max)
 			if err != nil {
@@ -3955,6 +3961,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			m.WriteString("\nNO INITIALISATION")
 		}
 		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":arclm202: frame isn't extracted to period %s", per)
+		}
 		go func() {
 			err := af.Arclm202(otp, init, lap, safety, start, max, sects, comp)
 			if err != nil {
@@ -4039,6 +4048,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
 		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
 		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":arclm301: frame isn't extracted to period %s", per)
+		}
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
@@ -4098,6 +4110,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
 		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
 		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":arclm401: frame isn't extracted to period %s", per)
+		}
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
@@ -4174,6 +4189,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			m.WriteString("\nNO INITIALISATION")
 		}
 		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":bclng001: frame isn't extracted to period %s", per)
+		}
 		af.Output = stw.HistoryWriter()
 		go func() {
 			err := af.Bclng001(otp, init, nmode, eps)
