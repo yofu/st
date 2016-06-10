@@ -671,10 +671,10 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 	if init {
 		frame.Initialise()
 	}
-	// start := time.Now()
+	start := time.Now()
 	laptime := func(message string) {
-		// end := time.Now()
-		// fmt.Printf("%s: %fsec\n", message, (end.Sub(start)).Seconds())
+		end := time.Now()
+		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
 	solver := LLS(frame, laptime)
 	var err error
@@ -722,9 +722,9 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 			sign += answers[0][i] * vec[i]
 		}
 		if lap == 0 {
-			fmt.Fprintf(frame.Output, "sylvester's law of inertia: LAP %d %.3f\n", lap, sign)
+			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f\n", lap, sign))
 		} else {
-			fmt.Fprintf(frame.Output, "sylvester's law of inertia: LAP %d %.3f\n", lap, sign)
+			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f\n", lap, sign))
 			if sign < 0.0 {
 				return errors.New(fmt.Sprintf("sylvester's law of inertia: %.3f", sign))
 			}
