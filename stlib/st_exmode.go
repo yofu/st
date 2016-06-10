@@ -377,7 +377,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":mkdir dirname")
 		}
-		os.MkdirAll(fn, 0644)
+		os.MkdirAll(fn, 0755)
 	case "#":
 		if usage {
 			return Usage(":#")
@@ -577,7 +577,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		if bang || (!FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
 			if _, ok := argdict["MKDIR"]; ok {
-				os.MkdirAll(filepath.Dir(fn), 0644)
+				os.MkdirAll(filepath.Dir(fn), 0755)
 			}
 			var err error
 			readrc := true
