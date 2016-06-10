@@ -33,6 +33,7 @@ var (
 	cline   string
 	drawing bool
 	keymode = NORMAL
+	winSize = image.Point{1024, 1024}
 )
 
 var (
@@ -593,6 +594,9 @@ func (stw *Window) Start() {
 			stw.window.Publish()
 		case size.Event:
 			sz = e
+			winSize = image.Point{sz.WidthPx, sz.HeightPx}
+			stw.Redraw()
+			stw.window.Publish()
 		case error:
 			log.Print(e)
 		}
@@ -651,7 +655,6 @@ func (stw *Window) Redraw() {
 	if stw.buffer != nil {
 		stw.buffer.Release()
 	}
-	winSize := image.Point{1024, 1024}
 	b, err := stw.screen.NewBuffer(winSize)
 	if err != nil {
 		log.Fatal(err)
@@ -682,7 +685,6 @@ func (stw *Window) RedrawNode() {
 	if stw.buffer != nil {
 		stw.buffer.Release()
 	}
-	winSize := image.Point{1024, 1024}
 	b, err := stw.screen.NewBuffer(winSize)
 	if err != nil {
 		log.Fatal(err)
@@ -710,7 +712,7 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 	if commandbuffer != nil {
 		commandbuffer.Release()
 	}
-	b, err := stw.screen.NewBuffer(image.Point{1024, 1024})
+	b, err := stw.screen.NewBuffer(winSize)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -722,7 +724,7 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 		Dot:  fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
 	}
 	d.DrawString(str)
-	t, err := stw.screen.NewTexture(image.Point{1024, 1024})
+	t, err := stw.screen.NewTexture(winSize)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -752,7 +754,7 @@ func (stw *Window) TailLine() {
 	if tailbuffer != nil {
 		tailbuffer.Release()
 	}
-	b, err := stw.screen.NewBuffer(image.Point{1024, 1024})
+	b, err := stw.screen.NewBuffer(winSize)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -762,7 +764,7 @@ func (stw *Window) TailLine() {
 		line(cvs, int(tailnodes[i].Pcoord[0]), int(tailnodes[i].Pcoord[1]), int(tailnodes[i+1].Pcoord[0]), int(tailnodes[i+1].Pcoord[1]), tailColor)
 	}
 	line(cvs, int(tailnodes[len(tailnodes)-1].Pcoord[0]), int(tailnodes[len(tailnodes)-1].Pcoord[1]), endX, endY, tailColor)
-	t, err := stw.screen.NewTexture(image.Point{1024, 1024})
+	t, err := stw.screen.NewTexture(winSize)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -890,7 +892,7 @@ func (stw *Window) SaveAS() {
 }
 
 func (stw *Window) GetCanvasSize() (int, int) {
-	return 1024, 1024
+	return winSize.X, winSize.Y
 }
 
 func (stw *Window) SaveFileSelected(string) error {
