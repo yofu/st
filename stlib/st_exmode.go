@@ -1669,6 +1669,35 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		} else {
 			return errors.New(fmt.Sprintf(":pile PILE %d doesn't exist", val))
 		}
+	case "scale":
+		if usage {
+			return Usage(":scale factor cx cy cz")
+		}
+		if !stw.NodeSelected() {
+			return errors.New(":scale no selected node")
+		}
+		if narg < 5 {
+			return NotEnoughArgs(":scale")
+		}
+		factor, err := strconv.ParseFloat(args[1], 64)
+		if err != nil {
+			return err
+		}
+		coords := make([]float64, 3)
+		for i := 0; i < 3; i++ {
+			coord, err := strconv.ParseFloat(args[2+i], 64)
+			if err != nil {
+				return err
+			}
+			coords[i] = coord
+		}
+		for _, n := range stw.SelectedNodes() {
+			if n == nil {
+				continue
+			}
+			n.Scale(coords, factor, factor, factor)
+		}
+		Snapshot(stw)
 	case "xscale":
 		if usage {
 			return Usage(":xscale factor coord")
