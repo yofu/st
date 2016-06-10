@@ -722,9 +722,9 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 			sign += answers[0][i] * vec[i]
 		}
 		if lap == 0 {
-			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f\n", lap, sign))
+			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
 		} else {
-			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f\n", lap, sign))
+			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
 			if sign < 0.0 {
 				return errors.New(fmt.Sprintf("sylvester's law of inertia: %.3f", sign))
 			}
