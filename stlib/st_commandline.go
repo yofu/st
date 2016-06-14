@@ -42,6 +42,18 @@ func (c *CommandLine) ClearCommandLine() {
 	c.completepos = 0
 }
 
+func (c *CommandLine) CommandLineStringIsEmpty() bool {
+	if c.completing {
+		return false
+	}
+	for _, s := range c.words {
+		if len(s) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
 func (c *CommandLine) CommandLineString() string {
 	if c.completing {
 		return strings.Join(append(c.words[:len(c.words)-1], c.completes[c.completepos]), " ")

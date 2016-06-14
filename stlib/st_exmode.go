@@ -377,7 +377,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":mkdir dirname")
 		}
-		os.MkdirAll(fn, 0644)
+		os.MkdirAll(fn, 0755)
 	case "#":
 		if usage {
 			return Usage(":#")
@@ -577,7 +577,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		if bang || (!FileExists(fn) || stw.Yn("Save", "上書きしますか")) {
 			if _, ok := argdict["MKDIR"]; ok {
-				os.MkdirAll(filepath.Dir(fn), 0644)
+				os.MkdirAll(filepath.Dir(fn), 0755)
 			}
 			var err error
 			readrc := true
@@ -1708,6 +1708,35 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		} else {
 			return errors.New(fmt.Sprintf(":pile PILE %d doesn't exist", val))
 		}
+	case "scale":
+		if usage {
+			return Usage(":scale factor cx cy cz")
+		}
+		if !stw.NodeSelected() {
+			return errors.New(":scale no selected node")
+		}
+		if narg < 5 {
+			return NotEnoughArgs(":scale")
+		}
+		factor, err := strconv.ParseFloat(args[1], 64)
+		if err != nil {
+			return err
+		}
+		coords := make([]float64, 3)
+		for i := 0; i < 3; i++ {
+			coord, err := strconv.ParseFloat(args[2+i], 64)
+			if err != nil {
+				return err
+			}
+			coords[i] = coord
+		}
+		for _, n := range stw.SelectedNodes() {
+			if n == nil {
+				continue
+			}
+			n.Scale(coords, factor, factor, factor)
+		}
+		Snapshot(stw)
 	case "xscale":
 		if usage {
 			return Usage(":xscale factor coord")
@@ -3480,6 +3509,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":view [top,front,back,right,left]")
 		}
+		if narg < 2 {
+			return NotEnoughArgs(":view")
+		}
 		switch strings.ToUpper(args[1]) {
 		case "TOP":
 			stw.SetAngle(90.0, -90.0)
@@ -3738,6 +3770,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			m.WriteString("\nNO INITIALISATION")
 		}
 		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":arclm001: frame isn't extracted to period %s", per)
+		}
 		go func() {
 			err := af.Arclm001(otps, init, sol, eps, extra...)
 			af.Endch <- err
@@ -3845,6 +3880,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			m.WriteString("\nNO INITIALISATION")
 		}
 		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":arclm201: frame isn't extracted to period %s", per)
+		}
 		go func() {
 			err := af.Arclm201(otp, init, lap, safety, start, max)
 			if err != nil {
@@ -3962,6 +4000,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			m.WriteString("\nNO INITIALISATION")
 		}
 		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":arclm202: frame isn't extracted to period %s", per)
+		}
 		go func() {
 			err := af.Arclm202(otp, init, lap, safety, start, max, sects, comp)
 			if err != nil {
@@ -4046,6 +4087,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
 		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
 		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":arclm301: frame isn't extracted to period %s", per)
+		}
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
@@ -4105,6 +4149,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
 		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
 		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":arclm401: frame isn't extracted to period %s", per)
+		}
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
@@ -4181,6 +4228,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			m.WriteString("\nNO INITIALISATION")
 		}
 		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":bclng001: frame isn't extracted to period %s", per)
+		}
 		af.Output = stw.HistoryWriter()
 		go func() {
 			err := af.Bclng001(otp, init, nmode, eps)
@@ -4232,7 +4282,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		return ArclmStart(m.String())
 	case "camber":
 		if usage {
-			return Usage(":camber [axis] period factor")
+			return Usage(":camber [axis] [add] period factor")
 		}
 		if narg < 2 {
 			return NotEnoughArgs(":camber")
@@ -4253,6 +4303,10 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 			}
 		}
+		add := false
+		if _, ok := argdict["ADD"]; ok {
+			add = true
+		}
 		period := strings.ToUpper(args[1])
 		factor, err := strconv.ParseFloat(args[2], 64)
 		if err != nil {
@@ -4262,7 +4316,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		for _, n := range frame.Nodes {
 			for i := 0; i < 3; i++ {
 				if axis[i] {
-					n.Coord[i] += n.Disp[period][i] * factor
+					if add {
+						n.Coord[i] += n.Disp[period][i] * factor
+					} else {
+						n.Coord[i] = n.Disp[period][i] * factor
+					}
 				}
 			}
 		}

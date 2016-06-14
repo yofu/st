@@ -33,6 +33,7 @@ var (
 	cline   string
 	drawing bool
 	keymode = NORMAL
+	winSize = image.Point{1024, 1024}
 )
 
 var (
@@ -124,11 +125,14 @@ func NewWindow(s screen.Screen, w screen.Window) *Window {
 	}
 }
 
-func keymap(ev key.Event) key.Event {
+func (stw *Window) keymap(ev key.Event) key.Event {
 	switch ev.Code {
 	default:
 		return ev
 	case key.CodeSemicolon:
+		if !stw.CommandLineStringIsEmpty() {
+			return ev
+		}
 		r := ev.Rune
 		if ev.Modifiers&key.ModShift != 0 {
 			r = ';'
@@ -168,7 +172,7 @@ func (stw *Window) Start() {
 			case key.DirPress, key.DirNone:
 				setprev := true
 				if keymode == NORMAL {
-					kc := keymap(e)
+					kc := stw.keymap(e)
 					switch kc.Code {
 					default:
 						stw.TypeCommandLine(string(kc.Rune))
@@ -379,10 +383,12 @@ func (stw *Window) Start() {
 					}
 				} else if keymode == VIEWEDIT {
 					redraw := true
-					kc := keymap(e)
+					kc := stw.keymap(e)
 					switch kc.Code {
 					default:
 						redraw = false
+					case key.CodeEscape:
+						keymode = NORMAL
 					case key.CodeM:
 						if e.Modifiers&key.ModControl != 0 {
 							keymode = NORMAL
@@ -591,6 +597,9 @@ func (stw *Window) Start() {
 			stw.window.Publish()
 		case size.Event:
 			sz = e
+			winSize = image.Point{sz.WidthPx, sz.HeightPx}
+			stw.Redraw()
+			stw.window.Publish()
 		case error:
 			log.Print(e)
 		}
@@ -649,7 +658,6 @@ func (stw *Window) Redraw() {
 	if stw.buffer != nil {
 		stw.buffer.Release()
 	}
-	winSize := image.Point{1024, 1024}
 	b, err := stw.screen.NewBuffer(winSize)
 	if err != nil {
 		log.Fatal(err)
@@ -680,7 +688,6 @@ func (stw *Window) RedrawNode() {
 	if stw.buffer != nil {
 		stw.buffer.Release()
 	}
-	winSize := image.Point{1024, 1024}
 	b, err := stw.screen.NewBuffer(winSize)
 	if err != nil {
 		log.Fatal(err)
@@ -708,7 +715,7 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 	if commandbuffer != nil {
 		commandbuffer.Release()
 	}
-	b, err := stw.screen.NewBuffer(image.Point{1024, 1024})
+	b, err := stw.screen.NewBuffer(winSize)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -720,7 +727,7 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 		Dot:  fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
 	}
 	d.DrawString(str)
-	t, err := stw.screen.NewTexture(image.Point{1024, 1024})
+	t, err := stw.screen.NewTexture(winSize)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -750,7 +757,7 @@ func (stw *Window) TailLine() {
 	if tailbuffer != nil {
 		tailbuffer.Release()
 	}
-	b, err := stw.screen.NewBuffer(image.Point{1024, 1024})
+	b, err := stw.screen.NewBuffer(winSize)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -760,7 +767,7 @@ func (stw *Window) TailLine() {
 		line(cvs, int(tailnodes[i].Pcoord[0]), int(tailnodes[i].Pcoord[1]), int(tailnodes[i+1].Pcoord[0]), int(tailnodes[i+1].Pcoord[1]), tailColor)
 	}
 	line(cvs, int(tailnodes[len(tailnodes)-1].Pcoord[0]), int(tailnodes[len(tailnodes)-1].Pcoord[1]), endX, endY, tailColor)
-	t, err := stw.screen.NewTexture(image.Point{1024, 1024})
+	t, err := stw.screen.NewTexture(winSize)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -888,7 +895,7 @@ func (stw *Window) SaveAS() {
 }
 
 func (stw *Window) GetCanvasSize() (int, int) {
-	return 1024, 1024
+	return winSize.X, winSize.Y
 }
 
 func (stw *Window) SaveFileSelected(string) error {
@@ -911,7 +918,16 @@ func (stw *Window) Close(bang bool) {
 	os.Exit(0)
 }
 
-func (stw *Window) ShapeData(st.Shape) {
+func (stw *Window) ShapeData(sh st.Shape) {
+	stw.History(fmt.Sprintf("%s\n", sh.String()))
+	stw.History(fmt.Sprintf("A   = %10.4f [cm2]\n", sh.A()))
+	stw.History(fmt.Sprintf("Asx = %10.4f [cm2]\n", sh.Asx()))
+	stw.History(fmt.Sprintf("Asy = %10.4f [cm2]\n", sh.Asy()))
+	stw.History(fmt.Sprintf("Ix  = %10.4f [cm4]\n", sh.Ix()))
+	stw.History(fmt.Sprintf("Iy  = %10.4f [cm4]\n", sh.Iy()))
+	stw.History(fmt.Sprintf("J   = %10.4f [cm4]\n", sh.J()))
+	stw.History(fmt.Sprintf("Zx  = %10.4f [cm3]\n", sh.Zx()))
+	stw.History(fmt.Sprintf("Zy  = %10.4f [cm3]\n", sh.Zy()))
 }
 
 func (stw *Window) EPS() float64 {
