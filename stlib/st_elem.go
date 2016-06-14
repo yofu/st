@@ -1464,6 +1464,19 @@ func (elem *Elem) DividingPoint(ratio float64) []float64 {
 	return rtn
 }
 
+func (elem *Elem) EdgeDividingPoint(num int, ratio float64) []float64 {
+	rtn := make([]float64, 3)
+	start := num
+	end := num+1
+	if end >= elem.Enods {
+		end -= elem.Enods
+	}
+	for i := 0; i < 3; i++ {
+		rtn[i] = elem.Enod[start].Coord[i]*(1.0-ratio) + elem.Enod[end].Coord[i]*ratio
+	}
+	return rtn
+}
+
 func (elem *Elem) AxisCoord(axis int, coord float64) (rtn []float64, err error) {
 	if !elem.IsLineElem() {
 		return rtn, NotLineElem("AxisCoord")
