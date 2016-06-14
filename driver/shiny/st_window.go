@@ -191,7 +191,9 @@ func (stw *Window) Start() {
 					case key.CodeSpacebar:
 						stw.EndCompletion()
 						cl := stw.CommandLineString()
-						if strings.Contains(cl, " ") {
+						if !stw.AtLast() {
+							stw.TypeCommandLine(" ")
+						} else if strings.Contains(cl, " ") {
 							if lis, ok := stw.ContextComplete(); ok {
 								cls := strings.Split(cl, " ")
 								cls[len(cls) - 1] = lis[0] + " "
