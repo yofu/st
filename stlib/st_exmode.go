@@ -1012,6 +1012,45 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if err != nil {
 			return err
 		}
+	case "kunst":
+		sect := frame.Sects[502]
+		etype := GIRDER
+		var n1, n2 *Node
+		var coord1, coord2 []float64
+		for _, el := range frame.Elems {
+			if el.Etype == SLAB {
+				coord1 = el.EdgeDividingPoint(0, 0.25)
+				coord2 = el.EdgeDividingPoint(2, 0.75)
+				n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
+				n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
+				frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+				coord1 = el.EdgeDividingPoint(1, 0.25)
+				coord2 = el.EdgeDividingPoint(3, 0.75)
+				n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
+				n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
+				frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+				coord1 = el.EdgeDividingPoint(0, 0.5)
+				coord2 = el.EdgeDividingPoint(2, 0.5)
+				n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
+				n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
+				frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+				coord1 = el.EdgeDividingPoint(1, 0.5)
+				coord2 = el.EdgeDividingPoint(3, 0.5)
+				n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
+				n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
+				frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+				coord1 = el.EdgeDividingPoint(0, 0.75)
+				coord2 = el.EdgeDividingPoint(2, 0.25)
+				n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
+				n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
+				frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+				coord1 = el.EdgeDividingPoint(1, 0.75)
+				coord2 = el.EdgeDividingPoint(3, 0.25)
+				n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
+				n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
+				frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+			}
+		}
 	case "pdf":
 		pdf, err := NewPDFCanvas(595.28, 841.89)
 		if err != nil {
