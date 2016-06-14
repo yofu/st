@@ -3778,7 +3778,7 @@ func (frame *Frame) ExtractArclm(fn string) error {
 			}
 		}
 		for _, el := range frame.Elems {
-			if el.IsLineElem() {
+			if el.IsLineElem() && el.Etype <= TRUSS {
 				for i := 0; i < 12; i++ {
 					el.Cmq[i] = cmqs[el.Num][i]
 				}
