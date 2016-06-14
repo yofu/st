@@ -3964,10 +3964,6 @@ func (frame *Frame) ExtractArclm(fn string) error {
 }
 
 func (frame *Frame) WeightDistribution(fn string) error {
-	aistr, err := frame.AiDistribution()
-	if err != nil {
-		return err
-	}
 	var otp bytes.Buffer
 	var ekeys []int
 	nodes := make([]*Node, len(frame.Nodes))
@@ -3983,6 +3979,10 @@ func (frame *Frame) WeightDistribution(fn string) error {
 		if el.Etype != WBRACE || el.Etype != SBRACE {
 			amount[el.Sect.Num] += el.Amount()
 		}
+	}
+	aistr, err := frame.AiDistribution()
+	if err != nil {
+		return err
 	}
 	total := make([]float64, 3)
 	otp.WriteString("3.2 : 節点重量\n\n")
