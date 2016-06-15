@@ -1586,12 +1586,11 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 			pw = rc.Hoops.Ps[0]
 		}
 		if pw < 0.002 {
-			// fmt.Printf("shortage in pw: %.6f\n", pw)
-			return 7 / 8.0 * b * d * fs
+			return 7 / 8.0 * b * d * 2.0/3.0 * alpha * fs
 		} else if pw > 0.012 {
 			pw = 0.012
 		}
-		return 7 / 8.0 * b * d * (fs + 0.5*rc.Hoops.Ftw(cond)*(pw-0.002))
+		return 7 / 8.0 * b * d * (2.0/3.0*alpha*fs + 0.5*rc.Hoops.Ftw(cond)*(pw-0.002))
 	}
 }
 func (rc *RCColumn) Ma(cond *Condition) float64 {
