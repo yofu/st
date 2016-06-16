@@ -148,13 +148,17 @@ func (stw *Window) keymap(ev key.Event) key.Event {
 	}
 }
 
-func (stw *Window) Start() {
+func (stw *Window) Start(fn string) {
 	err := stw.LoadFontFace(filepath.Join(home, ".st/fonts/GenShinGothic-Regular.ttf"), 12)
 	if err != nil {
 		st.ErrorMessage(stw, err, st.ERROR)
 	}
 	stw.ReadRecent()
-	st.ShowRecent(stw)
+	if fn != "" {
+		st.OpenFile(stw, fn, true)
+	} else {
+		st.ShowRecent(stw)
+	}
 	st.ReadPgp(stw, pgpfile)
 	stw.frame.View.Center[0] = 512
 	stw.frame.View.Center[1] = 512
