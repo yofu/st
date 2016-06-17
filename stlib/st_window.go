@@ -450,8 +450,10 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 		}
 		return rtn
 	}
+	contain := false
 	if strings.Contains(str, "%") && percent != "" {
 		str = complete(str, "%", percent)
+		contain = true
 	}
 	if len(sharp) > 0 {
 		sh := regexp.MustCompile("#([0-9]+)")
@@ -461,6 +463,7 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 				tmp, err := strconv.ParseInt(sfs[1], 10, 64)
 				if err == nil && int(tmp) < len(sharp) {
 					str = complete(str, sfs[0], sharp[int(tmp)])
+					contain = true
 				}
 			}
 		}
@@ -471,8 +474,15 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 		path = filepath.Join(filepath.Dir(percent), path)
 	}
 	var err error
-	completes := []string{path}
-	num := 1
+	var completes []string
+	var num int
+	if contain {
+		completes = []string{path}
+		num = 1
+	} else {
+		completes = []string{}
+		num = 0
+	}
 	tmp, err := filepath.Glob(path + "*")
 	if err != nil || len(tmp) == 0 {
 		return completes
