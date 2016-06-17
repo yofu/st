@@ -485,7 +485,7 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 	}
 	tmp, err := filepath.Glob(path + "*")
 	if err != nil || len(tmp) == 0 {
-		return completes
+		return []string{path}
 	}
 	for i := 0; i < len(tmp); i++ {
 		stat, err := os.Stat(tmp[i])
