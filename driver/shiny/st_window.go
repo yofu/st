@@ -268,6 +268,16 @@ func (stw *Window) Start(fn string) {
 						stw.Deselect()
 						stw.Redraw()
 						stw.window.Publish()
+					case key.CodeLeftSquareBracket:
+						if e.Modifiers&key.ModControl != 0 {
+							stw.QuitCommand()
+							stw.ClearCommandLine()
+							stw.Deselect()
+							stw.Redraw()
+							stw.window.Publish()
+						} else {
+							stw.TypeCommandLine("[")
+						}
 					case key.CodeLeftControl:
 						setprev = false
 					case key.CodeRightControl:
@@ -395,6 +405,10 @@ func (stw *Window) Start(fn string) {
 						redraw = false
 					case key.CodeEscape:
 						keymode = NORMAL
+					case key.CodeLeftSquareBracket:
+						if e.Modifiers&key.ModControl != 0 {
+							keymode = NORMAL
+						}
 					case key.CodeM:
 						if e.Modifiers&key.ModControl != 0 {
 							keymode = NORMAL
