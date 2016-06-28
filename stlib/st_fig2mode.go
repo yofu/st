@@ -1154,7 +1154,7 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			stw.TextBox("INPUTFILE").Hide()
 		} else {
 			in, _ := frame.Filename()
-			stw.TextBox("OUTPUTFILE").SetText([]string{fmt.Sprintf("Input  : %s", ToUtf8string(in))})
+			stw.TextBox("INPUTFILE").SetText([]string{fmt.Sprintf("Input  : %s", ToUtf8string(in))})
 			stw.TextBox("INPUTFILE").Show()
 		}
 	case "outputfile":
