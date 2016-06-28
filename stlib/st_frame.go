@@ -2026,6 +2026,51 @@ func (frame *Frame) ParseKjn(lis []string) error {
 	return nil
 }
 
+func (frame *Frame) Filename() (string, string) {
+	arclm := false
+	if frame.Show.Deformation || frame.Show.SrcanRate != 0 {
+		arclm = true
+	} else if frame.Show.NodeCaption != 0 {
+		for _, nc := range []uint{NC_DX, NC_DY, NC_DZ, NC_TX, NC_TY, NC_TZ, NC_RX, NC_RY, NC_RZ, NC_MX, NC_MY, NC_MZ} {
+			if frame.Show.NodeCaption&nc != 0 {
+				arclm = true
+				break
+			}
+		}
+	} else if frame.Show.ElemCaption != 0 {
+		for _, ec := range []uint{EC_RATE_L, EC_RATE_S, EC_STIFF_X, EC_STIFF_Y, EC_DRIFT_X, EC_DRIFT_Y} {
+			if frame.Show.ElemCaption&ec != 0 {
+				arclm = true
+				break
+			}
+		}
+	} else {
+		for _, v := range frame.Show.Stress {
+			if v != 0 {
+				arclm = true
+				break
+			}
+		}
+	}
+	var in, out string
+	if arclm {
+		if s, ok := frame.DataFileName[frame.Show.Period]; ok {
+			in = s
+		} else {
+			in = "-"
+		}
+		if s, ok := frame.ResultFileName[frame.Show.Period]; ok {
+			out = s
+		} else {
+			out = "-"
+		}
+	} else {
+		in = frame.Path
+		out = "-"
+	}
+	return in, out
+}
+
 // WriteInp writes an input file for st frame.
 func (frame *Frame) WriteInp(fn string) error {
 	var pnum, snum, inum, nnum, enum int
