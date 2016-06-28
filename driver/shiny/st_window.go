@@ -34,6 +34,7 @@ var (
 	drawing bool
 	keymode = NORMAL
 	winSize = image.Point{1024, 1024}
+	TypeWriteOffset = 40.0
 )
 
 var (
@@ -393,7 +394,7 @@ func (stw *Window) Start(fn string) {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
 					}
-					stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
+					stw.Typewrite(TypeWriteOffset, float64(winSize.Y)-TypeWriteOffset, stw.CommandLineStringWithPosition())
 					if setprev {
 						prevkey = e
 					}
@@ -420,7 +421,7 @@ func (stw *Window) Start(fn string) {
 							keymode = NORMAL
 							stw.Redraw()
 							stw.TypeCommandLine(":")
-							stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
+							stw.Typewrite(TypeWriteOffset, float64(winSize.Y)-TypeWriteOffset, stw.CommandLineStringWithPosition())
 							redraw = false
 						}
 					case key.CodeApostrophe:
@@ -428,7 +429,7 @@ func (stw *Window) Start(fn string) {
 							keymode = NORMAL
 							stw.Redraw()
 							stw.TypeCommandLine("'")
-							stw.Typewrite(25, 1000, stw.CommandLineStringWithPosition())
+							stw.Typewrite(TypeWriteOffset, float64(winSize.Y)-TypeWriteOffset, stw.CommandLineStringWithPosition())
 							redraw = false
 						}
 					case key.CodeH:
