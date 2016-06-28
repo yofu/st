@@ -89,6 +89,7 @@ var (
 			map[string][]string{
 				"ETYPE": []string{"column", "girder", "brace", "slab", "wall"},
 			}),
+		"n/ode/dup/lication": complete.MustCompile(":nodeduplication", nil),
 		"e/lem/dup/lication": complete.MustCompile(":elemduplication [ignoresect:]", nil),
 		"i/ntersect/a/ll":    complete.MustCompile(":intersectall", nil),
 		"co/nf":              complete.MustCompile(":conf", nil),
@@ -1064,6 +1065,16 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		CheckFrame(stw)
 		return Message("CHECKED")
+	case "nodeduplication":
+		if usage {
+			return Usage(":nodeduplication")
+		}
+		stw.Deselect()
+		nodes := frame.NodeDuplication(EPS)
+		if len(nodes) != 0 {
+			frame.ReplaceNode(nodes)
+			Snapshot(stw)
+		}
 	case "elemduplication":
 		if usage {
 			return Usage(":elemduplication {-ignoresect=code}")
