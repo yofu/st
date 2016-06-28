@@ -1103,6 +1103,31 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			stw.SelectElem(es[:enum])
 		}
 		return Message(m.String())
+	case "nodesort":
+		if usage {
+			return Usage(":nodesort [x,y,z,0,1,2]")
+		}
+		if narg < 2 {
+			return NotEnoughArgs(":nodesort")
+		}
+		bw := frame.BandWidth()
+		stw.History(fmt.Sprintf("並び替え前: %d", bw))
+		ns := func(d int) {
+			bw, err := frame.NodeSort(d)
+			if err != nil {
+				stw.History("並び替えエラー")
+			}
+			stw.History(fmt.Sprintf("並び替え後: %d (%s方向)", bw, []string{"X", "Y", "Z"}[d]))
+			Snapshot(stw)
+		}
+		switch strings.ToUpper(args[1]) {
+		case "X", "0":
+			ns(0)
+		case "Y", "1":
+			ns(1)
+		case "Z", "2":
+			ns(2)
+		}
 	case "intersectall":
 		if usage {
 			return Usage(":intersectall")
