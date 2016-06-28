@@ -1139,6 +1139,46 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			stw.TextBox("TEXT").AddText(ToUtf8string(strings.Join(lis[1:], " ")))
 			stw.TextBox("TEXT").Show()
 		}
+	case "data":
+		if un {
+			stw.TextBox("DATA").Clear()
+			stw.TextBox("DATA").Hide()
+		} else {
+			txt := frame.Show.Dataline()
+			stw.TextBox("DATA").SetText(txt)
+			stw.TextBox("DATA").Show()
+		}
+	case "inputfile":
+		if un {
+			stw.TextBox("INPUTFILE").Clear()
+			stw.TextBox("INPUTFILE").Hide()
+		} else {
+			in, _ := frame.Filename()
+			stw.TextBox("OUTPUTFILE").SetText([]string{fmt.Sprintf("Input  : %s", ToUtf8string(in))})
+			stw.TextBox("INPUTFILE").Show()
+		}
+	case "outputfile":
+		if un {
+			stw.TextBox("OUTPUTFILE").Clear()
+			stw.TextBox("OUTPUTFILE").Hide()
+		} else {
+			_, out := frame.Filename()
+			stw.TextBox("OUTPUTFILE").SetText([]string{fmt.Sprintf("Output : %s", ToUtf8string(out))})
+			stw.TextBox("OUTPUTFILE").Show()
+		}
+	case "viewpoint":
+		if un {
+			stw.TextBox("VIEWPOINT").Clear()
+			stw.TextBox("VIEWPOINT").Hide()
+		} else {
+			txt := []string{fmt.Sprintf("Focus: %.3f %.3f %.3f", frame.View.Focus[0], frame.View.Focus[1], frame.View.Focus[2]),
+				fmt.Sprintf("Phi=%.3f Theta=%.3f", frame.View.Angle[0], frame.View.Angle[1]),
+				fmt.Sprintf("R=%.3f L=%.3f", frame.View.Dists[0], frame.View.Dists[1]),
+				fmt.Sprintf("Dfact=%.3f", frame.Show.Dfact),
+				fmt.Sprintf("Mfact=%.3f", frame.Show.Mfact)}
+			stw.TextBox("VIEWPOINT").SetText(txt)
+			stw.TextBox("VIEWPOINT").Show()
+		}
 	case "position":
 		if len(lis) < 4 {
 			return NotEnoughArgs("POSITION")
