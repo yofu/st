@@ -193,11 +193,18 @@ func (stw *SVGCanvas) Close() {
 	stw.writer.Close()
 }
 
-func (stw *SVGCanvas) Draw(frame *Frame) {
-	DrawFrame(stw, frame, frame.Show.ColorMode, true)
+func (stw *SVGCanvas) Draw(frame *Frame, tb []*TextBox) {
+	DrawFrame(stw, frame, frame.Show.ColorMode, false)
+	for _, t := range tb {
+		if t.IsHidden(frame.Show) {
+			continue
+		}
+		DrawText(stw, t)
+	}
+	stw.Flush()
 }
 
-func PrintSVG(frame *Frame, otp string, width, height float64) error {
+func PrintSVG(frame *Frame, tb []*TextBox, otp string, width, height float64) error {
 	sc, err := NewSVGCanvas(otp, width, height)
 	if err != nil {
 		return err
@@ -205,7 +212,7 @@ func PrintSVG(frame *Frame, otp string, width, height float64) error {
 	v := frame.View.Copy()
 	frame.View.Center[0] = 0.5 * sc.width
 	frame.View.Center[1] = 0.5 * sc.height
-	sc.Draw(frame)
+	sc.Draw(frame, tb)
 	sc.Close()
 	frame.View = v
 	return nil

@@ -42,6 +42,7 @@ type ExModer interface {
 	Pivot() bool
 	DrawPivot([]*Node, chan int, chan int)
 	SetColorMode(uint)
+	TextBoxes() []*TextBox
 }
 
 type Fig2Moder interface {

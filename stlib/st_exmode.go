@@ -968,7 +968,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 		}
 		w, h := PaperSizemm(stw.PaperSize())
-		err := PrintSVG(frame, fn, w, h)
+		err := PrintSVG(frame, stw.TextBoxes(), fn, w, h)
 		if err != nil {
 			return err
 		}
