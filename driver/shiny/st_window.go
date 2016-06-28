@@ -744,7 +744,7 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 		Dst:  commandbuffer.RGBA(),
 		Src:  image.NewUniform(stw.font.color),
 		Face: stw.font.face,
-		Dot:  fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
+		Dot:  fixed.Point26_6{fixed.I(int(x)), fixed.I(int(y))},
 	}
 	d.DrawString(str)
 	t, err := stw.screen.NewTexture(winSize)

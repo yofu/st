@@ -148,7 +148,7 @@ func (d *Dialog) Text(x, y float64, str string) {
 		Dst:  d.buffer.RGBA(),
 		Src:  image.NewUniform(d.parent.font.color),
 		Face: d.parent.font.face,
-		Dot:  fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
+		Dot:  fixed.Point26_6{fixed.I(int(x)), fixed.I(int(y))},
 	}
 	if len(str) > d.index {
 		dr.DrawString(str[d.index:])
