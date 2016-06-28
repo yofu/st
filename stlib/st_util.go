@@ -207,6 +207,25 @@ func IntColorList(col int) []int {
 	return rtn
 }
 
+func IntColorFloat64(col int) []float64 {
+	rtn := make([]float64, 3)
+	val := 65536
+	for i := 0; i < 3; i++ {
+		tmp := 0
+		for {
+			if col >= val {
+				col -= val
+				tmp += 1
+			} else {
+				rtn[i] = float64(tmp) / 255.0
+				break
+			}
+		}
+		val >>= 8
+	}
+	return rtn
+}
+
 func IntColorStringList(col int) []string {
 	rtn := make([]string, 3)
 	val := 65536
