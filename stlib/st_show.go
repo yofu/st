@@ -396,6 +396,9 @@ func (show *Show) Dataline() []string {
 	second := make([]string, 0)
 	num2 := 0
 	for i, _ := range ETYPES {
+		if i == 0 {
+			continue
+		}
 		if show.Etype[i] {
 			second = append(second, ETYPENAME[i])
 			num2++
