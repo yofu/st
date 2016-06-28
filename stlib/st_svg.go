@@ -7,6 +7,30 @@ import (
 	"os"
 )
 
+type SVGCanvas struct {
+	currentCanvas *svg.SVG
+	currentStyle  *Style
+	writer        *os.File
+	width         float64
+	height        float64
+}
+
+func NewSVGCanvas(otp string, width, height float64) (*SVGCanvas, error) {
+	w, err := os.Create(otp)
+	if err != nil {
+		return nil, err
+	}
+	cvs := svg.New(w)
+	cvs.Startunit(int(width), int(height), "mm")
+	return &SVGCanvas{
+		currentCanvas: cvs,
+		currentStyle:  nil,
+		writer:        w,
+		width:         width*90.0/25.4,
+		height:        height*90.0/25.4,
+	}, nil
+}
+
 func (stw *SVGCanvas) Line(x1, y1, x2, y2 float64) {
 	stw.currentCanvas.Line(int(x1), int(y1), int(x2), int(y2), stw.currentStyle.Stroke())
 }
@@ -163,30 +187,6 @@ func (stw *SVGCanvas) Flush() {
 
 func (stw *SVGCanvas) CanvasDirection() int {
 	return 1
-}
-
-type SVGCanvas struct {
-	currentCanvas *svg.SVG
-	currentStyle  *Style
-	writer        *os.File
-	width         float64
-	height        float64
-}
-
-func NewSVGCanvas(otp string, width, height float64) (*SVGCanvas, error) {
-	w, err := os.Create(otp)
-	if err != nil {
-		return nil, err
-	}
-	cvs := svg.New(w)
-	cvs.Startunit(int(width), int(height), "mm")
-	return &SVGCanvas{
-		currentCanvas: cvs,
-		currentStyle:  nil,
-		writer:        w,
-		width:         width*90.0/25.4,
-		height:        height*90.0/25.4,
-	}, nil
 }
 
 func (stw *SVGCanvas) Close() {
