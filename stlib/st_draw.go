@@ -7,6 +7,7 @@ import (
 	"math"
 	"regexp"
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -164,7 +165,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 				textpos[i] /= float64(elem.Enods)
 			}
 		}
-		stw.Text(textpos[0], textpos[1], ecap.String())
+		stw.Text(textpos[0], textpos[1], strings.TrimSuffix(ecap.String(), "\n"))
 	}
 	if elem.IsLineElem() {
 		stw.Line(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1], elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
@@ -730,7 +731,7 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 		}
 	}
 	if oncap {
-		stw.Text(node.Pcoord[0], node.Pcoord[1], ncap.String())
+		stw.Text(node.Pcoord[0], node.Pcoord[1], strings.TrimSuffix(ncap.String(), "\n"))
 	}
 	if show.NodeNormal {
 		DrawNodeNormal(stw, node, show)
