@@ -647,17 +647,16 @@ func DrawMeasure(stw Drawer, m *Measure, show *Show) {
 
 // TEXT
 func DrawText(stw Drawer, t *TextBox) {
-	fsize := t.Height()
+	ls := t.LineSep()
 	xpos, ypos := t.Position()
 	d := -1.0
 	if stw.CanvasDirection() == 1 {
 		d = 1.0
 	}
-	ypos += d * fsize
+	ypos += d * ls
 	for _, txt := range t.Text() {
-		fmt.Println(xpos, ypos, txt)
 		stw.Text(xpos, ypos, txt)
-		ypos += d * fsize * 1.5
+		ypos += d * ls
 	}
 }
 

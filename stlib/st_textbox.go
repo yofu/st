@@ -11,6 +11,7 @@ type TextBox struct {
 	Angle    float64
 	Font     Font
 	hide     bool
+	lineSepFactor float64
 }
 
 func NewTextBox(f Font) *TextBox {
@@ -20,6 +21,7 @@ func NewTextBox(f Font) *TextBox {
 	rtn.position = []float64{0.0, 0.0}
 	rtn.Font = f
 	rtn.hide = true
+	rtn.lineSepFactor = 1.5
 	return rtn
 }
 
@@ -30,6 +32,7 @@ func STLOGO(f Font, xpos, ypos, angle float64) *TextBox {
 		Angle:    angle,
 		Font:     f,
 		hide:     true,
+		lineSepFactor: 1.5,
 	}
 }
 
@@ -102,8 +105,16 @@ func (tb *TextBox) Width() float64 {
 	return float64(wmax*tb.Font.Size()) / 1.5
 }
 
+func (tb *TextBox) LineSep() float64 {
+	return tb.lineSepFactor * float64(tb.Font.Size())
+}
+
+func (tb *TextBox) LineHeight() float64 {
+	return float64(tb.Font.Size())
+}
+
 func (tb *TextBox) Height() float64 {
-	return 1.5 * float64(tb.Linage()*tb.Font.Size())
+	return tb.lineSepFactor * float64(tb.Linage()*tb.Font.Size())
 }
 
 func (tb *TextBox) ScrollDown(n int) {
