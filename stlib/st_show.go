@@ -390,7 +390,7 @@ func (show *Show) Dataline() []string {
 			num1++
 		}
 	}
-	if show.SrcanRate != 0 {
+	if show.SrcanRate != 0 || show.ColorMode == ECOLOR_RATE {
 		first = append(first, "断面検定比")
 	}
 	second := make([]string, 0)
