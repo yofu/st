@@ -3603,8 +3603,23 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 	case "mono":
 		stw.SetColorMode(ECOLOR_WHITE)
 	case "postscript":
+		if usage {
+			return Usage(":postscript {-size=a4tate} filename")
+		}
 		if fn == "" {
 			fn = filepath.Join(stw.Cwd(), "test.ps")
+		}
+		if name, ok := argdict["SIZE"]; ok {
+			switch strings.ToUpper(name) {
+			case "A4TATE":
+				stw.SetPaperSize(A4_TATE)
+			case "A4YOKO":
+				stw.SetPaperSize(A4_YOKO)
+			case "A3TATE":
+				stw.SetPaperSize(A3_TATE)
+			case "A3YOKO":
+				stw.SetPaperSize(A3_YOKO)
+			}
 		}
 		var paper ps.Paper
 		switch stw.PaperSize() {
