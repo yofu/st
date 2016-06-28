@@ -585,17 +585,19 @@ func (stw *Window) Text(x, y float64, str string) {
 	if str == "" {
 		return
 	}
+	x0 := fixed.Int26_6(x * 64)
 	d := &font.Drawer{
 		Dst:  stw.buffer.RGBA(),
 		Src:  image.NewUniform(stw.font.color),
 		Face: stw.font.face,
-		Dot:  fixed.Point26_6{fixed.Int26_6(x * 64), fixed.Int26_6(y * 64)},
+		Dot:  fixed.Point26_6{x0, fixed.Int26_6(y * 64)},
 	}
 	ss := strings.Split(str, "\n")
-	d.Dot.Y += stw.font.height * fixed.Int26_6(len(ss)-1)
+	d.Dot.Y -= fixed.Int26_6(int(float64(stw.font.height) * 1.2 * float64(len(ss)-1)))
 	for _, s := range ss {
 		d.DrawString(s)
-		d.Dot.Y -= stw.font.height
+		d.Dot.Y += fixed.Int26_6(int(float64(stw.font.height) * 1.2))
+		d.Dot.X = x0
 	}
 }
 

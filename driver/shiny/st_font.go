@@ -20,7 +20,7 @@ type Font struct {
 
 var basicFont = &Font{
 	face:   basicfont.Face7x13,
-	height: 13,
+	height: fixed.I(13),
 	color:  color.RGBA{0xff, 0xff, 0xff, 0xff},
 }
 
@@ -39,7 +39,7 @@ func LoadFontFace(path string, point float64) (*Font, error) {
 			Hinting: font.HintingFull,
 		}),
 		name: path,
-		height: fixed.Int26_6(int(point*3) >> 2), // * 72/96
+		height: fixed.I(int(point*3) >> 2), // * 72/96
 		color: color.RGBA{0xff, 0xff, 0xff, 0xff},
 	}, nil
 }
