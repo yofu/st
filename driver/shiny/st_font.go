@@ -60,7 +60,7 @@ func (f *Font) SetFace(face string) {
 }
 
 func (f *Font) Size() int {
-	return int(f.height)
+	return f.height.Round()
 }
 
 func (f *Font) SetSize(s int) {
