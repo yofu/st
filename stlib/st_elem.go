@@ -12,6 +12,7 @@ import (
 
 // Constants & Variables// {{{
 var ETYPES = []string{"NONE", "COLUMN", "GIRDER", "BRACE", "TRUSS", "WBRACE", "SBRACE", "WALL", "SLAB"}
+var ETYPENAME = []string{"", "柱", "梁", "ブレース", "トラス", "壁ブレース", "床ブレース", "壁", "床"}
 var StressName = []string{"Nz", "Qx", "Qy", "Mz", "Mx", "My"}
 
 const (
