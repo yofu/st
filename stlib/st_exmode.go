@@ -3604,7 +3604,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		stw.SetColorMode(ECOLOR_WHITE)
 	case "postscript":
 		if fn == "" {
-			fn = filepath.Join(stw.Cwd(), "teps")
+			fn = filepath.Join(stw.Cwd(), "test.ps")
 		}
 		var paper ps.Paper
 		switch stw.PaperSize() {
@@ -3619,11 +3619,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		case A3_YOKO:
 			paper = ps.A3Landscape
 		}
-		v := frame.View.Copy()
-		frame.SetFocus(nil)
-		frame.CentringTo(paper)
 		err := frame.PrintPostScript(fn, paper)
-		frame.View = v
 		if err != nil {
 			return err
 		}
