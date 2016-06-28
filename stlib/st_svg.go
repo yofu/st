@@ -53,7 +53,7 @@ func (stw *SVGCanvas) Text(x, y float64, txt string) {
 
 func (stw *SVGCanvas) Foreground(fg int) {
 	c := IntHexColor(fg)
-	stw.currentStyle.Set("stroke", "black")
+	stw.currentStyle.Set("stroke", c)
 	stw.currentStyle.Set("fill", c)
 	stw.currentStyle.Set("fill-opacity", "0.5")
 }
