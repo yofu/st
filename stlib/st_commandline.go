@@ -156,7 +156,7 @@ func (c *CommandLine) BackspaceCommandLine() {
 			pos--
 			if pos == 0 {
 				c.words[i] = fmt.Sprintf("%s%s", c.words[i], c.words[i+1])
-				for j := i+1; j < len(c.words)-1; j++ {
+				for j := i + 1; j < len(c.words)-1; j++ {
 					c.words[j] = c.words[j+1]
 				}
 				c.words = c.words[:len(c.words)-1]

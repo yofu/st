@@ -6,7 +6,7 @@ import (
 )
 
 type PostScriptCanvas struct {
-	doc *ps.Doc
+	doc   *ps.Doc
 	paper ps.Paper
 }
 
@@ -15,7 +15,7 @@ func NewPostScriptCanvas(fn string, paper ps.Paper) (*PostScriptCanvas, error) {
 	doc.SetPaperSize(paper)
 	doc.Canvas.NewPage("1", paper)
 	return &PostScriptCanvas{
-		doc: doc,
+		doc:   doc,
 		paper: paper,
 	}, nil
 }

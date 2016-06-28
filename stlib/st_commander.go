@@ -244,7 +244,7 @@ func CopyClipboard(stw Commander) error {
 	}
 	var otp bytes.Buffer
 	ns := frame.ElemToNode(stw.SelectedElems()...)
-	stw.Execute(onenode(stw, func(n0 * Node) error {
+	stw.Execute(onenode(stw, func(n0 *Node) error {
 		for _, n := range ns {
 			otp.WriteString(n.CopyString(n0.Coord[0], n0.Coord[1], n0.Coord[2]))
 		}

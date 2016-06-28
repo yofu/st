@@ -260,7 +260,7 @@ func tensegritydelete(stw *Window) {
 					sortedelems[i] = elems[k]
 				}
 				for _, el := range sortedelems[:tnum-sz] { // valが小さいものを削除
-				// for _, el := range sortedelems[sz:] { // valが大きいものを削除
+					// for _, el := range sortedelems[sz:] { // valが大きいものを削除
 					st.AddSelection(stw, el)
 				}
 			}

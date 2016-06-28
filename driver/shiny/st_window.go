@@ -29,11 +29,11 @@ const (
 )
 
 var (
-	prevkey key.Event
-	cline   string
-	drawing bool
-	keymode = NORMAL
-	winSize = image.Point{1024, 1024}
+	prevkey         key.Event
+	cline           string
+	drawing         bool
+	keymode         = NORMAL
+	winSize         = image.Point{1024, 1024}
 	TypeWriteOffset = 40.0
 )
 
@@ -42,7 +42,7 @@ var (
 )
 
 var (
-	home = os.Getenv("HOME")
+	home    = os.Getenv("HOME")
 	pgpfile = filepath.Join(home, ".st/st.pgp")
 )
 
@@ -201,7 +201,7 @@ func (stw *Window) Start(fn string) {
 						} else if strings.Contains(cl, " ") {
 							if lis, ok := stw.ContextComplete(); ok {
 								cls := strings.Split(cl, " ")
-								cls[len(cls) - 1] = lis[0] + " "
+								cls[len(cls)-1] = lis[0] + " "
 								stw.SetCommandLineString(strings.Join(cls, " "))
 							} else {
 								stw.TypeCommandLine(" ")

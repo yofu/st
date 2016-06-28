@@ -1255,9 +1255,9 @@ func NewWindow(homedir string) *Window { // {{{
 	stw.textBox = make(map[string]*st.TextBox, 0)
 	stw.textBox["PAGETITLE"] = st.NewTextBox(NewFont())
 	stw.textBox["PAGETITLE"].Font.SetSize(16)
-	stw.textBox["PAGETITLE"].SetPosition(30.0, stw.CanvasSize[1] - 30.0)
+	stw.textBox["PAGETITLE"].SetPosition(30.0, stw.CanvasSize[1]-30.0)
 	stw.textBox["TITLE"] = st.NewTextBox(NewFont())
-	stw.textBox["TITLE"].SetPosition(30.0, stw.CanvasSize[1] - 80.0)
+	stw.textBox["TITLE"].SetPosition(30.0, stw.CanvasSize[1]-80.0)
 	stw.textBox["TEXT"] = st.NewTextBox(NewFont())
 	stw.textBox["TEXT"].SetPosition(120.0, 65.0)
 	iup.SetHandle("mainwindow", stw.Dlg)
@@ -1854,7 +1854,7 @@ func ShowReleaseNote() {
 
 func (stw *Window) ShowLogo(t time.Duration) {
 	w, h := stw.dbuff.GetSize()
-	STLOGO.SetPosition(float64(w) * 0.5, float64(h) * 0.5)
+	STLOGO.SetPosition(float64(w)*0.5, float64(h)*0.5)
 	STLOGO.Show()
 	// go func() {
 	// logo:
@@ -2898,7 +2898,7 @@ func (stw *Window) ShapeData(sh st.Shape) {
 	} else {
 		tb = st.NewTextBox(NewFont())
 		tb.Show()
-		tb.SetPosition(stw.CanvasSize[0] - 300.0, 200.0)
+		tb.SetPosition(stw.CanvasSize[0]-300.0, 200.0)
 		stw.textBox["SHAPE"] = tb
 	}
 	var otp bytes.Buffer
@@ -2921,7 +2921,7 @@ func (stw *Window) SectionData(sec *st.Sect) {
 	} else {
 		tb = st.NewTextBox(NewFont())
 		tb.Show()
-		tb.SetPosition(stw.CanvasSize[0] - 500.0, float64(dataareaheight))
+		tb.SetPosition(stw.CanvasSize[0]-500.0, float64(dataareaheight))
 		stw.textBox["SECTION"] = tb
 	}
 	tb.SetText(strings.Split(sec.InpString(), "\n"))
@@ -2938,7 +2938,7 @@ func (stw *Window) CurrentLap(comment string, nlap, laps int) {
 	} else {
 		tb = st.NewTextBox(NewFont())
 		tb.Show()
-		tb.SetPosition(30.0, stw.CanvasSize[1] - 30.0)
+		tb.SetPosition(30.0, stw.CanvasSize[1]-30.0)
 		stw.textBox["LAP"] = tb
 	}
 	if comment == "" {

@@ -60,11 +60,11 @@ type Window struct {
 func NewWindow(homedir string) *Window {
 	stw := &Window{
 		DrawOption:    st.NewDrawOption(),
-		Directory:   st.NewDirectory(homedir, homedir),
-		RecentFiles: st.NewRecentFiles(3),
-		UndoStack:   st.NewUndoStack(10),
-		TagFrame:    st.NewTagFrame(),
-		Selection:   st.NewSelection(),
+		Directory:     st.NewDirectory(homedir, homedir),
+		RecentFiles:   st.NewRecentFiles(3),
+		UndoStack:     st.NewUndoStack(10),
+		TagFrame:      st.NewTagFrame(),
+		Selection:     st.NewSelection(),
 		CommandBuffer: st.NewCommandBuffer(),
 		CommandLine:   st.NewCommandLine(),
 		Alias:         st.NewAlias(),

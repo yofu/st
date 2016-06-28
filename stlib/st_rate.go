@@ -85,7 +85,7 @@ func (rf Reinforce) Ftw(cond *Condition) float64 {
 	}
 }
 func (rf Reinforce) Radius() float64 {
-	return math.Sqrt(rf.Area/math.Pi)
+	return math.Sqrt(rf.Area / math.Pi)
 }
 func (rf Reinforce) Vertices() [][]float64 {
 	d := rf.Radius()
@@ -433,7 +433,6 @@ func (sc *SColumn) Amount() Amount {
 	a["STEEL"] = sc.A() * 0.0001
 	return a
 }
-
 
 // }}}
 
@@ -1586,7 +1585,7 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 			pw = rc.Hoops.Ps[0]
 		}
 		if pw < 0.002 {
-			return 7 / 8.0 * b * d * 2.0/3.0 * alpha * fs
+			return 7 / 8.0 * b * d * 2.0 / 3.0 * alpha * fs
 		} else if pw > 0.012 {
 			pw = 0.012
 		}
@@ -1658,7 +1657,7 @@ func (rc *RCColumn) Mza(cond *Condition) float64 {
 func (rc *RCColumn) Amount() Amount {
 	a := NewAmount()
 	area := rc.Area()
-	a["REINS"] = (rc.Ai() + area*(rc.Hoops.Ps[0] + rc.Hoops.Ps[1])) * 0.0001
+	a["REINS"] = (rc.Ai() + area*(rc.Hoops.Ps[0]+rc.Hoops.Ps[1])) * 0.0001
 	a["CONCRETE"] = area * 0.0001
 	return a
 }
@@ -1868,6 +1867,7 @@ func (rw *RCWall) Amount() Amount {
 type RCSlab struct {
 	RCWall
 }
+
 func NewRCSlab(num int) *RCSlab {
 	rs := new(RCSlab)
 	rs.num = num

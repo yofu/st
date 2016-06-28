@@ -38,9 +38,9 @@ func LoadFontFace(path string, point float64) (*Font, error) {
 			Size:    point,
 			Hinting: font.HintingFull,
 		}),
-		name: path,
+		name:   path,
 		height: fixed.I(int(point*3) >> 2), // * 72/96
-		color: color.RGBA{0xff, 0xff, 0xff, 0xff},
+		color:  color.RGBA{0xff, 0xff, 0xff, 0xff},
 	}, nil
 }
 
@@ -75,7 +75,7 @@ func (f *Font) SetSize(s int) {
 }
 
 func (f *Font) Color() int {
-	return int(f.color.R) * 65536 + int(f.color.G) * 256 + int(f.color.B)
+	return int(f.color.R)*65536 + int(f.color.G)*256 + int(f.color.B)
 }
 
 func (f *Font) SetColor(c int) {

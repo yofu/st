@@ -3695,7 +3695,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			err := af.Arclm001(otps, init, sol, eps, extra...)
 			af.Endch <- err
 		}()
-		ex_all:
+	ex_all:
 		for {
 			select {
 			case <-af.Pivot:

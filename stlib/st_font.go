@@ -1,9 +1,9 @@
 package st
 
 type Font interface {
-	Face()  string
+	Face() string
 	SetFace(string)
-	Size()  int
+	Size() int
 	SetSize(int)
 	Color() int
 	SetColor(int)

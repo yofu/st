@@ -7,7 +7,7 @@ import (
 )
 
 type Solver struct {
-	name string
+	name  string
 	solve func(*matrix.COOMatrix, int, []bool, ...[]float64) ([][]float64, error)
 }
 
@@ -18,7 +18,7 @@ func (s Solver) Solve(gmtx *matrix.COOMatrix, csize int, conf []bool, vecs ...[]
 func CRS(laptime func(string)) Solver {
 	return Solver{
 		name: "CRS",
-		solve: func (gmtx *matrix.COOMatrix, csize int, conf []bool, vecs ...[]float64) ([][]float64, error) {
+		solve: func(gmtx *matrix.COOMatrix, csize int, conf []bool, vecs ...[]float64) ([][]float64, error) {
 			mtx := gmtx.ToCRS(csize, conf)
 			laptime("ToCRS")
 			answers := mtx.Solve(vecs...)
@@ -31,7 +31,7 @@ func CRS(laptime func(string)) Solver {
 func CRS_CG(eps float64, laptime func(string)) Solver {
 	return Solver{
 		name: "CRS_CG",
-		solve: func (gmtx *matrix.COOMatrix, csize int, conf []bool, vecs ...[]float64) ([][]float64, error) {
+		solve: func(gmtx *matrix.COOMatrix, csize int, conf []bool, vecs ...[]float64) ([][]float64, error) {
 			mtx := gmtx.ToCRS(csize, conf)
 			laptime("ToCRS")
 			answers := make([][]float64, len(vecs))
@@ -47,7 +47,7 @@ func CRS_CG(eps float64, laptime func(string)) Solver {
 func LLS(frame *Frame, laptime func(string)) Solver {
 	return Solver{
 		name: "LLS",
-		solve: func (gmtx *matrix.COOMatrix, csize int, conf []bool, vecs ...[]float64) ([][]float64, error) {
+		solve: func(gmtx *matrix.COOMatrix, csize int, conf []bool, vecs ...[]float64) ([][]float64, error) {
 			mtx := gmtx.ToLLS(csize, conf)
 			laptime("ToLLS")
 			answers, err := mtx.Solve(frame.Pivot, vecs...)
@@ -63,7 +63,7 @@ func LLS(frame *Frame, laptime func(string)) Solver {
 func LLS_CG(eps float64, laptime func(string)) Solver {
 	return Solver{
 		name: "LLS_CG",
-		solve: func (gmtx *matrix.COOMatrix, csize int, conf []bool, vecs ...[]float64) ([][]float64, error) {
+		solve: func(gmtx *matrix.COOMatrix, csize int, conf []bool, vecs ...[]float64) ([][]float64, error) {
 			mtx := gmtx.ToLLS(csize, conf)
 			mtx.DiagUp()
 			laptime("ToLLS")
@@ -86,7 +86,7 @@ func LLS_CG(eps float64, laptime func(string)) Solver {
 func LLS_PCG(eps float64, laptime func(string)) Solver {
 	return Solver{
 		name: "LLS_PCG",
-		solve: func (gmtx *matrix.COOMatrix, csize int, conf []bool, vecs ...[]float64) ([][]float64, error) {
+		solve: func(gmtx *matrix.COOMatrix, csize int, conf []bool, vecs ...[]float64) ([][]float64, error) {
 			mtx := gmtx.ToLLS(csize, conf)
 			C := gmtx.ToLLS(csize, conf)
 			mtx.DiagUp()

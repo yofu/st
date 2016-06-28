@@ -507,7 +507,7 @@ func DrawClosedLine(stw Drawer, elem *Elem, position []float64, scale float64, v
 		if v == nil {
 			if num > 0 {
 				stw.Polyline(append(coords[:num], coords[0]))
-				coords = make([][]float64, len(vertices) - num)
+				coords = make([][]float64, len(vertices)-num)
 				num = 0
 			}
 			continue
@@ -653,11 +653,11 @@ func DrawText(stw Drawer, t *TextBox) {
 	if stw.CanvasDirection() == 1 {
 		d = 1.0
 	}
-	ypos += d*fsize
+	ypos += d * fsize
 	for _, txt := range t.Text() {
 		fmt.Println(xpos, ypos, txt)
 		stw.Text(xpos, ypos, txt)
-		ypos += d*fsize*1.5
+		ypos += d * fsize * 1.5
 	}
 }
 
@@ -926,7 +926,7 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 		if num > 0 {
 			vals = vals[:num]
 			sort.Float64s(vals)
-			ind := num/6
+			ind := num / 6
 			EnergyBoundary = []float64{vals[ind], vals[ind*2], vals[ind*3], vals[ind*4], vals[ind*5], vals[ind*6]}
 		}
 	}
@@ -1198,14 +1198,14 @@ func DrawLegend(stw Drawer, show *Show) {
 		ox += 2 * sz
 		oy = float64(show.LegendPosition[1]) - 0.5*(show.LegendLineSep-1.0)*sz*d
 		stw.Text(ox, oy, "0.0")
-		oy += d*show.LegendLineSep * sz
+		oy += d * show.LegendLineSep * sz
 		for i, val := range RateBoundary {
 			if i == 3 {
 				stw.Text(ox, oy, fmt.Sprintf("%.5f", val))
 			} else {
 				stw.Text(ox, oy, fmt.Sprintf("%.1f", val))
 			}
-			oy += d*show.LegendLineSep * sz
+			oy += d * show.LegendLineSep * sz
 		}
 		stw.Text(ox-2*sz, oy+d*sz, "安全率の凡例")
 		stw.TextAlignment(show.DefaultTextAlignment)

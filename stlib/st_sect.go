@@ -13,17 +13,17 @@ var (
 )
 
 type Sect struct {
-	Frame *Frame
-	Num   int
-	Name  string
-	Figs  []*Fig
-	Exp   float64
-	Exq   float64
-	Lload []float64
-	Yield []float64
-	Type  int
+	Frame    *Frame
+	Num      int
+	Name     string
+	Figs     []*Fig
+	Exp      float64
+	Exq      float64
+	Lload    []float64
+	Yield    []float64
+	Type     int
 	Original int
-	Color int
+	Color    int
 }
 
 type Fig struct {
@@ -324,7 +324,7 @@ func (sect *Sect) Srein(ind int) (float64, error) {
 	if a, ok := sect.Figs[ind].Value["RA"]; ok {
 		if p, ok := sect.Figs[ind].Value["PITCH"]; ok {
 			if sd, ok := sect.Figs[ind].Value["SINDOU"]; ok {
-				return a * sd / (p*t*10.0), nil
+				return a * sd / (p * t * 10.0), nil
 			}
 		}
 	}

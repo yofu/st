@@ -21,13 +21,14 @@ import (
 var (
 	RainbowColor = []int{38655, 65430, 65280, 9895680, 16507473, 16750130, 16711830} //  "BLUE", "BLUEGREEN", "GREEN", "YELLOWGREEN", "YELLOW", "ORANGE", "RED"
 )
+
 const (
-    hextable = "0123456789abcdef"
+	hextable = "0123456789abcdef"
 )
 
 var (
-	home            = os.Getenv("HOME")
-	tooldir  = filepath.Join(home, ".st/tool")
+	home    = os.Getenv("HOME")
+	tooldir = filepath.Join(home, ".st/tool")
 )
 
 type Hider interface {
@@ -265,23 +266,23 @@ func IntColor(col int) string {
 }
 
 func IntHexColor(col int) string {
-    var rtn bytes.Buffer
-    val := 1048576
-    rtn.WriteString("#")
-    for i:=0; i<6; i++ {
-        tmp := 0
-        for {
-            if col>=val {
-                col -= val
-                tmp += 1
-            } else {
-                rtn.WriteByte(hextable[tmp])
-                break
-            }
-        }
-        val >>= 4
-    }
-    return rtn.String()
+	var rtn bytes.Buffer
+	val := 1048576
+	rtn.WriteString("#")
+	for i := 0; i < 6; i++ {
+		tmp := 0
+		for {
+			if col >= val {
+				col -= val
+				tmp += 1
+			} else {
+				rtn.WriteByte(hextable[tmp])
+				break
+			}
+		}
+		val >>= 4
+	}
+	return rtn.String()
 }
 
 func Rainbow(val float64, boundary []float64) int {
@@ -964,27 +965,27 @@ func FilterElem(frame *Frame, els []*Elem, str string) ([]*Elem, error) {
 		var f func(float64, float64) bool
 		switch fs[1] {
 		case ">=":
-			f = func (u, v float64) bool {
+			f = func(u, v float64) bool {
 				return u >= v
 			}
 		case ">":
-			f = func (u, v float64) bool {
+			f = func(u, v float64) bool {
 				return u > v
 			}
 		case "<=":
-			f = func (u, v float64) bool {
+			f = func(u, v float64) bool {
 				return u <= v
 			}
 		case "<":
-			f = func (u, v float64) bool {
+			f = func(u, v float64) bool {
 				return u < v
 			}
 		case "=", "==":
-			f = func (u, v float64) bool {
+			f = func(u, v float64) bool {
 				return u == v
 			}
 		case "!=":
-			f = func (u, v float64) bool {
+			f = func(u, v float64) bool {
 				return u != v
 			}
 		default:

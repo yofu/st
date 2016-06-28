@@ -15,14 +15,14 @@ type Cmq struct {
 
 func (c *Cmq) Add(c2 *Cmq, reverse bool) {
 	if reverse {
-		c.Ci  -= c2.Cj
-		c.Cj  -= c2.Ci
+		c.Ci -= c2.Cj
+		c.Cj -= c2.Ci
 		c.Mc0 += c2.Mc0
 		c.Qi0 += c2.Qj0
 		c.Qj0 += c2.Qi0
 	} else {
-		c.Ci  += c2.Ci
-		c.Cj  += c2.Cj
+		c.Ci += c2.Ci
+		c.Cj += c2.Cj
 		c.Mc0 += c2.Mc0
 		c.Qi0 += c2.Qi0
 		c.Qj0 += c2.Qj0
@@ -114,14 +114,14 @@ func Polygon(elem *Elem, w float64) (*Cmq, error) {
 	for i := 2; i < elem.Enods; i++ {
 		l := Distance(elem.Enod[0], elem.Enod[i])
 		d[i] = VectorDistance(elem.Enod[0], elem.Enod[i], vec)
-		h[i] = math.Sqrt(l * l - d[i] * d[i])
+		h[i] = math.Sqrt(l*l - d[i]*d[i])
 	}
 	rtn := new(Cmq)
 	var L1, L2, L3, H float64
 	for i := elem.Enods - 1; i > 1; i-- {
 		H = w * h[i]
 		var j int
-		if i == elem.Enods - 1 {
+		if i == elem.Enods-1 {
 			j = 0
 		} else {
 			j = i + 1

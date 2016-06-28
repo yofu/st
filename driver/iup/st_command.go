@@ -2183,7 +2183,7 @@ func offset(stw *Window) {
 			c := math.Cos(angle)
 			s := math.Sin(angle)
 			for i := 0; i < 3; i++ {
-				st0[i] = mid[i] + el.Strong[i] * c + el.Weak[i] * s
+				st0[i] = mid[i] + el.Strong[i]*c + el.Weak[i]*s
 			}
 			st1 := el.Frame.View.ProjectCoord(st0)
 			if st.DotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], float64(x), float64(y))*st.DotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], st1[0], st1[1]) < 0.0 {

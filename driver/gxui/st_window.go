@@ -9,9 +9,9 @@ import (
 	gxmath "github.com/google/gxui/math"
 	"github.com/yofu/st/stlib"
 	"log"
-	"path/filepath"
 	"math"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -36,20 +36,22 @@ var (
 	logf               os.File
 	logger             *log.Logger
 )
+
 const (
 	nRecentFiles = 3
 	nUndo        = 10
 )
+
 var (
-	gopath          = os.Getenv("GOPATH")
-	home            = os.Getenv("HOME")
-	releasenote     = filepath.Join(home, ".st/help/releasenote.html")
-	tooldir         = filepath.Join(home, ".st/tool")
-	pgpfile         = filepath.Join(home, ".st/st.pgp")
-	recentfn        = filepath.Join(home, ".st/recent.dat")
-	historyfn       = filepath.Join(home, ".st/history.dat")
-	NOUNDO          = false
-	ALTSELECTNODE   = true
+	gopath        = os.Getenv("GOPATH")
+	home          = os.Getenv("HOME")
+	releasenote   = filepath.Join(home, ".st/help/releasenote.html")
+	tooldir       = filepath.Join(home, ".st/tool")
+	pgpfile       = filepath.Join(home, ".st/st.pgp")
+	recentfn      = filepath.Join(home, ".st/recent.dat")
+	historyfn     = filepath.Join(home, ".st/history.dat")
+	NOUNDO        = false
+	ALTSELECTNODE = true
 )
 
 const LOGFILE = "_st.log"
@@ -79,15 +81,15 @@ var (
 )
 
 var (
-	first                   = 1
-	fixRotate               = false
-	fixMove                 = false
-	deg10                   = 10.0 * math.Pi / 180.0
-	drawpivot               = false
+	first     = 1
+	fixRotate = false
+	fixMove   = false
+	deg10     = 10.0 * math.Pi / 180.0
+	drawpivot = false
 )
 
 var (
-	showprintrange        = false
+	showprintrange = false
 )
 
 // Paper Size
@@ -105,11 +107,11 @@ const (
 	CanvasMoveSpeedY   = 0.05
 	CanvasScaleSpeed   = 500
 )
+
 var (
 	CanvasFitScale     = 0.9
-	CanvasAnimateSpeed    = 0.02
+	CanvasAnimateSpeed = 0.02
 )
-
 
 var selectDirection = 0
 
@@ -148,13 +150,13 @@ type Window struct { // {{{
 	cline   gxui.TextBox
 	history gxui.TextBox
 
-	currentCanvas gxui.Canvas
-	currentPen    gxui.Pen
-	currentBrush  gxui.Brush
-	currentFont   gxui.Font
-	currentFontColor gxui.Color
+	currentCanvas              gxui.Canvas
+	currentPen                 gxui.Pen
+	currentBrush               gxui.Brush
+	currentFont                gxui.Font
+	currentFontColor           gxui.Color
 	currentHorizontalAlignment gxui.HorizontalAlignment
-	currentVerticalAlignment gxui.VerticalAlignment
+	currentVerticalAlignment   gxui.VerticalAlignment
 
 	CanvasSize []int // width, height
 
@@ -241,7 +243,7 @@ func (stw *Window) initHistoryArea() {
 
 func (stw *Window) initCommandLineArea() {
 	stw.cline = stw.theme.CreateTextBox()
-	stw.cline.OnKeyDown(func (ev gxui.KeyboardEvent) {
+	stw.cline.OnKeyDown(func(ev gxui.KeyboardEvent) {
 		switch ev.Key {
 		default:
 			break
@@ -249,28 +251,28 @@ func (stw *Window) initCommandLineArea() {
 			stw.cline.SetText("")
 		case gxui.KeyEnter:
 			stw.feedCommand()
-		// case gxui.KeySemicolon:
-		// 	val := stw.cline.Text()
-		// 	if ev.Modifier.Shift() {
-		// 		if val == "" {
-		// 			stw.cline.SetText(";")
-		// 		} else {
-		// 			stw.cline.SetText(":")
-		// 		}
-		// 	} else {
-		// 		if val == "" {
-		// 			stw.cline.SetText(":")
-		// 		} else {
-		// 			stw.cline.SetText(";")
-		// 		}
-		// 	}
+			// case gxui.KeySemicolon:
+			// 	val := stw.cline.Text()
+			// 	if ev.Modifier.Shift() {
+			// 		if val == "" {
+			// 			stw.cline.SetText(";")
+			// 		} else {
+			// 			stw.cline.SetText(":")
+			// 		}
+			// 	} else {
+			// 		if val == "" {
+			// 			stw.cline.SetText(":")
+			// 		} else {
+			// 			stw.cline.SetText(";")
+			// 		}
+			// 	}
 		}
 	})
 	stw.cline.SetDesiredWidth(800)
 }
 
 func (stw *Window) initDrawAreaCallback() {
-	stw.draw.OnMouseUp(func (ev gxui.MouseEvent) {
+	stw.draw.OnMouseUp(func(ev gxui.MouseEvent) {
 		if stw.Frame != nil {
 			switch ev.Button {
 			case gxui.MouseButtonLeft:
@@ -285,10 +287,10 @@ func (stw *Window) initDrawAreaCallback() {
 		stw.rubber.Complete()
 		stw.Redraw()
 	})
-	stw.draw.OnMouseDown(func (ev gxui.MouseEvent) {
+	stw.draw.OnMouseDown(func(ev gxui.MouseEvent) {
 		stw.StartSelection(ev)
 	})
-	stw.draw.OnDoubleClick(func (ev gxui.MouseEvent) {
+	stw.draw.OnDoubleClick(func(ev gxui.MouseEvent) {
 		switch ev.Button {
 		case gxui.MouseButtonLeft:
 			fmt.Println("DOUBLE: LEFT", ev.Point.X, ev.Point.Y)
@@ -300,7 +302,7 @@ func (stw *Window) initDrawAreaCallback() {
 			}
 		}
 	})
-	stw.draw.OnMouseMove(func (ev gxui.MouseEvent) {
+	stw.draw.OnMouseMove(func(ev gxui.MouseEvent) {
 		if stw.Frame != nil {
 			if ev.State.IsDown(gxui.MouseButtonLeft) {
 				if ev.Modifier.Alt() {
@@ -315,7 +317,7 @@ func (stw *Window) initDrawAreaCallback() {
 			}
 		}
 	})
-	stw.draw.OnMouseScroll(func (ev gxui.MouseEvent) {
+	stw.draw.OnMouseScroll(func(ev gxui.MouseEvent) {
 		if stw.Frame != nil {
 			val := math.Pow(2.0, float64(ev.ScrollY)/CanvasScaleSpeed)
 			stw.Frame.View.Center[0] += (val - 1.0) * (stw.Frame.View.Center[0] - float64(ev.Point.X))
@@ -380,7 +382,7 @@ func NewWindow(driver gxui.Driver, theme gxui.Theme, homedir string) *Window {
 	stw.dlg = theme.CreateWindow(1200, 900, "stx")
 	stw.dlg.AddChild(vsp)
 	stw.dlg.OnClose(driver.Terminate)
-	stw.dlg.OnKeyDown(func (ev gxui.KeyboardEvent) {
+	stw.dlg.OnKeyDown(func(ev gxui.KeyboardEvent) {
 		if _, ok := stw.dlg.Focus().(gxui.TextBox); ok {
 			return
 		}
@@ -474,19 +476,19 @@ func (stw *Window) SetCanvasSize() {
 func (stw *Window) Animate(view *st.View) {
 	scale := 1.0
 	if stw.Frame.View.Perspective {
-		scale = math.Pow(view.Dists[1] / stw.Frame.View.Dists[1], CanvasAnimateSpeed)
+		scale = math.Pow(view.Dists[1]/stw.Frame.View.Dists[1], CanvasAnimateSpeed)
 	} else {
-		scale = math.Pow(view.Gfact / stw.Frame.View.Gfact, CanvasAnimateSpeed)
+		scale = math.Pow(view.Gfact/stw.Frame.View.Gfact, CanvasAnimateSpeed)
 	}
 	center := make([]float64, 2)
 	angle := make([]float64, 2)
 	focus := make([]float64, 3)
-	for i:=0; i<3; i++ {
-		focus[i] = CanvasAnimateSpeed*(view.Focus[i] - stw.Frame.View.Focus[i])
+	for i := 0; i < 3; i++ {
+		focus[i] = CanvasAnimateSpeed * (view.Focus[i] - stw.Frame.View.Focus[i])
 		if i >= 2 {
 			break
 		}
-		center[i] = CanvasAnimateSpeed*(view.Center[i] - stw.Frame.View.Center[i])
+		center[i] = CanvasAnimateSpeed * (view.Center[i] - stw.Frame.View.Center[i])
 		angle[i] = view.Angle[i] - stw.Frame.View.Angle[i]
 		if i == 1 {
 			for {
@@ -504,13 +506,13 @@ func (stw *Window) Animate(view *st.View) {
 		}
 		angle[i] *= CanvasAnimateSpeed
 	}
-	for i:=0; i<int(1/CanvasAnimateSpeed); i++ {
+	for i := 0; i < int(1/CanvasAnimateSpeed); i++ {
 		if stw.Frame.View.Perspective {
 			stw.Frame.View.Dists[1] *= scale
 		} else {
 			stw.Frame.View.Gfact *= scale
 		}
-		for j:=0; j<3; j++ {
+		for j := 0; j < 3; j++ {
 			stw.Frame.View.Focus[j] += focus[j]
 			if j >= 2 {
 				break
@@ -526,7 +528,7 @@ func (stw *Window) CanvasCenterView(angle []float64) *st.View {
 	a0 := make([]float64, 2)
 	f0 := make([]float64, 3)
 	focus := make([]float64, 3)
-	for i:=0; i<3; i++ {
+	for i := 0; i < 3; i++ {
 		f0[i] = stw.Frame.View.Focus[i]
 		if i >= 2 {
 			break
@@ -541,7 +543,7 @@ func (stw *Window) CanvasCenterView(angle []float64) *st.View {
 	}
 	xmin, xmax, ymin, ymax := stw.Bbox()
 	stw.SetCanvasSize()
-	for i:=0; i<3; i++ {
+	for i := 0; i < 3; i++ {
 		focus[i] = stw.Frame.View.Focus[i]
 		stw.Frame.View.Focus[i] = f0[i]
 		if i >= 2 {
@@ -1730,6 +1732,7 @@ func StopLogging() {
 	logger.Println("session closed")
 	logf.Close()
 }
+
 ///
 
 // Select
@@ -1992,8 +1995,8 @@ func (stw *Window) Deselect() {
 	stw.selectNode = make([]*st.Node, 0)
 	stw.selectElem = make([]*st.Elem, 0)
 }
-///
 
+///
 
 // Show&Hide
 func (stw *Window) SetShowRange() {
@@ -2138,8 +2141,8 @@ func (stw *Window) ToggleEtype(etype int) {
 		stw.ShowEtype(etype)
 	}
 }
-/// Show/Hide
 
+/// Show/Hide
 
 // Query
 func (stw *Window) Yn(title, question string) bool {
@@ -2149,8 +2152,8 @@ func (stw *Window) Yn(title, question string) bool {
 func (stw *Window) Yna(title, question, another string) int {
 	return 0
 }
-/// Query
 
+/// Query
 
 // Label
 func (stw *Window) SetColorMode(mode uint) {
@@ -2185,7 +2188,7 @@ func (stw *Window) NodeCaptionOn(name string) {
 	for i, j := range st.NODECAPTIONS {
 		if j == name {
 			// if lbl, ok := stw.Labels[name]; ok {
-				// lbl.SetAttribute("FGCOLOR", labelFGColor)
+			// lbl.SetAttribute("FGCOLOR", labelFGColor)
 			// }
 			if stw.Frame != nil {
 				stw.Frame.Show.NodeCaptionOn(1 << uint(i))
@@ -2344,8 +2347,8 @@ func (stw *Window) DispOff(direction int) {
 		}
 	}
 }
-/// Label
 
+/// Label
 
 func (stw *Window) DrawPivot(nodes []*st.Node, pivot, end chan int) {
 	// TODO

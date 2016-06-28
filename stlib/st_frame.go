@@ -3732,7 +3732,7 @@ func (frame *Frame) SetBoundary(num int, eps float64) error {
 	dhs := make([]float64, num-1)
 	bounds := make([]float64, num+1)
 	var dh float64
-	for i := 0; i < nnum - 1; i++ {
+	for i := 0; i < nnum-1; i++ {
 		dh = nodes[i+1].Coord[2] - nodes[i].Coord[2]
 		for j := num - 2; j > 0; j-- {
 			if dh > dhs[j] {
@@ -3754,7 +3754,7 @@ func (frame *Frame) SetBoundary(num int, eps float64) error {
 	sort.Float64s(bounds)
 	frame.Ai.Nfloor = num
 	frame.Ai.Boundary = make([]float64, num+1)
-	for i := 0; i < num + 1; i++ {
+	for i := 0; i < num+1; i++ {
 		frame.Ai.Boundary[i] = bounds[i]
 	}
 	return nil

@@ -613,7 +613,7 @@ func ModifyEnod(ns []*Node) []*Node {
 	}
 	if sum != 0.0 {
 		sum = math.Sqrt(sum)
-		for j := 0; j< 3; j++ {
+		for j := 0; j < 3; j++ {
 			tmp[j] /= sum
 		}
 	}

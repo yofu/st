@@ -26,8 +26,8 @@ func NewSVGCanvas(otp string, width, height float64) (*SVGCanvas, error) {
 		currentCanvas: cvs,
 		currentStyle:  nil,
 		writer:        w,
-		width:         width*90.0/25.4,
-		height:        height*90.0/25.4,
+		width:         width * 90.0 / 25.4,
+		height:        height * 90.0 / 25.4,
 	}, nil
 }
 
@@ -203,8 +203,8 @@ func PrintSVG(frame *Frame, otp string, width, height float64) error {
 		return err
 	}
 	v := frame.View.Copy()
-	frame.View.Center[0] = 0.5*sc.width
-	frame.View.Center[1] = 0.5*sc.height
+	frame.View.Center[0] = 0.5 * sc.width
+	frame.View.Center[1] = 0.5 * sc.height
 	sc.Draw(frame)
 	sc.Close()
 	frame.View = v

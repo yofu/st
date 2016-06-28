@@ -11,8 +11,8 @@ import (
 var (
 	Commands = make(map[string]*Command, 0)
 
-	DISTS               = &Command{"DISTANCE", "DISTS", "measure distance", dists}
-	DEFORMEDDISTS       = &Command{"DEFORMEDDISTANCE", "DEFORMED DISTS", "measure deformed distance", deformeddists}
+	DISTS         = &Command{"DISTANCE", "DISTS", "measure distance", dists}
+	DEFORMEDDISTS = &Command{"DEFORMEDDISTANCE", "DEFORMED DISTS", "measure deformed distance", deformeddists}
 )
 
 type Command struct {
@@ -181,4 +181,3 @@ func deformeddists(stw *Window) {
 }
 
 // }}}
-

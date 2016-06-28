@@ -142,7 +142,7 @@ func (k *Kijun) Contains(coord, vector []float64, min, max float64) (bool, error
 	v := Cross(k.Direction(), Normalize(vector))
 	s := make([]float64, 3)
 	dist := 0.0
-	for i:=0; i<3; i++ {
+	for i := 0; i < 3; i++ {
 		s[i] = coord[i] - k.Start[i]
 		dist += s[i] * v[i]
 	}

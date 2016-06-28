@@ -178,7 +178,7 @@ func (d *Dialog) TypeString(str string) {
 	} else {
 		if d.cr || d.nl {
 			if lis[0] != "" {
-				d.text[len(d.text) - 1] = lis[0]
+				d.text[len(d.text)-1] = lis[0]
 			}
 			if len(lis) > 1 {
 				d.text = append(d.text, lis[1:]...)

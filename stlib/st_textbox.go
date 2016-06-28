@@ -73,7 +73,7 @@ func (tb *TextBox) AddText(str ...string) {
 
 func (tb *TextBox) Linage() int {
 	l := len(tb.value)
-	for i:=l-1; i>=0; i-- {
+	for i := l - 1; i >= 0; i-- {
 		if tb.value[i] != "" {
 			break
 		}
@@ -83,7 +83,7 @@ func (tb *TextBox) Linage() int {
 }
 
 func (tb *TextBox) Bbox() (float64, float64, float64, float64) {
-	return tb.position[0], tb.position[1]-tb.Height(), tb.position[0]+tb.Width(), tb.position[1]
+	return tb.position[0], tb.position[1] - tb.Height(), tb.position[0] + tb.Width(), tb.position[1]
 }
 
 func (tb *TextBox) Contains(x, y float64) bool {
@@ -99,11 +99,11 @@ func (tb *TextBox) Width() float64 {
 			wmax = w
 		}
 	}
-	return float64(wmax*tb.Font.Size())/1.5
+	return float64(wmax*tb.Font.Size()) / 1.5
 }
 
 func (tb *TextBox) Height() float64 {
-	return 1.5*float64(tb.Linage()*tb.Font.Size())
+	return 1.5 * float64(tb.Linage()*tb.Font.Size())
 }
 
 func (tb *TextBox) ScrollDown(n int) {
