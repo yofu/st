@@ -1735,6 +1735,8 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 		material = SN400
 	case "SN490":
 		material = SN490
+	case "HT700":
+		material = HT700
 	}
 	switch lis[0][3] {
 	case "COLUMN":
