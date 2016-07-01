@@ -437,12 +437,12 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 		switch {
 		case strings.HasPrefix(successor, ":h"):
 			rtn = strings.Replace(orig, fmt.Sprintf("%s:h", repl), filepath.Dir(fn), 1)
-		case strings.HasPrefix(successor, ":+"):
+		case strings.HasPrefix(successor, "++"):
 			inc, err := Increment(fn, "_", 1, 1)
 			if err != nil {
 				return rtn
 			}
-			return complete(strings.Replace(rtn, fmt.Sprintf("%s:+", repl), repl, 1), repl, inc)
+			return complete(strings.Replace(rtn, fmt.Sprintf("%s++", repl), repl, 1), repl, inc)
 		case strings.HasPrefix(successor, "<"):
 			rtn = strings.Replace(rtn, fmt.Sprintf("%s<", repl), PruneExt(fn), 1)
 		default:
