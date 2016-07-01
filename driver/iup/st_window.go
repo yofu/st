@@ -6188,6 +6188,16 @@ func (stw *Window) TextBox(name string) *st.TextBox {
 	return stw.textBox[name]
 }
 
+func (stw *Window) TextBoxes() []*st.TextBox {
+	rtn := make([]*st.TextBox, len(stw.textBox))
+	i := 0
+	for _, t := range stw.textBox {
+		rtn[i] = t
+		i++
+	}
+	return rtn
+}
+
 func (stw *Window) Changed(c bool) {
 	stw.changed = c
 }
