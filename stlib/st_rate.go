@@ -178,11 +178,24 @@ type SColumn struct {
 	BTLength []float64
 	BBFactor []float64
 	BTFactor []float64
+	multi    float64
 }
 
 func NewSColumn(num int, shape Shape, material Steel) *SColumn {
-	sc := &SColumn{material, shape, num, "COLUMN", "", nil, nil, nil, nil, nil, nil}
-	return sc
+	return &SColumn{
+		Steel: material,
+		Shape: shape,
+		num: num,
+		Etype: "COLUMN",
+		Name: "",
+		XFace: nil,
+		YFace: nil,
+		BBLength: nil,
+		BTLength: nil,
+		BBFactor: nil,
+		BTFactor: nil,
+		multi: 1.0,
+	}
 }
 func (sc *SColumn) Num() int {
 	return sc.num
@@ -243,6 +256,8 @@ func (sc *SColumn) SetValue(name string, vals []float64) {
 		sc.BBFactor = vals
 	case "BTFAC":
 		sc.BTFactor = vals
+	case "MULTI":
+		sc.multi = vals[0]
 	}
 }
 func (sc *SColumn) String() string {
@@ -380,17 +395,17 @@ func (sc *SColumn) Fb(cond *Condition) float64 {
 }
 func (sc *SColumn) Na(cond *Condition) float64 {
 	if cond.Compression {
-		return sc.Fc(cond) * sc.A()
+		return sc.Fc(cond) * sc.A() * sc.multi
 	} else {
-		return sc.Ft(cond) * sc.A()
+		return sc.Ft(cond) * sc.A() * sc.multi
 	}
 }
 func (sc *SColumn) Qa(cond *Condition) float64 {
 	f := sc.Fs(cond)
 	if cond.Strong { // for Qy
-		return f * sc.Asy()
+		return f * sc.Asy() * sc.multi
 	} else { // for Qx
-		return f * sc.Asx()
+		return f * sc.Asx() * sc.multi
 	}
 }
 func (sc *SColumn) Me(length, Cb float64) float64 {
@@ -403,25 +418,25 @@ func (sc *SColumn) Me(length, Cb float64) float64 {
 	} else {
 		I = Ix
 	}
-	return Cb * math.Sqrt(math.Pow(math.Pi, 4.0)*sc.E*I*sc.E*sc.Iw()/math.Pow(length, 4.0)+math.Pow(math.Pi, 2.0)*sc.E*I*g*sc.J()/math.Pow(length, 2.0)) * 0.01 // [tfm]
+	return Cb * math.Sqrt(math.Pow(math.Pi, 4.0)*sc.E*I*sc.E*sc.Iw()/math.Pow(length, 4.0)+math.Pow(math.Pi, 2.0)*sc.E*I*g*sc.J()/math.Pow(length, 2.0)) * 0.01 * sc.multi // [tfm]
 }
 func (sc *SColumn) My(cond *Condition) float64 {
 	if cond.Strong {
-		return sc.F * sc.Zx() * 0.01 // [tfm]
+		return sc.F * sc.Zx() * 0.01 * sc.multi // [tfm]
 	} else {
-		return sc.F * sc.Zy() * 0.01 // [tfm]
+		return sc.F * sc.Zy() * 0.01 * sc.multi // [tfm]
 	}
 }
 func (sc *SColumn) Ma(cond *Condition) float64 {
 	f := sc.Fb(cond)
 	if cond.Strong {
-		return f * sc.Zx() * 0.01 // [tfm]
+		return f * sc.Zx() * 0.01 * sc.multi // [tfm]
 	} else {
-		return f * sc.Zy() * 0.01 // [tfm]
+		return f * sc.Zy() * 0.01 * sc.multi // [tfm]
 	}
 }
 func (sc *SColumn) Mza(cond *Condition) float64 {
-	return sc.Fs(cond) * sc.Torsion() * 0.01 // [tfm]
+	return sc.Fs(cond) * sc.Torsion() * 0.01 * sc.multi // [tfm]
 }
 
 func (sc *SColumn) Vertices() [][]float64 {

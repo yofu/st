@@ -1751,11 +1751,18 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 			vals := make([]float64, 2)
 			for i := 0; i < 2; i++ {
 				val, err := strconv.ParseFloat(words[1+i], 64)
-				if err == nil {
-					vals[i] = val
+				if err != nil {
+					return err
 				}
+				vals[i] = val
 			}
 			sr.SetValue(first, vals)
+		case "MULTI":
+			val, err := strconv.ParseFloat(words[1], 64)
+			if err != nil {
+				return err
+			}
+			sr.SetValue(first, []float64{val})
 		}
 		if err != nil {
 			return err
