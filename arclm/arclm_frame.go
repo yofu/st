@@ -10,6 +10,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -687,6 +688,21 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 	var eotp bytes.Buffer
 	var sign float64
 	safety := min
+	output := func(fn, efn string) error {
+		w, err := os.Create(fn)
+		if err != nil {
+			return err
+		}
+		defer w.Close()
+		frame.WriteTo(w)
+		ew, err := os.Create(efn)
+		if err != nil {
+			return err
+		}
+		defer ew.Close()
+		eotp.WriteTo(ew)
+		return nil
+	}
 	for lap := 0; lap < nlap; lap++ {
 		safety += delta
 		if safety > max {
@@ -726,6 +742,14 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 		} else {
 			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
 			if sign < 0.0 {
+				var tmp string
+				if otp == "" {
+					tmp = fmt.Sprintf("hogtxt_LAP_%d_%d.otp", lap, nlap)
+				} else {
+					ext := filepath.Ext(otp)
+					tmp = fmt.Sprintf("%s_LAP_%d_%d%s", strings.Replace(otp, ext, "", -1), lap, nlap, ext)
+				}
+				output(tmp, "energy.otp")
 				return errors.New(fmt.Sprintf("sylvester's law of inertia: %.3f", sign))
 			}
 		}
@@ -748,19 +772,7 @@ func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max fl
 	if otp == "" {
 		otp = "hogtxt.otp"
 	}
-	w, err := os.Create(otp)
-	if err != nil {
-		return err
-	}
-	defer w.Close()
-	frame.WriteTo(w)
-	ew, err := os.Create("energy.otp")
-	if err != nil {
-		return err
-	}
-	defer ew.Close()
-	eotp.WriteTo(ew)
-	return nil
+	return output(otp, "energy.otp")
 }
 
 // ANALYSIS FOR INCOMPRESSIBLE ELEMENT
