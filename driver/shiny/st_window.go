@@ -150,7 +150,7 @@ func (stw *Window) keymap(ev key.Event) key.Event {
 }
 
 func (stw *Window) Start(fn string) {
-	err := stw.LoadFontFace(filepath.Join(home, ".st/fonts/GenShinGothic-Regular.ttf"), 14)
+	err := stw.LoadFontFace(filepath.Join(home, ".st/fonts/yumindb.ttf"), 14)
 	if err != nil {
 		st.ErrorMessage(stw, err, st.ERROR)
 	}
