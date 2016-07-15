@@ -1235,11 +1235,6 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 	frame.EigenVector = make([][]float64, n)
 	EL := 0.0
 	ER := 10.0
-	vecs, err := OrthoNormalBasis(len(vec))
-	if err != nil {
-		return err
-	}
-	laptime("orthonormal basis")
 	FB := func(C *matrix.LLSMatrix, vec []float64, size int) []float64 {
 		tmp := make([]float64, size)
 		for j := 0; j < size; j++ {
@@ -1268,42 +1263,22 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 				return err
 			}
 			C.DiagUp()
-			ch := make(chan float64)
-			for v, vec := range vecs {
-				go func(mat *matrix.LLSMatrix, ind int, vector []float64) {
-					answer := FB(mat, vector, size)
-					quad := 0.0
-					for j := 0; j < len(vector); j++ {
-						quad += answer[j] * vector[j]
+			// positive definitness can be checked only by checking
+			// diagonal elements of D, where D is a diagonal matrix
+			// obtained by modified Cholesky factorization (LDLT),
+			// according to Sylvester's law of inertia.
+			for j := 0; j < len(vec); j++ {
+				if C.Query(j, j) < 0.0 {
+					neg++
+				}
+				if neg > i {
+					if ER-EL < eps {
+						break bclng
 					}
-					if ch != nil {
-						ch <- quad
-					}
-				}(C, v, vec)
-			}
-			num := 0
-		quadloop:
-			for {
-				select {
-				case val := <-ch:
-					if val < 0.0 {
-						neg++
-						if neg > i {
-							ch = nil
-							if ER-EL < eps {
-								break bclng
-							}
-							fmt.Fprintf(frame.Output, "LAMBDA<%.14f\n", 1.0/lambda)
-							EL = lambda
-							lambda = 0.5 * (EL + ER)
-							continue bclng
-						}
-					}
-					num++
-					if num >= len(vecs) {
-						ch = nil
-						break quadloop
-					}
+					fmt.Fprintf(frame.Output, "LAMBDA<%.14f\n", 1.0/lambda)
+					EL = lambda
+					lambda = 0.5 * (EL + ER)
+					continue bclng
 				}
 			}
 			fmt.Fprintf(frame.Output, "LAMBDA>%.14f\n", 1.0/lambda)
@@ -1329,17 +1304,6 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 		laptime(fmt.Sprintf("\nEIG %d: %.14f", i+1, 1.0/lastlambda))
 		frame.EigenValue[i] = 1.0 / lastlambda
 		frame.EigenVector[i] = lastvec
-		if i < n-1 {
-			for _, v := range vecs {
-				sum := 0.0
-				for j := 0; j < len(vec); j++ {
-					sum += v[j] * lastvec[j]
-				}
-				for j := 0; j < len(vec); j++ {
-					v[j] -= sum * lastvec[j]
-				}
-			}
-		}
 		ER = EL
 		EL = 0.0
 		frame.UpdateReaction(kemtx, lastvec)
