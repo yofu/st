@@ -4233,7 +4233,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		return ArclmStart(m.String())
 	case "bclng001":
 		if usage {
-			return Usage(":bclng001 {-period=name} {-eps=1e-12} {-noinit} {-mode=1} filename")
+			return Usage(":bclng001 {-period=name} {-eps=1e-12} {-noinit} {-mode=1} {-right=10.0} filename")
 		}
 		var otp string
 		if fn == "" {
@@ -4266,8 +4266,15 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				nmode = int(val)
 			}
 		}
+		right := 10.0
+		if n, ok := argdict["RIGHT"]; ok {
+			val, err := strconv.ParseFloat(n, 64)
+			if err == nil {
+				right = val
+			}
+		}
 		var m bytes.Buffer
-		m.WriteString(fmt.Sprintf("PERIOD: %s MODE: %d\n", per, nmode))
+		m.WriteString(fmt.Sprintf("PERIOD: %s MODE: %d EPS: %.1E RIGHT %.3f\n", per, nmode, eps, right))
 		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
@@ -4280,7 +4287,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		af.Output = stw.HistoryWriter()
 		go func() {
-			err := af.Bclng001(otp, init, nmode, eps)
+			err := af.Bclng001(otp, init, nmode, eps, right)
 			if err != nil {
 				fmt.Println(err)
 			}

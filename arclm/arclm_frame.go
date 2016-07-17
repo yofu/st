@@ -1191,7 +1191,7 @@ func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int
 }
 
 // TODO: not accurate for higher order
-func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { // TODO: speed up
+func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64, right float64) error { // TODO: speed up
 	if init {
 		frame.Initialise()
 	}
@@ -1234,7 +1234,7 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64) error { 
 	frame.EigenValue = make([]float64, n)
 	frame.EigenVector = make([][]float64, n)
 	EL := 0.0
-	ER := 10.0
+	ER := right
 	FB := func(C *matrix.LLSMatrix, vec []float64, size int) []float64 {
 		tmp := make([]float64, size)
 		for j := 0; j < size; j++ {
