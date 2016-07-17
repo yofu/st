@@ -76,6 +76,7 @@ var (
 		"al/ias":           complete.MustCompile("'alias", nil),
 		"anon/ymous":       complete.MustCompile("'anonymous", nil),
 		"no/de/c/ode":      complete.MustCompile("'nodecode", nil),
+		"zc/oord":          complete.MustCompile("'zcoord", nil),
 		"wei/ght":          complete.MustCompile("'weight", nil),
 		"con/f":            complete.MustCompile("'conf", nil),
 		"pi/lecode":        complete.MustCompile("'pilecode", nil),
@@ -1012,6 +1013,12 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			NodeCaptionOff(stw, "NC_NUM")
 		} else {
 			NodeCaptionOn(stw, "NC_NUM")
+		}
+	case "zcoord":
+		if un {
+			NodeCaptionOff(stw, "NC_ZCOORD")
+		} else {
+			NodeCaptionOn(stw, "NC_ZCOORD")
 		}
 	case "weight":
 		if un {

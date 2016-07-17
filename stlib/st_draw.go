@@ -720,7 +720,7 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 		}
 	}
 	if show.NodeCaption&NC_ZCOORD != 0 {
-		ncap.WriteString(fmt.Sprintf("%.1f\n", node.Coord[2]))
+		ncap.WriteString(fmt.Sprintf("%.3f\n", node.Coord[2]))
 		oncap = true
 	}
 	if show.NodeCaption&NC_PILE != 0 {
