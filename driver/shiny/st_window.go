@@ -588,23 +588,39 @@ func (stw *Window) Start(fn string) {
 					if stw.Executing() {
 						sent := stw.SendWheel(st.WheelUp)
 						if !sent {
-							stw.ZoomIn(float64(e.X), float64(e.Y))
+							if e.Modifiers&key.ModControl != 0 {
+								stw.ZoomIn(stw.frame.View.Center[0], stw.frame.View.Center[1])
+							} else {
+								stw.ZoomIn(float64(e.X), float64(e.Y))
+							}
 							stw.Redraw()
 							stw.window.Publish()
 						}
 					} else {
-						stw.ZoomIn(float64(e.X), float64(e.Y))
+						if e.Modifiers&key.ModControl != 0 {
+							stw.ZoomIn(stw.frame.View.Center[0], stw.frame.View.Center[1])
+						} else {
+							stw.ZoomIn(float64(e.X), float64(e.Y))
+						}
 					}
 				case mouse.ButtonWheelDown:
 					if stw.Executing() {
 						sent := stw.SendWheel(st.WheelDown)
 						if !sent {
-							stw.ZoomOut(float64(e.X), float64(e.Y))
+							if e.Modifiers&key.ModControl != 0 {
+								stw.ZoomOut(stw.frame.View.Center[0], stw.frame.View.Center[1])
+							} else {
+								stw.ZoomOut(float64(e.X), float64(e.Y))
+							}
 							stw.Redraw()
 							stw.window.Publish()
 						}
 					} else {
-						stw.ZoomOut(float64(e.X), float64(e.Y))
+						if e.Modifiers&key.ModControl != 0 {
+							stw.ZoomOut(stw.frame.View.Center[0], stw.frame.View.Center[1])
+						} else {
+							stw.ZoomOut(float64(e.X), float64(e.Y))
+						}
 					}
 				}
 				if !stw.Executing() {
