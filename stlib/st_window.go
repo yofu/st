@@ -443,6 +443,12 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 				return rtn
 			}
 			return complete(strings.Replace(rtn, fmt.Sprintf("%s++", repl), repl, 1), repl, inc)
+		case strings.HasPrefix(successor, "--"):
+			inc, err := Increment(fn, "_", 1, -1)
+			if err != nil {
+				return rtn
+			}
+			return complete(strings.Replace(rtn, fmt.Sprintf("%s--", repl), repl, 1), repl, inc)
 		case strings.HasPrefix(successor, "<"):
 			rtn = strings.Replace(rtn, fmt.Sprintf("%s<", repl), PruneExt(fn), 1)
 		default:
