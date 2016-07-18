@@ -1052,6 +1052,64 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
 			}
 		}
+	case "spline":
+		if usage {
+			return Usage(":spline {-d=1} {-z=2} {-scale=1000.0} {-n=4} {-original} filename")
+		}
+		f := Ce(fn, ".dxf")
+		d := 1
+		if dv, ok := argdict["D"]; ok {
+			switch dv {
+			case "0", "x", "X":
+				d = 0
+			case "1", "y", "Y":
+				d = 1
+			case "2", "z", "Z":
+				d = 2
+			}
+		}
+		z := 2
+		if zv, ok := argdict["Z"]; ok {
+			switch zv {
+			case "0", "x", "X":
+				z = 0
+			case "1", "y", "Y":
+				z = 1
+			case "2", "z", "Z":
+				z = 2
+			}
+		}
+		scale := 1000.0
+		if s, ok := argdict["SCALE"]; ok {
+			val, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				scale = val
+			}
+		}
+		ndiv := 4
+		if n, ok := argdict["N"]; ok {
+			val, err := strconv.ParseInt(n, 10, 64)
+			if err == nil {
+				ndiv = int(val)
+			}
+		}
+		original := false
+		if _, ok := argdict["ORIGINAL"]; ok {
+			original = true
+		}
+		var ns []*Node
+		ns = currentnode(stw, exmodech, exmodeend)
+		if len(ns) == 0 {
+			els := currentelem(stw, exmodech, exmodeend)
+			if len(els) == 0 {
+				return fmt.Errorf("no nodes or elems selected")
+			}
+			ns = frame.ElemToNode(els...)
+		}
+		err := createspline(f, ns, d, z, scale, ndiv, original)
+		if err != nil {
+			return err
+		}
 	case "pdf":
 		pdf, err := NewPDFCanvas(595.28, 841.89)
 		if err != nil {
@@ -4413,4 +4471,36 @@ func currentelem(stw ExModer, exmodech chan interface{}, exmodeend chan int) []*
 		els = stw.SelectedElems()
 	}
 	return els
+}
+
+func currentnode(stw ExModer, exmodech chan interface{}, exmodeend chan int) []*Node {
+	var ns []*Node
+	if !stw.NodeSelected() {
+		nnum := 0
+		ns = make([]*Node, 0)
+	currentn:
+		for {
+			select {
+			case <-time.After(time.Second):
+				break currentn
+			case <-exmodeend:
+				break currentn
+			case n := <-exmodech:
+				if n == nil {
+					break currentn
+				}
+				if n, ok := n.(*Node); ok {
+					ns = append(ns, n)
+					nnum++
+				}
+			}
+		}
+		if nnum == 0 {
+			return []*Node{}
+		}
+		ns = ns[:nnum]
+	} else {
+		ns = stw.SelectedNodes()
+	}
+	return ns
 }

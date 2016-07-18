@@ -308,6 +308,20 @@ func (e ElemBySumEnod) Less(i, j int) bool {
 	return sum1 < sum2
 }
 
+type ElemByMidPoint struct{ Elems }
+
+func (e ElemByMidPoint) Less(i, j int) bool {
+	m1 := e.Elems[i].MidPoint()
+	m2 := e.Elems[j].MidPoint()
+	for n := 0; n < 3; n++ {
+		if m1[n] == m2[n] {
+			continue
+		}
+		return m1[n] < m2[n]
+	}
+	return false
+}
+
 // }}}
 
 func SortedElem(els map[int]*Elem, compare func(*Elem) float64) []*Elem {

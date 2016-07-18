@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"sort"
+
+	"github.com/yofu/dxf"
+	"github.com/yofu/st/matrix"
 )
 
 var (
@@ -20,6 +24,7 @@ var (
 		"TRIM":           Trim,
 		"MOVEUPDOWN":     MoveUpDown,
 		"ARCLM201":       Arclm201,
+		"SPLINE":         Spline,
 	}
 )
 
@@ -648,4 +653,87 @@ func Arclm201(stw Commander) chan bool {
 		}
 	}()
 	return quit
+}
+
+func createspline(fn string, nodes []*Node, d, z int, scale float64, ndiv int, original bool) error {
+	if len(nodes) == 0 {
+		return fmt.Errorf("no nodes")
+	}
+	switch d {
+	case 0:
+		sort.Sort(NodeByXCoord{nodes})
+	case 1:
+		sort.Sort(NodeByYCoord{nodes})
+	case 2:
+		sort.Sort(NodeByZCoord{nodes})
+	}
+	h := make([]float64, len(nodes)-1)
+	y := make([]float64, len(nodes)-1)
+	for i := 0; i < len(nodes) - 1; i++ {
+		h[i] = nodes[i+1].Coord[d] - nodes[i].Coord[d]
+		y[i] = (nodes[i+1].Coord[z] - nodes[i].Coord[z]) / h[i]
+	}
+	m := matrix.NewCOOMatrix(len(nodes) - 2)
+	v := make([]float64, len(nodes) - 2)
+	for i := 0; i < len(nodes) - 2; i++ {
+		if i > 0 {
+			m.Set(i-1, i, h[i])
+		}
+		m.Set(i, i, 2.0*(h[i] + h[i+1]))
+		if i < len(nodes) - 3 {
+			m.Set(i, i+1, h[i+1])
+		}
+		v[i] = 3.0 * (y[i+1] - y[i])
+	}
+	conf := make([]bool, m.Size)
+	lls := m.ToLLS(0, conf)
+	ans, err := lls.Solve(nil, v)
+	if err != nil {
+		return err
+	}
+	C := make([]float64, len(nodes))
+	for i := 0; i < len(nodes) - 2; i++ {
+		C[i+1] = ans[0][i]
+	}
+	D := make([]float64, len(nodes)-1)
+	B := make([]float64, len(nodes)-1)
+	A := make([]float64, len(nodes)-1)
+	for i := 0; i < len(nodes) - 1; i++ {
+		D[i] = (C[i+1] - C[i]) / (3.0*h[i])
+		B[i] = y[i] - (C[i] + D[i]*h[i])*h[i]
+		A[i] = nodes[i].Coord[z]
+	}
+	dw := dxf.NewDrawing()
+	for i := 0; i < len(nodes) -1; i++ {
+		if original {
+			dw.Line(nodes[i].Coord[d]*scale, nodes[i].Coord[z]*scale, 0.0, nodes[i+1].Coord[d]*scale, nodes[i+1].Coord[z]*scale, 0.0)
+		}
+		sx := nodes[i].Coord[d]
+		dcx := h[i] / float64(ndiv)
+		ex := sx + dcx
+		dx := ex - nodes[i].Coord[d]
+		sy := A[i]
+		ey := A[i] + B[i] * dx + C[i] * dx * dx + D[i] * dx * dx * dx
+		for j := 0; j < ndiv; j++ {
+			dw.Line(sx*scale, sy*scale, 0.0, ex*scale, ey*scale, 0.0)
+			sx = ex
+			sy = ey
+			ex = ex + dcx
+			dx = ex - nodes[i].Coord[d]
+			ey = A[i] + B[i] * dx + C[i] * dx * dx + D[i] * dx * dx * dx
+		}
+	}
+	return dw.SaveAs(fn)
+}
+
+func Spline(stw Commander) chan bool {
+	d := 1
+	z := 2
+	scale := 1000.0
+	ndiv := 4
+	original := true
+	return multielems(stw, func(elems []*Elem) error {
+		nodes := stw.Frame().ElemToNode(elems...)
+		return createspline("spline.dxf", nodes, d, z, scale, ndiv, original)
+	})
 }
