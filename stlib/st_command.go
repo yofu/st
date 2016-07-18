@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+	"math/rand"
 )
 
 var (
@@ -562,7 +563,7 @@ func MoveUpDown(stw Commander) chan bool {
 				pos := stw.CurrentPointerPosition()
 				ns, picked := PickNode(stw, pos[0], pos[1], pos[0], pos[1])
 				if picked {
-					mv(ns[0], 0.5, val)
+					mv(ns[0], 0.25+rand.Float64()*0.5, val)
 				}
 				stw.Redraw()
 			case c := <-clickch:
