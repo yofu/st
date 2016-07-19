@@ -704,9 +704,13 @@ func createspline(fn string, nodes []*Node, d, z int, scale float64, ndiv int, o
 		A[i] = nodes[i].Coord[z]
 	}
 	dw := dxf.NewDrawing()
+	dw.AddLayer("ORIGINAL", dxf.DefaultColor, dxf.DefaultLineType, false)
+	dw.AddLayer("SPLINE", dxf.DefaultColor, dxf.DefaultLineType, true)
 	for i := 0; i < len(nodes) -1; i++ {
 		if original {
+			dw.Layer("ORIGINAL", true)
 			dw.Line(nodes[i].Coord[d]*scale, nodes[i].Coord[z]*scale, 0.0, nodes[i+1].Coord[d]*scale, nodes[i+1].Coord[z]*scale, 0.0)
+			dw.Layer("SPLINE", true)
 		}
 		sx := nodes[i].Coord[d]
 		dcx := h[i] / float64(ndiv)
