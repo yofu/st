@@ -208,7 +208,7 @@ func (node *Node) CopyString(x, y, z float64) string {
 }
 
 func (node *Node) WgtString() string {
-	return fmt.Sprintf("%9d  %10.3f %10.3f %10.3f\n", node.Num, node.Weight[0], node.Weight[1], node.Weight[2])
+	return fmt.Sprintf("%9d  %10.3f %10.3f %10.3f\n", node.Num, node.Weight[0] - node.Load[2], node.Weight[1] - node.Load[2], node.Weight[2] - node.Load[2])
 }
 
 func (node *Node) InlCoordString() string {

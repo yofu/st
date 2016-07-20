@@ -4045,11 +4045,6 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	otp.WriteString(fmt.Sprintf(" 節点番号          積載荷重別の重量 [%s]\n\n", frame.Show.UnitName[0]))
 	otp.WriteString("                 床用     柱梁用     地震用\n")
 	for _, n := range nodes {
-		if n.Load[2] != 0.0 {
-			for i := 0; i < 3; i++ {
-				n.Weight[i] -= n.Load[2]
-			}
-		}
 		otp.WriteString(n.WgtString())
 		for i := 0; i < 3; i++ {
 			total[i] += n.Weight[i]
