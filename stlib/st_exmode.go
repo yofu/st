@@ -4437,6 +4437,19 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 		}
 		Snapshot(stw)
+	case "parabola":
+		d := 0.2
+		if dv, ok := argdict["D"]; ok {
+			val, err := strconv.ParseFloat(dv, 64)
+			if err == nil {
+				d = val
+			}
+		}
+		l := 1.514
+		for _, n := range frame.Nodes {
+			n.Coord[2] += d / (l * l) * n.Coord[0] * n.Coord[0]
+		}
+		Snapshot(stw)
 	}
 	return nil
 }
