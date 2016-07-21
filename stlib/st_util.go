@@ -422,7 +422,12 @@ func Increment(fn, div string, pos, times int) (string, error) {
 		if err != nil {
 			return fn, err
 		}
-		ls[pos] = fmt.Sprintf("%02d", int(val)+times)
+		newval := int(val) + times
+		if pos == len(ls) - 1 && newval == 0 {
+			ls = ls[:len(ls) - 1]
+		} else {
+			ls[pos] = fmt.Sprintf("%02d", int(val)+times)
+		}
 	}
 	return strings.Join(ls, div) + ext, nil
 }
