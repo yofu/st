@@ -1714,6 +1714,15 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				f = func(n *Node) bool {
 					return n.IsFixed()
 				}
+			case abbrev.For("/P/LOAD/ED", condition):
+				f = func(n *Node) bool {
+					for i := 0; i < 6; i++ {
+						if n.Load[i] != 0.0 {
+							return true
+						}
+					}
+					return false
+				}
 			}
 			if f != nil {
 				ns := make([]*Node, len(frame.Nodes))
