@@ -732,8 +732,25 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 	if oncap {
 		stw.Text(node.Pcoord[0], node.Pcoord[1], strings.TrimSuffix(ncap.String(), "\n"))
 	}
+	if show.PointedLoad {
+		v := make([]float64, 3)
+		drawpload := false
+		for i := 0; i < 3; i++ {
+			if node.Load[i] != 0.0 {
+				drawpload = true
+			}
+			v[i] = show.Pfact * node.Load[i]
+		}
+		if drawpload {
+			DrawNodeArrow(stw, node, v)
+		}
+	}
 	if show.NodeNormal {
-		DrawNodeNormal(stw, node, show)
+		d := node.Normal(true)
+		for i := 0; i < 3; i++ {
+			d[i] *= show.NodeNormalSize
+		}
+		DrawNodeArrow(stw, node, d)
 	}
 	// Conffigure
 	if show.Conf {
@@ -808,16 +825,14 @@ func FixFigure(stw Drawer, x, y, size float64) {
 	stw.Line(x+0.75*size, y, x+0.25*size, y-d*0.5*size)
 }
 
-func DrawNodeNormal(stw Drawer, node *Node, show *Show) {
+func DrawNodeArrow(stw Drawer, node *Node, vector []float64) {
 	v := make([]float64, 3)
-	d := node.Normal(true)
 	for i := 0; i < 3; i++ {
-		v[i] = node.Coord[i] + show.NodeNormalSize*d[i]
+		v[i] = node.Coord[i] + vector[i]
 	}
 	vec := node.Frame.View.ProjectCoord(v)
-	arrow := 0.3
 	stw.LineStyle(CONTINUOUS)
-	Arrow(stw, node.Pcoord[0], node.Pcoord[1], vec[0], vec[1], arrow, deg10)
+	Arrow(stw, node.Pcoord[0], node.Pcoord[1], vec[0], vec[1], 0.3, deg10)
 }
 
 func InBound(el *Elem, w, h float64) bool {

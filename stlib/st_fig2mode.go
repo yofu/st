@@ -1048,6 +1048,19 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		} else {
 			NodeCaptionOn(stw, "NC_PILE")
 		}
+	case "pload":
+		if un {
+			PointedLoadOff(stw)
+		} else {
+			PointedLoadOn(stw)
+			if len(lis) > 1 {
+				val, err := strconv.ParseFloat(lis[1], 64)
+				if err != nil {
+					return err
+				}
+				frame.Show.Pfact = val
+			}
+		}
 	case "fence":
 		if len(lis) < 3 {
 			return NotEnoughArgs("FENCE")

@@ -957,6 +957,24 @@ func DispOff(stw Window, direction int) {
 	}
 }
 
+func PointedLoadOn(stw Window) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	frame.Show.PointedLoad = true
+	stw.EnableLabel("POINTEDLOAD")
+}
+
+func PointedLoadOff(stw Window) {
+	frame := stw.Frame()
+	if frame == nil {
+		return
+	}
+	frame.Show.PointedLoad = false
+	stw.DisableLabel("POINTEDLOAD")
+}
+
 func HideAllSection(stw Window) {
 	frame := stw.Frame()
 	if frame == nil {
