@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-const (
+var (
 	width   = 300
 	linenum = 30
 	linesep = 15
@@ -104,6 +104,10 @@ func (d *Dialog) Start() chan bool {
 				d.window.Publish()
 			case size.Event:
 				sz = e
+				width = sz.WidthPx
+				linenum = (sz.HeightPx - margin) / linesep
+				d.Redraw()
+				d.window.Publish()
 			case error:
 				log.Print(e)
 			}
