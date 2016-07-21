@@ -92,6 +92,7 @@ var (
 		"n/ode/dup/lication": complete.MustCompile(":nodeduplication", nil),
 		"e/lem/dup/lication": complete.MustCompile(":elemduplication [ignoresect:]", nil),
 		"i/ntersect/a/ll":    complete.MustCompile(":intersectall", nil),
+		"src/al":             complete.MustCompile(":srcal [fbold:] [noreload:] [qfact:_] [wfact:_] [skipshort:] [temporary:]", nil),
 		"co/nf":              complete.MustCompile(":conf", nil),
 		"pi/le":              complete.MustCompile(":pile", nil),
 		"sec/tion":           complete.MustCompile(":section [nodisp:]_", nil),
@@ -1223,12 +1224,12 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		Snapshot(stw)
 	case "srcal":
 		if usage {
-			return Usage(":srcal {-fbold} {-noreload} {-tmp}")
+			return Usage(":srcal {-fbold} {-noreload} {-qfact=2.0} {-wfact=2.0} {-skipshort} {-temporary} filename")
 		}
 		var m bytes.Buffer
 		cond := NewCondition()
 		if _, ok := argdict["FBOLD"]; ok {
-			m.WriteString("Fb: old")
+			m.WriteString("Fb: old\n")
 			cond.FbOld = true
 		}
 		reload := true
@@ -1238,9 +1239,33 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if reload {
 			ReadFile(stw, Ce(frame.Path, ".lst"))
 		}
-		otp := frame.Path
-		if _, ok := argdict["TMP"]; ok {
-			otp = "tmp"
+		var otp string
+		if fn == "" {
+			otp = frame.Path
+		} else {
+			otp = fn
+		}
+		if qf, ok := argdict["QFACT"]; ok {
+			val, err := strconv.ParseFloat(qf, 64)
+			if err == nil {
+				cond.Qfact = val
+			}
+		}
+		m.WriteString(fmt.Sprintf("QFACT: %.3f\n", cond.Qfact))
+		if wf, ok := argdict["WFACT"]; ok {
+			val, err := strconv.ParseFloat(wf, 64)
+			if err == nil {
+				cond.Wfact = val
+			}
+		}
+		m.WriteString(fmt.Sprintf("WFACT: %.3f\n", cond.Wfact))
+		if _, ok := argdict["SKIPSHORT"]; ok {
+			m.WriteString("SKIP SHORT\n")
+			cond.Skipshort = true
+		}
+		if _, ok := argdict["TEMPORARY"]; ok {
+			m.WriteString("TEMPORARY")
+			cond.Temporary = true
 		}
 		frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
 		return Message(m.String())

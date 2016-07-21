@@ -4302,11 +4302,6 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	var rate []float64
 	var rate2 float64
 	var err error
-	NFACT := 1.0
-	QFACT := 2.0
-	MFACT := 1.0
-	BFACT := 1.0
-	WFACT := 2.0
 	stname := []string{"鉛直時Z    :", "水平時X    :", "水平時X負  :", "水平時Y    :", "水平時Y負  :"}
 	pername := []string{"長期       :", "短期X正方向:", "短期X負方向:", "短期Y正方向:", "短期Y負方向:"}
 	calc1 := func(allow SectionRate, st1, st2, fact []float64, sign float64) ([]float64, error) {
@@ -4345,7 +4340,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 		}
 		return rtn
 	}
-	factor := []float64{NFACT, QFACT, QFACT, 1.0, MFACT, MFACT}
+	factor := []float64{cond.Nfact, cond.Qfact, cond.Qfact, 1.0, cond.Mfact, cond.Mfact}
 	otp.WriteString("断面算定 \"S,RC,SRC\" 長期,短期,終局\n")
 	otp.WriteString("使用ファイル\n")
 	otp.WriteString(fmt.Sprintf("入力データ               =%s\n", frame.DataFileName["L"]))
@@ -4412,7 +4407,11 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				otp.WriteString("\n")
 			}
 			otp.WriteString("\n")
-			cond.Period = "L"
+			if cond.Temporary {
+				cond.Period = "S"
+			} else {
+				cond.Period = "L"
+			}
 			otp.WriteString(pername[0])
 			rate, err = calc1(al, stress[0], nil, nil, 1.0)
 			qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
@@ -4424,6 +4423,11 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				} else {
 					mlrate = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
 				}
+			}
+			if cond.Skipshort {
+				otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
+				el.Rate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
+				break
 			}
 			cond.Period = "S"
 			var s float64
@@ -4454,9 +4458,9 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			var qlrate, qsrate, qurate float64
 			var fact float64
 			if el.Etype == BRACE {
-				fact = BFACT
+				fact = cond.Bfact
 			} else {
-				fact = WFACT
+				fact = cond.Wfact
 			}
 			cond.Length = el.Length() * 100.0 // [cm]
 			cond.Width = el.Width() * 100.0   // [cm]
@@ -4482,10 +4486,19 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				otp.WriteString("\n")
 			}
 			otp.WriteString("\n")
-			cond.Period = "L"
+			if cond.Temporary {
+				cond.Period = "S"
+			} else {
+				cond.Period = "L"
+			}
 			otp.WriteString(pername[0])
 			rate2, err = calc2(al, stress[0], 0.0, 0.0, 1.0)
 			qlrate = rate2
+			if cond.Skipshort {
+				otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
+				el.Rate = []float64{qlrate, qsrate, qurate}
+				break
+			}
 			cond.Period = "S"
 			var s float64
 			for p := 1; p < 5; p++ {

@@ -2145,22 +2145,37 @@ type Condition struct {
 	Q           float64
 	Sign        float64
 	Verbose     bool
+	Nfact       float64
+	Qfact       float64
+	Mfact       float64
+	Bfact       float64
+	Wfact       float64
+	Skipshort   bool
+	Temporary   bool
 }
 
 func NewCondition() *Condition {
-	c := new(Condition)
-	c.Period = "L"
-	c.Length = 0.0
-	c.Width = 0.0
-	c.Compression = false
-	c.Strong = true
-	c.Positive = true
-	c.FbOld = false
-	c.N = 0.0
-	c.M = 0.0
-	c.Q = 0.0
-	c.Sign = 1.0
-	return c
+	return &Condition{
+		Period:      "L",
+		Length:      0.0,
+		Width:       0.0,
+		Compression: false,
+		Strong:      true,
+		Positive:    true,
+		FbOld:       false,
+		N:           0.0,
+		M:           0.0,
+		Q:           0.0,
+		Sign:        1.0,
+		Verbose:     false,
+		Nfact:       1.0,
+		Qfact:       2.0,
+		Mfact:       1.0,
+		Bfact:       1.0,
+		Wfact:       2.0,
+		Skipshort:   false,
+		Temporary:   false,
+	}
 }
 
 func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string, error) {
