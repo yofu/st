@@ -200,7 +200,7 @@ func NewShow(frame *Frame) *Show {
 		Unit:                 []float64{1.0, 1.0},
 		UnitName:             []string{"tf", "m"},
 		ColorMode:            ECOLOR_SECT,
-		NodeCaption:          NC_NUM,
+		NodeCaption:          0,
 		ElemCaption:          0,
 		SrcanRate:            0,
 		Energy:               false,
