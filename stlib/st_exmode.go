@@ -2946,6 +2946,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 				el.Copy(vec[0], vec[1], vec[2], EPS)
 			}
+			Snapshot(stw)
 		case "stress":
 			if usage {
 				return Usage(":copy stress {-format=%.3f} [01]{0,12}")
