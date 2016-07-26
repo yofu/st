@@ -757,6 +757,7 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 		log.Fatal(err)
 	}
 	commandbuffer = b
+	stw.Foreground(st.GREEN_A100)
 	d := &font.Drawer{
 		Dst:  commandbuffer.RGBA(),
 		Src:  image.NewUniform(stw.font.color),
@@ -764,6 +765,7 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 		Dot:  fixed.Point26_6{fixed.I(int(x)), fixed.I(int(y))},
 	}
 	d.DrawString(str)
+	stw.Foreground(st.WHITE)
 	t, err := stw.screen.NewTexture(winSize)
 	if err != nil {
 		log.Fatal(err)
@@ -773,7 +775,7 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 	}
 	commandtexture = t
 	t.Upload(image.Point{}, commandbuffer, commandbuffer.Bounds())
-	stw.window.Fill(image.Rect(int(x-5), int(y-float64(stw.font.height.Ceil())-5), 500, int(y+5)), color.RGBA{0x33, 0x33, 0x33, 0xff}, screen.Over)
+	stw.window.Fill(image.Rect(int(x-5), int(y-float64(stw.font.height.Ceil())-5), winSize.X, int(y+5)), color.RGBA{0x00, 0x00, 0x00, 0xff}, screen.Over)
 	stw.window.Copy(image.Point{0, 0}, commandtexture, commandtexture.Bounds(), screen.Over, nil)
 	stw.window.Publish()
 }
