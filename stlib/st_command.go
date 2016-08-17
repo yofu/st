@@ -706,7 +706,25 @@ func createspline(fn string, nodes []*Node, d, z int, scale float64, ndiv int, o
 	dw := dxf.NewDrawing()
 	dw.AddLayer("ORIGINAL", dxf.DefaultColor, dxf.DefaultLineType, false)
 	dw.AddLayer("SPLINE", dxf.DefaultColor, dxf.DefaultLineType, true)
+	mind := nodes[0].Coord[d]
+	maxd := nodes[0].Coord[d]
+	minz := nodes[0].Coord[z]
+	maxz := nodes[0].Coord[z]
 	for i := 0; i < len(nodes) -1; i++ {
+		if nodes[i+1].Coord[d] > maxd {
+			maxd = nodes[i+1].Coord[d]
+		} else if nodes[i+1].Coord[d] < mind {
+			mind = nodes[i+1].Coord[d]
+		}
+		if nodes[i+1].Coord[z] > maxz {
+			maxz = nodes[i+1].Coord[z]
+		} else if nodes[i+1].Coord[z] < minz {
+			minz = nodes[i+1].Coord[z]
+		}
+		if nodes[i+1].Coord[d] - nodes[i].Coord[d] <= 0.15 {
+			dw.Line(nodes[i].Coord[d]*scale, nodes[i].Coord[z]*scale, 0.0, nodes[i+1].Coord[d]*scale, nodes[i+1].Coord[z]*scale, 0.0)
+			continue
+		}
 		if original {
 			dw.Layer("ORIGINAL", true)
 			dw.Line(nodes[i].Coord[d]*scale, nodes[i].Coord[z]*scale, 0.0, nodes[i+1].Coord[d]*scale, nodes[i+1].Coord[z]*scale, 0.0)
@@ -719,6 +737,11 @@ func createspline(fn string, nodes []*Node, d, z int, scale float64, ndiv int, o
 		sy := A[i]
 		ey := A[i] + B[i] * dx + C[i] * dx * dx + D[i] * dx * dx * dx
 		for j := 0; j < ndiv; j++ {
+			if ey > maxz {
+				maxz = ey
+			} else if ey < minz {
+				minz = ey
+			}
 			dw.Line(sx*scale, sy*scale, 0.0, ex*scale, ey*scale, 0.0)
 			sx = ex
 			sy = ey
@@ -727,6 +750,9 @@ func createspline(fn string, nodes []*Node, d, z int, scale float64, ndiv int, o
 			ey = A[i] + B[i] * dx + C[i] * dx * dx + D[i] * dx * dx * dx
 		}
 	}
+	dw.AddLayer("BOUNDARY", dxf.DefaultColor, dxf.DefaultLineType, true)
+	dw.Line(mind*scale, minz*scale, 0.0, maxd*scale, minz*scale, 0.0)
+	dw.Line(mind*scale, maxz*scale, 0.0, maxd*scale, maxz*scale, 0.0)
 	return dw.SaveAs(fn)
 }
 
