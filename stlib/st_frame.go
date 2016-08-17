@@ -635,6 +635,9 @@ func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 		}
 	}
 	err = s.ParseFig(frame, tmp)
+	if err != nil {
+		return nil, err
+	}
 	s.Frame = frame
 	if _, ok := frame.Sects[s.Num]; ok {
 		if !overwrite {
@@ -664,6 +667,8 @@ func (sect *Sect) ParseFig(frame *Frame, lis []string) error {
 			if err == nil {
 				if val, ok := frame.Props[int(pnum)]; ok {
 					f.Prop = val
+				} else {
+					return fmt.Errorf("PROP %d doesn't exist", pnum)
 				}
 			}
 		case "AREA", "IXX", "IYY", "VEN", "THICK", "SREIN":
