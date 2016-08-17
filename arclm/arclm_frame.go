@@ -933,6 +933,122 @@ incomp:
 	return nil
 }
 
+// Arclm201 + contacting to z=0.002 plane
+func (frame *Frame) Arclm203(otp string, init bool, nlap int, delta, min, max float64) error { // TODO: speed up
+	if init {
+		frame.Initialise()
+	}
+	start := time.Now()
+	laptime := func(message string) {
+		end := time.Now()
+		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
+	}
+	solver := LLS(frame, laptime)
+	var err error
+	var answers [][]float64
+	var gmtx *matrix.COOMatrix
+	var gvct, vec []float64
+	var bnorm, rnorm float64
+	var csize int
+	var conf []bool
+	var eotp bytes.Buffer
+	var sign float64
+	safety := min
+	output := func(fn, efn string) error {
+		w, err := os.Create(fn)
+		if err != nil {
+			return err
+		}
+		defer w.Close()
+		frame.WriteTo(w)
+		ew, err := os.Create(efn)
+		if err != nil {
+			return err
+		}
+		defer ew.Close()
+		eotp.WriteTo(ew)
+		return nil
+	}
+	for lap := 0; lap < nlap; lap++ {
+		safety += delta
+		if safety > max {
+			safety = max
+		}
+		if init && lap == 0 { // K = KE
+			gmtx, gvct, err = frame.KE(safety)
+			csize, conf, vec = frame.AssemConf(gvct, safety)
+			for _, el := range frame.Elems {
+				for i := 0; i < 12; i++ {
+					el.Stress[i] = 0.0
+				}
+			}
+		} else { // K = KE + KG
+			gmtx, gvct, err = frame.KEKG(safety)
+			csize, conf, vec = frame.AssemConf(gvct, safety)
+		}
+		if err != nil {
+			return err
+		}
+		if lap == 0 {
+			bnorm = math.Sqrt(Dot(vec, vec, len(vec)))
+		} else {
+			rnorm = math.Sqrt(Dot(vec, vec, len(vec)))
+		}
+		laptime("Assem")
+		answers, err = solver.Solve(gmtx, csize, conf, vec)
+		if err != nil {
+			return err
+		}
+		sign = 0.0
+		for i := 0; i < len(vec); i++ {
+			sign += answers[0][i] * vec[i]
+		}
+		if lap == 0 {
+			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
+		} else {
+			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
+			if sign < 0.0 {
+				var tmp string
+				if otp == "" {
+					tmp = fmt.Sprintf("hogtxt_LAP_%d_%d.otp", lap, nlap)
+				} else {
+					ext := filepath.Ext(otp)
+					tmp = fmt.Sprintf("%s_LAP_%d_%d%s", strings.Replace(otp, ext, "", -1), lap, nlap, ext)
+				}
+				output(tmp, "energy.otp")
+				return errors.New(fmt.Sprintf("sylvester's law of inertia: %.3f", sign))
+			}
+		}
+		tmp := frame.FillConf(answers[0])
+		_, eng, err := frame.UpdateStressEnergy(tmp)
+		if err != nil {
+			return err
+		}
+		eotp.WriteString(fmt.Sprintf("LAP: %2d\n", lap+1))
+		for enum, el := range frame.Elems {
+			eotp.WriteString(fmt.Sprintf("%04d %12.8f\n", el.Num, eng[enum]))
+		}
+		eotp.WriteString("\n")
+		frame.UpdateReaction(gmtx, tmp)
+		frame.UpdateForm(tmp)
+		for _, n := range frame.Nodes {
+			current := n.Coord[2] + n.Disp[2]
+			if !n.Conf[2] && current <= 0.002 {
+				n.Conf[2] = true
+			} else if n.Conf[2] && current > 0.002 {
+				n.Conf[2] = false
+			}
+		}
+		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, nlap, safety, rnorm/bnorm))
+		frame.Lapch <- lap + 1
+		<-frame.Lapch
+	}
+	if otp == "" {
+		otp = "hogtxt.otp"
+	}
+	return output(otp, "energy.otp")
+}
+
 // ANALYSIS FOR PILES UNDER LATERAL LOAD
 // E: 70 * α * ξ [tf/m2]
 // A: 3.16 * B^(-0.75) * N * B/100 * L [m2]
