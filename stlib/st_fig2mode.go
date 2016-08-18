@@ -324,11 +324,11 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			frame.Show.Unit[1] = 1.0
 			frame.Show.UnitName[1] = "m"
 		case "cm":
-			frame.Show.Unit[0] = 100.0
-			frame.Show.UnitName[0] = "cm"
+			frame.Show.Unit[1] = 100.0
+			frame.Show.UnitName[1] = "cm"
 		case "mm":
-			frame.Show.Unit[0] = 1000.0
-			frame.Show.UnitName[0] = "mm"
+			frame.Show.Unit[1] = 1000.0
+			frame.Show.UnitName[1] = "mm"
 		}
 	case "dfact":
 		if len(lis) < 2 {
