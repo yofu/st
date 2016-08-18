@@ -1740,6 +1740,8 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 		material = SN400
 	case "SN490":
 		material = SN490
+	case "HT600":
+		material = HT600
 	case "HT700":
 		material = HT700
 	}
