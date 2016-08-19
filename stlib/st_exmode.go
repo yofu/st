@@ -32,6 +32,7 @@ var (
 		"cp/ipe":           complete.MustCompile(":cpipe _ _", nil),
 		"tk/you":           complete.MustCompile(":tkyou _ _ _ _", nil),
 		"ck/you":           complete.MustCompile(":ckyou _ _ _ _", nil),
+		"cw/eak":           complete.MustCompile(":cweak _ _ _ _", nil),
 		"pla/te":           complete.MustCompile(":plate _ _", nil),
 		"fixr/otate":       complete.MustCompile(":fixrotate", nil),
 		"fixm/ove":         complete.MustCompile(":fixmove", nil),
@@ -481,6 +482,21 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return NotEnoughArgs(":ckyou")
 		}
 		al, err := NewCKYOU(args[1:5])
+		if err != nil {
+			return err
+		}
+		stw.ShapeData(al)
+		if pipe {
+			sender = []interface{}{al}
+		}
+	case "cweak":
+		if usage {
+			return Usage(":cweak h b tw tf")
+		}
+		if narg < 5 {
+			return NotEnoughArgs(":cweak")
+		}
+		al, err := NewCWEAK(args[1:5])
 		if err != nil {
 			return err
 		}
