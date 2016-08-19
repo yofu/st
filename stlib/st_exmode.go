@@ -3083,7 +3083,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				etype = COLUMN
 			case Re_girder.MatchString(et):
 				etype = GIRDER
-			case Re_slab.MatchString(et):
+			case Re_brace.MatchString(et):
 				etype = BRACE
 			case Re_wall.MatchString(et):
 				etype = WALL
