@@ -3806,7 +3806,10 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":extractarclm")
 		}
-		return frame.ExtractArclm("")
+		if fn == "" {
+			fn = "hogtxt.wgt"
+		}
+		return frame.ExtractArclm(fn)
 	case "saveasarclm":
 		if usage {
 			return Usage(":saveasarclm")
