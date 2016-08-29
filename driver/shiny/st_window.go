@@ -473,9 +473,6 @@ func (stw *Window) Start(fn string) {
 				}
 			}
 		case mouse.Event:
-			if (e.Button == mouse.ButtonWheelUp || e.Button == mouse.ButtonWheelDown) && e.Direction == mouse.DirNone {
-				e.Direction = mouse.DirRelease
-			}
 			switch e.Direction {
 			case mouse.DirPress:
 				startX = int(e.X)
@@ -584,6 +581,15 @@ func (stw *Window) Start(fn string) {
 							stw.Execute(stw.lastcommand(stw))
 						}
 					}
+				}
+				if !stw.Executing() {
+					stw.Redraw()
+					stw.window.Publish()
+				}
+			case mouse.DirStep:
+				endX = int(e.X)
+				endY = int(e.Y)
+				switch e.Button {
 				case mouse.ButtonWheelUp:
 					if stw.Executing() {
 						sent := stw.SendWheel(st.WheelUp)
