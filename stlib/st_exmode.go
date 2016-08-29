@@ -1033,42 +1033,138 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return err
 		}
 	case "kunst":
-		sect := frame.Sects[502]
-		etype := GIRDER
-		var n1, n2 *Node
-		var coord1, coord2 []float64
-		for _, el := range frame.Elems {
-			if el.Etype == SLAB {
-				coord1 = el.EdgeDividingPoint(0, 0.25)
-				coord2 = el.EdgeDividingPoint(2, 0.75)
-				n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
-				n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
-				frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
-				coord1 = el.EdgeDividingPoint(1, 0.25)
-				coord2 = el.EdgeDividingPoint(3, 0.75)
-				n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
-				n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
-				frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
-				coord1 = el.EdgeDividingPoint(0, 0.5)
-				coord2 = el.EdgeDividingPoint(2, 0.5)
-				n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
-				n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
-				frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
-				coord1 = el.EdgeDividingPoint(1, 0.5)
-				coord2 = el.EdgeDividingPoint(3, 0.5)
-				n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
-				n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
-				frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
-				coord1 = el.EdgeDividingPoint(0, 0.75)
-				coord2 = el.EdgeDividingPoint(2, 0.25)
-				n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
-				n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
-				frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
-				coord1 = el.EdgeDividingPoint(1, 0.75)
-				coord2 = el.EdgeDividingPoint(3, 0.25)
-				n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
-				n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
-				frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+		if narg < 2 {
+			return NotEnoughArgs(":kunst")
+		}
+		switch args[1] {
+		case "slab":
+			sect := frame.Sects[502]
+			etype := GIRDER
+			var n1, n2 *Node
+			var coord1, coord2 []float64
+			for _, el := range frame.Elems {
+				if el.Etype == SLAB {
+					coord1 = el.EdgeDividingPoint(0, 0.25)
+					coord2 = el.EdgeDividingPoint(2, 0.75)
+					n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
+					n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
+					frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+					coord1 = el.EdgeDividingPoint(1, 0.25)
+					coord2 = el.EdgeDividingPoint(3, 0.75)
+					n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
+					n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
+					frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+					coord1 = el.EdgeDividingPoint(0, 0.5)
+					coord2 = el.EdgeDividingPoint(2, 0.5)
+					n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
+					n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
+					frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+					coord1 = el.EdgeDividingPoint(1, 0.5)
+					coord2 = el.EdgeDividingPoint(3, 0.5)
+					n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
+					n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
+					frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+					coord1 = el.EdgeDividingPoint(0, 0.75)
+					coord2 = el.EdgeDividingPoint(2, 0.25)
+					n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
+					n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
+					frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+					coord1 = el.EdgeDividingPoint(1, 0.75)
+					coord2 = el.EdgeDividingPoint(3, 0.25)
+					n1, _ = frame.CoordNode(coord1[0], coord1[1], coord1[2], EPS)
+					n2, _ = frame.CoordNode(coord2[0], coord2[1], coord2[2], EPS)
+					frame.AddLineElem(-1, []*Node{n1, n2}, sect, etype)
+				}
+			}
+		case "spline":
+			d := 1
+			if dv, ok := argdict["D"]; ok {
+				switch dv {
+				case "0", "x", "X":
+					d = 0
+				case "1", "y", "Y":
+					d = 1
+				case "2", "z", "Z":
+					d = 2
+				}
+			}
+			z := 2
+			if zv, ok := argdict["Z"]; ok {
+				switch zv {
+				case "0", "x", "X":
+					z = 0
+				case "1", "y", "Y":
+					z = 1
+				case "2", "z", "Z":
+					z = 2
+				}
+			}
+			ndiv := 4
+			if n, ok := argdict["N"]; ok {
+				val, err := strconv.ParseInt(n, 10, 64)
+				if err == nil {
+					ndiv = int(val)
+				}
+			}
+			var ns []*Node
+			ns = currentnode(stw, exmodech, exmodeend)
+			if len(ns) == 0 {
+				els := currentelem(stw, exmodech, exmodeend)
+				if len(els) == 0 {
+					return fmt.Errorf("no nodes or elems selected")
+				}
+				ns = frame.ElemToNode(els...)
+			}
+			coords, err := splinecoord(ns, d, z,ndiv)
+			if err != nil {
+				return err
+			}
+			var n0, n1 *Node
+			n0, _ = frame.CoordNode(coords[0][0], coords[0][1], coords[0][2], EPS)
+			sect := frame.Sects[503]
+			etype := GIRDER
+			for _, c := range coords[1:] {
+				n1, _ = frame.CoordNode(c[0], c[1], c[2], EPS)
+				frame.AddLineElem(-1, []*Node{n0, n1}, sect, etype)
+				n0 = n1
+			}
+		case "line":
+			d := 1
+			if dv, ok := argdict["D"]; ok {
+				switch dv {
+				case "0", "x", "X":
+					d = 0
+				case "1", "y", "Y":
+					d = 1
+				case "2", "z", "Z":
+					d = 2
+				}
+			}
+			var ns []*Node
+			ns = currentnode(stw, exmodech, exmodeend)
+			if len(ns) == 0 {
+				els := currentelem(stw, exmodech, exmodeend)
+				if len(els) == 0 {
+					return fmt.Errorf("no nodes or elems selected")
+				}
+				ns = frame.ElemToNode(els...)
+			}
+			switch d {
+			case 0:
+				sort.Sort(NodeByXCoord{ns})
+			case 1:
+				sort.Sort(NodeByYCoord{ns})
+			case 2:
+				sort.Sort(NodeByZCoord{ns})
+			}
+			n0 := ns[0]
+			var n1 *Node
+			sect := frame.Sects[503]
+			etype := GIRDER
+			for _, n := range ns[1:] {
+				n1 = n
+				frame.AddLineElem(-1, []*Node{n0, n1}, sect, etype)
+				n0 = n1
 			}
 		}
 	case "spline":
