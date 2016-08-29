@@ -569,6 +569,8 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 	switch cname {
 	default:
 		return Message(fmt.Sprintf("no exmode command: %s", cname))
+	case "redraw":
+		stw.Redraw()
 	case "write":
 		if usage {
 			return Usage(":write")
