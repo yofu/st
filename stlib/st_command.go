@@ -656,52 +656,9 @@ func Arclm201(stw Commander) chan bool {
 }
 
 func createspline(fn string, nodes []*Node, d, z int, scale float64, ndiv int, original bool) error {
-	if len(nodes) == 0 {
-		return fmt.Errorf("no nodes")
-	}
-	switch d {
-	case 0:
-		sort.Sort(NodeByXCoord{nodes})
-	case 1:
-		sort.Sort(NodeByYCoord{nodes})
-	case 2:
-		sort.Sort(NodeByZCoord{nodes})
-	}
-	h := make([]float64, len(nodes)-1)
-	y := make([]float64, len(nodes)-1)
-	for i := 0; i < len(nodes) - 1; i++ {
-		h[i] = nodes[i+1].Coord[d] - nodes[i].Coord[d]
-		y[i] = (nodes[i+1].Coord[z] - nodes[i].Coord[z]) / h[i]
-	}
-	m := matrix.NewCOOMatrix(len(nodes) - 2)
-	v := make([]float64, len(nodes) - 2)
-	for i := 0; i < len(nodes) - 2; i++ {
-		if i > 0 {
-			m.Set(i-1, i, h[i])
-		}
-		m.Set(i, i, 2.0*(h[i] + h[i+1]))
-		if i < len(nodes) - 3 {
-			m.Set(i, i+1, h[i+1])
-		}
-		v[i] = 3.0 * (y[i+1] - y[i])
-	}
-	conf := make([]bool, m.Size)
-	lls := m.ToLLS(0, conf)
-	ans, err := lls.Solve(nil, v)
+	A, B, C, D, h, err := splinecoefficient(nodes, d, z)
 	if err != nil {
 		return err
-	}
-	C := make([]float64, len(nodes))
-	for i := 0; i < len(nodes) - 2; i++ {
-		C[i+1] = ans[0][i]
-	}
-	D := make([]float64, len(nodes)-1)
-	B := make([]float64, len(nodes)-1)
-	A := make([]float64, len(nodes)-1)
-	for i := 0; i < len(nodes) - 1; i++ {
-		D[i] = (C[i+1] - C[i]) / (3.0*h[i])
-		B[i] = y[i] - (C[i] + D[i]*h[i])*h[i]
-		A[i] = nodes[i].Coord[z]
 	}
 	dw := dxf.NewDrawing()
 	dw.AddLayer("ORIGINAL", dxf.DefaultColor, dxf.DefaultLineType, false)
@@ -754,6 +711,108 @@ func createspline(fn string, nodes []*Node, d, z int, scale float64, ndiv int, o
 	dw.Line(mind*scale, minz*scale, 0.0, maxd*scale, minz*scale, 0.0)
 	dw.Line(mind*scale, maxz*scale, 0.0, maxd*scale, maxz*scale, 0.0)
 	return dw.SaveAs(fn)
+}
+
+func splinecoefficient(nodes []*Node, d, z int) ([]float64, []float64, []float64, []float64, []float64, error) {
+	if len(nodes) == 0 {
+		return nil, nil, nil, nil, nil, fmt.Errorf("no nodes")
+	}
+	switch d {
+	case 0:
+		sort.Sort(NodeByXCoord{nodes})
+	case 1:
+		sort.Sort(NodeByYCoord{nodes})
+	case 2:
+		sort.Sort(NodeByZCoord{nodes})
+	}
+	h := make([]float64, len(nodes)-1)
+	y := make([]float64, len(nodes)-1)
+	for i := 0; i < len(nodes) - 1; i++ {
+		h[i] = nodes[i+1].Coord[d] - nodes[i].Coord[d]
+		y[i] = (nodes[i+1].Coord[z] - nodes[i].Coord[z]) / h[i]
+	}
+	m := matrix.NewCOOMatrix(len(nodes) - 2)
+	v := make([]float64, len(nodes) - 2)
+	for i := 0; i < len(nodes) - 2; i++ {
+		if i > 0 {
+			m.Set(i-1, i, h[i])
+		}
+		m.Set(i, i, 2.0*(h[i] + h[i+1]))
+		if i < len(nodes) - 3 {
+			m.Set(i, i+1, h[i+1])
+		}
+		v[i] = 3.0 * (y[i+1] - y[i])
+	}
+	conf := make([]bool, m.Size)
+	lls := m.ToLLS(0, conf)
+	ans, err := lls.Solve(nil, v)
+	if err != nil {
+		return nil, nil, nil, nil, nil, err
+	}
+	C := make([]float64, len(nodes))
+	for i := 0; i < len(nodes) - 2; i++ {
+		C[i+1] = ans[0][i]
+	}
+	D := make([]float64, len(nodes)-1)
+	B := make([]float64, len(nodes)-1)
+	A := make([]float64, len(nodes)-1)
+	for i := 0; i < len(nodes) - 1; i++ {
+		D[i] = (C[i+1] - C[i]) / (3.0*h[i])
+		B[i] = y[i] - (C[i] + D[i]*h[i])*h[i]
+		A[i] = nodes[i].Coord[z]
+	}
+	return A, B, C, D, h, nil
+}
+
+func splinecoord(nodes []*Node, d, z int, ndiv int) ([][]float64, error) {
+	A, B, C, D, h, err := splinecoefficient(nodes, d, z)
+	if err != nil {
+		return nil, err
+	}
+	coords := make([][]float64, ndiv*(len(nodes)-1) + 1)
+	var c int
+	for i := 0; i < 3; i++ {
+		if i == d {
+			continue
+		} else if i == z {
+			continue
+		} else {
+			c = i
+			break
+		}
+	}
+	ind := 0
+	coords[ind] = make([]float64, 3)
+	coords[ind][d] = nodes[0].Coord[d]
+	coords[ind][c] = nodes[0].Coord[c]
+	coords[ind][z] = nodes[0].Coord[z]
+	ind++
+	for i := 0; i < len(nodes) -1; i++ {
+		sx := nodes[i].Coord[d]
+		dcx := h[i] / float64(ndiv)
+		ex := sx + dcx
+		dx := ex - nodes[i].Coord[d]
+		sy := A[i]
+		ey := sy + B[i] * dx + C[i] * dx * dx + D[i] * dx * dx * dx
+		coords[ind] = make([]float64, 3)
+		coords[ind][d] = ex
+		coords[ind][c] = nodes[i].Coord[c]
+		coords[ind][z] = ey
+		ind++
+		for j := 0; j < ndiv - 1; j++ {
+			sx = ex
+			sy = ey
+			ex = ex + dcx
+			dx = ex - nodes[i].Coord[d]
+			ey = A[i] + B[i] * dx + C[i] * dx * dx + D[i] * dx * dx * dx
+			coords[ind] = make([]float64, 3)
+			coords[ind][d] = ex
+			coords[ind][c] = nodes[i].Coord[c]
+			coords[ind][z] = ey
+			ind++
+		}
+	}
+	return coords, nil
 }
 
 func Spline(stw Commander) chan bool {
