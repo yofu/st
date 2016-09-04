@@ -1035,7 +1035,7 @@ func (frame *Frame) Arclm203(otp string, init bool, nlap int, delta, min, max fl
 			current := n.Coord[2] + n.Disp[2]
 			if !n.Conf[2] && current <= 0.002 {
 				n.Conf[2] = true
-			} else if n.Conf[2] && current > 0.002 {
+			} else if n.Conf[2] && n.Reaction[2] < 0.0 {
 				n.Conf[2] = false
 			}
 		}
