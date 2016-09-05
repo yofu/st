@@ -4049,6 +4049,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		} else {
 			stw.Redraw()
 		}
+		nlap := -1
 		go func() {
 		read001:
 			for {
@@ -4057,7 +4058,8 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					if stw.Pivot() {
 						pivot <- 1
 					}
-				case nlap := <-af.Lapch:
+				case <-af.Lapch:
+					nlap++
 					frame.ReadArclmData(af, pers[nlap])
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, lap)

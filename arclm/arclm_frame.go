@@ -330,6 +330,9 @@ func (frame *Frame) KG(safety float64) (*matrix.COOMatrix, []float64, error) { /
 
 func (frame *Frame) KEKG(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
 	matf := func(elem *Elem) ([][]float64, error) {
+		if !elem.IsValid {
+			return nil, nil
+		}
 		estiff, err := elem.StiffMatrix()
 		if err != nil {
 			return nil, err
@@ -350,6 +353,9 @@ func (frame *Frame) KEKG(safety float64) (*matrix.COOMatrix, []float64, error) {
 		return stiff, nil
 	}
 	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
+		if !elem.IsValid {
+			return gvct
+		}
 		gvct = elem.AssemCMQ(tmatrix, gvct, safety)
 		gvct = elem.ModifyTrueForce(tmatrix, gvct)
 		return gvct
@@ -408,6 +414,12 @@ func (frame *Frame) RemoveConf(vec []float64) []float64 {
 func (frame *Frame) UpdateStress(vec []float64) ([][]float64, error) {
 	rtn := make([][]float64, len(frame.Elems))
 	for enum, el := range frame.Elems {
+		if !el.IsValid {
+			for i := 0; i < 12; i++ {
+				el.Stress[i] = 0.0
+			}
+			continue
+		}
 		gdisp := make([]float64, 12)
 		for i := 0; i < 2; i++ {
 			for j := 0; j < 6; j++ {
@@ -547,8 +559,42 @@ func (frame *Frame) WriteBclngTo(w io.Writer) (int64, error) {
 	return otp.WriteTo(w)
 }
 
-func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, extra ...[]float64) error { // TODO: speed up
-	if init {
+type AnalysisCondition struct {
+	init   bool
+	solver string
+	otp    []string
+	extra  [][]float64
+
+	nlgeometry bool
+	nlmaterial bool
+
+	postprocess func (*Frame) bool
+
+	nlap  int
+	delta float64
+	start float64
+	max   float64
+	eps   float64
+}
+
+func NewAnalysisCondition() *AnalysisCondition {
+	return &AnalysisCondition{
+		init: true,
+		solver: "LLS",
+		extra: nil,
+		nlgeometry: false,
+		nlmaterial: false,
+		postprocess: nil,
+		nlap: 1,
+		delta: 1.0,
+		start: 0.0,
+		max: 1.0,
+		eps: 1e-12,
+	}
+}
+
+func (frame *Frame) StaticAnalysis(cond *AnalysisCondition) error {
+	if cond.init {
 		frame.Initialise()
 	}
 	start := time.Now()
@@ -557,65 +603,168 @@ func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, e
 		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
 	var solver Solver
-	switch sol {
+	switch cond.solver {
 	default:
 		solver = LLS(frame, laptime)
 	case "CRS":
-		solver = CRS_CG(eps, laptime)
+		solver = CRS_CG(cond.eps, laptime)
 	case "LLS":
 		solver = LLS(frame, laptime)
 	case "CG":
-		solver = LLS_CG(eps, laptime)
+		solver = LLS_CG(cond.eps, laptime)
 	case "PCG":
-		solver = LLS_PCG(eps, laptime)
+		solver = LLS_PCG(cond.eps, laptime)
 	}
-	gmtx, gvct, err := frame.KE(1.0)
-	laptime("ASSEM")
-	if err != nil {
-		return err
-	}
-	csize, conf, vec := frame.AssemConf(gvct, 1.0)
-	l := len(extra)
-	vecs := make([][]float64, l+1)
-	vecs[0] = vec
-	for i := 0; i < l; i++ {
-		vecs[i+1] = extra[i]
-	}
-	laptime("VEC")
-	answers, err := solver.Solve(gmtx, csize, conf, vecs...)
-	if err != nil {
-		return err
-	}
-	if otp == nil || len(otp) < l+1 {
-		otp = make([]string, l+1)
-		for i := 0; i < l+1; i++ {
-			otp[i] = fmt.Sprintf("hogtxt_%02d.otp", i)
-		}
-	}
-	for nans, ans := range answers {
-		f := frame.SaveState()
-		vec := frame.FillConf(ans)
-		_, err := frame.UpdateStress(vec)
-		if err != nil {
-			return err
-		}
-		frame.UpdateReaction(gmtx, vec)
-		frame.UpdateForm(vec)
-		w, err := os.Create(otp[nans])
+	var err error
+	var gmtx *matrix.COOMatrix
+	var gvct, vec []float64
+	var csize int
+	var conf []bool
+	var answers [][]float64
+	var bnorm, rnorm, sign float64
+	output := func(fn string) error {
+		w, err := os.Create(fn)
 		if err != nil {
 			return err
 		}
 		defer w.Close()
 		frame.WriteTo(w)
-		frame.Lapch <- nans
-		<-frame.Lapch
-		frame.RestoreState(f)
+		return nil
+	}
+	lap := 0
+	total := cond.start + cond.delta
+	for {
+		if total > cond.max {
+			total = cond.max
+		}
+		f0 := frame.SaveState()
+		if !cond.nlgeometry || (cond.init && lap == 0) {
+			gmtx, gvct, err = frame.KE(total)
+			if err != nil {
+				return err
+			}
+			csize, conf, vec = frame.AssemConf(gvct, total)
+			if cond.nlgeometry { // subtract CMQ
+				for _, el := range frame.Elems {
+					for i := 0; i < 12; i++ {
+						el.Stress[i] = 0.0
+					}
+				}
+			}
+		} else {
+			gmtx, gvct, err = frame.KEKG(total)
+			if err != nil {
+				return err
+			}
+			csize, conf, vec = frame.AssemConf(gvct, total)
+		}
+		if lap == 0 {
+			bnorm = math.Sqrt(Dot(vec, vec, len(vec)))
+		} else {
+			rnorm = math.Sqrt(Dot(vec, vec, len(vec)))
+		}
+		laptime("ASSEM")
+		if cond.extra != nil && len(cond.extra) > 1 {
+			vecs := make([][]float64, len(cond.extra)+1)
+			vecs[0] = vec
+			for i := 0; i < len(cond.extra); i++ {
+				vecs[i+1] = cond.extra[i]
+			}
+			answers, err = solver.Solve(gmtx, csize, conf, vecs...)
+		} else {
+			answers, err = solver.Solve(gmtx, csize, conf, vec)
+		}
+		if err != nil {
+			return err
+		}
+		sign = 0.0
+		for i := 0; i < len(vec); i++ {
+			sign += answers[0][i] * vec[i]
+		}
+		if lap == 0 {
+			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
+		} else {
+			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
+			if sign < 0.0 {
+				var tmp string
+				if cond.otp == nil || len(cond.otp) < 1 {
+					tmp = fmt.Sprintf("hogtxt_LAP_%d_%d.otp", lap, cond.nlap)
+				} else {
+					ext := filepath.Ext(cond.otp[0])
+					tmp = fmt.Sprintf("%s_LAP_%d_%d%s", strings.Replace(cond.otp[0], ext, "", -1), lap, cond.nlap, ext)
+				}
+				output(tmp)
+				return errors.New(fmt.Sprintf("sylvester's law of inertia: %.3f", sign))
+			}
+		}
+		if cond.extra != nil {
+			if cond.otp == nil || len(cond.otp) < 1 {
+				cond.otp = make([]string, len(cond.extra)+1)
+				for i := 0; i < len(cond.extra)+1; i++ {
+					cond.otp[i] = fmt.Sprintf("hogtxt_%02d.otp", i)
+				}
+			} else if len(cond.otp) < len(cond.extra)+1 {
+				ext := filepath.Ext(cond.otp[0])
+				for i := 0; i < len(cond.extra)+1 - len(cond.otp); i++ {
+					cond.otp = append(cond.otp, fmt.Sprintf("%s_%02d.%s", strings.TrimSuffix(cond.otp[0], ext), i, ext))
+				}
+			}
+		}
+		if lap == cond.nlap-1 {
+			for nans, ans := range answers {
+				f := frame.SaveState()
+				vec := frame.FillConf(ans)
+				_, err := frame.UpdateStress(vec)
+				if err != nil {
+					return err
+				}
+				frame.UpdateReaction(gmtx, vec)
+				frame.UpdateForm(vec)
+				laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, cond.nlap, total, rnorm/bnorm))
+				output(cond.otp[nans])
+				frame.Lapch <- lap + 1
+				<-frame.Lapch
+				frame.RestoreState(f)
+			}
+			break
+		} else {
+			vec := frame.FillConf(answers[0])
+			_, err := frame.UpdateStress(vec)
+			if err != nil {
+				return err
+			}
+			frame.UpdateReaction(gmtx, vec)
+			frame.UpdateForm(vec)
+			next := true
+			if cond.postprocess != nil {
+				next = cond.postprocess(frame)
+			}
+			laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, cond.nlap, total, rnorm/bnorm))
+			frame.Lapch <- lap + 1
+			<-frame.Lapch
+			if !next {
+				frame.RestoreState(f0)
+			} else {
+				lap++
+				total += cond.delta
+			}
+		}
 	}
 	laptime("End")
 	return nil
 }
 
-// TODO: implement
+func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, extra ...[]float64) error { // TODO: speed up
+	cond := NewAnalysisCondition()
+	cond.init = init
+	cond.solver = sol
+	cond.otp = otp
+	cond.eps = eps
+	cond.extra = extra
+	return frame.StaticAnalysis(cond)
+}
+
+// TODO: implement && merge to StaticAnalysis
 func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) error { // TODO: speed up
 	if init {
 		frame.Initialise()
@@ -669,229 +818,29 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 }
 
 func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max float64) error { // TODO: speed up
-	if init {
-		frame.Initialise()
-	}
-	start := time.Now()
-	laptime := func(message string) {
-		end := time.Now()
-		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
-	}
-	solver := LLS(frame, laptime)
-	var err error
-	var answers [][]float64
-	var gmtx *matrix.COOMatrix
-	var gvct, vec []float64
-	var bnorm, rnorm float64
-	var csize int
-	var conf []bool
-	var eotp bytes.Buffer
-	var sign float64
-	safety := min
-	output := func(fn, efn string) error {
-		w, err := os.Create(fn)
-		if err != nil {
-			return err
-		}
-		defer w.Close()
-		frame.WriteTo(w)
-		ew, err := os.Create(efn)
-		if err != nil {
-			return err
-		}
-		defer ew.Close()
-		eotp.WriteTo(ew)
-		return nil
-	}
-	for lap := 0; lap < nlap; lap++ {
-		safety += delta
-		if safety > max {
-			safety = max
-		}
-		if init && lap == 0 { // K = KE
-			gmtx, gvct, err = frame.KE(safety)
-			csize, conf, vec = frame.AssemConf(gvct, safety)
-			for _, el := range frame.Elems {
-				for i := 0; i < 12; i++ {
-					el.Stress[i] = 0.0
-				}
-			}
-		} else { // K = KE + KG
-			gmtx, gvct, err = frame.KEKG(safety)
-			csize, conf, vec = frame.AssemConf(gvct, safety)
-		}
-		if err != nil {
-			return err
-		}
-		if lap == 0 {
-			bnorm = math.Sqrt(Dot(vec, vec, len(vec)))
-		} else {
-			rnorm = math.Sqrt(Dot(vec, vec, len(vec)))
-		}
-		laptime("Assem")
-		answers, err = solver.Solve(gmtx, csize, conf, vec)
-		if err != nil {
-			return err
-		}
-		sign = 0.0
-		for i := 0; i < len(vec); i++ {
-			sign += answers[0][i] * vec[i]
-		}
-		if lap == 0 {
-			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
-		} else {
-			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
-			if sign < 0.0 {
-				var tmp string
-				if otp == "" {
-					tmp = fmt.Sprintf("hogtxt_LAP_%d_%d.otp", lap, nlap)
-				} else {
-					ext := filepath.Ext(otp)
-					tmp = fmt.Sprintf("%s_LAP_%d_%d%s", strings.Replace(otp, ext, "", -1), lap, nlap, ext)
-				}
-				output(tmp, "energy.otp")
-				return errors.New(fmt.Sprintf("sylvester's law of inertia: %.3f", sign))
-			}
-		}
-		tmp := frame.FillConf(answers[0])
-		_, eng, err := frame.UpdateStressEnergy(tmp)
-		if err != nil {
-			return err
-		}
-		eotp.WriteString(fmt.Sprintf("LAP: %2d\n", lap+1))
-		for enum, el := range frame.Elems {
-			eotp.WriteString(fmt.Sprintf("%04d %12.8f\n", el.Num, eng[enum]))
-		}
-		eotp.WriteString("\n")
-		frame.UpdateReaction(gmtx, tmp)
-		frame.UpdateForm(tmp)
-		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, nlap, safety, rnorm/bnorm))
-		frame.Lapch <- lap + 1
-		<-frame.Lapch
-	}
-	if otp == "" {
-		otp = "hogtxt.otp"
-	}
-	return output(otp, "energy.otp")
+	cond := NewAnalysisCondition()
+	cond.nlgeometry = true
+	cond.otp = []string{otp}
+	cond.init = init
+	cond.nlap = nlap
+	cond.delta = delta
+	cond.start = min
+	cond.max = max
+	return frame.StaticAnalysis(cond)
 }
 
+// TODO: test
 // ANALYSIS FOR INCOMPRESSIBLE ELEMENT
 func (frame *Frame) Arclm202(otp string, init bool, nlap int, delta, min, max float64, sects []int, compval float64) error { // TODO: speed up
-	if init {
-		frame.Initialise()
-	}
-	start := time.Now()
-	laptime := func(message string) {
-		end := time.Now()
-		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
-	}
-	solver := LLS(frame, laptime)
-	var err error
-	var answers [][]float64
-	var gmtx *matrix.COOMatrix
-	var gvct, vec []float64
-	var csize int
-	var conf []bool
-incomp:
-	for _, el := range frame.Elems {
-		for _, sec := range sects {
-			if el.Sect.Num == sec {
-				el.SetIncompressible(compval)
-				continue incomp
-			}
-		}
-	}
-	kekg := func(f *Frame, safety float64) (*matrix.COOMatrix, []float64, error) {
-		matf := func(elem *Elem) ([][]float64, error) {
-			if !elem.IsValid {
-				return nil, nil
-			}
-			estiff, err := elem.StiffMatrix()
-			if err != nil {
-				return nil, err
-			}
-			gstiff, err := elem.GeoStiffMatrix()
-			if err != nil {
-				return nil, err
-			}
-			stiff := make([][]float64, 12)
-			for i := 0; i < 12; i++ {
-				stiff[i] = make([]float64, 12)
-			}
-			for i := 0; i < 12; i++ {
-				for j := 0; j < 12; j++ {
-					stiff[i][j] = estiff[i][j] + gstiff[i][j]
-				}
-			}
-			return stiff, nil
-		}
-		vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
-			if !elem.IsValid {
-				return gvct
-			}
-			gvct = elem.AssemCMQ(tmatrix, gvct, safety)
-			gvct = elem.ModifyTrueForce(tmatrix, gvct)
-			return gvct
-		}
-		return f.AssemGlobalMatrix(matf, vecf, safety)
-	}
-	updatestress := func(f *Frame, vec []float64, sects []int) ([][]float64, error) {
-		rtn := make([][]float64, len(f.Elems))
-		for enum, el := range f.Elems {
-			if !el.IsValid {
-				for i := 0; i < 12; i++ {
-					el.Stress[i] = 0.0
-				}
-				continue
-			}
-			gdisp := make([]float64, 12)
-			for i := 0; i < 2; i++ {
-				for j := 0; j < 6; j++ {
-					gdisp[6*i+j] = vec[6*el.Enod[i].Index+j]
-				}
-			}
-			df, err := el.ElemStress(gdisp)
-			if err != nil {
-				return nil, err
-			}
-			rtn[enum] = df
-		}
-		return rtn, nil
-	}
-	lap := 0
-	safety := min + delta
-	for {
-		if safety > max {
-			safety = max
-		}
-		f := frame.SaveState()
-		if init && lap == 0 {
-			gmtx, gvct, err = frame.KE(safety)
-			csize, conf, vec = frame.AssemConf(gvct, safety)
-			for _, el := range frame.Elems {
-				for i := 0; i < 12; i++ {
-					el.Stress[i] = 0.0
-				}
-			}
-		} else {
-			gmtx, gvct, err = kekg(frame, safety)
-			csize, conf, vec = frame.AssemConf(gvct, safety)
-		}
-		if err != nil {
-			return err
-		}
-		laptime("Assem")
-		answers, err = solver.Solve(gmtx, csize, conf, vec)
-		if err != nil {
-			return err
-		}
-		tmp := frame.FillConf(answers[0])
-		_, err = updatestress(frame, tmp, sects)
-		if err != nil {
-			return err
-		}
-		frame.UpdateReaction(gmtx, tmp)
-		frame.UpdateForm(tmp)
+	cond := NewAnalysisCondition()
+	cond.nlgeometry = true
+	cond.otp = []string{otp}
+	cond.init = init
+	cond.nlap = nlap
+	cond.delta = delta
+	cond.start = min
+	cond.max = max
+	cond.postprocess = func(frame *Frame) bool {
 		next := true
 		del := make([]int, 0)
 		res := make([]int, 0)
@@ -905,132 +854,31 @@ incomp:
 				res = append(res, el.Num)
 			}
 		}
-		laptime(fmt.Sprintf("LAP = %d SAFETY = %.3f", lap+1, safety))
-		fmt.Fprintf(frame.Output, "DEL: %v\n", del)
-		fmt.Fprintf(frame.Output, "RES: %v\n", res)
-		if lap > nlap-1 {
-			frame.Lapch <- lap + 1
-			break
-		}
-		frame.Lapch <- lap + 1
-		<-frame.Lapch
-		if !next {
-			frame.RestoreState(f)
-		} else {
-			lap++
-			safety += delta
+		return next
+	}
+incomp:
+	for _, el := range frame.Elems {
+		for _, sec := range sects {
+			if el.Sect.Num == sec {
+				el.SetIncompressible(compval)
+				continue incomp
+			}
 		}
 	}
-	if otp == "" {
-		otp = "hogtxt.otp"
-	}
-	w, err := os.Create(otp)
-	if err != nil {
-		return err
-	}
-	defer w.Close()
-	frame.WriteTo(w)
-	return nil
+	return frame.StaticAnalysis(cond)
 }
 
 // Arclm201 + contacting to z=0.002 plane
 func (frame *Frame) Arclm203(otp string, init bool, nlap int, delta, min, max float64) error { // TODO: speed up
-	if init {
-		frame.Initialise()
-	}
-	start := time.Now()
-	laptime := func(message string) {
-		end := time.Now()
-		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
-	}
-	solver := LLS(frame, laptime)
-	var err error
-	var answers [][]float64
-	var gmtx *matrix.COOMatrix
-	var gvct, vec []float64
-	var bnorm, rnorm float64
-	var csize int
-	var conf []bool
-	var eotp bytes.Buffer
-	var sign float64
-	safety := min
-	output := func(fn, efn string) error {
-		w, err := os.Create(fn)
-		if err != nil {
-			return err
-		}
-		defer w.Close()
-		frame.WriteTo(w)
-		ew, err := os.Create(efn)
-		if err != nil {
-			return err
-		}
-		defer ew.Close()
-		eotp.WriteTo(ew)
-		return nil
-	}
-	for lap := 0; lap < nlap; lap++ {
-		safety += delta
-		if safety > max {
-			safety = max
-		}
-		if init && lap == 0 { // K = KE
-			gmtx, gvct, err = frame.KE(safety)
-			csize, conf, vec = frame.AssemConf(gvct, safety)
-			for _, el := range frame.Elems {
-				for i := 0; i < 12; i++ {
-					el.Stress[i] = 0.0
-				}
-			}
-		} else { // K = KE + KG
-			gmtx, gvct, err = frame.KEKG(safety)
-			csize, conf, vec = frame.AssemConf(gvct, safety)
-		}
-		if err != nil {
-			return err
-		}
-		if lap == 0 {
-			bnorm = math.Sqrt(Dot(vec, vec, len(vec)))
-		} else {
-			rnorm = math.Sqrt(Dot(vec, vec, len(vec)))
-		}
-		laptime("Assem")
-		answers, err = solver.Solve(gmtx, csize, conf, vec)
-		if err != nil {
-			return err
-		}
-		sign = 0.0
-		for i := 0; i < len(vec); i++ {
-			sign += answers[0][i] * vec[i]
-		}
-		if lap == 0 {
-			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
-		} else {
-			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
-			if sign < 0.0 {
-				var tmp string
-				if otp == "" {
-					tmp = fmt.Sprintf("hogtxt_LAP_%d_%d.otp", lap, nlap)
-				} else {
-					ext := filepath.Ext(otp)
-					tmp = fmt.Sprintf("%s_LAP_%d_%d%s", strings.Replace(otp, ext, "", -1), lap, nlap, ext)
-				}
-				output(tmp, "energy.otp")
-				return errors.New(fmt.Sprintf("sylvester's law of inertia: %.3f", sign))
-			}
-		}
-		tmp := frame.FillConf(answers[0])
-		_, eng, err := frame.UpdateStressEnergy(tmp)
-		if err != nil {
-			return err
-		}
-		eotp.WriteString(fmt.Sprintf("LAP: %2d\n", lap+1))
-		for enum, el := range frame.Elems {
-			eotp.WriteString(fmt.Sprintf("%04d %12.8f\n", el.Num, eng[enum]))
-		}
-		eotp.WriteString("\n")
-		frame.UpdateReaction(gmtx, tmp)
-		frame.UpdateForm(tmp)
+	cond := NewAnalysisCondition()
+	cond.nlgeometry = true
+	cond.otp = []string{otp}
+	cond.init = init
+	cond.nlap = nlap
+	cond.delta = delta
+	cond.start = min
+	cond.max = max
+	cond.postprocess = func(frame *Frame) bool {
 		for _, n := range frame.Nodes {
 			current := n.Coord[2] + n.Disp[2]
 			if !n.Conf[2] && current <= 0.002 {
@@ -1039,14 +887,9 @@ func (frame *Frame) Arclm203(otp string, init bool, nlap int, delta, min, max fl
 				n.Conf[2] = false
 			}
 		}
-		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, nlap, safety, rnorm/bnorm))
-		frame.Lapch <- lap + 1
-		<-frame.Lapch
+		return true
 	}
-	if otp == "" {
-		otp = "hogtxt.otp"
-	}
-	return output(otp, "energy.otp")
+	return frame.StaticAnalysis(cond)
 }
 
 // ANALYSIS FOR PILES UNDER LATERAL LOAD
