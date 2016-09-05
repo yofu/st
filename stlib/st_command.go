@@ -23,7 +23,6 @@ var (
 		"COPYELEM":       CopyElem,
 		"TRIM":           Trim,
 		"MOVEUPDOWN":     MoveUpDown,
-		"ARCLM201":       Arclm201,
 		"SPLINE":         Spline,
 	}
 )
@@ -585,70 +584,6 @@ func MoveUpDown(stw Commander) chan bool {
 				stw.Redraw()
 				Snapshot(stw)
 				break moveupdown
-			}
-		}
-	}()
-	return quit
-}
-
-func Arclm201(stw Commander) chan bool {
-	quit := make(chan bool)
-	frame := stw.Frame()
-	per := "L"
-	af := frame.Arclms[per]
-	otp := "temp.otp"
-	init := true
-	lap := 11000
-	safety := 0.0001
-	start := 0.0
-	max := 1.0
-	go func() {
-		err := af.Arclm201(otp, init, lap, safety, start, max)
-		if err != nil {
-			fmt.Println(err)
-		}
-		af.Endch <- err
-	}()
-	next := make(chan bool)
-	go func() {
-	read201command:
-		for {
-			select {
-			case <-af.Pivot:
-			case <-af.Lapch:
-				frame.ReadArclmData(af, per)
-				stw.Redraw()
-				<-next
-				af.Lapch <- 1
-			case <-af.Endch:
-				stw.Redraw()
-				break read201command
-			}
-		}
-	}()
-	go func() {
-		clickch := stw.GetClick()
-	arclm201command:
-		for {
-			select {
-			case c := <-clickch:
-				switch c.Button {
-				case ButtonLeft:
-					next <- true
-				case ButtonRight:
-					Snapshot(stw)
-					stw.EndCommand()
-					stw.Redraw()
-					Snapshot(stw)
-					af.Endch<-nil
-					break arclm201command
-				}
-			case <-quit:
-				stw.EndCommand()
-				stw.Redraw()
-				Snapshot(stw)
-				af.Endch<-nil
-				break arclm201command
 			}
 		}
 	}()

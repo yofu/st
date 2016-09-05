@@ -817,16 +817,6 @@ func (frame *Frame) StaticAnalysis(cond *AnalysisCondition) error {
 	return nil
 }
 
-func (frame *Frame) Arclm001(otp []string, init bool, sol string, eps float64, extra ...[]float64) error { // TODO: speed up
-	cond := NewAnalysisCondition()
-	cond.init = init
-	cond.solver = sol
-	cond.otp = otp
-	cond.eps = eps
-	cond.extra = extra
-	return frame.StaticAnalysis(cond)
-}
-
 // TODO: implement && merge to StaticAnalysis
 func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) error { // TODO: speed up
 	if init {
@@ -878,81 +868,6 @@ func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) e
 	defer w.Close()
 	frame.WriteTo(w)
 	return nil
-}
-
-func (frame *Frame) Arclm201(otp string, init bool, nlap int, delta, min, max float64) error { // TODO: speed up
-	cond := NewAnalysisCondition()
-	cond.nlgeometry = true
-	cond.otp = []string{otp}
-	cond.init = init
-	cond.nlap = nlap
-	cond.delta = delta
-	cond.start = min
-	cond.max = max
-	return frame.StaticAnalysis(cond)
-}
-
-// TODO: test
-// ANALYSIS FOR INCOMPRESSIBLE ELEMENT
-func (frame *Frame) Arclm202(otp string, init bool, nlap int, delta, min, max float64, sects []int, compval float64) error { // TODO: speed up
-	cond := NewAnalysisCondition()
-	cond.nlgeometry = true
-	cond.otp = []string{otp}
-	cond.init = init
-	cond.nlap = nlap
-	cond.delta = delta
-	cond.start = min
-	cond.max = max
-	cond.postprocess = func(frame *Frame) bool {
-		next := true
-		del := make([]int, 0)
-		res := make([]int, 0)
-		for _, el := range frame.Elems {
-			checked := el.Check()
-			switch checked {
-			case DELETED:
-				next = false
-				del = append(del, el.Num)
-			case RESTORED:
-				res = append(res, el.Num)
-			}
-		}
-		return next
-	}
-incomp:
-	for _, el := range frame.Elems {
-		for _, sec := range sects {
-			if el.Sect.Num == sec {
-				el.SetIncompressible(compval)
-				continue incomp
-			}
-		}
-	}
-	return frame.StaticAnalysis(cond)
-}
-
-// Arclm201 + contacting to z=0.002 plane
-func (frame *Frame) Arclm203(otp string, init bool, nlap int, delta, min, max float64) error { // TODO: speed up
-	cond := NewAnalysisCondition()
-	cond.nlgeometry = true
-	cond.otp = []string{otp}
-	cond.init = init
-	cond.nlap = nlap
-	cond.delta = delta
-	cond.start = min
-	cond.max = max
-	cond.postprocess = func(frame *Frame) bool {
-		for _, n := range frame.Nodes {
-			current := n.Coord[2] + n.Disp[2]
-			if !n.Conf[2] && current <= 0.002 {
-				n.Conf[2] = true
-			} else if n.Conf[2] && n.Reaction[2] < 0.0 {
-				n.Conf[2] = false
-			}
-		}
-		return true
-	}
-	return frame.StaticAnalysis(cond)
 }
 
 // ANALYSIS FOR PILES UNDER LATERAL LOAD
