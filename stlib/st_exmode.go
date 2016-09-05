@@ -3908,9 +3908,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 	case "all":
 		frame.ExtractArclm(Ce(frame.Path, ".wgt"))
 		frame.SaveAsArclm("")
-		init := false
-		sol := "LLS"
-		eps := 1e-16
+		acond := arclm.NewAnalysisCondition()
 		extra := make([][]float64, 2)
 		for i, eper := range []string{"X", "Y"} {
 			eaf := frame.Arclms[eper]
@@ -3920,6 +3918,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 			extra[i] = vec
 		}
+		acond.SetExtra(extra)
 		var otp string
 		if fn == "" {
 			otp = Ce(frame.Path, ".otp")
@@ -3928,18 +3927,24 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		pers := []string{"L", "X", "Y"}
 		af := frame.Arclms["L"]
+		if af == nil {
+			return fmt.Errorf(":all: frame isn't extracted to period L")
+		}
 		otps := []string{Ce(otp, "otl"), Ce(otp, "ohx"), Ce(otp, "ohy")}
+		acond.SetOutput(otps)
 		go func() {
-			err := af.Arclm001(otps, init, sol, eps, extra...)
+			err := af.StaticAnalysis(acond)
 			af.Endch <- err
 		}()
+		ind := 0
 	ex_all:
 		for {
 			select {
 			case <-af.Pivot:
-			case nlap := <-af.Lapch:
-				frame.ReadArclmData(af, pers[nlap])
-				frame.ResultFileName[pers[nlap]] = otps[nlap]
+			case <-af.Lapch:
+				frame.ReadArclmData(af, pers[ind])
+				frame.ResultFileName[pers[ind]] = otps[ind]
+				ind++
 				af.Lapch <- 1
 			case <-af.Endch:
 				break ex_all
