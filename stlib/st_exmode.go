@@ -8,6 +8,7 @@ import (
 	"github.com/yofu/abbrev"
 	"github.com/yofu/complete"
 	"github.com/yofu/ps"
+	"github.com/yofu/st/arclm"
 	"math"
 	"os"
 	"path/filepath"
@@ -100,7 +101,11 @@ var (
 		"c/urrent/v/alue":    complete.MustCompile(":currentvalue [abs:]", nil),
 		"len/gth":            complete.MustCompile(":length [deformed:]", nil),
 		"are/a":              complete.MustCompile(":area [deformed:]", nil),
-		"an/alysis":          complete.MustCompile(":analysis", nil),
+		"an/alysis":          complete.MustCompile(":analysis [period:$PERIOD] [all:] [solver:$SOLVER] [eps:_] [nlgeom:] [nlmat:] [step:_] [noinit:] [wait:] [post:_] [sects:_] [comp:_] [z:_] _",
+			map[string][]string{
+				"PERIOD": []string{"l", "x", "y"},
+				"SOLVER": []string{"LLS", "CRS", "CG", "PCG"},
+			}),
 		"f/ilter": complete.MustCompile(":filter $CONDITION",
 			map[string][]string{
 				"CONDITION": []string{"//", "TT", "on", "adjoin", "cv"},
@@ -125,19 +130,6 @@ var (
 			}),
 		"ex/tractarclm":  complete.MustCompile(":extractarclm", nil),
 		"s/aveas/ar/clm": complete.MustCompile(":saveasarclm", nil),
-		"a/rclm/001/": complete.MustCompile(":arclm001 [period:$PERIOD] [all:] [solver:$SOLVER] [eps:_] [noinit:] _",
-			map[string][]string{
-				"PERIOD": []string{"l", "x", "y"},
-				"SOLVER": []string{"LLS", "CRS"},
-			}),
-		"a/rclm/201/": complete.MustCompile(":arclm201 [period:$PERIOD] [lap:_] [safety:_] [max:_] [start:_] [noinit:] _",
-			map[string][]string{
-				"PERIOD": []string{"l", "x", "y"},
-			}),
-		"a/rclm/301/": complete.MustCompile(":arclm301 [period:$PERIOD] [sects:_] [eps:_] [noinit:] _",
-			map[string][]string{
-				"PERIOD": []string{"l", "x", "y"},
-			}),
 	}
 )
 
@@ -3956,40 +3948,62 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		ReadFile(stw, Ce(frame.Path, ".lst"))
 		cond := NewCondition()
 		frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
-	case "arclm001":
+	case "analysis":
 		if usage {
-			return Usage(":arclm001 {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} {-wait} filename")
+			return Usage(":analysis {-period=name} {-all} {-solver=name} {-eps=value} {-nlgeom} {-nlmat} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
 		}
+		cond := arclm.NewAnalysisCondition()
 		var otp string
 		if fn == "" {
 			otp = Ce(frame.Path, ".otp")
 		} else {
 			otp = fn
 		}
-		otps := []string{otp}
-		if o, ok := argdict["OTP"]; ok {
-			otp = o
-		}
-		sol := "LLS"
+		cond.SetOutput([]string{otp})
 		if s, ok := argdict["SOLVER"]; ok {
 			if s != "" {
-				sol = strings.ToUpper(s)
+				cond.SetSolver(strings.ToUpper(s))
 			}
 		}
-		eps := 1e-16
 		if e, ok := argdict["EPS"]; ok {
 			if e != "" {
 				tmp, err := strconv.ParseFloat(e, 64)
 				if err == nil {
-					eps = tmp
+					cond.SetEps(tmp)
 				}
 			}
 		}
-		wait := false
-		var wch chan int
-		if _, ok := argdict["WAIT"]; ok {
-			wait = true
-			wch = make(chan int)
+		if _, ok := argdict["NLGEOM"]; ok {
+			cond.SetNlgeometry(true)
+		}
+		if _, ok := argdict["NLMAT"]; ok {
+			cond.SetNlmaterial(true)
+		}
+		if s, ok := argdict["STEP"]; ok { // NLAP;DELTA;START;MAX
+			ns := strings.Count(s, ";")
+			if ns < 3 {
+				s += strings.Repeat(";", 3 - ns)
+			}
+			lis := strings.Split(s, ";")
+			val, err := strconv.ParseInt(lis[0], 10, 64)
+			if err == nil {
+				cond.SetNlap(int(val))
+			}
+			tmp, err := strconv.ParseFloat(lis[1], 64)
+			if err == nil {
+				cond.SetDelta(tmp)
+			}
+			tmp, err = strconv.ParseFloat(lis[2], 64)
+			if err == nil {
+				cond.SetStart(tmp)
+			}
+			tmp, err = strconv.ParseFloat(lis[3], 64)
+			if err == nil {
+				cond.SetMax(tmp)
+			}
+		}
+		if _, ok := argdict["NOINIT"]; ok {
+			cond.SetInit(false)
 		}
 		per := "L"
 		if p, ok := argdict["PERIOD"]; ok {
@@ -3997,16 +4011,15 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				per = strings.ToUpper(p)
 			}
 		}
-		var pers []string
-		pers = []string{per}
-		lap := 1
-		var extra [][]float64
+		pers := []string{per}
 		if _, ok := argdict["ALL"]; ok {
-			extra = make([][]float64, 2)
+			if cond.NonLinear() {
+				return fmt.Errorf("\":analysis-all\" cannot be used for non-linear analysis")
+			}
+			extra := make([][]float64, 2)
 			pers = []string{"L", "X", "Y"}
-			otps = []string{Ce(otp, ".otl"), Ce(otp, ".ohx"), Ce(otp, ".ohy")}
+			otps := []string{Ce(otp, ".otl"), Ce(otp, ".ohx"), Ce(otp, ".ohy")}
 			per = "L"
-			lap = 3
 			for i, eper := range []string{"X", "Y"} {
 				eaf := frame.Arclms[eper]
 				_, _, vec, err := eaf.AssemGlobalVector(1.0)
@@ -4015,26 +4028,90 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 				extra[i] = vec
 			}
-		}
-		var m bytes.Buffer
-		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
-		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
-		m.WriteString(fmt.Sprintf("SOLVER: %s\n", sol))
-		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
-		init := true
-		if _, ok := argdict["NOINIT"]; ok {
-			init = false
-			m.WriteString("\nNO INITIALISATION")
+			cond.SetOutput(otps)
+			cond.SetExtra(extra)
 		}
 		af := frame.Arclms[per]
 		if af == nil {
 			return fmt.Errorf(":arclm001: frame isn't extracted to period %s", per)
 		}
+		var m, m2 bytes.Buffer
+		m.WriteString(fmt.Sprintf("PERIOD      : %s\n", per))
+		if pp, ok := argdict["POST"]; ok {
+			switch strings.ToUpper(pp) {
+			case "FLOOR":
+				zval := 0.002
+				if z, zok := argdict["Z"]; zok {
+					tmp, err := strconv.ParseFloat(z, 64)
+					if err == nil {
+						zval = tmp
+					}
+				}
+				cond.SetPostprocess(func(frame *arclm.Frame) bool {
+					for _, n := range frame.Nodes {
+						current := n.Coord[2] + n.Disp[2]
+						if !n.Conf[2] && current <= zval {
+							n.Conf[2] = true
+						} else if n.Conf[2] && n.Reaction[2] < 0.0 {
+							n.Conf[2] = false
+						}
+					}
+					return true
+				})
+			case "IMCOMP":
+				comp := 0.0
+				if c, ok := argdict["COMP"]; ok {
+					val, err := strconv.ParseFloat(c, 64)
+					if err == nil {
+						comp = val
+					}
+				}
+				var sects []int
+				if s, ok := argdict["SECTS"]; ok {
+					sects = SplitNums(s)
+				}
+				m2.WriteString(fmt.Sprintf("\nINCOMPRESSIBLE: %v", sects))
+			incomp:
+				for _, el := range af.Elems {
+					for _, sec := range sects {
+						if el.Sect.Num == sec {
+							el.SetIncompressible(comp)
+							continue incomp
+						}
+					}
+				}
+				cond.SetPostprocess(func(frame *arclm.Frame) bool {
+					next := true
+					del := make([]int, 0)
+					res := make([]int, 0)
+					for _, el := range frame.Elems {
+						checked := el.Check()
+						switch checked {
+						case arclm.DELETED:
+							next = false
+							del = append(del, el.Num)
+						case arclm.RESTORED:
+							res = append(res, el.Num)
+						}
+					}
+					return next
+				})
+			}
+		}
+		m.WriteString(cond.String())
+		m.WriteString(m2.String())
+		wait := false
+		var wch chan int
+		if _, ok := argdict["WAIT"]; ok {
+			wait = true
+			wch = make(chan int)
+		}
 		go func() {
-			err := af.Arclm001(otps, init, sol, eps, extra...)
+			err := af.StaticAnalysis(cond)
 			af.Endch <- err
 		}()
-		stw.CurrentLap("Calculating...", 0, lap)
+		nlap := cond.Nlap()
+		stw.CurrentLap("Calculating...", 0, nlap)
 		pivot := make(chan int)
 		end := make(chan int)
 		nodes := make([]*Node, len(frame.Nodes))
@@ -4049,32 +4126,35 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		} else {
 			stw.Redraw()
 		}
-		nlap := -1
+		pind := 0
 		go func() {
-		read001:
+		readstatic:
 			for {
 				select {
 				case <-af.Pivot:
 					if stw.Pivot() {
 						pivot <- 1
 					}
-				case <-af.Lapch:
-					nlap++
-					frame.ReadArclmData(af, pers[nlap])
+				case lap := <-af.Lapch:
+					frame.ReadArclmData(af, pers[pind])
+					pind++
+					if pind == len(pers) {
+						pind = 0
+					}
 					af.Lapch <- 1
-					stw.CurrentLap("Calculating...", nlap, lap)
+					stw.CurrentLap("Calculating...", lap, nlap)
 					stw.Redraw()
 				case <-af.Endch:
 					if stw.Pivot() {
 						end <- 1
 					}
-					stw.CurrentLap("Completed", lap, lap)
+					stw.CurrentLap("Completed", nlap, nlap)
 					SetPeriod(stw, per)
 					stw.Redraw()
 					if wait {
 						wch <- 1
 					}
-					break read001
+					break readstatic
 				}
 			}
 		}()
@@ -4082,342 +4162,14 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			<-wch
 		}
 		return ArclmStart(m.String())
+	case "arclm001":
+		return Usage("DEPLICATED: use :analysis {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} {-wait} filename")
 	case "arclm201":
-		if usage {
-			return Usage(":arclm201 {-period=name} {-lap=nlap} {-safety=val} {-max=val} {-start=val} {-noinit} filename")
-		}
-		var otp string
-		if fn == "" {
-			otp = Ce(frame.Path, ".otp")
-		} else {
-			otp = fn
-		}
-		if o, ok := argdict["OTP"]; ok {
-			otp = o
-		}
-		lap := 1
-		if l, ok := argdict["LAP"]; ok {
-			tmp, err := strconv.ParseInt(l, 10, 64)
-			if err == nil {
-				lap = int(tmp)
-			}
-		}
-		safety := 1.0
-		if s, ok := argdict["SAFETY"]; ok {
-			tmp, err := strconv.ParseFloat(s, 64)
-			if err == nil {
-				safety = tmp
-			}
-		}
-		start := 0.0
-		if s, ok := argdict["START"]; ok {
-			tmp, err := strconv.ParseFloat(s, 64)
-			if err == nil {
-				start = tmp
-			}
-		}
-		max := 1.0
-		if s, ok := argdict["MAX"]; ok {
-			tmp, err := strconv.ParseFloat(s, 64)
-			if err == nil {
-				max = tmp
-			}
-		}
-		per := "L"
-		if p, ok := argdict["PERIOD"]; ok {
-			if p != "" {
-				per = strings.ToUpper(p)
-			}
-		}
-		var m bytes.Buffer
-		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
-		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
-		m.WriteString(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f, MAX: %.3f", lap, safety, start, max))
-		init := true
-		if _, ok := argdict["NOINIT"]; ok {
-			init = false
-			m.WriteString("\nNO INITIALISATION")
-		}
-		af := frame.Arclms[per]
-		if af == nil {
-			return fmt.Errorf(":arclm201: frame isn't extracted to period %s", per)
-		}
-		go func() {
-			err := af.Arclm201(otp, init, lap, safety, start, max)
-			if err != nil {
-				fmt.Println(err)
-			}
-			af.Endch <- err
-		}()
-		stw.CurrentLap("Calculating...", 0, lap)
-		pivot := make(chan int)
-		end := make(chan int)
-		nodes := make([]*Node, len(frame.Nodes))
-		i := 0
-		for _, n := range frame.Nodes {
-			nodes[i] = n
-			i++
-		}
-		sort.Sort(NodeByNum{nodes})
-		if stw.Pivot() {
-			go stw.DrawPivot(nodes, pivot, end)
-		} else {
-			stw.Redraw()
-		}
-		go func() {
-		read201:
-			for {
-				select {
-				case <-af.Pivot:
-					if stw.Pivot() {
-						pivot <- 1
-					}
-				case nlap := <-af.Lapch:
-					frame.ReadArclmData(af, per)
-					af.Lapch <- 1
-					stw.CurrentLap("Calculating...", nlap, lap)
-					if stw.Pivot() {
-						end <- 1
-						go stw.DrawPivot(nodes, pivot, end)
-					} else {
-						stw.Redraw()
-					}
-				case <-af.Endch:
-					stw.CurrentLap("Completed", lap, lap)
-					stw.Redraw()
-					break read201
-				}
-			}
-		}()
-		return ArclmStart(m.String())
+		return Usage("DEPLICATED: use :analysis -nlgeom {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
 	case "arclm202":
-		if usage {
-			return Usage(":arclm202 {-period=name} {-lap=nlap} {-safety=val} {-max=val} {-start=val} {-noinit} {-sects=val} {-comp=val} filename")
-		}
-		var otp string
-		var sects []int
-		if fn == "" {
-			otp = Ce(frame.Path, ".otp")
-		} else {
-			otp = fn
-		}
-		if o, ok := argdict["OTP"]; ok {
-			otp = o
-		}
-		lap := 1
-		if l, ok := argdict["LAP"]; ok {
-			tmp, err := strconv.ParseInt(l, 10, 64)
-			if err == nil {
-				lap = int(tmp)
-			}
-		}
-		safety := 1.0
-		if s, ok := argdict["SAFETY"]; ok {
-			tmp, err := strconv.ParseFloat(s, 64)
-			if err == nil {
-				safety = tmp
-			}
-		}
-		start := 0.0
-		if s, ok := argdict["START"]; ok {
-			tmp, err := strconv.ParseFloat(s, 64)
-			if err == nil {
-				start = tmp
-			}
-		}
-		max := 1.0
-		if s, ok := argdict["MAX"]; ok {
-			tmp, err := strconv.ParseFloat(s, 64)
-			if err == nil {
-				max = tmp
-			}
-		}
-		per := "L"
-		if p, ok := argdict["PERIOD"]; ok {
-			if p != "" {
-				per = strings.ToUpper(p)
-			}
-		}
-		comp := 0.0
-		if c, ok := argdict["COMP"]; ok {
-			val, err := strconv.ParseFloat(c, 64)
-			if err == nil {
-				comp = val
-			}
-		}
-		var m bytes.Buffer
-		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
-		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
-		m.WriteString(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f, MAX: %.3f, COMP: %.3f", lap, safety, start, max, comp))
-		if s, ok := argdict["SECTS"]; ok {
-			sects = SplitNums(s)
-			m.WriteString(fmt.Sprintf("\nINCOMPRESSIBLE: %v", sects))
-		}
-		init := true
-		if _, ok := argdict["NOINIT"]; ok {
-			init = false
-			m.WriteString("\nNO INITIALISATION")
-		}
-		af := frame.Arclms[per]
-		if af == nil {
-			return fmt.Errorf(":arclm202: frame isn't extracted to period %s", per)
-		}
-		go func() {
-			err := af.Arclm202(otp, init, lap, safety, start, max, sects, comp)
-			if err != nil {
-				fmt.Println(err)
-			}
-			af.Endch <- err
-		}()
-		stw.CurrentLap("Calculating...", 0, lap)
-		pivot := make(chan int)
-		end := make(chan int)
-		nodes := make([]*Node, len(frame.Nodes))
-		i := 0
-		for _, n := range frame.Nodes {
-			nodes[i] = n
-			i++
-		}
-		sort.Sort(NodeByNum{nodes})
-		if stw.Pivot() {
-			go stw.DrawPivot(nodes, pivot, end)
-		} else {
-			stw.Redraw()
-		}
-		go func() {
-		read202:
-			for {
-				select {
-				case <-af.Pivot:
-					if stw.Pivot() {
-						pivot <- 1
-					}
-				case nlap := <-af.Lapch:
-					frame.ReadArclmData(af, per)
-					af.Lapch <- 1
-					stw.CurrentLap("Calculating...", nlap, lap)
-					if stw.Pivot() {
-						end <- 1
-						go stw.DrawPivot(nodes, pivot, end)
-					} else {
-						stw.Redraw()
-					}
-				case <-af.Endch:
-					stw.CurrentLap("Completed", lap, lap)
-					stw.Redraw()
-					break read202
-				}
-			}
-		}()
-		return ArclmStart(m.String())
+		return Usage("DEPLICATED: use :analysis -nlgeom -pp=imcomp {-sects=val} {-comp=val} {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
 	case "arclm203":
-		if usage {
-			return Usage(":arclm203 {-period=name} {-lap=nlap} {-safety=val} {-max=val} {-start=val} {-noinit} filename")
-		}
-		var otp string
-		if fn == "" {
-			otp = Ce(frame.Path, ".otp")
-		} else {
-			otp = fn
-		}
-		if o, ok := argdict["OTP"]; ok {
-			otp = o
-		}
-		lap := 1
-		if l, ok := argdict["LAP"]; ok {
-			tmp, err := strconv.ParseInt(l, 10, 64)
-			if err == nil {
-				lap = int(tmp)
-			}
-		}
-		safety := 1.0
-		if s, ok := argdict["SAFETY"]; ok {
-			tmp, err := strconv.ParseFloat(s, 64)
-			if err == nil {
-				safety = tmp
-			}
-		}
-		start := 0.0
-		if s, ok := argdict["START"]; ok {
-			tmp, err := strconv.ParseFloat(s, 64)
-			if err == nil {
-				start = tmp
-			}
-		}
-		max := 1.0
-		if s, ok := argdict["MAX"]; ok {
-			tmp, err := strconv.ParseFloat(s, 64)
-			if err == nil {
-				max = tmp
-			}
-		}
-		per := "L"
-		if p, ok := argdict["PERIOD"]; ok {
-			if p != "" {
-				per = strings.ToUpper(p)
-			}
-		}
-		var m bytes.Buffer
-		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
-		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
-		m.WriteString(fmt.Sprintf("LAP: %d, SAFETY: %.3f, START: %.3f, MAX: %.3f", lap, safety, start, max))
-		init := true
-		if _, ok := argdict["NOINIT"]; ok {
-			init = false
-			m.WriteString("\nNO INITIALISATION")
-		}
-		af := frame.Arclms[per]
-		if af == nil {
-			return fmt.Errorf(":arclm203: frame isn't extracted to period %s", per)
-		}
-		go func() {
-			err := af.Arclm203(otp, init, lap, safety, start, max)
-			if err != nil {
-				fmt.Println(err)
-			}
-			af.Endch <- err
-		}()
-		stw.CurrentLap("Calculating...", 0, lap)
-		pivot := make(chan int)
-		end := make(chan int)
-		nodes := make([]*Node, len(frame.Nodes))
-		i := 0
-		for _, n := range frame.Nodes {
-			nodes[i] = n
-			i++
-		}
-		sort.Sort(NodeByNum{nodes})
-		if stw.Pivot() {
-			go stw.DrawPivot(nodes, pivot, end)
-		} else {
-			stw.Redraw()
-		}
-		go func() {
-		read203:
-			for {
-				select {
-				case <-af.Pivot:
-					if stw.Pivot() {
-						pivot <- 1
-					}
-				case nlap := <-af.Lapch:
-					frame.ReadArclmData(af, per)
-					af.Lapch <- 1
-					stw.CurrentLap("Calculating...", nlap, lap)
-					if stw.Pivot() {
-						end <- 1
-						go stw.DrawPivot(nodes, pivot, end)
-					} else {
-						stw.Redraw()
-					}
-				case <-af.Endch:
-					stw.CurrentLap("Completed", lap, lap)
-					stw.Redraw()
-					break read203
-				}
-			}
-		}()
-		return ArclmStart(m.String())
+		return Usage("DEPLICATED: use :analysis -nlgeom -pp=floor {-z=val} {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
 	case "arclm301":
 		if usage {
 			return Usage(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
