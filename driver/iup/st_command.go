@@ -86,7 +86,6 @@ var (
 	JOINLINEELEM        = &Command{"JOIN LINE", "JOIN LINE ELEM", "join selected 2 elems", joinlineelem}
 	JOINPLATEELEM       = &Command{"JOIN PLATE", "JOIN PLATE ELEM", "join selected 2 elems", joinplateelem}
 	EXTRACTARCLM        = &Command{"EXAR", "EXTRACT ARCLM", "extract arclm", extractarclm}
-	ARCLM001            = &Command{"A001", "ARCLM001", "arclm001", arclm001}
 	DIVIDEATONS         = &Command{"ON NODES", "DIVIDE AT ONS", "divide selected elems at onnode", divideatons}
 	DIVIDEATMID         = &Command{"MID POINT", "DIVIDE AT MID", "divide selected elems at midpoint", divideatmid}
 	DIVIDEINN           = &Command{"IN N", "DIVIDE IN N", "divide selected elems in n parts", divideinn}
@@ -177,7 +176,6 @@ func init() {
 	Commands["JOINLINEELEM"] = JOINLINEELEM
 	Commands["JOINPLATEELEM"] = JOINPLATEELEM
 	Commands["EXTRACTARCLM"] = EXTRACTARCLM
-	Commands["ARCLM001"] = ARCLM001
 	Commands["DIVIDEATONS"] = DIVIDEATONS
 	Commands["DIVIDEATMID"] = DIVIDEATMID
 	Commands["DIVIDEINN"] = DIVIDEINN
@@ -2706,17 +2704,6 @@ func extractarclm(stw *Window) {
 			stw.addHistory(fmt.Sprintf("保存しました: %s", fn))
 		}
 	}
-	stw.EscapeAll()
-}
-
-// }}}
-
-// ARCLM001 TODO: UNDER CONSTRUCTION // {{{
-func arclm001(stw *Window) {
-	per := "L"
-	af := stw.frame.Arclms[per]
-	af.Arclm001([]string{st.Ce(stw.frame.Path, ".otp")}, true, "LLS", 1e-16)
-	stw.frame.ReadArclmData(af, per)
 	stw.EscapeAll()
 }
 
