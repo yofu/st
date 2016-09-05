@@ -593,6 +593,69 @@ func NewAnalysisCondition() *AnalysisCondition {
 	}
 }
 
+func (cond *AnalysisCondition) Nlap() int {
+	return cond.nlap
+}
+func (cond *AnalysisCondition) SetInit(i bool) {
+	cond.init = i
+}
+func (cond *AnalysisCondition) SetSolver(s string) {
+	cond.solver = s
+}
+func (cond *AnalysisCondition) SetOutput(o []string) {
+	cond.otp = o
+}
+func (cond *AnalysisCondition) SetExtra(e [][]float64) {
+	cond.extra = e
+}
+func (cond *AnalysisCondition) SetNlgeometry(n bool) {
+	cond.nlgeometry = n
+}
+func (cond *AnalysisCondition) SetNlmaterial(n bool) {
+	cond.nlmaterial = n
+}
+func (cond *AnalysisCondition) SetNlap(l int) {
+	cond.nlap = l
+}
+func (cond *AnalysisCondition) SetDelta(d float64) {
+	cond.delta = d
+}
+func (cond *AnalysisCondition) SetStart(s float64) {
+	cond.start = s
+}
+func (cond *AnalysisCondition) SetMax(m float64) {
+	cond.max = m
+}
+func (cond *AnalysisCondition) SetEps(e float64) {
+	cond.eps = e
+}
+func (cond *AnalysisCondition) SetPostprocess(f func(*Frame) bool) {
+	cond.postprocess = f
+}
+
+func (cond *AnalysisCondition) String() string {
+	var rtn bytes.Buffer
+	rtn.WriteString(fmt.Sprintf("INITIALIZE  : %t\n", cond.init))
+	rtn.WriteString(fmt.Sprintf("OUTPUT FILE : %v\n", cond.otp))
+	rtn.WriteString(fmt.Sprintf("SOLVER      : %s\n", cond.solver))
+	rtn.WriteString(fmt.Sprintf("EPS         : %.3E\n", cond.eps))
+	rtn.WriteString(fmt.Sprintf("EXTRA LOAD  : %d\n", len(cond.extra)))
+	rtn.WriteString("NON-LINEAR\n")
+	rtn.WriteString(fmt.Sprintf("  GEOMETRY  : %t\n", cond.nlgeometry))
+	rtn.WriteString(fmt.Sprintf("  MATERIAL  : %t\n", cond.nlmaterial))
+	rtn.WriteString("STEP\n")
+	rtn.WriteString(fmt.Sprintf("  NLAP      : %d\n", cond.nlap))
+	rtn.WriteString(fmt.Sprintf("  DELTA     : %.3f\n", cond.delta))
+	rtn.WriteString(fmt.Sprintf("  START     : %.3f\n", cond.start))
+	rtn.WriteString(fmt.Sprintf("  MAX       : %.3f\n", cond.max))
+	rtn.WriteString(fmt.Sprintf("POST PROCESS: %t", cond.postprocess != nil))
+	return rtn.String()
+}
+
+func (cond *AnalysisCondition) NonLinear() bool {
+	return cond.nlgeometry || cond.nlmaterial
+}
+
 func (frame *Frame) StaticAnalysis(cond *AnalysisCondition) error {
 	if cond.init {
 		frame.Initialise()
