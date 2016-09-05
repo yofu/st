@@ -4033,7 +4033,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		af := frame.Arclms[per]
 		if af == nil {
-			return fmt.Errorf(":arclm001: frame isn't extracted to period %s", per)
+			return fmt.Errorf(":analysis: frame isn't extracted to period %s", per)
 		}
 		var m, m2 bytes.Buffer
 		m.WriteString(fmt.Sprintf("PERIOD      : %s\n", per))
