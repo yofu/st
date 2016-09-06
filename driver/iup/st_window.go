@@ -5378,7 +5378,7 @@ func (stw *Window) displayLabel(name string, defval bool) *iup.Handle {
 					case "KIJUN":
 						stw.frame.Show.Kijun = !stw.frame.Show.Kijun
 					case "DEFORMATION":
-						stw.frame.Show.Deformation = !stw.frame.Show.Deformation
+						stw.frame.Show.PlotState ^= st.PLOT_DEFORMED
 					case "YIELD":
 						stw.frame.Show.YieldFunction = !stw.frame.Show.YieldFunction
 					case "RATE":
@@ -5550,16 +5550,6 @@ func (stw *Window) StressOff(etype int, index uint) {
 			lbl.SetAttribute("FGCOLOR", labelOFFColor)
 		}
 	}
-}
-
-func (stw *Window) DeformationOn() {
-	stw.frame.Show.Deformation = true
-	stw.Labels["DEFORMATION"].SetAttribute("FGCOLOR", labelFGColor)
-}
-
-func (stw *Window) DeformationOff() {
-	stw.frame.Show.Deformation = false
-	stw.Labels["DEFORMATION"].SetAttribute("FGCOLOR", labelOFFColor)
 }
 
 func (stw *Window) DispOn(direction int) {

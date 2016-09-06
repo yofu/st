@@ -39,8 +39,8 @@ func (stw *Window) Text(x, y float64, txt string) {
 	stw.currentCanvas.FText(x, y, txt)
 }
 
-func (stw *Window) Foreground(fg int) {
-	stw.currentCanvas.Foreground(fg)
+func (stw *Window) Foreground(fg int) int {
+	return stw.currentCanvas.Foreground(fg)
 }
 
 func (stw *Window) DefaultStyle() {
