@@ -1045,3 +1045,29 @@ func FilterElem(frame *Frame, els []*Elem, str string) ([]*Elem, error) {
 func DotLine(x1, y1, x2, y2, dx, dy float64) float64 {
 	return (x1*y2 + x2*dy + dx*y1) - (x1*dy + x2*y1 + dx*y2)
 }
+
+func PeriodValue(period string, f func(string, float64) float64) float64 {
+	if period == "" {
+		return 0.0
+	}
+	sign := 1.0
+	sum := 0.0
+	tmp := ""
+	for _, s := range period {
+		switch s {
+		case ' ':
+			continue
+		case '+':
+			sum += f(tmp, sign)
+			tmp = ""
+			sign = 1.0
+		case '-':
+			sum += f(tmp, sign)
+			tmp = ""
+			sign = -1.0
+		default:
+			tmp += string(s)
+		}
+	}
+	return sum + f(tmp, sign)
+}

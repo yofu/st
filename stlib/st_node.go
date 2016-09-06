@@ -348,47 +348,23 @@ func (node *Node) Normal(normalize bool) []float64 {
 
 // Disp
 func (node *Node) ReturnDisp(period string, index int) float64 {
-	if period == "" {
-		return 0.0
-	}
-	if pind := strings.Index(period, "+"); pind >= 0 {
-		return node.ReturnDisp(period[:pind], index) + node.ReturnDisp(period[pind+1:], index)
-	}
-	if mind := strings.Index(period, "-"); mind >= 0 {
-		ps := strings.Split(period, "-")
-		val := node.ReturnDisp(ps[0], index)
-		for i := 1; i < len(ps); i++ {
-			val -= node.ReturnDisp(ps[i], index)
+	return PeriodValue(period, func(p string, s float64) float64 {
+		if val, ok := node.Disp[p]; ok {
+			return s * val[index]
+		} else {
+			return 0.0
 		}
-		return val
-	}
-	if val, ok := node.Disp[period]; ok {
-		return val[index]
-	} else {
-		return 0.0
-	}
+	})
 }
 
 func (node *Node) ReturnReaction(period string, index int) float64 {
-	if period == "" {
-		return 0.0
-	}
-	if pind := strings.Index(period, "+"); pind >= 0 {
-		return node.ReturnReaction(period[:pind], index) + node.ReturnReaction(period[pind+1:], index)
-	}
-	if mind := strings.Index(period, "-"); mind >= 0 {
-		ps := strings.Split(period, "-")
-		val := node.ReturnReaction(ps[0], index)
-		for i := 1; i < len(ps); i++ {
-			val -= node.ReturnReaction(ps[i], index)
+	return PeriodValue(period, func(p string, s float64) float64 {
+		if val, ok := node.Reaction[p]; ok {
+			return s * val[index]
+		} else {
+			return 0.0
 		}
-		return val
-	}
-	if val, ok := node.Reaction[period]; ok {
-		return val[index]
-	} else {
-		return 0.0
-	}
+	})
 }
 
 // Conf

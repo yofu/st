@@ -2001,35 +2001,26 @@ func (elem *Elem) ReturnStress(period string, nnum int, index int) float64 {
 	if period == "" || !elem.IsLineElem() || elem.Stress == nil {
 		return 0.0
 	}
-	if pind := strings.Index(period, "+"); pind >= 0 {
-		return elem.ReturnStress(period[:pind], nnum, index) + elem.ReturnStress(period[pind+1:], nnum, index)
-	}
-	if mind := strings.Index(period, "-"); mind >= 0 {
-		ps := strings.Split(period, "-")
-		val := elem.ReturnStress(ps[0], nnum, index)
-		for i := 1; i < len(ps); i++ {
-			val -= elem.ReturnStress(ps[i], nnum, index)
-		}
-		return val
-	}
-	if val, ok := elem.Stress[period]; ok {
-		if nnum == 0 || nnum == 1 {
-			if rtn, ok := val[elem.Enod[nnum].Num]; ok {
-				return rtn[index]
+	return PeriodValue(period, func(p string, s float64) float64 {
+		if val, ok := elem.Stress[p]; ok {
+			if nnum == 0 || nnum == 1 {
+				if rtn, ok := val[elem.Enod[nnum].Num]; ok {
+					return s * rtn[index]
+				} else {
+					return 0.0
+				}
 			} else {
+				for _, en := range elem.Enod {
+					if en.Num == nnum {
+						return s * val[nnum][index]
+					}
+				}
 				return 0.0
 			}
 		} else {
-			for _, en := range elem.Enod {
-				if en.Num == nnum {
-					return val[nnum][index]
-				}
-			}
 			return 0.0
 		}
-	} else {
-		return 0.0
-	}
+	})
 }
 
 func (elem *Elem) N(period string, nnum int) float64 {
