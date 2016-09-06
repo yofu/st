@@ -4858,13 +4858,21 @@ func (frame *Frame) PickElem(x, y, eps float64) *Elem {
 func (frame *Frame) PickLineElem(x, y, eps float64) *Elem {
 	mindist := eps
 	var rtn *Elem
+	var icoord, jcoord []float64
 	for _, v := range frame.Elems {
 		if v.IsHidden(frame.Show) {
 			continue
 		}
-		if v.IsLineElem() && (math.Min(v.Enod[0].Pcoord[0], v.Enod[1].Pcoord[0]) <= x+eps && math.Max(v.Enod[0].Pcoord[0], v.Enod[1].Pcoord[0]) >= x-eps) && (math.Min(v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[1]) <= y+eps && math.Max(v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[1]) >= y-eps) {
-			dist := math.Abs(DotLine(v.Enod[0].Pcoord[0], v.Enod[0].Pcoord[1], v.Enod[1].Pcoord[0], v.Enod[1].Pcoord[1], x, y))
-			if plen := math.Hypot(v.Enod[0].Pcoord[0]-v.Enod[1].Pcoord[0], v.Enod[0].Pcoord[1]-v.Enod[1].Pcoord[1]); plen > 1E-12 {
+		if frame.Show.PlotState&PLOT_UNDEFORMED != 0 {
+			icoord = v.Enod[0].Pcoord
+			jcoord = v.Enod[1].Pcoord
+		} else {
+			icoord = v.Enod[0].Dcoord
+			jcoord = v.Enod[1].Dcoord
+		}
+		if v.IsLineElem() && (math.Min(icoord[0], jcoord[0]) <= x+eps && math.Max(icoord[0], jcoord[0]) >= x-eps) && (math.Min(icoord[1], jcoord[1]) <= y+eps && math.Max(icoord[1], jcoord[1]) >= y-eps) {
+			dist := math.Abs(DotLine(icoord[0], icoord[1], jcoord[0], jcoord[1], x, y))
+			if plen := math.Hypot(icoord[0]-jcoord[0], icoord[1]-jcoord[1]); plen > 1E-12 {
 				dist /= plen
 			}
 			if dist < mindist {
@@ -4878,9 +4886,20 @@ func (frame *Frame) PickLineElem(x, y, eps float64) *Elem {
 
 func (frame *Frame) PickPlateElem(x, y float64) []*Elem {
 	rtn := make(map[int]*Elem)
+	var coords [][]float64
 	for _, el := range frame.Elems {
 		if el.IsHidden(frame.Show) {
 			continue
+		}
+		coords = make([][]float64, el.Enods)
+		if frame.Show.PlotState&PLOT_UNDEFORMED != 0 {
+			for i := 0; i < el.Enods; i++ {
+				coords[i] = el.Enod[i].Pcoord
+			}
+		} else {
+			for i := 0; i < el.Enods; i++ {
+				coords[i] = el.Enod[i].Dcoord
+			}
 		}
 		if !el.IsLineElem() {
 			add := true
@@ -4892,7 +4911,7 @@ func (frame *Frame) PickPlateElem(x, y float64) []*Elem {
 				} else {
 					j = i + 1
 				}
-				if DotLine(el.Enod[i].Pcoord[0], el.Enod[i].Pcoord[1], el.Enod[j].Pcoord[0], el.Enod[j].Pcoord[1], x, y) > 0 {
+				if DotLine(coords[i][0], coords[i][1], coords[j][0], coords[j][1], x, y) > 0 {
 					sign++
 				} else {
 					sign--
@@ -4913,11 +4932,16 @@ func (frame *Frame) PickPlateElem(x, y float64) []*Elem {
 func (frame *Frame) PickNode(x, y, eps float64) *Node {
 	mindist := eps
 	var rtn *Node
+	var dist float64
 	for _, v := range frame.Nodes {
 		if v.IsHidden(frame.Show) {
 			continue
 		}
-		dist := math.Hypot(x-v.Pcoord[0], y-v.Pcoord[1])
+		if frame.Show.PlotState&PLOT_UNDEFORMED != 0 {
+			dist = math.Hypot(x-v.Pcoord[0], y-v.Pcoord[1])
+		} else {
+			dist = math.Hypot(x-v.Dcoord[0], y-v.Dcoord[1])
+		}
 		if dist < mindist {
 			mindist = dist
 			rtn = v
