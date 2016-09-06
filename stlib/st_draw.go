@@ -229,16 +229,35 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 						}
 						if show.ShearArrow {
 							arrow := 0.3
-							qcoord := elem.MidPoint()
-							rcoord := elem.MidPoint()
+							var qcoord, rcoord, vec []float64
+							if show.PlotState&PLOT_UNDEFORMED != 0 {
+								qcoord = elem.MidPoint()
+								rcoord = elem.MidPoint()
+								if i == 1 {
+									vec = elem.Strong
+								} else {
+									vec = elem.Weak
+								}
+							} else {
+								qcoord = elem.DeformedMidPoint(show.Period, show.Dfact)
+								rcoord = elem.DeformedMidPoint(show.Period, show.Dfact)
+								strong, weak, err := PrincipalAxis(elem.DeformedDirection(true, show.Period, show.Dfact), elem.Cang)
+								if err != nil {
+									if i == 1 {
+										vec = elem.Strong
+									} else {
+										vec = elem.Weak
+									}
+								} else {
+									if i == 1 {
+										vec = strong
+									} else {
+										vec = weak
+									}
+								}
+							}
 							prcoord := elem.Frame.View.ProjectCoord(rcoord)
 							val := 0.5 * (vali - valj)
-							var vec []float64
-							if i == 1 {
-								vec = elem.Strong
-							} else {
-								vec = elem.Weak
-							}
 							if val >= 0.0 {
 								for j := 0; j < 3; j++ {
 									qcoord[j] -= show.Qfact * val * vec[j]
@@ -265,11 +284,11 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 							mcoord := elem.MomentCoord(show, i)
 							stw.Foreground(show.MomentColor)
 							coords := make([][]float64, len(mcoord)+2)
-							coords[0] = []float64{elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1]}
+							coords[0] = []float64{icoord[0], icoord[1]}
 							for i, c := range mcoord {
 								coords[i+1] = elem.Frame.View.ProjectCoord(c)
 							}
-							coords[len(mcoord)+1] = []float64{elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1]}
+							coords[len(mcoord)+1] = []float64{jcoord[0], jcoord[1]}
 							stw.Polyline(coords)
 						}
 					}
@@ -278,13 +297,10 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			stw.Foreground(show.StressTextColor)
 			for j := 0; j < 2; j++ {
 				if tex := sttext[j].String(); tex != "" {
-					coord := make([]float64, 3)
-					for i, en := range elem.Enod {
-						for k := 0; k < 3; k++ {
-							coord[k] += (-0.5*math.Abs(float64(i-j)) + 0.75) * en.Coord[k]
-						}
+					stpos := make([]float64, 2)
+					for k := 0; k < 2; k++ {
+						stpos[k] += (-0.5*math.Abs(float64(-j)) + 0.75) * icoord[k] + (-0.5*math.Abs(float64(1-j)) + 0.75) * jcoord[k]
 					}
-					stpos := elem.Frame.View.ProjectCoord(coord)
 					if j == 0 {
 						stw.TextAlignment(SOUTH)
 					} else {
@@ -314,13 +330,10 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 				case arclm.BrittleFailureError:
 					stw.Foreground(show.BrittleTextColor)
 				}
-				coord := make([]float64, 3)
-				for i, en := range elem.Enod {
-					for k := 0; k < 3; k++ {
-						coord[k] += (-0.5*math.Abs(float64(i-j)) + 0.75) * en.Coord[k]
-					}
+				stpos := make([]float64, 2)
+				for k := 0; k < 2; k++ {
+					stpos[k] += (-0.5*math.Abs(float64(-j)) + 0.75) * icoord[k] + (-0.5*math.Abs(float64(1-j)) + 0.75) * jcoord[k]
 				}
-				stpos := elem.Frame.View.ProjectCoord(coord)
 				if j == 0 {
 					stw.TextAlignment(SOUTH)
 				} else {

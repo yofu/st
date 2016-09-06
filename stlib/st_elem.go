@@ -2177,15 +2177,50 @@ func (elem *Elem) IsRigid(index int) bool {
 
 func (elem *Elem) MomentCoord(show *Show, index int) [][]float64 {
 	var axis []float64
-	if index == 4 {
-		axis = elem.Weak
-	} else if index == 5 {
-		axis = make([]float64, 3)
-		for i := 0; i < 3; i++ {
-			axis[i] = -elem.Strong[i]
+	coord := make([][]float64, 2)
+	if show.PlotState&PLOT_UNDEFORMED != 0 {
+		if index == 4 {
+			axis = elem.Weak
+		} else if index == 5 {
+			axis = make([]float64, 3)
+			for i := 0; i < 3; i++ {
+				axis[i] = -elem.Strong[i]
+			}
+		} else {
+			return nil
+		}
+		for i := 0; i < 2; i++ {
+			coord[i] = make([]float64, 3)
+			for j := 0; j < 3; j++ {
+				coord[i][j] = elem.Enod[i].Coord[j]
+			}
 		}
 	} else {
-		return nil
+		var strong, weak []float64
+		s, w, err := PrincipalAxis(elem.DeformedDirection(true, show.Period, show.Dfact), elem.Cang)
+		if err != nil {
+			strong = elem.Strong
+			weak = elem.Weak
+		} else {
+			strong = s
+			weak = w
+		}
+		if index == 4 {
+			axis = weak
+		} else if index == 5 {
+			axis = make([]float64, 3)
+			for i := 0; i < 3; i++ {
+				axis[i] = -strong[i]
+			}
+		} else {
+			return nil
+		}
+		for i := 0; i < 2; i++ {
+			coord[i] = make([]float64, 3)
+			for j := 0; j < 3; j++ {
+				coord[i][j] = elem.Enod[i].Coord[j] + elem.Enod[i].ReturnDisp(show.Period, j) * show.Dfact
+			}
+		}
 	}
 	ms := make([]float64, 2)
 	qs := make([]float64, 2)
@@ -2197,22 +2232,22 @@ func (elem *Elem) MomentCoord(show *Show, index int) [][]float64 {
 	rtn := make([][]float64, 3)
 	rtn[0] = make([]float64, 3)
 	for i := 0; i < 3; i++ {
-		rtn[0][i] = -show.Mfact*axis[i]*ms[0] + elem.Enod[0].Coord[i]
+		rtn[0][i] = -show.Mfact*axis[i]*ms[0] + coord[0][i]
 	}
 	rtn[2] = make([]float64, 3)
 	for i := 0; i < 3; i++ {
-		rtn[2][i] = show.Mfact*axis[i]*ms[1] + elem.Enod[1].Coord[i]
+		rtn[2][i] = show.Mfact*axis[i]*ms[1] + coord[1][i]
 	}
 	if math.Abs(qs[0]+qs[1]) > 1.0 {
 		tmp := make([]float64, 3)
 		d := elem.Direction(true)
 		val := (qs[1]*l - (ms[0] + ms[1])) / (qs[0] + qs[1])
 		for i := 0; i < 3; i++ {
-			tmp[i] = elem.Enod[0].Coord[i] + d[i]*val
+			tmp[i] = coord[0][i] + d[i]*val
 		}
 		ll := 0.0
 		for i := 0; i < 3; i++ {
-			ll += math.Pow(elem.Enod[1].Coord[i]-tmp[i], 2.0)
+			ll += math.Pow(coord[1][i]-tmp[i], 2.0)
 		}
 		ll = math.Sqrt(ll)
 		if 0.0 < ll && ll < l {
