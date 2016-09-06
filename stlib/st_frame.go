@@ -2051,7 +2051,7 @@ func (frame *Frame) ParseKjn(lis []string) error {
 
 func (frame *Frame) Filename() (string, string) {
 	arclm := false
-	if frame.Show.Deformation || frame.Show.SrcanRate != 0 {
+	if frame.Show.PlotState&PLOT_DEFORMED != 0 || frame.Show.SrcanRate != 0 {
 		arclm = true
 	} else if frame.Show.NodeCaption != 0 {
 		for _, nc := range []uint{NC_DX, NC_DY, NC_DZ, NC_TX, NC_TY, NC_TZ, NC_RX, NC_RY, NC_RZ, NC_MX, NC_MY, NC_MZ} {

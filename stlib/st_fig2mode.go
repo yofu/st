@@ -63,6 +63,10 @@ var (
 			map[string][]string{
 				"PERIOD": []string{"l", "x", "y"},
 			}),
+		"def/orme/d/": complete.MustCompile("'deformed $PERIOD",
+			map[string][]string{
+				"PERIOD": []string{"l", "x", "y"},
+			}),
 		"dis/p": complete.MustCompile("'disp $PERIOD $DIRECTION",
 			map[string][]string{
 				"PERIOD":    []string{"l", "x", "y"},
@@ -879,12 +883,21 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		}
 	case "deformation":
 		if un {
-			DeformationOff(stw)
+			DeformationOff(stw, false)
 		} else {
 			if len(lis) >= 2 {
 				SetPeriod(stw, strings.ToUpper(lis[1]))
 			}
-			DeformationOn(stw)
+			DeformationOn(stw, false)
+		}
+	case "deformed":
+		if un {
+			DeformationOff(stw, true)
+		} else {
+			if len(lis) >= 2 {
+				SetPeriod(stw, strings.ToUpper(lis[1]))
+			}
+			DeformationOn(stw, true)
 		}
 	case "disp":
 		if un {

@@ -909,21 +909,32 @@ func StressOff(stw Window, etype int, index uint) {
 	}
 }
 
-func DeformationOn(stw Window) {
+func DeformationOn(stw Window, only bool) {
 	frame := stw.Frame()
 	if frame == nil {
 		return
 	}
-	frame.Show.Deformation = true
+	if only {
+		frame.Show.PlotState = PLOT_DEFORMED
+	} else {
+		frame.Show.PlotState |= PLOT_DEFORMED
+	}
 	stw.EnableLabel("DEFORMATION")
 }
 
-func DeformationOff(stw Window) {
+func DeformationOff(stw Window, only bool) {
 	frame := stw.Frame()
 	if frame == nil {
 		return
 	}
-	frame.Show.Deformation = false
+	if only {
+		frame.Show.PlotState = PLOT_UNDEFORMED
+	} else {
+		frame.Show.PlotState &= ^PLOT_DEFORMED
+		if frame.Show.PlotState == 0 {
+			frame.Show.PlotState = PLOT_UNDEFORMED
+		}
+	}
 	stw.DisableLabel("DEFORMATION")
 }
 

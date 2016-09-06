@@ -144,42 +144,51 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			oncap = true
 		}
 	}
-	if oncap {
-		var textpos []float64
-		if BRACE <= elem.Etype && elem.Etype <= SBRACE {
-			coord := make([]float64, 3)
-			for j, en := range elem.Enod {
-				for k := 0; k < 3; k++ {
-					coord[k] += (-0.5*float64(j) + 0.75) * en.Coord[k]
-				}
-			}
-			textpos = elem.Frame.View.ProjectCoord(coord)
-		} else {
-			textpos = make([]float64, 2)
-			for _, en := range elem.Enod {
-				for i := 0; i < 2; i++ {
-					textpos[i] += en.Pcoord[i]
-				}
-			}
-			for i := 0; i < 2; i++ {
-				textpos[i] /= float64(elem.Enods)
-			}
-		}
-		stw.Text(textpos[0], textpos[1], strings.TrimSuffix(ecap.String(), "\n"))
-	}
 	if elem.IsLineElem() {
-		stw.Line(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1], elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
+		var icoord, jcoord []float64
+		if show.PlotState&PLOT_UNDEFORMED != 0 {
+			icoord = elem.Enod[0].Pcoord
+			jcoord = elem.Enod[1].Pcoord
+			stw.Line(icoord[0], icoord[1], jcoord[0], jcoord[1])
+			// Deformation
+			if show.PlotState&PLOT_DEFORMED != 0 {
+				stw.LineStyle(DOTTED)
+				col := stw.Foreground(show.DeformationColor)
+				stw.Line(elem.Enod[0].Dcoord[0], elem.Enod[0].Dcoord[1], elem.Enod[1].Dcoord[0], elem.Enod[1].Dcoord[1])
+				stw.LineStyle(CONTINUOUS)
+				stw.Foreground(col)
+			}
+		} else {
+			icoord = elem.Enod[0].Dcoord
+			jcoord = elem.Enod[1].Dcoord
+			stw.Line(icoord[0], icoord[1], jcoord[0], jcoord[1])
+		}
+		if oncap {
+			textpos := make([]float64, 2)
+			if BRACE <= elem.Etype && elem.Etype <= SBRACE {
+				for k := 0; k < 2; k++ {
+					textpos[k] += 0.75 * icoord[k]
+					textpos[k] += 0.25 * jcoord[k]
+				}
+			} else {
+				for k := 0; k < 2; k++ {
+					textpos[k] += 0.5 * icoord[k]
+					textpos[k] += 0.5 * jcoord[k]
+				}
+			}
+			stw.Text(textpos[0], textpos[1], strings.TrimSuffix(ecap.String(), "\n"))
+		}
 		pd := elem.PDirection(true)
 		if show.Bond {
 			stw.BondStyle(show)
 			switch elem.BondState() {
 			case PIN_RIGID:
-				stw.Circle(elem.Enod[0].Pcoord[0]+pd[0]*show.BondSize, elem.Enod[0].Pcoord[1]+pd[1]*show.BondSize, show.BondSize*2)
+				stw.Circle(icoord[0]+pd[0]*show.BondSize, icoord[1]+pd[1]*show.BondSize, show.BondSize*2)
 			case RIGID_PIN:
-				stw.Circle(elem.Enod[1].Pcoord[0]-pd[0]*show.BondSize, elem.Enod[1].Pcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
+				stw.Circle(jcoord[0]-pd[0]*show.BondSize, jcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
 			case PIN_PIN:
-				stw.Circle(elem.Enod[0].Pcoord[0]+pd[0]*show.BondSize, elem.Enod[0].Pcoord[1]+pd[1]*show.BondSize, show.BondSize*2)
-				stw.Circle(elem.Enod[1].Pcoord[0]-pd[0]*show.BondSize, elem.Enod[1].Pcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
+				stw.Circle(icoord[0]+pd[0]*show.BondSize, icoord[1]+pd[1]*show.BondSize, show.BondSize*2)
+				stw.Circle(jcoord[0]-pd[0]*show.BondSize, jcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
 			}
 		}
 		if show.Phinge {
@@ -188,23 +197,16 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			ph2 := elem.Phinge[show.Period][elem.Enod[1].Num]
 			switch {
 			case ph1 && !ph2:
-				stw.FilledCircle(elem.Enod[0].Pcoord[0]+pd[0]*show.BondSize, elem.Enod[0].Pcoord[1]+pd[1]*show.BondSize, show.BondSize*2)
+				stw.FilledCircle(icoord[0]+pd[0]*show.BondSize, icoord[1]+pd[1]*show.BondSize, show.BondSize*2)
 			case !ph1 && ph2:
-				stw.FilledCircle(elem.Enod[1].Pcoord[0]-pd[0]*show.BondSize, elem.Enod[1].Pcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
+				stw.FilledCircle(jcoord[0]-pd[0]*show.BondSize, jcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
 			case ph1 && ph2:
-				stw.FilledCircle(elem.Enod[0].Pcoord[0]+pd[0]*show.BondSize, elem.Enod[0].Pcoord[1]+pd[1]*show.BondSize, show.BondSize*2)
-				stw.FilledCircle(elem.Enod[1].Pcoord[0]-pd[0]*show.BondSize, elem.Enod[1].Pcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
+				stw.FilledCircle(icoord[0]+pd[0]*show.BondSize, icoord[1]+pd[1]*show.BondSize, show.BondSize*2)
+				stw.FilledCircle(jcoord[0]-pd[0]*show.BondSize, jcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
 			}
 		}
 		if show.ElementAxis {
 			DrawElementAxis(stw, elem, show)
-		}
-		// Deformation
-		if show.Deformation {
-			stw.LineStyle(DOTTED)
-			stw.Foreground(show.DeformationColor)
-			stw.Line(elem.Enod[0].Dcoord[0], elem.Enod[0].Dcoord[1], elem.Enod[1].Dcoord[0], elem.Enod[1].Dcoord[1])
-			stw.LineStyle(CONTINUOUS)
 		}
 		// Stress
 		var flag uint
@@ -363,10 +365,28 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			return
 		}
 		coords := make([][]float64, elem.Enods)
-		for i := 0; i < elem.Enods; i++ {
-			coords[i] = []float64{elem.Enod[i].Pcoord[0], elem.Enod[i].Pcoord[1]}
+		if show.PlotState&PLOT_UNDEFORMED != 0 {
+			for i := 0; i < elem.Enods; i++ {
+				coords[i] = []float64{elem.Enod[i].Pcoord[0], elem.Enod[i].Pcoord[1]}
+			}
+		} else {
+			for i := 0; i < elem.Enods; i++ {
+				coords[i] = []float64{elem.Enod[i].Dcoord[0], elem.Enod[i].Dcoord[1]}
+			}
 		}
 		stw.Polygon(coords)
+		if oncap {
+			textpos := make([]float64, 2)
+			for _, c := range coords {
+				for k := 0; k < 2; k++ {
+					textpos[k] += c[k]
+				}
+			}
+			for k := 0; k < 2; k++ {
+				textpos[k] /= float64(elem.Enods)
+			}
+			stw.Text(textpos[0], textpos[1], strings.TrimSuffix(ecap.String(), "\n"))
+		}
 		stw.Foreground(show.PlateEdgeColor)
 		stw.Polyline(coords)
 		// Stress
@@ -428,8 +448,12 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 	}
 }
 
-func DrawElemLine(stw Drawer, elem *Elem) {
-	stw.Line(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1], elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
+func DrawElemLine(stw Drawer, elem *Elem, show *Show) {
+	if show.PlotState&PLOT_UNDEFORMED != 0 {
+		stw.Line(elem.Enod[0].Pcoord[0], elem.Enod[0].Pcoord[1], elem.Enod[1].Pcoord[0], elem.Enod[1].Pcoord[1])
+	} else {
+		stw.Line(elem.Enod[0].Dcoord[0], elem.Enod[0].Dcoord[1], elem.Enod[1].Dcoord[0], elem.Enod[1].Dcoord[1])
+	}
 }
 
 func Arrow(stw Drawer, x1, y1, x2, y2, size, theta float64) {
@@ -471,8 +495,14 @@ func DrawElementAxis(stw Drawer, elem *Elem, show *Show) {
 	x := make([]float64, 3)
 	y := make([]float64, 3)
 	z := make([]float64, 3)
-	position := elem.MidPoint()
-	d := elem.Direction(true)
+	var position, d []float64
+	if show.PlotState&PLOT_UNDEFORMED != 0 {
+		position = elem.MidPoint()
+		d = elem.Direction(true)
+	} else {
+		position = elem.DeformedMidPoint(show.Period)
+		d = elem.DeformedDirection(true, show.Period)
+	}
 	for i := 0; i < 3; i++ {
 		x[i] = position[i] + show.ElementAxisSize*elem.Strong[i]
 		y[i] = position[i] + show.ElementAxisSize*elem.Weak[i]
@@ -835,20 +865,37 @@ func DrawNodeArrow(stw Drawer, node *Node, vector []float64) {
 	Arrow(stw, node.Pcoord[0], node.Pcoord[1], vec[0], vec[1], 0.3, deg10)
 }
 
-func InBound(el *Elem, w, h float64) bool {
+func InBound(el *Elem, w, h float64, show *Show) bool {
 	var x1, x2, y1, y2 bool
-	for _, en := range el.Enod {
-		if en.Pcoord[0] > 0 {
-			x1 = true
+	if show.PlotState&PLOT_UNDEFORMED != 0 {
+		for _, en := range el.Enod {
+			if en.Pcoord[0] > 0 {
+				x1 = true
+			}
+			if en.Pcoord[0] < w {
+				x2 = true
+			}
+			if en.Pcoord[1] > 0 {
+				y1 = true
+			}
+			if en.Pcoord[1] < h {
+				y2 = true
+			}
 		}
-		if en.Pcoord[0] < w {
-			x2 = true
-		}
-		if en.Pcoord[1] > 0 {
-			y1 = true
-		}
-		if en.Pcoord[1] < h {
-			y2 = true
+	} else {
+		for _, en := range el.Enod {
+			if en.Dcoord[0] > 0 {
+				x1 = true
+			}
+			if en.Dcoord[0] < w {
+				x2 = true
+			}
+			if en.Dcoord[1] > 0 {
+				y1 = true
+			}
+			if en.Dcoord[1] < h {
+				y2 = true
+			}
 		}
 	}
 	return x1 && x2 && y1 && y2
@@ -895,7 +942,7 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 	stw.Foreground(WHITE)
 	for _, n := range frame.Nodes {
 		frame.View.ProjectNode(n)
-		if show.Deformation {
+		if show.PlotState&PLOT_DEFORMED != 0 {
 			frame.View.ProjectDeformation(n, show)
 		}
 		if n.IsHidden(show) {
@@ -956,7 +1003,7 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 					continue loop
 				}
 			}
-			if !InBound(el, w, h) {
+			if !InBound(el, w, h, show) {
 				continue
 			}
 			stw.DefaultStyle()
@@ -1023,7 +1070,7 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 		if el == nil || el.IsHidden(frame.Show) {
 			continue
 		}
-		if !InBound(el, w, h) {
+		if !InBound(el, w, h, show) {
 			continue
 		}
 		stw.SelectElemStyle()
@@ -1101,7 +1148,7 @@ func DrawFrameNode(stw Drawer, frame *Frame, color uint, flush bool) {
 	stw.Foreground(GREEN)
 	for _, n := range frame.Nodes {
 		frame.View.ProjectNode(n)
-		if show.Deformation {
+		if show.PlotState&PLOT_DEFORMED != 0 {
 			frame.View.ProjectDeformation(n, show)
 		}
 		for _, j := range stw.SelectedNodes() {
@@ -1122,7 +1169,7 @@ func DrawFrameNode(stw Drawer, frame *Frame, color uint, flush bool) {
 				if el.Etype >= WBRACE || el.Etype < COLUMN {
 					return
 				}
-				if !InBound(el, w, h) {
+				if !InBound(el, w, h, show) {
 					return
 				}
 				for _, j := range stw.SelectedElems() {
@@ -1136,7 +1183,7 @@ func DrawFrameNode(stw Drawer, frame *Frame, color uint, flush bool) {
 				} else {
 					stw.Foreground(DARK_GREEN)
 				}
-				DrawElemLine(stw, el)
+				DrawElemLine(stw, el, show)
 				m.Unlock()
 			}(elem)
 		}
@@ -1150,7 +1197,7 @@ func DrawFrameNode(stw Drawer, frame *Frame, color uint, flush bool) {
 			if el == nil || el.IsHidden(show) {
 				continue
 			}
-			if !InBound(el, w, h) {
+			if !InBound(el, w, h, show) {
 				continue
 			}
 			if el.Lock {

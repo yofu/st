@@ -59,6 +59,11 @@ const ( // Rate
 	RATE_M
 )
 
+const ( // PlotState
+	PLOT_UNDEFORMED = 1 << iota
+	PLOT_DEFORMED
+)
+
 // Line Color
 var ( // Boundary for Rainbow (length should be <= 6)
 	RateBoundary   = []float64{0.5, 0.6, 0.7, 0.71428, 0.9, 1.0}
@@ -118,8 +123,8 @@ type Show struct {
 
 	Period string
 
-	Deformation bool
-	Dfact       float64
+	PlotState int
+	Dfact     float64
 
 	PointedLoad bool
 	Pfact       float64
@@ -220,7 +225,7 @@ func NewShow(frame *Frame) *Show {
 		Draw:                 draws,
 		DrawSize:             1.0,
 		Period:               "L",
-		Deformation:          false,
+		PlotState:            PLOT_UNDEFORMED,
 		Dfact:                100.0,
 		PointedLoad:          false,
 		Pfact:                1.0,
@@ -290,7 +295,7 @@ func (show *Show) Copy() *Show {
 	s.Conf = show.Conf
 	s.ConfSize = show.ConfSize
 	s.Period = show.Period
-	s.Deformation = false
+	s.PlotState = show.PlotState
 	s.Dfact = 100.0
 	s.PointedLoad = false
 	s.Pfact = 1.0
@@ -365,7 +370,7 @@ func (show *Show) Dataline() []string {
 		first = append(first, "支点")
 		num1++
 	}
-	if show.Deformation {
+	if show.PlotState&PLOT_DEFORMED != 0 {
 		first = append(first, "変形図")
 		num1++
 	}
