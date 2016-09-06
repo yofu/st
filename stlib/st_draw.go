@@ -167,13 +167,11 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			textpos := make([]float64, 2)
 			if BRACE <= elem.Etype && elem.Etype <= SBRACE {
 				for k := 0; k < 2; k++ {
-					textpos[k] += 0.75 * icoord[k]
-					textpos[k] += 0.25 * jcoord[k]
+					textpos[k] += 0.75 * icoord[k] + 0.25 * jcoord[k]
 				}
 			} else {
 				for k := 0; k < 2; k++ {
-					textpos[k] += 0.5 * icoord[k]
-					textpos[k] += 0.5 * jcoord[k]
+					textpos[k] += 0.5 * icoord[k] + 0.5 * jcoord[k]
 				}
 			}
 			stw.Text(textpos[0], textpos[1], strings.TrimSuffix(ecap.String(), "\n"))
