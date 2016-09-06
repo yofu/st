@@ -493,17 +493,27 @@ func DrawElementAxis(stw Drawer, elem *Elem, show *Show) {
 	x := make([]float64, 3)
 	y := make([]float64, 3)
 	z := make([]float64, 3)
-	var position, d []float64
+	var position, d, strong, weak []float64
 	if show.PlotState&PLOT_UNDEFORMED != 0 {
 		position = elem.MidPoint()
 		d = elem.Direction(true)
+		strong = elem.Strong
+		weak = elem.Weak
 	} else {
-		position = elem.DeformedMidPoint(show.Period)
-		d = elem.DeformedDirection(true, show.Period)
+		position = elem.DeformedMidPoint(show.Period, show.Dfact)
+		d = elem.DeformedDirection(true, show.Period, show.Dfact)
+		s, w, err := PrincipalAxis(d, elem.Cang)
+		if err != nil {
+			strong = elem.Strong
+			weak = elem.Weak
+		} else {
+			strong = s
+			weak = w
+		}
 	}
 	for i := 0; i < 3; i++ {
-		x[i] = position[i] + show.ElementAxisSize*elem.Strong[i]
-		y[i] = position[i] + show.ElementAxisSize*elem.Weak[i]
+		x[i] = position[i] + show.ElementAxisSize*strong[i]
+		y[i] = position[i] + show.ElementAxisSize*weak[i]
 		z[i] = position[i] + show.ElementAxisSize*d[i]
 	}
 	origin := elem.Frame.View.ProjectCoord(position)

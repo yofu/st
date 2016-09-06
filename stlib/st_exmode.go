@@ -3533,7 +3533,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		for _, el := range currentelem(stw, exmodech, exmodeend) {
 			if el.IsLineElem() {
 				if deformed {
-					sum += el.DeformedLength(frame.Show.Period)
+					sum += el.DeformedLength(frame.Show.Period, 1.0)
 				} else {
 					sum += el.Length()
 				}
@@ -3556,7 +3556,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		for _, el := range currentelem(stw, exmodech, exmodeend) {
 			if !el.IsLineElem() {
 				if deformed {
-					sum += el.DeformedArea(frame.Show.Period)
+					sum += el.DeformedArea(frame.Show.Period, 1.0)
 				} else {
 					sum += el.Area()
 				}

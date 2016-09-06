@@ -1071,3 +1071,36 @@ func PeriodValue(period string, f func(string, float64) float64) float64 {
 	}
 	return sum + f(tmp, sign)
 }
+
+func PrincipalAxis(direction []float64, cang float64) ([]float64, []float64, error) {
+	d := Normalize(direction)
+	c := math.Cos(cang)
+	s := math.Sin(cang)
+	strong := make([]float64, 3)
+	weak := make([]float64, 3)
+	dl1 := 0.0
+	dl2 := 0.0
+	for i := 0; i < 3; i++ {
+		dl1 += d[i] * d[i]
+		if i == 2 {
+			break
+		}
+		dl2 += d[i] * d[i]
+	}
+	dl1 = math.Sqrt(dl1)
+	dl2 = math.Sqrt(dl2)
+	if dl1 == 0 {
+		return strong, weak, errors.New("PrincipalAxis: Length = 0")
+	} else if dl2/dl1 < 0.1 {
+		strong = Cross(d, []float64{c, s, 0.0})
+		weak = Cross(d, []float64{-s, c, 0.0})
+	} else {
+		x := Normalize([]float64{-d[1], d[0], 0.0})
+		y := Cross(d, x)
+		for i := 0; i < 3; i++ {
+			strong[i] = c*x[i] + s*y[i]
+			weak[i] = -s*x[i] + c*y[i]
+		}
+	}
+	return Normalize(strong), Normalize(weak), nil
+}

@@ -180,36 +180,7 @@ func (elem *Elem) Snapshot(frame *Frame) *Elem {
 }
 
 func (elem *Elem) PrincipalAxis(cang float64) ([]float64, []float64, error) {
-	d := elem.Direction(true)
-	c := math.Cos(cang)
-	s := math.Sin(cang)
-	strong := make([]float64, 3)
-	weak := make([]float64, 3)
-	dl1 := 0.0
-	dl2 := 0.0
-	for i := 0; i < 3; i++ {
-		dl1 += d[i] * d[i]
-		if i == 2 {
-			break
-		}
-		dl2 += d[i] * d[i]
-	}
-	dl1 = math.Sqrt(dl1)
-	dl2 = math.Sqrt(dl2)
-	if dl1 == 0 {
-		return strong, weak, errors.New("PrincipalAxis: Length = 0")
-	} else if dl2/dl1 < 0.1 {
-		strong = Cross(d, []float64{c, s, 0.0})
-		weak = Cross(d, []float64{-s, c, 0.0})
-	} else {
-		x := Normalize([]float64{-d[1], d[0], 0.0})
-		y := Cross(d, x)
-		for i := 0; i < 3; i++ {
-			strong[i] = c*x[i] + s*y[i]
-			weak[i] = -s*x[i] + c*y[i]
-		}
-	}
-	return Normalize(strong), Normalize(weak), nil
+	return PrincipalAxis(elem.Direction(true), cang)
 }
 
 func (elem *Elem) SetPrincipalAxis() error {
@@ -574,10 +545,10 @@ func (elem *Elem) Length() float64 {
 	return math.Sqrt(sum)
 }
 
-func (elem *Elem) DeformedLength(p string) float64 {
+func (elem *Elem) DeformedLength(p string, fact float64) float64 {
 	sum := 0.0
 	for i := 0; i < 3; i++ {
-		sum += math.Pow((elem.Enod[1].Coord[i] + elem.Enod[1].ReturnDisp(p, i) - elem.Enod[0].Coord[i] - elem.Enod[0].ReturnDisp(p, i)), 2)
+		sum += math.Pow((elem.Enod[1].Coord[i] + elem.Enod[1].ReturnDisp(p, i)*fact - elem.Enod[0].Coord[i] - elem.Enod[0].ReturnDisp(p, i)*fact), 2)
 	}
 	return math.Sqrt(sum)
 }
@@ -616,7 +587,7 @@ func (elem *Elem) Area() float64 {
 	return area
 }
 
-func (elem *Elem) DeformedArea(p string) float64 {
+func (elem *Elem) DeformedArea(p string, fact float64) float64 {
 	if elem.Enods <= 2 {
 		return 0.0
 	}
@@ -625,7 +596,7 @@ func (elem *Elem) DeformedArea(p string) float64 {
 	vs := make([][]float64, elem.Enods-1)
 	for i := 1; i < elem.Enods; i++ {
 		for j := 0; j < 3; j++ {
-			ds[i-1] += math.Pow((elem.Enod[i].Coord[j] + elem.Enod[i].ReturnDisp(p, j) - elem.Enod[0].Coord[j] - elem.Enod[0].ReturnDisp(p, j)), 2)
+			ds[i-1] += math.Pow((elem.Enod[i].Coord[j] + elem.Enod[i].ReturnDisp(p, j)*fact - elem.Enod[0].Coord[j] - elem.Enod[0].ReturnDisp(p, j)*fact), 2)
 		}
 		vs[i-1] = DeformedDirection(elem.Enod[0], elem.Enod[i], false, p)
 	}
@@ -1122,10 +1093,10 @@ func (elem *Elem) Direction(normalize bool) []float64 {
 	return vec
 }
 
-func (elem *Elem) DeformedDirection(normalize bool, p string) []float64 {
+func (elem *Elem) DeformedDirection(normalize bool, p string, fact float64) []float64 {
 	vec := make([]float64, 3)
 	for i := 0; i < 3; i++ {
-		vec[i] = elem.Enod[1].Coord[i] + elem.Enod[1].ReturnDisp(p, i) - elem.Enod[0].Coord[i] - elem.Enod[0].ReturnDisp(p, i)
+		vec[i] = elem.Enod[1].Coord[i] + elem.Enod[1].ReturnDisp(p, i)*fact - elem.Enod[0].Coord[i] - elem.Enod[0].ReturnDisp(p, i)*fact
 	}
 	if normalize {
 		return Normalize(vec)
@@ -1235,12 +1206,12 @@ func (elem *Elem) MidPoint() []float64 {
 	return rtn
 }
 
-func (elem *Elem) DeformedMidPoint(p string) []float64 {
+func (elem *Elem) DeformedMidPoint(p string, fact float64) []float64 {
 	rtn := make([]float64, 3)
 	for i := 0; i < 3; i++ {
 		tmp := 0.0
 		for _, n := range elem.Enod {
-			tmp += n.Coord[i] + n.ReturnDisp(p, i)
+			tmp += n.Coord[i] + n.ReturnDisp(p, i) * fact
 		}
 		rtn[i] = tmp / float64(elem.Enods)
 	}
