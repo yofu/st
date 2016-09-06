@@ -737,6 +737,12 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 			}
 		}
 	}
+	var coord []float64
+	if show.PlotState&PLOT_UNDEFORMED != 0 {
+		coord = node.Pcoord
+	} else {
+		coord = node.Dcoord
+	}
 	for i, j := range []uint{NC_RX, NC_RY, NC_RZ, NC_MX, NC_MY, NC_MZ} {
 		if show.NodeCaption&j != 0 {
 			if node.Conf[i] {
@@ -752,15 +758,22 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 					val *= show.Unit[0]
 					ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), val))
 					arrow := 0.3
-					rcoord := []float64{node.Coord[0], node.Coord[1], node.Coord[2]}
+					var rcoord []float64
+					if show.PlotState&PLOT_UNDEFORMED != 0 {
+						rcoord = []float64{node.Coord[0], node.Coord[1], node.Coord[2]}
+					} else {
+						for k := 0; k < 3; k++ {
+							rcoord[k] = node.Coord[k] + node.ReturnDisp(show.Period, k) * show.Dfact
+						}
+					}
 					if val >= 0.0 {
 						rcoord[i] -= show.Rfact * val
 						prcoord := node.Frame.View.ProjectCoord(rcoord)
-						Arrow(stw, prcoord[0], prcoord[1], node.Pcoord[0], node.Pcoord[1], arrow, deg10)
+						Arrow(stw, prcoord[0], prcoord[1], coord[0], coord[1], arrow, deg10)
 					} else {
 						rcoord[i] += show.Rfact * val
 						prcoord := node.Frame.View.ProjectCoord(rcoord)
-						Arrow(stw, node.Pcoord[0], node.Pcoord[1], prcoord[0], prcoord[1], arrow, deg10)
+						Arrow(stw, coord[0], coord[1], prcoord[0], prcoord[1], arrow, deg10)
 					}
 				case 3, 4, 5:
 					val *= show.Unit[0] * show.Unit[1]
@@ -781,7 +794,7 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 		}
 	}
 	if oncap {
-		stw.Text(node.Pcoord[0], node.Pcoord[1], strings.TrimSuffix(ncap.String(), "\n"))
+		stw.Text(coord[0], coord[1], strings.TrimSuffix(ncap.String(), "\n"))
 	}
 	if show.PointedLoad {
 		v := make([]float64, 3)
@@ -810,19 +823,23 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 		default:
 			return
 		case CONF_PIN:
-			PinFigure(stw, node.Pcoord[0], node.Pcoord[1], show.ConfSize)
+			PinFigure(stw, coord[0], coord[1], show.ConfSize)
 		case CONF_XROL, CONF_YROL, CONF_XYROL:
-			RollerFigure(stw, node.Pcoord[0], node.Pcoord[1], show.ConfSize, 0)
+			RollerFigure(stw, coord[0], coord[1], show.ConfSize, 0)
 		case CONF_ZROL:
-			RollerFigure(stw, node.Pcoord[0], node.Pcoord[1], show.ConfSize, 1)
+			RollerFigure(stw, coord[0], coord[1], show.ConfSize, 1)
 		case CONF_FIX:
-			FixFigure(stw, node.Pcoord[0], node.Pcoord[1], show.ConfSize)
+			FixFigure(stw, coord[0], coord[1], show.ConfSize)
 		}
 	}
 }
 
-func DrawNodeNum(stw Drawer, node *Node) {
-	stw.Text(node.Pcoord[0], node.Pcoord[1], fmt.Sprintf("%d", node.Num))
+func DrawNodeNum(stw Drawer, node *Node, show *Show) {
+	if show.PlotState&PLOT_UNDEFORMED != 0 {
+		stw.Text(node.Pcoord[0], node.Pcoord[1], fmt.Sprintf("%d", node.Num))
+	} else {
+		stw.Text(node.Dcoord[0], node.Dcoord[1], fmt.Sprintf("%d", node.Num))
+	}
 }
 
 func PinFigure(stw Drawer, x, y, size float64) {
