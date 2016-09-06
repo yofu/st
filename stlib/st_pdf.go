@@ -77,7 +77,8 @@ func (p *PDFCanvas) Text(x, y float64, str string) {
 	}
 }
 
-func (p *PDFCanvas) Foreground(int) {
+func (p *PDFCanvas) Foreground(int) int {
+	return WHITE
 }
 
 func (p *PDFCanvas) LineStyle(int) {

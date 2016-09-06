@@ -62,9 +62,10 @@ func (pc *PostScriptCanvas) FilledCircle(x, y, d float64) {
 func (pc *PostScriptCanvas) Text(x, y float64, txt string) {
 }
 
-func (pc *PostScriptCanvas) Foreground(fg int) {
+func (pc *PostScriptCanvas) Foreground(fg int) int {
 	c := IntColorFloat64(fg)
 	pc.doc.Canvas.SetRGBColor(c[0], c[1], c[2])
+	return WHITE
 }
 
 func (pc *PostScriptCanvas) LineStyle(ls int) {

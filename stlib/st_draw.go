@@ -44,7 +44,7 @@ type Drawer interface {
 	Circle(float64, float64, float64)
 	FilledCircle(float64, float64, float64)
 	Text(float64, float64, string)
-	Foreground(int)
+	Foreground(int) int
 	LineStyle(int)
 	TextAlignment(int)
 	TextOrientation(float64)

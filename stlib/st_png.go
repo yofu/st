@@ -72,10 +72,13 @@ func (pc *PngCanvas) Text(x, y float64, str string) {
 	pc.currentCanvas.FillStringAt(str, x, y)
 }
 
-func (pc *PngCanvas) Foreground(fg int) {
+func (pc *PngCanvas) Foreground(fg int) int {
 	cs := IntColorList(fg)
+	r, g, b, _ := pc.currentCanvas.Current.StrokeColor.RGBA()
+	old := r << 16 + g << 8 + b
 	pc.currentCanvas.SetStrokeColor(color.RGBA{uint8(cs[0]), uint8(cs[1]), uint8(cs[2]), 255})
 	pc.currentCanvas.SetFillColor(color.RGBA{uint8(cs[0]), uint8(cs[1]), uint8(cs[2]), 51})
+	return int(old)
 }
 
 func (pc *PngCanvas) LineStyle(ls int) {
