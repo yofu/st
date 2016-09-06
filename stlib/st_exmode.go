@@ -4060,7 +4060,6 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 							if current < 0.0 {
 								tmp := (zval - current) / du[6*i+2] + 1.0
 								if tmp > 0.0 && tmp < delta {
-									nnum = n.Num
 									delta = tmp
 								}
 							}
