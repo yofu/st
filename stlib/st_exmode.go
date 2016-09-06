@@ -4052,16 +4052,28 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 						zval = tmp
 					}
 				}
-				cond.SetPostprocess(func(frame *arclm.Frame) bool {
-					for _, n := range frame.Nodes {
+				cond.SetPostprocess(func(frame *arclm.Frame, df [][]float64, du []float64, dr []float64) (float64, bool) {
+					delta := 1.0
+					for i, n := range frame.Nodes {
 						current := n.Coord[2] + n.Disp[2]
 						if !n.Conf[2] && current <= zval {
+							if current < 0.0 {
+								tmp := (zval - current) / du[6*i+2] + 1.0
+								if tmp > 0.0 && tmp < delta {
+									nnum = n.Num
+									delta = tmp
+								}
+							}
 							n.Conf[2] = true
 						} else if n.Conf[2] && n.Reaction[2] < 0.0 {
 							n.Conf[2] = false
 						}
 					}
-					return true
+					if delta < 0.99 {
+						return delta * cond.Delta(), false
+					} else {
+						return cond.Delta(), true
+					}
 				})
 			case "IMCOMP":
 				comp := 0.0
@@ -4085,7 +4097,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 						}
 					}
 				}
-				cond.SetPostprocess(func(frame *arclm.Frame) bool {
+				cond.SetPostprocess(func(frame *arclm.Frame, df [][]float64, du []float64, dr []float64) (float64, bool) {
 					next := true
 					del := make([]int, 0)
 					res := make([]int, 0)
@@ -4099,7 +4111,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 							res = append(res, el.Num)
 						}
 					}
-					return next
+					return cond.Delta(), next
 				})
 			}
 		}

@@ -573,7 +573,7 @@ type AnalysisCondition struct {
 	nlgeometry bool
 	nlmaterial bool
 
-	postprocess func (*Frame) bool
+	postprocess func (*Frame, [][]float64, []float64, []float64) (float64, bool)
 
 	nlap  int
 	delta float64
@@ -637,7 +637,7 @@ func (cond *AnalysisCondition) SetMax(m float64) {
 func (cond *AnalysisCondition) SetEps(e float64) {
 	cond.eps = e
 }
-func (cond *AnalysisCondition) SetPostprocess(f func(*Frame) bool) {
+func (cond *AnalysisCondition) SetPostprocess(f func(*Frame, [][]float64, []float64, []float64) (float64, bool)) {
 	cond.postprocess = f
 }
 
@@ -799,16 +799,17 @@ func (frame *Frame) StaticAnalysis(cond *AnalysisCondition) error {
 			}
 			break
 		} else {
-			vec := frame.FillConf(answers[0])
-			_, err := frame.UpdateStress(vec)
+			du := frame.FillConf(answers[0])
+			df, err := frame.UpdateStress(du)
 			if err != nil {
 				return err
 			}
-			frame.UpdateReaction(gmtx, vec)
-			frame.UpdateForm(vec)
+			dr := frame.UpdateReaction(gmtx, du)
+			frame.UpdateForm(du)
+			delta := cond.delta
 			next := true
 			if cond.postprocess != nil {
-				next = cond.postprocess(frame)
+				delta, next = cond.postprocess(frame, df, du, dr)
 			}
 			laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, cond.nlap, total, rnorm/bnorm))
 			frame.Lapch <- lap + 1
