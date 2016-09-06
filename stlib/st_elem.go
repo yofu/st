@@ -2238,7 +2238,7 @@ func (elem *Elem) MomentCoord(show *Show, index int) [][]float64 {
 	for i := 0; i < 3; i++ {
 		rtn[2][i] = show.Mfact*axis[i]*ms[1] + coord[1][i]
 	}
-	if math.Abs(qs[0]+qs[1]) > 1.0 {
+	if qs[0] != -qs[1] {
 		tmp := make([]float64, 3)
 		d := elem.Direction(true)
 		val := (qs[1]*l - (ms[0] + ms[1])) / (qs[0] + qs[1])
