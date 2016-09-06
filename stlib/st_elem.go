@@ -1122,6 +1122,18 @@ func (elem *Elem) Direction(normalize bool) []float64 {
 	return vec
 }
 
+func (elem *Elem) DeformedDirection(normalize bool, p string) []float64 {
+	vec := make([]float64, 3)
+	for i := 0; i < 3; i++ {
+		vec[i] = elem.Enod[1].Coord[i] + elem.Enod[1].ReturnDisp(p, i) - elem.Enod[0].Coord[i] - elem.Enod[0].ReturnDisp(p, i)
+	}
+	if normalize {
+		return Normalize(vec)
+	} else {
+		return vec
+	}
+}
+
 func (elem *Elem) EdgeDirection(ind int, normalize bool) []float64 {
 	if ind >= elem.Enods-1 {
 		return nil
@@ -1217,6 +1229,18 @@ func (elem *Elem) MidPoint() []float64 {
 		tmp := 0.0
 		for _, n := range elem.Enod {
 			tmp += n.Coord[i]
+		}
+		rtn[i] = tmp / float64(elem.Enods)
+	}
+	return rtn
+}
+
+func (elem *Elem) DeformedMidPoint(p string) []float64 {
+	rtn := make([]float64, 3)
+	for i := 0; i < 3; i++ {
+		tmp := 0.0
+		for _, n := range elem.Enod {
+			tmp += n.Coord[i] + n.ReturnDisp(p, i)
 		}
 		rtn[i] = tmp / float64(elem.Enods)
 	}
