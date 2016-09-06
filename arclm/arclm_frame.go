@@ -601,6 +601,9 @@ func NewAnalysisCondition() *AnalysisCondition {
 func (cond *AnalysisCondition) Nlap() int {
 	return cond.nlap
 }
+func (cond *AnalysisCondition) Delta() float64 {
+	return cond.delta
+}
 func (cond *AnalysisCondition) SetInit(i bool) {
 	cond.init = i
 }
