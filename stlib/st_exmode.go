@@ -4168,13 +4168,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		return ArclmStart(m.String())
 	case "arclm001":
-		return Usage("DEPLICATED: use :analysis {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} {-wait} filename")
+		return Usage("DEPRECATED: use :analysis {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} {-wait} filename")
 	case "arclm201":
-		return Usage("DEPLICATED: use :analysis -nlgeom {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
+		return Usage("DEPRECATED: use :analysis -nlgeom {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
 	case "arclm202":
-		return Usage("DEPLICATED: use :analysis -nlgeom -pp=imcomp {-sects=val} {-comp=val} {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
+		return Usage("DEPRECATED: use :analysis -nlgeom -pp=imcomp {-sects=val} {-comp=val} {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
 	case "arclm203":
-		return Usage("DEPLICATED: use :analysis -nlgeom -pp=floor {-z=val} {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
+		return Usage("DEPRECATED: use :analysis -nlgeom -pp=floor {-z=val} {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
 	case "arclm301":
 		if usage {
 			return Usage(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
