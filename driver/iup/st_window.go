@@ -5383,9 +5383,9 @@ func (stw *Window) displayLabel(name string, defval bool) *iup.Handle {
 						stw.frame.Show.YieldFunction = !stw.frame.Show.YieldFunction
 					case "RATE":
 						if stw.frame.Show.SrcanRate != 0 {
-							stw.SrcanRateOff()
+							st.SrcanRateOff(stw)
 						} else {
-							stw.SrcanRateOn()
+							st.SrcanRateOn(stw)
 						}
 					}
 					stw.Redraw()
@@ -5417,160 +5417,6 @@ func (stw *Window) IncrementPeriod(num int) {
 		per := strings.Replace(stw.frame.Show.Period, fs[2], fmt.Sprintf("@%d", val), -1)
 		stw.Labels["PERIOD"].SetAttribute("VALUE", per)
 		stw.frame.Show.Period = per
-	}
-}
-
-func (stw *Window) NodeCaptionOn(name string) {
-	for i, j := range st.NODECAPTIONS {
-		if j == name {
-			if lbl, ok := stw.Labels[name]; ok {
-				lbl.SetAttribute("FGCOLOR", labelFGColor)
-			}
-			if stw.frame != nil {
-				stw.frame.Show.NodeCaptionOn(1 << uint(i))
-			}
-		}
-	}
-}
-
-func (stw *Window) NodeCaptionOff(name string) {
-	for i, j := range st.NODECAPTIONS {
-		if j == name {
-			if lbl, ok := stw.Labels[name]; ok {
-				lbl.SetAttribute("FGCOLOR", labelOFFColor)
-			}
-			if stw.frame != nil {
-				stw.frame.Show.NodeCaptionOff(1 << uint(i))
-			}
-		}
-	}
-}
-
-func (stw *Window) ElemCaptionOn(name string) {
-	for i, j := range st.ELEMCAPTIONS {
-		if j == name {
-			if lbl, ok := stw.Labels[name]; ok {
-				lbl.SetAttribute("FGCOLOR", labelFGColor)
-			}
-			if stw.frame != nil {
-				stw.frame.Show.ElemCaptionOn(1 << uint(i))
-			}
-		}
-	}
-}
-
-func (stw *Window) ElemCaptionOff(name string) {
-	for i, j := range st.ELEMCAPTIONS {
-		if j == name {
-			if lbl, ok := stw.Labels[name]; ok {
-				lbl.SetAttribute("FGCOLOR", labelOFFColor)
-			}
-			if stw.frame != nil {
-				stw.frame.Show.ElemCaptionOff(1 << uint(i))
-			}
-		}
-	}
-}
-
-func (stw *Window) SrcanRateOn(names ...string) {
-	defer func() {
-		if stw.frame.Show.SrcanRate != 0 {
-			stw.Labels["SRCAN_RATE"].SetAttribute("FGCOLOR", labelFGColor)
-		}
-	}()
-	if len(names) == 0 {
-		for i, j := range st.SRCANS {
-			if lbl, ok := stw.Labels[j]; ok {
-				lbl.SetAttribute("FGCOLOR", labelFGColor)
-			}
-			if stw.frame != nil {
-				stw.frame.Show.SrcanRateOn(1 << uint(i))
-			}
-		}
-		return
-	}
-	for _, name := range names {
-		for i, j := range st.SRCANS {
-			if j == name {
-				if lbl, ok := stw.Labels[name]; ok {
-					lbl.SetAttribute("FGCOLOR", labelFGColor)
-				}
-				if stw.frame != nil {
-					stw.frame.Show.SrcanRateOn(1 << uint(i))
-				}
-			}
-		}
-	}
-}
-
-func (stw *Window) SrcanRateOff(names ...string) {
-	defer func() {
-		if stw.frame.Show.SrcanRate == 0 {
-			stw.Labels["SRCAN_RATE"].SetAttribute("FGCOLOR", labelOFFColor)
-		}
-	}()
-	if len(names) == 0 {
-		for i, j := range st.SRCANS {
-			if lbl, ok := stw.Labels[j]; ok {
-				lbl.SetAttribute("FGCOLOR", labelOFFColor)
-			}
-			if stw.frame != nil {
-				stw.frame.Show.SrcanRateOff(1 << uint(i))
-			}
-		}
-		return
-	}
-	for _, name := range names {
-		for i, j := range st.SRCANS {
-			if j == name {
-				if lbl, ok := stw.Labels[name]; ok {
-					lbl.SetAttribute("FGCOLOR", labelOFFColor)
-				}
-				if stw.frame != nil {
-					stw.frame.Show.SrcanRateOff(1 << uint(i))
-				}
-			}
-		}
-	}
-}
-
-func (stw *Window) StressOn(etype int, index uint) {
-	stw.frame.Show.Stress[etype] |= (1 << index)
-	if etype <= st.SLAB {
-		if lbl, ok := stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))]; ok {
-			lbl.SetAttribute("FGCOLOR", labelFGColor)
-		}
-	}
-}
-
-func (stw *Window) StressOff(etype int, index uint) {
-	stw.frame.Show.Stress[etype] &= ^(1 << index)
-	if etype <= st.SLAB {
-		if lbl, ok := stw.Labels[fmt.Sprintf("%s_%s", st.ETYPES[etype], strings.ToUpper(st.StressName[index]))]; ok {
-			lbl.SetAttribute("FGCOLOR", labelOFFColor)
-		}
-	}
-}
-
-func (stw *Window) DispOn(direction int) {
-	name := fmt.Sprintf("NC_%s", st.DispName[direction])
-	for i, str := range st.NODECAPTIONS {
-		if name == str {
-			stw.frame.Show.NodeCaption |= (1 << uint(i))
-			stw.Labels[name].SetAttribute("FGCOLOR", labelFGColor)
-			return
-		}
-	}
-}
-
-func (stw *Window) DispOff(direction int) {
-	name := fmt.Sprintf("NC_%s", st.DispName[direction])
-	for i, str := range st.NODECAPTIONS {
-		if name == str {
-			stw.frame.Show.NodeCaption &= ^(1 << uint(i))
-			stw.Labels[name].SetAttribute("FGCOLOR", labelOFFColor)
-			return
-		}
 	}
 }
 
@@ -5652,9 +5498,9 @@ func (stw *Window) srcanLabel(name string, width int, val uint, on bool) *iup.Ha
 			case BUTTON_LEFT:
 				if arg.Pressed == 0 { // Released
 					if stw.frame.Show.SrcanRate&val != 0 {
-						stw.SrcanRateOff(fmt.Sprintf("SRCAN_%s", strings.TrimLeft(name, " ")))
+						st.SrcanRateOff(stw, fmt.Sprintf("SRCAN_%s", strings.TrimLeft(name, " ")))
 					} else {
-						stw.SrcanRateOn(fmt.Sprintf("SRCAN_%s", strings.TrimLeft(name, " ")))
+						st.SrcanRateOn(stw, fmt.Sprintf("SRCAN_%s", strings.TrimLeft(name, " ")))
 					}
 					stw.Redraw()
 					iup.SetFocus(stw.canv)
@@ -5664,7 +5510,7 @@ func (stw *Window) srcanLabel(name string, width int, val uint, on bool) *iup.Ha
 	})
 	if stw.frame != nil { // TODO: when stw.frame is created, set value
 		if on {
-			stw.SrcanRateOn(st.SRCANS[val])
+			st.SrcanRateOn(stw, st.SRCANS[val])
 		}
 	}
 	return rtn

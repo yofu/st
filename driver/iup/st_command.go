@@ -2754,7 +2754,7 @@ func errorelem(stw *Window) {
 	iup.SetFocus(stw.canv)
 	stw.Deselect()
 	stw.SetColorMode(st.ECOLOR_RATE)
-	stw.SrcanRateOn()
+	st.SrcanRateOn(stw)
 	stw.Redraw()
 	tmpels := make([]*st.Elem, len(stw.frame.Elems))
 	i := 0
