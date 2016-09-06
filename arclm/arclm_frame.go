@@ -781,7 +781,7 @@ func (frame *Frame) StaticAnalysis(cond *AnalysisCondition) error {
 				}
 			}
 		}
-		if lap == cond.nlap-1 {
+		if lap >= cond.nlap-1 && total >= cond.max {
 			for nans, ans := range answers {
 				f := frame.SaveState()
 				vec := frame.FillConf(ans)
@@ -791,7 +791,7 @@ func (frame *Frame) StaticAnalysis(cond *AnalysisCondition) error {
 				}
 				frame.UpdateReaction(gmtx, vec)
 				frame.UpdateForm(vec)
-				laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, cond.nlap, total, rnorm/bnorm))
+				laptime(fmt.Sprintf("%04d / %04d: TOTAL = %.3f NORM = %.5E", lap+1, cond.nlap, total, rnorm/bnorm))
 				output(cond.otp[nans])
 				frame.Lapch <- lap + 1
 				<-frame.Lapch
@@ -811,12 +811,18 @@ func (frame *Frame) StaticAnalysis(cond *AnalysisCondition) error {
 			if cond.postprocess != nil {
 				delta, next = cond.postprocess(frame, df, du, dr)
 			}
-			laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f NORM = %.5E", lap+1, cond.nlap, total, rnorm/bnorm))
 			frame.Lapch <- lap + 1
 			<-frame.Lapch
 			if !next {
+				old := total
+				if delta != cond.delta {
+					total += delta - cond.delta
+					cond.delta = delta
+				}
+				laptime(fmt.Sprintf("%04d / %04d: TOTAL = %.3f -> %.3f NORM = %.5E U", lap+1, cond.nlap, old, total, rnorm/bnorm))
 				frame.RestoreState(f0)
 			} else {
+				laptime(fmt.Sprintf("%04d / %04d: TOTAL = %.3f NORM = %.5E", lap+1, cond.nlap, total, rnorm/bnorm))
 				lap++
 				total += cond.delta
 			}
