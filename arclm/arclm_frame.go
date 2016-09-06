@@ -41,6 +41,7 @@ func NewFrame() *Frame {
 }
 
 type FrameState struct {
+	Conf     [][]bool
 	Disp     [][]float64
 	Reaction [][]float64
 	Stress   [][]float64
@@ -48,10 +49,12 @@ type FrameState struct {
 
 func NewFrameState(nnode, nelem int) *FrameState {
 	fs := new(FrameState)
+	fs.Conf = make([][]bool, nnode)
 	fs.Disp = make([][]float64, nnode)
 	fs.Reaction = make([][]float64, nnode)
 	fs.Stress = make([][]float64, nelem)
 	for i := 0; i < nnode; i++ {
+		fs.Conf[i] = make([]bool, 6)
 		fs.Disp[i] = make([]float64, 6)
 		fs.Reaction[i] = make([]float64, 6)
 	}
@@ -202,6 +205,7 @@ func (frame *Frame) SaveState() *FrameState {
 	fs := NewFrameState(nnode, nelem)
 	for i, n := range frame.Nodes {
 		for j := 0; j < 6; j++ {
+			fs.Conf[i][j] = n.Conf[j]
 			fs.Disp[i][j] = n.Disp[j]
 			fs.Reaction[i][j] = n.Reaction[j]
 		}
@@ -217,6 +221,7 @@ func (frame *Frame) SaveState() *FrameState {
 func (frame *Frame) RestoreState(fs *FrameState) {
 	for i, n := range frame.Nodes {
 		for j := 0; j < 6; j++ {
+			n.Conf[j] = fs.Conf[i][j]
 			n.Disp[j] = fs.Disp[i][j]
 			n.Reaction[j] = fs.Reaction[i][j]
 		}
