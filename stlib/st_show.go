@@ -159,6 +159,8 @@ type Show struct {
 
 	Measure bool
 
+	Arc bool
+
 	Select bool
 
 	Sect  map[int]bool
@@ -252,6 +254,7 @@ func NewShow(frame *Frame) *Show {
 		Kijun:                false,
 		KijunSize:            12.0,
 		Measure:              true,
+		Arc:                  true,
 		Select:               false,
 		Sect:                 sects,
 		Etype:                etypes,
@@ -311,6 +314,8 @@ func (show *Show) Copy() *Show {
 
 	s.Kijun = show.Kijun
 	s.KijunSize = show.KijunSize
+
+	s.Arc = show.Arc
 
 	s.Select = show.Select
 

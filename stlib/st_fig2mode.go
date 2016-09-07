@@ -632,6 +632,14 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 				}
 			}
 		}
+	case "arc":
+		if un {
+			frame.Show.Arc = false
+			stw.DisableLabel("ARC")
+		} else {
+			frame.Show.Arc = true
+			stw.EnableLabel("ARC")
+		}
 	case "elemcode":
 		if un {
 			ElemCaptionOff(stw, "EC_NUM")

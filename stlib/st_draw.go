@@ -456,9 +456,8 @@ func DrawArc(stw Drawer, arc *Arc, show *Show) {
 			arc.Enod[2].Pcoord,
 		})
 		size := 2.5
-		c := arc.Frame.View.ProjectCoord(arc.Center)
-		stw.Line(c[0]-size, c[1]-size, c[0]+size, c[1]+size)
-		stw.Line(c[0]+size, c[1]-size, c[0]-size, c[1]+size)
+		stw.Line(arc.Pcenter[0]-size, arc.Pcenter[1]-size, arc.Pcenter[0]+size, arc.Pcenter[1]+size)
+		stw.Line(arc.Pcenter[0]+size, arc.Pcenter[1]-size, arc.Pcenter[0]-size, arc.Pcenter[1]+size)
 	} else {
 		stw.Polyline([][]float64{
 			arc.Enod[0].Dcoord,
@@ -996,11 +995,14 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 		}
 		DrawNode(stw, n, show)
 	}
-	for _, a := range frame.Arcs {
-		if a.IsHidden(show) {
-			continue
+	if show.Arc {
+		for _, a := range frame.Arcs {
+			if a.IsHidden(show) {
+				continue
+			}
+			a.Pcenter = frame.View.ProjectCoord(a.Center)
+			DrawArc(stw, a, show)
 		}
-		DrawArc(stw, a, show)
 	}
 	if color == ECOLOR_ENERGY {
 		vals := make([]float64, len(frame.Elems))

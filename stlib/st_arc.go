@@ -15,6 +15,7 @@ type Arc struct {
 	Direction []float64
 	Start     float64
 	End       float64
+	Pcenter   []float64
 }
 
 func NewArc(nodes []*Node) *Arc {
