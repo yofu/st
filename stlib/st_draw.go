@@ -448,6 +448,26 @@ func DrawElemLine(stw Drawer, elem *Elem, show *Show) {
 	}
 }
 
+func DrawArc(stw Drawer, arc *Arc, show *Show) {
+	if show.PlotState&PLOT_UNDEFORMED != 0 {
+		stw.Polyline([][]float64{
+			arc.Enod[0].Pcoord,
+			arc.Enod[1].Pcoord,
+			arc.Enod[2].Pcoord,
+		})
+		size := 2.5
+		c := arc.Frame.View.ProjectCoord(arc.Center)
+		stw.Line(c[0]-size, c[1]-size, c[0]+size, c[1]+size)
+		stw.Line(c[0]+size, c[1]-size, c[0]-size, c[1]+size)
+	} else {
+		stw.Polyline([][]float64{
+			arc.Enod[0].Dcoord,
+			arc.Enod[1].Dcoord,
+			arc.Enod[2].Dcoord,
+		})
+	}
+}
+
 func Arrow(stw Drawer, x1, y1, x2, y2, size, theta float64) {
 	c := size * math.Cos(theta)
 	s := size * math.Sin(theta)
@@ -975,6 +995,12 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 			}
 		}
 		DrawNode(stw, n, show)
+	}
+	for _, a := range frame.Arcs {
+		if a.IsHidden(show) {
+			continue
+		}
+		DrawArc(stw, a, show)
 	}
 	if color == ECOLOR_ENERGY {
 		vals := make([]float64, len(frame.Elems))

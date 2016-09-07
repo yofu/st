@@ -124,6 +124,8 @@ func (frame *Frame) ParseDxfEntities(lis []string, elemhandle map[int]*Elem, coo
 		vertices = make([]*Node, 0)
 	case "3DFACE":
 		err = frame.ParseDxf3DFace(lis, coord, eps)
+	case "ARC":
+		err = frame.ParseDxfArc(lis, coord, eps)
 	}
 	return vertices, elemhandle, err
 }
@@ -189,6 +191,67 @@ func (frame *Frame) ParseDxfLine(lis []string, elemhandle map[int]*Elem, coord [
 		elemhandle[handle] = el
 	}
 	return elemhandle, nil
+}
+
+func (frame *Frame) ParseDxfArc(lis []string, coord []float64, eps float64) error {
+	var err error
+	var index int64
+	ex := []float64{0.0, 0.0, 1.0}
+	var cx, cy, cz, r float64
+	var start, end float64
+	for i, word := range lis {
+		if i%2 != 0 {
+			continue
+		}
+		index, err = strconv.ParseInt(word, 10, 64)
+		if err != nil {
+			return err
+		}
+		switch int(index) {
+		case 10:
+			cx, err = strconv.ParseFloat(lis[i+1], 64)
+		case 20:
+			cy, err = strconv.ParseFloat(lis[i+1], 64)
+		case 30:
+			cz, err = strconv.ParseFloat(lis[i+1], 64)
+		case 40:
+			r, err = strconv.ParseFloat(lis[i+1], 64)
+		case 50:
+			start, err = strconv.ParseFloat(lis[i+1], 64)
+		case 51:
+			end, err = strconv.ParseFloat(lis[i+1], 64)
+		case 210:
+			val, err := strconv.ParseFloat(lis[i+1], 64)
+			if err == nil {
+				ex[0] = val
+			}
+		case 220:
+			val, err := strconv.ParseFloat(lis[i+1], 64)
+			if err == nil {
+				ex[1] = val
+			}
+		case 230:
+			val, err := strconv.ParseFloat(lis[i+1], 64)
+			if err == nil {
+				ex[2] = val
+			}
+		}
+		if err != nil {
+			return err
+		}
+	}
+	var mid float64
+	if start > end {
+		mid = 0.5*(start+end) + 180
+	} else {
+		mid = 0.5 * (start + end)
+	}
+	p, err := ArcPoints([]float64{cx*factor+coord[0], cy*factor+coord[1], cz*factor+coord[2]}, r*factor, ex, start, mid, end)
+	if err != nil {
+		return err
+	}
+	frame.AddArc(p, eps)
+	return nil
 }
 
 func (frame *Frame) ParseDxfPoint(lis []string, coord []float64, eps float64) error {

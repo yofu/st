@@ -87,6 +87,7 @@ type Frame struct {
 
 	Kijuns   map[string]*Kijun
 	Measures []*Measure
+	Arcs     []*Arc
 
 	Maxenum int
 	Maxnnum int
@@ -121,6 +122,7 @@ func NewFrame() *Frame {
 	f.Eigenvalue = make(map[int]float64)
 	f.Kijuns = make(map[string]*Kijun)
 	f.Measures = make([]*Measure, 0)
+	f.Arcs = make([]*Arc, 0)
 	f.View = NewView()
 	f.Maxnnum = 100
 	f.Maxenum = 1000
@@ -2770,6 +2772,16 @@ func (frame *Frame) AddMeasure(start, end, direction []float64) *Measure {
 	m.Frame = frame
 	frame.Measures = append(frame.Measures, m)
 	return m
+}
+
+// AddArc adds ARC to frame.
+func (frame *Frame) AddArc(p [][]float64, eps float64) {
+	n1, _ := frame.CoordNode(p[0][0], p[0][1], p[0][2], eps)
+	n2, _ := frame.CoordNode(p[1][0], p[1][1], p[1][2], eps)
+	n3, _ := frame.CoordNode(p[2][0], p[2][1], p[2][2], eps)
+	a := NewArc([]*Node{n1, n2, n3})
+	a.Frame = frame
+	frame.Arcs = append(frame.Arcs, a)
 }
 
 // NodeInBox returns nodes contained in the box which has n1 and n2 on both ends of its diagonal.
