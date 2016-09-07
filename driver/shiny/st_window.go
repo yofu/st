@@ -907,7 +907,11 @@ func (stw *Window) History(str string) {
 		return
 	}
 	if stw.history == nil {
-		fmt.Println(str)
+		if strings.HasSuffix(str, "\n") {
+			fmt.Printf(str)
+		} else {
+			fmt.Println(str)
+		}
 	} else {
 		stw.history.TypeString(str)
 		stw.history.Redraw()
