@@ -188,6 +188,9 @@ func (arc *Arc) DivideAtLocalAxis(axis int, coords []float64, eps float64) ([]*N
 		end += 2 * math.Pi
 	}
 	for _, c := range coords {
+		if c < -arc.Radius || c > arc.Radius {
+			continue
+		}
 		theta := f(c/arc.Radius)
 		if arc.Start < theta && theta < end {
 			angles[num] = theta - arc.Start
