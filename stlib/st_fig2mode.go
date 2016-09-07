@@ -410,6 +410,28 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		stw.DisableLabel("GAXIS")
 		frame.Show.ElementAxis = false
 		stw.DisableLabel("EAXIS")
+	case "x", "y", "z":
+		axis := strings.Index("xyz", key)
+		if un {
+			AxisRange(stw, axis, RANGE_MIN, RANGE_MAX, false)
+		} else {
+			if len(lis) < 2 {
+				return NotEnoughArgs(fmt.Sprintf("'%s", key))
+			}
+			min, err := strconv.ParseFloat(lis[1], 64)
+			if err != nil {
+				return err
+			}
+			if len(lis) < 3 {
+				AxisRange(stw, axis, min, min, false)
+				return nil
+			}
+			max, err := strconv.ParseFloat(lis[2], 64)
+			if err != nil {
+				return err
+			}
+			AxisRange(stw, axis, min, max, false)
+		}
 	case "elem":
 		for i, _ := range ETYPES {
 			HideEtype(stw, i)
