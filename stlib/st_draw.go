@@ -550,7 +550,7 @@ func DrawWrect(stw Drawer, elem *Elem, show *Show) {
 func DrawElemNormal(stw Drawer, elem *Elem, show *Show) {
 }
 
-func DrawClosedLine(stw Drawer, elem *Elem, position []float64, scale float64, vertices [][]float64) {
+func DrawClosedLine(stw Drawer, elem *Elem, position, strong, weak []float64, scale float64, vertices [][]float64) {
 	coords := make([][]float64, len(vertices))
 	coord := make([]float64, 3)
 	num := 0
@@ -563,9 +563,9 @@ func DrawClosedLine(stw Drawer, elem *Elem, position []float64, scale float64, v
 			}
 			continue
 		}
-		coord[0] = position[0] + (v[0]*elem.Strong[0]+v[1]*elem.Weak[0])*0.01*scale
-		coord[1] = position[1] + (v[0]*elem.Strong[1]+v[1]*elem.Weak[1])*0.01*scale
-		coord[2] = position[2] + (v[0]*elem.Strong[2]+v[1]*elem.Weak[2])*0.01*scale
+		coord[0] = position[0] + (v[0]*strong[0]+v[1]*weak[0])*0.01*scale
+		coord[1] = position[1] + (v[0]*strong[1]+v[1]*weak[1])*0.01*scale
+		coord[2] = position[2] + (v[0]*strong[2]+v[1]*weak[2])*0.01*scale
 		coords[num] = elem.Frame.View.ProjectCoord(coord)
 		num++
 	}
@@ -576,37 +576,52 @@ func DrawClosedLine(stw Drawer, elem *Elem, position []float64, scale float64, v
 
 func DrawSection(stw Drawer, elem *Elem, show *Show) {
 	if al, ok := elem.Frame.Allows[elem.Sect.Num]; ok {
-		position := elem.MidPoint()
+		var position, strong, weak []float64
+		if show.PlotState&PLOT_UNDEFORMED != 0 {
+			position = elem.MidPoint()
+			strong = elem.Strong
+			weak = elem.Weak
+		} else {
+			position = elem.DeformedMidPoint(show.Period, show.Dfact)
+			s, w, err := PrincipalAxis(elem.DeformedDirection(true, show.Period, show.Dfact), elem.Cang)
+			if err != nil {
+				strong = elem.Strong
+				weak = elem.Weak
+			} else {
+				strong = s
+				weak = w
+			}
+		}
 		switch al.(type) {
 		case *SColumn:
 			sh := al.(*SColumn).Shape
 			switch sh.(type) {
 			case HKYOU, HWEAK, RPIPE, CPIPE, PLATE, TKYOU, CKYOU, CWEAK:
 				vertices := sh.Vertices()
-				DrawClosedLine(stw, elem, position, show.DrawSize, vertices)
+				DrawClosedLine(stw, elem, position, strong, weak, show.DrawSize, vertices)
 			}
 		case *RCColumn:
 			rc := al.(*RCColumn)
 			vertices := rc.CShape.Vertices()
-			DrawClosedLine(stw, elem, position, show.DrawSize, vertices)
+			DrawClosedLine(stw, elem, position, strong, weak, show.DrawSize, vertices)
 			for _, reins := range rc.Reins {
 				vertices = reins.Vertices()
-				DrawClosedLine(stw, elem, position, show.DrawSize, vertices)
+				DrawClosedLine(stw, elem, position, strong, weak, show.DrawSize, vertices)
 			}
 		case *RCGirder:
 			rg := al.(*RCGirder)
 			vertices := rg.CShape.Vertices()
-			DrawClosedLine(stw, elem, position, show.DrawSize, vertices)
+			DrawClosedLine(stw, elem, position, strong, weak, show.DrawSize, vertices)
 			for _, reins := range rg.Reins {
 				vertices = reins.Vertices()
-				DrawClosedLine(stw, elem, position, show.DrawSize, vertices)
+				DrawClosedLine(stw, elem, position, strong, weak, show.DrawSize, vertices)
 			}
 		case *WoodColumn:
 			sh := al.(*WoodColumn).Shape
 			switch sh.(type) {
 			case PLATE:
 				vertices := sh.Vertices()
-				DrawClosedLine(stw, elem, position, show.DrawSize, vertices)
+				DrawClosedLine(stw, elem, position, strong, weak, show.DrawSize, vertices)
 			}
 		}
 	}
