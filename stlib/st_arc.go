@@ -3,6 +3,7 @@ package st
 import (
 	"fmt"
 	"math"
+	"sort"
 
 	"github.com/yofu/dxf/geometry"
 )
@@ -144,32 +145,59 @@ func (arc *Arc) IsHidden(show *Show) bool {
 	return false
 }
 
-func (arc *Arc) DivideAtAngle(theta float64, eps float64) ([]*Node, []*Elem, error) {
+func (arc *Arc) DivideAtAngles(angles []float64, eps float64) ([]*Node, []*Elem, error) {
 	n1 := arc.Enod[0]
-	d := make([]float64, 3)
-	c0 := make([]float64, 3)
-	for i := 0; i < 3; i++ {
-		d[i] = arc.Enod[0].Coord[i] - arc.Center[i]
-		c0[i] = arc.Enod[0].Coord[i]
-	}
 	ns := make([]*Node, 0)
 	els := make([]*Elem, 0)
-	thres := arc.End - arc.Start
-	if thres < 0.0 {
-		thres += 2.0*math.Pi
-	}
-	for angle := theta; angle < thres; angle += theta {
-		c := RotateVector(c0, arc.Center, arc.Direction, angle)
+	for _, angle := range angles {
+		c := RotateVector(arc.Enod[0].Coord, arc.Center, arc.Direction, angle)
 		n2, _ := arc.Frame.CoordNode(c[0], c[1], c[2], eps)
 		el := arc.Frame.AddLineElem(-1, []*Node{n1, n2}, arc.Frame.DefaultSect(), NONE)
 		ns = append(ns, n2)
 		els = append(els, el)
 		n1 = n2
 	}
-	return ns, els, nil
+	el := arc.Frame.AddLineElem(-1, []*Node{n1, arc.Enod[2]}, arc.Frame.DefaultSect(), NONE)
+	return ns, append(els, el), nil
 }
 
-// TODO: implement
-func (arc *Arc) DivideAxis(axis int, coord float64) ([]*Node, []*Elem, error) {
-	return nil, nil, fmt.Errorf("not implemented")
+func (arc *Arc) DivideAtLocalAxis(axis int, coords []float64, eps float64) ([]*Node, []*Elem, error) {
+	var f, g func(float64) float64
+	switch axis {
+	default:
+		return nil, nil, fmt.Errorf("unknown axis")
+	case 0:
+		f = math.Acos
+		g = func(t float64) float64 {
+			return 2*math.Pi - t
+		}
+	case 1:
+		f = math.Asin
+		g = func(t float64) float64 {
+			if t < math.Pi {
+				return math.Pi - t
+			} else {
+				return 3*math.Pi - t
+			}
+		}
+	}
+	angles := make([]float64, len(coords))
+	num := 0
+	end := arc.End
+	if arc.Start > end {
+		end += 2 * math.Pi
+	}
+	for _, c := range coords {
+		theta := f(c/arc.Radius)
+		if arc.Start < theta && theta < end {
+			angles[num] = theta - arc.Start
+			num++
+		} else if phi := g(theta); arc.Start < phi && phi < end {
+			angles[num] = phi - arc.Start
+			num++
+		}
+	}
+	angles = angles[:num]
+	sort.Float64s(angles)
+	return arc.DivideAtAngles(angles, eps)
 }
