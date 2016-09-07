@@ -229,34 +229,15 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 						}
 						if show.ShearArrow {
 							arrow := 0.3
-							var qcoord, rcoord, vec []float64
-							if show.PlotState&PLOT_UNDEFORMED != 0 {
-								qcoord = elem.MidPoint()
-								rcoord = elem.MidPoint()
-								if i == 1 {
-									vec = elem.Strong
-								} else {
-									vec = elem.Weak
-								}
+							var qcoord, vec []float64
+							position, _, strong, weak := elem.ElementAxes(show.PlotState&PLOT_UNDEFORMED == 0, show.Period, show.Dfact)
+							qcoord = position
+							if i == 1 {
+								vec = strong
 							} else {
-								qcoord = elem.DeformedMidPoint(show.Period, show.Dfact)
-								rcoord = elem.DeformedMidPoint(show.Period, show.Dfact)
-								strong, weak, err := PrincipalAxis(elem.DeformedDirection(true, show.Period, show.Dfact), elem.Cang)
-								if err != nil {
-									if i == 1 {
-										vec = elem.Strong
-									} else {
-										vec = elem.Weak
-									}
-								} else {
-									if i == 1 {
-										vec = strong
-									} else {
-										vec = weak
-									}
-								}
+								vec = weak
 							}
-							prcoord := elem.Frame.View.ProjectCoord(rcoord)
+							prcoord := elem.Frame.View.ProjectCoord(qcoord)
 							val := 0.5 * (vali - valj)
 							if val >= 0.0 {
 								for j := 0; j < 3; j++ {
@@ -506,24 +487,7 @@ func DrawElementAxis(stw Drawer, elem *Elem, show *Show) {
 	x := make([]float64, 3)
 	y := make([]float64, 3)
 	z := make([]float64, 3)
-	var position, d, strong, weak []float64
-	if show.PlotState&PLOT_UNDEFORMED != 0 {
-		position = elem.MidPoint()
-		d = elem.Direction(true)
-		strong = elem.Strong
-		weak = elem.Weak
-	} else {
-		position = elem.DeformedMidPoint(show.Period, show.Dfact)
-		d = elem.DeformedDirection(true, show.Period, show.Dfact)
-		s, w, err := PrincipalAxis(d, elem.Cang)
-		if err != nil {
-			strong = elem.Strong
-			weak = elem.Weak
-		} else {
-			strong = s
-			weak = w
-		}
-	}
+	position, d, strong, weak := elem.ElementAxes(show.PlotState&PLOT_UNDEFORMED == 0, show.Period, show.Dfact)
 	for i := 0; i < 3; i++ {
 		x[i] = position[i] + show.ElementAxisSize*strong[i]
 		y[i] = position[i] + show.ElementAxisSize*weak[i]
@@ -576,22 +540,7 @@ func DrawClosedLine(stw Drawer, elem *Elem, position, strong, weak []float64, sc
 
 func DrawSection(stw Drawer, elem *Elem, show *Show) {
 	if al, ok := elem.Frame.Allows[elem.Sect.Num]; ok {
-		var position, strong, weak []float64
-		if show.PlotState&PLOT_UNDEFORMED != 0 {
-			position = elem.MidPoint()
-			strong = elem.Strong
-			weak = elem.Weak
-		} else {
-			position = elem.DeformedMidPoint(show.Period, show.Dfact)
-			s, w, err := PrincipalAxis(elem.DeformedDirection(true, show.Period, show.Dfact), elem.Cang)
-			if err != nil {
-				strong = elem.Strong
-				weak = elem.Weak
-			} else {
-				strong = s
-				weak = w
-			}
-		}
+		position, _, strong, weak := elem.ElementAxes(show.PlotState&PLOT_UNDEFORMED == 0, show.Period, show.Dfact)
 		switch al.(type) {
 		case *SColumn:
 			sh := al.(*SColumn).Shape

@@ -254,6 +254,21 @@ func (elem *Elem) AxisToCang(vector []float64, strong bool) (float64, error) {
 	return elem.Cang, nil
 }
 
+func (elem *Elem) ElementAxes(deformed bool, period string, dfact float64) ([]float64, []float64, []float64, []float64) {
+	if !deformed {
+		return elem.MidPoint(), elem.Direction(true), elem.Strong, elem.Weak
+	} else {
+		position := elem.DeformedMidPoint(period, dfact)
+		d := elem.DeformedDirection(true, period, dfact)
+		strong, weak, err := PrincipalAxis(d, elem.Cang)
+		if err != nil {
+			return position, d, elem.Strong, elem.Weak
+		} else {
+			return position, d, strong, weak
+		}
+	}
+}
+
 // Sort// {{{
 type Elems []*Elem
 
