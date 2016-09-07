@@ -224,6 +224,7 @@ func (stw *Window) Start(fn string) {
 								stw.SetCommandLineString(str)
 								comp.Chdir(stw.Cwd())
 								stw.SetComplete(comp)
+								stw.History(comp.String())
 							} else {
 								stw.TypeCommandLine(" ")
 							}
@@ -240,6 +241,7 @@ func (stw *Window) Start(fn string) {
 								stw.SetCommandLineString(str)
 								comp.Chdir(stw.Cwd())
 								stw.SetComplete(comp)
+								stw.History(comp.String())
 							} else {
 								stw.TypeCommandLine(" ")
 							}
