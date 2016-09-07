@@ -64,6 +64,11 @@ const ( // PlotState
 	PLOT_DEFORMED
 )
 
+const (
+	RANGE_MAX = 1000.0
+	RANGE_MIN = -100.0
+)
+
 // Line Color
 var ( // Boundary for Rainbow (length should be <= 6)
 	RateBoundary   = []float64{0.5, 0.6, 0.7, 0.71428, 0.9, 1.0}
@@ -250,9 +255,9 @@ func NewShow(frame *Frame) *Show {
 		Select:               false,
 		Sect:                 sects,
 		Etype:                etypes,
-		Xrange:               []float64{-100.0, 1000.0},
-		Yrange:               []float64{-100.0, 1000.0},
-		Zrange:               []float64{-100.0, 1000.0},
+		Xrange:               []float64{RANGE_MIN, RANGE_MAX},
+		Yrange:               []float64{RANGE_MIN, RANGE_MAX},
+		Zrange:               []float64{RANGE_MIN, RANGE_MAX},
 		DefaultTextAlignment: WEST,
 		Formats:              formats,
 		CanvasFontColor:      GRAY,
@@ -336,12 +341,12 @@ func (show *Show) All() {
 	for i, _ := range show.Sect {
 		show.Sect[i] = true
 	}
-	show.Xrange[0] = -100.0
-	show.Xrange[1] = 1000.0
-	show.Yrange[0] = -100.0
-	show.Yrange[1] = 1000.0
-	show.Zrange[0] = -100.0
-	show.Zrange[1] = 1000.0
+	show.Xrange[0] = RANGE_MIN
+	show.Xrange[1] = RANGE_MAX
+	show.Yrange[0] = RANGE_MIN
+	show.Yrange[1] = RANGE_MAX
+	show.Zrange[0] = RANGE_MIN
+	show.Zrange[1] = RANGE_MAX
 }
 
 func (show *Show) NodeCaptionOn(val uint) {
