@@ -335,6 +335,12 @@ func (stw *Window) Start(fn string) {
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
+					case key.CodeR:
+						if e.Modifiers&key.ModControl != 0 {
+							st.ReadAll(stw)
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
 					case key.CodeP:
 						if e.Modifiers&key.ModControl != 0 {
 							if !((prevkey.Code == key.CodeP || prevkey.Code == key.CodeN) && prevkey.Modifiers&key.ModControl != 0) {
