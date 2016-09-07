@@ -561,6 +561,20 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 	switch cname {
 	default:
 		return Message(fmt.Sprintf("no exmode command: %s", cname))
+	case "agc":
+		if len(frame.Arcs) == 0 {
+			return nil
+		}
+		for _, arc := range frame.Arcs {
+			size := int(arc.Radius/0.1) * 2 + 1
+			coords := make([]float64, size)
+			val := float64(int(arc.Radius/0.1)) * -0.1
+			for i := 0; i < size; i++ {
+				coords[i] = val
+				val += 0.1
+			}
+			arc.DivideAtLocalAxis(0, coords, EPS)
+		}
 	case "redraw":
 		stw.Redraw()
 	case "write":
