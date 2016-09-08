@@ -3196,6 +3196,11 @@ func (frame *Frame) NodeNoReference() []*Node {
 			nnums[en.Num]++
 		}
 	}
+	for _, a := range frame.Arcs {
+		for _, en := range a.Enod {
+			nnums[en.Num]++
+		}
+	}
 	rtn := make([]*Node, 0)
 	for num, ref := range nnums {
 		if ref == 0 {
