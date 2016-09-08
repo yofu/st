@@ -450,11 +450,15 @@ func DrawElemLine(stw Drawer, elem *Elem, show *Show) {
 
 func DrawArc(stw Drawer, arc *Arc, show *Show) {
 	if show.PlotState&PLOT_UNDEFORMED != 0 {
-		stw.Polyline([][]float64{
-			arc.Enod[0].Pcoord,
-			arc.Enod[1].Pcoord,
-			arc.Enod[2].Pcoord,
-		})
+		ndiv := 16
+		coords := arc.DividingPoints(ndiv)
+		pcoords := make([][]float64, ndiv+1)
+		pcoords[0] = arc.Enod[0].Pcoord
+		for i := 0; i < ndiv-1; i++ {
+			pcoords[i+1] = arc.Frame.View.ProjectCoord(coords[i])
+		}
+		pcoords[ndiv] = arc.Enod[2].Pcoord
+		stw.Polyline(pcoords)
 		size := 2.5
 		stw.Line(arc.Pcenter[0]-size, arc.Pcenter[1]-size, arc.Pcenter[0]+size, arc.Pcenter[1]+size)
 		stw.Line(arc.Pcenter[0]+size, arc.Pcenter[1]-size, arc.Pcenter[0]-size, arc.Pcenter[1]+size)
