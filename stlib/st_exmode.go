@@ -3489,22 +3489,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":erase")
 		}
-		stw.Deselect()
-	ex_erase:
-		for {
-			select {
-			case <-time.After(time.Second):
-				break ex_erase
-			case <-exmodeend:
-				break ex_erase
-			case ent := <-exmodech:
-				switch ent := ent.(type) {
-				case *Node:
-					frame.DeleteNode(ent.Num)
-				case *Elem:
-					frame.DeleteElem(ent.Num)
-				}
-			}
+		for _, el := range currentelem(stw, exmodech, exmodeend) {
+			frame.DeleteElem(el.Num)
+		}
+		for _, n := range currentnode(stw, exmodech, exmodeend) {
+			frame.DeleteNode(n.Num)
 		}
 		ns := frame.NodeNoReference()
 		if len(ns) != 0 {
@@ -3512,6 +3501,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				frame.DeleteNode(n.Num)
 			}
 		}
+		stw.Deselect()
 		Snapshot(stw)
 	case "count":
 		if usage {
