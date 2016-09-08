@@ -3166,6 +3166,19 @@ func (frame *Frame) DeleteNode(num int) {
 			}
 		}
 	}
+	arcs := make([]*Arc, len(frame.Arcs))
+	i := 0
+del_arc:
+	for _, a := range frame.Arcs {
+		for _, en := range a.Enod {
+			if en == node {
+				continue del_arc
+			}
+		}
+		arcs[i] = a
+		i++
+	}
+	frame.Arcs = arcs[:i]
 	delete(frame.Nodes, num)
 	if frame.Maxnnum == num {
 		frame.Maxnnum--
