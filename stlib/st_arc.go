@@ -145,6 +145,20 @@ func (arc *Arc) IsHidden(show *Show) bool {
 	return false
 }
 
+func (arc *Arc) DividingPoints(n int) [][]float64 {
+	if n < 2 {
+		return [][]float64{}
+	}
+	rtn := make([][]float64, n-1)
+	dtheta := (arc.End - arc.Start) / float64(n)
+	angle := dtheta
+	for i := 0; i < n-1; i++ {
+		rtn[i] = RotateVector(arc.Enod[0].Coord, arc.Center, arc.Direction, angle)
+		angle += dtheta
+	}
+	return rtn
+}
+
 func (arc *Arc) DivideAtAngles(angles []float64, eps float64) ([]*Node, []*Elem, error) {
 	n1 := arc.Enod[0]
 	ns := make([]*Node, 0)
