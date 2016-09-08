@@ -415,20 +415,31 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		if un {
 			AxisRange(stw, axis, RANGE_MIN, RANGE_MAX, false)
 		} else {
+			var min, max float64
+			var err error
 			if len(lis) < 2 {
 				return NotEnoughArgs(fmt.Sprintf("'%s", key))
 			}
-			min, err := strconv.ParseFloat(lis[1], 64)
-			if err != nil {
-				return err
+			if lis[1] == "_" {
+				min = RANGE_MIN
+				max = RANGE_MAX
+			} else {
+				min, err = strconv.ParseFloat(lis[1], 64)
+				if err != nil {
+					return err
+				}
 			}
 			if len(lis) < 3 {
 				AxisRange(stw, axis, min, min, false)
 				return nil
 			}
-			max, err := strconv.ParseFloat(lis[2], 64)
-			if err != nil {
-				return err
+			if lis[2] == "_" {
+				max = RANGE_MAX
+			} else {
+				max, err = strconv.ParseFloat(lis[2], 64)
+				if err != nil {
+					return err
+				}
 			}
 			AxisRange(stw, axis, min, max, false)
 		}
