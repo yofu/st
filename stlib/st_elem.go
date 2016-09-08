@@ -314,16 +314,16 @@ func SortedElem(els map[int]*Elem, compare func(*Elem) float64) []*Elem {
 	l := len(els)
 	elems := make(map[float64][]*Elem, l)
 	keys := make([]float64, l)
-	sortedelems := make([]*Elem, l)
+	num := 0
 	for _, el := range els {
 		val := compare(el)
 		if _, ok := elems[val]; !ok {
-			elems[val] = make([]*Elem, 1)
-			elems[val][0] = el
-		} else {
-			elems[val] = append(elems[val], el)
+			elems[val] = make([]*Elem, 0)
 		}
+		elems[val] = append(elems[val], el)
+		num++
 	}
+	sortedelems := make([]*Elem, num)
 	i := 0
 	for k := range elems {
 		keys[i] = k
