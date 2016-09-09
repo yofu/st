@@ -2,6 +2,7 @@ package arclm
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"github.com/yofu/st/matrix"
@@ -26,6 +27,8 @@ type Frame struct {
 	Lapch       chan int
 	Endch       chan error
 	Output      io.Writer
+	running     bool
+	cancel      context.CancelFunc
 }
 
 func NewFrame() *Frame {
@@ -62,6 +65,19 @@ func NewFrameState(nnode, nelem int) *FrameState {
 		fs.Stress[i] = make([]float64, 12)
 	}
 	return fs
+}
+
+func (af *Frame) Running() bool {
+	return af.running
+}
+
+func (af *Frame) Stop() error {
+	if af.cancel == nil {
+		return fmt.Errorf("not running")
+	}
+	af.cancel()
+	af.running = false
+	return nil
 }
 
 func (af *Frame) ReadInput(filename string) error {
@@ -664,7 +680,13 @@ func (cond *AnalysisCondition) NonLinear() bool {
 	return cond.nlgeometry || cond.nlmaterial
 }
 
-func (frame *Frame) StaticAnalysis(cond *AnalysisCondition) error {
+func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCondition) error {
+	frame.running = true
+	frame.cancel = cancel
+	defer func() {
+		frame.running = false
+		cancel()
+	}()
 	if cond.init {
 		frame.Initialise()
 	}
@@ -693,7 +715,17 @@ func (frame *Frame) StaticAnalysis(cond *AnalysisCondition) error {
 	var conf []bool
 	var answers [][]float64
 	var bnorm, rnorm, sign float64
-	output := func(fn string) error {
+	output := func(fns []string, ind int, l, nl int) error {
+		var fn string
+		if fns == nil || len(fns) <= ind {
+			fn = fmt.Sprintf("hogtxt%d.otp", ind)
+		} else {
+			fn = fns[ind]
+		}
+		if l < nl {
+			ext := filepath.Ext(fn)
+			fn = fmt.Sprintf("%s_LAP_%d_%d%s", strings.Replace(fn, ext, "", -1), l, nl, ext)
+		}
 		w, err := os.Create(fn)
 		if err != nil {
 			return err
@@ -757,14 +789,7 @@ func (frame *Frame) StaticAnalysis(cond *AnalysisCondition) error {
 		} else {
 			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
 			if sign < 0.0 {
-				var tmp string
-				if cond.otp == nil || len(cond.otp) < 1 {
-					tmp = fmt.Sprintf("hogtxt_LAP_%d_%d.otp", lap, cond.nlap)
-				} else {
-					ext := filepath.Ext(cond.otp[0])
-					tmp = fmt.Sprintf("%s_LAP_%d_%d%s", strings.Replace(cond.otp[0], ext, "", -1), lap, cond.nlap, ext)
-				}
-				output(tmp)
+				output(cond.otp, 0, lap+1, cond.nlap)
 				return errors.New(fmt.Sprintf("sylvester's law of inertia: %.3f", sign))
 			}
 		}
@@ -792,7 +817,7 @@ func (frame *Frame) StaticAnalysis(cond *AnalysisCondition) error {
 				frame.UpdateReaction(gmtx, vec)
 				frame.UpdateForm(vec)
 				laptime(fmt.Sprintf("%04d / %04d: TOTAL = %.3f NORM = %.5E", lap+1, cond.nlap, total, rnorm/bnorm))
-				output(cond.otp[nans])
+				output(cond.otp, nans, lap+1, cond.nlap)
 				frame.Lapch <- lap + 1
 				<-frame.Lapch
 				frame.RestoreState(f)
@@ -812,7 +837,11 @@ func (frame *Frame) StaticAnalysis(cond *AnalysisCondition) error {
 				delta, next = cond.postprocess(frame, df, du, dr)
 			}
 			frame.Lapch <- lap + 1
-			<-frame.Lapch
+			ret := <-frame.Lapch
+			if ret != 0 {
+				output(cond.otp, 0, lap+1, cond.nlap)
+				return fmt.Errorf("analysis cancelled")
+			}
 			if !next {
 				old := total
 				if delta != cond.delta {

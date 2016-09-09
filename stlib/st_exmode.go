@@ -2,6 +2,7 @@ package st
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"github.com/atotto/clipboard"
@@ -3936,20 +3937,24 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		otps := []string{Ce(otp, "otl"), Ce(otp, "ohx"), Ce(otp, "ohy")}
 		acond.SetOutput(otps)
+		ctx, cancel := context.WithCancel(context.Background())
 		go func() {
-			err := af.StaticAnalysis(acond)
+			err := af.StaticAnalysis(cancel, acond)
 			af.Endch <- err
 		}()
 		ind := 0
+		retval := 0
 	ex_all:
 		for {
 			select {
+			case <-ctx.Done():
+				retval = 1
 			case <-af.Pivot:
 			case <-af.Lapch:
 				frame.ReadArclmData(af, pers[ind])
 				frame.ResultFileName[pers[ind]] = otps[ind]
 				ind++
-				af.Lapch <- 1
+				af.Lapch <- retval
 			case <-af.Endch:
 				break ex_all
 			}
@@ -4044,6 +4049,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if af == nil {
 			return fmt.Errorf(":analysis: frame isn't extracted to period %s", per)
 		}
+		if af.Running() {
+			return fmt.Errorf("analysis is running")
+		}
 		var m, m2 bytes.Buffer
 		m.WriteString(fmt.Sprintf("PERIOD      : %s\n", per))
 		if pp, ok := argdict["POST"]; ok {
@@ -4126,8 +4134,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			wait = true
 			wch = make(chan int)
 		}
+		ctx, cancel := context.WithCancel(context.Background())
 		go func() {
-			err := af.StaticAnalysis(cond)
+			err := af.StaticAnalysis(cancel, cond)
 			af.Endch <- err
 		}()
 		nlap := cond.Nlap()
@@ -4148,9 +4157,12 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		pind := 0
 		go func() {
+			retval := 0
 		readstatic:
 			for {
 				select {
+				case <-ctx.Done():
+					retval = 1
 				case <-af.Pivot:
 					if stw.Pivot() {
 						pivot <- 1
@@ -4161,14 +4173,18 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					if pind == len(pers) {
 						pind = 0
 					}
-					af.Lapch <- 1
+					af.Lapch <- retval
 					stw.CurrentLap("Calculating...", lap, nlap)
 					stw.Redraw()
-				case <-af.Endch:
+				case err := <-af.Endch:
 					if stw.Pivot() {
 						end <- 1
 					}
-					stw.CurrentLap("Completed", nlap, nlap)
+					if err != nil {
+						stw.History(err.Error())
+					} else {
+						stw.CurrentLap("Completed", nlap, nlap)
+					}
 					SetPeriod(stw, per)
 					stw.Redraw()
 					if wait {
@@ -4182,6 +4198,26 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			<-wch
 		}
 		return ArclmStart(m.String())
+	case "stop":
+		if usage {
+			return Usage(":stop period")
+		}
+		if narg < 2 {
+			return NotEnoughArgs(":stop")
+		}
+		per := strings.ToUpper(args[1])
+		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":stop: frame isn't extracted to period %s", per)
+		}
+		if !af.Running() {
+			return fmt.Errorf("analysis is not running; %s", per)
+		}
+		stw.History(fmt.Sprintf("stopping analysis...: %s", per))
+		err := af.Stop()
+		if err != nil {
+			return err
+		}
 	case "arclm001":
 		return Usage("DEPRECATED: use :analysis {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} {-wait} filename")
 	case "arclm201":
