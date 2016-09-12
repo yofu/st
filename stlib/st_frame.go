@@ -3234,31 +3234,7 @@ func (frame *Frame) ElemSameNode() []*Elem {
 }
 
 func (frame *Frame) NodeDuplication(eps float64) map[*Node]*Node {
-	dups := make(map[*Node]*Node, 0)
-	keys := make([]int, len(frame.Nodes))
-	i := 0
-	for _, k := range frame.Nodes {
-		if k != nil {
-			keys[i] = k.Num
-			i++
-		}
-	}
-	sort.Ints(keys)
-	for j, k := range keys[:i] {
-		if _, ok := dups[frame.Nodes[k]]; ok {
-			continue
-		}
-	loop:
-		for _, m := range keys[j+1 : i] {
-			for n := 0; n < 3; n++ {
-				if math.Abs(frame.Nodes[k].Coord[n]-frame.Nodes[m].Coord[n]) > eps {
-					continue loop
-				}
-			}
-			dups[frame.Nodes[m]] = frame.Nodes[k]
-		}
-	}
-	return dups
+	return NodeDuplication(frame.Nodes, eps)
 }
 
 func (frame *Frame) ReplaceNode(nmap map[*Node]*Node) {
@@ -3274,6 +3250,41 @@ func (frame *Frame) ReplaceNode(nmap map[*Node]*Node) {
 	}
 	for k := range nmap {
 		frame.DeleteNode(k.Num)
+	}
+}
+
+func (frame *Frame) MergeNode(ns []*Node) {
+	c := make([]float64, 3)
+	num := 0
+	for _, n := range ns {
+		if n == nil {
+			continue
+		}
+		for i := 0; i < 3; i++ {
+			c[i] += n.Coord[i]
+		}
+		num++
+	}
+	if num > 0 {
+		for i := 0; i < 3; i++ {
+			c[i] /= float64(num)
+		}
+		var del bool
+		delmap := make(map[*Node]*Node)
+		var n0 *Node
+		for _, n := range ns {
+			if n == nil {
+				continue
+			}
+			if del {
+				delmap[n] = n0
+			} else {
+				n.Coord = c
+				n0 = n
+				del = true
+			}
+		}
+		frame.ReplaceNode(delmap)
 	}
 }
 
@@ -5414,4 +5425,32 @@ func WriteReaction(fn string, ns []*Node, direction int) error {
 	}
 	otp.WriteTo(w)
 	return nil
+}
+
+func NodeDuplication(nodes map[int]*Node, eps float64) map[*Node]*Node {
+	dups := make(map[*Node]*Node, 0)
+	keys := make([]int, len(nodes))
+	i := 0
+	for _, k := range nodes {
+		if k != nil {
+			keys[i] = k.Num
+			i++
+		}
+	}
+	sort.Ints(keys)
+	for j, k := range keys[:i] {
+		if _, ok := dups[nodes[k]]; ok {
+			continue
+		}
+	loop:
+		for _, m := range keys[j+1 : i] {
+			for n := 0; n < 3; n++ {
+				if math.Abs(nodes[k].Coord[n]-nodes[m].Coord[n]) > eps {
+					continue loop
+				}
+			}
+			dups[nodes[m]] = nodes[k]
+		}
+	}
+	return dups
 }

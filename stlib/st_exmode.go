@@ -1283,6 +1283,31 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			stw.SelectElem(es[:enum])
 		}
 		return Message(m.String())
+	case "mergenode":
+		if usage {
+			return Usage(":mergenode {-eps=1e-4}")
+		}
+		eps := EPS
+		if e, ok := argdict["EPS"]; ok {
+			v, err := strconv.ParseFloat(e, 64)
+			if err != nil {
+				return err
+			}
+			eps = v
+		}
+		ns := currentnode(stw, exmodech, exmodeend)
+		if len(ns) < 2 {
+			return fmt.Errorf("not enough nodes selected")
+		}
+		nmap := make(map[int]*Node, len(ns))
+		for _, n := range ns {
+			nmap[n.Num] = n
+		}
+		nodes := NodeDuplication(nmap, eps)
+		for k, v := range nodes {
+			frame.MergeNode([]*Node{k, v})
+		}
+		Snapshot(stw)
 	case "nodesort":
 		if usage {
 			return Usage(":nodesort [x,y,z,0,1,2]")
