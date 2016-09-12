@@ -2508,7 +2508,7 @@ func (stw *Window) DrawPivot(nodes []*st.Node, pivot, end chan int) {
 			ind++
 			if ind >= 6 {
 				stw.currentCanvas = stw.cdcanv
-				st.DrawNodeNum(stw, nodes[nnum])
+				st.DrawNodeNum(stw, nodes[nnum], stw.Frame().Show)
 				nnum++
 				ind = 0
 			}
