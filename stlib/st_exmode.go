@@ -4074,6 +4074,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if af == nil {
 			return fmt.Errorf(":analysis: frame isn't extracted to period %s", per)
 		}
+		af.Output = stw.HistoryWriter()
 		if af.Running() {
 			return fmt.Errorf("analysis is running")
 		}
@@ -4290,6 +4291,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if af == nil {
 			return fmt.Errorf(":arclm301: frame isn't extracted to period %s", per)
 		}
+		af.Output = stw.HistoryWriter()
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
@@ -4352,6 +4354,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if af == nil {
 			return fmt.Errorf(":arclm401: frame isn't extracted to period %s", per)
 		}
+		af.Output = stw.HistoryWriter()
 		init := true
 		if _, ok := argdict["NOINIT"]; ok {
 			init = false
