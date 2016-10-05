@@ -12,18 +12,19 @@ import (
 )
 
 type Glass struct {
-	position image.Point
-	size     image.Point
-	text     []string
-	margin   int
-	linesep  int
-	parent   *Window
-	buffer   screen.Buffer
-	texture  screen.Texture
-	show     bool
-	frame    bool
-	cr       bool
-	nl       bool
+	position  image.Point
+	size      image.Point
+	text      []string
+	margin    int
+	linesep   int
+	parent    *Window
+	buffer    screen.Buffer
+	texture   screen.Texture
+	show      bool
+	frame     bool
+	cr        bool
+	nl        bool
+	minimized bool
 }
 
 func NewGlass(p *Window) *Glass {
@@ -65,27 +66,48 @@ func (g *Glass) AddText(str []string) {
 	g.text = append(g.text, str...)
 }
 
+func (g *Glass) Minimized() bool {
+	return g.minimized
+}
+
+func (g *Glass) Minimize() {
+	g.minimized = true
+}
+
+func (g *Glass) Maximize() {
+	g.minimized = false
+}
+
 func (g *Glass) Redraw() error {
 	if !g.show {
 		return nil
 	}
+	var size image.Point
+	var text []string
+	if g.minimized {
+		size = image.Point{g.size.X, g.parent.font.height.Ceil() + 2*g.margin}
+		text = []string{g.text[len(g.text)-1]}
+	} else {
+		size = g.size
+		text = g.text
+	}
 	if g.buffer != nil {
 		g.buffer.Release()
 	}
-	b, err := g.parent.screen.NewBuffer(g.size)
+	b, err := g.parent.screen.NewBuffer(size)
 	if err != nil {
 		return err
 	}
 	g.buffer = b
 	x := 0
-	y := g.size.Y - 2*g.margin - (len(g.text) - 1)*g.linesep
+	y := size.Y - 2*g.margin - (len(text) - 1)*g.linesep
 	g.parent.Foreground(st.GREEN_A100)
-	for _, t := range g.text {
+	for _, t := range text {
 		g.Text(x, y, t)
 		y += g.linesep
 	}
 	g.parent.Foreground(st.WHITE)
-	t, err := g.parent.screen.NewTexture(g.size)
+	t, err := g.parent.screen.NewTexture(size)
 	if err != nil {
 		return err
 	}
@@ -102,11 +124,17 @@ func (g *Glass) Upload() {
 	if !g.show || g.texture == nil {
 		return
 	}
-	if g.frame {
-		g.parent.window.Fill(image.Rect(g.position.X-g.margin-1, g.position.Y-g.size.Y-g.margin-1, g.position.X+g.size.X+g.margin+1, g.position.Y+1), color.RGBA{0xa2, 0xf7, 0x8d, 0xff}, screen.Over)
+	var size image.Point
+	if g.minimized {
+		size = image.Point{g.size.X, g.parent.font.height.Ceil() + 2*g.margin}
+	} else {
+		size = g.size
 	}
-	g.parent.window.Fill(image.Rect(g.position.X-g.margin, g.position.Y-g.size.Y-g.margin, g.position.X+g.size.X+g.margin, g.position.Y), color.RGBA{0x00, 0x00, 0x00, 0xff}, screen.Over)
-	g.parent.window.Copy(image.Point{g.position.X, g.position.Y -g.size.Y}, g.texture, g.texture.Bounds(), screen.Over, nil)
+	if g.frame {
+		g.parent.window.Fill(image.Rect(g.position.X-g.margin-1, g.position.Y-size.Y-g.margin-1, g.position.X+size.X+g.margin+1, g.position.Y+1), color.RGBA{0xa2, 0xf7, 0x8d, 0xff}, screen.Over)
+	}
+	g.parent.window.Fill(image.Rect(g.position.X-g.margin, g.position.Y-size.Y-g.margin, g.position.X+size.X+g.margin, g.position.Y), color.RGBA{0x00, 0x00, 0x00, 0xff}, screen.Over)
+	g.parent.window.Copy(image.Point{g.position.X, g.position.Y -size.Y}, g.texture, g.texture.Bounds(), screen.Over, nil)
 	g.parent.window.Publish()
 }
 

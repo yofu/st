@@ -441,6 +441,21 @@ func (stw *Window) Start(fn string) {
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
+					case key.CodeX:
+						if e.Modifiers&key.ModControl != 0 {
+							if h, ok := stw.glasses["HISTORY"]; ok {
+								if h.Minimized() {
+									h.Maximize()
+								} else {
+									h.Minimize()
+								}
+								h.Redraw()
+								stw.Redraw()
+							}
+							typing = false
+						} else {
+							stw.TypeCommandLine(string(kc.Rune))
+						}
 					}
 					if typing {
 						stw.Typewrite(stw.CommandLineStringWithPosition())
