@@ -927,7 +927,7 @@ func (stw *Window) History(str string) {
 		stw.history.TypeString(str)
 		stw.history.Redraw()
 	} else if h, ok := stw.glasses["HISTORY"]; ok {
-		h.TypeString(str)
+		h.TypeString(strings.TrimSuffix(str, "\n"))
 		h.Redraw()
 	} else {
 		if strings.HasSuffix(str, "\n") {
