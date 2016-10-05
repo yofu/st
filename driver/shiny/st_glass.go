@@ -86,7 +86,11 @@ func (g *Glass) Redraw() error {
 	var text []string
 	if g.minimized {
 		size = image.Point{g.size.X, g.parent.font.height.Ceil() + 2*g.margin}
-		text = []string{g.text[len(g.text)-1]}
+		if len(g.text) > 0 {
+			text = []string{g.text[len(g.text)-1]}
+		} else {
+			text = []string{}
+		}
 	} else {
 		size = g.size
 		text = g.text

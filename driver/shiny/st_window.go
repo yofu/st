@@ -167,6 +167,8 @@ func (stw *Window) Start(fn string) {
 	stw.glasses["TYPEWRITE"] = NewGlass(stw)
 	stw.glasses["TYPEWRITE"].SetPosition(TypeWriteOffset, winSize.Y-TypeWriteOffset)
 	stw.glasses["TYPEWRITE"].SetSize(winSize.X-2*TypeWriteOffset, stw.font.height.Ceil())
+	stw.PopHistoryDialog()
+	stw.glasses["HISTORY"].Minimize()
 	var sz size.Event
 	for {
 		e := stw.window.NextEvent()
