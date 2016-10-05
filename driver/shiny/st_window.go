@@ -789,7 +789,8 @@ func (stw *Window) Typewrite(x, y float64, str string) {
 	}
 	commandtexture = t
 	t.Upload(image.Point{}, commandbuffer, commandbuffer.Bounds())
-	stw.window.Fill(image.Rect(int(x-5), int(y-float64(stw.font.height.Ceil())-5), winSize.X, int(y+5)), color.RGBA{0x00, 0x00, 0x00, 0xff}, screen.Over)
+	stw.window.Fill(image.Rect(int(x-6), int(y-float64(stw.font.height.Ceil())-6), winSize.X-49, int(y+6)), color.RGBA{0xa2, 0xf7, 0x8d, 0xff}, screen.Over)
+	stw.window.Fill(image.Rect(int(x-5), int(y-float64(stw.font.height.Ceil())-5), winSize.X-50, int(y+5)), color.RGBA{0x00, 0x00, 0x00, 0xff}, screen.Over)
 	stw.window.Copy(image.Point{0, 0}, commandtexture, commandtexture.Bounds(), screen.Over, nil)
 	stw.window.Publish()
 }
