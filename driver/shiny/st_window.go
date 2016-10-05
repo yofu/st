@@ -912,11 +912,18 @@ func (stw *Window) SetLastExCommand(command string) {
 func (stw *Window) PopHistoryDialog() {
 	if h, ok := stw.glasses["HISTORY"]; ok {
 		h.show = !h.show
+		if h.show {
+			h.Redraw()
+		} else {
+			stw.Redraw()
+		}
 		return
 	}
-	stw.glasses["HISTORY"] = NewGlass(stw)
-	stw.glasses["HISTORY"].SetPosition(winSize.X-340, winSize.Y-80)
-	stw.glasses["HISTORY"].SetSize(300, winSize.Y-100)
+	g := NewGlass(stw)
+	g.SetPosition(winSize.X-340, winSize.Y-80)
+	g.SetSize(300, winSize.Y-100)
+	g.Redraw()
+	stw.glasses["HISTORY"] = g
 }
 
 func (stw *Window) History(str string) {
