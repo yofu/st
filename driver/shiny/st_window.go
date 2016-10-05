@@ -5,8 +5,6 @@ import (
 	"github.com/yofu/abbrev"
 	"github.com/yofu/st/stlib"
 	"golang.org/x/exp/shiny/screen"
-	"golang.org/x/image/font"
-	"golang.org/x/image/math/fixed"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
 	"golang.org/x/mobile/event/mouse"
@@ -96,6 +94,7 @@ type Window struct {
 	lastfig2command string
 	lastcommand     func(st.Commander) chan bool
 	textBox         map[string]*st.TextBox
+	glasses         map[string]*Glass
 }
 
 func NewWindow(s screen.Screen, w screen.Window) *Window {
@@ -123,6 +122,7 @@ func NewWindow(s screen.Screen, w screen.Window) *Window {
 		lastfig2command: "",
 		lastcommand:     nil,
 		textBox:         make(map[string]*st.TextBox),
+		glasses:         make(map[string]*Glass),
 	}
 }
 
@@ -164,6 +164,10 @@ func (stw *Window) Start(fn string) {
 	stw.frame.View.Center[0] = 512
 	stw.frame.View.Center[1] = 512
 	stw.Redraw()
+	stw.glasses["TYPEWRITE"] = NewGlass(stw)
+	stw.glasses["TYPEWRITE"].SetPosition(TypeWriteOffset, float64(winSize.Y)-TypeWriteOffset)
+	stw.glasses["TYPEWRITE"].SetSize(winSize.X-2*int(TypeWriteOffset), stw.font.height.Ceil())
+	stw.glasses["TYPEWRITE"].SetBufferSize(winSize)
 	var sz size.Event
 	for {
 		e := stw.window.NextEvent()
@@ -178,11 +182,16 @@ func (stw *Window) Start(fn string) {
 				setprev := true
 				if keymode == NORMAL {
 					kc := stw.keymap(e)
+					typing := true
 					switch kc.Code {
 					default:
 						stw.TypeCommandLine(string(kc.Rune))
 					case key.CodeDeleteBackspace:
 						stw.BackspaceCommandLine()
+						if stw.CommandLineStringIsEmpty() {
+							stw.Redraw()
+							typing = false
+						}
 					case key.CodeTab:
 						if prevkey.Code == key.CodeTab {
 							if e.Modifiers&key.ModShift != 0 {
@@ -250,10 +259,13 @@ func (stw *Window) Start(fn string) {
 						}
 					case key.CodeUnknown:
 						setprev = false
+						typing = false
 					case key.CodeLeftShift:
 						setprev = false
+						typing = false
 					case key.CodeLeftAlt:
 						setprev = false
+						typing = false
 					case key.CodeReturnEnter:
 						if e.Modifiers&key.ModControl != 0 {
 							fn := filepath.Join(stw.Cwd(), "command.txt")
@@ -268,6 +280,7 @@ func (stw *Window) Start(fn string) {
 					case key.CodeEscape:
 						stw.QuitCommand()
 						stw.ClearCommandLine()
+						typing = false
 						stw.Deselect()
 						stw.Redraw()
 						stw.window.Publish()
@@ -275,6 +288,7 @@ func (stw *Window) Start(fn string) {
 						if e.Modifiers&key.ModControl != 0 {
 							stw.QuitCommand()
 							stw.ClearCommandLine()
+							typing = false
 							stw.Deselect()
 							stw.Redraw()
 							stw.window.Publish()
@@ -283,8 +297,10 @@ func (stw *Window) Start(fn string) {
 						}
 					case key.CodeLeftControl:
 						setprev = false
+						typing = false
 					case key.CodeRightControl:
 						setprev = false
+						typing = false
 					case key.CodeRightArrow:
 						stw.SeekForward()
 					case key.CodeLeftArrow:
@@ -292,54 +308,64 @@ func (stw *Window) Start(fn string) {
 					case key.CodeDownArrow:
 						if e.Modifiers&key.ModControl != 0 {
 							st.PrevFloor(stw)
+							typing = false
 						} else {
 							stw.SeekLast()
 						}
 					case key.CodeUpArrow:
 						if e.Modifiers&key.ModControl != 0 {
 							st.NextFloor(stw)
+							typing = false
 						} else {
 							stw.SeekHead()
 						}
 					case key.CodeW:
 						if e.Modifiers&key.ModControl != 0 {
 							stw.PopHistoryDialog()
+							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
 					case key.CodeM:
 						if e.Modifiers&key.ModControl != 0 {
 							keymode = VIEWEDIT
+							typing = false
+							stw.Redraw()
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
 					case key.CodeD:
 						if e.Modifiers&key.ModControl != 0 {
 							st.HideNotSelected(stw)
+							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
 					case key.CodeF:
 						if e.Modifiers&key.ModControl != 0 {
 							st.SetFocus(stw)
+							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
 					case key.CodeA:
 						if e.Modifiers&key.ModControl != 0 {
 							st.SelectNotHidden(stw)
+							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
 					case key.CodeS:
 						if e.Modifiers&key.ModControl != 0 {
 							st.ShowAll(stw)
+							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
 					case key.CodeR:
 						if e.Modifiers&key.ModControl != 0 {
 							st.ReadAll(stw)
+							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
@@ -369,6 +395,7 @@ func (stw *Window) Start(fn string) {
 							} else {
 								stw.frame = f
 							}
+							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
@@ -380,6 +407,7 @@ func (stw *Window) Start(fn string) {
 							} else {
 								stw.frame = f
 							}
+							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
@@ -389,6 +417,7 @@ func (stw *Window) Start(fn string) {
 							if err != nil {
 								st.ErrorMessage(stw, err, st.ERROR)
 							}
+							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
@@ -398,11 +427,14 @@ func (stw *Window) Start(fn string) {
 							if err != nil {
 								st.ErrorMessage(stw, err, st.ERROR)
 							}
+							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
 						}
 					}
-					stw.Typewrite(TypeWriteOffset, float64(winSize.Y)-TypeWriteOffset, stw.CommandLineStringWithPosition())
+					if typing {
+						stw.Typewrite(stw.CommandLineStringWithPosition())
+					}
 					if setprev {
 						prevkey = e
 					}
@@ -429,7 +461,7 @@ func (stw *Window) Start(fn string) {
 							keymode = NORMAL
 							stw.Redraw()
 							stw.TypeCommandLine(":")
-							stw.Typewrite(TypeWriteOffset, float64(winSize.Y)-TypeWriteOffset, stw.CommandLineStringWithPosition())
+							stw.Typewrite(stw.CommandLineStringWithPosition())
 							redraw = false
 						}
 					case key.CodeApostrophe:
@@ -437,7 +469,7 @@ func (stw *Window) Start(fn string) {
 							keymode = NORMAL
 							stw.Redraw()
 							stw.TypeCommandLine("'")
-							stw.Typewrite(TypeWriteOffset, float64(winSize.Y)-TypeWriteOffset, stw.CommandLineStringWithPosition())
+							stw.Typewrite(stw.CommandLineStringWithPosition())
 							redraw = false
 						}
 					case key.CodeH:
@@ -649,6 +681,16 @@ func (stw *Window) Start(fn string) {
 		case size.Event:
 			sz = e
 			winSize = image.Point{sz.WidthPx, sz.HeightPx}
+			stw.glasses["TYPEWRITE"].SetPosition(TypeWriteOffset, float64(winSize.Y)-TypeWriteOffset)
+			stw.glasses["TYPEWRITE"].SetSize(winSize.X-2*int(TypeWriteOffset), stw.font.height.Ceil())
+			stw.glasses["TYPEWRITE"].SetBufferSize(winSize)
+			stw.glasses["TYPEWRITE"].Redraw()
+			if h, ok := stw.glasses["HISTORY"]; ok {
+				h.SetPosition(float64(winSize.X-340), float64(winSize.Y-80))
+				h.SetSize(300, winSize.Y-100)
+				h.SetBufferSize(winSize)
+				h.Redraw()
+			}
 			stw.Redraw()
 			stw.window.Publish()
 		case error:
@@ -725,6 +767,9 @@ func (stw *Window) Redraw() {
 	if stw.Executing() {
 		stw.window.Fill(image.Rect(0, 0, 10, 10), color.RGBA{0xff, 0x00, 0x00, 0x22}, screen.Over)
 	}
+	if h, ok := stw.glasses["HISTORY"]; ok {
+		h.Upload()
+	}
 	drawing = false
 }
 
@@ -758,41 +803,11 @@ func (stw *Window) LoadFontFace(path string, point float64) error {
 	return nil
 }
 
-func (stw *Window) Typewrite(x, y float64, str string) {
-	if str == "" {
-		stw.Redraw()
-		return
-	}
-	if commandbuffer != nil {
-		commandbuffer.Release()
-	}
-	b, err := stw.screen.NewBuffer(winSize)
-	if err != nil {
-		log.Fatal(err)
-	}
-	commandbuffer = b
-	stw.Foreground(st.GREEN_A100)
-	d := &font.Drawer{
-		Dst:  commandbuffer.RGBA(),
-		Src:  image.NewUniform(stw.font.color),
-		Face: stw.font.face,
-		Dot:  fixed.Point26_6{fixed.I(int(x)), fixed.I(int(y))},
-	}
-	d.DrawString(str)
-	stw.Foreground(st.WHITE)
-	t, err := stw.screen.NewTexture(winSize)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if commandtexture != nil {
-		commandtexture.Release()
-	}
-	commandtexture = t
-	t.Upload(image.Point{}, commandbuffer, commandbuffer.Bounds())
-	stw.window.Fill(image.Rect(int(x-6), int(y-float64(stw.font.height.Ceil())-6), winSize.X-49, int(y+6)), color.RGBA{0xa2, 0xf7, 0x8d, 0xff}, screen.Over)
-	stw.window.Fill(image.Rect(int(x-5), int(y-float64(stw.font.height.Ceil())-5), winSize.X-50, int(y+5)), color.RGBA{0x00, 0x00, 0x00, 0xff}, screen.Over)
-	stw.window.Copy(image.Point{0, 0}, commandtexture, commandtexture.Bounds(), screen.Over, nil)
-	stw.window.Publish()
+func (stw *Window) Typewrite(str string) {
+	stw.glasses["TYPEWRITE"].Show()
+	stw.glasses["TYPEWRITE"].SetText([]string{str})
+	stw.glasses["TYPEWRITE"].Redraw()
+	stw.glasses["TYPEWRITE"].Hide()
 }
 
 func (stw *Window) AddTail(n *st.Node) {
@@ -898,32 +913,40 @@ func (stw *Window) SetLastExCommand(command string) {
 }
 
 func (stw *Window) PopHistoryDialog() {
-	if stw.history != nil {
+	if h, ok := stw.glasses["HISTORY"]; ok {
+		h.show = !h.show
 		return
 	}
-	stw.history = NewDialog(stw)
-	stw.history.Start()
+	stw.glasses["HISTORY"] = NewGlass(stw)
+	stw.glasses["HISTORY"].SetPosition(float64(winSize.X-340), float64(winSize.Y-80))
+	stw.glasses["HISTORY"].SetSize(300, winSize.Y-100)
+	stw.glasses["HISTORY"].SetBufferSize(winSize)
 }
 
 func (stw *Window) History(str string) {
 	if str == "" {
 		return
 	}
-	if stw.history == nil {
+	if stw.history != nil {
+		stw.history.TypeString(str)
+		stw.history.Redraw()
+	} else if h, ok := stw.glasses["HISTORY"]; ok {
+		h.TypeString(str)
+		h.Redraw()
+	} else {
 		if strings.HasSuffix(str, "\n") {
 			fmt.Printf(str)
 		} else {
 			fmt.Println(str)
 		}
-	} else {
-		stw.history.TypeString(str)
-		stw.history.Redraw()
 	}
 }
 
 func (stw *Window) HistoryWriter() io.Writer {
 	if stw.history != nil {
 		return stw.history
+	} else if h, ok := stw.glasses["HISTORY"]; ok {
+		return h
 	} else {
 		return os.Stdout
 	}
