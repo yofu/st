@@ -307,6 +307,7 @@ func (stw *Window) Start(fn string) {
 					case key.CodeDownArrow:
 						if e.Modifiers&key.ModControl != 0 {
 							st.PrevFloor(stw)
+							stw.Redraw()
 							typing = false
 						} else {
 							stw.SeekLast()
@@ -314,6 +315,7 @@ func (stw *Window) Start(fn string) {
 					case key.CodeUpArrow:
 						if e.Modifiers&key.ModControl != 0 {
 							st.NextFloor(stw)
+							stw.Redraw()
 							typing = false
 						} else {
 							stw.SeekHead()
@@ -336,6 +338,7 @@ func (stw *Window) Start(fn string) {
 					case key.CodeD:
 						if e.Modifiers&key.ModControl != 0 {
 							st.HideNotSelected(stw)
+							stw.Redraw()
 							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
@@ -343,6 +346,7 @@ func (stw *Window) Start(fn string) {
 					case key.CodeF:
 						if e.Modifiers&key.ModControl != 0 {
 							st.SetFocus(stw)
+							stw.Redraw()
 							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
@@ -350,6 +354,7 @@ func (stw *Window) Start(fn string) {
 					case key.CodeA:
 						if e.Modifiers&key.ModControl != 0 {
 							st.SelectNotHidden(stw)
+							stw.Redraw()
 							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
@@ -357,6 +362,7 @@ func (stw *Window) Start(fn string) {
 					case key.CodeS:
 						if e.Modifiers&key.ModControl != 0 {
 							st.ShowAll(stw)
+							stw.Redraw()
 							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
@@ -364,6 +370,7 @@ func (stw *Window) Start(fn string) {
 					case key.CodeR:
 						if e.Modifiers&key.ModControl != 0 {
 							st.ReadAll(stw)
+							stw.Redraw()
 							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
@@ -394,6 +401,7 @@ func (stw *Window) Start(fn string) {
 							} else {
 								stw.frame = f
 							}
+							stw.Redraw()
 							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
@@ -406,6 +414,7 @@ func (stw *Window) Start(fn string) {
 							} else {
 								stw.frame = f
 							}
+							stw.Redraw()
 							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
@@ -416,6 +425,7 @@ func (stw *Window) Start(fn string) {
 							if err != nil {
 								st.ErrorMessage(stw, err, st.ERROR)
 							}
+							stw.Redraw()
 							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
@@ -426,6 +436,7 @@ func (stw *Window) Start(fn string) {
 							if err != nil {
 								st.ErrorMessage(stw, err, st.ERROR)
 							}
+							stw.Redraw()
 							typing = false
 						} else {
 							stw.TypeCommandLine(string(kc.Rune))
