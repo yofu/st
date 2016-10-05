@@ -32,7 +32,7 @@ var (
 	drawing         bool
 	keymode         = NORMAL
 	winSize         = image.Point{1024, 1024}
-	TypeWriteOffset = 40.0
+	TypeWriteOffset = 40
 )
 
 var (
@@ -165,9 +165,8 @@ func (stw *Window) Start(fn string) {
 	stw.frame.View.Center[1] = 512
 	stw.Redraw()
 	stw.glasses["TYPEWRITE"] = NewGlass(stw)
-	stw.glasses["TYPEWRITE"].SetPosition(TypeWriteOffset, float64(winSize.Y)-TypeWriteOffset)
-	stw.glasses["TYPEWRITE"].SetSize(winSize.X-2*int(TypeWriteOffset), stw.font.height.Ceil())
-	stw.glasses["TYPEWRITE"].SetBufferSize(winSize)
+	stw.glasses["TYPEWRITE"].SetPosition(TypeWriteOffset, winSize.Y-TypeWriteOffset)
+	stw.glasses["TYPEWRITE"].SetSize(winSize.X-2*TypeWriteOffset, stw.font.height.Ceil())
 	var sz size.Event
 	for {
 		e := stw.window.NextEvent()
@@ -681,14 +680,12 @@ func (stw *Window) Start(fn string) {
 		case size.Event:
 			sz = e
 			winSize = image.Point{sz.WidthPx, sz.HeightPx}
-			stw.glasses["TYPEWRITE"].SetPosition(TypeWriteOffset, float64(winSize.Y)-TypeWriteOffset)
+			stw.glasses["TYPEWRITE"].SetPosition(TypeWriteOffset, winSize.Y-TypeWriteOffset)
 			stw.glasses["TYPEWRITE"].SetSize(winSize.X-2*int(TypeWriteOffset), stw.font.height.Ceil())
-			stw.glasses["TYPEWRITE"].SetBufferSize(winSize)
 			stw.glasses["TYPEWRITE"].Redraw()
 			if h, ok := stw.glasses["HISTORY"]; ok {
-				h.SetPosition(float64(winSize.X-340), float64(winSize.Y-80))
+				h.SetPosition(winSize.X-340, winSize.Y-80)
 				h.SetSize(300, winSize.Y-100)
-				h.SetBufferSize(winSize)
 				h.Redraw()
 			}
 			stw.Redraw()
@@ -918,9 +915,8 @@ func (stw *Window) PopHistoryDialog() {
 		return
 	}
 	stw.glasses["HISTORY"] = NewGlass(stw)
-	stw.glasses["HISTORY"].SetPosition(float64(winSize.X-340), float64(winSize.Y-80))
+	stw.glasses["HISTORY"].SetPosition(winSize.X-340, winSize.Y-80)
 	stw.glasses["HISTORY"].SetSize(300, winSize.Y-100)
-	stw.glasses["HISTORY"].SetBufferSize(winSize)
 }
 
 func (stw *Window) History(str string) {
