@@ -1278,9 +1278,9 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		case "DATA":
 			ls := stw.TextBox("DATA").LineSep()
 			stw.TextBox("DATA").SetPosition(xpos, ypos)
-			stw.TextBox("INPUTFILE").SetPosition(xpos, ypos + ls*2)
-			stw.TextBox("OUTPUTFILE").SetPosition(xpos, ypos + ls*3)
-			stw.TextBox("VIEWPOINT").SetPosition(xpos, ypos + ls*4)
+			stw.TextBox("INPUTFILE").SetPosition(xpos, ypos+ls*2)
+			stw.TextBox("OUTPUTFILE").SetPosition(xpos, ypos+ls*3)
+			stw.TextBox("VIEWPOINT").SetPosition(xpos, ypos+ls*4)
 		}
 	}
 	return nil

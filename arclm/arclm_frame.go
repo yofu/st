@@ -589,7 +589,7 @@ type AnalysisCondition struct {
 	nlgeometry bool
 	nlmaterial bool
 
-	postprocess func (*Frame, [][]float64, []float64, []float64) (float64, bool)
+	postprocess func(*Frame, [][]float64, []float64, []float64) (float64, bool)
 
 	nlap  int
 	delta float64
@@ -600,17 +600,17 @@ type AnalysisCondition struct {
 
 func NewAnalysisCondition() *AnalysisCondition {
 	return &AnalysisCondition{
-		init: true,
-		solver: "LLS",
-		extra: nil,
-		nlgeometry: false,
-		nlmaterial: false,
+		init:        true,
+		solver:      "LLS",
+		extra:       nil,
+		nlgeometry:  false,
+		nlmaterial:  false,
 		postprocess: nil,
-		nlap: 1,
-		delta: 1.0,
-		start: 0.0,
-		max: 1.0,
-		eps: 1e-12,
+		nlap:        1,
+		delta:       1.0,
+		start:       0.0,
+		max:         1.0,
+		eps:         1e-12,
 	}
 }
 
@@ -801,7 +801,7 @@ func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCond
 				}
 			} else if len(cond.otp) < len(cond.extra)+1 {
 				ext := filepath.Ext(cond.otp[0])
-				for i := 0; i < len(cond.extra)+1 - len(cond.otp); i++ {
+				for i := 0; i < len(cond.extra)+1-len(cond.otp); i++ {
 					cond.otp = append(cond.otp, fmt.Sprintf("%s_%02d.%s", strings.TrimSuffix(cond.otp[0], ext), i, ext))
 				}
 			}

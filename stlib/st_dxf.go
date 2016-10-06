@@ -246,7 +246,7 @@ func (frame *Frame) ParseDxfArc(lis []string, coord []float64, eps float64) erro
 	} else {
 		mid = 0.5 * (start + end)
 	}
-	p, err := ArcPoints([]float64{cx*factor+coord[0], cy*factor+coord[1], cz*factor+coord[2]}, r*factor, ex, start, mid, end)
+	p, err := ArcPoints([]float64{cx*factor + coord[0], cy*factor + coord[1], cz*factor + coord[2]}, r*factor, ex, start, mid, end)
 	if err != nil {
 		return err
 	}

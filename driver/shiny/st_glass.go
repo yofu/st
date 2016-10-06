@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/yofu/st/stlib"
+	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
-	"golang.org/x/exp/shiny/screen"
 )
 
 type Glass struct {
@@ -104,7 +104,7 @@ func (g *Glass) Redraw() error {
 	}
 	g.buffer = b
 	x := 0
-	y := size.Y - 2*g.margin - (len(text) - 1)*g.linesep
+	y := size.Y - 2*g.margin - (len(text)-1)*g.linesep
 	g.parent.Foreground(st.GREEN_A100)
 	for _, t := range text {
 		g.Text(x, y, t)
@@ -138,7 +138,7 @@ func (g *Glass) Upload() {
 		g.parent.window.Fill(image.Rect(g.position.X-g.margin-1, g.position.Y-size.Y-g.margin-1, g.position.X+size.X+g.margin+1, g.position.Y+1), color.RGBA{0xa2, 0xf7, 0x8d, 0xff}, screen.Over)
 	}
 	g.parent.window.Fill(image.Rect(g.position.X-g.margin, g.position.Y-size.Y-g.margin, g.position.X+size.X+g.margin, g.position.Y), color.RGBA{0x00, 0x00, 0x00, 0xff}, screen.Over)
-	g.parent.window.Copy(image.Point{g.position.X, g.position.Y -size.Y}, g.texture, g.texture.Bounds(), screen.Over, nil)
+	g.parent.window.Copy(image.Point{g.position.X, g.position.Y - size.Y}, g.texture, g.texture.Bounds(), screen.Over, nil)
 	g.parent.window.Publish()
 }
 

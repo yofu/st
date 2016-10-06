@@ -6,12 +6,12 @@ import (
 )
 
 var (
-	NODECAPTIONS = []string{"NC_NUM", "NC_WEIGHT", "NC_ZCOORD", "NC_DX", "NC_DY", "NC_DZ", "NC_TX", "NC_TY", "NC_TZ", "NC_RX", "NC_RY", "NC_RZ", "NC_MX", "NC_MY", "NC_MZ", "NC_PILE"}
+	NODECAPTIONS    = []string{"NC_NUM", "NC_WEIGHT", "NC_ZCOORD", "NC_DX", "NC_DY", "NC_DZ", "NC_TX", "NC_TY", "NC_TZ", "NC_RX", "NC_RY", "NC_RZ", "NC_MX", "NC_MY", "NC_MZ", "NC_PILE"}
 	NODECAPTIONNAME = []string{"節点番号", "節点重量", "Z座標", "X方向変位", "Y方向変位", "Z方向変位", "X軸回り変形角[rad]", "Y軸回り変形角[rad]", "Z軸回り変形角[rad]",
 		"X方向反力", "Y方向反力", "Z方向反力", "X軸回り反モーメント", "Y軸回り反モーメント", "Z軸回り反モーメント", "杭番号"}
-	ELEMCAPTIONS = []string{"EC_NUM", "EC_SECT", "EC_RATE_L", "EC_RATE_S", "EC_PREST", "EC_STIFF_X", "EC_STIFF_Y", "EC_DRIFT_X", "EC_DRIFT_Y", "EC_WIDTH", "EC_HEIGHT"}
+	ELEMCAPTIONS    = []string{"EC_NUM", "EC_SECT", "EC_RATE_L", "EC_RATE_S", "EC_PREST", "EC_STIFF_X", "EC_STIFF_Y", "EC_DRIFT_X", "EC_DRIFT_Y", "EC_WIDTH", "EC_HEIGHT"}
 	ELEMCAPTIONNAME = []string{"部材番号", "断面番号", "断面検定比", "断面検定比", "プレストレス", "X方向水平剛性", "Y方向水平剛性", "X方向層間変形角[rad]", "Y方向層間変形角[rad]", "幅", "高さ"}
-	SRCANS       = []string{"SRCAN_L", "SRCAN_S", "SRCAN_Q", "SRCAN_M"}
+	SRCANS          = []string{"SRCAN_L", "SRCAN_S", "SRCAN_Q", "SRCAN_M"}
 )
 
 const ( // NodeCaption
@@ -391,11 +391,11 @@ func (show *Show) Dataline() []string {
 	for i, nc := range []uint{NC_NUM, NC_WEIGHT, NC_ZCOORD, NC_DX, NC_DY, NC_DZ, NC_TX, NC_TY, NC_TZ, NC_RX, NC_RY, NC_RZ, NC_MX, NC_MY, NC_MZ, NC_PILE} {
 		if show.NodeCaption&nc != 0 {
 			if nc == NC_DX || nc == NC_DY || nc == NC_DZ {
-				first = append(first, NODECAPTIONNAME[i] + "[cm]")
+				first = append(first, NODECAPTIONNAME[i]+"[cm]")
 			} else if nc == NC_RX || nc == NC_RY || nc == NC_RZ {
-				first = append(first, NODECAPTIONNAME[i] + fmt.Sprintf("[%s]", show.UnitName[0]))
+				first = append(first, NODECAPTIONNAME[i]+fmt.Sprintf("[%s]", show.UnitName[0]))
 			} else if nc == NC_MX || nc == NC_MY || nc == NC_MZ {
-				first = append(first, NODECAPTIONNAME[i] + fmt.Sprintf("[%s%s]", show.UnitName[0], show.UnitName[1]))
+				first = append(first, NODECAPTIONNAME[i]+fmt.Sprintf("[%s%s]", show.UnitName[0], show.UnitName[1]))
 			} else {
 				first = append(first, NODECAPTIONNAME[i])
 			}
@@ -405,11 +405,11 @@ func (show *Show) Dataline() []string {
 	for i, ec := range []uint{EC_NUM, EC_SECT, EC_PREST, EC_STIFF_X, EC_STIFF_Y, EC_DRIFT_X, EC_DRIFT_Y, EC_WIDTH, EC_HEIGHT} {
 		if show.ElemCaption&ec != 0 {
 			if ec == EC_PREST {
-				first = append(first, ELEMCAPTIONNAME[i] + fmt.Sprintf("[%s]", show.UnitName[0]))
+				first = append(first, ELEMCAPTIONNAME[i]+fmt.Sprintf("[%s]", show.UnitName[0]))
 			} else if ec == EC_STIFF_X || ec == EC_STIFF_Y {
-				first = append(first, ELEMCAPTIONNAME[i] + fmt.Sprintf("[%s/%s]", show.UnitName[0], show.UnitName[1]))
+				first = append(first, ELEMCAPTIONNAME[i]+fmt.Sprintf("[%s/%s]", show.UnitName[0], show.UnitName[1]))
 			} else if ec == EC_WIDTH || ec == EC_HEIGHT {
-				first = append(first, ELEMCAPTIONNAME[i] + fmt.Sprintf("[%s]", show.UnitName[1]))
+				first = append(first, ELEMCAPTIONNAME[i]+fmt.Sprintf("[%s]", show.UnitName[1]))
 			} else {
 				first = append(first, ELEMCAPTIONNAME[i])
 			}

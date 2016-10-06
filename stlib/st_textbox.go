@@ -5,12 +5,12 @@ import (
 )
 
 type TextBox struct {
-	value    []string
-	index    int
-	position []float64
-	Angle    float64
-	Font     Font
-	hide     bool
+	value         []string
+	index         int
+	position      []float64
+	Angle         float64
+	Font          Font
+	hide          bool
 	lineSepFactor float64
 }
 
@@ -27,11 +27,11 @@ func NewTextBox(f Font) *TextBox {
 
 func STLOGO(f Font, xpos, ypos, angle float64) *TextBox {
 	return &TextBox{
-		value:    []string{"         software", "     forstructural", "   analysisthename", "  ofwhichstandsfor", "", " sigmatau  stress", "structure  steel", "andsometh  ing", " likethat"},
-		position: []float64{xpos, ypos},
-		Angle:    angle,
-		Font:     f,
-		hide:     true,
+		value:         []string{"         software", "     forstructural", "   analysisthename", "  ofwhichstandsfor", "", " sigmatau  stress", "structure  steel", "andsometh  ing", " likethat"},
+		position:      []float64{xpos, ypos},
+		Angle:         angle,
+		Font:          f,
+		hide:          true,
 		lineSepFactor: 1.5,
 	}
 }

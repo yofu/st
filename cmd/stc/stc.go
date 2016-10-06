@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	version  = "0.1.0"
-	HOME     = "C:/D/CDOCS/Hogan/Debug"
+	version = "0.1.0"
+	HOME    = "C:/D/CDOCS/Hogan/Debug"
 )
 
 func main() {

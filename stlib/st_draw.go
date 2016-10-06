@@ -167,11 +167,11 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			textpos := make([]float64, 2)
 			if BRACE <= elem.Etype && elem.Etype <= SBRACE {
 				for k := 0; k < 2; k++ {
-					textpos[k] += 0.75 * icoord[k] + 0.25 * jcoord[k]
+					textpos[k] += 0.75*icoord[k] + 0.25*jcoord[k]
 				}
 			} else {
 				for k := 0; k < 2; k++ {
-					textpos[k] += 0.5 * icoord[k] + 0.5 * jcoord[k]
+					textpos[k] += 0.5*icoord[k] + 0.5*jcoord[k]
 				}
 			}
 			stw.Text(textpos[0], textpos[1], strings.TrimSuffix(ecap.String(), "\n"))
@@ -280,7 +280,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 				if tex := sttext[j].String(); tex != "" {
 					stpos := make([]float64, 2)
 					for k := 0; k < 2; k++ {
-						stpos[k] += (-0.5*math.Abs(float64(-j)) + 0.75) * icoord[k] + (-0.5*math.Abs(float64(1-j)) + 0.75) * jcoord[k]
+						stpos[k] += (-0.5*math.Abs(float64(-j))+0.75)*icoord[k] + (-0.5*math.Abs(float64(1-j))+0.75)*jcoord[k]
 					}
 					if j == 0 {
 						stw.TextAlignment(SOUTH)
@@ -313,7 +313,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 				}
 				stpos := make([]float64, 2)
 				for k := 0; k < 2; k++ {
-					stpos[k] += (-0.5*math.Abs(float64(-j)) + 0.75) * icoord[k] + (-0.5*math.Abs(float64(1-j)) + 0.75) * jcoord[k]
+					stpos[k] += (-0.5*math.Abs(float64(-j))+0.75)*icoord[k] + (-0.5*math.Abs(float64(1-j))+0.75)*jcoord[k]
 				}
 				if j == 0 {
 					stw.TextAlignment(SOUTH)
@@ -750,7 +750,7 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 						rcoord = []float64{node.Coord[0], node.Coord[1], node.Coord[2]}
 					} else {
 						for k := 0; k < 3; k++ {
-							rcoord[k] = node.Coord[k] + node.ReturnDisp(show.Period, k) * show.Dfact
+							rcoord[k] = node.Coord[k] + node.ReturnDisp(show.Period, k)*show.Dfact
 						}
 					}
 					if val >= 0.0 {

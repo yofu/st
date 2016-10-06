@@ -1226,7 +1226,7 @@ func (elem *Elem) DeformedMidPoint(p string, fact float64) []float64 {
 	for i := 0; i < 3; i++ {
 		tmp := 0.0
 		for _, n := range elem.Enod {
-			tmp += n.Coord[i] + n.ReturnDisp(p, i) * fact
+			tmp += n.Coord[i] + n.ReturnDisp(p, i)*fact
 		}
 		rtn[i] = tmp / float64(elem.Enods)
 	}
@@ -2233,7 +2233,7 @@ func (elem *Elem) MomentCoord(show *Show, index int) [][]float64 {
 		for i := 0; i < 2; i++ {
 			coord[i] = make([]float64, 3)
 			for j := 0; j < 3; j++ {
-				coord[i][j] = elem.Enod[i].Coord[j] + elem.Enod[i].ReturnDisp(show.Period, j) * show.Dfact
+				coord[i][j] = elem.Enod[i].Coord[j] + elem.Enod[i].ReturnDisp(show.Period, j)*show.Dfact
 			}
 		}
 	}

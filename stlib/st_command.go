@@ -602,7 +602,7 @@ func createspline(fn string, nodes []*Node, d, z int, scale float64, ndiv int, o
 	maxd := nodes[0].Coord[d]
 	minz := nodes[0].Coord[z]
 	maxz := nodes[0].Coord[z]
-	for i := 0; i < len(nodes) -1; i++ {
+	for i := 0; i < len(nodes)-1; i++ {
 		if nodes[i+1].Coord[d] > maxd {
 			maxd = nodes[i+1].Coord[d]
 		} else if nodes[i+1].Coord[d] < mind {
@@ -613,7 +613,7 @@ func createspline(fn string, nodes []*Node, d, z int, scale float64, ndiv int, o
 		} else if nodes[i+1].Coord[z] < minz {
 			minz = nodes[i+1].Coord[z]
 		}
-		if nodes[i+1].Coord[d] - nodes[i].Coord[d] <= 0.15 {
+		if nodes[i+1].Coord[d]-nodes[i].Coord[d] <= 0.15 {
 			dw.Line(nodes[i].Coord[d]*scale, nodes[i].Coord[z]*scale, 0.0, nodes[i+1].Coord[d]*scale, nodes[i+1].Coord[z]*scale, 0.0)
 			continue
 		}
@@ -627,7 +627,7 @@ func createspline(fn string, nodes []*Node, d, z int, scale float64, ndiv int, o
 		ex := sx + dcx
 		dx := ex - nodes[i].Coord[d]
 		sy := A[i]
-		ey := A[i] + B[i] * dx + C[i] * dx * dx + D[i] * dx * dx * dx
+		ey := A[i] + B[i]*dx + C[i]*dx*dx + D[i]*dx*dx*dx
 		for j := 0; j < ndiv; j++ {
 			if ey > maxz {
 				maxz = ey
@@ -639,7 +639,7 @@ func createspline(fn string, nodes []*Node, d, z int, scale float64, ndiv int, o
 			sy = ey
 			ex = ex + dcx
 			dx = ex - nodes[i].Coord[d]
-			ey = A[i] + B[i] * dx + C[i] * dx * dx + D[i] * dx * dx * dx
+			ey = A[i] + B[i]*dx + C[i]*dx*dx + D[i]*dx*dx*dx
 		}
 	}
 	dw.AddLayer("BOUNDARY", dxf.DefaultColor, dxf.DefaultLineType, true)
@@ -662,18 +662,18 @@ func splinecoefficient(nodes []*Node, d, z int) ([]float64, []float64, []float64
 	}
 	h := make([]float64, len(nodes)-1)
 	y := make([]float64, len(nodes)-1)
-	for i := 0; i < len(nodes) - 1; i++ {
+	for i := 0; i < len(nodes)-1; i++ {
 		h[i] = nodes[i+1].Coord[d] - nodes[i].Coord[d]
 		y[i] = (nodes[i+1].Coord[z] - nodes[i].Coord[z]) / h[i]
 	}
 	m := matrix.NewCOOMatrix(len(nodes) - 2)
-	v := make([]float64, len(nodes) - 2)
-	for i := 0; i < len(nodes) - 2; i++ {
+	v := make([]float64, len(nodes)-2)
+	for i := 0; i < len(nodes)-2; i++ {
 		if i > 0 {
 			m.Set(i-1, i, h[i])
 		}
-		m.Set(i, i, 2.0*(h[i] + h[i+1]))
-		if i < len(nodes) - 3 {
+		m.Set(i, i, 2.0*(h[i]+h[i+1]))
+		if i < len(nodes)-3 {
 			m.Set(i, i+1, h[i+1])
 		}
 		v[i] = 3.0 * (y[i+1] - y[i])
@@ -685,15 +685,15 @@ func splinecoefficient(nodes []*Node, d, z int) ([]float64, []float64, []float64
 		return nil, nil, nil, nil, nil, err
 	}
 	C := make([]float64, len(nodes))
-	for i := 0; i < len(nodes) - 2; i++ {
+	for i := 0; i < len(nodes)-2; i++ {
 		C[i+1] = ans[0][i]
 	}
 	D := make([]float64, len(nodes)-1)
 	B := make([]float64, len(nodes)-1)
 	A := make([]float64, len(nodes)-1)
-	for i := 0; i < len(nodes) - 1; i++ {
-		D[i] = (C[i+1] - C[i]) / (3.0*h[i])
-		B[i] = y[i] - (C[i] + D[i]*h[i])*h[i]
+	for i := 0; i < len(nodes)-1; i++ {
+		D[i] = (C[i+1] - C[i]) / (3.0 * h[i])
+		B[i] = y[i] - (C[i]+D[i]*h[i])*h[i]
 		A[i] = nodes[i].Coord[z]
 	}
 	return A, B, C, D, h, nil
@@ -704,7 +704,7 @@ func splinecoord(nodes []*Node, d, z int, ndiv int) ([][]float64, error) {
 	if err != nil {
 		return nil, err
 	}
-	coords := make([][]float64, ndiv*(len(nodes)-1) + 1)
+	coords := make([][]float64, ndiv*(len(nodes)-1)+1)
 	var c int
 	for i := 0; i < 3; i++ {
 		if i == d {
@@ -722,24 +722,24 @@ func splinecoord(nodes []*Node, d, z int, ndiv int) ([][]float64, error) {
 	coords[ind][c] = nodes[0].Coord[c]
 	coords[ind][z] = nodes[0].Coord[z]
 	ind++
-	for i := 0; i < len(nodes) -1; i++ {
+	for i := 0; i < len(nodes)-1; i++ {
 		sx := nodes[i].Coord[d]
 		dcx := h[i] / float64(ndiv)
 		ex := sx + dcx
 		dx := ex - nodes[i].Coord[d]
 		sy := A[i]
-		ey := sy + B[i] * dx + C[i] * dx * dx + D[i] * dx * dx * dx
+		ey := sy + B[i]*dx + C[i]*dx*dx + D[i]*dx*dx*dx
 		coords[ind] = make([]float64, 3)
 		coords[ind][d] = ex
 		coords[ind][c] = nodes[i].Coord[c]
 		coords[ind][z] = ey
 		ind++
-		for j := 0; j < ndiv - 1; j++ {
+		for j := 0; j < ndiv-1; j++ {
 			sx = ex
 			sy = ey
 			ex = ex + dcx
 			dx = ex - nodes[i].Coord[d]
-			ey = A[i] + B[i] * dx + C[i] * dx * dx + D[i] * dx * dx * dx
+			ey = A[i] + B[i]*dx + C[i]*dx*dx + D[i]*dx*dx*dx
 			coords[ind] = make([]float64, 3)
 			coords[ind][d] = ex
 			coords[ind][c] = nodes[i].Coord[c]

@@ -542,9 +542,9 @@ func PickElem(stw Window, x1, y1, x2, y2 int) ([]*Elem, bool) {
 		var add bool
 		for _, v := range frame.Nodes {
 			if frame.Show.PlotState&PLOT_UNDEFORMED != 0 {
-				add =  float64(left) <= v.Pcoord[0] && v.Pcoord[0] <= float64(right) && float64(bottom) <= v.Pcoord[1] && v.Pcoord[1] <= float64(top)
+				add = float64(left) <= v.Pcoord[0] && v.Pcoord[0] <= float64(right) && float64(bottom) <= v.Pcoord[1] && v.Pcoord[1] <= float64(top)
 			} else {
-				add =  float64(left) <= v.Dcoord[0] && v.Dcoord[0] <= float64(right) && float64(bottom) <= v.Dcoord[1] && v.Dcoord[1] <= float64(top)
+				add = float64(left) <= v.Dcoord[0] && v.Dcoord[0] <= float64(right) && float64(bottom) <= v.Dcoord[1] && v.Dcoord[1] <= float64(top)
 			}
 			if add {
 				tmpselectnode[i] = v

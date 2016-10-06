@@ -120,8 +120,8 @@ var (
 	HT700    = Steel{"HT700", 7.0, 9.0, 2100.0, 0.3}
 
 	// CARBON
-	M40J     = Steel{"M40J", 5.438, 8.157, 2100.0, 0.3}
-	T300     = Steel{"T300", 7.477, 11.216, 2100.0, 0.3}
+	M40J = Steel{"M40J", 5.438, 8.157, 2100.0, 0.3}
+	T300 = Steel{"T300", 7.477, 11.216, 2100.0, 0.3}
 
 	FC24 = Concrete{"Fc24", 0.240, 210.0, 0.166666}
 	FC30 = Concrete{"Fc30", 0.300, 210.0, 0.166666}
@@ -189,18 +189,18 @@ type SColumn struct {
 
 func NewSColumn(num int, shape Shape, material Steel) *SColumn {
 	return &SColumn{
-		Steel: material,
-		Shape: shape,
-		num: num,
-		Etype: "COLUMN",
-		Name: "",
-		XFace: nil,
-		YFace: nil,
+		Steel:    material,
+		Shape:    shape,
+		num:      num,
+		Etype:    "COLUMN",
+		Name:     "",
+		XFace:    nil,
+		YFace:    nil,
 		BBLength: nil,
 		BTLength: nil,
 		BBFactor: nil,
 		BTFactor: nil,
-		multi: 1.0,
+		multi:    1.0,
 	}
 }
 func (sc *SColumn) Num() int {

@@ -102,7 +102,7 @@ var (
 		"c/urrent/v/alue":    complete.MustCompile(":currentvalue [abs:]", nil),
 		"len/gth":            complete.MustCompile(":length [deformed:]", nil),
 		"are/a":              complete.MustCompile(":area [deformed:]", nil),
-		"an/alysis":          complete.MustCompile(":analysis [period:$PERIOD] [all:] [solver:$SOLVER] [eps:_] [nlgeom:] [nlmat:] [step:_] [noinit:] [wait:] [post:_] [sects:_] [comp:_] [z:_] _",
+		"an/alysis": complete.MustCompile(":analysis [period:$PERIOD] [all:] [solver:$SOLVER] [eps:_] [nlgeom:] [nlmat:] [step:_] [noinit:] [wait:] [post:_] [sects:_] [comp:_] [z:_] _",
 			map[string][]string{
 				"PERIOD": []string{"l", "x", "y"},
 				"SOLVER": []string{"LLS", "CRS", "CG", "PCG"},
@@ -567,7 +567,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return nil
 		}
 		for _, arc := range frame.Arcs {
-			size := int(arc.Radius/0.1) * 2 + 1
+			size := int(arc.Radius/0.1)*2 + 1
 			coords := make([]float64, size)
 			val := float64(int(arc.Radius/0.1)) * -0.1
 			for i := 0; i < size; i++ {
@@ -1122,7 +1122,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 				ns = frame.ElemToNode(els...)
 			}
-			coords, err := splinecoord(ns, d, z,ndiv)
+			coords, err := splinecoord(ns, d, z, ndiv)
 			if err != nil {
 				return err
 			}
@@ -4021,7 +4021,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if s, ok := argdict["STEP"]; ok { // NLAP;DELTA;START;MAX
 			ns := strings.Count(s, ";")
 			if ns < 3 {
-				s += strings.Repeat(";", 3 - ns)
+				s += strings.Repeat(";", 3-ns)
 			}
 			lis := strings.Split(s, ";")
 			val, err := strconv.ParseInt(lis[0], 10, 64)
@@ -4096,7 +4096,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 						current := n.Coord[2] + n.Disp[2]
 						if !n.Conf[2] && current <= zval {
 							if current < 0.0 {
-								tmp := (zval - current) / du[6*i+2] + 1.0
+								tmp := (zval-current)/du[6*i+2] + 1.0
 								if tmp > 0.0 && tmp < delta {
 									delta = tmp
 								}

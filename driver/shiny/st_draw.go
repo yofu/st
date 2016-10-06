@@ -603,7 +603,7 @@ func (stw *Window) Text(x, y float64, str string) {
 
 func (stw *Window) Foreground(fg int) int {
 	col := st.IntColorList(fg)
-	old := int(stw.currentPen.R) << 16 + int(stw.currentPen.G) << 8 + int(stw.currentPen.B)
+	old := int(stw.currentPen.R)<<16 + int(stw.currentPen.G)<<8 + int(stw.currentPen.B)
 	stw.currentPen = color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), 0xff}
 	stw.currentBrush = color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), PLATE_OPACITY}
 	stw.font.color = color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), 0xff}

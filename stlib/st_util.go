@@ -423,8 +423,8 @@ func Increment(fn, div string, pos, times int) (string, error) {
 			return fn, err
 		}
 		newval := int(val) + times
-		if pos == len(ls) - 1 && newval == 0 {
-			ls = ls[:len(ls) - 1]
+		if pos == len(ls)-1 && newval == 0 {
+			ls = ls[:len(ls)-1]
 		} else {
 			ls[pos] = fmt.Sprintf("%02d", int(val)+times)
 		}

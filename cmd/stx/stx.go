@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/yofu/st/driver/gxui"
-	"github.com/google/gxui/drivers/gl"
 	"github.com/google/gxui"
+	"github.com/google/gxui/drivers/gl"
 	"github.com/google/gxui/themes/dark"
+	"github.com/yofu/st/driver/gxui"
 	"io/ioutil"
 )
 

@@ -205,7 +205,7 @@ func (arc *Arc) DivideAtLocalAxis(axis int, coords []float64, eps float64) ([]*N
 		if c < -arc.Radius || c > arc.Radius {
 			continue
 		}
-		theta := f(c/arc.Radius)
+		theta := f(c / arc.Radius)
 		if arc.Start < theta && theta < end {
 			angles[num] = theta - arc.Start
 			num++
