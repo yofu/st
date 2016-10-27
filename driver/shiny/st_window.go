@@ -2,14 +2,6 @@ package stshiny
 
 import (
 	"fmt"
-	"github.com/yofu/abbrev"
-	"github.com/yofu/st/stlib"
-	"golang.org/x/exp/shiny/screen"
-	"golang.org/x/mobile/event/key"
-	"golang.org/x/mobile/event/lifecycle"
-	"golang.org/x/mobile/event/mouse"
-	"golang.org/x/mobile/event/paint"
-	"golang.org/x/mobile/event/size"
 	"image"
 	"image/color"
 	"io"
@@ -19,6 +11,15 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/yofu/abbrev"
+	"github.com/yofu/st/stlib"
+	"golang.org/x/exp/shiny/screen"
+	"golang.org/x/mobile/event/key"
+	"golang.org/x/mobile/event/lifecycle"
+	"golang.org/x/mobile/event/mouse"
+	"golang.org/x/mobile/event/paint"
+	"golang.org/x/mobile/event/size"
 )
 
 const (
