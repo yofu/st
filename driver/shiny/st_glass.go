@@ -1,6 +1,7 @@
 package stshiny
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"strings"
@@ -95,12 +96,15 @@ func (g *Glass) Redraw() error {
 		size = g.size
 		text = g.text
 	}
-	if g.buffer != nil {
-		g.buffer.Release()
-	}
 	b, err := g.parent.screen.NewBuffer(size)
 	if err != nil {
 		return err
+	}
+	if b == nil {
+		return fmt.Errorf("buffer is nil")
+	}
+	if g.buffer != nil {
+		g.buffer.Release()
 	}
 	g.buffer = b
 	x := 0
@@ -143,7 +147,7 @@ func (g *Glass) Upload() {
 }
 
 func (g *Glass) Text(x, y int, str string) {
-	if str == "" {
+	if str == "" || g.buffer == nil {
 		return
 	}
 	d := &font.Drawer{
