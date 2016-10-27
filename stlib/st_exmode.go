@@ -5,11 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/atotto/clipboard"
-	"github.com/yofu/abbrev"
-	"github.com/yofu/complete"
-	"github.com/yofu/ps"
-	"github.com/yofu/st/arclm"
 	"math"
 	"os"
 	"path/filepath"
@@ -19,6 +14,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/atotto/clipboard"
+	"github.com/yofu/abbrev"
+	"github.com/yofu/complete"
+	"github.com/yofu/ps"
+	"github.com/yofu/st/arclm"
 )
 
 var (
@@ -4061,6 +4062,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			per = "L"
 			for i, eper := range []string{"X", "Y"} {
 				eaf := frame.Arclms[eper]
+				if eaf == nil {
+					return fmt.Errorf(":analysis: frame isn't extracted to period %s", eper)
+				}
 				_, _, vec, err := eaf.AssemGlobalVector(1.0)
 				if err != nil {
 					return err
