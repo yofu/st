@@ -5,9 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/japanese"
-	"golang.org/x/text/transform"
 	"io"
 	"math"
 	"os"
@@ -16,6 +13,10 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/transform"
 )
 
 var (
@@ -438,11 +439,8 @@ func PruneExt(fn string) string {
 }
 
 func FileExists(fn string) bool {
-	if _, err := os.Stat(fn); err == nil {
-		return true
-	} else {
-		return false
-	}
+	_, err := os.Stat(fn)
+	return !os.IsNotExist(err)
 }
 
 func CopyFile(src, dst string) error {
