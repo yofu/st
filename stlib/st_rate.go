@@ -15,6 +15,10 @@ const (
 	NCS        = 15.0
 )
 
+type Breadther interface {
+	Breadth(bool) float64
+}
+
 // Material
 type Material interface {
 }
@@ -169,6 +173,7 @@ type Shape interface {
 	Zx() float64
 	Zy() float64
 	Vertices() [][]float64
+	Breadth(bool) float64
 }
 
 // S COLUMN// {{{
@@ -553,6 +558,14 @@ func (hk HKYOU) Vertices() [][]float64 {
 	return vertices
 }
 
+func (hk HKYOU) Breadth(strong bool) float64 {
+	if strong {
+		return hk.B
+	} else {
+		return hk.H
+	}
+}
+
 // }}}
 
 // HWEAK// {{{
@@ -651,6 +664,14 @@ func (hw HWEAK) Vertices() [][]float64 {
 	return vertices
 }
 
+func (hw HWEAK) Breadth(strong bool) float64 {
+	if strong {
+		return hw.H
+	} else {
+		return hw.B
+	}
+}
+
 // }}}
 
 // RPIPE// {{{
@@ -746,6 +767,14 @@ func (rp RPIPE) Vertices() [][]float64 {
 	return vertices
 }
 
+func (rp RPIPE) Breadth(strong bool) float64 {
+	if strong {
+		return rp.B
+	} else {
+		return rp.H
+	}
+}
+
 // }}}
 
 // CPIPE// {{{
@@ -824,6 +853,10 @@ func (cp CPIPE) Vertices() [][]float64 {
 	}
 	vertices[16] = nil
 	return vertices
+}
+
+func (cp CPIPE) Breadth(strong bool) float64 {
+	return cp.D
 }
 
 // }}}
@@ -930,6 +963,14 @@ func (tk TKYOU) Vertices() [][]float64 {
 	return vertices
 }
 
+func (tk TKYOU) Breadth(strong bool) float64 {
+	if strong {
+		return tk.B
+	} else {
+		return tk.H
+	}
+}
+
 // }}}
 
 // CKYOU// {{{
@@ -1032,6 +1073,14 @@ func (ck CKYOU) Vertices() [][]float64 {
 	vertices[6] = []float64{b, h}
 	vertices[7] = []float64{-c, h}
 	return vertices
+}
+
+func (ck CKYOU) Breadth(strong bool) float64 {
+	if strong {
+		return ck.B
+	} else {
+		return ck.H
+	}
 }
 
 // }}}
@@ -1138,6 +1187,14 @@ func (cw CWEAK) Vertices() [][]float64 {
 	return vertices
 }
 
+func (cw CWEAK) Breadth(strong bool) float64 {
+	if strong {
+		return cw.H
+	} else {
+		return cw.B
+	}
+}
+
 // }}}
 
 // PLATE// {{{
@@ -1224,6 +1281,14 @@ func (pl PLATE) Vertices() [][]float64 {
 	vertices[8] = []float64{b, -h}
 	vertices[9] = []float64{-b, h}
 	return vertices
+}
+
+func (pl PLATE) Breadth(strong bool) float64 {
+	if strong {
+		return pl.B
+	} else {
+		return pl.H
+	}
 }
 
 // }}}

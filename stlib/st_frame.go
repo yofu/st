@@ -15,6 +15,7 @@ import (
 
 	"github.com/mattn/natural"
 	"github.com/yofu/dxf"
+	dxfcolor "github.com/yofu/dxf/color"
 	"github.com/yofu/dxf/drawing"
 	"github.com/yofu/st/arclm"
 )
@@ -2503,33 +2504,49 @@ func (frame *Frame) WriteDxfPlan(filename string, floor int) error {
 	}
 	min := frame.Ai.Boundary[floor-1]
 	max := frame.Ai.Boundary[floor]
+	setlayer := func(et int) {
+		lname := "0"
+		col := dxf.DefaultColor
+		lt := dxf.DefaultLineType
+		switch et {
+		case COLUMN:
+			lname = "HASHIRA"
+			col = dxfcolor.Yellow
+		case GIRDER:
+			lname = "HARI"
+			col = dxfcolor.Cyan
+		case BRACE:
+			lname = "BRACE"
+			col = dxfcolor.Green
+		}
+		_, err := d.Layer(lname, true)
+		if err != nil {
+			d.AddLayer(lname, col, lt, true)
+		}
+	}
 	for _, el := range frame.Elems {
 		if !el.IsLineElem() || el.Etype == WBRACE || el.Etype == SBRACE {
 			continue
 		}
 		if min <= el.Enod[0].Coord[2] && el.Enod[1].Coord[2] <= max {
-			lname := "0"
-			switch el.Etype {
-			case COLUMN:
-				lname = "HASHIRA"
-			case GIRDER:
-				lname = "HARI"
-			case BRACE:
-				lname = "BRACE"
+			setlayer(el.Etype)
+			if al, ok := frame.Allows[el.Sect.Num]; ok {
+				if b, ok := al.(Breadther); ok {
+					b1 := b.Breadth(true) * 0.01
+					b2 := b.Breadth(false) * 0.01
+					diff := []float64{0.5 * (b1*el.Strong[0] + b2*el.Weak[0]), 0.5 * (b1*el.Strong[1] + b2*el.Weak[1])}
+					d.Line((el.Enod[0].Coord[0]+diff[0])*scale, (el.Enod[0].Coord[1]+diff[1])*scale, 0.0, (el.Enod[1].Coord[0]+diff[0])*scale, (el.Enod[1].Coord[1]+diff[1])*scale, 0.0)
+					d.Line((el.Enod[0].Coord[0]-diff[0])*scale, (el.Enod[0].Coord[1]-diff[1])*scale, 0.0, (el.Enod[1].Coord[0]-diff[0])*scale, (el.Enod[1].Coord[1]-diff[1])*scale, 0.0)
+				} else {
+					d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, 0.0, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, 0.0)
+				}
+			} else {
+				d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, 0.0, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, 0.0)
 			}
-			_, err := d.Layer(lname, true)
-			if err != nil {
-				d.AddLayer(lname, dxf.DefaultColor, dxf.DefaultLineType, true)
-			}
-			// TODO: set breadth
-			d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, 0.0, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, 0.0)
 		}
 	}
 	for _, el := range frame.Fence(2, frame.Ai.Boundary[floor], false) {
-		_, err := d.Layer("SECTION", true)
-		if err != nil {
-			d.AddLayer("SECTION", dxf.DefaultColor, dxf.DefaultLineType, true)
-		}
+		setlayer(el.Etype)
 		frame.DrawDxfSection(d, el, []float64{el.Enod[0].Coord[0], el.Enod[1].Coord[1], 0.0}, scale)
 	}
 	return d.SaveAs(filename)
