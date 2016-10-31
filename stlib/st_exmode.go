@@ -64,6 +64,7 @@ var (
 			map[string][]string{
 				"DNUM": []string{"2", "3"},
 			}),
+		"plan/":             complete.MustCompile(":plan [floor:_]", nil),
 		"fe/nce":            complete.MustCompile(":fence", nil),
 		"no/de":             complete.MustCompile(":node", nil),
 		"xsc/ale":           complete.MustCompile(":xscale _", nil),
@@ -1037,6 +1038,25 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		default:
 			return Message("unknown dimension")
 		}
+		if err != nil {
+			return err
+		}
+	case "plan":
+		if usage {
+			return Usage(":plan filename {-floor=1}")
+		}
+		floor := 1
+		if f, ok := argdict["FLOOR"]; ok {
+			val, err := strconv.ParseInt(f, 10, 64)
+			if err != nil {
+				return err
+			}
+			floor = int(val)
+		}
+		if fn == "" {
+			return fmt.Errorf("no file name")
+		}
+		err := frame.WriteDxfPlan(fn, floor)
 		if err != nil {
 			return err
 		}

@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/yofu/st/arclm"
 	"math"
 	"sort"
 	"strings"
+
+	"github.com/yofu/dxf/drawing"
+	"github.com/yofu/st/arclm"
 )
 
 // Constants & Variables// {{{
@@ -2545,4 +2547,25 @@ func (elem *Elem) CurrentValue(show *Show, max, abs bool) float64 {
 		}
 	}
 	return 0.0
+}
+
+func (elem *Elem) DrawDxfSection(d *drawing.Drawing, position []float64, scale float64, vertices [][]float64) {
+	var vers [][]float64
+	vers = make([][]float64, 0)
+	size := 0
+	for _, v := range vertices {
+		if v == nil {
+			d.Polyline(true, vers[:size]...)
+			vers = make([][]float64, 0)
+			size = 0
+			continue
+		}
+		coord := make([]float64, 3)
+		coord[0] = (position[0] + (v[0]*elem.Strong[0]+v[1]*elem.Weak[0])*0.01) * scale
+		coord[1] = (position[1] + (v[0]*elem.Strong[1]+v[1]*elem.Weak[1])*0.01) * scale
+		coord[2] = (position[2] + (v[0]*elem.Strong[2]+v[1]*elem.Weak[2])*0.01) * scale
+		vers = append(vers, coord)
+		size++
+	}
+	d.Polyline(true, vers[:size]...)
 }

@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/mattn/natural"
-	"github.com/yofu/dxf"
-	"github.com/yofu/st/arclm"
 	"io/ioutil"
 	"math"
 	"os"
@@ -15,6 +12,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/mattn/natural"
+	"github.com/yofu/dxf"
+	"github.com/yofu/dxf/drawing"
+	"github.com/yofu/st/arclm"
 )
 
 // Constants & Variables// {{{
@@ -2365,6 +2367,71 @@ func (frame *Frame) WriteDxf2D(filename string, scale float64) error {
 	return nil
 }
 
+// DrawDxfSection adds a section figure to a drawing.
+func (frame *Frame) DrawDxfSection(d *drawing.Drawing, el *Elem, position []float64, scale float64) error {
+	if !el.IsLineElem() {
+		return NotLineElem("DrawDxfSection")
+	}
+	if _, ok := frame.Allows[el.Sect.Num]; !ok {
+		return nil
+	}
+	switch al := frame.Allows[el.Sect.Num].(type) {
+	case *SColumn:
+		sh := al.Shape
+		switch sh.(type) {
+		case HKYOU, HWEAK, RPIPE, PLATE:
+			vertices := sh.Vertices()
+			el.DrawDxfSection(d, position, scale, vertices)
+		case CPIPE:
+			direction := el.Direction(true)
+			c, err := d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, sh.(CPIPE).D*0.01*0.5*scale)
+			if err == nil {
+				dxf.SetExtrusion(c, direction)
+			}
+			c, err = d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, (sh.(CPIPE).D*0.5-sh.(CPIPE).T)*0.01*scale)
+			if err == nil {
+				dxf.SetExtrusion(c, direction)
+			}
+		}
+	case *RCColumn:
+		vertices := al.CShape.Vertices()
+		el.DrawDxfSection(d, position, scale, vertices)
+		direction := el.Direction(true)
+		for _, reins := range al.Reins {
+			pos := make([]float64, 3)
+			pos[0] = (position[0] + (reins.Position[0]*el.Strong[0]+reins.Position[1]*el.Weak[0])*0.01) * scale
+			pos[1] = (position[1] + (reins.Position[0]*el.Strong[1]+reins.Position[1]*el.Weak[1])*0.01) * scale
+			pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01) * scale
+			c, err := d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
+			if err == nil {
+				dxf.SetExtrusion(c, direction)
+			}
+		}
+	case *RCGirder:
+		vertices := al.CShape.Vertices()
+		el.DrawDxfSection(d, position, scale, vertices)
+		direction := el.Direction(true)
+		for _, reins := range al.Reins {
+			pos := make([]float64, 3)
+			pos[0] = (position[0] + (reins.Position[0]*el.Strong[0]+reins.Position[1]*el.Weak[0])*0.01) * scale
+			pos[1] = (position[1] + (reins.Position[0]*el.Strong[1]+reins.Position[1]*el.Weak[1])*0.01) * scale
+			pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01) * scale
+			c, err := d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
+			if err == nil {
+				dxf.SetExtrusion(c, direction)
+			}
+		}
+	case *WoodColumn:
+		sh := al.Shape
+		switch sh.(type) {
+		case PLATE:
+			vertices := sh.Vertices()
+			el.DrawDxfSection(d, position, scale, vertices)
+		}
+	}
+	return nil
+}
+
 // WriteDxf3D writes a dxf file of frame with 3D coordinates.
 func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 	d := dxf.NewDrawing()
@@ -2382,26 +2449,6 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 			}
 			d.Point(n.Coord[0]*scale, n.Coord[1]*scale, n.Coord[2]*scale)
 		}
-	}
-	drawsection := func(elem *Elem, position []float64, vertices [][]float64) {
-		var vers [][]float64
-		vers = make([][]float64, 0)
-		size := 0
-		for _, v := range vertices {
-			if v == nil {
-				d.Polyline(true, vers[:size]...)
-				vers = make([][]float64, 0)
-				size = 0
-				continue
-			}
-			coord := make([]float64, 3)
-			coord[0] = (position[0] + (v[0]*elem.Strong[0]+v[1]*elem.Weak[0])*0.01) * scale
-			coord[1] = (position[1] + (v[0]*elem.Strong[1]+v[1]*elem.Weak[1])*0.01) * scale
-			coord[2] = (position[2] + (v[0]*elem.Strong[2]+v[1]*elem.Weak[2])*0.01) * scale
-			vers = append(vers, coord)
-			size++
-		}
-		d.Polyline(true, vers[:size]...)
 	}
 	for _, el := range frame.Elems {
 		_, err := d.Layer(fmt.Sprintf("%s%d", ETYPES[el.Etype], el.Sect.Num), true)
@@ -2421,69 +2468,11 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 			case PIN_PIN:
 				d.Group("PINPIN", "PIN-PIN", l)
 			}
-			if al, ok := frame.Allows[el.Sect.Num]; ok {
-				_, err := d.Layer("SECTION", true)
-				if err != nil {
-					d.AddLayer("SECTION", dxf.DefaultColor, dxf.DefaultLineType, true)
-				}
-				position := el.MidPoint()
-				switch al.(type) {
-				case *SColumn:
-					sh := al.(*SColumn).Shape
-					switch sh.(type) {
-					case HKYOU, HWEAK, RPIPE, PLATE:
-						vertices := sh.Vertices()
-						drawsection(el, position, vertices)
-					case CPIPE:
-						direction := el.Direction(true)
-						c, err := d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, sh.(CPIPE).D*0.01*0.5*scale)
-						if err == nil {
-							dxf.SetExtrusion(c, direction)
-						}
-						c, err = d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, (sh.(CPIPE).D*0.5-sh.(CPIPE).T)*0.01*scale)
-						if err == nil {
-							dxf.SetExtrusion(c, direction)
-						}
-					}
-				case *RCColumn:
-					rc := al.(*RCColumn)
-					vertices := rc.CShape.Vertices()
-					drawsection(el, position, vertices)
-					direction := el.Direction(true)
-					for _, reins := range rc.Reins {
-						pos := make([]float64, 3)
-						pos[0] = (position[0] + (reins.Position[0]*el.Strong[0]+reins.Position[1]*el.Weak[0])*0.01) * scale
-						pos[1] = (position[1] + (reins.Position[0]*el.Strong[1]+reins.Position[1]*el.Weak[1])*0.01) * scale
-						pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01) * scale
-						c, err := d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
-						if err == nil {
-							dxf.SetExtrusion(c, direction)
-						}
-					}
-				case *RCGirder:
-					rg := al.(*RCGirder)
-					vertices := rg.CShape.Vertices()
-					drawsection(el, position, vertices)
-					direction := el.Direction(true)
-					for _, reins := range rg.Reins {
-						pos := make([]float64, 3)
-						pos[0] = (position[0] + (reins.Position[0]*el.Strong[0]+reins.Position[1]*el.Weak[0])*0.01) * scale
-						pos[1] = (position[1] + (reins.Position[0]*el.Strong[1]+reins.Position[1]*el.Weak[1])*0.01) * scale
-						pos[2] = (position[2] + (reins.Position[0]*el.Strong[2]+reins.Position[1]*el.Weak[2])*0.01) * scale
-						c, err := d.Circle(pos[0], pos[1], pos[2], reins.Radius()*0.01*scale)
-						if err == nil {
-							dxf.SetExtrusion(c, direction)
-						}
-					}
-				case *WoodColumn:
-					sh := al.(*WoodColumn).Shape
-					switch sh.(type) {
-					case PLATE:
-						vertices := sh.Vertices()
-						drawsection(el, position, vertices)
-					}
-				}
+			_, err = d.Layer("SECTION", true)
+			if err != nil {
+				d.AddLayer("SECTION", dxf.DefaultColor, dxf.DefaultLineType, true)
 			}
+			frame.DrawDxfSection(d, el, el.MidPoint(), scale)
 		} else {
 			switch el.Enods {
 			case 3:
@@ -2503,6 +2492,47 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 		return err
 	}
 	return nil
+}
+
+// WriteDxfPlan writes a dxf file of plan
+func (frame *Frame) WriteDxfPlan(filename string, floor int) error {
+	scale := 1000.0
+	d := dxf.NewDrawing()
+	if floor <= 0 || floor >= len(frame.Ai.Boundary) {
+		return fmt.Errorf("out of bounds")
+	}
+	min := frame.Ai.Boundary[floor-1]
+	max := frame.Ai.Boundary[floor]
+	for _, el := range frame.Elems {
+		if !el.IsLineElem() || el.Etype == WBRACE || el.Etype == SBRACE {
+			continue
+		}
+		if min <= el.Enod[0].Coord[2] && el.Enod[1].Coord[2] <= max {
+			lname := "0"
+			switch el.Etype {
+			case COLUMN:
+				lname = "HASHIRA"
+			case GIRDER:
+				lname = "HARI"
+			case BRACE:
+				lname = "BRACE"
+			}
+			_, err := d.Layer(lname, true)
+			if err != nil {
+				d.AddLayer(lname, dxf.DefaultColor, dxf.DefaultLineType, true)
+			}
+			// TODO: set breadth
+			d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, 0.0, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, 0.0)
+		}
+	}
+	for _, el := range frame.Fence(2, frame.Ai.Boundary[floor], false) {
+		_, err := d.Layer("SECTION", true)
+		if err != nil {
+			d.AddLayer("SECTION", dxf.DefaultColor, dxf.DefaultLineType, true)
+		}
+		frame.DrawDxfSection(d, el, []float64{el.Enod[0].Coord[0], el.Enod[1].Coord[1], 0.0}, scale)
+	}
+	return d.SaveAs(filename)
 }
 
 // Check checks whether all elements are valid or not.
