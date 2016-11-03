@@ -883,6 +883,7 @@ func (stw *Window) FeedCommand() {
 		stw.ClearCommandLine()
 		stw.ExecCommand(command)
 		stw.Redraw()
+		stw.window.Publish()
 	}
 }
 
