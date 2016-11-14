@@ -705,7 +705,7 @@ func addlineelem(stw *Window) {
 		n0 := stw.SelectedNodes()[0]
 		st.AddSelection(stw, n)
 		sec := stw.frame.DefaultSect()
-		el := stw.frame.AddLineElem(-1, stw.SelectedNodes()[:2], sec, st.NONE)
+		el := stw.frame.AddLineElem(-1, stw.SelectedNodes()[:2], sec, st.NULL)
 		stw.addHistory(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, n0.Num, n.Num, sec.Num))
 		st.Snapshot(stw)
 		// stw.cdcanv.Foreground(cd.CD_WHITE)
@@ -864,7 +864,7 @@ func addplateelem(stw *Window) {
 		if num >= 3 {
 			en := stw.SelectedNodes()[:num]
 			sec := stw.frame.DefaultSect()
-			el := stw.frame.AddPlateElem(-1, en, sec, st.NONE)
+			el := stw.frame.AddPlateElem(-1, en, sec, st.NULL)
 			var buf bytes.Buffer
 			buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
 			for _, n := range en {
@@ -905,7 +905,7 @@ func addplateelembyline(stw *Window) {
 				ns[3] = els[1].Enod[0]
 			}
 			sec := stw.frame.DefaultSect()
-			el := stw.frame.AddPlateElem(-1, ns, sec, st.NONE)
+			el := stw.frame.AddPlateElem(-1, ns, sec, st.NULL)
 			var buf bytes.Buffer
 			buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
 			for _, n := range ns {
@@ -3110,7 +3110,7 @@ func hatchplateelem(stw *Window) {
 			return
 		case 3, 4:
 			if len(stw.frame.SearchElem(en...)) == 0 {
-				el := stw.frame.AddPlateElem(-1, en, sec, st.NONE)
+				el := stw.frame.AddPlateElem(-1, en, sec, st.NULL)
 				var buf bytes.Buffer
 				buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
 				for _, n := range en {
@@ -3130,7 +3130,7 @@ func hatchplateelem(stw *Window) {
 			ens := divideenods(en, 4)
 			for _, eni := range ens {
 				if len(stw.frame.SearchElem(eni...)) == 0 {
-					el := stw.frame.AddPlateElem(-1, eni, sec, st.NONE)
+					el := stw.frame.AddPlateElem(-1, eni, sec, st.NULL)
 					var buf bytes.Buffer
 					buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
 					for _, n := range eni {
@@ -3235,7 +3235,7 @@ func addplateall(stw *Window) {
 	}
 	maxsize := 4
 	sec := stw.frame.DefaultSect()
-	etype := st.NONE
+	etype := st.NULL
 	add := 0
 	added := make([]*st.Elem, 0)
 	var found bool

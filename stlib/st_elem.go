@@ -13,12 +13,12 @@ import (
 )
 
 // Constants & Variables// {{{
-var ETYPES = []string{"NONE", "COLUMN", "GIRDER", "BRACE", "TRUSS", "WBRACE", "SBRACE", "WALL", "SLAB"}
+var ETYPES = []string{"NULL", "COLUMN", "GIRDER", "BRACE", "TRUSS", "WBRACE", "SBRACE", "WALL", "SLAB"}
 var ETYPENAME = []string{"", "柱", "梁", "ブレース", "トラス", "壁ブレース", "床ブレース", "壁", "床"}
 var StressName = []string{"Nz", "Qx", "Qy", "Mz", "Mx", "My"}
 
 const (
-	NONE = iota
+	NULL = iota
 	COLUMN
 	GIRDER
 	BRACE
@@ -1419,9 +1419,9 @@ func (elem *Elem) IsValidElem() (bool, error) {
 	valid := true
 	var otp bytes.Buffer
 	otp.WriteString(fmt.Sprintf("ELEM: %d", elem.Num))
-	if elem.Etype == NONE {
+	if elem.Etype == NULL {
 		valid = false
-		otp.WriteString(", NONE Etype")
+		otp.WriteString(", NULL Etype")
 	}
 	if elem.HasSameNode() {
 		valid = false

@@ -166,12 +166,12 @@ func (arc *Arc) DivideAtAngles(angles []float64, eps float64) ([]*Node, []*Elem,
 	for _, angle := range angles {
 		c := RotateVector(arc.Enod[0].Coord, arc.Center, arc.Direction, angle)
 		n2, _ := arc.Frame.CoordNode(c[0], c[1], c[2], eps)
-		el := arc.Frame.AddLineElem(-1, []*Node{n1, n2}, arc.Frame.DefaultSect(), NONE)
+		el := arc.Frame.AddLineElem(-1, []*Node{n1, n2}, arc.Frame.DefaultSect(), NULL)
 		ns = append(ns, n2)
 		els = append(els, el)
 		n1 = n2
 	}
-	el := arc.Frame.AddLineElem(-1, []*Node{n1, arc.Enod[2]}, arc.Frame.DefaultSect(), NONE)
+	el := arc.Frame.AddLineElem(-1, []*Node{n1, arc.Enod[2]}, arc.Frame.DefaultSect(), NULL)
 	return ns, append(els, el), nil
 }
 

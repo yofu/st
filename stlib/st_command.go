@@ -173,7 +173,7 @@ func AddLineElem(stw Commander) chan bool {
 	return twonodes(stw, func(n0, n *Node) error {
 		frame := stw.Frame()
 		sec := frame.DefaultSect()
-		el := frame.AddLineElem(-1, []*Node{n0, n}, sec, NONE)
+		el := frame.AddLineElem(-1, []*Node{n0, n}, sec, NULL)
 		stw.History(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, n0.Num, n.Num, sec.Num))
 		Snapshot(stw)
 		return nil
@@ -249,7 +249,7 @@ func AddPlateElem(stw Commander) chan bool {
 		}
 		frame := stw.Frame()
 		sec := frame.DefaultSect()
-		el := frame.AddPlateElem(-1, ns, sec, NONE)
+		el := frame.AddPlateElem(-1, ns, sec, NULL)
 		var buf bytes.Buffer
 		buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
 		for _, n := range ns {
@@ -386,7 +386,7 @@ func HatchPlateElem(stw Commander) chan bool {
 			if len(frame.SearchElem(en...)) != 0 {
 				return fmt.Errorf("elem already exists")
 			}
-			frame.AddPlateElem(-1, en, sec, NONE)
+			frame.AddPlateElem(-1, en, sec, NULL)
 			return nil
 		default:
 			return fmt.Errorf("too many nodes")

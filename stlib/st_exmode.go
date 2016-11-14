@@ -3263,7 +3263,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 				etype = int(tmp)
 			}
-			if etype != NONE {
+			if etype != NULL {
 				fs = append(fs, func(el *Elem) {
 					el.Etype = etype
 				})
