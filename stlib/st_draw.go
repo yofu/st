@@ -3,12 +3,13 @@ package st
 import (
 	"bytes"
 	"fmt"
-	"github.com/yofu/st/arclm"
 	"math"
 	"regexp"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/yofu/st/arclm"
 )
 
 const deg10 = 10.0 * math.Pi / 180.0

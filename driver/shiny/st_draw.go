@@ -1,12 +1,13 @@
 package stshiny
 
 import (
-	"github.com/yofu/st/stlib"
-	"golang.org/x/image/font"
-	"golang.org/x/image/math/fixed"
 	"image"
 	"image/color"
 	"strings"
+
+	"github.com/yofu/st/stlib"
+	"golang.org/x/image/font"
+	"golang.org/x/image/math/fixed"
 )
 
 var (
@@ -620,6 +621,7 @@ func (stw *Window) DefaultStyle() {
 	stw.currentPen = color.RGBA{0xff, 0xff, 0xff, 0xff}
 	stw.currentBrush = color.RGBA{0xff, 0xff, 0xff, 0x77}
 	stw.font.color = color.RGBA{0xff, 0xff, 0xff, 0xff}
+	stw.LineStyle(st.CONTINUOUS)
 	PLATE_OPACITY = 0x77
 }
 
