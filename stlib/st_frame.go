@@ -596,35 +596,59 @@ func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 	var num int64
 	var err error
 	s := NewSect()
+	key := ""
 	tmp := make([]string, 0)
+	figmap := make(map[string][]string)
+	skip := 0
 	for i, word := range lis {
+		if skip > 0 {
+			skip--
+			continue
+		}
 		switch word {
-		case "FPROP", "AREA", "IXX", "IYY", "VEN", "THICK", "SREIN":
-			tmp = append(tmp, lis[i:i+2]...)
-		case "SIGMA":
-			tmp = append(tmp, lis[i:i+7]...)
-		case "XFACE", "YFACE":
-			tmp = append(tmp, lis[i:i+3]...)
+		default:
+			tmp = append(tmp, word)
+		case "FPROP", "AREA", "IXX", "IYY", "VEN", "THICK", "SREIN", "SIGMA", "XFACE", "YFACE":
+			if key != "" {
+				figmap[key] = tmp
+				tmp = make([]string, 0)
+			}
+			key = word
 		case "SECT":
 			num, err = strconv.ParseInt(lis[i+1], 10, 64)
 			s.Num = int(num)
+			skip = 1
 		case "SNAME":
 			s.Name = ToUtf8string(lis[i+1])
+			skip = 1
+		case "NFIG":
+			skip = 1
 		case "FIG":
-			err = s.ParseFig(frame, tmp)
-			tmp = lis[i : i+2]
+			if len(figmap) > 0 {
+				if len(tmp) > 0 {
+					figmap[key] = tmp
+				}
+				err = s.ParseFig(frame, figmap)
+				figmap = make(map[string][]string)
+				tmp = make([]string, 0)
+			}
+			key = word
 		case "LLOAD":
 			for j := 0; j < 3; j++ {
 				s.Lload[j], err = strconv.ParseFloat(lis[i+1+j], 64)
 			}
+			skip = 3
 		case "EXP":
 			s.Exp, err = strconv.ParseFloat(lis[i+1], 64)
+			skip = 1
 		case "EXQ":
 			s.Exq, err = strconv.ParseFloat(lis[i+1], 64)
+			skip = 1
 		case "NZMAX":
 			for j := 0; j < 12; j++ {
 				s.Yield[j], err = strconv.ParseFloat(lis[i+1+2*j], 64)
 			}
+			skip = 23
 		case "COLOR":
 			var tmpcol int64
 			s.Color = 0
@@ -634,14 +658,20 @@ func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 				s.Color += int(tmpcol) * val
 				val >>= 8
 			}
+			skip = 3
 		}
 		if err != nil {
 			return nil, err
 		}
 	}
-	err = s.ParseFig(frame, tmp)
-	if err != nil {
-		return nil, err
+	if len(figmap) > 0 {
+		if len(tmp) > 0 {
+			figmap[key] = tmp
+		}
+		err = s.ParseFig(frame, figmap)
+		if err != nil {
+			return nil, err
+		}
 	}
 	s.Frame = frame
 	if _, ok := frame.Sects[s.Num]; ok {
@@ -655,20 +685,24 @@ func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 }
 
 // ParseProp parses FIG information.
-func (sect *Sect) ParseFig(frame *Frame, lis []string) error {
+func (sect *Sect) ParseFig(frame *Frame, figmap map[string][]string) error {
+	fmt.Println(figmap)
 	var num int64
-	if len(lis) == 0 {
+	if len(figmap) == 0 {
 		return nil
 	}
 	var err error
 	f := &Fig{Value: make(map[string]float64)}
-	for i, word := range lis {
-		switch word {
+	for key, data := range figmap {
+		if len(data) < 1 {
+			continue
+		}
+		switch key {
 		case "FIG":
-			num, err = strconv.ParseInt(lis[i+1], 10, 64)
+			num, err = strconv.ParseInt(data[0], 10, 64)
 			f.Num = int(num)
 		case "FPROP":
-			pnum, err := strconv.ParseInt(lis[i+1], 10, 64)
+			pnum, err := strconv.ParseInt(data[0], 10, 64)
 			if err == nil {
 				if val, ok := frame.Props[int(pnum)]; ok {
 					f.Prop = val
@@ -677,70 +711,77 @@ func (sect *Sect) ParseFig(frame *Frame, lis []string) error {
 				}
 			}
 		case "AREA", "IXX", "IYY", "VEN", "THICK", "SREIN":
-			val, err := strconv.ParseFloat(lis[i+1], 64)
+			// TODO: unit
+			val, err := strconv.ParseFloat(data[0], 64)
 			if err == nil {
-				f.Value[word] = val
+				f.Value[key] = val
 			}
 		case "SIGMA":
+			if len(data) < 6 {
+				continue
+			}
 			var val float64
 			var err error
-			if strings.HasPrefix(lis[i+1], "FC") {
-				val, err = strconv.ParseFloat(strings.TrimPrefix(lis[i+1], "FC"), 64)
+			if strings.HasPrefix(data[0], "FC") {
+				val, err = strconv.ParseFloat(strings.TrimPrefix(data[0], "FC"), 64)
 			} else {
-				val, err = strconv.ParseFloat(lis[i+1], 64)
+				val, err = strconv.ParseFloat(data[0], 64)
 			}
 			if err != nil {
 				return err
 			}
 			f.Value["FC"] = val
-			if strings.HasPrefix(lis[i+2], "SD") {
-				val, err = strconv.ParseFloat(strings.TrimPrefix(lis[i+2], "SD"), 64)
+			if strings.HasPrefix(data[1], "SD") {
+				val, err = strconv.ParseFloat(strings.TrimPrefix(data[1], "SD"), 64)
 			} else {
-				val, err = strconv.ParseFloat(lis[i+2], 64)
+				val, err = strconv.ParseFloat(data[1], 64)
 			}
 			if err != nil {
 				return err
 			}
 			f.Value["SD"] = val
-			if strings.HasPrefix(lis[i+3], "D") {
-				val, err = strconv.ParseFloat(strings.TrimPrefix(lis[i+3], "D"), 64)
+			if strings.HasPrefix(data[2], "D") {
+				val, err = strconv.ParseFloat(strings.TrimPrefix(data[2], "D"), 64)
 			} else {
-				val, err = strconv.ParseFloat(lis[i+3], 64)
+				val, err = strconv.ParseFloat(data[2], 64)
 			}
 			if err != nil {
 				return err
 			}
 			f.Value["RD"] = val
-			val, err = strconv.ParseFloat(lis[i+4], 64)
+			val, err = strconv.ParseFloat(data[3], 64)
 			if err != nil {
 				return err
 			}
 			f.Value["RA"] = val
-			if strings.HasPrefix(lis[i+5], "@") {
-				val, err = strconv.ParseFloat(strings.TrimPrefix(lis[i+5], "@"), 64)
+			if strings.HasPrefix(data[4], "@") {
+				val, err = strconv.ParseFloat(strings.TrimPrefix(data[4], "@"), 64)
 			} else {
-				val, err = strconv.ParseFloat(lis[i+5], 64)
+				val, err = strconv.ParseFloat(data[4], 64)
 			}
 			if err != nil {
 				return err
 			}
 			f.Value["PITCH"] = val
-			val, err = strconv.ParseFloat(lis[i+6], 64)
+			val, err = strconv.ParseFloat(data[5], 64)
 			if err != nil {
 				return err
 			}
 			f.Value["SINDOU"] = val
 		case "XFACE", "YFACE":
+			if len(data) < 2 {
+				continue
+			}
 			tmp := make([]float64, 2)
 			for j := 0; j < 2; j++ {
-				val, err := strconv.ParseFloat(lis[i+1+j], 64)
+				val, err := strconv.ParseFloat(data[j], 64)
 				if err != nil {
 					return err
 				}
 				tmp[j] = val
 			}
-			f.Value[word] = tmp[0]
-			f.Value[fmt.Sprintf("%s_H", word)] = tmp[1]
+			f.Value[key] = tmp[0]
+			f.Value[fmt.Sprintf("%s_H", key)] = tmp[1]
 		}
 		if err != nil {
 			return err
