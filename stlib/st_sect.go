@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/yofu/st/arclm"
 	"sort"
+
+	"github.com/yofu/st/arclm"
 )
 
 var (
@@ -157,9 +158,17 @@ func (fig *Fig) InpString() string {
 		if val, ok := fig.Value[k]; ok {
 			switch k {
 			case "AREA":
-				rtn.WriteString(fmt.Sprintf("                 AREA %7.4f\n", val))
+				if val < 1e-4 {
+					rtn.WriteString(fmt.Sprintf("                 AREA %7.4E\n", val))
+				} else {
+					rtn.WriteString(fmt.Sprintf("                 AREA %7.4f\n", val))
+				}
 			case "IXX", "IYY", "VEN":
-				rtn.WriteString(fmt.Sprintf("                 %s  %11.8f\n", k, val))
+				if val < 1e-8 {
+					rtn.WriteString(fmt.Sprintf("                 %s  %11.8E\n", k, val))
+				} else {
+					rtn.WriteString(fmt.Sprintf("                 %s  %11.8f\n", k, val))
+				}
 			case "THICK":
 				rtn.WriteString(fmt.Sprintf("                 THICK %7.5f\n", val))
 				if val, ok = fig.Value["FC"]; ok {
