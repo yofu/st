@@ -18,6 +18,7 @@ import (
 	dxfcolor "github.com/yofu/dxf/color"
 	"github.com/yofu/dxf/drawing"
 	"github.com/yofu/st/arclm"
+	"github.com/yofu/unit"
 )
 
 // Constants & Variables// {{{
@@ -710,12 +711,63 @@ func (sect *Sect) ParseFig(frame *Frame, figmap map[string][]string) error {
 					return fmt.Errorf("PROP %d doesn't exist", pnum)
 				}
 			}
-		case "AREA", "IXX", "IYY", "VEN", "THICK", "SREIN":
-			// TODO: unit
+		case "AREA":
 			val, err := strconv.ParseFloat(data[0], 64)
-			if err == nil {
-				f.Value[key] = val
+			if err != nil {
+				return err
 			}
+			if len(data) >= 2 {
+				num, den, err := unit.Parse(strings.Join(data[1:], " "))
+				if err != nil {
+					return err
+				}
+				uval, err := unit.NewValue(val, num, den).As(unit.M, unit.M)
+				if err != nil {
+					return err
+				}
+				val = uval
+			}
+			f.Value[key] = val
+		case "IXX", "IYY", "VEN":
+			val, err := strconv.ParseFloat(data[0], 64)
+			if err != nil {
+				return err
+			}
+			if len(data) >= 2 {
+				num, den, err := unit.Parse(strings.Join(data[1:], " "))
+				if err != nil {
+					return err
+				}
+				uval, err := unit.NewValue(val, num, den).As(unit.Power(unit.M, 4)...)
+				if err != nil {
+					return err
+				}
+				val = uval
+			}
+			f.Value[key] = val
+		case "THICK":
+			val, err := strconv.ParseFloat(data[0], 64)
+			if err != nil {
+				return err
+			}
+			if len(data) >= 2 {
+				num, den, err := unit.Parse(strings.Join(data[1:], " "))
+				if err != nil {
+					return err
+				}
+				uval, err := unit.NewValue(val, num, den).As(unit.M)
+				if err != nil {
+					return err
+				}
+				val = uval
+			}
+			f.Value[key] = val
+		case "SREIN":
+			val, err := strconv.ParseFloat(data[0], 64)
+			if err != nil {
+				return err
+			}
+			f.Value[key] = val
 		case "SIGMA":
 			if len(data) < 6 {
 				continue
