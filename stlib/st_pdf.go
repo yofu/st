@@ -64,7 +64,8 @@ func (p *PDFCanvas) Polyline(coords [][]float64) {
 func (p *PDFCanvas) Polygon([][]float64) {
 }
 
-func (p *PDFCanvas) Circle(float64, float64, float64) {
+func (p *PDFCanvas) Circle(x, y, d float64) {
+	p.canvas.Oval(x-0.5*d, y-0.5*d, x+0.5*d, y+0.5*d)
 }
 
 func (p *PDFCanvas) FilledCircle(float64, float64, float64) {
