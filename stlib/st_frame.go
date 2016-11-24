@@ -687,7 +687,6 @@ func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 
 // ParseProp parses FIG information.
 func (sect *Sect) ParseFig(frame *Frame, figmap map[string][]string) error {
-	fmt.Println(figmap)
 	var num int64
 	if len(figmap) == 0 {
 		return nil
