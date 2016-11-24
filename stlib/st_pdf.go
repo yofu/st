@@ -14,16 +14,16 @@ var (
 
 type PDFCanvas struct {
 	*Alias
-	canvas gopdf.GoPdf
+	canvas *gopdf.GoPdf
 	width  float64
 	height float64
 }
 
 func NewPDFCanvas(width, height float64) (*PDFCanvas, error) {
-	pdf := gopdf.GoPdf{}
+	pdf := &gopdf.GoPdf{}
 	pdf.Start(gopdf.Config{
 		Unit:     "pt",
-		PageSize: gopdf.Rect{W: height, H: width}, // TODO: gopdf's bug
+		PageSize: gopdf.Rect{W: width, H: height},
 	})
 	pdf.AddPage()
 	err := pdf.AddTTFFont("IPA明朝", defaultfont)
@@ -71,9 +71,10 @@ func (p *PDFCanvas) FilledCircle(float64, float64, float64) {
 }
 
 func (p *PDFCanvas) Text(x, y float64, str string) {
-	r := &gopdf.Rect{x, y}
+	p.canvas.SetX(x)
+	p.canvas.SetY(y)
 	for _, s := range strings.Split(strings.TrimSuffix(str, "\n"), "\n") {
-		p.canvas.Cell(r, s) // TODO: fix
+		p.canvas.Cell(nil, s)
 	}
 }
 
