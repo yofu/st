@@ -24,6 +24,7 @@ var (
 		"TRIM":           Trim,
 		"MOVEUPDOWN":     MoveUpDown,
 		"SPLINE":         Spline,
+		"NOTICE1459":     Notice1459,
 	}
 )
 
@@ -281,6 +282,43 @@ func CopyElem(stw Commander) chan bool {
 		}
 		return nil
 	}, true)
+}
+
+func Notice1459(stw Commander) chan bool {
+	return multinodes(stw, func(ns []*Node) error {
+		if len(ns) < 2 {
+			return fmt.Errorf("too few nodes")
+		}
+		frame := stw.Frame()
+		var delta float64
+		ds := make([]float64, len(ns))
+		for i, n := range ns {
+			ds[i] = -n.ReturnDisp(frame.Show.Period, 2) * 100
+		}
+		var length float64
+		switch len(ns) {
+		default:
+			return nil
+		case 2:
+			delta = ds[1] - ds[0]
+			stw.History(fmt.Sprintf("Disp: %.3f - %.3f [cm]", ds[1], ds[0]))
+			for i := 0; i < 2; i++ {
+				length += math.Pow(ns[1].Coord[i]-ns[0].Coord[i], 2)
+			}
+		case 3:
+			delta = ds[1] - 0.5*(ds[0]+ds[2])
+			stw.History(fmt.Sprintf("Disp: %.3f - (%.3f + %.3f)/2 [cm]", ds[1], ds[0], ds[2]))
+			for i := 0; i < 2; i++ {
+				length += math.Pow(ns[2].Coord[i]-ns[0].Coord[i], 2)
+			}
+		}
+		length = math.Sqrt(length) * 100
+		if delta != 0.0 {
+			stw.History(fmt.Sprintf("Distance: %.3f[cm]", length))
+			stw.History(fmt.Sprintf("Slope: 1/%.1f", math.Abs(length/delta)))
+		}
+		return nil
+	}, false)
 }
 
 func multielems(stw Commander, f func([]*Elem) error) chan bool {
