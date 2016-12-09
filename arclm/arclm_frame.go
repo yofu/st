@@ -308,6 +308,21 @@ func (frame *Frame) AssemGlobalMatrix(matf func(*Elem) ([][]float64, error), vec
 	return gmtx, gvct, nil
 }
 
+func (frame *Frame) AssemMassMatrix() *matrix.COOMatrix {
+	size := 6 * len(frame.Nodes)
+	mmtx := matrix.NewCOOMatrix(size)
+	for _, n := range frame.Nodes {
+		for i := 0; i < 6; i++ {
+			if n.Conf[i] {
+				continue
+			}
+			row := 6*n.Index + i
+			mmtx.Add(row, row, n.Mass)
+		}
+	}
+	return mmtx
+}
+
 func (frame *Frame) KE(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
 	matf := func(elem *Elem) ([][]float64, error) {
 		return elem.StiffMatrix()
@@ -1237,6 +1252,119 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64, right fl
 		for {
 			neg := 0
 			gmtx := kgmtx.AddMat(kemtx, lambda)
+			mtx := gmtx.ToLLS(csize, conf)
+			size := mtx.Size
+			C, err := mtx.LDLT(frame.Pivot)
+			if err != nil {
+				return err
+			}
+			C.DiagUp()
+			// positive definitness can be checked only by checking
+			// diagonal elements of D, where D is a diagonal matrix
+			// obtained by modified Cholesky factorization (LDLT),
+			// according to Sylvester's law of inertia.
+			for j := 0; j < len(vec); j++ {
+				if C.Query(j, j) < 0.0 {
+					neg++
+				}
+				if neg > i {
+					if ER-EL < eps {
+						break bclng
+					}
+					fmt.Fprintf(frame.Output, "LAMBDA<%.14f\n", 1.0/lambda)
+					EL = lambda
+					lambda = 0.5 * (EL + ER)
+					continue bclng
+				}
+			}
+			fmt.Fprintf(frame.Output, "LAMBDA>%.14f\n", 1.0/lambda)
+			ans := make([]float64, len(vec))
+			for j := 0; j < len(vec); j++ {
+				ans[j] = rand.Float64()
+			}
+			answer = FB(C, ans, size)
+			tmp := frame.FillConf(answer)
+			tmp = Normalize(tmp)
+			lastvec = tmp
+			_, _, err = frame.UpdateStressEnergy(tmp)
+			if err != nil {
+				return err
+			}
+			lastlambda = lambda
+			ER = lambda
+			lambda = 0.5 * (EL + ER)
+			lap++
+			frame.Lapch <- lap + 1
+			<-frame.Lapch
+		}
+		laptime(fmt.Sprintf("\nEIG %d: %.14f", i+1, 1.0/lastlambda))
+		frame.EigenValue[i] = 1.0 / lastlambda
+		frame.EigenVector[i] = lastvec
+		ER = EL
+		EL = 0.0
+		frame.UpdateReaction(kemtx, lastvec)
+		frame.UpdateForm(lastvec)
+		frame.Lapch <- i + 1
+		<-frame.Lapch
+	}
+	if otp == "" {
+		otp = "hogtxt.otp"
+	}
+	w, err := os.Create(otp)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+	frame.WriteBclngTo(w)
+	return nil
+}
+
+// TODO: not accurate for higher order
+func (frame *Frame) VibrationalEigenAnalysis(otp string, init bool, n int, eps float64, right float64) error { // TODO: speed up
+	if init {
+		frame.Initialise()
+	}
+	start := time.Now()
+	laptime := func(message string) {
+		end := time.Now()
+		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
+	}
+	var err error
+	var kemtx, mmtx *matrix.COOMatrix
+	var gvct, vec []float64
+	var csize int
+	var conf []bool
+	kemtx, gvct, err = frame.KE(1.0)
+	if err != nil {
+		return err
+	}
+	csize, conf, vec = frame.AssemConf(gvct, 1.0)
+	mmtx = frame.AssemMassMatrix()
+	frame.EigenValue = make([]float64, n)
+	frame.EigenVector = make([][]float64, n)
+	EL := 0.0
+	ER := right
+	FB := func(C *matrix.LLSMatrix, vec []float64, size int) []float64 {
+		tmp := make([]float64, size)
+		for j := 0; j < size; j++ {
+			tmp[j] = vec[j]
+		}
+		tmp = C.FELower(tmp)
+		for j := 0; j < size; j++ {
+			tmp[j] /= C.Query(j, j)
+		}
+		return C.BSUpper(tmp)
+	}
+	var answer []float64
+	for i := 0; i < n; i++ {
+		lap := 0
+		lambda := 0.5 * (EL + ER)
+		lastlambda := lambda
+		var lastvec []float64
+	bclng:
+		for {
+			neg := 0
+			gmtx := kemtx.AddMat(mmtx, -1.0/lambda)
 			mtx := gmtx.ToLLS(csize, conf)
 			size := mtx.Size
 			C, err := mtx.LDLT(frame.Pivot)

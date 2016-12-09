@@ -4519,6 +4519,109 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 		}()
 		return ArclmStart(m.String())
+	case "vibeig":
+		if usage {
+			return Usage(":vibeig {-period=name} {-eps=1e-12} {-noinit} {-mode=1} {-right=10.0} filename")
+		}
+		var otp string
+		if fn == "" {
+			otp = Ce(frame.Path, ".otp")
+		} else {
+			otp = fn
+		}
+		if o, ok := argdict["OTP"]; ok {
+			otp = o
+		}
+		eps := 1e-12
+		if e, ok := argdict["EPS"]; ok {
+			if e != "" {
+				tmp, err := strconv.ParseFloat(e, 64)
+				if err == nil {
+					eps = tmp
+				}
+			}
+		}
+		per := "L"
+		if p, ok := argdict["PERIOD"]; ok {
+			if p != "" {
+				per = strings.ToUpper(p)
+			}
+		}
+		nmode := 1
+		if n, ok := argdict["MODE"]; ok {
+			val, err := strconv.ParseInt(n, 10, 64)
+			if err == nil {
+				nmode = int(val)
+			}
+		}
+		right := 10.0
+		if n, ok := argdict["RIGHT"]; ok {
+			val, err := strconv.ParseFloat(n, 64)
+			if err == nil {
+				right = val
+			}
+		}
+		var m bytes.Buffer
+		m.WriteString(fmt.Sprintf("PERIOD: %s MODE: %d EPS: %.1E RIGHT %.3f\n", per, nmode, eps, right))
+		m.WriteString(fmt.Sprintf("OUTPUT: %s", otp))
+		init := true
+		if _, ok := argdict["NOINIT"]; ok {
+			init = false
+			m.WriteString("\nNO INITIALISATION")
+		}
+		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":vibeig: frame isn't extracted to period %s", per)
+		}
+		af.Output = stw.HistoryWriter()
+		go func() {
+			err := af.VibrationalEigenAnalysis(otp, init, nmode, eps, right)
+			if err != nil {
+				fmt.Println(err)
+			}
+			af.Endch <- err
+		}()
+		stw.CurrentLap("Calculating...", 0, 1)
+		pivot := make(chan int)
+		end := make(chan int)
+		nodes := make([]*Node, len(frame.Nodes))
+		i := 0
+		for _, n := range frame.Nodes {
+			nodes[i] = n
+			i++
+		}
+		sort.Sort(NodeByNum{nodes})
+		if stw.Pivot() {
+			go stw.DrawPivot(nodes, pivot, end)
+		} else {
+			stw.Redraw()
+		}
+		go func() {
+		readb001:
+			for {
+				select {
+				case <-af.Pivot:
+					if stw.Pivot() {
+						pivot <- 1
+					}
+				case nlap := <-af.Lapch:
+					frame.ReadArclmData(af, per)
+					af.Lapch <- 1
+					stw.CurrentLap("Calculating...", nlap, 1)
+					if stw.Pivot() {
+						end <- 1
+						go stw.DrawPivot(nodes, pivot, end)
+					} else {
+						stw.Redraw()
+					}
+				case <-af.Endch:
+					stw.CurrentLap("Completed", 1, 1)
+					stw.Redraw()
+					break readb001
+				}
+			}
+		}()
+		return ArclmStart(m.String())
 	case "camber":
 		if usage {
 			return Usage(":camber [axis] [add] period factor")

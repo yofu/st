@@ -99,6 +99,7 @@ type Node struct {
 	Force    []float64
 	Disp     []float64
 	Reaction []float64
+	Mass     float64
 }
 
 func NewNode() *Node {

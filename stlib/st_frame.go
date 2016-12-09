@@ -4210,6 +4210,7 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				n.Force[p][j] = an.Force[j]
 			}
 			an.Index = i
+			an.Mass = n.Weight[2] / 9.80665
 			af.Nodes[i] = an
 			arclmnodes[n.Num] = i
 		}
