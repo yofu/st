@@ -650,6 +650,8 @@ func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 				s.Yield[j], err = strconv.ParseFloat(lis[i+1+2*j], 64)
 			}
 			skip = 23
+		case "BSECT": // TODO: implement
+			skip = 1
 		case "COLOR":
 			var tmpcol int64
 			s.Color = 0
