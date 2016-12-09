@@ -785,6 +785,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			if err != nil {
 				return err
 			}
+		case abbrev.For("v/ibration/e/igenmode", t):
+			err := frame.ReadVibrationalEigenmode(fn)
+			if err != nil {
+				return err
+			}
 		case abbrev.For("b/uckling", t):
 			err := frame.ReadBuckling(fn)
 			if err != nil {

@@ -1572,6 +1572,59 @@ func (frame *Frame) ParseEigen(lis [][]string) (err error) {
 	return nil
 }
 
+// ReadVibrationalEigenmode reads an output file of vibrational eigenvalue analysis.
+func (frame *Frame) ReadVibrationalEigenmode(filename string) error {
+	var mode int
+	tmp := make([][]string, 0)
+	err := ParseFile(filename, func(words []string) error {
+		var err error
+		if words[0] == "DEIGABGENERAL" && words[2] == "VECTOR" {
+			if len(tmp) > 0 {
+				err = frame.ParseVibrationalEigenmode(mode, tmp)
+				if err != nil {
+					return err
+				}
+				tmp = [][]string{}
+			}
+			val, err := strconv.ParseInt(words[3], 10, 64)
+			if err != nil {
+				return err
+			}
+			mode = int(val)
+			return nil
+		}
+		if mode > 0 {
+			tmp = append(tmp, words)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return frame.ParseVibrationalEigenmode(mode, tmp)
+}
+
+// ParseVibrationalEigenmode parses eigenvalues and eigenvectors.
+func (frame *Frame) ParseVibrationalEigenmode(mode int, lis [][]string) (err error) {
+	period := fmt.Sprintf("B%d", mode)
+	for _, l := range lis {
+		nnum, err := strconv.ParseInt(l[0], 10, 64)
+		if err != nil {
+			return err
+		}
+		disp := make([]float64, 6)
+		for i := 0; i < 6; i++ {
+			val, err := strconv.ParseFloat(l[1+i], 64)
+			if err != nil {
+				return err
+			}
+			disp[i] = val
+		}
+		frame.Nodes[int(nnum)].Disp[period] = disp
+	}
+	return nil
+}
+
 // ReadZoubun reads an output file of push-over analysis.
 func (frame *Frame) ReadZoubun(filename string) error {
 	tmp := make([][]string, 0)
