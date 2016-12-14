@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"sort"
 
+	"golang.org/x/mobile/event/key"
+
 	"github.com/yofu/dxf"
 	"github.com/yofu/st/matrix"
 )
@@ -187,8 +189,27 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 		nodes := make([]*Node, 0)
 		nch := stw.GetNode()
 		clickch := stw.GetClick()
+		keych := stw.GetKey()
+		var wheelch chan Wheel
 		as := stw.AltSelectNode()
 		stw.SetAltSelectNode(false)
+		delta := 1000.0
+		dir := ""
+		diff := map[string]float64{"X": 0.0, "Y": 0.0, "Z": 0.0}
+		bycoord := func() {
+			coord := []float64{0.0, 0.0, 0.0}
+			if len(nodes) > 0 {
+				coord = nodes[0].Coord
+			}
+			n0, _ := stw.Frame().CoordNode(coord[0], coord[1], coord[2], stw.EPS())
+			n, _ := stw.Frame().CoordNode(coord[0]+diff["X"]*0.001, coord[1]+diff["Y"]*0.001, coord[2]+diff["Z"]*0.001, stw.EPS())
+			nodes = []*Node{n0, n}
+			stw.SelectNode(nodes)
+			err := f(nodes)
+			if err != nil {
+				ErrorMessage(stw, err, ERROR)
+			}
+		}
 	multinodes:
 		for {
 			select {
@@ -215,7 +236,8 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 					}
 				}
 			case c := <-clickch:
-				if c.Button == ButtonRight {
+				switch c.Button {
+				case ButtonRight:
 					if !each {
 						if len(nodes) > 0 {
 							err := f(nodes)
@@ -230,7 +252,57 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 					stw.EndCommand()
 					stw.Redraw()
 					break multinodes
+				case ButtonLeft:
+					if each && dir != "" {
+						bycoord()
+					}
 				}
+			case k := <-keych:
+				if k.Direction == key.DirRelease {
+					switch k.Code {
+					case key.CodeA, key.CodeH:
+						delta *= 10.0
+					case key.CodeS, key.CodeL:
+						delta *= 0.1
+					case key.CodeJ:
+						diff[dir] -= delta
+						stw.History(fmt.Sprintf("%s=%.3f\r", dir, diff[dir]))
+					case key.CodeK:
+						diff[dir] += delta
+						stw.History(fmt.Sprintf("%s=%.3f\r", dir, diff[dir]))
+					case key.CodeC:
+						for _, d := range []string{"X", "Y", "Z"} {
+							diff[d] = 0.0
+						}
+					case key.CodeReturnEnter:
+						if each && dir != "" {
+							bycoord()
+							stw.Redraw()
+						}
+					case key.CodeX, key.CodeY, key.CodeZ:
+						if wheelch == nil {
+							wheelch = stw.GetWheel()
+						}
+						if dir != "" {
+							delta = 1000.0
+						}
+						switch k.Code {
+						case key.CodeX:
+							dir = "X"
+						case key.CodeY:
+							dir = "Y"
+						case key.CodeZ:
+							dir = "Z"
+						}
+					}
+				}
+			case w := <-wheelch:
+				if w == WheelUp {
+					diff[dir] += delta
+				} else {
+					diff[dir] -= delta
+				}
+				stw.History(fmt.Sprintf("%s=%.3f\r", dir, diff[dir]))
 			case <-quit:
 				stw.SetAltSelectNode(as)
 				stw.EndTail()
