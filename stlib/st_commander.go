@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/atotto/clipboard"
+	"golang.org/x/mobile/event/key"
 )
 
 type Commander interface {
@@ -23,6 +24,8 @@ type Commander interface {
 	SendWheel(Wheel) bool
 	GetModifier() chan Modifier
 	SendModifier(Modifier)
+	GetKey() chan Key
+	SendKey(Key)
 	AddTail(*Node)
 	EndTail()
 	EndCommand()
@@ -46,6 +49,8 @@ type Modifier struct {
 	Ctrl  bool
 	Alt   bool
 }
+
+type Key key.Event
 
 const (
 	ButtonLeft int = iota
@@ -78,6 +83,7 @@ type CommandBuffer struct {
 	click chan Click
 	wheel chan Wheel
 	mod   chan Modifier
+	key   chan Key
 }
 
 func NewCommandBuffer() *CommandBuffer {
@@ -89,6 +95,7 @@ func NewCommandBuffer() *CommandBuffer {
 		click: nil,
 		wheel: nil,
 		mod:   nil,
+		key:   nil,
 	}
 }
 
@@ -161,6 +168,17 @@ func (cb *CommandBuffer) SendModifier(m Modifier) {
 	}
 }
 
+func (cb *CommandBuffer) GetKey() chan Key {
+	cb.key = make(chan Key)
+	return cb.key
+}
+
+func (cb *CommandBuffer) SendKey(k Key) {
+	if cb.key != nil {
+		cb.key <- k
+	}
+}
+
 func (cb *CommandBuffer) QuitCommand() {
 	if cb.on && cb.quit != nil {
 		cb.quit <- true
@@ -175,6 +193,7 @@ func (cb *CommandBuffer) EndCommand() {
 		cb.click = nil
 		cb.wheel = nil
 		cb.mod = nil
+		cb.key = nil
 		cb.quit = nil
 	}
 }
