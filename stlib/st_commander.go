@@ -26,6 +26,8 @@ type Commander interface {
 	SendModifier(Modifier)
 	GetKey() chan Key
 	SendKey(Key)
+	GetPosition() chan Position
+	SendPosition(int, int)
 	AddTail(*Node)
 	EndTail()
 	EndCommand()
@@ -75,6 +77,11 @@ func ClickRight(x, y int) Click {
 	return Click{ButtonRight, x, y}
 }
 
+type Position struct {
+	X int
+	Y int
+}
+
 type CommandBuffer struct {
 	on    bool
 	quit  chan bool
@@ -84,6 +91,7 @@ type CommandBuffer struct {
 	wheel chan Wheel
 	mod   chan Modifier
 	key   chan Key
+	pos   chan Position
 }
 
 func NewCommandBuffer() *CommandBuffer {
@@ -96,6 +104,7 @@ func NewCommandBuffer() *CommandBuffer {
 		wheel: nil,
 		mod:   nil,
 		key:   nil,
+		pos:   nil,
 	}
 }
 
@@ -179,6 +188,17 @@ func (cb *CommandBuffer) SendKey(k Key) {
 	}
 }
 
+func (cb *CommandBuffer) GetPosition() chan Position {
+	cb.pos = make(chan Position)
+	return cb.pos
+}
+
+func (cb *CommandBuffer) SendPosition(x, y int) {
+	if cb.pos != nil {
+		cb.pos <- Position{x, y}
+	}
+}
+
 func (cb *CommandBuffer) QuitCommand() {
 	if cb.on && cb.quit != nil {
 		cb.quit <- true
@@ -194,6 +214,7 @@ func (cb *CommandBuffer) EndCommand() {
 		cb.wheel = nil
 		cb.mod = nil
 		cb.key = nil
+		cb.pos = nil
 		cb.quit = nil
 	}
 }

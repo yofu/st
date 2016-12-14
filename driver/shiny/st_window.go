@@ -590,6 +590,7 @@ func (stw *Window) Start(fn string) {
 					if tailnodes != nil {
 						dx := endX - startX
 						dy := endY - startY
+						stw.SendPosition(dx, dy)
 						if dx&3 == 0 || dy&3 == 0 {
 							stw.TailLine()
 						}
