@@ -658,10 +658,8 @@ func (stw *Window) Start(fn string) {
 						}
 					}
 				}
-				if !stw.Executing() {
-					stw.Redraw()
-					stw.window.Publish()
-				}
+				stw.Redraw()
+				stw.window.Publish()
 			case mouse.DirStep:
 				endX = int(e.X)
 				endY = int(e.Y)
