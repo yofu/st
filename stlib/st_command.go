@@ -196,19 +196,27 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 		delta := 1000.0
 		dir := ""
 		diff := map[string]float64{"X": 0.0, "Y": 0.0, "Z": 0.0}
-		bycoord := func() {
-			coord := []float64{0.0, 0.0, 0.0}
-			if len(nodes) > 0 {
-				coord = nodes[0].Coord
+		bydiff := func() {
+			ns := stw.SelectedNodes()
+			nodes = []*Node{
+				&Node{
+					Coord: []float64{0.000,
+						0.000,
+						0.000,
+					},
+				},
+				&Node{
+					Coord: []float64{diff["X"]*0.001,
+						diff["Y"]*0.001,
+						diff["Z"]*0.001,
+					},
+				},
 			}
-			n0, _ := stw.Frame().CoordNode(coord[0], coord[1], coord[2], stw.EPS())
-			n, _ := stw.Frame().CoordNode(coord[0]+diff["X"]*0.001, coord[1]+diff["Y"]*0.001, coord[2]+diff["Z"]*0.001, stw.EPS())
-			nodes = []*Node{n0, n}
-			stw.SelectNode(nodes)
 			err := f(nodes)
 			if err != nil {
 				ErrorMessage(stw, err, ERROR)
 			}
+			nodes = ns
 		}
 	multinodes:
 		for {
@@ -254,7 +262,7 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 					break multinodes
 				case ButtonLeft:
 					if each && dir != "" {
-						bycoord()
+						bydiff()
 					}
 				}
 			case k := <-keych:
@@ -276,7 +284,7 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 						}
 					case key.CodeReturnEnter:
 						if each && dir != "" {
-							bycoord()
+							bydiff()
 							stw.Redraw()
 						}
 					case key.CodeX, key.CodeY, key.CodeZ:
