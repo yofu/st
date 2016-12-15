@@ -663,7 +663,7 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 	var el0 *Elem
 	if stw.ElemSelected() {
 		for _, el := range stw.SelectedElems() {
-			if el.IsLineElem() {
+			if cond(el) {
 				el0 = el
 				break
 			}
