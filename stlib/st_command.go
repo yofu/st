@@ -704,7 +704,7 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 				switch c.Button {
 				case ButtonLeft:
 					el := <-elch
-					if el == nil {
+					if el == nil || !cond(el) {
 						ErrorMessage(stw, fmt.Errorf("no elem"), ERROR)
 					} else {
 						f(c, el0, el)
