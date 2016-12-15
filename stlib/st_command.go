@@ -31,6 +31,7 @@ var (
 		"SPLINE":         Spline,
 		"NOTICE1459":     Notice1459,
 		"TOGGLEBOND":     ToggleBond,
+		"COPYBOND":       CopyBond,
 		"EDITPLATEELEM":  EditPlateElem,
 	}
 )
@@ -708,6 +709,16 @@ func MatchProperty(stw Commander) chan bool {
 	}, func(c Click, el0 *Elem, el *Elem) {
 		el.Sect = el0.Sect
 		el.Etype = el0.Etype
+	}, func() {})
+}
+
+func CopyBond(stw Commander) chan bool {
+	return onemultielem(stw, func(el *Elem) bool {
+		return el.IsLineElem()
+	}, func(c Click, el0 *Elem, el *Elem) {
+		for i := 0; i < 12; i++ {
+			el.Bonds[i] = el0.Bonds[i]
+		}
 	}, func() {})
 }
 
