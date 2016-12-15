@@ -26,6 +26,7 @@ var (
 		"MOVENODE":       MoveNode,
 		"MOVEELEM":       MoveElem,
 		"TRIM":           Trim,
+		"EXTEND":         Extend,
 		"MOVEUPDOWN":     MoveUpDown,
 		"SPLINE":         Spline,
 		"NOTICE1459":     Notice1459,
@@ -722,6 +723,25 @@ func Trim(stw Commander) chan bool {
 		} else {
 			_, _, err = frame.Trim(el0, el, -1, eps)
 		}
+		if err != nil {
+			ErrorMessage(stw, err, ERROR)
+		}
+	}, func() {
+		for _, el := range stw.SelectedElems() {
+			el.DivideAtOns(stw.EPS())
+			break
+		}
+	})
+}
+
+func Extend(stw Commander) chan bool {
+	return onemultielem(stw, func(el *Elem) bool {
+		return el.IsLineElem()
+	}, func(c Click, el0 *Elem, el *Elem) {
+		frame := stw.Frame()
+		eps := stw.EPS()
+		var err error
+		_, _, err = frame.Extend(el0, el, eps)
 		if err != nil {
 			ErrorMessage(stw, err, ERROR)
 		}
