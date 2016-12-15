@@ -630,7 +630,7 @@ func HatchPlateElem(stw Commander) chan bool {
 	return quit
 }
 
-func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *Elem)) chan bool {
+func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *Elem), exitfunc func()) chan bool {
 	quit := make(chan bool)
 	var el0 *Elem
 	if stw.ElemSelected() {
@@ -683,6 +683,7 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 						stw.Redraw()
 					}
 				case ButtonRight:
+					exitfunc()
 					stw.Deselect()
 					Snapshot(stw)
 					stw.EndCommand()
@@ -690,6 +691,7 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 					break trim_click
 				}
 			case <-quit:
+				exitfunc()
 				stw.EndCommand()
 				stw.Redraw()
 				break trim_click
@@ -705,7 +707,7 @@ func MatchProperty(stw Commander) chan bool {
 	}, func(c Click, el0 *Elem, el *Elem) {
 		el.Sect = el0.Sect
 		el.Etype = el0.Etype
-	})
+	}, func() {})
 }
 
 func Trim(stw Commander) chan bool {
@@ -722,6 +724,11 @@ func Trim(stw Commander) chan bool {
 		}
 		if err != nil {
 			ErrorMessage(stw, err, ERROR)
+		}
+	}, func() {
+		for _, el := range stw.SelectedElems() {
+			el.DivideAtOns(stw.EPS())
+			break
 		}
 	})
 }
