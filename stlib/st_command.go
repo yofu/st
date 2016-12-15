@@ -485,7 +485,7 @@ func Notice1459(stw Commander) chan bool {
 	}, false)
 }
 
-func multielems(stw Commander, f func([]*Elem) error) chan bool {
+func multielems(stw Commander, cond func(*Elem) bool, f func([]*Elem) error) chan bool {
 	if stw.ElemSelected() {
 		f(stw.SelectedElems())
 		stw.EndCommand()
@@ -500,7 +500,7 @@ func multielems(stw Commander, f func([]*Elem) error) chan bool {
 		for {
 			select {
 			case el := <-elch:
-				if el != nil {
+				if el != nil && cond(el) {
 					elems = append(elems, el)
 					AddSelection(stw, el)
 					stw.Redraw()
@@ -529,23 +529,14 @@ func multielems(stw Commander, f func([]*Elem) error) chan bool {
 }
 
 func JoinLineElem(stw Commander) chan bool {
-	return multielems(stw, func(elems []*Elem) error {
-		els := make([]*Elem, 2)
-		num := 0
-		for _, el := range elems {
-			if el != nil && el.IsLineElem() {
-				els[num] = el
-				num++
-				if num >= 2 {
-					break
-				}
-			}
-		}
-		if num < 2 {
+	return multielems(stw, func(el *Elem) bool {
+		return el.IsLineElem() && !el.Lock
+	}, func(elems []*Elem) error {
+		if len(elems) < 2 {
 			return fmt.Errorf("too few elems")
 		}
 		frame := stw.Frame()
-		err := frame.JoinLineElem(els[0], els[1], true, true)
+		err := frame.JoinLineElem(elems[0], elems[1], true, true)
 		if err != nil {
 			return err
 		}
@@ -555,12 +546,12 @@ func JoinLineElem(stw Commander) chan bool {
 }
 
 func Erase(stw Commander) chan bool {
-	return multielems(stw, func(elems []*Elem) error {
+	return multielems(stw, func(el *Elem) bool {
+		return !el.Lock
+	}, func(elems []*Elem) error {
 		frame := stw.Frame()
 		for _, el := range elems {
-			if el != nil && !el.Lock {
-				frame.DeleteElem(el.Num)
-			}
+			frame.DeleteElem(el.Num)
 		}
 		stw.Deselect()
 		ns := frame.NodeNoReference()
@@ -575,36 +566,24 @@ func Erase(stw Commander) chan bool {
 }
 
 func AddPlateElemByLine(stw Commander) chan bool {
-	return multielems(stw, func(elems []*Elem) error {
+	return multielems(stw, func(el *Elem) bool {
+		return el.IsLineElem()
+	}, func(elems []*Elem) error {
 		frame := stw.Frame()
 		if len(elems) < 2 {
-			return nil
-		}
-		els := make([]*Elem, 2)
-		num := 0
-		for _, el := range stw.SelectedElems() {
-			if el != nil && el.IsLineElem() {
-				els[num] = el
-				num++
-				if num >= 2 {
-					break
-				}
-			}
-		}
-		if num < 2 {
-			return nil
+			return fmt.Errorf("too few elems")
 		}
 		ns := make([]*Node, 4)
-		ns[0] = els[0].Enod[0]
-		ns[1] = els[0].Enod[1]
-		_, cw1 := ClockWise(ns[0].Pcoord, ns[1].Pcoord, els[1].Enod[0].Pcoord)
-		_, cw2 := ClockWise(ns[0].Pcoord, els[1].Enod[0].Pcoord, els[1].Enod[1].Pcoord)
+		ns[0] = elems[0].Enod[0]
+		ns[1] = elems[0].Enod[1]
+		_, cw1 := ClockWise(ns[0].Pcoord, ns[1].Pcoord, elems[1].Enod[0].Pcoord)
+		_, cw2 := ClockWise(ns[0].Pcoord, elems[1].Enod[0].Pcoord, elems[1].Enod[1].Pcoord)
 		if cw1 == cw2 {
-			ns[2] = els[1].Enod[0]
-			ns[3] = els[1].Enod[1]
+			ns[2] = elems[1].Enod[0]
+			ns[3] = elems[1].Enod[1]
 		} else {
-			ns[2] = els[1].Enod[1]
-			ns[3] = els[1].Enod[0]
+			ns[2] = elems[1].Enod[1]
+			ns[3] = elems[1].Enod[0]
 		}
 		sec := frame.DefaultSect()
 		el := frame.AddPlateElem(-1, ns, sec, NULL)
@@ -1040,7 +1019,9 @@ func Spline(stw Commander) chan bool {
 	scale := 1000.0
 	ndiv := 4
 	original := true
-	return multielems(stw, func(elems []*Elem) error {
+	return multielems(stw, func(el *Elem) bool {
+		return true
+	}, func(elems []*Elem) error {
 		nodes := stw.Frame().ElemToNode(elems...)
 		return createspline("spline.dxf", nodes, d, z, scale, ndiv, original)
 	})
