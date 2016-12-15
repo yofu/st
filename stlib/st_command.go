@@ -29,6 +29,7 @@ var (
 		"MOVEUPDOWN":     MoveUpDown,
 		"SPLINE":         Spline,
 		"NOTICE1459":     Notice1459,
+		"TOGGLEBOND":     ToggleBond,
 	}
 )
 
@@ -112,6 +113,19 @@ func onenode(stw Commander, f func(*Node) error) chan bool {
 		}
 	}()
 	return quit
+}
+
+func ToggleBond(stw Commander) chan bool {
+	return onenode(stw, func(n *Node) error {
+		for _, el := range stw.SelectedElems() {
+			if el == nil {
+				continue
+			}
+			el.ToggleBond(n.Num)
+		}
+		Snapshot(stw)
+		return nil
+	})
 }
 
 func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
