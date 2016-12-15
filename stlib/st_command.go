@@ -15,24 +15,25 @@ import (
 
 var (
 	Commands = map[string]func(Commander) chan bool{
-		"DISTS":          Dists,
-		"MATCHPROPERTY":  MatchProperty,
-		"JOINLINEELEM":   JoinLineElem,
-		"ERASE":          Erase,
-		"ADDLINEELEM":    AddLineElem,
-		"ADDPLATEELEM":   AddPlateElem,
-		"HATCHPLATEELEM": HatchPlateElem,
-		"COPYELEM":       CopyElem,
-		"MOVENODE":       MoveNode,
-		"MOVEELEM":       MoveElem,
-		"TRIM":           Trim,
-		"EXTEND":         Extend,
-		"MOVEUPDOWN":     MoveUpDown,
-		"SPLINE":         Spline,
-		"NOTICE1459":     Notice1459,
-		"TOGGLEBOND":     ToggleBond,
-		"COPYBOND":       CopyBond,
-		"EDITPLATEELEM":  EditPlateElem,
+		"DISTS":              Dists,
+		"MATCHPROPERTY":      MatchProperty,
+		"JOINLINEELEM":       JoinLineElem,
+		"ERASE":              Erase,
+		"ADDLINEELEM":        AddLineElem,
+		"ADDPLATEELEM":       AddPlateElem,
+		"ADDPLATEELEMBYLINE": AddPlateElemByLine,
+		"HATCHPLATEELEM":     HatchPlateElem,
+		"COPYELEM":           CopyElem,
+		"MOVENODE":           MoveNode,
+		"MOVEELEM":           MoveElem,
+		"TRIM":               Trim,
+		"EXTEND":             Extend,
+		"MOVEUPDOWN":         MoveUpDown,
+		"SPLINE":             Spline,
+		"NOTICE1459":         Notice1459,
+		"TOGGLEBOND":         ToggleBond,
+		"COPYBOND":           CopyBond,
+		"EDITPLATEELEM":      EditPlateElem,
 	}
 )
 
@@ -568,6 +569,52 @@ func Erase(stw Commander) chan bool {
 				frame.DeleteNode(n.Num)
 			}
 		}
+		Snapshot(stw)
+		return nil
+	})
+}
+
+func AddPlateElemByLine(stw Commander) chan bool {
+	return multielems(stw, func(elems []*Elem) error {
+		frame := stw.Frame()
+		if len(elems) < 2 {
+			return nil
+		}
+		els := make([]*Elem, 2)
+		num := 0
+		for _, el := range stw.SelectedElems() {
+			if el != nil && el.IsLineElem() {
+				els[num] = el
+				num++
+				if num >= 2 {
+					break
+				}
+			}
+		}
+		if num < 2 {
+			return nil
+		}
+		ns := make([]*Node, 4)
+		ns[0] = els[0].Enod[0]
+		ns[1] = els[0].Enod[1]
+		_, cw1 := ClockWise(ns[0].Pcoord, ns[1].Pcoord, els[1].Enod[0].Pcoord)
+		_, cw2 := ClockWise(ns[0].Pcoord, els[1].Enod[0].Pcoord, els[1].Enod[1].Pcoord)
+		if cw1 == cw2 {
+			ns[2] = els[1].Enod[0]
+			ns[3] = els[1].Enod[1]
+		} else {
+			ns[2] = els[1].Enod[1]
+			ns[3] = els[1].Enod[0]
+		}
+		sec := frame.DefaultSect()
+		el := frame.AddPlateElem(-1, ns, sec, NULL)
+		var buf bytes.Buffer
+		buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
+		for _, n := range ns {
+			buf.WriteString(fmt.Sprintf("%d ", n.Num))
+		}
+		buf.WriteString(fmt.Sprintf(", SECT: %d)", sec.Num))
+		stw.History(buf.String())
 		Snapshot(stw)
 		return nil
 	})
