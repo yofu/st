@@ -208,9 +208,9 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 					},
 				},
 				&Node{
-					Coord: []float64{diff["X"]*0.001,
-						diff["Y"]*0.001,
-						diff["Z"]*0.001,
+					Coord: []float64{diff["X"] * 0.001,
+						diff["Y"] * 0.001,
+						diff["Z"] * 0.001,
 					},
 				},
 			}
