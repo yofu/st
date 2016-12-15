@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+	"strings"
 
 	"golang.org/x/mobile/event/key"
 
@@ -791,7 +792,7 @@ func Extend(stw Commander) chan bool {
 	})
 }
 
-func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int)) chan bool {
+func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int, map[string]float64)) chan bool {
 	quit := make(chan bool)
 	var el0 *Elem
 	if stw.ElemSelected() {
@@ -802,9 +803,14 @@ func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int)) chan
 			}
 		}
 	}
+	values := make(map[string]float64)
 	go func() {
 		elch := stw.GetElem()
 		clickch := stw.GetClick()
+		keych := stw.GetKey()
+		var wheelch chan Wheel
+		delta := 1000.0
+		name := ""
 		for {
 			select {
 			case el := <-elch:
@@ -819,7 +825,11 @@ func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int)) chan
 				switch c.Button {
 				case ButtonLeft:
 					if el0 != nil {
-						f(el0, c.X, c.Y)
+						if wheelch != nil {
+							stw.StopWheel()
+							wheelch = nil
+						}
+						f(el0, c.X, c.Y, values)
 						Snapshot(stw)
 						stw.Redraw()
 						stw.Deselect()
@@ -830,6 +840,47 @@ func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int)) chan
 					stw.EndCommand()
 					stw.Redraw()
 					return
+				}
+			case k := <-keych:
+				if k.Direction == key.DirRelease {
+					switch k.Code {
+					default:
+						if name != "" {
+							delta = 1000.0
+						}
+						name = strings.ToUpper(string(k.Rune))
+						if wheelch == nil {
+							wheelch = stw.GetWheel()
+						}
+					case key.CodeA, key.CodeH:
+						delta *= 10.0
+					case key.CodeS, key.CodeL:
+						delta *= 0.1
+					case key.CodeJ:
+						if name != "" {
+							values[name] -= delta
+							stw.History(fmt.Sprintf("%s=%.3f\r", name, values[name]))
+						}
+					case key.CodeK:
+						if name != "" {
+							values[name] += delta
+							stw.History(fmt.Sprintf("%s=%.3f\r", name, values[name]))
+						}
+					case key.CodeC:
+						if name != "" {
+							values[name] = 0.0
+							stw.History(fmt.Sprintf("%s=%.3f\r", name, values[name]))
+						}
+					}
+				}
+			case w := <-wheelch:
+				if name != "" {
+					if w == WheelUp {
+						values[name] += delta
+					} else {
+						values[name] -= delta
+					}
+					stw.History(fmt.Sprintf("%s=%.3f\r", name, values[name]))
 				}
 			case <-quit:
 				stw.EndCommand()
@@ -842,12 +893,14 @@ func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int)) chan
 }
 
 func Offset(stw Commander) chan bool {
-	// TODO: set angle & val
-	angle := 0.0
-	val := 1.0
 	return getside(stw, func(el *Elem) bool {
 		return el.IsLineElem()
-	}, func(el *Elem, x, y int) {
+	}, func(el *Elem, x, y int, val map[string]float64) {
+		if val["V"] == 0.0 {
+			return
+		}
+		value := val["V"] * 0.001
+		angle := val["T"] * math.Pi / 180.0
 		frame := stw.Frame()
 		mid := el.MidPoint()
 		c := math.Cos(angle)
@@ -857,9 +910,9 @@ func Offset(stw Commander) chan bool {
 		}
 		st1 := frame.View.ProjectCoord(mid)
 		if DotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], float64(x), float64(y))*DotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], st1[0], st1[1]) < 0.0 {
-			el.Offset(-val, angle, stw.EPS())
+			el.Offset(-value, angle, stw.EPS())
 		} else {
-			el.Offset(val, angle, stw.EPS())
+			el.Offset(value, angle, stw.EPS())
 		}
 		Snapshot(stw)
 	})

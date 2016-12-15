@@ -21,6 +21,7 @@ type Commander interface {
 	GetClick() chan Click
 	SendClick(Click)
 	GetWheel() chan Wheel
+	StopWheel()
 	SendWheel(Wheel) bool
 	GetModifier() chan Modifier
 	SendModifier(Modifier)
@@ -156,6 +157,10 @@ func (cb *CommandBuffer) SendClick(c Click) {
 func (cb *CommandBuffer) GetWheel() chan Wheel {
 	cb.wheel = make(chan Wheel)
 	return cb.wheel
+}
+
+func (cb *CommandBuffer) StopWheel() {
+	cb.wheel = nil
 }
 
 func (cb *CommandBuffer) SendWheel(w Wheel) bool {
