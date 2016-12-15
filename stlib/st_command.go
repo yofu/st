@@ -30,6 +30,7 @@ var (
 		"SPLINE":         Spline,
 		"NOTICE1459":     Notice1459,
 		"TOGGLEBOND":     ToggleBond,
+		"EDITPLATEELEM":  EditPlateElem,
 	}
 )
 
@@ -194,6 +195,24 @@ func AddLineElem(stw Commander) chan bool {
 		sec := frame.DefaultSect()
 		el := frame.AddLineElem(-1, []*Node{n0, n}, sec, NULL)
 		stw.History(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, n0.Num, n.Num, sec.Num))
+		Snapshot(stw)
+		return nil
+	})
+}
+
+func EditPlateElem(stw Commander) chan bool {
+	return twonodes(stw, func(n0, n *Node) error {
+		if n0 == n {
+			return nil
+		}
+		for _, el := range stw.SelectedElems() {
+			for i, en := range el.Enod {
+				if en == n0 {
+					el.Enod[i] = n
+					break
+				}
+			}
+		}
 		Snapshot(stw)
 		return nil
 	})
