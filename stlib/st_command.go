@@ -28,6 +28,7 @@ var (
 		"MOVEELEM":           MoveElem,
 		"TRIM":               Trim,
 		"EXTEND":             Extend,
+		"OFFSET":             Offset,
 		"MOVEUPDOWN":         MoveUpDown,
 		"SPLINE":             Spline,
 		"NOTICE1459":         Notice1459,
@@ -787,6 +788,80 @@ func Extend(stw Commander) chan bool {
 			el.DivideAtOns(stw.EPS())
 			break
 		}
+	})
+}
+
+func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int)) chan bool {
+	quit := make(chan bool)
+	var el0 *Elem
+	if stw.ElemSelected() {
+		for _, el := range stw.SelectedElems() {
+			if cond(el) {
+				el0 = el
+				break
+			}
+		}
+	}
+	go func() {
+		elch := stw.GetElem()
+		clickch := stw.GetClick()
+		for {
+			select {
+			case el := <-elch:
+				if el0 == nil {
+					if el != nil && cond(el) {
+						el0 = el
+						AddSelection(stw, el0)
+						stw.Redraw()
+					}
+				}
+			case c := <-clickch:
+				switch c.Button {
+				case ButtonLeft:
+					if el0 != nil {
+						f(el0, c.X, c.Y)
+						Snapshot(stw)
+						stw.Redraw()
+						stw.Deselect()
+						el0 = nil
+					}
+				case ButtonRight:
+					stw.Deselect()
+					stw.EndCommand()
+					stw.Redraw()
+					return
+				}
+			case <-quit:
+				stw.EndCommand()
+				stw.Redraw()
+				return
+			}
+		}
+	}()
+	return quit
+}
+
+func Offset(stw Commander) chan bool {
+	// TODO: set angle & val
+	angle := 0.0
+	val := 1.0
+	return getside(stw, func(el *Elem) bool {
+		return el.IsLineElem()
+	}, func(el *Elem, x, y int) {
+		frame := stw.Frame()
+		mid := el.MidPoint()
+		c := math.Cos(angle)
+		s := math.Sin(angle)
+		for i := 0; i < 3; i++ {
+			mid[i] += el.Strong[i]*c + el.Weak[i]*s
+		}
+		st1 := frame.View.ProjectCoord(mid)
+		if DotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], float64(x), float64(y))*DotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], st1[0], st1[1]) < 0.0 {
+			el.Offset(-val, angle, stw.EPS())
+		} else {
+			el.Offset(val, angle, stw.EPS())
+		}
+		Snapshot(stw)
 	})
 }
 
