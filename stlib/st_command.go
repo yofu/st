@@ -23,6 +23,8 @@ var (
 		"ADDPLATEELEM":   AddPlateElem,
 		"HATCHPLATEELEM": HatchPlateElem,
 		"COPYELEM":       CopyElem,
+		"MOVENODE":       MoveNode,
+		"MOVEELEM":       MoveElem,
 		"TRIM":           Trim,
 		"MOVEUPDOWN":     MoveUpDown,
 		"SPLINE":         Spline,
@@ -230,7 +232,6 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 						} else {
 							nodes = []*Node{nodes[0], n}
 						}
-						stw.SelectNode(nodes)
 						err := f(nodes)
 						if err != nil {
 							ErrorMessage(stw, err, ERROR)
@@ -357,6 +358,53 @@ func CopyElem(stw Commander) chan bool {
 					continue
 				}
 				el.Copy(vec[0], vec[1], vec[2], eps)
+			}
+			Snapshot(stw)
+		}
+		return nil
+	}, true)
+}
+
+func MoveNode(stw Commander) chan bool {
+	return multinodes(stw, func(ns []*Node) error {
+		if len(ns) < 2 {
+			return nil
+		}
+		frame := stw.Frame()
+		vec := Direction(ns[0], ns[len(ns)-1], false)
+		if !(vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0) {
+			for _, n := range frame.ElemToNode(stw.SelectedElems()...) {
+				AddSelection(stw, n)
+			}
+			if !stw.NodeSelected() {
+				return nil
+			}
+			for _, n := range stw.SelectedNodes() {
+				if n == nil || n.IsHidden(frame.Show) || n.Lock {
+					continue
+				}
+				n.Move(vec[0], vec[1], vec[2])
+			}
+			Snapshot(stw)
+		}
+		return nil
+	}, true)
+}
+
+func MoveElem(stw Commander) chan bool {
+	return multinodes(stw, func(ns []*Node) error {
+		if len(ns) < 2 {
+			return nil
+		}
+		frame := stw.Frame()
+		vec := Direction(ns[0], ns[len(ns)-1], false)
+		if !(vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0) {
+			eps := stw.EPS()
+			for _, el := range stw.SelectedElems() {
+				if el == nil || el.IsHidden(frame.Show) || el.Lock {
+					continue
+				}
+				el.Move(vec[0], vec[1], vec[2], eps)
 			}
 			Snapshot(stw)
 		}
