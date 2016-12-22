@@ -6,6 +6,9 @@ import (
 	"math"
 	"math/rand"
 	"sort"
+	"strings"
+
+	"golang.org/x/mobile/event/key"
 
 	"github.com/yofu/dxf"
 	"github.com/yofu/st/matrix"
@@ -13,18 +16,26 @@ import (
 
 var (
 	Commands = map[string]func(Commander) chan bool{
-		"DISTS":          Dists,
-		"MATCHPROPERTY":  MatchProperty,
-		"JOINLINEELEM":   JoinLineElem,
-		"ERASE":          Erase,
-		"ADDLINEELEM":    AddLineElem,
-		"ADDPLATEELEM":   AddPlateElem,
-		"HATCHPLATEELEM": HatchPlateElem,
-		"COPYELEM":       CopyElem,
-		"TRIM":           Trim,
-		"MOVEUPDOWN":     MoveUpDown,
-		"SPLINE":         Spline,
-		"NOTICE1459":     Notice1459,
+		"DISTS":              Dists,
+		"MATCHPROPERTY":      MatchProperty,
+		"JOINLINEELEM":       JoinLineElem,
+		"ERASE":              Erase,
+		"ADDLINEELEM":        AddLineElem,
+		"ADDPLATEELEM":       AddPlateElem,
+		"ADDPLATEELEMBYLINE": AddPlateElemByLine,
+		"HATCHPLATEELEM":     HatchPlateElem,
+		"COPYELEM":           CopyElem,
+		"MOVENODE":           MoveNode,
+		"MOVEELEM":           MoveElem,
+		"TRIM":               Trim,
+		"EXTEND":             Extend,
+		"OFFSET":             Offset,
+		"MOVEUPDOWN":         MoveUpDown,
+		"SPLINE":             Spline,
+		"NOTICE1459":         Notice1459,
+		"TOGGLEBOND":         ToggleBond,
+		"COPYBOND":           CopyBond,
+		"EDITPLATEELEM":      EditPlateElem,
 	}
 )
 
@@ -110,6 +121,19 @@ func onenode(stw Commander, f func(*Node) error) chan bool {
 	return quit
 }
 
+func ToggleBond(stw Commander) chan bool {
+	return onenode(stw, func(n *Node) error {
+		for _, el := range stw.SelectedElems() {
+			if el == nil {
+				continue
+			}
+			el.ToggleBond(n.Num)
+		}
+		Snapshot(stw)
+		return nil
+	})
+}
+
 func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 	quit := make(chan bool)
 	go func() {
@@ -181,14 +205,59 @@ func AddLineElem(stw Commander) chan bool {
 	})
 }
 
+func EditPlateElem(stw Commander) chan bool {
+	return twonodes(stw, func(n0, n *Node) error {
+		if n0 == n {
+			return nil
+		}
+		for _, el := range stw.SelectedElems() {
+			for i, en := range el.Enod {
+				if en == n0 {
+					el.Enod[i] = n
+					break
+				}
+			}
+		}
+		Snapshot(stw)
+		return nil
+	})
+}
+
 func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 	quit := make(chan bool)
 	go func() {
 		nodes := make([]*Node, 0)
 		nch := stw.GetNode()
 		clickch := stw.GetClick()
+		keych := stw.GetKey()
+		var wheelch chan Wheel
 		as := stw.AltSelectNode()
 		stw.SetAltSelectNode(false)
+		delta := 1000.0
+		dir := ""
+		diff := map[string]float64{"X": 0.0, "Y": 0.0, "Z": 0.0}
+		bydiff := func() {
+			ns := stw.SelectedNodes()
+			nodes = []*Node{
+				&Node{
+					Coord: []float64{0.000,
+						0.000,
+						0.000,
+					},
+				},
+				&Node{
+					Coord: []float64{diff["X"] * 0.001,
+						diff["Y"] * 0.001,
+						diff["Z"] * 0.001,
+					},
+				},
+			}
+			err := f(nodes)
+			if err != nil {
+				ErrorMessage(stw, err, ERROR)
+			}
+			nodes = ns
+		}
 	multinodes:
 		for {
 			select {
@@ -201,7 +270,6 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 						} else {
 							nodes = []*Node{nodes[0], n}
 						}
-						stw.SelectNode(nodes)
 						err := f(nodes)
 						if err != nil {
 							ErrorMessage(stw, err, ERROR)
@@ -215,7 +283,8 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 					}
 				}
 			case c := <-clickch:
-				if c.Button == ButtonRight {
+				switch c.Button {
+				case ButtonRight:
 					if !each {
 						if len(nodes) > 0 {
 							err := f(nodes)
@@ -230,7 +299,57 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 					stw.EndCommand()
 					stw.Redraw()
 					break multinodes
+				case ButtonLeft:
+					if each && dir != "" {
+						bydiff()
+					}
 				}
+			case k := <-keych:
+				if k.Direction == key.DirRelease {
+					switch k.Code {
+					case key.CodeA, key.CodeH:
+						delta *= 10.0
+					case key.CodeS, key.CodeL:
+						delta *= 0.1
+					case key.CodeJ:
+						diff[dir] -= delta
+						stw.History(fmt.Sprintf("%s=%.3f\r", dir, diff[dir]))
+					case key.CodeK:
+						diff[dir] += delta
+						stw.History(fmt.Sprintf("%s=%.3f\r", dir, diff[dir]))
+					case key.CodeC:
+						for _, d := range []string{"X", "Y", "Z"} {
+							diff[d] = 0.0
+						}
+					case key.CodeReturnEnter:
+						if each && dir != "" {
+							bydiff()
+							stw.Redraw()
+						}
+					case key.CodeX, key.CodeY, key.CodeZ:
+						if wheelch == nil {
+							wheelch = stw.GetWheel()
+						}
+						if dir != "" {
+							delta = 1000.0
+						}
+						switch k.Code {
+						case key.CodeX:
+							dir = "X"
+						case key.CodeY:
+							dir = "Y"
+						case key.CodeZ:
+							dir = "Z"
+						}
+					}
+				}
+			case w := <-wheelch:
+				if w == WheelUp {
+					diff[dir] += delta
+				} else {
+					diff[dir] -= delta
+				}
+				stw.History(fmt.Sprintf("%s=%.3f\r", dir, diff[dir]))
 			case <-quit:
 				stw.SetAltSelectNode(as)
 				stw.EndTail()
@@ -284,6 +403,53 @@ func CopyElem(stw Commander) chan bool {
 	}, true)
 }
 
+func MoveNode(stw Commander) chan bool {
+	return multinodes(stw, func(ns []*Node) error {
+		if len(ns) < 2 {
+			return nil
+		}
+		frame := stw.Frame()
+		vec := Direction(ns[0], ns[len(ns)-1], false)
+		if !(vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0) {
+			for _, n := range frame.ElemToNode(stw.SelectedElems()...) {
+				AddSelection(stw, n)
+			}
+			if !stw.NodeSelected() {
+				return nil
+			}
+			for _, n := range stw.SelectedNodes() {
+				if n == nil || n.IsHidden(frame.Show) || n.Lock {
+					continue
+				}
+				n.Move(vec[0], vec[1], vec[2])
+			}
+			Snapshot(stw)
+		}
+		return nil
+	}, true)
+}
+
+func MoveElem(stw Commander) chan bool {
+	return multinodes(stw, func(ns []*Node) error {
+		if len(ns) < 2 {
+			return nil
+		}
+		frame := stw.Frame()
+		vec := Direction(ns[0], ns[len(ns)-1], false)
+		if !(vec[0] == 0.0 && vec[1] == 0.0 && vec[2] == 0.0) {
+			eps := stw.EPS()
+			for _, el := range stw.SelectedElems() {
+				if el == nil || el.IsHidden(frame.Show) || el.Lock {
+					continue
+				}
+				el.Move(vec[0], vec[1], vec[2], eps)
+			}
+			Snapshot(stw)
+		}
+		return nil
+	}, true)
+}
+
 func Notice1459(stw Commander) chan bool {
 	return multinodes(stw, func(ns []*Node) error {
 		if len(ns) < 2 {
@@ -321,7 +487,7 @@ func Notice1459(stw Commander) chan bool {
 	}, false)
 }
 
-func multielems(stw Commander, f func([]*Elem) error) chan bool {
+func multielems(stw Commander, cond func(*Elem) bool, f func([]*Elem) error) chan bool {
 	if stw.ElemSelected() {
 		f(stw.SelectedElems())
 		stw.EndCommand()
@@ -336,7 +502,7 @@ func multielems(stw Commander, f func([]*Elem) error) chan bool {
 		for {
 			select {
 			case el := <-elch:
-				if el != nil {
+				if el != nil && cond(el) {
 					elems = append(elems, el)
 					AddSelection(stw, el)
 					stw.Redraw()
@@ -365,23 +531,14 @@ func multielems(stw Commander, f func([]*Elem) error) chan bool {
 }
 
 func JoinLineElem(stw Commander) chan bool {
-	return multielems(stw, func(elems []*Elem) error {
-		els := make([]*Elem, 2)
-		num := 0
-		for _, el := range elems {
-			if el != nil && el.IsLineElem() {
-				els[num] = el
-				num++
-				if num >= 2 {
-					break
-				}
-			}
-		}
-		if num < 2 {
+	return multielems(stw, func(el *Elem) bool {
+		return el.IsLineElem() && !el.Lock
+	}, func(elems []*Elem) error {
+		if len(elems) < 2 {
 			return fmt.Errorf("too few elems")
 		}
 		frame := stw.Frame()
-		err := frame.JoinLineElem(els[0], els[1], true, true)
+		err := frame.JoinLineElem(elems[0], elems[1], true, true)
 		if err != nil {
 			return err
 		}
@@ -391,12 +548,12 @@ func JoinLineElem(stw Commander) chan bool {
 }
 
 func Erase(stw Commander) chan bool {
-	return multielems(stw, func(elems []*Elem) error {
+	return multielems(stw, func(el *Elem) bool {
+		return !el.Lock
+	}, func(elems []*Elem) error {
 		frame := stw.Frame()
 		for _, el := range elems {
-			if el != nil && !el.Lock {
-				frame.DeleteElem(el.Num)
-			}
+			frame.DeleteElem(el.Num)
 		}
 		stw.Deselect()
 		ns := frame.NodeNoReference()
@@ -405,6 +562,40 @@ func Erase(stw Commander) chan bool {
 				frame.DeleteNode(n.Num)
 			}
 		}
+		Snapshot(stw)
+		return nil
+	})
+}
+
+func AddPlateElemByLine(stw Commander) chan bool {
+	return multielems(stw, func(el *Elem) bool {
+		return el.IsLineElem()
+	}, func(elems []*Elem) error {
+		frame := stw.Frame()
+		if len(elems) < 2 {
+			return fmt.Errorf("too few elems")
+		}
+		ns := make([]*Node, 4)
+		ns[0] = elems[0].Enod[0]
+		ns[1] = elems[0].Enod[1]
+		_, cw1 := ClockWise(ns[0].Pcoord, ns[1].Pcoord, elems[1].Enod[0].Pcoord)
+		_, cw2 := ClockWise(ns[0].Pcoord, elems[1].Enod[0].Pcoord, elems[1].Enod[1].Pcoord)
+		if cw1 == cw2 {
+			ns[2] = elems[1].Enod[0]
+			ns[3] = elems[1].Enod[1]
+		} else {
+			ns[2] = elems[1].Enod[1]
+			ns[3] = elems[1].Enod[0]
+		}
+		sec := frame.DefaultSect()
+		el := frame.AddPlateElem(-1, ns, sec, NULL)
+		var buf bytes.Buffer
+		buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
+		for _, n := range ns {
+			buf.WriteString(fmt.Sprintf("%d ", n.Num))
+		}
+		buf.WriteString(fmt.Sprintf(", SECT: %d)", sec.Num))
+		stw.History(buf.String())
 		Snapshot(stw)
 		return nil
 	})
@@ -469,12 +660,12 @@ func HatchPlateElem(stw Commander) chan bool {
 	return quit
 }
 
-func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *Elem)) chan bool {
+func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *Elem), exitfunc func()) chan bool {
 	quit := make(chan bool)
 	var el0 *Elem
 	if stw.ElemSelected() {
 		for _, el := range stw.SelectedElems() {
-			if el.IsLineElem() {
+			if cond(el) {
 				el0 = el
 				break
 			}
@@ -515,13 +706,14 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 				switch c.Button {
 				case ButtonLeft:
 					el := <-elch
-					if el == nil {
+					if el == nil || !cond(el) {
 						ErrorMessage(stw, fmt.Errorf("no elem"), ERROR)
 					} else {
 						f(c, el0, el)
 						stw.Redraw()
 					}
 				case ButtonRight:
+					exitfunc()
 					stw.Deselect()
 					Snapshot(stw)
 					stw.EndCommand()
@@ -529,6 +721,7 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 					break trim_click
 				}
 			case <-quit:
+				exitfunc()
 				stw.EndCommand()
 				stw.Redraw()
 				break trim_click
@@ -544,7 +737,17 @@ func MatchProperty(stw Commander) chan bool {
 	}, func(c Click, el0 *Elem, el *Elem) {
 		el.Sect = el0.Sect
 		el.Etype = el0.Etype
-	})
+	}, func() {})
+}
+
+func CopyBond(stw Commander) chan bool {
+	return onemultielem(stw, func(el *Elem) bool {
+		return el.IsLineElem()
+	}, func(c Click, el0 *Elem, el *Elem) {
+		for i := 0; i < 12; i++ {
+			el.Bonds[i] = el0.Bonds[i]
+		}
+	}, func() {})
 }
 
 func Trim(stw Commander) chan bool {
@@ -562,6 +765,156 @@ func Trim(stw Commander) chan bool {
 		if err != nil {
 			ErrorMessage(stw, err, ERROR)
 		}
+	}, func() {
+		for _, el := range stw.SelectedElems() {
+			el.DivideAtOns(stw.EPS())
+			break
+		}
+	})
+}
+
+func Extend(stw Commander) chan bool {
+	return onemultielem(stw, func(el *Elem) bool {
+		return el.IsLineElem()
+	}, func(c Click, el0 *Elem, el *Elem) {
+		frame := stw.Frame()
+		eps := stw.EPS()
+		var err error
+		_, _, err = frame.Extend(el0, el, eps)
+		if err != nil {
+			ErrorMessage(stw, err, ERROR)
+		}
+	}, func() {
+		for _, el := range stw.SelectedElems() {
+			el.DivideAtOns(stw.EPS())
+			break
+		}
+	})
+}
+
+func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int, map[string]float64)) chan bool {
+	quit := make(chan bool)
+	var el0 *Elem
+	if stw.ElemSelected() {
+		for _, el := range stw.SelectedElems() {
+			if cond(el) {
+				el0 = el
+				break
+			}
+		}
+	}
+	values := make(map[string]float64)
+	go func() {
+		elch := stw.GetElem()
+		clickch := stw.GetClick()
+		keych := stw.GetKey()
+		var wheelch chan Wheel
+		delta := 1000.0
+		name := ""
+		for {
+			select {
+			case el := <-elch:
+				if el0 == nil {
+					if el != nil && cond(el) {
+						el0 = el
+						AddSelection(stw, el0)
+						stw.Redraw()
+					}
+				}
+			case c := <-clickch:
+				switch c.Button {
+				case ButtonLeft:
+					if el0 != nil {
+						if wheelch != nil {
+							stw.StopWheel()
+							wheelch = nil
+						}
+						f(el0, c.X, c.Y, values)
+						Snapshot(stw)
+						stw.Redraw()
+						stw.Deselect()
+						el0 = nil
+					}
+				case ButtonRight:
+					stw.Deselect()
+					stw.EndCommand()
+					stw.Redraw()
+					return
+				}
+			case k := <-keych:
+				if k.Direction == key.DirRelease {
+					switch k.Code {
+					default:
+						if name != "" {
+							delta = 1000.0
+						}
+						name = strings.ToUpper(string(k.Rune))
+						if wheelch == nil {
+							wheelch = stw.GetWheel()
+						}
+					case key.CodeA, key.CodeH:
+						delta *= 10.0
+					case key.CodeS, key.CodeL:
+						delta *= 0.1
+					case key.CodeJ:
+						if name != "" {
+							values[name] -= delta
+							stw.History(fmt.Sprintf("%s=%.3f\r", name, values[name]))
+						}
+					case key.CodeK:
+						if name != "" {
+							values[name] += delta
+							stw.History(fmt.Sprintf("%s=%.3f\r", name, values[name]))
+						}
+					case key.CodeC:
+						if name != "" {
+							values[name] = 0.0
+							stw.History(fmt.Sprintf("%s=%.3f\r", name, values[name]))
+						}
+					}
+				}
+			case w := <-wheelch:
+				if name != "" {
+					if w == WheelUp {
+						values[name] += delta
+					} else {
+						values[name] -= delta
+					}
+					stw.History(fmt.Sprintf("%s=%.3f\r", name, values[name]))
+				}
+			case <-quit:
+				stw.EndCommand()
+				stw.Redraw()
+				return
+			}
+		}
+	}()
+	return quit
+}
+
+func Offset(stw Commander) chan bool {
+	return getside(stw, func(el *Elem) bool {
+		return el.IsLineElem()
+	}, func(el *Elem, x, y int, val map[string]float64) {
+		if val["V"] == 0.0 {
+			return
+		}
+		value := val["V"] * 0.001
+		angle := val["T"] * math.Pi / 180.0
+		frame := stw.Frame()
+		mid := el.MidPoint()
+		c := math.Cos(angle)
+		s := math.Sin(angle)
+		for i := 0; i < 3; i++ {
+			mid[i] += el.Strong[i]*c + el.Weak[i]*s
+		}
+		st1 := frame.View.ProjectCoord(mid)
+		if DotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], float64(x), float64(y))*DotLine(el.Enod[0].Pcoord[0], el.Enod[0].Pcoord[1], el.Enod[1].Pcoord[0], el.Enod[1].Pcoord[1], st1[0], st1[1]) < 0.0 {
+			el.Offset(-value, angle, stw.EPS())
+		} else {
+			el.Offset(value, angle, stw.EPS())
+		}
+		Snapshot(stw)
 	})
 }
 
@@ -794,7 +1147,9 @@ func Spline(stw Commander) chan bool {
 	scale := 1000.0
 	ndiv := 4
 	original := true
-	return multielems(stw, func(elems []*Elem) error {
+	return multielems(stw, func(el *Elem) bool {
+		return true
+	}, func(elems []*Elem) error {
 		nodes := stw.Frame().ElemToNode(elems...)
 		return createspline("spline.dxf", nodes, d, z, scale, ndiv, original)
 	})

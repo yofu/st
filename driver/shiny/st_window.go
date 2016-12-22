@@ -150,6 +150,14 @@ func (stw *Window) keymap(ev key.Event) key.Event {
 	}
 }
 
+func (stw *Window) escape() {
+	stw.QuitCommand()
+	stw.ClearCommandLine()
+	stw.Deselect()
+	stw.Redraw()
+	stw.window.Publish()
+}
+
 func (stw *Window) Start(fn string) {
 	err := stw.LoadFontFace(filepath.Join(home, ".st/fonts/yumindb.ttf"), 14)
 	if err != nil {
@@ -179,6 +187,14 @@ func (stw *Window) Start(fn string) {
 				return
 			}
 		case key.Event:
+			if stw.Executing() {
+				if e.Direction == key.DirRelease && e.Code == key.CodeEscape {
+					stw.escape()
+					continue
+				}
+				stw.SendKey(st.Key(e))
+				continue
+			}
 			switch e.Direction {
 			case key.DirPress, key.DirNone:
 				setprev := true
@@ -280,20 +296,12 @@ func (stw *Window) Start(fn string) {
 							stw.FeedCommand()
 						}
 					case key.CodeEscape:
-						stw.QuitCommand()
-						stw.ClearCommandLine()
+						stw.escape()
 						typing = false
-						stw.Deselect()
-						stw.Redraw()
-						stw.window.Publish()
 					case key.CodeLeftSquareBracket:
 						if e.Modifiers&key.ModControl != 0 {
-							stw.QuitCommand()
-							stw.ClearCommandLine()
+							stw.escape()
 							typing = false
-							stw.Deselect()
-							stw.Redraw()
-							stw.window.Publish()
 						} else {
 							stw.TypeCommandLine("[")
 						}
@@ -582,6 +590,7 @@ func (stw *Window) Start(fn string) {
 					if tailnodes != nil {
 						dx := endX - startX
 						dy := endY - startY
+						stw.SendPosition(dx, dy)
 						if dx&3 == 0 || dy&3 == 0 {
 							stw.TailLine()
 						}
@@ -650,10 +659,8 @@ func (stw *Window) Start(fn string) {
 						}
 					}
 				}
-				if !stw.Executing() {
-					stw.Redraw()
-					stw.window.Publish()
-				}
+				stw.Redraw()
+				stw.window.Publish()
 			case mouse.DirStep:
 				endX = int(e.X)
 				endY = int(e.Y)

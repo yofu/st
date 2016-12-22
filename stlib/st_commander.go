@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/atotto/clipboard"
+	"golang.org/x/mobile/event/key"
 )
 
 type Commander interface {
@@ -20,9 +21,14 @@ type Commander interface {
 	GetClick() chan Click
 	SendClick(Click)
 	GetWheel() chan Wheel
+	StopWheel()
 	SendWheel(Wheel) bool
 	GetModifier() chan Modifier
 	SendModifier(Modifier)
+	GetKey() chan Key
+	SendKey(Key)
+	GetPosition() chan Position
+	SendPosition(int, int)
 	AddTail(*Node)
 	EndTail()
 	EndCommand()
@@ -47,6 +53,8 @@ type Modifier struct {
 	Alt   bool
 }
 
+type Key key.Event
+
 const (
 	ButtonLeft int = iota
 	ButtonMiddle
@@ -70,6 +78,11 @@ func ClickRight(x, y int) Click {
 	return Click{ButtonRight, x, y}
 }
 
+type Position struct {
+	X int
+	Y int
+}
+
 type CommandBuffer struct {
 	on    bool
 	quit  chan bool
@@ -78,6 +91,8 @@ type CommandBuffer struct {
 	click chan Click
 	wheel chan Wheel
 	mod   chan Modifier
+	key   chan Key
+	pos   chan Position
 }
 
 func NewCommandBuffer() *CommandBuffer {
@@ -89,6 +104,8 @@ func NewCommandBuffer() *CommandBuffer {
 		click: nil,
 		wheel: nil,
 		mod:   nil,
+		key:   nil,
+		pos:   nil,
 	}
 }
 
@@ -142,6 +159,10 @@ func (cb *CommandBuffer) GetWheel() chan Wheel {
 	return cb.wheel
 }
 
+func (cb *CommandBuffer) StopWheel() {
+	cb.wheel = nil
+}
+
 func (cb *CommandBuffer) SendWheel(w Wheel) bool {
 	if cb.wheel != nil {
 		cb.wheel <- w
@@ -161,6 +182,28 @@ func (cb *CommandBuffer) SendModifier(m Modifier) {
 	}
 }
 
+func (cb *CommandBuffer) GetKey() chan Key {
+	cb.key = make(chan Key)
+	return cb.key
+}
+
+func (cb *CommandBuffer) SendKey(k Key) {
+	if cb.key != nil {
+		cb.key <- k
+	}
+}
+
+func (cb *CommandBuffer) GetPosition() chan Position {
+	cb.pos = make(chan Position)
+	return cb.pos
+}
+
+func (cb *CommandBuffer) SendPosition(x, y int) {
+	if cb.pos != nil {
+		cb.pos <- Position{x, y}
+	}
+}
+
 func (cb *CommandBuffer) QuitCommand() {
 	if cb.on && cb.quit != nil {
 		cb.quit <- true
@@ -175,6 +218,8 @@ func (cb *CommandBuffer) EndCommand() {
 		cb.click = nil
 		cb.wheel = nil
 		cb.mod = nil
+		cb.key = nil
+		cb.pos = nil
 		cb.quit = nil
 	}
 }
