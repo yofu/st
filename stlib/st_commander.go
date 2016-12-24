@@ -277,7 +277,6 @@ func ReadPgp(stw Commander, filename string) error {
 	if err := s.Err(); err != nil {
 		return err
 	}
-	stw.ClearCommandAlias()
 	for k, v := range aliases {
 		stw.AddCommandAlias(k, v)
 	}

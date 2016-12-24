@@ -8,17 +8,7 @@ type Alias struct {
 func NewAlias() *Alias {
 	return &Alias{
 		section: make(map[int]string, 0),
-		command: map[string]func(Commander) chan bool{
-			"D":  Dists,
-			"Q":  MatchProperty,
-			"J":  JoinLineElem,
-			"E":  Erase,
-			"A":  AddLineElem,
-			"AA": AddPlateElem,
-			"H":  HatchPlateElem,
-			"C":  CopyElem,
-			"Z":  Trim,
-		},
+		command: Commands,
 	}
 }
 
