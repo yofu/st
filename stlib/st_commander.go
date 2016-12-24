@@ -26,7 +26,7 @@ type Commander interface {
 	GetModifier() chan Modifier
 	SendModifier(Modifier)
 	GetKey() chan Key
-	SendKey(Key)
+	SendKey(Key) bool
 	GetPosition() chan Position
 	SendPosition(int, int)
 	AddTail(*Node)
@@ -187,10 +187,12 @@ func (cb *CommandBuffer) GetKey() chan Key {
 	return cb.key
 }
 
-func (cb *CommandBuffer) SendKey(k Key) {
+func (cb *CommandBuffer) SendKey(k Key) bool {
 	if cb.key != nil {
 		cb.key <- k
+		return true
 	}
+	return false
 }
 
 func (cb *CommandBuffer) GetPosition() chan Position {

@@ -192,8 +192,9 @@ func (stw *Window) Start(fn string) {
 					stw.escape()
 					continue
 				}
-				stw.SendKey(st.Key(e))
-				continue
+				if stw.SendKey(st.Key(e)) {
+					continue
+				}
 			}
 			switch e.Direction {
 			case key.DirPress, key.DirNone:
