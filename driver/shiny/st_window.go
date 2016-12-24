@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/yofu/abbrev"
 	"github.com/yofu/st/stlib"
@@ -69,6 +70,13 @@ var (
 const (
 	ButtonLeft = 1 << iota
 	ButtonMiddle
+)
+
+var (
+	clicked              time.Time
+	lastclick            mouse.Button
+	DoubleClickThreshold = 0.2
+	DoubleClickCommand   = []string{"TOGGLEBOND", "EDITPLATEELEM"}
 )
 
 type Window struct {
@@ -600,6 +608,13 @@ func (stw *Window) Start(fn string) {
 			case mouse.DirRelease:
 				endX = int(e.X)
 				endY = int(e.Y)
+				now := time.Now()
+				isdouble := false
+				if lastclick == e.Button {
+					isdouble = now.Sub(clicked).Seconds() < DoubleClickThreshold
+				}
+				clicked = now
+				lastclick = e.Button
 				switch e.Button {
 				case mouse.ButtonLeft:
 					pressed &= ^ButtonLeft
@@ -624,6 +639,13 @@ func (stw *Window) Start(fn string) {
 								stw.DeselectElem()
 							} else {
 								st.MergeSelectElem(stw, els, e.Modifiers&key.ModShift != 0)
+								if isdouble {
+									if els[0].IsLineElem() {
+										stw.ExecCommand(DoubleClickCommand[0])
+									} else {
+										stw.ExecCommand(DoubleClickCommand[1])
+									}
+								}
 							}
 						}
 					} else {
@@ -649,6 +671,9 @@ func (stw *Window) Start(fn string) {
 					}
 				case mouse.ButtonMiddle:
 					pressed &= ^ButtonMiddle
+					if isdouble {
+						stw.ShowCenter()
+					}
 				case mouse.ButtonRight:
 					if stw.Executing() {
 						stw.SendClick(st.ClickRight(endX, endY))
