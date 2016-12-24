@@ -59,6 +59,9 @@ func (c *Chain) Next() bool {
 		els[num] = el
 		num++
 	}
+	if num == 0 {
+		return false
+	}
 	if c.sorter != nil {
 		els = c.sorter(c, els[:num])
 	}
