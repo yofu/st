@@ -96,6 +96,7 @@ var (
 			}),
 		"n/ode/dup/lication": complete.MustCompile(":nodeduplication", nil),
 		"e/lem/dup/lication": complete.MustCompile(":elemduplication [ignoresect:]", nil),
+		"n/ode/n/oreference": complete.MustCompile(":nodenoreference", nil),
 		"i/ntersect/a/ll":    complete.MustCompile(":intersectall", nil),
 		"src/al":             complete.MustCompile(":srcal [fbold:] [noreload:] [qfact:_] [wfact:_] [skipshort:] [temporary:]", nil),
 		"co/nf":              complete.MustCompile(":conf", nil),
@@ -1304,6 +1305,18 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			stw.SelectElem(es[:enum])
 		}
 		return Message(m.String())
+	case "nodenoreference":
+		if usage {
+			return Usage(":nodenoreference")
+		}
+		ns := frame.NodeNoReference()
+		if len(ns) != 0 {
+			for _, n := range ns {
+				frame.DeleteNode(n.Num)
+			}
+		}
+		stw.Deselect()
+		Snapshot(stw)
 	case "mergenode":
 		if usage {
 			return Usage(":mergenode {-eps=1e-4}")
