@@ -2405,6 +2405,19 @@ func (ww *WoodWall) Amount() Amount {
 	return nil
 }
 
+type WoodSlab struct {
+	WoodWall
+}
+
+func NewWoodSlab(num int) *WoodSlab {
+	ww := NewWoodWall(num)
+	return &WoodSlab{*ww}
+}
+
+func (ws *WoodSlab) TypeString() string {
+	return "木床"
+}
+
 // Condition
 type Condition struct {
 	Period      string

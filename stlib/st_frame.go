@@ -2072,6 +2072,14 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 		default:
 			return nil
 		}
+	case "SLAB":
+		sr = NewWoodSlab(num)
+		switch lis[1][0] {
+		case "THICK":
+			sr.(*WoodSlab).SetWood(lis[1])
+		default:
+			return nil
+		}
 	default:
 		return nil
 	}
