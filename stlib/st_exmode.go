@@ -1417,18 +1417,18 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			m.WriteString("Fb: old\n")
 			cond.FbOld = true
 		}
-		reload := true
-		if _, ok := argdict["NORELOAD"]; ok {
-			reload = false
-		}
-		if reload {
-			ReadFile(stw, Ce(frame.Path, ".lst"))
-		}
 		var otp string
 		if fn == "" {
 			otp = frame.Path
 		} else {
 			otp = fn
+		}
+		reload := true
+		if _, ok := argdict["NORELOAD"]; ok {
+			reload = false
+		}
+		if reload {
+			ReadFile(stw, Ce(otp, ".lst"))
 		}
 		if qf, ok := argdict["QFACT"]; ok {
 			val, err := strconv.ParseFloat(qf, 64)
