@@ -2027,41 +2027,51 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 func (frame *Frame) ParseLstWood(lis [][]string) error {
 	var num int
 	var sr SectionRate
-	var shape Shape
-	var material Wood
 	var err error
 	tmp, err := strconv.ParseInt(lis[0][1], 10, 64)
 	num = int(tmp)
-	var size int
-	switch lis[1][0] {
-	case "PLATE":
-		size = 2
-		shape, err = NewPLATE(lis[1][1 : 1+size])
-	default:
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	switch lis[1][1+size] {
-	default:
-		material = S_E70
-	case "S-E70", "E70SUGI":
-		material = S_E70
-	case "H-E90", "E90HINOKI":
-		material = H_E90
-	case "E95-F270":
-		material = E95_F270
-	case "E95-F315":
-		material = E95_F315
-	case "E120-F330":
-		material = E120_F330
-	}
 	switch lis[0][3] {
-	case "COLUMN":
-		sr = NewWoodColumn(num, shape, material)
-	case "GIRDER":
-		sr = NewWoodGirder(num, shape, material)
+	case "COLUMN", "GIRDER":
+		var size int
+		var shape Shape
+		var material Wood
+		switch lis[1][0] {
+		case "PLATE":
+			size = 2
+			shape, err = NewPLATE(lis[1][1 : 1+size])
+		default:
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		switch lis[1][1+size] {
+		default:
+			material = S_E70
+		case "S-E70", "E70SUGI":
+			material = S_E70
+		case "H-E90", "E90HINOKI":
+			material = H_E90
+		case "E95-F270":
+			material = E95_F270
+		case "E95-F315":
+			material = E95_F315
+		case "E120-F330":
+			material = E120_F330
+		}
+		if lis[0][3] == "COLUMN" {
+			sr = NewWoodColumn(num, shape, material)
+		} else {
+			sr = NewWoodGirder(num, shape, material)
+		}
+	case "WALL":
+		sr = NewWoodWall(num)
+		switch lis[1][0] {
+		case "THICK":
+			sr.(*WoodWall).SetWood(lis[1])
+		default:
+			return nil
+		}
 	default:
 		return nil
 	}
