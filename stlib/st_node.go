@@ -247,14 +247,14 @@ func (node *Node) OutputDisp(p string) string {
 	rtn.WriteString(fmt.Sprintf("%4d ", node.Num))
 	if disp, ok := node.Disp[p]; ok {
 		for i := 0; i < 3; i++ {
-			rtn.WriteString(fmt.Sprintf("% 10.6f ", disp[i]))
+			rtn.WriteString(fmt.Sprintf("% 11.7f ", disp[i]))
 		}
 		for i := 3; i < 5; i++ {
 			rtn.WriteString(fmt.Sprintf("% 11.7f ", disp[i]))
 		}
 		rtn.WriteString(fmt.Sprintf("% 11.7f\n", disp[5]))
 	} else {
-		rtn.WriteString(strings.Repeat(fmt.Sprintf("% 10.6f ", 0.0), 3))
+		rtn.WriteString(strings.Repeat(fmt.Sprintf("% 11.7f ", 0.0), 3))
 		rtn.WriteString(strings.Repeat(fmt.Sprintf("% 11.7f ", 0.0), 2))
 		rtn.WriteString(fmt.Sprintf("% 11.7f\n", 0.0))
 	}
