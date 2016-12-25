@@ -98,7 +98,7 @@ var (
 		"e/lem/dup/lication": complete.MustCompile(":elemduplication [ignoresect:]", nil),
 		"n/ode/n/oreference": complete.MustCompile(":nodenoreference", nil),
 		"i/ntersect/a/ll":    complete.MustCompile(":intersectall", nil),
-		"src/al":             complete.MustCompile(":srcal [fbold:] [noreload:] [qfact:_] [wfact:_] [skipshort:] [temporary:]", nil),
+		"src/al":             complete.MustCompile(":srcal [fbold:] [noreload:] [qfact:_] [wfact:_] [skipshort:] [temporary:] [moeshiro:]", nil),
 		"co/nf":              complete.MustCompile(":conf", nil),
 		"pi/le":              complete.MustCompile(":pile", nil),
 		"sec/tion":           complete.MustCompile(":section [nodisp:]_", nil),
@@ -1409,7 +1409,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		Snapshot(stw)
 	case "srcal":
 		if usage {
-			return Usage(":srcal {-fbold} {-noreload} {-qfact=2.0} {-wfact=2.0} {-skipshort} {-temporary} filename")
+			return Usage(":srcal {-fbold} {-noreload} {-qfact=2.0} {-wfact=2.0} {-skipshort} {-temporary} {-moeshiro} filename")
 		}
 		var m bytes.Buffer
 		cond := NewCondition()
@@ -1450,6 +1450,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		if _, ok := argdict["TEMPORARY"]; ok {
 			m.WriteString("TEMPORARY")
+			cond.Temporary = true
+		}
+		if _, ok := argdict["MOESHIRO"]; ok {
+			m.WriteString("MOESHIRO")
+			cond.Skipshort = true
 			cond.Temporary = true
 		}
 		frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
