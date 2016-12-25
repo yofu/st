@@ -1578,6 +1578,9 @@ func (frame *Frame) ReadVibrationalEigenmode(filename string) error {
 	tmp := make([][]string, 0)
 	err := ParseFile(filename, func(words []string) error {
 		var err error
+		if len(words) == 0 {
+			return nil
+		}
 		if words[0] == "DEIGABGENERAL" && words[2] == "VECTOR" {
 			if len(tmp) > 0 {
 				err = frame.ParseVibrationalEigenmode(mode, tmp)
@@ -1593,7 +1596,7 @@ func (frame *Frame) ReadVibrationalEigenmode(filename string) error {
 			mode = int(val)
 			return nil
 		}
-		if mode > 0 {
+		if mode > 0 && len(words) == 7 {
 			tmp = append(tmp, words)
 		}
 		return nil
