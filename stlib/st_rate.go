@@ -141,6 +141,8 @@ var (
 	E95_F270  = Wood{"E95-F270", 0.2406, 0.1927, 0.2753, 0.0367, 95.0, 6.5}
 	E95_F315  = Wood{"E95-F315", 0.2651, 0.2314, 0.3212, 0.0367, 95.0, 6.5}
 	E120_F330 = Wood{"E120-F330", 0.2569, 0.2263, 0.3303, 0.0367, 120.0, 6.5}
+
+	GOHAN = Wood{"GOHAN", 0.0, 0.0, 0.0, 0.012, 0.0, 0.0}
 )
 
 // Section
@@ -2303,6 +2305,104 @@ func NewWoodGirder(num int, shape Shape, material Wood) *WoodGirder {
 }
 func (wg *WoodGirder) TypeString() string {
 	return "木大梁"
+}
+
+type WoodWall struct {
+	Wood
+	num      int
+	Name     string
+	Thick    float64
+	Wrect    []float64
+}
+
+func NewWoodWall(num int) *WoodWall {
+	ww := new(WoodWall)
+	ww.num = num
+	ww.Wrect = make([]float64, 2)
+	return ww
+}
+func (ww *WoodWall) SetWood(lis []string) error {
+	switch lis[0] {
+	case "THICK":
+		val, err := strconv.ParseFloat(lis[1], 64)
+		if err != nil {
+			return err
+		}
+		ww.Thick = val
+	}
+	switch lis[2] {
+	case "GOHAN":
+		ww.Wood = GOHAN
+	}
+	return nil
+}
+func (ww *WoodWall) Num() int {
+	return ww.num
+}
+func (ww *WoodWall) TypeString() string {
+	return "木壁"
+}
+func (ww *WoodWall) Snapshot() SectionRate {
+	r := NewWoodWall(ww.num)
+	r.Name = ww.Name
+	r.Thick = ww.Thick
+	for i := 0; i < 2; i++ {
+		r.Wrect[i] = ww.Wrect[i]
+	}
+	return ww
+}
+func (ww *WoodWall) String() string {
+	return ""
+}
+func (ww *WoodWall) SetName(name string) {
+	ww.Name = name
+}
+func (ww *WoodWall) SetValue(name string, vals []float64) {
+	switch name {
+	case "WRECT":
+		ww.Wrect = vals
+	}
+}
+func (ww *WoodWall) Factor(p string) float64 {
+	switch p {
+	default:
+		return 0.0
+	case "L":
+		return 1.0
+	case "X", "Y", "S":
+		return 2.0
+	}
+}
+func (ww *WoodWall) Fs(cond *Condition) float64 {
+	rtn := ww.fs // [tf/cm2]
+	switch cond.Period {
+	default:
+		rtn = 0.0
+	case "L":
+		rtn *= 1.0
+	case "X", "Y", "S":
+		rtn *= 2.0
+	}
+	return rtn
+}
+func (ww *WoodWall) Na(cond *Condition) float64 {
+	fs := ww.Fs(cond)
+	r := 1.0 // TODO: set windowrate
+	Qa := r * ww.Thick * cond.Length * fs
+	return 0.5 * Qa
+}
+func (ww *WoodWall) Qa(cond *Condition) float64 {
+	return 0.0
+}
+func (ww *WoodWall) Ma(cond *Condition) float64 {
+	return 0.0
+}
+func (ww *WoodWall) Mza(cond *Condition) float64 {
+	return 0.0
+}
+
+func (ww *WoodWall) Amount() Amount {
+	return nil
 }
 
 // Condition
