@@ -5787,7 +5787,7 @@ func (stw *Window) SetDefaultPgp() {
 	aliases["WR"] = EDITWRECT
 	aliases["H"] = HATCHPLATEELEM
 	aliases["CV"] = CONVEXHULL
-	aliases["Q"] = MATCHPROP
+	aliases["Q"] = MATCHPROPERTY
 	aliases["QQ"] = COPYBOND
 	aliases["AC"] = AXISTOCANG
 	aliases["BP"] = BONDPIN

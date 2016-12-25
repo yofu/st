@@ -58,7 +58,7 @@ var (
 	EDITPLATEELEM       = &Command{"EDPL", "EDIT PLATE ELEM", "edit plate elem", editplateelem}
 	EDITWRECT           = &Command{"EDWR", "EDIT WINDOW RECT", "edit window rectangular", editwrect}
 	CONVEXHULL          = &Command{"CVXH", "CONVEX HULL", "draw convex hull", convexhull}
-	MATCHPROP           = &Command{"COPY PROPERTY", "MATCH PROPERTY", "match property", matchproperty}
+	MATCHPROPERTY       = &Command{"COPY PROPERTY", "MATCH PROPERTY", "match property", matchproperty}
 	AXISTOCANG          = &Command{"CANG", "AXISTOCANG", "set cang by axis", axistocang}
 	COPYELEM            = &Command{"COPY", "COPY ELEM", "copy selected elems", copyelem}
 	DUPLICATEELEM       = &Command{"DUP.", "DUPLICATE ELEM", "duplicate selected elems", duplicateelem}
@@ -148,7 +148,7 @@ func init() {
 	Commands["EDITPLATEELEM"] = EDITPLATEELEM
 	Commands["EDITWRECT"] = EDITWRECT
 	Commands["CONVEXHULL"] = CONVEXHULL
-	Commands["MATCHPROP"] = MATCHPROP
+	Commands["MATCHPROPERTY"] = MATCHPROPERTY
 	Commands["AXISTOCANG"] = AXISTOCANG
 	Commands["COPYELEM"] = COPYELEM
 	Commands["DUPLICATEELEM"] = DUPLICATEELEM
