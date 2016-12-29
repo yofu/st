@@ -27,6 +27,7 @@ var (
 		"COPYELEM":           CopyElem,
 		"MOVENODE":           MoveNode,
 		"MOVEELEM":           MoveElem,
+		"MIRROR":             Mirror,
 		"TRIM":               Trim,
 		"EXTEND":             Extend,
 		"OFFSET":             Offset,
@@ -448,6 +449,57 @@ func MoveElem(stw Commander) chan bool {
 		}
 		return nil
 	}, true)
+}
+
+func Mirror(stw Commander) chan bool {
+	return multinodes(stw, func(ns []*Node) error {
+		if len(ns) < 3 {
+			return nil
+		}
+		frame := stw.Frame()
+		eps := stw.EPS()
+		v1 := make([]float64, 3)
+		v2 := make([]float64, 3)
+		for i := 0; i < 3; i++ {
+			v1[i] = ns[1].Coord[i] - ns[0].Coord[i]
+			v2[i] = ns[2].Coord[i] - ns[0].Coord[i]
+		}
+		vec := Cross(v1, v2)
+		nmap := make(map[int]*Node, len(ns))
+		nodes := frame.ElemToNode(stw.SelectedElems()...)
+		for _, n := range nodes {
+			c := n.MirrorCoord(ns[0].Coord, vec)
+			var created bool
+			nmap[n.Num], created = frame.CoordNode(c[0], c[1], c[2], eps)
+			if created {
+				for i := 0; i < 6; i++ {
+					nmap[n.Num].Conf[i] = n.Conf[i]
+				}
+			}
+		}
+		for _, el := range stw.SelectedElems() {
+			newenod := make([]*Node, el.Enods)
+			var add bool
+			for i := 0; i < el.Enods; i++ {
+				newenod[i] = nmap[el.Enod[i].Num]
+				if !add && newenod[i] != el.Enod[i] {
+					add = true
+				}
+			}
+			if add {
+				if el.IsLineElem() {
+					e := frame.AddLineElem(-1, newenod, el.Sect, el.Etype)
+					for i := 0; i < 6*el.Enods; i++ {
+						e.Bonds[i] = el.Bonds[i]
+					}
+				} else {
+					frame.AddPlateElem(-1, newenod, el.Sect, el.Etype)
+				}
+			}
+		}
+		Snapshot(stw)
+		return nil
+	}, false)
 }
 
 func Notice1459(stw Commander) chan bool {
