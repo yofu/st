@@ -228,7 +228,7 @@ func (f *Fact) SetFileName(inp []string, otp []string) {
 	}
 }
 
-func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
+func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem, inc int) error {
 	if len(nodes) < f.Floor || len(elems) < f.Floor-1 {
 		return errors.New("CalcFact: Not Enough Data")
 	}
@@ -257,12 +257,12 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
 				if len(n.Disp[d]) < 2 {
 					return errors.New(fmt.Sprintf("CalcFact: No Disp. Data: NODE %d", n.Num))
 				}
-				if n.Disp[d][j] > tmpdisp[j] {
-					tmpdisp[j] = n.Disp[d][j]
+				if n.Disp[d][inc][j] > tmpdisp[j] {
+					tmpdisp[j] = n.Disp[d][inc][j]
 				}
-				disp[j] += n.Disp[d][j]
-				shear[j] += n.Force[d][j]
-				moment[j] += n.Force[d][j] * n.Coord[1-j]
+				disp[j] += n.Disp[d][inc][j]
+				shear[j] += n.Force[d][inc][j]
+				moment[j] += n.Force[d][inc][j] * n.Coord[1-j]
 				if j == 0 {
 					weight += n.Weight[2]
 				}

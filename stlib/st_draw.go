@@ -192,8 +192,8 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 		}
 		if show.Phinge {
 			stw.PhingeStyle(show)
-			ph1 := elem.Phinge[show.Period][elem.Enod[0].Num]
-			ph2 := elem.Phinge[show.Period][elem.Enod[1].Num]
+			ph1 := elem.Phinge[show.Period][elem.Enod[0].Num][show.Increment]
+			ph2 := elem.Phinge[show.Period][elem.Enod[1].Num][show.Increment]
 			switch {
 			case ph1 && !ph2:
 				stw.FilledCircle(icoord[0]+pd[0]*show.BondSize, icoord[1]+pd[1]*show.BondSize, show.BondSize*2)

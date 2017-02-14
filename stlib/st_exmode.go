@@ -844,10 +844,17 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		var err error
 		period := strings.ToUpper(args[2])
+		inc := 1
+		if i, ok := argdict["INC"]; ok {
+			val, err := strconv.ParseInt(i, 10, 64)
+			if err == nil {
+				inc = int(val)
+			}
+		}
 		if stw.ElemSelected() {
-			err = WriteOutput(fn, period, stw.SelectedElems())
+			err = WriteOutput(fn, period, stw.SelectedElems(), inc)
 		} else {
-			err = frame.WriteOutput(fn, period)
+			err = frame.WriteOutput(fn, period, inc)
 		}
 		if err != nil {
 			return err
@@ -866,12 +873,19 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if _, ok := argdict["CONFED"]; ok {
 			SelectConfed(stw)
 		}
+		inc := 1
+		if i, ok := argdict["INC"]; ok {
+			val, err := strconv.ParseInt(i, 10, 64)
+			if err == nil {
+				inc = int(val)
+			}
+		}
 		if !stw.NodeSelected() {
 			return errors.New(":writereaction: no selected node")
 		}
 		ns := stw.SelectedNodes()
 		sort.Sort(NodeByNum{ns})
-		err = WriteReaction(fn, ns, int(tmp))
+		err = WriteReaction(fn, ns, inc, int(tmp))
 		if err != nil {
 			return err
 		}
@@ -2195,7 +2209,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				for _, el := range els {
 					for i := 0; i < 2; i++ {
 						for j := 0; j < 6; j++ {
-							el.Cmq[6*i+j] = el.Stress[args[1]][el.Enod[i].Num][j]
+							el.Cmq[6*i+j] = el.Stress[args[1]][el.Enod[i].Num][0][j]
 						}
 					}
 				}
@@ -4020,7 +4034,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				retval = 1
 			case <-af.Pivot:
 			case <-af.Lapch:
-				frame.ReadArclmData(af, pers[ind])
+				frame.ReadArclmData(af, pers[ind], 1)
 				frame.ResultFileName[pers[ind]] = otps[ind]
 				ind++
 				af.Lapch <- retval
@@ -4241,7 +4255,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 						pivot <- 1
 					}
 				case lap := <-af.Lapch:
-					frame.ReadArclmData(af, pers[pind])
+					frame.ReadArclmData(af, pers[pind], 1)
 					pind++
 					if pind == len(pers) {
 						pind = 0
@@ -4355,7 +4369,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				select {
 				case <-af.Pivot:
 				case nlap := <-af.Lapch:
-					frame.ReadArclmData(af, per)
+					frame.ReadArclmData(af, per, 1)
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, 0)
 					stw.Redraw()
@@ -4422,7 +4436,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				select {
 				case <-af.Pivot:
 				case nlap := <-af.Lapch:
-					frame.ReadArclmData(af, per)
+					frame.ReadArclmData(af, per, 1)
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, 0)
 					stw.Redraw()
@@ -4520,7 +4534,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 						pivot <- 1
 					}
 				case nlap := <-af.Lapch:
-					frame.ReadArclmData(af, per)
+					frame.ReadArclmData(af, per, 1)
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, 1)
 					if stw.Pivot() {
@@ -4623,7 +4637,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 						pivot <- 1
 					}
 				case nlap := <-af.Lapch:
-					frame.ReadArclmData(af, per)
+					frame.ReadArclmData(af, per, 1)
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, 1)
 					if stw.Pivot() {
@@ -4668,6 +4682,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			add = true
 		}
 		period := strings.ToUpper(args[1])
+		inc := 1
+		if i, ok := argdict["INC"]; ok {
+			val, err := strconv.ParseInt(i, 10, 64)
+			if err == nil {
+				inc = int(val)
+			}
+		}
 		factor, err := strconv.ParseFloat(args[2], 64)
 		if err != nil {
 			return err
@@ -4677,9 +4698,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			for i := 0; i < 3; i++ {
 				if axis[i] {
 					if add {
-						n.Coord[i] += n.Disp[period][i] * factor
+						n.Coord[i] += n.Disp[period][inc][i] * factor
 					} else {
-						n.Coord[i] = n.Disp[period][i] * factor
+						n.Coord[i] = n.Disp[period][inc][i] * factor
 					}
 				}
 			}

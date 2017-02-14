@@ -66,12 +66,12 @@ type Elem struct {
 	Wrect []float64
 
 	Rate   []float64
-	Stress map[string]map[int][]float64
+	Stress map[string]map[int][][]float64
 
 	Values    map[string]float64
 	Prestress float64
 
-	Phinge map[string]map[int]bool
+	Phinge map[string]map[int][]bool
 
 	Strong []float64
 	Weak   []float64
@@ -95,9 +95,9 @@ func NewLineElem(ns []*Node, sect *Sect, etype int) *Elem {
 	el.Etype = etype
 	el.Bonds = make([]bool, 12)
 	el.Cmq = make([]float64, 12)
-	el.Stress = make(map[string]map[int][]float64)
+	el.Stress = make(map[string]map[int][][]float64)
 	el.Values = make(map[string]float64)
-	el.Phinge = make(map[string]map[int]bool)
+	el.Phinge = make(map[string]map[int][]bool)
 	el.Strong = make([]float64, 3)
 	el.Weak = make([]float64, 3)
 	el.SetPrincipalAxis()
@@ -496,11 +496,11 @@ func (elem *Elem) InlString(period int) string {
 	return rtn.String()
 }
 
-func (elem *Elem) OutputStress(p string) string {
+func (elem *Elem) OutputStress(p string, inc int) string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("%5d %4d %4d", elem.Num, elem.Sect.Num, elem.Enod[0].Num))
-	if stress, ok := elem.Stress[p]; ok {
-		for _, st := range stress[elem.Enod[0].Num] {
+	if stress, ok := elem.Stress[p]; ok && len(stress) >= inc {
+		for _, st := range stress[elem.Enod[0].Num][inc-1] {
 			rtn.WriteString(fmt.Sprintf(" %15.12f", st))
 		}
 		rtn.WriteString(fmt.Sprintf("\n           %4d", elem.Enod[1].Num))
@@ -1989,18 +1989,18 @@ func (elem *Elem) ReturnStress(period string, nnum int, index int) float64 {
 	if period == "" || !elem.IsLineElem() || elem.Stress == nil {
 		return 0.0
 	}
-	return PeriodValue(period, func(p string, s float64) float64 {
+	return PeriodValue(period, func(p string, i int, s float64) float64 {
 		if val, ok := elem.Stress[p]; ok {
 			if nnum == 0 || nnum == 1 {
-				if rtn, ok := val[elem.Enod[nnum].Num]; ok {
-					return s * rtn[index]
+				if rtn, ok := val[elem.Enod[nnum].Num]; ok && len(rtn) >= i {
+					return s * rtn[i-1][index]
 				} else {
 					return 0.0
 				}
 			} else {
 				for _, en := range elem.Enod {
-					if en.Num == nnum {
-						return s * val[nnum][index]
+					if en.Num == nnum && len(val[nnum]) >= i {
+						return s * val[nnum][i-1][index]
 					}
 				}
 				return 0.0

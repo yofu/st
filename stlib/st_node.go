@@ -27,13 +27,13 @@ type Node struct {
 	Coord []float64
 	Conf  []bool
 	Load  []float64
-	Force map[string][]float64
+	Force map[string][][]float64
 
 	Weight []float64
 	Factor float64
 
-	Disp     map[string][]float64
-	Reaction map[string][]float64
+	Disp     map[string][][]float64
+	Reaction map[string][][]float64
 
 	Pile *Pile
 
@@ -92,9 +92,9 @@ func NewNode() *Node {
 		Conf:     make([]bool, 6),
 		Load:     make([]float64, 6),
 		Weight:   make([]float64, 3),
-		Disp:     make(map[string][]float64),
-		Force:    make(map[string][]float64),
-		Reaction: make(map[string][]float64)}
+		Disp:     make(map[string][][]float64),
+		Force:    make(map[string][][]float64),
+		Reaction: make(map[string][][]float64)}
 }
 
 func (node *Node) Snapshot(frame *Frame) *Node {
@@ -123,21 +123,30 @@ func (node *Node) Snapshot(frame *Frame) *Node {
 		n.Load[i] = node.Load[i]
 	}
 	for k, v := range node.Disp {
-		n.Disp[k] = make([]float64, 6)
-		for i := 0; i < 6; i++ {
-			n.Disp[k][i] = v[i]
+		n.Disp[k] = make([][]float64, len(v))
+		for i, d := range v {
+			n.Disp[k][i] = make([]float64, 6)
+			for j := 0; j < 6; j++ {
+				n.Disp[k][i][j] = d[j]
+			}
 		}
 	}
 	for k, v := range node.Force {
-		n.Force[k] = make([]float64, 6)
-		for i := 0; i < 6; i++ {
-			n.Force[k][i] = v[i]
+		n.Force[k] = make([][]float64, len(v))
+		for i, d := range v {
+			n.Force[k][i] = make([]float64, 6)
+			for j := 0; j < 6; j++ {
+				n.Force[k][i][j] = d[j]
+			}
 		}
 	}
 	for k, v := range node.Reaction {
-		n.Reaction[k] = make([]float64, 6)
-		for i := 0; i < 6; i++ {
-			n.Reaction[k][i] = v[i]
+		n.Reaction[k] = make([][]float64, len(v))
+		for i, d := range v {
+			n.Reaction[k][i] = make([]float64, 6)
+			for j := 0; j < 6; j++ {
+				n.Reaction[k][i][j] = d[j]
+			}
 		}
 	}
 	return n
@@ -242,17 +251,17 @@ func (node *Node) InlConditionString(period int) string {
 	return rtn.String()
 }
 
-func (node *Node) OutputDisp(p string) string {
+func (node *Node) OutputDisp(p string, inc int) string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("%4d ", node.Num))
-	if disp, ok := node.Disp[p]; ok {
+	if disp, ok := node.Disp[p]; ok && len(disp) >= inc {
 		for i := 0; i < 3; i++ {
-			rtn.WriteString(fmt.Sprintf("% 11.7f ", disp[i]))
+			rtn.WriteString(fmt.Sprintf("% 11.7f ", disp[inc-1][i]))
 		}
 		for i := 3; i < 5; i++ {
-			rtn.WriteString(fmt.Sprintf("% 11.7f ", disp[i]))
+			rtn.WriteString(fmt.Sprintf("% 11.7f ", disp[inc-1][i]))
 		}
-		rtn.WriteString(fmt.Sprintf("% 11.7f\n", disp[5]))
+		rtn.WriteString(fmt.Sprintf("% 11.7f\n", disp[inc-1][5]))
 	} else {
 		rtn.WriteString(strings.Repeat(fmt.Sprintf("% 11.7f ", 0.0), 3))
 		rtn.WriteString(strings.Repeat(fmt.Sprintf("% 11.7f ", 0.0), 2))
@@ -261,9 +270,9 @@ func (node *Node) OutputDisp(p string) string {
 	return rtn.String()
 }
 
-func (node *Node) OutputReaction(p string, ind int) string {
-	if reaction, ok := node.Reaction[p]; ok {
-		return fmt.Sprintf("%4d %10d %14.6f     1\n", node.Num, ind+1, reaction[ind])
+func (node *Node) OutputReaction(p string, inc int, ind int) string {
+	if reaction, ok := node.Reaction[p]; ok && len(reaction) >= inc {
+		return fmt.Sprintf("%4d %10d %14.6f     1\n", node.Num, ind+1, reaction[inc-1][ind])
 	}
 	return ""
 }
@@ -348,9 +357,9 @@ func (node *Node) Normal(normalize bool) []float64 {
 
 // Disp
 func (node *Node) ReturnDisp(period string, index int) float64 {
-	return PeriodValue(period, func(p string, s float64) float64 {
-		if val, ok := node.Disp[p]; ok {
-			return s * val[index]
+	return PeriodValue(period, func(p string, i int, s float64) float64 {
+		if val, ok := node.Disp[p]; ok && len(val) >= i {
+			return s * val[i-1][index]
 		} else {
 			return 0.0
 		}
@@ -358,9 +367,9 @@ func (node *Node) ReturnDisp(period string, index int) float64 {
 }
 
 func (node *Node) ReturnReaction(period string, index int) float64 {
-	return PeriodValue(period, func(p string, s float64) float64 {
-		if val, ok := node.Reaction[p]; ok {
-			return s * val[index]
+	return PeriodValue(period, func(p string, i int, s float64) float64 {
+		if val, ok := node.Reaction[p]; ok && len(val) >= i {
+			return s * val[i-1][index]
 		} else {
 			return 0.0
 		}

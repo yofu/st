@@ -1271,7 +1271,7 @@ func (frame *Frame) ReadData(filename string) error {
 				}
 				force[i] = val
 			}
-			node.Force[period] = force
+			node.Force[period] = [][]float64{force}
 		}
 	}
 	frame.DataFileName[period] = filename
@@ -1350,7 +1350,7 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 				continue
 			}
 			if mode == UpdateResult {
-				elem.Stress[period] = make(map[int][]float64)
+				elem.Stress[period] = make(map[int][][]float64)
 			}
 			var tmp []float64
 			for i := 0; i < 2; i++ {
@@ -1369,11 +1369,11 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 				}
 				switch mode {
 				case UpdateResult:
-					elem.Stress[period][int(num)] = tmp
+					elem.Stress[period][int(num)] = [][]float64{tmp}
 				case AddResult, AddSearchResult:
 					if elem.Stress[period][int(num)] != nil {
 						for ind := 0; ind < 6; ind++ {
-							elem.Stress[period][int(num)][ind] += tmp[ind]
+							elem.Stress[period][int(num)][0][ind] += tmp[ind]
 						}
 					}
 				}
@@ -1390,7 +1390,7 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 							fmt.Printf("ReadResult: ELEM %d -> ELEM %d\n", enum, el.Num)
 							for i := 0; i < 2; i++ {
 								for j := 0; j < 6; j++ {
-									el.Stress[period][enod[i]][j] += stress[i][j]
+									el.Stress[period][enod[i]][0][j] += stress[i][j]
 								}
 							}
 							break
@@ -1448,10 +1448,10 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 			}
 			switch mode {
 			case UpdateResult:
-				node.Disp[period] = tmp
+				node.Disp[period] = [][]float64{tmp}
 			case AddResult, AddSearchResult:
 				for ind := 0; ind < 6; ind++ {
-					node.Disp[period][ind] += tmp[ind]
+					node.Disp[period][0][ind] += tmp[ind]
 				}
 			}
 		} else {
@@ -1491,7 +1491,8 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 		nnum := int(num)
 		if node, ok := frame.Nodes[nnum]; ok {
 			if _, ok := node.Reaction[period]; !ok {
-				node.Reaction[period] = make([]float64, 6)
+				node.Reaction[period] = make([][]float64, 1)
+				node.Reaction[period][0] = make([]float64, 6)
 			}
 			ind, err := strconv.ParseInt(words[1], 10, 64)
 			val, err := strconv.ParseFloat(words[2], 64)
@@ -1500,9 +1501,9 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 			}
 			switch mode {
 			case UpdateResult:
-				node.Reaction[period][ind-1] = val
+				node.Reaction[period][0][ind-1] = val
 			case AddResult, AddSearchResult:
-				node.Reaction[period][ind-1] += val
+				node.Reaction[period][0][ind-1] += val
 			}
 		} else {
 			fmt.Printf("NODE %d not found\n", nnum)
@@ -1550,7 +1551,6 @@ func (frame *Frame) ParseEigen(lis [][]string) (err error) {
 		}
 		eigval, err := strconv.ParseFloat(eig[1], 64)
 		frame.Eigenvalue[int(eigmode-1)] = eigval
-		period := fmt.Sprintf("B%d", eigmode)
 		for _, l := range lis[1:] {
 			if strings.ToUpper(l[0]) == "NODE:" {
 				nnum, err := strconv.ParseInt(l[1], 10, 64)
@@ -1565,7 +1565,7 @@ func (frame *Frame) ParseEigen(lis [][]string) (err error) {
 					}
 					disp[i] = val
 				}
-				frame.Nodes[int(nnum)].Disp[period] = disp
+				frame.Nodes[int(nnum)].Disp["B"] = append(frame.Nodes[int(nnum)].Disp["B"], disp)
 			}
 		}
 	}
@@ -1609,7 +1609,6 @@ func (frame *Frame) ReadVibrationalEigenmode(filename string) error {
 
 // ParseVibrationalEigenmode parses eigenvalues and eigenvectors.
 func (frame *Frame) ParseVibrationalEigenmode(mode int, lis [][]string) (err error) {
-	period := fmt.Sprintf("B%d", mode)
 	for _, l := range lis {
 		nnum, err := strconv.ParseInt(l[0], 10, 64)
 		if err != nil {
@@ -1623,7 +1622,7 @@ func (frame *Frame) ParseVibrationalEigenmode(mode int, lis [][]string) (err err
 			}
 			disp[i] = val
 		}
-		frame.Nodes[int(nnum)].Disp[period] = disp
+		frame.Nodes[int(nnum)].Disp["B"] = append(frame.Nodes[int(nnum)].Disp["B"], disp)
 	}
 	return nil
 }
@@ -1631,7 +1630,6 @@ func (frame *Frame) ParseVibrationalEigenmode(mode int, lis [][]string) (err err
 // ReadZoubun reads an output file of push-over analysis.
 func (frame *Frame) ReadZoubun(filename string) error {
 	tmp := make([][]string, 0)
-	var period string
 	ext := strings.ToUpper(filepath.Ext(filename)[1:])
 	nlap := 0
 	err := ParseFile(filename, func(words []string) error {
@@ -1644,14 +1642,13 @@ func (frame *Frame) ReadZoubun(filename string) error {
 		default:
 			if strings.HasPrefix(first, "LAP") {
 				nlap++
-				err = frame.ParseZoubun(tmp, period)
+				err = frame.ParseZoubun(tmp, ext, nlap)
 				tmp = [][]string{words}
-				period = fmt.Sprintf("%s@%d", ext, nlap)
 			} else {
 				tmp = append(tmp, words)
 			}
 		case "\"DISPLACEMENT\"", "\"STRESS\"", "\"REACTION\"", "\"CURRENT":
-			err = frame.ParseZoubun(tmp, period)
+			err = frame.ParseZoubun(tmp, ext, nlap)
 			tmp = [][]string{words}
 		}
 		if err != nil {
@@ -1662,7 +1659,7 @@ func (frame *Frame) ReadZoubun(filename string) error {
 	if err != nil {
 		return err
 	}
-	err = frame.ParseZoubun(tmp, period)
+	err = frame.ParseZoubun(tmp, ext, nlap)
 	if err != nil {
 		return errors.New(fmt.Sprintf("%s, LAP:%d", err.Error(), nlap))
 	}
@@ -1671,7 +1668,7 @@ func (frame *Frame) ReadZoubun(filename string) error {
 }
 
 // ParseZoubun parses a list of strings and switches to each parsing function according to the first string.
-func (frame *Frame) ParseZoubun(lis [][]string, period string) error {
+func (frame *Frame) ParseZoubun(lis [][]string, period string, inc int) error {
 	var err error
 	if len(lis) == 0 {
 		return nil
@@ -1679,17 +1676,17 @@ func (frame *Frame) ParseZoubun(lis [][]string, period string) error {
 	first := strings.ToUpper(lis[0][0])
 	switch first {
 	case "\"STRESS\"":
-		err = frame.ParseZoubunStress(lis, period)
+		err = frame.ParseZoubunStress(lis, period, inc)
 	case "\"REACTION\"":
-		err = frame.ParseZoubunReaction(lis, period)
+		err = frame.ParseZoubunReaction(lis, period, inc)
 	case "\"CURRENT":
-		err = frame.ParseZoubunForm(lis, period)
+		err = frame.ParseZoubunForm(lis, period, inc)
 	}
 	return err
 }
 
 // ParseZoubunStress parses stress information.
-func (frame *Frame) ParseZoubunStress(lis [][]string, period string) error {
+func (frame *Frame) ParseZoubunStress(lis [][]string, period string, inc int) error {
 	for _, l := range lis {
 		if strings.ToUpper(l[0]) == "ELEM" {
 			enum, err := strconv.ParseInt(l[1], 10, 64)
@@ -1725,13 +1722,23 @@ func (frame *Frame) ParseZoubunStress(lis [][]string, period string) error {
 				}
 				ph := val >= PlasticThreshold
 				if el.Stress[period] == nil {
-					el.Stress[period] = make(map[int][]float64)
+					el.Stress[period] = make(map[int][][]float64)
+				}
+				if len(el.Stress[period][int(nnum)]) < inc {
+					for i := 0; i < inc - len(el.Stress[period][int(nnum)]); i++ {
+						el.Stress[period][int(nnum)] = append(el.Stress[period][int(nnum)] , make([]float64, 6))
+					}
 				}
 				if el.Phinge[period] == nil {
-					el.Phinge[period] = make(map[int]bool)
+					el.Phinge[period] = make(map[int][]bool)
 				}
-				el.Stress[period][int(nnum)] = stress
-				el.Phinge[period][int(nnum)] = ph
+				if len(el.Phinge[period][int(nnum)]) < inc {
+					for i := 0; i < inc - len(el.Phinge[period][int(nnum)]); i++ {
+						el.Phinge[period][int(nnum)] = append(el.Phinge[period][int(nnum)] , false)
+					}
+				}
+				el.Stress[period][int(nnum)][inc-1] = stress
+				el.Phinge[period][int(nnum)][inc-1] = ph
 			}
 		}
 	}
@@ -1739,7 +1746,7 @@ func (frame *Frame) ParseZoubunStress(lis [][]string, period string) error {
 }
 
 // ParseZoubunReaction parses reaction information.
-func (frame *Frame) ParseZoubunReaction(lis [][]string, period string) error {
+func (frame *Frame) ParseZoubunReaction(lis [][]string, period string, inc int) error {
 	for _, l := range lis {
 		if strings.ToUpper(l[0]) == "NODE:" {
 			nnum, err := strconv.ParseInt(l[1], 10, 64)
@@ -1748,7 +1755,12 @@ func (frame *Frame) ParseZoubunReaction(lis [][]string, period string) error {
 			}
 			if n, ok := frame.Nodes[int(nnum)]; ok {
 				if n.Reaction[period] == nil {
-					n.Reaction[period] = make([]float64, 6)
+					n.Reaction[period] = make([][]float64, 1)
+				}
+				if len(n.Reaction[period]) < inc {
+					for i := 0; i < inc - len(n.Reaction[period]); i++ {
+						n.Reaction[period] = append(n.Reaction[period] , make([]float64, 6))
+					}
 				}
 				ind, err := strconv.ParseInt(l[2], 10, 64)
 				if err != nil {
@@ -1758,7 +1770,7 @@ func (frame *Frame) ParseZoubunReaction(lis [][]string, period string) error {
 				if err != nil {
 					return err
 				}
-				n.Reaction[period][ind-1] = val
+				n.Reaction[period][inc-1][ind-1] = val
 			}
 		}
 	}
@@ -1766,7 +1778,7 @@ func (frame *Frame) ParseZoubunReaction(lis [][]string, period string) error {
 }
 
 // ParseZoubunForm parses current form information.
-func (frame *Frame) ParseZoubunForm(lis [][]string, period string) error {
+func (frame *Frame) ParseZoubunForm(lis [][]string, period string, inc int) error {
 	for _, l := range lis {
 		if strings.ToUpper(l[0]) == "NODE:" {
 			nnum, err := strconv.ParseInt(l[1], 10, 64)
@@ -1774,10 +1786,15 @@ func (frame *Frame) ParseZoubunForm(lis [][]string, period string) error {
 				return err
 			}
 			if n, ok := frame.Nodes[int(nnum)]; ok {
-				disp := make([]float64, 6)
 				if len(l) < 9 {
 					return errors.New(fmt.Sprintf("ParseZoubunForm: Index Error NODE %d", n.Num))
 				}
+				if len(n.Disp[period]) < inc {
+					for i := 0; i < inc - len(n.Disp[period]); i++ {
+						n.Disp[period] = append(n.Disp[period] , make([]float64, 6))
+					}
+				}
+				disp := make([]float64, 6)
 				for i := 0; i < 6; i++ {
 					val, err := strconv.ParseFloat(strings.Trim(l[3+i], "\r"), 64)
 					if err != nil {
@@ -1789,7 +1806,7 @@ func (frame *Frame) ParseZoubunForm(lis [][]string, period string) error {
 						disp[i] = val
 					}
 				}
-				n.Disp[period] = disp
+				n.Disp[period][inc-1] = disp
 			}
 		}
 	}
@@ -2320,7 +2337,7 @@ func (frame *Frame) WriteInp(fn string) error {
 }
 
 // WriteOutput writes an output file of analysis.
-func (frame *Frame) WriteOutput(fn string, p string) error {
+func (frame *Frame) WriteOutput(fn string, p string, inc int) error {
 	var otp bytes.Buffer
 	var nkeys, ekeys []int
 	// Elem
@@ -2334,7 +2351,7 @@ func (frame *Frame) WriteOutput(fn string, p string) error {
 		if !frame.Elems[k].IsLineElem() {
 			continue
 		}
-		otp.WriteString(frame.Elems[k].OutputStress(p))
+		otp.WriteString(frame.Elems[k].OutputStress(p, inc))
 	}
 	// Node
 	otp.WriteString("\n\n** DISPLACEMENT OF NODE\n\n")
@@ -2344,14 +2361,14 @@ func (frame *Frame) WriteOutput(fn string, p string) error {
 	}
 	sort.Ints(nkeys)
 	for _, k := range nkeys {
-		otp.WriteString(frame.Nodes[k].OutputDisp(p))
+		otp.WriteString(frame.Nodes[k].OutputDisp(p, inc))
 	}
 	otp.WriteString("\n\n** REACTION\n\n")
 	otp.WriteString("  NO  DIRECTION              R    NC\n\n")
 	for _, k := range nkeys {
 		for i := 0; i < 6; i++ {
 			if frame.Nodes[k].Conf[i] {
-				otp.WriteString(frame.Nodes[k].OutputReaction(p, i))
+				otp.WriteString(frame.Nodes[k].OutputReaction(p, inc, i))
 			}
 		}
 	}
@@ -2367,13 +2384,13 @@ func (frame *Frame) WriteOutput(fn string, p string) error {
 }
 
 // WriteReaction writes an output file of reaction.
-func (frame *Frame) WriteReaction(fn string, direction int) error {
+func (frame *Frame) WriteReaction(fn string, inc int, direction int) error {
 	ns := make([]*Node, len(frame.Nodes))
 	for nnum, n := range frame.Nodes {
 		ns[nnum] = n
 	}
 	sort.Sort(NodeByNum{ns})
-	return WriteReaction(fn, ns, direction)
+	return WriteReaction(fn, ns, inc, direction)
 }
 
 // ReportZoubunDisp writes an output file which reports displacement data of push-over analysis.
@@ -4195,20 +4212,20 @@ func (frame *Frame) ExtractArclm(fn string) error {
 			var disp []float64
 			var reaction []float64
 			if d, ok := n.Disp[p]; ok {
-				disp = d
+				disp = d[0]
 			}
 			if r, ok := n.Reaction[p]; ok {
-				reaction = r
+				reaction = r[0]
 			}
 			for j := 0; j < 6; j++ {
 				an.Conf[j] = n.Conf[j]
 				an.Force[j] = n.Load[j]
 				if disp != nil {
-					an.Disp[j] = n.Disp[p][j]
+					an.Disp[j] = n.Disp[p][0][j]
 				}
 				if n.Conf[j] {
 					if reaction != nil {
-						an.Reaction[j] = n.Reaction[p][j]
+						an.Reaction[j] = n.Reaction[p][0][j]
 					}
 				}
 			}
@@ -4226,9 +4243,9 @@ func (frame *Frame) ExtractArclm(fn string) error {
 					an.Force[1] += n.Factor * n.Weight[2]
 				}
 			}
-			n.Force[p] = make([]float64, 6)
+			n.Force[p][0] = make([]float64, 6)
 			for j := 0; j < 6; j++ {
-				n.Force[p][j] = an.Force[j]
+				n.Force[p][0][j] = an.Force[j]
 			}
 			an.Index = i
 			an.Mass = n.Weight[2] / 9.80665
@@ -4244,7 +4261,7 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				ae.Enod[j] = af.Nodes[arclmnodes[el.Enod[j].Num]]
 			}
 			ae.Cang = el.Cang
-			var stress map[int][]float64
+			var stress map[int][][]float64
 			if s, ok := el.Stress[p]; ok {
 				stress = s
 			}
@@ -4256,7 +4273,7 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				}
 				for k, en := range el.Enod {
 					if !en.Conf[2] {
-						en.Force[p][2] += el.Cmq[2+6*k]
+						en.Force[p][0][2] += el.Cmq[2+6*k]
 					}
 				}
 			}
@@ -4271,9 +4288,9 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				}
 				if stress != nil {
 					if j < 6 {
-						ae.Stress[j] = stress[el.Enod[0].Num][j]
+						ae.Stress[j] = stress[el.Enod[0].Num][0][j]
 					} else {
-						ae.Stress[j] = stress[el.Enod[1].Num][j-6]
+						ae.Stress[j] = stress[el.Enod[1].Num][0][j-6]
 					}
 				} else {
 					if p == "L" {
@@ -4519,7 +4536,7 @@ func (frame *Frame) SaveAsArclm(name string) error {
 	return nil
 }
 
-func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
+func (frame *Frame) ReadArclmData(af *arclm.Frame, per string, inc int) {
 	for _, an := range af.Nodes {
 		if n, ok := frame.Nodes[an.Num]; ok {
 			disp := make([]float64, 6)
@@ -4528,8 +4545,18 @@ func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
 				disp[i] = an.Disp[i]
 				reaction[i] = an.Reaction[i]
 			}
-			n.Disp[per] = disp
-			n.Reaction[per] = reaction
+			if len(n.Disp[per]) < inc {
+				for i := 0; i < inc - len(n.Disp[per]); i++ {
+					n.Disp[per] = append(n.Disp[per] , make([]float64, 6))
+				}
+			}
+			if len(n.Reaction[per]) < inc {
+				for i := 0; i < inc - len(n.Reaction[per]); i++ {
+					n.Reaction[per] = append(n.Reaction[per] , make([]float64, 6))
+				}
+			}
+			n.Disp[per][inc-1] = disp
+			n.Reaction[per][inc-1] = reaction
 		}
 	}
 	for _, ael := range af.Elems {
@@ -4541,7 +4568,15 @@ func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
 					stress[n.Num][j] = ael.Stress[6*i+j]
 				}
 			}
-			el.Stress[per] = stress
+			for _, en := range el.Enod {
+				if len(el.Stress[per][en.Num]) < inc {
+					for i := 0; i < inc - len(el.Stress[per][en.Num]); i++ {
+						el.Stress[per][en.Num] = append(el.Stress[per][en.Num] , make([]float64, 6))
+					}
+				}
+			}
+			el.Stress[per][el.Enod[0].Num][inc-1] = stress[el.Enod[0].Num]
+			el.Stress[per][el.Enod[1].Num][inc-1] = stress[el.Enod[1].Num]
 			el.Values["ENERGY"] = ael.Energy
 			el.Values["ENERGYB"] = ael.Energyb
 			if ael.IsValid {
@@ -4659,7 +4694,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				if st, ok := el.Stress[per]; ok {
 					for i := 0; i < 2; i++ {
 						for j := 0; j < 6; j++ {
-							stress[p][6*i+j] = st[el.Enod[i].Num][j]
+							stress[p][6*i+j] = st[el.Enod[i].Num][0][j]
 						}
 					}
 				}
@@ -4747,7 +4782,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			stress := make([]float64, 5)
 			for p, per := range []string{long, x1, x2, y1, y2} {
 				if st, ok := el.Stress[per]; ok {
-					stress[p] = st[el.Enod[0].Num][0]
+					stress[p] = st[el.Enod[0].Num][0][0]
 				}
 				if (p == 2 && x1 == x2) || (p == 4 && y1 == y2) {
 					continue
@@ -4903,7 +4938,7 @@ fact_node:
 	for i := 0; i < len(elems); i++ {
 		sort.Sort(ElemByNum{elems[i]})
 	}
-	err = f.CalcFact(nodes, elems)
+	err = f.CalcFact(nodes, elems, 1)
 	if err != nil {
 		return err
 	}
@@ -5549,7 +5584,7 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, props []*Prop, sect
 	return nil
 }
 
-func WriteOutput(fn string, p string, els []*Elem) error {
+func WriteOutput(fn string, p string, els []*Elem, inc int) error {
 	var otp bytes.Buffer
 	// Elem
 	otp.WriteString("\n\n** FORCES OF MEMBER\n\n")
@@ -5559,7 +5594,7 @@ func WriteOutput(fn string, p string, els []*Elem) error {
 		if !el.IsLineElem() {
 			continue
 		}
-		otp.WriteString(el.OutputStress(p))
+		otp.WriteString(el.OutputStress(p, inc))
 	}
 	// Node
 	var add bool
@@ -5585,14 +5620,14 @@ func WriteOutput(fn string, p string, els []*Elem) error {
 	otp.WriteString("\n\n** DISPLACEMENT OF NODE\n\n")
 	otp.WriteString("  NO          U          V          W         KSI         ETA       OMEGA\n\n")
 	for _, n := range ns {
-		otp.WriteString(n.OutputDisp(p))
+		otp.WriteString(n.OutputDisp(p, inc))
 	}
 	otp.WriteString("\n\n** REACTION\n\n")
 	otp.WriteString("  NO  DIRECTION              R    NC\n\n")
 	for _, n := range ns {
 		for i := 0; i < 6; i++ {
 			if n.Conf[i] {
-				otp.WriteString(n.OutputReaction(p, i))
+				otp.WriteString(n.OutputReaction(p, inc, i))
 			}
 		}
 	}
@@ -5607,7 +5642,7 @@ func WriteOutput(fn string, p string, els []*Elem) error {
 	return nil
 }
 
-func WriteReaction(fn string, ns []*Node, direction int) error {
+func WriteReaction(fn string, ns []*Node, inc int, direction int) error {
 	var otp bytes.Buffer
 	r := make([]float64, 3)
 	otp.WriteString(" NODE   XCOORD   YCOORD   ZCOORD     WEIGHT       LONG      XSEIS      YSEIS        W+L      W+L+X      W+L-X      W+L+Y      W+L-Y PILE\n")
@@ -5622,7 +5657,7 @@ func WriteReaction(fn string, ns []*Node, direction int) error {
 		wgt := n.Weight[1]
 		for i, per := range []string{"L", "X", "Y"} {
 			if rea, ok := n.Reaction[per]; ok {
-				r[i] = rea[direction]
+				r[i] = rea[inc-1][direction]
 			} else {
 				r[i] = 0.0
 			}

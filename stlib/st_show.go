@@ -127,6 +127,7 @@ type Show struct {
 	DrawSize float64
 
 	Period string
+	Increment int
 
 	PlotState int
 	Dfact     float64
@@ -232,6 +233,7 @@ func NewShow(frame *Frame) *Show {
 		Draw:                 draws,
 		DrawSize:             1.0,
 		Period:               "L",
+		Increment:            1,
 		PlotState:            PLOT_UNDEFORMED,
 		Dfact:                100.0,
 		PointedLoad:          false,

@@ -1044,30 +1044,45 @@ func DotLine(x1, y1, x2, y2, dx, dy float64) float64 {
 	return (x1*y2 + x2*dy + dx*y1) - (x1*dy + x2*y1 + dx*y2)
 }
 
-func PeriodValue(period string, f func(string, float64) float64) float64 {
+func PeriodValue(period string, f func(string, int, float64) float64) float64 {
 	if period == "" {
 		return 0.0
 	}
 	sign := 1.0
 	sum := 0.0
 	tmp := ""
+	parsePeriod := func(p string) (string, int) {
+		if strings.Contains(p, "@") {
+			lis := strings.Split(p, "@")
+			val, err := strconv.ParseInt(lis[1], 10, 64)
+			if err != nil {
+				return lis[0], 1
+			}
+			return lis[0], int(val)
+		} else {
+			return p, 1
+		}
+	}
 	for _, s := range period {
 		switch s {
 		case ' ':
 			continue
 		case '+':
-			sum += f(tmp, sign)
+			p, i := parsePeriod(tmp)
+			sum += f(p, i, sign)
 			tmp = ""
 			sign = 1.0
 		case '-':
-			sum += f(tmp, sign)
+			p, i := parsePeriod(tmp)
+			sum += f(p, i, sign)
 			tmp = ""
 			sign = -1.0
 		default:
 			tmp += string(s)
 		}
 	}
-	return sum + f(tmp, sign)
+	p, i := parsePeriod(tmp)
+	return sum + f(p, i, sign)
 }
 
 func PrincipalAxis(direction []float64, cang float64) ([]float64, []float64, error) {
