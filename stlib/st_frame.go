@@ -618,6 +618,7 @@ func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 		case "SECT":
 			num, err = strconv.ParseInt(lis[i+1], 10, 64)
 			s.Num = int(num)
+			s.Original = int(num)
 			skip = 1
 		case "SNAME":
 			s.Name = ToUtf8string(lis[i+1])
