@@ -4316,12 +4316,12 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	otp.WriteString(fmt.Sprintf(" 節点番号          積載荷重別の重量 [%s]\n\n", frame.Show.UnitName[0]))
 	otp.WriteString("                 床用     柱梁用     地震用\n")
 	for _, n := range nodes {
-		otp.WriteString(n.WgtString())
+		otp.WriteString(n.WgtString(frame.Show.Unit[0]))
 		for i := 0; i < 3; i++ {
 			total[i] += n.Weight[i]
 		}
 	}
-	otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", total[0], total[1], total[2]))
+	otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
 	otp.WriteString("各断面の部材総量（参考資料）\n\n")
 	otp.WriteString(" 断面番号   長さ,面積[m,m2]\n")
 	for k := range amount {
@@ -4474,11 +4474,11 @@ func (frame *Frame) AiDistribution() (string, error) {
 	}
 	rtn.WriteString("\n各階重量       wi :")
 	for i := 0; i < size; i++ {
-		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Wi[i]))
+		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Wi[i]))
 	}
 	rtn.WriteString("\n        Wi = Σwi :")
 	for i := 0; i < size; i++ {
-		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.W[i]))
+		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.W[i]))
 	}
 	rtn.WriteString("\n               Ai :           ")
 	for i := 0; i < size-1; i++ {
@@ -4490,11 +4490,11 @@ func (frame *Frame) AiDistribution() (string, error) {
 	}
 	rtn.WriteString("\n層せん断力     Qi :           ")
 	for i := 1; i < size; i++ {
-		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Qi[i]))
+		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Qi[i]))
 	}
 	rtn.WriteString("\n各階外力       Hi :           ")
 	for i := 1; i < size; i++ {
-		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Hi[i]))
+		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Hi[i]))
 	}
 	rtn.WriteString("\n外力係数    Hi/wi :")
 	for i := 0; i < size; i++ {
