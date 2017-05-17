@@ -3301,7 +3301,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		switch strings.ToLower(args[1]) {
 		case "rect":
 			if usage {
-				return Usage("arraycopy rect dx dy dz nx ny nz")
+				return Usage(":arraycopy rect dx dy dz nx ny nz")
 			}
 			if narg < 8 {
 				return NotEnoughArgs(":arraycopy rect")
