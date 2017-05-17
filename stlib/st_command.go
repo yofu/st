@@ -21,6 +21,7 @@ var (
 		"JOINLINEELEM":       JoinLineElem,
 		"ERASE":              Erase,
 		"ADDLINEELEM":        AddLineElem,
+		"ADDARC":             AddArc,
 		"ADDPLATEELEM":       AddPlateElem,
 		"ADDPLATEELEMBYLINE": AddPlateElemByLine,
 		"HATCHPLATEELEM":     HatchPlateElem,
@@ -378,6 +379,26 @@ func AddPlateElem(stw Commander) chan bool {
 		}
 		buf.WriteString(fmt.Sprintf(", SECT: %d)", sec.Num))
 		stw.History(buf.String())
+		Snapshot(stw)
+		return nil
+	}, false)
+}
+
+func AddArc(stw Commander) chan bool {
+	return multinodes(stw, func(ns []*Node) error {
+		if len(ns) < 3 {
+			return fmt.Errorf("too few nodes")
+		}
+		frame := stw.Frame()
+		eps := stw.EPS()
+		coords := make([][]float64, 3)
+		for i := 0; i < 3; i++ {
+			coords[i] = make([]float64, 3)
+			for j := 0; j < 3; j++ {
+				coords[i][j] = ns[i].Coord[j]
+			}
+		}
+		frame.AddArc(coords, eps)
 		Snapshot(stw)
 		return nil
 	}, false)
