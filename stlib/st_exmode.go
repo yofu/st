@@ -2866,6 +2866,49 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		stw.SelectElem(tmpels[:enum])
 		Snapshot(stw)
+	case "dividearc":
+		if narg < 2 {
+			if usage {
+				return Usage(":dividearc [n]")
+			}
+			return NotEnoughArgs(":dividearc")
+		}
+		var divfunc func(*Arc) ([]*Node, []*Elem, error)
+		switch strings.ToLower(args[1]) {
+		case "n":
+			if usage {
+				return Usage(":dividearc n ndiv")
+			}
+			if narg < 3 {
+				return NotEnoughArgs(":dividearc n")
+			}
+			val, err := strconv.ParseInt(args[2], 10, 64)
+			if err != nil {
+				return err
+			}
+			ndiv := int(val)
+			divfunc = func(arc *Arc) ([]*Node, []*Elem, error) {
+				return arc.DivideInN(ndiv, EPS)
+			}
+		}
+		if divfunc == nil {
+			return errors.New(":dividearc: unknown format")
+		}
+		tmpels := make([]*Elem, 0)
+		enum := 0
+		for _, arc := range frame.Arcs {
+			_, els, err := divfunc(arc)
+			if err != nil {
+				ErrorMessage(stw, err, ERROR)
+				continue
+			}
+			if err == nil && len(els) > 1 {
+				tmpels = append(tmpels, els...)
+				enum += len(els)
+			}
+		}
+		stw.SelectElem(tmpels[:enum])
+		Snapshot(stw)
 	case "section":
 		if usage {
 			return Usage(":section sectcode {-nodisp}")
