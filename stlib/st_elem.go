@@ -1332,6 +1332,33 @@ func (elem *Elem) Copy(x, y, z float64, eps float64) *Elem {
 	}
 }
 
+func (elem *Elem) CopyRotate(center, vector []float64, angle float64, eps float64) *Elem {
+	newenod := make([]*Node, elem.Enods)
+	for i := 0; i < elem.Enods; i++ {
+		c := RotateVector(elem.Enod[i].Coord, center, vector, angle)
+		var created bool
+		newenod[i], created = elem.Frame.CoordNode(c[0], c[1], c[2], eps)
+		if created {
+			for j := 0; j < 6; j++ {
+				newenod[i].Conf[j] = elem.Enod[i].Conf[j]
+			}
+		}
+	}
+	if elem.IsLineElem() {
+		newelem := elem.Frame.AddLineElem(-1, newenod, elem.Sect, elem.Etype)
+		newelem.Cang = elem.Cang
+		for i := 0; i < 2; i++ {
+			for j := 0; j < 6; j++ {
+				newelem.Bonds[6*i+j] = elem.Bonds[6*i+j]
+				newelem.Cmq[6*i+j] = elem.Cmq[6*i+j]
+			}
+		}
+		return newelem
+	} else {
+		return elem.Frame.AddPlateElem(-1, newenod, elem.Sect, elem.Etype)
+	}
+}
+
 func (elem *Elem) Mirror(coord, vec []float64, del bool, eps float64) *Elem {
 	newenod := make([]*Node, elem.Enods)
 	var add bool
