@@ -3291,6 +3291,69 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 			}
 		}
+	case "arraycopy":
+		if narg < 2 {
+			if usage {
+				return Usage(":arraycopy [rect,polar]")
+			}
+			return NotEnoughArgs(":arraycopy")
+		}
+		switch strings.ToLower(args[1]) {
+		case "rect":
+			if usage {
+				return Usage("arraycopy rect dx dy dz nx ny nz")
+			}
+			if narg < 8 {
+				return NotEnoughArgs(":arraycopy rect")
+			}
+			d := make([]float64, 3)
+			n := make([]int, 3)
+			for i := 0; i < 3; i++ {
+				dval, err := strconv.ParseFloat(args[2+i], 64)
+				if err != nil {
+					return err
+				}
+				d[i] = dval
+				nval, err := strconv.ParseInt(args[5+i], 10, 64)
+				if err != nil {
+					return err
+				}
+				n[i] = int(nval)
+			}
+			els := currentelem(stw, exmodech, exmodeend)
+			if len(els) == 0 {
+				return fmt.Errorf("no nodes or elems selected")
+			}
+			vec := make([]float64, 3)
+			first := true
+			for i := 0; i < n[0]; i++ {
+				for j := 0; j < n[1]; j++ {
+					for k := 0; k < n[2]; k++ {
+						if !first {
+							for _, el := range els {
+								if el == nil || el.IsHidden(frame.Show) || el.Lock {
+									continue
+								}
+								el.Copy(vec[0], vec[1], vec[2], EPS)
+							}
+						} else {
+							first = false
+						}
+						vec[2] += d[2]
+					}
+					vec[1] += d[1]
+					vec[2] = 0.0
+				}
+				vec[0] += d[0]
+				vec[1] = 0.0
+			}
+			Snapshot(stw)
+		case "polar":
+			if usage {
+				return Usage("arraycopy polar n")
+			}
+			// TODO: implement
+		}
 	case "set":
 		if usage {
 			return Usage(":set {-sect=} {-etype=}")
