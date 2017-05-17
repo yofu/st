@@ -2581,6 +2581,37 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			el.SetPrincipalAxis()
 		}
 		Snapshot(stw)
+	case "setcang":
+		if narg < 2 {
+			if usage {
+				return Usage(":setcang [plate]")
+			}
+			return NotEnoughArgs(":setcang")
+		}
+		switch strings.ToLower(args[1]) {
+		case "plate":
+			els := currentelem(stw, exmodech, exmodeend)
+			for _, el := range els {
+				if el.IsNotEditable(frame.Show) || !el.IsLineElem() {
+					continue
+				}
+				plates := frame.SearchElem(el.Enod...)
+				vec := make([]float64, 3)
+				for _, p := range plates {
+					if p.Etype == WALL || p.Etype == SLAB {
+						tmp := p.Normal(true)
+						for i := 0; i < 3; i++ {
+							vec[i] += tmp[i]
+						}
+					}
+				}
+				_, err := el.AxisToCang(vec, false)
+				if err != nil {
+					return err
+				}
+			}
+			Snapshot(stw)
+		}
 	case "axis2cang":
 		if usage {
 			return Usage(":axis2cang n1 n2 [strong,weak]")
