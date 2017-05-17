@@ -2617,7 +2617,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		vec := []float64{n2.Coord[0] - n1.Coord[0], n2.Coord[1] - n1.Coord[1], n2.Coord[2] - n1.Coord[2]}
 		for _, el := range stw.SelectedElems() {
-			if el == nil || el.IsHidden(frame.Show) || el.Lock || !el.IsLineElem() {
+			if el.IsNotEditable(frame.Show) || !el.IsLineElem() {
 				continue
 			}
 			_, err := el.AxisToCang(vec, strong)
@@ -3179,7 +3179,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return nil
 		}
 		for _, n := range ns {
-			if n == nil || n.IsHidden(frame.Show) || n.Lock {
+			if n.IsNotEditable(frame.Show) {
 				continue
 			}
 			n.Move(vec[0], vec[1], vec[2])
@@ -3208,7 +3208,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				vec[i] = val
 			}
 			for _, el := range currentelem(stw, exmodech, exmodeend) {
-				if el == nil || el.IsHidden(frame.Show) || el.Lock {
+				if el.IsNotEditable(frame.Show) {
 					continue
 				}
 				el.Copy(vec[0], vec[1], vec[2], EPS)
@@ -3331,7 +3331,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					for k := 0; k < n[2]; k++ {
 						if !first {
 							for _, el := range els {
-								if el == nil || el.IsHidden(frame.Show) || el.Lock {
+								if el.IsNotEditable(frame.Show) {
 									continue
 								}
 								el.Copy(vec[0], vec[1], vec[2], EPS)
@@ -3391,7 +3391,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			theta := dtheta
 			for i := 0; i < int(n); i++ {
 				for _, el := range els {
-					if el == nil || el.IsHidden(frame.Show) || el.Lock {
+					if el.IsNotEditable(frame.Show) {
 						continue
 					}
 					el.CopyRotate(center, vector, theta, EPS)

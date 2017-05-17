@@ -398,6 +398,10 @@ func (elem *Elem) IsHidden(show *Show) bool {
 	return false
 }
 
+func (elem *Elem) IsNotEditable(show *Show) bool {
+	return elem == nil || elem.IsHidden(show) || elem.Lock
+}
+
 // Write// {{{
 func (elem *Elem) InpString() string {
 	var rtn bytes.Buffer

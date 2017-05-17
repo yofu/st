@@ -165,6 +165,10 @@ func (node *Node) IsHidden(show *Show) bool {
 	return false
 }
 
+func (node *Node) IsNotEditable(show *Show) bool {
+	return node == nil || node.IsHidden(show) || node.Lock
+}
+
 func (node *Node) InpString() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("NODE %4d  CORD %7.3f %7.3f %7.3f  ICON ", node.Num, node.Coord[0], node.Coord[1], node.Coord[2]))
