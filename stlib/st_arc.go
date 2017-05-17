@@ -218,3 +218,14 @@ func (arc *Arc) DivideAtLocalAxis(axis int, coords []float64, eps float64) ([]*N
 	sort.Float64s(angles)
 	return arc.DivideAtAngles(angles, eps)
 }
+
+func (arc *Arc) DivideInN(n int, eps float64) ([]*Node, []*Elem, error) {
+	angles := make([]float64, n-1)
+	dtheta := (arc.End - arc.Start) / float64(n)
+	angle := dtheta
+	for i := 0; i < n-1; i++ {
+		angles[i] = angle
+		angle += dtheta
+	}
+	return arc.DivideAtAngles(angles, eps)
+}
