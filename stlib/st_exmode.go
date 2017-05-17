@@ -3350,9 +3350,54 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			Snapshot(stw)
 		case "polar":
 			if usage {
-				return Usage("arraycopy polar n")
+				return Usage(":arraycopy polar nnum axis dtheta(deg) n")
 			}
-			// TODO: implement
+			if narg < 6 {
+				return NotEnoughArgs(":arraycopy polar")
+			}
+			nnum, err := strconv.ParseInt(args[2], 10, 64)
+			if err != nil {
+				return err
+			}
+			var center, vector []float64
+			if n, ok := frame.Nodes[int(nnum)]; ok {
+				center = n.Coord
+			} else {
+				return fmt.Errorf("NODE %d doesn't exist", nnum)
+			}
+			switch args[3] {
+			case "0", "x", "X":
+				vector = []float64{1, 0, 0}
+			case "1", "y", "Y":
+				vector = []float64{0, 1, 0}
+			case "2", "z", "Z":
+				vector = []float64{0, 0, 1}
+			default:
+				return fmt.Errorf("unknown axis")
+			}
+			dtheta, err := strconv.ParseFloat(args[4], 64)
+			if err != nil {
+				return err
+			}
+			dtheta *= math.Pi / 180.0
+			n, err := strconv.ParseInt(args[5], 10, 64)
+			if err != nil {
+				return err
+			}
+			els := currentelem(stw, exmodech, exmodeend)
+			if len(els) == 0 {
+				return fmt.Errorf("no nodes or elems selected")
+			}
+			theta := dtheta
+			for i := 0; i < int(n); i++ {
+				for _, el := range els {
+					if el == nil || el.IsHidden(frame.Show) || el.Lock {
+						continue
+					}
+					el.CopyRotate(center, vector, theta, EPS)
+				}
+				theta += dtheta
+			}
 		}
 	case "set":
 		if usage {
