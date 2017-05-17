@@ -969,6 +969,7 @@ func (elem *Elem) RectToBrace(nbrace int, rfact float64) []*Elem {
 			sec.Figs = []*Fig{f}
 			sec.Type = elem.Etype - 2
 			sec.Color = elem.Sect.Color
+			sec.Original = elem.Sect.Num
 			for i := 0; i < 12; i++ {
 				if i%2 == 0 {
 					sec.Yield[i] = 100.0
