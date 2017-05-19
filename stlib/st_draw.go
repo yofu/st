@@ -480,28 +480,46 @@ func Arrow(stw Drawer, x1, y1, x2, y2, size, theta float64) {
 	stw.Line(x2, y2, x2+((x1-x2)*c+(y1-y2)*s), y2+(-(x1-x2)*s+(y1-y2)*c))
 }
 
-func DrawGlobalAxis(stw Drawer, frame *Frame, color uint) {
-	origin := frame.View.ProjectCoord([]float64{0.0, 0.0, 0.0})
-	xaxis := frame.View.ProjectCoord([]float64{frame.Show.GlobalAxisSize, 0.0, 0.0})
-	yaxis := frame.View.ProjectCoord([]float64{0.0, frame.Show.GlobalAxisSize, 0.0})
-	zaxis := frame.View.ProjectCoord([]float64{0.0, 0.0, frame.Show.GlobalAxisSize})
+func DrawAxis(stw Drawer, axis *Axis, color uint) {
+	frame := axis.Frame
+	start := frame.View.ProjectCoord(axis.Origin)
+	end := make([][]float64, 3)
+	for i := 0; i < 3; i++ {
+		tmp := make([]float64, 3)
+		for j := 0; j < 3; j++ {
+			tmp[j] = axis.Origin[j] + axis.Direction[i][j]
+		}
+		end[i] = frame.View.ProjectCoord(tmp)
+	}
 	size := 0.3
-	stw.LineStyle(CONTINUOUS)
 	switch color {
 	case ECOLOR_BLACK:
 		stw.Foreground(BLACK)
-		Arrow(stw, origin[0], origin[1], xaxis[0], xaxis[1], size, deg10)
-		Arrow(stw, origin[0], origin[1], yaxis[0], yaxis[1], size, deg10)
-		Arrow(stw, origin[0], origin[1], zaxis[0], zaxis[1], size, deg10)
+		Arrow(stw, start[0], start[1], end[0][0], end[0][1], size, deg10)
+		Arrow(stw, start[0], start[1], end[1][0], end[1][1], size, deg10)
+		Arrow(stw, start[0], start[1], end[2][0], end[2][1], size, deg10)
 	default:
 		stw.Foreground(RED)
-		Arrow(stw, origin[0], origin[1], xaxis[0], xaxis[1], size, deg10)
+		Arrow(stw, start[0], start[1], end[0][0], end[0][1], size, deg10)
 		stw.Foreground(GREEN)
-		Arrow(stw, origin[0], origin[1], yaxis[0], yaxis[1], size, deg10)
+		Arrow(stw, start[0], start[1], end[1][0], end[1][1], size, deg10)
 		stw.Foreground(BLUE)
-		Arrow(stw, origin[0], origin[1], zaxis[0], zaxis[1], size, deg10)
+		Arrow(stw, start[0], start[1], end[2][0], end[2][1], size, deg10)
 		stw.Foreground(WHITE)
 	}
+}
+
+func DrawGlobalAxis(stw Drawer, frame *Frame, color uint) {
+	axis := &Axis{
+		Frame:  frame,
+		Origin: []float64{0.0, 0.0, 0.0},
+		Direction: [][]float64{
+			[]float64{frame.Show.GlobalAxisSize, 0.0, 0.0},
+			[]float64{0.0, frame.Show.GlobalAxisSize, 0.0},
+			[]float64{0.0, 0.0, frame.Show.GlobalAxisSize},
+		},
+	}
+	DrawAxis(stw, axis, color)
 }
 
 func DrawElementAxis(stw Drawer, elem *Elem, show *Show) {
@@ -513,23 +531,16 @@ func DrawElementAxis(stw Drawer, elem *Elem, show *Show) {
 	z := make([]float64, 3)
 	position, d, strong, weak := elem.ElementAxes(show.PlotState&PLOT_UNDEFORMED == 0, show.Period, show.Dfact)
 	for i := 0; i < 3; i++ {
-		x[i] = position[i] + show.ElementAxisSize*strong[i]
-		y[i] = position[i] + show.ElementAxisSize*weak[i]
-		z[i] = position[i] + show.ElementAxisSize*d[i]
+		x[i] = show.ElementAxisSize * strong[i]
+		y[i] = show.ElementAxisSize * weak[i]
+		z[i] = show.ElementAxisSize * d[i]
 	}
-	origin := elem.Frame.View.ProjectCoord(position)
-	xaxis := elem.Frame.View.ProjectCoord(x)
-	yaxis := elem.Frame.View.ProjectCoord(y)
-	zaxis := elem.Frame.View.ProjectCoord(z)
-	arrow := 0.3
-	stw.LineStyle(CONTINUOUS)
-	stw.Foreground(RED)
-	Arrow(stw, origin[0], origin[1], xaxis[0], xaxis[1], arrow, deg10)
-	stw.Foreground(GREEN)
-	Arrow(stw, origin[0], origin[1], yaxis[0], yaxis[1], arrow, deg10)
-	stw.Foreground(BLUE)
-	Arrow(stw, origin[0], origin[1], zaxis[0], zaxis[1], arrow, deg10)
-	stw.Foreground(WHITE)
+	axis := &Axis{
+		Frame:     elem.Frame,
+		Origin:    position,
+		Direction: [][]float64{x, y, z},
+	}
+	DrawAxis(stw, axis, show.ColorMode)
 }
 
 func DrawWrect(stw Drawer, elem *Elem, show *Show) {
