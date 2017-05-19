@@ -93,6 +93,8 @@ type Frame struct {
 	Measures []*Measure
 	Arcs     []*Arc
 
+	LocalAxis *Axis
+
 	Maxenum int
 	Maxnnum int
 	Maxsnum int

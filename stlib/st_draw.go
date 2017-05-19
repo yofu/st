@@ -1171,6 +1171,9 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 	}
 	stw.DefaultStyle()
 	DrawLegend(stw, show)
+	if frame.LocalAxis != nil {
+		DrawAxis(stw, frame.LocalAxis, color)
+	}
 	// DrawRange(stw, RangeView)
 	if flush {
 		stw.Flush()
