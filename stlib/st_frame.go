@@ -5189,6 +5189,30 @@ func (frame *Frame) PickPlateElem(x, y float64) []*Elem {
 	return SortedElem(rtn, func(e *Elem) float64 { return e.DistFromProjection(frame.View) })
 }
 
+func (frame *Frame) PickAxis(x, y, eps float64) (*Axis, int) {
+	if frame.LocalAxis == nil {
+		return nil, -1
+	}
+	mindist := eps
+	var rtn *Axis
+	d := -1
+	start, end := frame.LocalAxis.Project(frame.View)
+	for i := 0; i < 3; i++ {
+		if (math.Min(start[0], end[i][0]) <= x+eps && math.Max(start[0], end[i][0]) >= x-eps) && (math.Min(start[1], end[i][1]) <= y+eps && math.Max(start[1], end[i][1]) >= y-eps) {
+			dist := math.Abs(DotLine(start[0], start[1], end[i][0], end[i][1], x, y))
+			if plen := math.Hypot(start[0]-end[i][0], start[1]-end[i][1]); plen > 1E-12 {
+				dist /= plen
+			}
+			if dist < mindist {
+				mindist = dist
+				rtn = frame.LocalAxis
+				d = i
+			}
+		}
+	}
+	return rtn, d
+}
+
 func (frame *Frame) PickNode(x, y, eps float64) *Node {
 	mindist := eps
 	var rtn *Node

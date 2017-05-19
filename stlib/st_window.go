@@ -605,6 +605,18 @@ func PickElem(stw Window, x1, y1, x2, y2 int) ([]*Elem, bool) {
 	}
 }
 
+func PickAxis(stw Window, x, y int) (*Axis, int, bool) {
+	frame := stw.Frame()
+	if frame == nil {
+		return nil, -1, false
+	}
+	a, d := frame.PickAxis(float64(x), float64(y), elemSelectPixel)
+	if a == nil {
+		return nil, -1, false
+	}
+	return a, d, true
+}
+
 func PickNode(stw Window, x1, y1, x2, y2 int) ([]*Node, bool) {
 	frame := stw.Frame()
 	if frame == nil {

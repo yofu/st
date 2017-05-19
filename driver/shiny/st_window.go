@@ -626,6 +626,13 @@ func (stw *Window) Start(fn string) {
 						if stw.Executing() {
 							if !picked {
 								stw.SendElem(nil)
+								a, d, picked := st.PickAxis(stw, endX, endY)
+								if !picked {
+									stw.SendAxis(nil)
+								} else {
+									a.Current = d
+									stw.SendAxis(a)
+								}
 							} else {
 								stw.SendModifier(st.Modifier{
 									Shift: e.Modifiers&key.ModShift != 0,
