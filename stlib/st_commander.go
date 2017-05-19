@@ -18,6 +18,8 @@ type Commander interface {
 	SendElem(*Elem)
 	GetNode() chan *Node
 	SendNode(*Node)
+	GetAxis() chan *Axis
+	SendAxis(*Axis)
 	GetClick() chan Click
 	SendClick(Click)
 	GetWheel() chan Wheel
@@ -88,6 +90,7 @@ type CommandBuffer struct {
 	quit  chan bool
 	elem  chan *Elem
 	node  chan *Node
+	axis  chan *Axis
 	click chan Click
 	wheel chan Wheel
 	mod   chan Modifier
@@ -101,6 +104,7 @@ func NewCommandBuffer() *CommandBuffer {
 		quit:  nil,
 		elem:  nil,
 		node:  nil,
+		axis:  nil,
 		click: nil,
 		wheel: nil,
 		mod:   nil,
@@ -140,6 +144,17 @@ func (cb *CommandBuffer) GetNode() chan *Node {
 func (cb *CommandBuffer) SendNode(n *Node) {
 	if cb.node != nil {
 		cb.node <- n
+	}
+}
+
+func (cb *CommandBuffer) GetAxis() chan *Axis {
+	cb.axis = make(chan *Axis)
+	return cb.axis
+}
+
+func (cb *CommandBuffer) SendAxis(a *Axis) {
+	if cb.axis != nil {
+		cb.axis <- a
 	}
 }
 
@@ -217,6 +232,7 @@ func (cb *CommandBuffer) EndCommand() {
 		cb.on = false
 		cb.elem = nil
 		cb.node = nil
+		cb.axis = nil
 		cb.click = nil
 		cb.wheel = nil
 		cb.mod = nil
