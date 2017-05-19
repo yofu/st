@@ -29,6 +29,7 @@ var (
 		"MOVENODE":           MoveNode,
 		"MOVEELEM":           MoveElem,
 		"MIRROR":             Mirror,
+		"ARRAYPOLAR":         ArrayPolar,
 		"TRIM":               Trim,
 		"EXTEND":             Extend,
 		"OFFSET":             Offset,
@@ -134,6 +135,90 @@ func ToggleBond(stw Commander) chan bool {
 		Snapshot(stw)
 		return nil
 	})
+}
+
+func ArrayPolar(stw Commander) chan bool {
+	quit := make(chan bool)
+	go func() {
+		nch := stw.GetNode()
+		ach := stw.GetAxis()
+		keych := stw.GetKey()
+		clickch := stw.GetClick()
+		as := stw.AltSelectNode()
+		stw.SetAltSelectNode(false)
+		frame := stw.Frame()
+		num := 0
+		eps := stw.EPS()
+	arraypolar:
+		for {
+			select {
+			case n := <-nch:
+				if n != nil {
+					frame.LocalAxis = &Axis{
+						Frame:  frame,
+						Origin: n.Coord,
+						Direction: [][]float64{
+							[]float64{frame.Show.GlobalAxisSize, 0.0, 0.0},
+							[]float64{0.0, frame.Show.GlobalAxisSize, 0.0},
+							[]float64{0.0, 0.0, frame.Show.GlobalAxisSize},
+						},
+						Current: -1,
+					}
+					stw.SetAltSelectNode(as)
+				}
+			case <-ach:
+			case k := <-keych:
+				if frame.LocalAxis != nil {
+					if k.Direction == key.DirRelease {
+						switch k.Code {
+						case key.CodeJ:
+							num--
+						case key.CodeK:
+							num++
+						case key.CodeReturnEnter:
+							if num > 0 {
+								dtheta := math.Pi / float64(num+1)
+								theta := dtheta
+								a := frame.LocalAxis
+								for i := 0; i < num; i++ {
+									for _, el := range stw.SelectedElems() {
+										if el.IsNotEditable(frame.Show) {
+											continue
+										}
+										el.CopyRotate(a.Origin, a.Direction[a.Current], theta, eps)
+									}
+									theta += dtheta
+								}
+								Snapshot(stw)
+								frame.LocalAxis = nil
+								stw.SetAltSelectNode(as)
+								stw.Deselect()
+								stw.EndCommand()
+								stw.Redraw()
+								break arraypolar
+							}
+						}
+					}
+				}
+			case c := <-clickch:
+				if c.Button == ButtonRight {
+					frame.LocalAxis = nil
+					stw.SetAltSelectNode(as)
+					stw.Deselect()
+					stw.EndCommand()
+					stw.Redraw()
+					break arraypolar
+				}
+			case <-quit:
+				frame.LocalAxis = nil
+				stw.SetAltSelectNode(as)
+				stw.EndCommand()
+				stw.Redraw()
+				break arraypolar
+			}
+		}
+	}()
+	return quit
 }
 
 func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
