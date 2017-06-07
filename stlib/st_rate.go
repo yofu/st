@@ -2406,10 +2406,10 @@ func (wg *WoodGirder) TypeString() string {
 
 type WoodWall struct {
 	Wood
-	num      int
-	Name     string
-	Thick    float64
-	Wrect    []float64
+	num   int
+	Name  string
+	Thick float64
+	Wrect []float64
 }
 
 func NewWoodWall(num int) *WoodWall {
