@@ -1918,6 +1918,8 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 		sr = NewSColumn(num, shape, material)
 	case "GIRDER":
 		sr = NewSGirder(num, shape, material)
+	case "BRACE":
+		sr = NewSBrace(num, shape, material)
 	default:
 		return nil
 	}

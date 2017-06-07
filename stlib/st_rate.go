@@ -1392,6 +1392,22 @@ func (sg *SGirder) TypeString() string {
 
 // }}}
 
+// S BRACE// {{{
+type SBrace struct {
+	SColumn
+}
+
+func NewSBrace(num int, shape Shape, material Steel) *SBrace {
+	sc := NewSColumn(num, shape, material)
+	sc.Etype = "BRACE"
+	return &SBrace{*sc}
+}
+func (sg *SBrace) TypeString() string {
+	return "Ｓ筋違"
+}
+
+// }}}
+
 type CShape interface {
 	String() string
 	Bound(int) float64
