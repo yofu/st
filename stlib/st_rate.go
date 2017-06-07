@@ -178,7 +178,6 @@ type Shape interface {
 	Breadth(bool) float64
 }
 
-// S COLUMN// {{{
 type SColumn struct {
 	Steel
 	Shape
@@ -467,9 +466,6 @@ func (sc *SColumn) Amount() Amount {
 	return a
 }
 
-// }}}
-
-// HKYOU// {{{
 type HKYOU struct {
 	H, B, Tw, Tf float64
 }
@@ -573,9 +569,6 @@ func (hk HKYOU) Breadth(strong bool) float64 {
 	}
 }
 
-// }}}
-
-// HWEAK// {{{
 type HWEAK struct {
 	H, B, Tw, Tf float64
 }
@@ -679,9 +672,6 @@ func (hw HWEAK) Breadth(strong bool) float64 {
 	}
 }
 
-// }}}
-
-// RPIPE// {{{
 type RPIPE struct {
 	H, B, Tw, Tf float64
 }
@@ -782,9 +772,6 @@ func (rp RPIPE) Breadth(strong bool) float64 {
 	}
 }
 
-// }}}
-
-// CPIPE// {{{
 type CPIPE struct {
 	D, T float64
 }
@@ -866,9 +853,6 @@ func (cp CPIPE) Breadth(strong bool) float64 {
 	return cp.D
 }
 
-// }}}
-
-// TKYOU// {{{
 type TKYOU struct {
 	H, B, Tw, Tf float64
 }
@@ -978,9 +962,6 @@ func (tk TKYOU) Breadth(strong bool) float64 {
 	}
 }
 
-// }}}
-
-// CKYOU// {{{
 type CKYOU struct {
 	H, B, Tw, Tf float64
 }
@@ -1090,9 +1071,6 @@ func (ck CKYOU) Breadth(strong bool) float64 {
 	}
 }
 
-// }}}
-
-// CWEAK// {{{
 type CWEAK struct {
 	H, B, Tw, Tf float64
 }
@@ -1202,9 +1180,6 @@ func (cw CWEAK) Breadth(strong bool) float64 {
 	}
 }
 
-// }}}
-
-// PLATE// {{{
 type PLATE struct {
 	H, B float64
 }
@@ -1298,9 +1273,6 @@ func (pl PLATE) Breadth(strong bool) float64 {
 	}
 }
 
-// }}}
-
-// SAREA// {{{
 type SAREA struct {
 	Area float64
 }
@@ -1374,9 +1346,6 @@ func (sa SAREA) Breadth(strong bool) float64 {
 	return math.Sqrt(sa.Area/math.Pi) * 2.0
 }
 
-// }}}
-
-// S GIRDER// {{{
 type SGirder struct {
 	SColumn
 }
@@ -1390,9 +1359,6 @@ func (sg *SGirder) TypeString() string {
 	return "Ｓ大梁"
 }
 
-// }}}
-
-// S BRACE// {{{
 type SBrace struct {
 	SColumn
 }
@@ -1406,8 +1372,6 @@ func (sg *SBrace) TypeString() string {
 	return "Ｓ筋違"
 }
 
-// }}}
-
 type CShape interface {
 	String() string
 	Bound(int) float64
@@ -1419,7 +1383,6 @@ type CShape interface {
 
 // TODO: implement CCircle
 
-// CRect// {{{
 type CRect struct {
 	Left, Lower, Right, Upper float64
 }
@@ -1469,8 +1432,6 @@ func (cr CRect) Vertices() [][]float64 {
 	vertices[3] = []float64{cr.Left, cr.Upper}
 	return vertices
 }
-
-// }}}
 
 // RCColumn
 type RCColumn struct {

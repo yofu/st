@@ -21,7 +21,6 @@ import (
 	"github.com/yofu/unit"
 )
 
-// Constants & Variables// {{{
 var (
 	PeriodExt = map[string]string{".inl": "L", ".otl": "L", ".ihx": "X", ".ohx": "X", ".ihy": "Y", ".ohy": "Y"}
 )
@@ -64,10 +63,6 @@ var (
 	YAXIS = []float64{0.0, 1.0, 0.0}
 	ZAXIS = []float64{0.0, 0.0, 1.0}
 )
-
-// }}}
-
-// type Frame// {{{
 
 // Frame : Analysis Frame
 type Frame struct {
@@ -142,8 +137,6 @@ func NewFrame() *Frame {
 	f.Endch = make(chan error)
 	return f
 }
-
-// }}}
 
 // Aiparameter : Parameter for Ai Distribution
 type Aiparameter struct {
@@ -228,8 +221,6 @@ func (ai *Aiparameter) Snapshot() *Aiparameter {
 	return a
 }
 
-// type View// {{{
-
 // View : Parameter for Model View
 type View struct {
 	Gfact       float64
@@ -275,8 +266,6 @@ func (v *View) Copy() *View {
 	nv.Perspective = v.Perspective
 	return nv
 }
-
-// }}}
 
 // Snapshot takes a Snapshot of Frame
 func (frame *Frame) Snapshot() *Frame {
@@ -3374,7 +3363,6 @@ func (frame *Frame) SearchBraceSect(f *Fig, t int) *Sect {
 	return nil
 }
 
-// Modify Frame// {{{
 func (frame *Frame) DeleteNode(num int) {
 	var node *Node
 	if n, ok := frame.Nodes[num]; ok {
@@ -4050,8 +4038,6 @@ func (frame *Frame) Upside() {
 	}
 }
 
-// }}}
-
 func (frame *Frame) SetBoundary(num int, eps float64) error {
 	nodes := make([]*Node, 0)
 	nnum := 0
@@ -4092,7 +4078,6 @@ func (frame *Frame) SetBoundary(num int, eps float64) error {
 	return nil
 }
 
-// ExtractArclm// {{{
 func (frame *Frame) ExtractArclm(fn string) error {
 	cmqs := make(map[int][]float64)
 	for _, el := range frame.Elems {
@@ -4560,8 +4545,6 @@ func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
 		}
 	}
 }
-
-// }}}
 
 // SectionRate
 func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 string, sign float64, cond *Condition) error {
@@ -5079,7 +5062,6 @@ func (frame *Frame) ShowPlane(n1, n2, n3 *Node, eps float64) error {
 	return nil
 }
 
-// Modify View// {{{
 func (frame *Frame) SetFocus(coord []float64) {
 	if coord == nil {
 		xmin, xmax, ymin, ymax, zmin, zmax := frame.Bbox(true)
@@ -5106,8 +5088,6 @@ func (frame *Frame) SetFocus(coord []float64) {
 		frame.View.Angle[1] += 360.0
 	}
 }
-
-// }}}
 
 func (frame *Frame) PickElem(x, y, eps float64) *Elem {
 	el := frame.PickLineElem(x, y, eps)
@@ -5318,7 +5298,6 @@ func (frame *Frame) BoundedArea(x, y float64, maxdepth int) ([]*Node, []*Elem, e
 	return rtnns[:len(rtnns)-1], rtnels, nil
 }
 
-// Projection// {{{
 // direction: 0 -> origin=bottomleft, x=[1,0], y=[0,1]
 //            1 -> origin=topleft,    x=[1,0], y=[0,-1]
 func (view *View) Set(direction int) {
@@ -5421,8 +5400,6 @@ func (view *View) ProjectDeformation(node *Node, show *Show) {
 		}
 	}
 }
-
-// }}}
 
 func WriteInp(fn string, view *View, ai *Aiparameter, els []*Elem) error {
 	var pnum, snum, inum, nnum, enum int

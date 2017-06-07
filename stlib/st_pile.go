@@ -11,7 +11,6 @@ type Pile struct {
 	Moment float64
 }
 
-// Sort// {{{
 type Piles []*Pile
 
 func (p Piles) Len() int { return len(p) }
@@ -24,8 +23,6 @@ type PileByNum struct{ Piles }
 func (p PileByNum) Less(i, j int) bool {
 	return p.Piles[i].Num < p.Piles[j].Num
 }
-
-// }}}
 
 func (pile *Pile) Snapshot() *Pile {
 	p := new(Pile)

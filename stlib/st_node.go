@@ -44,7 +44,6 @@ type Node struct {
 	Lock bool
 }
 
-// Sort// {{{
 type Nodes []*Node
 
 func (n Nodes) Len() int { return len(n) }
@@ -81,8 +80,6 @@ func (n NodeByPcoordX) Less(i, j int) bool {
 func (n NodeByPcoordY) Less(i, j int) bool {
 	return n.Nodes[i].Pcoord[1] < n.Nodes[j].Pcoord[1]
 }
-
-// }}}
 
 // New
 func NewNode() *Node {
@@ -492,7 +489,6 @@ func (node *Node) CurrentValue(show *Show, max, abs bool) float64 {
 	return 0.0
 }
 
-// Miscellaneous// {{{
 func Distance(n1, n2 *Node) float64 {
 	sum := 0.0
 	for i := 0; i < 3; i++ {
@@ -756,5 +752,3 @@ func CompareNodes(ns1, ns2 []*Node) bool {
 	}
 	return true
 }
-
-// }}}

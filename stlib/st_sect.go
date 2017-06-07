@@ -33,7 +33,6 @@ type Fig struct {
 	Value map[string]float64
 }
 
-// Sort// {{{
 type Sects []*Sect
 
 func (s Sects) Len() int { return len(s) }
@@ -46,8 +45,6 @@ type SectByNum struct{ Sects }
 func (s SectByNum) Less(i, j int) bool {
 	return s.Sects[i].Num < s.Sects[j].Num
 }
-
-// }}}
 
 func NewSect() *Sect {
 	s := new(Sect)

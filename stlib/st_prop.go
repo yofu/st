@@ -14,7 +14,6 @@ type Prop struct {
 	Color int
 }
 
-// Sort// {{{
 type Props []*Prop
 
 func (p Props) Len() int { return len(p) }
@@ -27,8 +26,6 @@ type PropByNum struct{ Props }
 func (p PropByNum) Less(i, j int) bool {
 	return p.Props[i].Num < p.Props[j].Num
 }
-
-// }}}
 
 func (prop *Prop) Snapshot() *Prop {
 	p := new(Prop)

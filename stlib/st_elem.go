@@ -12,7 +12,6 @@ import (
 	"github.com/yofu/st/arclm"
 )
 
-// Constants & Variables// {{{
 var ETYPES = []string{"NULL", "COLUMN", "GIRDER", "BRACE", "TRUSS", "WBRACE", "SBRACE", "WALL", "SLAB"}
 var ETYPENAME = []string{"", "柱", "梁", "ブレース", "トラス", "壁ブレース", "床ブレース", "壁", "床"}
 var StressName = []string{"Nz", "Qx", "Qy", "Mz", "Mx", "My"}
@@ -50,9 +49,6 @@ var (
 	PIN   = []bool{false, false, false, false, true, true}
 )
 
-// }}}
-
-// type Elem// {{{
 type Elem struct {
 	Frame *Frame
 	Num   int
@@ -124,8 +120,6 @@ func NewPlateElem(ns []*Node, sect *Sect, etype int) *Elem {
 	el.Wrect = make([]float64, 2)
 	return el
 }
-
-// }}}
 
 func (elem *Elem) Number() int {
 	return elem.Num
@@ -271,7 +265,6 @@ func (elem *Elem) ElementAxes(deformed bool, period string, dfact float64) ([]fl
 	}
 }
 
-// Sort// {{{
 type Elems []*Elem
 
 func (e Elems) Len() int { return len(e) }
@@ -310,8 +303,6 @@ func (e ElemByMidPoint) Less(i, j int) bool {
 	return false
 }
 
-// }}}
-
 func SortedElem(els map[int]*Elem, compare func(*Elem) float64) []*Elem {
 	l := len(els)
 	elems := make(map[float64][]*Elem, l)
@@ -343,7 +334,6 @@ func SortedElem(els map[int]*Elem, compare func(*Elem) float64) []*Elem {
 	return sortedelems
 }
 
-// Etype// {{{
 func Etype(str string) int {
 	for i, j := range ETYPES {
 		if j == str {
@@ -367,8 +357,6 @@ func (elem *Elem) setEtype(str string) error {
 func (elem *Elem) IsLineElem() bool {
 	return elem.Etype <= SBRACE && elem.Enods == 2
 }
-
-// }}}
 
 func (elem *Elem) Hide() {
 	elem.hide = true
@@ -402,7 +390,6 @@ func (elem *Elem) IsNotEditable(show *Show) bool {
 	return elem == nil || elem.IsHidden(show) || elem.Lock
 }
 
-// Write// {{{
 func (elem *Elem) InpString() string {
 	var rtn bytes.Buffer
 	if elem.IsLineElem() {
@@ -547,9 +534,6 @@ func (elem *Elem) OutputRateRlt() string {
 	return rlt.String()
 }
 
-// }}}
-
-// Amount// {{{
 func (elem *Elem) Amount() float64 {
 	if elem.IsLineElem() {
 		return elem.Length()
@@ -637,9 +621,6 @@ func (elem *Elem) Weight() []float64 {
 	return rtn
 }
 
-// }}}
-
-// Analysis// {{{
 func (elem *Elem) Distribute() error {
 	var err error
 	w := elem.Sect.Weight() // tf/m or tf/m2
@@ -1098,9 +1079,6 @@ func (elem *Elem) YieldFunction(period string) ([]float64, []error) {
 	return f, err
 }
 
-// }}}
-
-// Vector// {{{
 func (elem *Elem) Direction(normalize bool) []float64 {
 	vec := make([]float64, 3)
 	var l float64
@@ -1293,9 +1271,6 @@ func (elem *Elem) PDirection(normalize bool) []float64 {
 	return vec
 }
 
-// }}}
-
-// Modify// {{{
 func (elem *Elem) Move(x, y, z float64, eps float64) {
 	newenod := make([]*Node, elem.Enods)
 	for i := 0; i < elem.Enods; i++ {
@@ -1444,9 +1419,6 @@ func (elem *Elem) Upside() {
 	elem.Enod = newenod
 }
 
-// }}}
-
-// Check// {{{
 func (elem *Elem) IsValidElem() (bool, error) {
 	valid := true
 	var otp bytes.Buffer
@@ -1512,9 +1484,6 @@ func (elem *Elem) IsValidPlate() (bool, error) {
 	}
 }
 
-// }}}
-
-// Divide// {{{
 func (elem *Elem) DividingPoint(ratio float64) []float64 {
 	rtn := make([]float64, 3)
 	for i := 0; i < 3; i++ {
@@ -1825,8 +1794,6 @@ divatelem:
 	return []*Elem{elem, newel}, nil
 }
 
-// }}}
-
 func (elem *Elem) BetweenNode(index, size int) []*Node {
 	var rtn []*Node
 	var dst []float64
@@ -1921,7 +1888,6 @@ func (elem *Elem) BetweenNode(index, size int) []*Node {
 	}
 }
 
-// Enod// {{{
 func (elem *Elem) EnodIndex(side int) (int, error) {
 	if 0 <= side && side < elem.Enods {
 		return side, nil
@@ -2014,9 +1980,6 @@ func (elem *Elem) IsDiagonal(n1, n2 *Node) bool {
 	}
 }
 
-// }}}
-
-// STRESS// {{{
 func (elem *Elem) ReturnStress(period string, nnum int, index int) float64 {
 	if period == "" || !elem.IsLineElem() || elem.Stress == nil {
 		return 0.0
@@ -2100,8 +2063,6 @@ func (elem *Elem) PlateStress(period string, vec []float64) float64 {
 	return rtn
 }
 
-// }}}
-
 func (elem *Elem) LateralStiffness(period string, abs bool) float64 {
 	if elem.IsLineElem() {
 		var axis []float64
@@ -2158,7 +2119,6 @@ func (elem *Elem) StoryDrift(period string) float64 {
 	}
 }
 
-// Bond// {{{
 func (elem *Elem) ChangeBond(bond []bool, side ...int) error {
 	if !elem.IsLineElem() {
 		return NotLineElem("ChangeBond")
@@ -2221,8 +2181,6 @@ func (elem *Elem) IsPin(index int) bool {
 func (elem *Elem) IsRigid(index int) bool {
 	return !elem.IsPin(index)
 }
-
-// }}}
 
 func (elem *Elem) MomentCoord(show *Show, index int) [][]float64 {
 	var axis []float64
