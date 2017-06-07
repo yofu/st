@@ -407,10 +407,15 @@ func (sc *SColumn) Fb(cond *Condition) float64 {
 	return rtn * sc.Factor(cond.Period)
 }
 func (sc *SColumn) Na(cond *Condition) float64 {
-	if cond.Compression {
-		return sc.Fc(cond) * sc.A() * sc.multi
-	} else {
+	switch sc.Shape.(type) {
+	case SAREA:
 		return sc.Ft(cond) * sc.A() * sc.multi
+	default:
+		if cond.Compression {
+			return sc.Fc(cond) * sc.A() * sc.multi
+		} else {
+			return sc.Ft(cond) * sc.A() * sc.multi
+		}
 	}
 }
 func (sc *SColumn) Qa(cond *Condition) float64 {
@@ -1291,6 +1296,82 @@ func (pl PLATE) Breadth(strong bool) float64 {
 	} else {
 		return pl.H
 	}
+}
+
+// }}}
+
+// SAREA// {{{
+type SAREA struct {
+	Area float64
+}
+
+func NewSAREA(lis []string) (SAREA, error) {
+	sa := SAREA{0.0}
+	if len(lis) < 1 {
+		return sa, NotEnoughArgs("NewSAREA")
+	}
+	var val float64
+	var err error
+	val, err = strconv.ParseFloat(lis[0], 64)
+	if err != nil {
+		return sa, err
+	}
+	sa.Area = val
+	return sa, nil
+}
+func (sa SAREA) String() string {
+	return fmt.Sprintf("SAREA %5.1f", sa.Area)
+}
+func (sa SAREA) Description() string {
+	return fmt.Sprintf("%d[mm2]", int(sa.Area*100))
+}
+func (sa SAREA) A() float64 {
+	return sa.Area
+}
+func (sa SAREA) Asx() float64 {
+	return sa.Area * 0.5
+}
+func (sa SAREA) Asy() float64 {
+	return sa.Area * 0.5
+}
+func (sa SAREA) Ix() float64 {
+	return sa.Area * 4.0 * math.Pi
+}
+func (sa SAREA) Iy() float64 {
+	return sa.Area * 4.0 * math.Pi
+}
+func (sa SAREA) J() float64 {
+	return sa.Area * 8.0 * math.Pi
+}
+func (sa SAREA) Iw() float64 {
+	return 0.0
+}
+func (sa SAREA) Torsion() float64 {
+	return math.Pow(sa.Area, 1.5) / (4.0 * math.Sqrt(math.Pi))
+}
+func (sa SAREA) Zx() float64 {
+	return math.Pow(sa.Area, 1.5) / (4.0 * math.Sqrt(math.Pi))
+}
+func (sa SAREA) Zy() float64 {
+	return math.Pow(sa.Area, 1.5) / (4.0 * math.Sqrt(math.Pi))
+}
+
+func (sa SAREA) Vertices() [][]float64 {
+	d := math.Sqrt(sa.Area/math.Pi) * 2.0
+	val := math.Pi / 8.0
+	theta := 0.0
+	vertices := make([][]float64, 16)
+	for i := 0; i < 16; i++ {
+		c := math.Cos(theta)
+		s := math.Sin(theta)
+		vertices[i] = []float64{d * c, d * s}
+		theta += val
+	}
+	return vertices
+}
+
+func (sa SAREA) Breadth(strong bool) float64 {
+	return math.Sqrt(sa.Area/math.Pi) * 2.0
 }
 
 // }}}

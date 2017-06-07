@@ -1888,6 +1888,9 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 	case "PLATE":
 		size = 2
 		shape, err = NewPLATE(lis[1][1 : 1+size])
+	case "SAREA":
+		size = 1
+		shape, err = NewSAREA(lis[1][1 : 1+size])
 	default:
 		return nil
 	}
