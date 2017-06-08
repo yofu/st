@@ -4175,6 +4175,9 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				Exq:      sec.Exq,
 				Original: sec.Original,
 			}
+			if p == "L" && sec.Figs[0].Prop.Num == 303 { // GOHAN
+				af.Sects[i].E = 0.0
+			}
 			arclmsects[sec.Num] = i
 		}
 		af.Nodes = make([]*arclm.Node, nnum)
