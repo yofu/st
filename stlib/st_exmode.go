@@ -98,7 +98,7 @@ var (
 		"e/lem/dup/lication": complete.MustCompile(":elemduplication [ignoresect:]", nil),
 		"n/ode/n/oreference": complete.MustCompile(":nodenoreference", nil),
 		"i/ntersect/a/ll":    complete.MustCompile(":intersectall", nil),
-		"src/al":             complete.MustCompile(":srcal [fbold:] [noreload:] [qfact:_] [wfact:_] [skipshort:] [temporary:] [moeshiro:]", nil),
+		"src/al":             complete.MustCompile(":srcal [fbold:] [noreload:] [qfact:_] [wfact:_] [bfact:_] [skipshort:] [temporary:] [moeshiro:]", nil),
 		"co/nf":              complete.MustCompile(":conf", nil),
 		"pi/le":              complete.MustCompile(":pile", nil),
 		"sec/tion":           complete.MustCompile(":section [nodisp:]_", nil),
@@ -1409,7 +1409,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		Snapshot(stw)
 	case "srcal":
 		if usage {
-			return Usage(":srcal {-fbold} {-noreload} {-qfact=2.0} {-wfact=2.0} {-skipshort} {-temporary} {-moeshiro} filename")
+			return Usage(":srcal {-fbold} {-noreload} {-qfact=2.0} {-wfact=2.0} {-bfact=1.0} {-skipshort} {-temporary} {-moeshiro} filename")
 		}
 		var m bytes.Buffer
 		cond := NewCondition()
@@ -1444,6 +1444,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 		}
 		m.WriteString(fmt.Sprintf("WFACT: %.3f\n", cond.Wfact))
+		if wf, ok := argdict["BFACT"]; ok {
+			val, err := strconv.ParseFloat(wf, 64)
+			if err == nil {
+				cond.Bfact = val
+			}
+		}
+		m.WriteString(fmt.Sprintf("BFACT: %.3f\n", cond.Bfact))
 		if _, ok := argdict["SKIPSHORT"]; ok {
 			m.WriteString("SKIP SHORT\n")
 			cond.Skipshort = true
