@@ -530,7 +530,10 @@ func (frame *Frame) ParseProp(lis []string, overwrite bool) (*Prop, error) {
 		case "HIJU":
 			p.Hiju, err = strconv.ParseFloat(lis[i+1], 64)
 		case "E":
-			p.E, err = strconv.ParseFloat(lis[i+1], 64)
+			p.EL, err = strconv.ParseFloat(lis[i+1], 64)
+			p.ES = p.EL
+		case "ES":
+			p.ES, err = strconv.ParseFloat(lis[i+1], 64)
 		case "POI":
 			p.Poi, err = strconv.ParseFloat(lis[i+1], 64)
 		case "PCOLOR":
@@ -2497,7 +2500,7 @@ func (frame *Frame) WritePlateWeight(fn string) error {
 	for _, sec := range sects {
 		w := sec.Weight()
 		if sec.HasBrace() {
-			otp.WriteString(fmt.Sprintf("%4d %10.1f %6.3f    %6.3f   %6.3f   %6.3f\n", sec.Num, sec.Figs[0].Prop.E, sec.Figs[0].Value["THICK"], w[0], w[1], w[2]))
+			otp.WriteString(fmt.Sprintf("%4d %10.1f %6.3f    %6.3f   %6.3f   %6.3f\n", sec.Num, sec.Figs[0].Prop.EL, sec.Figs[0].Value["THICK"], w[0], w[1], w[2]))
 		} else {
 			otp.WriteString(fmt.Sprintf("%4d %10s %6s    %6.3f   %6.3f   %6.3f\n", sec.Num, "", "", w[0], w[1], w[2]))
 		}
@@ -4164,9 +4167,15 @@ func (frame *Frame) ExtractArclm(fn string) error {
 			for j := 0; j < 12; j++ {
 				yield[j] = sec.Yield[j]
 			}
+			var E float64
+			if p == "L" {
+				E = sec.Figs[0].Prop.EL
+			} else {
+				E = sec.Figs[0].Prop.ES
+			}
 			af.Sects[i] = &arclm.Sect{
 				Num:      sec.Num,
-				E:        sec.Figs[0].Prop.E,
+				E:        E,
 				Poi:      sec.Figs[0].Prop.Poi,
 				Value:    sec.ArclmValue(),
 				Yield:    yield,
@@ -4174,9 +4183,6 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				Exp:      sec.Exp,
 				Exq:      sec.Exq,
 				Original: sec.Original,
-			}
-			if p == "L" && sec.Figs[0].Prop.Num == 303 { // GOHAN
-				af.Sects[i].E = 0.0
 			}
 			arclmsects[sec.Num] = i
 		}

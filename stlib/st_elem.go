@@ -888,7 +888,7 @@ func (elem *Elem) PlateDivision(add bool) ([]*Elem, error) {
 }
 
 func (elem *Elem) IsBraced() bool {
-	if elem.Enods != 4 || elem.Sect.Figs[0].Prop.E == 0.0 {
+	if elem.Enods != 4 || elem.Sect.Figs[0].Prop.ES == 0.0 {
 		return false
 	} else {
 		return true

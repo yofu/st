@@ -2760,7 +2760,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				continue
 			}
 			if a, ok := el.Sect.Figs[0].Value["AREA"]; ok {
-				val := el.Sect.Figs[0].Prop.E * a * alpha * tmp
+				val := el.Sect.Figs[0].Prop.EL * a * alpha * tmp
 				el.Cmq[0] += val
 				el.Cmq[6] -= val
 			}

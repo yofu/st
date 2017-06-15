@@ -220,7 +220,7 @@ func (sect *Sect) HasBrace() bool {
 		return false
 	}
 	if _, ok := sect.Figs[0].Value["THICK"]; ok {
-		if sect.Figs[0].Prop.E != 0.0 {
+		if sect.Figs[0].Prop.ES != 0.0 {
 			return true
 		} else {
 			return false

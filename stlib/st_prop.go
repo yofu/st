@@ -9,7 +9,8 @@ type Prop struct {
 	Num   int
 	Name  string
 	Hiju  float64
-	E     float64
+	EL    float64
+	ES    float64
 	Poi   float64
 	Color int
 }
@@ -32,7 +33,8 @@ func (prop *Prop) Snapshot() *Prop {
 	p.Num = prop.Num
 	p.Name = prop.Name
 	p.Hiju = prop.Hiju
-	p.E = prop.E
+	p.EL = prop.EL
+	p.ES = prop.ES
 	p.Poi = prop.Poi
 	p.Color = prop.Color
 	return p
@@ -42,14 +44,17 @@ func (prop *Prop) InpString() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("PROP %d PNAME %s\n", prop.Num, prop.Name))
 	rtn.WriteString(fmt.Sprintf("         HIJU %13.5f\n", prop.Hiju))
-	rtn.WriteString(fmt.Sprintf("         E    %13.3f\n", prop.E))
+	rtn.WriteString(fmt.Sprintf("         E    %13.3f\n", prop.EL))
+	if prop.EL != prop.ES {
+		rtn.WriteString(fmt.Sprintf("         ES   %13.3f\n", prop.ES))
+	}
 	rtn.WriteString(fmt.Sprintf("         POI  %13.5f\n", prop.Poi))
 	rtn.WriteString(fmt.Sprintf("         PCOLOR %s\n", IntColor(prop.Color)))
 	return rtn.String()
 }
 
 func (prop *Prop) IsSteel(eps float64) bool {
-	if val := prop.E/2.1e7 - 1.0; val < -eps || val > eps {
+	if val := prop.EL/2.1e7 - 1.0; val < -eps || val > eps {
 		return false
 	}
 	if val := prop.Poi*3.0 - 1.0; val < -eps || val > eps {
@@ -59,7 +64,7 @@ func (prop *Prop) IsSteel(eps float64) bool {
 }
 
 func (prop *Prop) IsRc(eps float64) bool {
-	if val := prop.E/2.1e6 - 1.0; val < -eps || val > eps {
+	if val := prop.EL/2.1e6 - 1.0; val < -eps || val > eps {
 		return false
 	}
 	if val := prop.Poi*6.0 - 1.0; val < -eps || val > eps {
@@ -69,7 +74,7 @@ func (prop *Prop) IsRc(eps float64) bool {
 }
 
 func (prop *Prop) IsGohan(eps float64) bool {
-	if val := prop.E/4.5e5 - 1.0; val < -eps || val > eps {
+	if val := prop.ES/4.5e5 - 1.0; val < -eps || val > eps {
 		return false
 	}
 	if val := prop.Poi/4.625 - 1.0; val < -eps || val > eps {
