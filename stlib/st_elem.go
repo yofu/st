@@ -457,36 +457,6 @@ func (elem *Elem) InpString() string {
 	}
 }
 
-func (elem *Elem) InlString(period int) string {
-	if !elem.IsLineElem() {
-		return ""
-	}
-	var rtn bytes.Buffer
-	rtn.WriteString(fmt.Sprintf("%5d %6d ", elem.Num, elem.Sect.Num))
-	rtn.WriteString(fmt.Sprintf(" %5d %5d ", elem.Enod[0].Num, elem.Enod[1].Num))
-	rtn.WriteString(fmt.Sprintf("%8.5f", elem.Cang))
-	for i := 0; i < 2; i++ {
-		for j := 3; j < 6; j++ {
-			if elem.Bonds[6*i+j] {
-				rtn.WriteString(" 1")
-			} else {
-				rtn.WriteString(" 0")
-			}
-		}
-	}
-	if period == 0 {
-		for i := 0; i < 12; i++ {
-			rtn.WriteString(fmt.Sprintf(" %10.8f", elem.Cmq[i]))
-		}
-	} else {
-		for i := 0; i < 12; i++ {
-			rtn.WriteString(fmt.Sprintf(" %10.8f", 0.0))
-		}
-	}
-	rtn.WriteString("\n")
-	return rtn.String()
-}
-
 func (elem *Elem) OutputStress(p string) string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("%5d %4d %4d", elem.Num, elem.Sect.Num, elem.Enod[0].Num))

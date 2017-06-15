@@ -206,23 +206,6 @@ func (fig *Fig) InpString() string {
 	return rtn.String()
 }
 
-func (sect *Sect) InlString() string {
-	if len(sect.Figs) < 1 {
-		return ""
-	}
-	var rtn bytes.Buffer
-	rtn.WriteString(fmt.Sprintf("%5d ", sect.Num))
-	rtn.WriteString(fmt.Sprintf("%11.5E %7.5f ", sect.Figs[0].Prop.E, sect.Figs[0].Prop.Poi))
-	rtn.WriteString(fmt.Sprintf("%6.4f %10.8f %10.8f %10.8f", sect.Figs[0].Value["AREA"], sect.Figs[0].Value["IXX"], sect.Figs[0].Value["IYY"], sect.Figs[0].Value["VEN"]))
-	for i := 0; i < 12; i++ {
-		rtn.WriteString(fmt.Sprintf(" %9.3f", sect.Yield[i]))
-	}
-	rtn.WriteString(fmt.Sprintf(" %5d", sect.Type))
-	rtn.WriteString(fmt.Sprintf(" %5d", sect.Original))
-	rtn.WriteString("\n")
-	return rtn.String()
-}
-
 func (sect *Sect) ArclmValue() []float64 {
 	return []float64{
 		sect.Figs[0].Value["AREA"],

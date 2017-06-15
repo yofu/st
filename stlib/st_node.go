@@ -212,37 +212,6 @@ func (node *Node) WgtString(factor float64) string {
 	return fmt.Sprintf("%9d  %10.3f %10.3f %10.3f\n", node.Num, factor*(node.Weight[0]-node.Load[2]), factor*(node.Weight[1]-node.Load[2]), factor*(node.Weight[2]-node.Load[2]))
 }
 
-func (node *Node) InlCoordString() string {
-	return fmt.Sprintf("%5d %7.3f %7.3f %7.3f\n", node.Num, node.Coord[0], node.Coord[1], node.Coord[2])
-}
-
-func (node *Node) InlConditionString(period int) string {
-	var rtn bytes.Buffer
-	rtn.WriteString(fmt.Sprintf("%5d", node.Num))
-	for i := 0; i < 6; i++ {
-		if node.Conf[i] {
-			rtn.WriteString(" 1")
-		} else {
-			rtn.WriteString(" 0")
-		}
-	}
-	for i := 0; i < 6; i++ {
-		val := node.Load[i]
-		if period == 0 && i == 2 {
-			if !node.Conf[2] {
-				val -= node.Weight[1]
-			}
-		} else if (period == 1 && i == 0) || (period == 2 && i == 1) {
-			if !node.Conf[period-1] {
-				val += node.Factor * node.Weight[2]
-			}
-		}
-		rtn.WriteString(fmt.Sprintf(" %12.8f", val))
-	}
-	rtn.WriteString("\n")
-	return rtn.String()
-}
-
 func (node *Node) OutputDisp(p string) string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("%4d ", node.Num))
