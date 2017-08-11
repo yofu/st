@@ -1672,6 +1672,30 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		m.WriteString(fmt.Sprintf("Output: %s", fn))
 		return Message(m.String())
+		case "factsbysect": // TODO: define nsect and esect as [][]int
+		if usage {
+			return Usage(":factsbysect {-node=code} {-sect=code}")
+		}
+		var m bytes.Buffer
+		fn = Ce(frame.Path, ".fes")
+		var nsect, esect []int
+		if ns, ok := argdict["NODE"]; ok {
+			nsect = SplitNums(ns)
+			m.WriteString(fmt.Sprintf("NODE: %v", nsect))
+		}
+		if ne, ok := argdict["ELEM"]; ok {
+			esect = SplitNums(ne)
+			m.WriteString(fmt.Sprintf("ELEM: %v", esect))
+		}
+		if nsect == nil || esect == nil {
+			return NotEnoughArgs(":factsbysect")
+		}
+		err := frame.FactsBySect(fn, []int{COLUMN, GIRDER, BRACE, WBRACE, SBRACE}, [][]int{nsect}, [][]int{esect})
+		if err != nil {
+			return err
+		}
+		m.WriteString(fmt.Sprintf("Output: %s", fn))
+		return Message(m.String())
 	case "amountprop":
 		if usage {
 			return Usage(":amountprop propcode")

@@ -4916,6 +4916,88 @@ fact_node:
 	return nil
 }
 
+func (frame *Frame) FactsBySect(fn string, etypes []int, nsect, esect [][]int) error {
+	var err error
+	if len(nsect) != len(esect) {
+		return fmt.Errorf("size error")
+	}
+	l := len(nsect)
+	nodes := make([][]*Node, l+1)
+	nnums := make([][]int, l)
+	elems := make([][]*Elem, l)
+	for i := 0; i < l+1; i++ {
+		nodes[i] = make([]*Node, 0)
+		if i < l {
+			nnums[i] = make([]int, 0)
+			elems[i] = make([]*Elem, 0)
+		}
+	}
+	var contained bool
+	for _, el := range frame.Elems {
+		for _, et := range etypes {
+			if el.Etype == et {
+				contained = true
+				break
+			}
+		}
+		if !contained {
+			continue
+		}
+	factbysect_elem1:
+		for ni, ns := range nsect {
+			for _, s := range ns {
+				if el.Sect.Num == s {
+					for _, en := range el.Enod {
+						nnums[ni] = append(nnums[ni], en.Num)
+					}
+					break factbysect_elem1
+				}
+			}
+		}
+	factbysect_elem2:
+		for ei, es := range esect {
+			for _, s := range es {
+				if el.Sect.Num == s {
+					elems[ei] = append(elems[ei], el)
+					break factbysect_elem2
+				}
+			}
+		}
+	}
+factbysect_node:
+	for _, n := range frame.Nodes {
+		for i := 0; i < l; i++ {
+			for _, nn := range nnums[i] {
+				if n.Num == nn {
+					nodes[i] = append(nodes[i], n)
+					continue factbysect_node
+				}
+			}
+		}
+		nodes[l] = append(nodes[l], n)
+	}
+	f := NewFact(l+1, true, frame.Ai.Base/0.2)
+	f.SetFileName([]string{frame.DataFileName["L"], frame.DataFileName["X"], frame.DataFileName["Y"]},
+		[]string{frame.ResultFileName["L"], frame.ResultFileName["X"], frame.ResultFileName["Y"]})
+	for i := 0; i < len(nodes); i++ {
+		sort.Sort(NodeByNum{nodes[i]})
+	}
+	for i := 0; i < len(elems); i++ {
+		sort.Sort(ElemByNum{elems[i]})
+	}
+	err = f.CalcFact(nodes, elems)
+	if err != nil {
+		return err
+	}
+	fmt.Println(f)
+	err = f.WriteTo(fn)
+	if err != nil {
+		return err
+	}
+	frame.Fes = f
+	return nil
+}
+
 func (frame *Frame) AmountProp(fn string, props ...int) error {
 	total := 0.0
 	sects := make([]*Sect, len(frame.Sects))
