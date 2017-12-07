@@ -4626,6 +4626,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	otp.WriteString("a:許容 u:終局\n")
 	elems = elems[:enum]
 	sort.Sort(ElemByNum{elems})
+	maxrateelem := make(map[int]*Elem)
 	for _, el := range elems {
 		var al SectionRate
 		original := false
@@ -4651,7 +4652,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			msrates := make([]float64, 4)
 			cond.Length = el.Length() * 100.0 // [cm]
 			otp.WriteString(strings.Repeat("-", 202))
-			otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, al.TypeString(), cond.Length, cond.Length, cond.Length))
+			otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
 			otp.WriteString("応力       :        N                Qxi                Qxj                Qyi                Qyj                 Mt                Mxi                Mxj                Myi                Myj\n")
 			stress := make([][]float64, 5)
 			for p, per := range []string{long, x1, x2, y1, y2} {
@@ -4742,7 +4743,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			} else {
 				sectstring = fmt.Sprintf("　%d/◯%d", el.OriginalSection().Num, el.Sect.Num)
 			}
-			otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, sectstring, al.TypeString(), cond.Length, cond.Length, cond.Length))
+			otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
 			otp.WriteString("応力       :        N\n")
 			stress := make([]float64, 5)
 			for p, per := range []string{long, x1, x2, y1, y2} {
@@ -4793,7 +4794,55 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				break
 			}
 		}
+		if mel, ok := maxrateelem[al.Num()]; ok {
+			if maxrate(el.Rate...) > maxrate(mel.Rate...) {
+				maxrateelem[al.Num()] = el
+			}
+		} else {
+			maxrateelem[al.Num()] = el
+		}
 	}
+	otp.WriteString("==========================================================================================================================================================================================================\n各断面種別の許容,終局曲げ安全率の最大値\n\n")
+	keys := make([]int, len(maxrateelem))
+	i := 0
+	for k := range maxrateelem {
+		keys[i] = k
+		i++
+	}
+	sort.Ints(keys)
+	maxql := 0.0
+	maxqs := 0.0
+	maxml := 0.0
+	maxms := 0.0
+	for _, k := range keys {
+		otp.WriteString(fmt.Sprintf("断面記号: %d %s   As=   0.00[cm2] Ar=   0.00[cm2] Ac=    0.00[cm2] MAX:", k, frame.Allows[k].TypeString()))
+		el := maxrateelem[k]
+		switch el.Etype {
+		case COLUMN, GIRDER:
+			otp.WriteString(fmt.Sprintf("Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", el.Rate[0], el.Rate[1], el.Rate[3], el.Rate[4]))
+			if el.Rate[0] > maxql {
+				maxql = el.Rate[0]
+			}
+			if el.Rate[1] > maxqs {
+				maxqs = el.Rate[1]
+			}
+			if el.Rate[3] > maxml {
+				maxml = el.Rate[3]
+			}
+			if el.Rate[4] > maxms {
+				maxms = el.Rate[4]
+			}
+		case BRACE, WBRACE, SBRACE:
+			otp.WriteString(fmt.Sprintf("Q/QaL=%.5f Q/QaS=%.5f\n", el.Rate[0], el.Rate[1]))
+			if el.Rate[0] > maxql {
+				maxql = el.Rate[0]
+			}
+			if el.Rate[1] > maxqs {
+				maxqs = el.Rate[1]
+			}
+		}
+	}
+	otp.WriteString(fmt.Sprintf("\n安全率の最大値\n Q/QaL=%7.5f Q/QaS=%7.5f\n M/MaL=%7.5f M/MaS=%7.5f\n", maxql, maxqs, maxml, maxms))
 	w, err := os.Create(Ce(fn, ".tst"))
 	defer w.Close()
 	if err != nil {

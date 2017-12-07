@@ -213,7 +213,7 @@ func (sc *SColumn) Num() int {
 	return sc.num
 }
 func (sc *SColumn) TypeString() string {
-	return "Ｓ柱"
+	return "Ｓ　柱　"
 }
 func (sc *SColumn) Snapshot() SectionRate {
 	s := NewSColumn(sc.num, sc.Shape, sc.Steel)
@@ -1356,7 +1356,7 @@ func NewSGirder(num int, shape Shape, material Steel) *SGirder {
 	return &SGirder{*sc}
 }
 func (sg *SGirder) TypeString() string {
-	return "Ｓ大梁"
+	return "Ｓ　大梁"
 }
 
 type SBrace struct {
@@ -1369,7 +1369,7 @@ func NewSBrace(num int, shape Shape, material Steel) *SBrace {
 	return &SBrace{*sc}
 }
 func (sg *SBrace) TypeString() string {
-	return "Ｓ筋違"
+	return "Ｓ　筋違"
 }
 
 type CShape interface {
@@ -1531,7 +1531,7 @@ func (rc *RCColumn) Num() int {
 	return rc.num
 }
 func (rc *RCColumn) TypeString() string {
-	return "ＲＣ柱"
+	return "ＲＣ柱　"
 }
 func (rc *RCColumn) Snapshot() SectionRate {
 	r := NewRCColumn(rc.num)
@@ -2021,7 +2021,7 @@ func (rw *RCWall) Num() int {
 	return rw.num
 }
 func (rw *RCWall) TypeString() string {
-	return "ＲＣ壁"
+	return "ＲＣ壁　"
 }
 func (rw *RCWall) Snapshot() SectionRate {
 	r := NewRCWall(rw.num)
@@ -2127,7 +2127,7 @@ func NewRCSlab(num int) *RCSlab {
 	return rs
 }
 func (rs *RCSlab) TypeString() string {
-	return "ＲＣ床"
+	return "ＲＣ床　"
 }
 
 func SetSD(name string) SD {
@@ -2163,7 +2163,7 @@ func (wc *WoodColumn) Num() int {
 	return wc.num
 }
 func (wc *WoodColumn) TypeString() string {
-	return "木柱"
+	return "木　柱　"
 }
 func (wc *WoodColumn) Snapshot() SectionRate {
 	w := NewWoodColumn(wc.num, wc.Shape, wc.Wood)
@@ -2362,7 +2362,7 @@ func NewWoodGirder(num int, shape Shape, material Wood) *WoodGirder {
 	return &WoodGirder{*wc}
 }
 func (wg *WoodGirder) TypeString() string {
-	return "木大梁"
+	return "木　大梁"
 }
 
 type WoodWall struct {
@@ -2398,7 +2398,7 @@ func (ww *WoodWall) Num() int {
 	return ww.num
 }
 func (ww *WoodWall) TypeString() string {
-	return "木壁"
+	return "木　壁　"
 }
 func (ww *WoodWall) Snapshot() SectionRate {
 	r := NewWoodWall(ww.num)
@@ -2473,7 +2473,7 @@ func NewWoodSlab(num int) *WoodSlab {
 }
 
 func (ws *WoodSlab) TypeString() string {
-	return "木床"
+	return "木　床　"
 }
 
 // Condition
