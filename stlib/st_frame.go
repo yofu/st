@@ -140,7 +140,7 @@ func NewFrame() *Frame {
 
 // Aiparameter : Parameter for Ai Distribution
 type Aiparameter struct {
-	Base     float64
+	Base     []float64
 	Locate   float64
 	Tfact    float64
 	Gperiod  float64
@@ -152,16 +152,16 @@ type Aiparameter struct {
 	Wi       []float64
 	W        []float64
 	Ai       []float64
-	Ci       []float64
-	Qi       []float64
-	Hi       []float64
+	Ci       [][]float64
+	Qi       [][]float64
+	Hi       [][]float64
 }
 
 // NewAiparameter creates New Aiparameter
 // Default C0=0.2
 func NewAiparameter() *Aiparameter {
 	a := new(Aiparameter)
-	a.Base = 0.2
+	a.Base = []float64{0.2, 0.2}
 	a.Locate = 1.0
 	a.Tfact = 0.02
 	a.Gperiod = 0.6
@@ -173,16 +173,24 @@ func NewAiparameter() *Aiparameter {
 	a.Wi = make([]float64, 0)
 	a.W = make([]float64, 0)
 	a.Ai = make([]float64, 0)
-	a.Ci = make([]float64, 0)
-	a.Qi = make([]float64, 0)
-	a.Hi = make([]float64, 0)
+	a.Ci = make([][]float64, 2)
+	a.Qi = make([][]float64, 2)
+	a.Hi = make([][]float64, 2)
+	for i := 0; i < 2; i++ {
+		a.Ci[i] = make([]float64, 0)
+		a.Qi[i] = make([]float64, 0)
+		a.Hi[i] = make([]float64, 0)
+	}
 	return a
 }
 
 // Snapshot takes a Snapshot of Aiparameter
 func (ai *Aiparameter) Snapshot() *Aiparameter {
 	a := NewAiparameter()
-	a.Base = ai.Base
+	a.Base = make([]float64, 2)
+	for i := 0; i < 2; i++ {
+		a.Base[i] = ai.Base[i]
+	}
 	a.Locate = ai.Locate
 	a.Tfact = ai.Tfact
 	a.Gperiod = ai.Gperiod
@@ -197,25 +205,32 @@ func (ai *Aiparameter) Snapshot() *Aiparameter {
 	} else {
 		a.Boundary = make([]float64, 0)
 	}
+	a.Ci = make([][]float64, 2)
+	a.Qi = make([][]float64, 2)
+	a.Hi = make([][]float64, 2)
 	if len(ai.Level) > 0 {
 		a.Level = make([]float64, a.Nfloor)
 		a.Wi = make([]float64, a.Nfloor)
 		a.W = make([]float64, a.Nfloor)
 		a.Ai = make([]float64, a.Nfloor-1)
-		a.Ci = make([]float64, a.Nfloor)
-		a.Qi = make([]float64, a.Nfloor)
-		a.Hi = make([]float64, a.Nfloor)
 		for i := 0; i < a.Nfloor; i++ {
 			a.Level[i] = ai.Level[i]
 			a.Wi[i] = ai.Wi[i]
 			a.W[i] = ai.W[i]
-			a.Ci[i] = ai.Ci[i]
-			a.Qi[i] = ai.Qi[i]
-			a.Hi[i] = ai.Hi[i]
 			if i == a.Nfloor-1 {
 				continue
 			}
 			a.Ai[i] = ai.Ai[i]
+		}
+		for j := 0; j < 2; j++ {
+			a.Ci[j] = make([]float64, a.Nfloor)
+			a.Qi[j] = make([]float64, a.Nfloor)
+			a.Hi[j] = make([]float64, a.Nfloor)
+			for i := 0; i < a.Nfloor; i++ {
+				a.Ci[j][i] = ai.Ci[j][i]
+				a.Qi[j][i] = ai.Qi[j][i]
+				a.Hi[j][i] = ai.Hi[j][i]
+			}
 		}
 	}
 	return a
@@ -397,7 +412,13 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, ove
 		case "BASE":
 			val, err := strconv.ParseFloat(words[1], 64)
 			if err == nil {
-				frame.Ai.Base = val
+				frame.Ai.Base = []float64{val, val}
+			}
+			if len(words) > 2 {
+				val, err := strconv.ParseFloat(words[2], 64)
+				if err == nil {
+					frame.Ai.Base[1] = val
+				}
 			}
 		case "LOCATE":
 			val, err := strconv.ParseFloat(words[1], 64)
@@ -4221,11 +4242,11 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				}
 			case "X":
 				if !an.Conf[0] {
-					an.Force[0] += n.Factor * n.Weight[2]
+					an.Force[0] += n.Factor[0] * n.Weight[2]
 				}
 			case "Y":
 				if !an.Conf[1] {
-					an.Force[1] += n.Factor * n.Weight[2]
+					an.Force[1] += n.Factor[1] * n.Weight[2]
 				}
 			}
 			n.Force[p] = make([]float64, 6)
@@ -4421,40 +4442,43 @@ func (frame *Frame) AiDistribution() (string, error) {
 		alpha := frame.Ai.W[i+1] / frame.Ai.W[1]
 		frame.Ai.Ai[i] = 1.0 + (1.0/math.Sqrt(alpha)-alpha)*tt
 	}
-	frame.Ai.Ci = make([]float64, size)
-	frame.Ai.Qi = make([]float64, size)
-	frame.Ai.Hi = make([]float64, size)
-	facts := make([]float64, size)
-	for i := 0; i < size; i++ {
-		if i == 0 {
-			frame.Ai.Ci[0] = 0.5 * frame.Ai.Locate * frame.Ai.Rt * frame.Ai.Base
-			frame.Ai.Qi[0] = frame.Ai.Ci[0] * frame.Ai.W[0]
-			facts[0] = frame.Ai.Ci[0]
-		} else {
-			frame.Ai.Ci[i] = frame.Ai.Locate * frame.Ai.Rt * frame.Ai.Ai[i-1] * frame.Ai.Base
-			frame.Ai.Qi[i] = frame.Ai.Ci[i] * frame.Ai.W[i]
-			frame.Ai.Hi[i-1] = frame.Ai.Qi[i-1] - frame.Ai.Qi[i]
-			if i > 1 {
-				facts[i-1] = frame.Ai.Hi[i-1] / frame.Ai.Wi[i-1]
+	facts := make([][]float64, 2)
+	for d := 0; d < 2; d++ {
+		frame.Ai.Ci[d] = make([]float64, size)
+		frame.Ai.Qi[d] = make([]float64, size)
+		frame.Ai.Hi[d] = make([]float64, size)
+		facts[d] = make([]float64, size)
+		for i := 0; i < size; i++ {
+			if i == 0 {
+				frame.Ai.Ci[d][0] = 0.5 * frame.Ai.Locate * frame.Ai.Rt * frame.Ai.Base[d]
+				frame.Ai.Qi[d][0] = frame.Ai.Ci[d][0] * frame.Ai.W[0]
+				facts[d][0] = frame.Ai.Ci[d][0]
+			} else {
+				frame.Ai.Ci[d][i] = frame.Ai.Locate * frame.Ai.Rt * frame.Ai.Ai[i-1] * frame.Ai.Base[d]
+				frame.Ai.Qi[d][i] = frame.Ai.Ci[d][i] * frame.Ai.W[i]
+				frame.Ai.Hi[d][i-1] = frame.Ai.Qi[d][i-1] - frame.Ai.Qi[d][i]
+				if i > 1 {
+					facts[d][i-1] = frame.Ai.Hi[d][i-1] / frame.Ai.Wi[i-1]
+				}
 			}
 		}
-	}
-	if size > 1 {
-		frame.Ai.Hi[size-1] = frame.Ai.Qi[size-1]
-		facts[size-1] = frame.Ai.Hi[size-1] / frame.Ai.Wi[size-1]
+		if size > 1 {
+			frame.Ai.Hi[d][size-1] = frame.Ai.Qi[d][size-1]
+			facts[d][size-1] = frame.Ai.Hi[d][size-1] / frame.Ai.Wi[size-1]
+		}
 	}
 	for _, n := range frame.Nodes {
 		height := n.Coord[2]
 		if height < frame.Ai.Boundary[0] {
-			n.Factor = facts[0]
+			n.Factor = []float64{facts[0][0], facts[1][0]}
 			continue
 		} else if height >= frame.Ai.Boundary[size] {
-			n.Factor = facts[size-1]
+			n.Factor = []float64{facts[0][size-1], facts[1][size-1]}
 			continue
 		}
 		for i := 0; i < size; i++ {
 			if height < frame.Ai.Boundary[i+1] {
-				n.Factor = facts[i]
+				n.Factor = []float64{facts[0][i], facts[1][i]}
 				break
 			}
 		}
@@ -4468,8 +4492,8 @@ func (frame *Frame) AiDistribution() (string, error) {
 	rtn.WriteString(fmt.Sprintf("地盤周期             Tc=%5.3f\n", frame.Ai.Gperiod))
 	rtn.WriteString(fmt.Sprintf("振動特性係数         Rt=%5.3f\n", frame.Ai.Rt))
 	rtn.WriteString(fmt.Sprintf("地域係数             Z =%5.3f\n", frame.Ai.Locate))
-	rtn.WriteString(fmt.Sprintf("標準層せん断力係数   Co=%5.3f\n", frame.Ai.Base))
-	rtn.WriteString(fmt.Sprintf("基礎部分の震度       Cf=%5.3f\n\n", facts[0]))
+	rtn.WriteString(fmt.Sprintf("標準層せん断力係数   Cox=%5.3f, Coy=%5.3f\n", frame.Ai.Base[0], frame.Ai.Base[1]))
+	rtn.WriteString(fmt.Sprintf("基礎部分の震度       Cfx=%5.3f, Cfy=%5.3f\n\n", facts[0][0], facts[1][0]))
 	rtn.WriteString("各階平均高さ      :")
 	for i := 0; i < size; i++ {
 		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Level[i]))
@@ -4486,21 +4510,24 @@ func (frame *Frame) AiDistribution() (string, error) {
 	for i := 0; i < size-1; i++ {
 		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Ai[i]))
 	}
-	rtn.WriteString("\n層せん断力係数 Ci :           ")
-	for i := 1; i < size; i++ {
-		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Ci[i]))
-	}
-	rtn.WriteString("\n層せん断力     Qi :           ")
-	for i := 1; i < size; i++ {
-		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Qi[i]))
-	}
-	rtn.WriteString("\n各階外力       Hi :           ")
-	for i := 1; i < size; i++ {
-		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Hi[i]))
-	}
-	rtn.WriteString("\n外力係数    Hi/wi :")
-	for i := 0; i < size; i++ {
-		rtn.WriteString(fmt.Sprintf(" %10.3f", facts[i]))
+	for d, str := range []string{"X", "Y"} {
+		rtn.WriteString(fmt.Sprintf("\n%s方向", str))
+		rtn.WriteString("\n層せん断力係数 Ci :           ")
+		for i := 1; i < size; i++ {
+			rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Ci[d][i]))
+		}
+		rtn.WriteString("\n層せん断力     Qi :           ")
+		for i := 1; i < size; i++ {
+			rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Qi[d][i]))
+		}
+		rtn.WriteString("\n各階外力       Hi :           ")
+		for i := 1; i < size; i++ {
+			rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Hi[d][i]))
+		}
+		rtn.WriteString("\n外力係数    Hi/wi :")
+		for i := 0; i < size; i++ {
+			rtn.WriteString(fmt.Sprintf(" %10.3f", facts[d][i]))
+		}
 	}
 	rtn.WriteString("\n")
 	return rtn.String(), nil
@@ -4958,7 +4985,7 @@ fact_node:
 			}
 		}
 	}
-	f := NewFact(l, true, frame.Ai.Base/0.2)
+	f := NewFact(l, true, frame.Ai.Base[0]/0.2, frame.Ai.Base[1]/0.2)
 	f.SetFileName([]string{frame.DataFileName["L"], frame.DataFileName["X"], frame.DataFileName["Y"]},
 		[]string{frame.ResultFileName["L"], frame.ResultFileName["X"], frame.ResultFileName["Y"]})
 	for i := 0; i < len(nodes); i++ {
@@ -5040,7 +5067,7 @@ factbysect_node:
 		}
 		nodes[l] = append(nodes[l], n)
 	}
-	f := NewFact(l+1, true, frame.Ai.Base/0.2)
+	f := NewFact(l+1, true, frame.Ai.Base[0]/0.2, frame.Ai.Base[1]/0.2)
 	f.SetFileName([]string{frame.DataFileName["L"], frame.DataFileName["X"], frame.DataFileName["Y"]},
 		[]string{frame.ResultFileName["L"], frame.ResultFileName["X"], frame.ResultFileName["Y"]})
 	for i := 0; i < len(nodes); i++ {
@@ -5659,7 +5686,7 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, props []*Prop, sect
 		otp.WriteString(fmt.Sprintf("NPILE %d\n", inum))
 	}
 	otp.WriteString("\n")
-	otp.WriteString(fmt.Sprintf("BASE    %5.3f\n", ai.Base))
+	otp.WriteString(fmt.Sprintf("BASE    %5.3f %5.3f\n", ai.Base[0], ai.Base[1]))
 	otp.WriteString(fmt.Sprintf("LOCATE  %5.3f\n", ai.Locate))
 	otp.WriteString(fmt.Sprintf("TFACT   %5.3f\n", ai.Tfact))
 	otp.WriteString(fmt.Sprintf("GPERIOD %5.3f\n", ai.Gperiod))

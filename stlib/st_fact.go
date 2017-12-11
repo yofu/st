@@ -13,7 +13,7 @@ type Fact struct {
 	Calced         bool
 	Floor          int
 	Abs            bool
-	Factor         float64
+	Factor         []float64
 	IgnoreConf     bool
 	Input          []string
 	Output         []string
@@ -34,12 +34,12 @@ type Fact struct {
 	Eccentricity   [][]float64
 }
 
-func NewFact(n int, abs bool, factor float64) *Fact {
+func NewFact(n int, abs bool, factorx, factory float64) *Fact {
 	f := new(Fact)
 	f.Floor = n
 	f.Abs = abs
 	f.IgnoreConf = true
-	f.Factor = factor
+	f.Factor = []float64{factorx, factory}
 	f.Input = make([]string, 3)
 	f.Output = make([]string, 3)
 	f.AverageLevel = make([]float64, n)
@@ -153,16 +153,16 @@ func (f *Fact) WriteTo(fn string) error {
 	m = maru(f.AverageDrift, true)
 	for i := 0; i < f.Floor-1; i++ {
 		otp.WriteString(fmt.Sprintf("%2dF： %sDx/H=1/%4d  %sDy/H=1/%4d\n", i+1, m[i][0], int(1/f.AverageDrift[i][0]), m[i][1], int(1/f.AverageDrift[i][1])))
-		if f.Factor != 1.0 {
-			otp.WriteString(fmt.Sprintf("      (C0=0.2: 1/%4d) (C0=0.2:1/%4d)\n", int(f.Factor/f.AverageDrift[i][0]), int(f.Factor/f.AverageDrift[i][1])))
+		if f.Factor[0] != 1.0 || f.Factor[1] != 1.0 {
+			otp.WriteString(fmt.Sprintf("      (C0=0.2: 1/%4d) (C0=0.2:1/%4d)\n", int(f.Factor[0]/f.AverageDrift[i][0]), int(f.Factor[1]/f.AverageDrift[i][1])))
 		}
 	}
 	otp.WriteString("\n層間変形角（最大値） D/H：○印が最大\n")
 	m = maru(f.MaxDrift, true)
 	for i := 0; i < f.Floor-1; i++ {
 		otp.WriteString(fmt.Sprintf("%2dF： %sDx/H=1/%4d(部材番号：%5d)  %sDy/H=1/%4d(部材番号：%5d)\n", i+1, m[i][0], int(1/f.MaxDrift[i][0]), f.MaxDriftElem[i][0], m[i][1], int(1/f.MaxDrift[i][1]), f.MaxDriftElem[i][1]))
-		if f.Factor != 1.0 {
-			otp.WriteString(fmt.Sprintf("      (C0=0.2: 1/%4d) (C0=0.2:1/%4d)\n", int(f.Factor/f.MaxDrift[i][0]), int(f.Factor/f.MaxDrift[i][1])))
+		if f.Factor[0] != 1.0 || f.Factor[1] != 1.0 {
+			otp.WriteString(fmt.Sprintf("      (C0=0.2: 1/%4d) (C0=0.2:1/%4d)\n", int(f.Factor[0]/f.MaxDrift[i][0]), int(f.Factor[1]/f.MaxDrift[i][1])))
 		}
 	}
 	otp.WriteString("\n剛性率 Rs：○印が最小\n")

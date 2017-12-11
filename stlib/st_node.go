@@ -30,7 +30,7 @@ type Node struct {
 	Force map[string][]float64
 
 	Weight []float64
-	Factor float64
+	Factor []float64
 
 	Disp     map[string][]float64
 	Reaction map[string][]float64
@@ -89,6 +89,7 @@ func NewNode() *Node {
 		Conf:     make([]bool, 6),
 		Load:     make([]float64, 6),
 		Weight:   make([]float64, 3),
+		Factor:   make([]float64, 2),
 		Disp:     make(map[string][]float64),
 		Force:    make(map[string][]float64),
 		Reaction: make(map[string][]float64)}
@@ -101,7 +102,7 @@ func (node *Node) Snapshot(frame *Frame) *Node {
 	n := NewNode()
 	n.Frame = frame
 	n.Num = node.Num
-	n.Factor = node.Factor
+	n.Factor = []float64{node.Factor[0], node.Factor[1]}
 	if node.Pile != nil {
 		n.Pile = frame.Piles[node.Pile.Num]
 	}
