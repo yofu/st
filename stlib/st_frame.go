@@ -4626,7 +4626,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	otp.WriteString("a:許容 u:終局\n")
 	elems = elems[:enum]
 	sort.Sort(ElemByNum{elems})
-	maxrateelem := make(map[int]*Elem)
+	maxrateelem := make(map[int][]*Elem)
 	for _, el := range elems {
 		var al SectionRate
 		original := false
@@ -4794,12 +4794,27 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				break
 			}
 		}
-		if mel, ok := maxrateelem[al.Num()]; ok {
-			if maxrate(el.Rate...) > maxrate(mel.Rate...) {
-				maxrateelem[al.Num()] = el
+		switch el.Etype {
+		case COLUMN, GIRDER:
+			if mels, ok := maxrateelem[al.Num()]; ok {
+				for ind, pos := range []int{0, 1, 3, 4} {
+					if el.Rate[pos] > mels[ind].Rate[pos] {
+						maxrateelem[al.Num()][ind] = el
+					}
+				}
+			} else {
+				maxrateelem[al.Num()] = []*Elem{el, el, el, el}
 			}
-		} else {
-			maxrateelem[al.Num()] = el
+		case BRACE, WBRACE, SBRACE:
+			if mels, ok := maxrateelem[al.Num()]; ok {
+				for ind, pos := range []int{0, 1} {
+					if el.Rate[pos] > mels[ind].Rate[pos] {
+						maxrateelem[al.Num()][ind] = el
+					}
+				}
+			} else {
+				maxrateelem[al.Num()] = []*Elem{el, el}
+			}
 		}
 	}
 	otp.WriteString("==========================================================================================================================================================================================================\n各断面種別の許容,終局曲げ安全率の最大値\n\n")
@@ -4816,29 +4831,29 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	maxms := 0.0
 	for _, k := range keys {
 		otp.WriteString(fmt.Sprintf("断面記号: %d %s   As=   0.00[cm2] Ar=   0.00[cm2] Ac=    0.00[cm2] MAX:", k, frame.Allows[k].TypeString()))
-		el := maxrateelem[k]
-		switch el.Etype {
+		els := maxrateelem[k]
+		switch els[0].Etype {
 		case COLUMN, GIRDER:
-			otp.WriteString(fmt.Sprintf("Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", el.Rate[0], el.Rate[1], el.Rate[3], el.Rate[4]))
-			if el.Rate[0] > maxql {
-				maxql = el.Rate[0]
+			otp.WriteString(fmt.Sprintf("Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", els[0].Rate[0], els[1].Rate[1], els[2].Rate[3], els[3].Rate[4]))
+			if els[0].Rate[0] > maxql {
+				maxql = els[0].Rate[0]
 			}
-			if el.Rate[1] > maxqs {
-				maxqs = el.Rate[1]
+			if els[1].Rate[1] > maxqs {
+				maxqs = els[1].Rate[1]
 			}
-			if el.Rate[3] > maxml {
-				maxml = el.Rate[3]
+			if els[2].Rate[3] > maxml {
+				maxml = els[2].Rate[3]
 			}
-			if el.Rate[4] > maxms {
-				maxms = el.Rate[4]
+			if els[3].Rate[4] > maxms {
+				maxms = els[3].Rate[4]
 			}
 		case BRACE, WBRACE, SBRACE:
-			otp.WriteString(fmt.Sprintf("Q/QaL=%.5f Q/QaS=%.5f\n", el.Rate[0], el.Rate[1]))
-			if el.Rate[0] > maxql {
-				maxql = el.Rate[0]
+			otp.WriteString(fmt.Sprintf("Q/QaL=%.5f Q/QaS=%.5f\n", els[0].Rate[0], els[1].Rate[1]))
+			if els[0].Rate[0] > maxql {
+				maxql = els[0].Rate[0]
 			}
-			if el.Rate[1] > maxqs {
-				maxqs = el.Rate[1]
+			if els[1].Rate[1] > maxqs {
+				maxqs = els[1].Rate[1]
 			}
 		}
 	}
