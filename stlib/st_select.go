@@ -35,7 +35,7 @@ func SelectConfed(stw Selector) {
 		}
 		for i := 0; i < 6; i++ {
 			if n.Conf[i] {
-				nodes = append(nodes, n)
+				nodes[num] = n
 				num++
 				break
 			}
