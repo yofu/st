@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/yofu/st/matrix"
 	"math"
 	"strconv"
+
+	"github.com/yofu/st/matrix"
 )
 
 const (
@@ -782,34 +783,54 @@ func (elem *Elem) ModifyCMQ() {
 	if elem.Bonds[4] == 1 && elem.Bonds[10] == 1 {
 		elem.Cmq[4] = 0.0
 		elem.Cmq[10] = 0.0
+		elem.Stress[4] = 0.0
+		elem.Stress[10] = 0.0
 	}
 	if elem.Bonds[5] == 1 && elem.Bonds[11] == 1 {
 		elem.Cmq[5] = 0.0
 		elem.Cmq[11] = 0.0
+		elem.Stress[5] = 0.0
+		elem.Stress[11] = 0.0
 	}
 	if elem.Bonds[4] == 1 && elem.Bonds[10] == 0 {
 		elem.Cmq[10] -= elem.Cmq[4] * 0.5
 		elem.Cmq[2] += elem.Cmq[4] * 1.5 / l
 		elem.Cmq[8] -= elem.Cmq[4] * 1.5 / l
 		elem.Cmq[4] = 0.0
+		elem.Stress[10] -= elem.Stress[4] * 0.5
+		elem.Stress[2] += elem.Stress[4] * 1.5 / l
+		elem.Stress[8] -= elem.Stress[4] * 1.5 / l
+		elem.Stress[4] = 0.0
 	}
 	if elem.Bonds[4] == 0 && elem.Bonds[10] == 1 {
 		elem.Cmq[4] -= elem.Cmq[10] * 0.5
 		elem.Cmq[2] += elem.Cmq[10] * 1.5 / l
 		elem.Cmq[8] -= elem.Cmq[10] * 1.5 / l
 		elem.Cmq[10] = 0.0
+		elem.Stress[4] -= elem.Stress[10] * 0.5
+		elem.Stress[2] += elem.Stress[10] * 1.5 / l
+		elem.Stress[8] -= elem.Stress[10] * 1.5 / l
+		elem.Stress[10] = 0.0
 	}
 	if elem.Bonds[5] == 1 && elem.Bonds[11] == 0 {
 		elem.Cmq[11] -= elem.Cmq[5] * 0.5
 		elem.Cmq[1] -= elem.Cmq[5] * 1.5 / l
 		elem.Cmq[7] += elem.Cmq[5] * 1.5 / l
 		elem.Cmq[5] = 0.0
+		elem.Stress[11] -= elem.Stress[5] * 0.5
+		elem.Stress[1] -= elem.Stress[5] * 1.5 / l
+		elem.Stress[7] += elem.Stress[5] * 1.5 / l
+		elem.Stress[5] = 0.0
 	}
 	if elem.Bonds[5] == 0 && elem.Bonds[11] == 1 {
 		elem.Cmq[5] -= elem.Cmq[11] * 0.5
 		elem.Cmq[1] -= elem.Cmq[11] * 1.5 / l
 		elem.Cmq[7] += elem.Cmq[11] * 1.5 / l
 		elem.Cmq[11] = 0.0
+		elem.Stress[5] -= elem.Stress[11] * 0.5
+		elem.Stress[1] -= elem.Stress[11] * 1.5 / l
+		elem.Stress[7] += elem.Stress[11] * 1.5 / l
+		elem.Stress[11] = 0.0
 	}
 }
 

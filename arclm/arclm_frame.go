@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/yofu/st/matrix"
 	"io"
 	"io/ioutil"
 	"math"
@@ -15,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/yofu/st/matrix"
 )
 
 type Frame struct {
