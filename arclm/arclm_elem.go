@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/yofu/st/matrix"
 	"math"
 	"strconv"
+
+	"github.com/yofu/st/matrix"
 )
 
 const (
@@ -758,12 +759,13 @@ func (elem *Elem) ModifyHinge(estiff [][]float64) ([][]float64, error) {
 		for i := 0; i < 6; i++ {
 			if elem.Bonds[6*n+i] == 1 {
 				kk := 6*n + i
+				k_r := 1.0 // * 4EI/L [kNm/rad]
 				if rtn[kk][kk] == 0.0 {
 					return nil, errors.New(fmt.Sprintf("Modifyhinge: ELEM %d: Matrix Singular", elem.Num))
 				}
 				for ii := 0; ii < 12; ii++ {
 					for jj := 0; jj < 12; jj++ {
-						h[ii][jj] = -rtn[ii][kk] / rtn[kk][kk] * rtn[kk][jj]
+						h[ii][jj] = -rtn[ii][kk] / rtn[kk][kk] * rtn[kk][jj] * 1.0 / (k_r + 1.0)
 					}
 				}
 				for ii := 0; ii < 12; ii++ {
