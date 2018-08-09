@@ -1959,7 +1959,7 @@ func bondpin(stw *Window) {
 		if el.IsLineElem() {
 			for i := 0; i < 2; i++ {
 				for j := 4; j < 6; j++ {
-					el.Bonds[6*i+j] = true
+					el.Bonds[6*i+j] = st.Pin
 				}
 			}
 		}
@@ -1980,7 +1980,7 @@ func bondrigid(stw *Window) {
 		if el.IsLineElem() {
 			for i := 0; i < 2; i++ {
 				for j := 0; j < 6; j++ {
-					el.Bonds[6*i+j] = false
+					el.Bonds[6*i+j] = nil
 				}
 			}
 		}
