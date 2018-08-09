@@ -79,6 +79,7 @@ type Frame struct {
 	Sects  map[int]*Sect
 	Allows map[int]SectionRate
 	Piles  map[int]*Pile
+	Bonds  map[int]*Bond
 
 	Arclms map[string]*arclm.Frame
 
@@ -119,6 +120,7 @@ func NewFrame() *Frame {
 	f.Allows = make(map[int]SectionRate)
 	f.Props = make(map[int]*Prop)
 	f.Piles = make(map[int]*Pile)
+	f.Bonds = make(map[int]*Bond)
 	f.Arclms = make(map[string]*arclm.Frame)
 	f.Eigenvalue = make(map[int]float64)
 	f.Kijuns = make(map[string]*Kijun)
@@ -300,6 +302,9 @@ func (frame *Frame) Snapshot() *Frame {
 	for _, p := range frame.Piles {
 		f.Piles[p.Num] = p.Snapshot()
 	}
+	for _, p := range frame.Bonds {
+		f.Bonds[p.Num] = p.Snapshot()
+	}
 	for _, n := range frame.Nodes {
 		f.Nodes[n.Num] = n.Snapshot(f)
 	}
@@ -406,7 +411,7 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, ove
 		switch first {
 		default:
 			tmp = append(tmp, words...)
-		case "PROP", "SECT", "PILE", "NODE", "ELEM":
+		case "PROP", "SECT", "PILE", "BOND", "NODE", "ELEM":
 			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite)
 			tmp = words
 		case "BASE":
@@ -532,6 +537,8 @@ func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodem
 		_, err = frame.ParseProp(lis, overwrite)
 	case "PILE":
 		_, err = frame.ParsePile(lis, overwrite)
+	case "BOND":
+		_, err = frame.ParseBond(lis, overwrite)
 	}
 	return nodemap, err
 }
@@ -605,6 +612,41 @@ func (frame *Frame) ParsePile(lis []string, overwrite bool) (*Pile, error) {
 	}
 	frame.Piles[p.Num] = p
 	return p, nil
+}
+
+// ParseBond parses BOND information.
+func (frame *Frame) ParseBond(lis []string, overwrite bool) (*Bond, error) {
+	var num int64
+	var err error
+	b := new(Bond)
+	for i, word := range lis {
+		switch word {
+		case "BOND":
+			num, err = strconv.ParseInt(lis[i+1], 10, 64)
+			b.Num = int(num)
+		case "BNAME":
+			b.Name = lis[i+1]
+		case "KR":
+			b.Stiffness = make([]float64, 2)
+			for j := 0; j < 2; j++ {
+				val, err := strconv.ParseFloat(lis[i+1+j], 64)
+				if err != nil {
+					return nil, err
+				}
+				b.Stiffness[j] = val
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	if _, ok := frame.Bonds[b.Num]; ok {
+		if !overwrite {
+			return nil, nil
+		}
+	}
+	frame.Bonds[b.Num] = b
+	return b, nil
 }
 
 // ParseProp parses SECT information.
@@ -986,12 +1028,23 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) (*Elem, error) 
 			if llis < i+1+e.Enods*6 {
 				return nil, errors.New(fmt.Sprintf("ParseElem: BONDS IndexError ELEM %d", e.Num))
 			}
-			bon := make([]bool, int(e.Enods)*6)
+			bon := make([]*Bond, int(e.Enods)*6)
 			for j := 0; j < int(e.Enods)*6; j++ {
 				if lis[i+1+j] == "0" {
-					bon[j] = false
+					bon[j] = nil
 				} else {
-					bon[j] = true
+					tmp, err := strconv.ParseInt(lis[i+1+j], 10, 64)
+					if err != nil {
+						return nil, err
+					}
+					if val, ok := frame.Bonds[int(tmp)]; ok {
+						bon[j] = val
+					} else if int(tmp) == 1 {
+						frame.Bonds[1] = Pin
+						bon[j] = Pin
+					} else {
+						return nil, errors.New(fmt.Sprintf("ParseElem: unknown BOND %d at ELEM %d", tmp, e.Num))
+					}
 				}
 			}
 			e.Bonds = bon
@@ -2290,7 +2343,14 @@ func (frame *Frame) Filename() (string, string) {
 
 // WriteInp writes an input file for st frame.
 func (frame *Frame) WriteInp(fn string) error {
-	var pnum, snum, inum, nnum, enum int
+	var bnum, pnum, snum, inum, nnum, enum int
+	// Bond
+	bonds := make([]*Bond, len(frame.Bonds))
+	for _, b := range frame.Bonds {
+		bonds[bnum] = b
+		bnum++
+	}
+	sort.Sort(BondByNum{bonds})
 	// Prop
 	props := make([]*Prop, len(frame.Props))
 	for _, p := range frame.Props {
@@ -2337,7 +2397,7 @@ func (frame *Frame) WriteInp(fn string) error {
 	}
 	elems = elems[:enum]
 	sort.Sort(ElemByNum{elems})
-	return writeinp(fn, frame.Title, frame.View, frame.Ai, props, sects, piles, nodes, elems)
+	return writeinp(fn, frame.Title, frame.View, frame.Ai, bonds, props, sects, piles, nodes, elems)
 }
 
 // WriteOutput writes an output file of analysis.
@@ -4151,6 +4211,19 @@ func (frame *Frame) ExtractArclm(fn string) error {
 	}
 	sects = sects[:snum]
 	sort.Sort(SectByNum{sects})
+	bonds := make([]*Bond, 0)
+	bnum := 0
+	for _, b := range frame.Bonds {
+		bonds = append(bonds, b)
+		bnum++
+	}
+	if bnum == 0 {
+		bonds = []*Bond{Pin}
+		bnum = 1
+	} else {
+		bonds = bonds[:bnum]
+		sort.Sort(BondByNum{bonds})
+	}
 	nodes := make([]*Node, 0)
 	nnum := 0
 	for _, n := range frame.Nodes {
@@ -4181,7 +4254,7 @@ func (frame *Frame) ExtractArclm(fn string) error {
 	}
 	for _, p := range []string{"L", "X", "Y"} {
 		af := arclm.NewFrame()
-		af.Sects = make([]*arclm.Sect, snum)
+		af.Sects = make([]*arclm.Sect, snum+len(frame.Bonds))
 		arclmsects := make(map[int]int)
 		for i, sec := range sects {
 			yield := make([]float64, 12)
@@ -4206,6 +4279,21 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				Original: sec.Original,
 			}
 			arclmsects[sec.Num] = i
+		}
+		for i, b := range bonds {
+			yield := make([]float64, 12)
+			af.Sects[snum+i] = &arclm.Sect{
+				Num:      b.Num,
+				E:        0.0,
+				Poi:      0.0,
+				Value:    []float64{0.0, b.Stiffness[0], b.Stiffness[1], 0.0},
+				Yield:    yield,
+				Type:     -1,
+				Exp:      0.0,
+				Exq:      0.0,
+				Original: b.Num,
+			}
+			arclmsects[b.Num] = snum + i
 		}
 		af.Nodes = make([]*arclm.Node, nnum)
 		arclmnodes := make(map[int]int)
@@ -4284,10 +4372,10 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				}
 			}
 			for j := 0; j < 12; j++ {
-				if el.Bonds[j] {
-					ae.Bonds[j] = 1
+				if el.Bonds[j] == nil {
+					ae.Bonds[j] = arclm.Rigid
 				} else {
-					ae.Bonds[j] = 0
+					ae.Bonds[j] = af.Sects[arclmsects[el.Bonds[j].Num]]
 				}
 				if p == "L" {
 					ae.Cmq[j] = el.Cmq[j]
@@ -5584,7 +5672,7 @@ func (view *View) ProjectDeformation(node *Node, show *Show) {
 }
 
 func WriteInp(fn string, view *View, ai *Aiparameter, els []*Elem) error {
-	var pnum, snum, inum, nnum, enum int
+	var bnum, pnum, snum, inum, nnum, enum int
 	elems := make([]*Elem, 0)
 	for _, el := range els {
 		if el == nil {
@@ -5595,8 +5683,30 @@ func WriteInp(fn string, view *View, ai *Aiparameter, els []*Elem) error {
 	}
 	elems = elems[:enum]
 	sort.Sort(ElemByNum{elems})
-	// Sect
+	// Bond
 	var add bool
+	bonds := make([]*Bond, 0)
+	for _, el := range elems {
+		for _, eb := range el.Bonds {
+			if eb == nil {
+				continue
+			}
+			add = true
+			for _, b := range bonds {
+				if eb == b {
+					add = false
+					break
+				}
+			}
+			if add {
+				bonds = append(bonds, eb)
+				bnum++
+			}
+		}
+	}
+	bonds = bonds[:bnum]
+	sort.Sort(BondByNum{bonds})
+	// Sect
 	sects := make([]*Sect, 0)
 	for _, el := range elems {
 		add = true
@@ -5670,10 +5780,10 @@ func WriteInp(fn string, view *View, ai *Aiparameter, els []*Elem) error {
 	}
 	piles = piles[:inum]
 	sort.Sort(PileByNum{piles})
-	return writeinp(fn, "\"CREATED ORGAN FRAME.\"", view, ai, props, sects, piles, nodes, elems)
+	return writeinp(fn, "\"CREATED ORGAN FRAME.\"", view, ai, bonds, props, sects, piles, nodes, elems)
 }
 
-func writeinp(fn, title string, view *View, ai *Aiparameter, props []*Prop, sects []*Sect, piles []*Pile, nodes []*Node, elems []*Elem) error {
+func writeinp(fn, title string, view *View, ai *Aiparameter, bonds []*Bond, props []*Prop, sects []*Sect, piles []*Pile, nodes []*Node, elems []*Elem) error {
 	var otp bytes.Buffer
 	inum := len(piles)
 	// Frame
@@ -5682,6 +5792,7 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, props []*Prop, sect
 	otp.WriteString(fmt.Sprintf("NELEM %d\n", len(elems)))
 	otp.WriteString(fmt.Sprintf("NPROP %d\n", len(props)))
 	otp.WriteString(fmt.Sprintf("NSECT %d\n", len(sects)))
+	otp.WriteString(fmt.Sprintf("NBOND %d\n", len(bonds)))
 	if inum >= 1 {
 		otp.WriteString(fmt.Sprintf("NPILE %d\n", inum))
 	}
@@ -5703,6 +5814,11 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, props []*Prop, sect
 	otp.WriteString(fmt.Sprintf("FOCUS %.1f %.1f %.1f\n", view.Focus[0], view.Focus[1], view.Focus[2]))
 	otp.WriteString(fmt.Sprintf("ANGLE %.1f %.1f\n", view.Angle[0], view.Angle[1]))
 	otp.WriteString(fmt.Sprintf("DISTS %.1f %.1f\n\n", view.Dists[0], view.Dists[1]))
+	// Bond
+	for _, b := range bonds {
+		otp.WriteString(b.InpString())
+	}
+	otp.WriteString("\n")
 	// Prop
 	for _, p := range props {
 		otp.WriteString(p.InpString())

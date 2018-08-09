@@ -57,7 +57,7 @@ type Elem struct {
 	Sect  *Sect
 	Etype int
 	Cang  float64
-	Bonds []bool
+	Bonds []*Bond
 	Cmq   []float64
 	Wrect []float64
 
@@ -89,7 +89,7 @@ func NewLineElem(ns []*Node, sect *Sect, etype int) *Elem {
 	el.Enod = ns[:2]
 	el.Sect = sect
 	el.Etype = etype
-	el.Bonds = make([]bool, 12)
+	el.Bonds = make([]*Bond, 12)
 	el.Cmq = make([]float64, 12)
 	el.Stress = make(map[string]map[int][]float64)
 	el.Values = make(map[string]float64)
@@ -400,10 +400,10 @@ func (elem *Elem) InpString() string {
 		rtn.WriteString(" BONDS ")
 		for i := 0; i < elem.Enods; i++ {
 			for j := 0; j < 6; j++ {
-				if elem.Bonds[6*i+j] {
-					rtn.WriteString(fmt.Sprintf(" %d", 1))
+				if elem.Bonds[6*i+j] == nil {
+					rtn.WriteString(" 0")
 				} else {
-					rtn.WriteString(fmt.Sprintf(" %d", 0))
+					rtn.WriteString(fmt.Sprintf(" %d", elem.Bonds[6*i+j].Num))
 				}
 			}
 			if i < elem.Enods-1 {
@@ -1353,7 +1353,7 @@ func (elem *Elem) Invert() {
 		return
 	}
 	newenod := make([]*Node, elem.Enods)
-	newbonds := make([]bool, 6*elem.Enods)
+	newbonds := make([]*Bond, 6*elem.Enods)
 	newcmq := make([]float64, 6*elem.Enods)
 	ind := elem.Enods - 1
 	for i := 0; i < elem.Enods; i++ {
@@ -1375,7 +1375,7 @@ func (elem *Elem) Upside() {
 	}
 	newenod := Upside(elem.Enod)
 	if elem.IsLineElem() && newenod[0] != elem.Enod[0] {
-		newbonds := make([]bool, 12)
+		newbonds := make([]*Bond, 12)
 		newcmq := make([]float64, 12)
 		for i := 0; i < 6; i++ {
 			newbonds[i] = elem.Bonds[6+i]
@@ -1505,7 +1505,7 @@ func (elem *Elem) DivideAtCoord(x, y, z float64, eps float64) (ns []*Node, els [
 	ns = []*Node{n}
 	for j := 0; j < 6; j++ {
 		els[1].Bonds[6+j] = elem.Bonds[6+j]
-		elem.Bonds[6+j] = false
+		elem.Bonds[6+j] = nil
 	}
 	els[1].Cang = elem.Cang
 	els[1].SetPrincipalAxis()
@@ -1552,7 +1552,7 @@ func (elem *Elem) DivideAtNode(n *Node, position int, del bool) (rn []*Node, els
 			elem.Enod[1] = n
 			for j := 0; j < 6; j++ {
 				els[1].Bonds[6+j] = elem.Bonds[6+j]
-				elem.Bonds[6+j] = false
+				elem.Bonds[6+j] = nil
 			}
 			els[1].Cang = elem.Cang
 			els[1].SetPrincipalAxis()
@@ -2089,7 +2089,7 @@ func (elem *Elem) StoryDrift(period string) float64 {
 	}
 }
 
-func (elem *Elem) ChangeBond(bond []bool, side ...int) error {
+func (elem *Elem) ChangeBond(bond []*Bond, side ...int) error {
 	if !elem.IsLineElem() {
 		return NotLineElem("ChangeBond")
 	}
@@ -2109,13 +2109,13 @@ func (elem *Elem) ToggleBond(side int) error {
 		return NotLineElem("ToggleBond")
 	}
 	if ind, err := elem.EnodIndex(side); err == nil {
-		if elem.Bonds[6*ind+4] || elem.Bonds[6*ind+5] {
+		if elem.Bonds[6*ind+4] != nil || elem.Bonds[6*ind+5] != nil {
 			for i := 4; i < 6; i++ {
-				elem.Bonds[6*ind+i] = false
+				elem.Bonds[6*ind+i] = nil
 			}
 		} else {
 			for i := 4; i < 6; i++ {
-				elem.Bonds[6*ind+i] = true
+				elem.Bonds[6*ind+i] = Pin
 			}
 		}
 		return nil
@@ -2126,7 +2126,7 @@ func (elem *Elem) ToggleBond(side int) error {
 
 func (elem *Elem) BondState() (rtn int) {
 	for i := 0; i < 2; i++ {
-		if elem.Bonds[6*i+4] || elem.Bonds[6*i+5] {
+		if elem.Bonds[6*i+4] != nil || elem.Bonds[6*i+5] != nil {
 			rtn += i + 1
 		}
 	}
@@ -2145,7 +2145,7 @@ func (elem *Elem) IsPin(index int) bool {
 		}
 		i = val
 	}
-	return elem.Bonds[6*i+4] || elem.Bonds[6*i+5]
+	return elem.Bonds[6*i+4] == Pin || elem.Bonds[6*i+5] == Pin
 }
 
 func (elem *Elem) IsRigid(index int) bool {

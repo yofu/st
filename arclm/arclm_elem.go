@@ -28,6 +28,18 @@ type Sect struct {
 	Original int
 }
 
+var Rigid = &Sect{
+	Num:      0,
+	E:        0.0,
+	Poi:      0.0,
+	Value:    []float64{0.0, -1.0, -1.0, 0.0},
+	Yield:    []float64{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
+	Type:     -1,
+	Exp:      0.0,
+	Exq:      0.0,
+	Original: 0,
+}
+
 func NewSect() *Sect {
 	s := new(Sect)
 	s.Value = make([]float64, 4)
@@ -200,7 +212,7 @@ type Elem struct {
 	Sect      *Sect
 	Enod      []*Node
 	Cang      float64
-	Bonds     []int
+	Bonds     []*Sect
 	Strong    []float64
 	Weak      []float64
 	Cmq       []float64
@@ -214,7 +226,7 @@ type Elem struct {
 func NewElem() *Elem {
 	el := new(Elem)
 	el.Enod = make([]*Node, 2)
-	el.Bonds = make([]int, 12)
+	el.Bonds = make([]*Sect, 12)
 	el.Cmq = make([]float64, 12)
 	el.Stress = make([]float64, 12)
 	el.IsValid = true
@@ -228,7 +240,7 @@ func (elem *Elem) InlString() string {
 	rtn.WriteString(fmt.Sprintf("%8.5f", elem.Cang))
 	for i := 0; i < 2; i++ {
 		for j := 3; j < 6; j++ {
-			rtn.WriteString(fmt.Sprintf(" %d", elem.Bonds[6*i+j]))
+			rtn.WriteString(fmt.Sprintf(" %d", elem.Bonds[6*i+j].Num))
 		}
 	}
 	for i := 0; i < 12; i++ {
@@ -294,9 +306,27 @@ func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error)
 			return el, err
 		}
 		if i < 3 {
-			el.Bonds[i+3] = int(tmp)
+			snum := int(tmp)
+			for _, s := range sects {
+				if s.Num == snum {
+					el.Bonds[i+3] = s
+					break
+				}
+			}
+			if el.Bonds[i+3] == nil {
+				el.Bonds[i+3] = Rigid
+			}
 		} else {
-			el.Bonds[i+6] = int(tmp)
+			snum := int(tmp)
+			for _, s := range sects {
+				if s.Num == snum {
+					el.Bonds[i+6] = s
+					break
+				}
+			}
+			if el.Bonds[i+6] == nil {
+				el.Bonds[i+6] = Rigid
+			}
 		}
 	}
 	for i := 0; i < 12; i++ {
@@ -433,7 +463,7 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 	}
 	for i := 0; i < 2; i++ {
 		for j := 0; j < 6; j++ {
-			if elem.Bonds[6*i+j] == 1 {
+			if elem.Bonds[6*i+j].Num == 1 {
 				continue
 			}
 			switch j {
@@ -469,7 +499,7 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 		}
 		dfdp[i] = make([]float64, 6)
 		for j := 0; j < 6; j++ {
-			if elem.Bonds[6*i+j] == 1 {
+			if elem.Bonds[6*i+j].Num == 1 {
 				continue
 			}
 			if elem.Sect.Exp == elem.Sect.Exq {
@@ -486,12 +516,12 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 	q := make([][]float64, 12)
 	for i := 0; i < 12; i++ {
 		q[i] = make([]float64, 12)
-		if elem.Bonds[i] == 1 {
+		if elem.Bonds[i].Num == 1 {
 			continue
 		}
 		for j := 0; j < 2; j++ {
 			for k := 0; k < 6; k++ {
-				if elem.Bonds[6*j+k] == 1 {
+				if elem.Bonds[6*j+k].Num == 1 {
 					continue
 				}
 				q[i][j] += estiff[i][6*j+k] * dfdp[j][k]
@@ -503,7 +533,7 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 		a[i] = make([]float64, 2)
 		for j := 0; j < 2; j++ {
 			for k := 0; k < 6; k++ {
-				if elem.Bonds[6*i+k] == -1 && elem.Bonds[6*j+k] == -1 {
+				if elem.Bonds[6*i+k].Num == -1 && elem.Bonds[6*j+k].Num == -1 {
 					a[i][j] += dfdp[i][k] * q[6*i+k][j]
 				}
 			}
@@ -602,11 +632,11 @@ func (elem *Elem) PlasticMatrix(estiff [][]float64) ([][]float64, error) {
 	switch {
 	case a[0][0] != 0.0 && a[1][1] == 0.0: // I=PLASTIC J=ELASTIC
 		for i := 0; i < 12; i++ {
-			if elem.Bonds[i] == 1 || elem.Bonds[i] == -2 || elem.Bonds[i] == -3 {
+			if elem.Bonds[i].Num == 1 || elem.Bonds[i].Num == -2 || elem.Bonds[i].Num == -3 {
 				continue
 			}
 			for j := 0; j < 12; j++ {
-				if elem.Bonds[j] == 1 || elem.Bonds[j] == -2 || elem.Bonds[j] == -3 {
+				if elem.Bonds[j].Num == 1 || elem.Bonds[j].Num == -2 || elem.Bonds[j].Num == -3 {
 					continue
 				}
 				p[i][j] = -1.0 / a[0][0] * q[i][0] * q[j][0]
@@ -614,11 +644,11 @@ func (elem *Elem) PlasticMatrix(estiff [][]float64) ([][]float64, error) {
 		}
 	case a[0][0] == 0.0 && a[1][1] != 0.0: // I=ELASTIC J=PLASTIC
 		for i := 0; i < 12; i++ {
-			if elem.Bonds[i] == 1 || elem.Bonds[i] == -2 || elem.Bonds[i] == -3 {
+			if elem.Bonds[i].Num == 1 || elem.Bonds[i].Num == -2 || elem.Bonds[i].Num == -3 {
 				continue
 			}
 			for j := 0; j < 12; j++ {
-				if elem.Bonds[j] == 1 || elem.Bonds[j] == -2 || elem.Bonds[j] == -3 {
+				if elem.Bonds[j].Num == 1 || elem.Bonds[j].Num == -2 || elem.Bonds[j].Num == -3 {
 					continue
 				}
 				p[i][j] = -1.0 / a[1][1] * q[i][1] * q[j][1]
@@ -626,11 +656,11 @@ func (elem *Elem) PlasticMatrix(estiff [][]float64) ([][]float64, error) {
 		}
 	case a[0][0] != 0.0 && a[1][1] != 0.0:
 		for i := 0; i < 12; i++ {
-			if elem.Bonds[i] == 1 || elem.Bonds[i] == -2 || elem.Bonds[i] == -3 {
+			if elem.Bonds[i].Num == 1 || elem.Bonds[i].Num == -2 || elem.Bonds[i].Num == -3 {
 				continue
 			}
 			for j := 0; j < 12; j++ {
-				if elem.Bonds[j] == 1 || elem.Bonds[j] == -2 || elem.Bonds[j] == -3 {
+				if elem.Bonds[j].Num == 1 || elem.Bonds[j].Num == -2 || elem.Bonds[j].Num == -3 {
 					continue
 				}
 				det := a[0][0]*a[1][1] - a[0][1]*a[1][0]
@@ -643,11 +673,11 @@ func (elem *Elem) PlasticMatrix(estiff [][]float64) ([][]float64, error) {
 		}
 	}
 	for i := 0; i < 12; i++ {
-		if elem.Bonds[i] == 1 || elem.Bonds[i] == -2 || elem.Bonds[i] == -3 {
+		if elem.Bonds[i].Num == 1 || elem.Bonds[i].Num == -2 || elem.Bonds[i].Num == -3 {
 			continue
 		}
 		for j := 0; j < 12; j++ {
-			if elem.Bonds[j] == 1 || elem.Bonds[j] == -2 || elem.Bonds[j] == -3 {
+			if elem.Bonds[j].Num == 1 || elem.Bonds[j].Num == -2 || elem.Bonds[j].Num == -3 {
 				continue
 			}
 			estiff[i][j] += p[i][j]
@@ -757,14 +787,21 @@ func (elem *Elem) ModifyHinge(estiff [][]float64) ([][]float64, error) {
 	}
 	for n := 0; n < 2; n++ {
 		for i := 0; i < 6; i++ {
-			if elem.Bonds[6*n+i] == 1 {
+			if elem.Bonds[6*n+i] != Rigid {
 				kk := 6*n + i
 				if rtn[kk][kk] == 0.0 {
 					return nil, errors.New(fmt.Sprintf("Modifyhinge: ELEM %d: Matrix Singular", elem.Num))
 				}
+				l := elem.Length()
+				k1 := (elem.Bonds[6*n+i].Value[1] * l) / (4.0 * elem.Sect.E * elem.Sect.Value[1])
+				k2 := (elem.Bonds[6*n+i].Value[2] * l) / (4.0 * elem.Sect.E * elem.Sect.Value[2])
 				for ii := 0; ii < 12; ii++ {
 					for jj := 0; jj < 12; jj++ {
-						h[ii][jj] = -rtn[ii][kk] / rtn[kk][kk] * rtn[kk][jj]
+						if ii == 2 || ii == 4 || ii == 8 || ii == 10 {
+							h[ii][jj] = -rtn[ii][kk] / rtn[kk][kk] * rtn[kk][jj] * 1.0 / (k1 + 1.0)
+						} else {
+							h[ii][jj] = -rtn[ii][kk] / rtn[kk][kk] * rtn[kk][jj] * 1.0 / (k2 + 1.0)
+						}
 					}
 				}
 				for ii := 0; ii < 12; ii++ {
@@ -778,21 +815,22 @@ func (elem *Elem) ModifyHinge(estiff [][]float64) ([][]float64, error) {
 	return rtn, nil
 }
 
+// TODO: rotational spring
 func (elem *Elem) ModifyCMQ() {
 	l := elem.Length()
-	if elem.Bonds[4] == 1 && elem.Bonds[10] == 1 {
+	if elem.Bonds[4].Num == 1 && elem.Bonds[10].Num == 1 {
 		elem.Cmq[4] = 0.0
 		elem.Cmq[10] = 0.0
 		elem.Stress[4] = 0.0
 		elem.Stress[10] = 0.0
 	}
-	if elem.Bonds[5] == 1 && elem.Bonds[11] == 1 {
+	if elem.Bonds[5].Num == 1 && elem.Bonds[11].Num == 1 {
 		elem.Cmq[5] = 0.0
 		elem.Cmq[11] = 0.0
 		elem.Stress[5] = 0.0
 		elem.Stress[11] = 0.0
 	}
-	if elem.Bonds[4] == 1 && elem.Bonds[10] == 0 {
+	if elem.Bonds[4].Num == 1 && elem.Bonds[10].Num == 0 {
 		elem.Cmq[10] -= elem.Cmq[4] * 0.5
 		elem.Cmq[2] += elem.Cmq[4] * 1.5 / l
 		elem.Cmq[8] -= elem.Cmq[4] * 1.5 / l
@@ -802,7 +840,7 @@ func (elem *Elem) ModifyCMQ() {
 		elem.Stress[8] -= elem.Stress[4] * 1.5 / l
 		elem.Stress[4] = 0.0
 	}
-	if elem.Bonds[4] == 0 && elem.Bonds[10] == 1 {
+	if elem.Bonds[4].Num == 0 && elem.Bonds[10].Num == 1 {
 		elem.Cmq[4] -= elem.Cmq[10] * 0.5
 		elem.Cmq[2] += elem.Cmq[10] * 1.5 / l
 		elem.Cmq[8] -= elem.Cmq[10] * 1.5 / l
@@ -812,7 +850,7 @@ func (elem *Elem) ModifyCMQ() {
 		elem.Stress[8] -= elem.Stress[10] * 1.5 / l
 		elem.Stress[10] = 0.0
 	}
-	if elem.Bonds[5] == 1 && elem.Bonds[11] == 0 {
+	if elem.Bonds[5].Num == 1 && elem.Bonds[11].Num == 0 {
 		elem.Cmq[11] -= elem.Cmq[5] * 0.5
 		elem.Cmq[1] -= elem.Cmq[5] * 1.5 / l
 		elem.Cmq[7] += elem.Cmq[5] * 1.5 / l
@@ -822,7 +860,7 @@ func (elem *Elem) ModifyCMQ() {
 		elem.Stress[7] += elem.Stress[5] * 1.5 / l
 		elem.Stress[5] = 0.0
 	}
-	if elem.Bonds[5] == 0 && elem.Bonds[11] == 1 {
+	if elem.Bonds[5].Num == 0 && elem.Bonds[11].Num == 1 {
 		elem.Cmq[5] -= elem.Cmq[11] * 0.5
 		elem.Cmq[1] -= elem.Cmq[11] * 1.5 / l
 		elem.Cmq[7] += elem.Cmq[11] * 1.5 / l

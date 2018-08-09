@@ -571,7 +571,7 @@ func (frame *Frame) ParseDxfDictionary(lis []string, namehandle map[int]string, 
 func (frame *Frame) ParseDxfGroup(lis []string, namehandle map[int]string, elemhandle map[int]*Elem) error {
 	var err error
 	var index, h int64
-	var bonds []bool
+	var bonds []*Bond
 	for i, word := range lis {
 		if i%2 != 0 {
 			continue
@@ -589,11 +589,11 @@ func (frame *Frame) ParseDxfGroup(lis []string, namehandle map[int]string, elemh
 			if name, ok := namehandle[int(h)]; ok {
 				switch name {
 				case "PINPIN":
-					bonds = []bool{false, false, false, false, true, true, false, false, false, false, true, true}
+					bonds = []*Bond{nil, nil, nil, nil, Pin, Pin, nil, nil, nil, nil, Pin, Pin}
 				case "RIGIDPIN":
-					bonds = []bool{false, false, false, false, false, false, false, false, false, false, true, true}
+					bonds = []*Bond{nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, Pin, Pin}
 				case "PINRIGID":
-					bonds = []bool{false, false, false, false, true, true, false, false, false, false, false, false}
+					bonds = []*Bond{nil, nil, nil, nil, Pin, Pin, nil, nil, nil, nil, nil, nil}
 				}
 			} else {
 				return errors.New(fmt.Sprintf("handle %X not fount", int(h)))

@@ -1672,7 +1672,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		m.WriteString(fmt.Sprintf("Output: %s", fn))
 		return Message(m.String())
-		case "factsbysect": // TODO: define nsect and esect as [][]int
+	case "factsbysect": // TODO: define nsect and esect as [][]int
 		if usage {
 			return Usage(":factsbysect {-node=code} {-sect=code}")
 		}
@@ -2503,25 +2503,29 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return NotEnoughArgs(":bond")
 		}
 		els := currentelem(stw, exmodech, exmodeend)
-		lis := make([]bool, 6)
+		lis := make([]*Bond, 6)
 		pat := regexp.MustCompile("[01_t]{6}")
 		switch {
 		case strings.EqualFold(args[1], "pin"):
-			lis[4] = true
-			lis[5] = true
+			lis[4] = Pin
+			lis[5] = Pin
 		case pat.MatchString(args[1]):
 			for i := 0; i < 6; i++ {
 				switch args[1][i] {
 				default:
-					lis[i] = false
+					lis[i] = nil
 				case '0':
-					lis[i] = false
+					lis[i] = nil
 				case '1':
-					lis[i] = true
+					lis[i] = Pin
 				case '_':
 					continue
 				case 't':
-					lis[i] = !lis[i]
+					if lis[i] == nil {
+						lis[i] = Pin
+					} else {
+						lis[i] = nil
+					}
 				}
 			}
 		}
