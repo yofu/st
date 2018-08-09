@@ -640,6 +640,10 @@ func (frame *Frame) ParseBond(lis []string, overwrite bool) (*Bond, error) {
 			return nil, err
 		}
 	}
+	if b.Num == 1 {
+		frame.Bonds[1] = Pin
+		return Pin, nil
+	}
 	if _, ok := frame.Bonds[b.Num]; ok {
 		if !overwrite {
 			return nil, nil
