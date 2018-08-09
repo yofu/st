@@ -2504,7 +2504,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		els := currentelem(stw, exmodech, exmodeend)
 		lis := make([]*Bond, 6)
-		pat := regexp.MustCompile("[01_t]{6}")
+		pat := regexp.MustCompile("[0-9_t]{6}")
 		switch {
 		case strings.EqualFold(args[1], "pin"):
 			lis[4] = Pin
@@ -2513,7 +2513,12 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			for i := 0; i < 6; i++ {
 				switch args[1][i] {
 				default:
-					lis[i] = nil
+					tmp, err := strconv.ParseInt(string(args[1][i]), 10, 64)
+					if err == nil {
+						if b, ok := frame.Bonds[int(tmp)]; ok {
+							lis[i] = b
+						}
+					}
 				case '0':
 					lis[i] = nil
 				case '1':
