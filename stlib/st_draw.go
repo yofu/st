@@ -182,12 +182,32 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			stw.BondStyle(show)
 			switch elem.BondState() {
 			case PIN_RIGID:
-				stw.Circle(icoord[0]+pd[0]*show.BondSize, icoord[1]+pd[1]*show.BondSize, show.BondSize*2)
+				if elem.Bonds[4] == Pin && elem.Bonds[5] == Pin {
+					stw.Circle(icoord[0]+pd[0]*show.BondSize, icoord[1]+pd[1]*show.BondSize, show.BondSize*2)
+				} else {
+					stw.Circle(icoord[0]+pd[0]*show.BondSize*2, icoord[1]+pd[1]*show.BondSize*2, show.BondSize*2)
+					stw.Circle(icoord[0]+pd[0]*show.BondSize*2, icoord[1]+pd[1]*show.BondSize*2, show.BondSize*4)
+				}
 			case RIGID_PIN:
-				stw.Circle(jcoord[0]-pd[0]*show.BondSize, jcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
+				if elem.Bonds[10] == Pin && elem.Bonds[11] == Pin {
+					stw.Circle(jcoord[0]-pd[0]*show.BondSize, jcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
+				} else {
+					stw.Circle(jcoord[0]-pd[0]*show.BondSize*2, jcoord[1]-pd[1]*show.BondSize*2, show.BondSize*2)
+					stw.Circle(jcoord[0]-pd[0]*show.BondSize*2, jcoord[1]-pd[1]*show.BondSize*2, show.BondSize*4)
+				}
 			case PIN_PIN:
-				stw.Circle(icoord[0]+pd[0]*show.BondSize, icoord[1]+pd[1]*show.BondSize, show.BondSize*2)
-				stw.Circle(jcoord[0]-pd[0]*show.BondSize, jcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
+				if elem.Bonds[4] == Pin && elem.Bonds[5] == Pin {
+					stw.Circle(icoord[0]+pd[0]*show.BondSize, icoord[1]+pd[1]*show.BondSize, show.BondSize*2)
+				} else {
+					stw.Circle(icoord[0]+pd[0]*show.BondSize*2, icoord[1]+pd[1]*show.BondSize*2, show.BondSize*2)
+					stw.Circle(icoord[0]+pd[0]*show.BondSize*2, icoord[1]+pd[1]*show.BondSize*2, show.BondSize*4)
+				}
+				if elem.Bonds[10] == Pin && elem.Bonds[11] == Pin {
+					stw.Circle(jcoord[0]-pd[0]*show.BondSize, jcoord[1]-pd[1]*show.BondSize, show.BondSize*2)
+				} else {
+					stw.Circle(jcoord[0]-pd[0]*show.BondSize*2, jcoord[1]-pd[1]*show.BondSize*2, show.BondSize*2)
+					stw.Circle(jcoord[0]-pd[0]*show.BondSize*2, jcoord[1]-pd[1]*show.BondSize*2, show.BondSize*4)
+				}
 			}
 		}
 		if show.Phinge {
