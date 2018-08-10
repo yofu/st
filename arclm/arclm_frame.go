@@ -284,32 +284,9 @@ func (frame *Frame) AssemGlobalMatrix(matf func(*Elem) ([][]float64, error), vec
 		if stiff == nil {
 			continue
 		}
-		elnum := 1053
-		if el.Num == elnum {
-			for i := 0; i < 12; i++ {
-				for j := 0; j < 12; j++ {
-					if j > i {
-						break
-					}
-					fmt.Printf("%8.1f ", stiff[i][j])
-				}
-				fmt.Printf("\n")
-			}
-		}
 		stiff, err = el.ModifyHinge(stiff)
 		if err != nil {
 			return nil, nil, err
-		}
-		if el.Num == elnum {
-			for i := 0; i < 12; i++ {
-				for j := 0; j < 12; j++ {
-					if j > i {
-						break
-					}
-					fmt.Printf("%8.1f ", stiff[i][j])
-				}
-				fmt.Printf("\n")
-			}
 		}
 		stiff = Transformation(stiff, tmatrix)
 		for n1 := 0; n1 < 2; n1++ {
