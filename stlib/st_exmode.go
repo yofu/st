@@ -3009,7 +3009,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			sects := make([]*Sect, len(frame.Sects))
 			num := 0
 			for _, sec := range frame.Sects {
-				if sec.Num > 900 {
+				if sec.Num > 900 || sec.Type < 0 {
 					continue
 				}
 				if sec.HasArea(0) {
