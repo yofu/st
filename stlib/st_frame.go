@@ -2365,7 +2365,7 @@ func (frame *Frame) WriteInp(fn string) error {
 	// Sect
 	sects := make([]*Sect, len(frame.Sects))
 	for _, sec := range frame.Sects {
-		if sec.Num > 900 {
+		if sec.Num < 100 || sec.Num > 900 {
 			continue
 		}
 		sects[snum] = sec
