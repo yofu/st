@@ -1010,7 +1010,8 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":png filename")
 		}
-		err := PrintPNG(frame, fn)
+		w, h := stw.GetCanvasSize()
+		err := PrintPNG(frame, fn, w, h)
 		if err != nil {
 			return err
 		}

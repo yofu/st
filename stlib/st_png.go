@@ -1,29 +1,41 @@
 package st
 
 import (
-	"github.com/llgcode/draw2d/draw2dimg"
 	"image"
 	"image/color"
 	"math"
+
+	"github.com/llgcode/draw2d/draw2dimg"
 )
 
 // TODO: font
 
 type PngCanvas struct {
+	width         int
+	height        int
 	currentCanvas *draw2dimg.GraphicContext
 }
 
-func PrintPNG(frame *Frame, otp string) error {
-	dest := image.NewRGBA(image.Rect(0.0, 0.0, 210.0, 297.0))
+func PrintPNG(frame *Frame, otp string, w, h int) error {
+	dest := image.NewRGBA(image.Rect(0, 0, w, h))
 	gc := draw2dimg.NewGraphicContext(dest)
 	pc := &PngCanvas{
+		width:         w,
+		height:        h,
 		currentCanvas: gc,
 	}
-	DrawFrame(pc, frame, ECOLOR_SECT, true)
+	pc.currentCanvas.SetStrokeColor(color.RGBA{0x00, 0x00, 0x00, 0xff})
+	pc.currentCanvas.SetLineWidth(1)
+	cm := frame.Show.ColorMode
+	if cm == ECOLOR_WHITE {
+		cm = ECOLOR_BLACK
+	}
+	DrawFrame(pc, frame, cm, true)
 	return draw2dimg.SaveToPngFile(otp, dest)
 }
 
 func (pc *PngCanvas) Line(x1, y1, x2, y2 float64) {
+	pc.currentCanvas.BeginPath()
 	pc.currentCanvas.MoveTo(x1, y1)
 	pc.currentCanvas.LineTo(x2, y2)
 	pc.currentCanvas.Close()
@@ -34,6 +46,7 @@ func (pc *PngCanvas) Polyline(coord [][]float64) {
 	if len(coord) < 2 {
 		return
 	}
+	pc.currentCanvas.BeginPath()
 	pc.currentCanvas.MoveTo(coord[0][0], coord[0][1])
 	for _, c := range coord[1:] {
 		pc.currentCanvas.LineTo(c[0], c[1])
@@ -46,6 +59,7 @@ func (pc *PngCanvas) Polygon(coord [][]float64) {
 	if len(coord) < 2 {
 		return
 	}
+	pc.currentCanvas.BeginPath()
 	pc.currentCanvas.MoveTo(coord[0][0], coord[0][1])
 	for _, c := range coord[1:] {
 		pc.currentCanvas.LineTo(c[0], c[1])
@@ -55,6 +69,7 @@ func (pc *PngCanvas) Polygon(coord [][]float64) {
 }
 
 func (pc *PngCanvas) Circle(x, y, r float64) {
+	pc.currentCanvas.BeginPath()
 	pc.currentCanvas.MoveTo(x, y)
 	pc.currentCanvas.ArcTo(x, y, r, r, 0, 2*math.Pi)
 	pc.currentCanvas.Close()
@@ -62,6 +77,7 @@ func (pc *PngCanvas) Circle(x, y, r float64) {
 }
 
 func (pc *PngCanvas) FilledCircle(x, y, r float64) {
+	pc.currentCanvas.BeginPath()
 	pc.currentCanvas.MoveTo(x, y)
 	pc.currentCanvas.ArcTo(x, y, r, r, 0, 2*math.Pi)
 	pc.currentCanvas.Close()
@@ -138,11 +154,11 @@ func (pc *PngCanvas) ShowPrintRange() bool {
 }
 
 func (pc *PngCanvas) GetCanvasSize() (int, int) {
-	return 0, 0
+	return pc.width, pc.height
 }
 
 func (pc *PngCanvas) CanvasPaperSize() (float64, float64, error) {
-	return 0.0, 0.0, nil
+	return float64(pc.width), float64(pc.height), nil
 }
 
 func (pc *PngCanvas) Flush() {
