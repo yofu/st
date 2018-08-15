@@ -586,7 +586,7 @@ func (frame *Frame) ParseProp(lis []string, overwrite bool) (*Prop, error) {
 	return p, nil
 }
 
-// ParseProp parses PILE information.
+// ParsePile parses PILE information.
 func (frame *Frame) ParsePile(lis []string, overwrite bool) (*Pile, error) {
 	var num int64
 	var err error
@@ -653,7 +653,7 @@ func (frame *Frame) ParseBond(lis []string, overwrite bool) (*Bond, error) {
 	return b, nil
 }
 
-// ParseProp parses SECT information.
+// ParseSect parses SECT information.
 func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 	var num int64
 	var err error
@@ -749,7 +749,7 @@ func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 	return s, nil
 }
 
-// ParseProp parses FIG information.
+// ParseFig parses FIG information.
 func (sect *Sect) ParseFig(frame *Frame, figmap map[string][]string) error {
 	var num int64
 	if len(figmap) == 0 {
@@ -906,7 +906,7 @@ func (sect *Sect) ParseFig(frame *Frame, figmap map[string][]string) error {
 	return err
 }
 
-// ParseProp parses NODE information.
+// ParseNode parses NODE information.
 func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (*Node, int, error) {
 	var num int64
 	var err error
@@ -986,7 +986,7 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (*No
 	}
 }
 
-// ParseProp parses ELEM information.
+// ParseElem parses ELEM information.
 func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) (*Elem, error) {
 	var num int64
 	var err error
