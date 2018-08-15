@@ -2750,8 +2750,7 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 }
 
 // WriteDxfPlan writes a dxf file of plan
-func (frame *Frame) WriteDxfPlan(filename string, floor int) error {
-	scale := 1000.0
+func (frame *Frame) WriteDxfPlan(filename string, floor int, scale float64, textheight float64, axissize float64) error {
 	d := dxf.NewDrawing()
 	if floor <= 0 || floor >= len(frame.Ai.Boundary) {
 		return fmt.Errorf("out of bounds")
@@ -2771,12 +2770,10 @@ func (frame *Frame) WriteDxfPlan(filename string, floor int) error {
 		l, _ := d.Line(k.Start[0]*scale, k.Start[1]*scale, 0.0, k.End[0]*scale, k.End[1]*scale, 0.0)
 		l.SetLtscale(2.0)
 		d.Layer("AXIS", true)
-		size := 300.0
 		direction := k.Direction()
-		d.Circle(k.Start[0]*scale-direction[0]*size, k.Start[1]*scale-direction[1]*size, 0.0, size)
-		height := 250.0
+		d.Circle(k.Start[0]*scale-direction[0]*axissize, k.Start[1]*scale-direction[1]*axissize, 0.0, axissize)
 		d.Layer("MOJI", true)
-		t, _ := d.Text(k.Name, k.Start[0]*scale-direction[0]*size, k.Start[1]*scale-direction[1]*size, 0.0, height)
+		t, _ := d.Text(k.Name, k.Start[0]*scale-direction[0]*axissize, k.Start[1]*scale-direction[1]*axissize, 0.0, textheight)
 		t.Anchor(dxfentity.CENTER_CENTER)
 	}
 	min := frame.Ai.Boundary[floor-1]
@@ -2801,13 +2798,40 @@ func (frame *Frame) WriteDxfPlan(filename string, floor int) error {
 			d.AddLayer(lname, col, lt, true)
 		}
 	}
+	settextlayer := func(et int) {
+		lname := "0"
+		col := dxf.DefaultColor
+		lt := dxf.DefaultLineType
+		switch et {
+		case COLUMN:
+			lname = "TXTCOLUMN"
+			col = dxfcolor.Yellow
+		case GIRDER:
+			lname = "TXTGIRDER"
+			col = dxfcolor.Cyan
+		case BRACE:
+			lname = "TXTBRACE"
+			col = dxfcolor.Green
+		}
+		_, err := d.Layer(lname, true)
+		if err != nil {
+			d.AddLayer(lname, col, lt, true)
+		}
+	}
 	for _, el := range frame.Elems {
 		if !el.IsLineElem() || el.Etype == WBRACE || el.Etype == SBRACE {
 			continue
 		}
 		if min <= el.Enod[0].Coord[2] && el.Enod[1].Coord[2] <= max {
+			direction := el.Direction(true)
+			textcoord := []float64{
+				0.5*(el.Enod[0].Coord[0]+el.Enod[1].Coord[0])*scale - direction[1]*textheight*0.5,
+				0.5*(el.Enod[0].Coord[1]+el.Enod[1].Coord[1])*scale + direction[0]*textheight*0.5,
+			}
+			name := strings.TrimSpace(strings.Split(el.Sect.Name, ":")[0])
 			setlayer(el.Etype)
 			if al, ok := frame.Allows[el.Sect.Num]; ok {
+				name = al.Name()
 				if b, ok := al.(Breadther); ok {
 					b1 := b.Breadth(true) * 0.01
 					b2 := b.Breadth(false) * 0.01
@@ -2817,17 +2841,33 @@ func (frame *Frame) WriteDxfPlan(filename string, floor int) error {
 						[]float64{(el.Enod[1].Coord[0] + diff[0]) * scale, (el.Enod[1].Coord[1] + diff[1]) * scale, 0.0},
 						[]float64{(el.Enod[1].Coord[0] - diff[0]) * scale, (el.Enod[1].Coord[1] - diff[1]) * scale, 0.0},
 						[]float64{(el.Enod[0].Coord[0] - diff[0]) * scale, (el.Enod[0].Coord[1] - diff[1]) * scale, 0.0})
+					for i := 0; i < 2; i++ {
+						textcoord[i] += diff[i] * scale
+					}
 				} else {
 					d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, 0.0, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, 0.0)
 				}
 			} else {
 				d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, 0.0, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, 0.0)
 			}
+			settextlayer(el.Etype)
+			t, _ := d.Text(name, textcoord[0], textcoord[1], 0.0, textheight)
+			t.Anchor(dxfentity.CENTER_BOTTOM)
+			t.Rotation = math.Atan2(el.Enod[1].Coord[1]-el.Enod[0].Coord[1], el.Enod[1].Coord[0]-el.Enod[0].Coord[0]) * 180.0 / math.Pi
 		}
 	}
 	for _, el := range frame.Fence(2, frame.Ai.Boundary[floor], false) {
 		setlayer(el.Etype)
-		frame.DrawDxfSection(d, el, []float64{el.Enod[0].Coord[0], el.Enod[1].Coord[1], 0.0}, scale)
+		err := frame.DrawDxfSection(d, el, []float64{el.Enod[0].Coord[0], el.Enod[0].Coord[1], 0.0}, scale)
+		if err == nil {
+			settextlayer(el.Etype)
+			name := frame.Allows[el.Sect.Num].Name()
+			textcoord := []float64{
+				el.Enod[0].Coord[0]*scale + textheight,
+				el.Enod[0].Coord[1]*scale + textheight,
+			}
+			d.Text(name, textcoord[0], textcoord[1], 0.0, textheight)
+		}
 	}
 	return d.SaveAs(filename)
 }

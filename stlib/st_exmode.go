@@ -1050,9 +1050,12 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 	case "plan":
 		if usage {
-			return Usage(":plan filename {-floor=1}")
+			return Usage(":plan filename {-floor=1} {-scale=1000} {-height=250} {-axissize=300}")
 		}
 		floor := 1
+		scale := 1000.0
+		textheight := 250.0
+		axissize := 300.0
 		if f, ok := argdict["FLOOR"]; ok {
 			val, err := strconv.ParseInt(f, 10, 64)
 			if err != nil {
@@ -1060,10 +1063,31 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 			floor = int(val)
 		}
+		if s, ok := argdict["SCALE"]; ok {
+			val, err := strconv.ParseFloat(s, 64)
+			if err != nil {
+				return err
+			}
+			scale = val
+		}
+		if h, ok := argdict["HEIGHT"]; ok {
+			val, err := strconv.ParseFloat(h, 64)
+			if err != nil {
+				return err
+			}
+			textheight = val
+		}
+		if a, ok := argdict["AXISSIZE"]; ok {
+			val, err := strconv.ParseFloat(a, 64)
+			if err != nil {
+				return err
+			}
+			axissize = val
+		}
 		if fn == "" {
 			return fmt.Errorf("no file name")
 		}
-		err := frame.WriteDxfPlan(fn, floor)
+		err := frame.WriteDxfPlan(fn, floor, scale, textheight, axissize)
 		if err != nil {
 			return err
 		}
