@@ -17,6 +17,7 @@ import (
 	"github.com/yofu/dxf"
 	dxfcolor "github.com/yofu/dxf/color"
 	"github.com/yofu/dxf/drawing"
+	dxfentity "github.com/yofu/dxf/entity"
 	"github.com/yofu/st/arclm"
 	"github.com/yofu/unit"
 )
@@ -2755,6 +2756,29 @@ func (frame *Frame) WriteDxfPlan(filename string, floor int) error {
 	if floor <= 0 || floor >= len(frame.Ai.Boundary) {
 		return fmt.Errorf("out of bounds")
 	}
+	d.Header().LtScale = 100.0
+	MCDASH6, _ := d.AddLineType("MCDASH6", "MiniCad+ Generated", 3.175, -1.058075, 0.352692, -0.705771)
+	SIMPLEX, _ := d.AddStyle("SIMPLEX", "simplex.shx", "bigfont.shx", true)
+	SIMPLEX.WidthFactor = 0.75
+	d.AddLayer("KIJUN", dxfcolor.Red, MCDASH6, false)
+	d.AddLayer("AXIS", dxf.DefaultColor, dxf.DefaultLineType, false)
+	d.AddLayer("MOJI", dxf.DefaultColor, dxf.DefaultLineType, false)
+	for _, k := range frame.Kijuns {
+		if k.Start[2] != 0.0 || k.End[2] != 0.0 {
+			continue
+		}
+		d.Layer("KIJUN", true)
+		l, _ := d.Line(k.Start[0]*scale, k.Start[1]*scale, 0.0, k.End[0]*scale, k.End[1]*scale, 0.0)
+		l.SetLtscale(2.0)
+		d.Layer("AXIS", true)
+		size := 300.0
+		direction := k.Direction()
+		d.Circle(k.Start[0]*scale-direction[0]*size, k.Start[1]*scale-direction[1]*size, 0.0, size)
+		height := 250.0
+		d.Layer("MOJI", true)
+		t, _ := d.Text(k.Name, k.Start[0]*scale-direction[0]*size, k.Start[1]*scale-direction[1]*size, 0.0, height)
+		t.Anchor(dxfentity.CENTER_CENTER)
+	}
 	min := frame.Ai.Boundary[floor-1]
 	max := frame.Ai.Boundary[floor]
 	setlayer := func(et int) {
@@ -2788,8 +2812,11 @@ func (frame *Frame) WriteDxfPlan(filename string, floor int) error {
 					b1 := b.Breadth(true) * 0.01
 					b2 := b.Breadth(false) * 0.01
 					diff := []float64{0.5 * (b1*el.Strong[0] + b2*el.Weak[0]), 0.5 * (b1*el.Strong[1] + b2*el.Weak[1])}
-					d.Line((el.Enod[0].Coord[0]+diff[0])*scale, (el.Enod[0].Coord[1]+diff[1])*scale, 0.0, (el.Enod[1].Coord[0]+diff[0])*scale, (el.Enod[1].Coord[1]+diff[1])*scale, 0.0)
-					d.Line((el.Enod[0].Coord[0]-diff[0])*scale, (el.Enod[0].Coord[1]-diff[1])*scale, 0.0, (el.Enod[1].Coord[0]-diff[0])*scale, (el.Enod[1].Coord[1]-diff[1])*scale, 0.0)
+					d.Polyline(true,
+						[]float64{(el.Enod[0].Coord[0] + diff[0]) * scale, (el.Enod[0].Coord[1] + diff[1]) * scale, 0.0},
+						[]float64{(el.Enod[1].Coord[0] + diff[0]) * scale, (el.Enod[1].Coord[1] + diff[1]) * scale, 0.0},
+						[]float64{(el.Enod[1].Coord[0] - diff[0]) * scale, (el.Enod[1].Coord[1] - diff[1]) * scale, 0.0},
+						[]float64{(el.Enod[0].Coord[0] - diff[0]) * scale, (el.Enod[0].Coord[1] - diff[1]) * scale, 0.0})
 				} else {
 					d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, 0.0, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, 0.0)
 				}
