@@ -151,6 +151,7 @@ type SectionRate interface {
 	TypeString() string
 	Snapshot() SectionRate
 	String() string
+	Name() string
 	SetName(string)
 	SetValue(string, []float64)
 	Factor(string) float64
@@ -183,7 +184,7 @@ type SColumn struct {
 	Shape
 	num      int
 	Etype    string
-	Name     string
+	name     string
 	XFace    []float64
 	YFace    []float64
 	BBLength []float64
@@ -199,7 +200,7 @@ func NewSColumn(num int, shape Shape, material Steel) *SColumn {
 		Shape:    shape,
 		num:      num,
 		Etype:    "COLUMN",
-		Name:     "",
+		name:     "",
 		XFace:    nil,
 		YFace:    nil,
 		BBLength: nil,
@@ -218,7 +219,7 @@ func (sc *SColumn) TypeString() string {
 func (sc *SColumn) Snapshot() SectionRate {
 	s := NewSColumn(sc.num, sc.Shape, sc.Steel)
 	s.Etype = sc.Etype
-	s.Name = sc.Name
+	s.name = sc.name
 	if sc.XFace != nil {
 		s.XFace = make([]float64, 2)
 		s.XFace[0] = sc.XFace[0]
@@ -251,8 +252,11 @@ func (sc *SColumn) Snapshot() SectionRate {
 	}
 	return s
 }
+func (sc *SColumn) Name() string {
+	return sc.name
+}
 func (sc *SColumn) SetName(name string) {
-	sc.Name = name
+	sc.name = name
 }
 func (sc *SColumn) SetValue(name string, vals []float64) {
 	switch name {
@@ -274,7 +278,7 @@ func (sc *SColumn) SetValue(name string, vals []float64) {
 }
 func (sc *SColumn) String() string {
 	var rtn bytes.Buffer
-	rtn.WriteString(fmt.Sprintf("CODE %3d S %s %57s\n", sc.num, sc.Etype, fmt.Sprintf("\"%s\"", sc.Name)))
+	rtn.WriteString(fmt.Sprintf("CODE %3d S %s %57s\n", sc.num, sc.Etype, fmt.Sprintf("\"%s\"", sc.name)))
 	line2 := fmt.Sprintf("         %%-29s %%s %%%ds\n", 35-len(sc.Steel.Name))
 	rtn.WriteString(fmt.Sprintf(line2, sc.Shape.String(), sc.Steel.Name, fmt.Sprintf("\"%s\"", sc.Shape.Description())))
 	if sc.XFace != nil {
@@ -1438,7 +1442,7 @@ type RCColumn struct {
 	Concrete
 	CShape
 	num    int
-	Name   string
+	name   string
 	Nreins int
 	Reins  []Reinforce
 	Hoops  Hoop
@@ -1537,7 +1541,7 @@ func (rc *RCColumn) Snapshot() SectionRate {
 	r := NewRCColumn(rc.num)
 	r.Concrete = rc.Concrete
 	r.CShape = rc.CShape
-	r.Name = rc.Name
+	r.name = rc.name
 	r.Nreins = rc.Nreins
 	r.Reins = make([]Reinforce, r.Nreins)
 	for i, rf := range rc.Reins {
@@ -1550,7 +1554,11 @@ func (rc *RCColumn) Snapshot() SectionRate {
 	}
 	return r
 }
+func (rc *RCColumn) Name() string {
+	return rc.name
+}
 func (rc *RCColumn) SetName(name string) {
+	rc.name = name
 }
 func (rc *RCColumn) SetValue(name string, vals []float64) {
 	switch name {
@@ -1972,7 +1980,7 @@ func (rg *RCGirder) Qa(cond *Condition) float64 {
 type RCWall struct {
 	Concrete
 	num      int
-	Name     string
+	name     string
 	Thick    float64
 	Srein    float64
 	Material SD
@@ -2025,7 +2033,7 @@ func (rw *RCWall) TypeString() string {
 }
 func (rw *RCWall) Snapshot() SectionRate {
 	r := NewRCWall(rw.num)
-	r.Name = rw.Name
+	r.name = rw.name
 	r.Thick = rw.Thick
 	for i := 0; i < 2; i++ {
 		r.Wrect[i] = rw.Wrect[i]
@@ -2037,8 +2045,11 @@ func (rw *RCWall) Snapshot() SectionRate {
 func (rw *RCWall) String() string {
 	return ""
 }
+func (rw *RCWall) Name() string {
+	return rw.name
+}
 func (rw *RCWall) SetName(name string) {
-	rw.Name = name
+	rw.name = name
 }
 func (rw *RCWall) SetValue(name string, vals []float64) {
 	switch name {
@@ -2146,7 +2157,7 @@ type WoodColumn struct {
 	Shape
 	num      int
 	Etype    string
-	Name     string
+	name     string
 	XFace    []float64
 	YFace    []float64
 	BBLength []float64
@@ -2168,7 +2179,7 @@ func (wc *WoodColumn) TypeString() string {
 func (wc *WoodColumn) Snapshot() SectionRate {
 	w := NewWoodColumn(wc.num, wc.Shape, wc.Wood)
 	w.Etype = wc.Etype
-	w.Name = wc.Name
+	w.name = wc.name
 	if wc.XFace != nil {
 		w.XFace = make([]float64, 2)
 		w.XFace[0] = wc.XFace[0]
@@ -2201,8 +2212,11 @@ func (wc *WoodColumn) Snapshot() SectionRate {
 	}
 	return w
 }
+func (wc *WoodColumn) Name() string {
+	return wc.name
+}
 func (wc *WoodColumn) SetName(name string) {
-	wc.Name = name
+	wc.name = name
 }
 func (wc *WoodColumn) SetValue(name string, vals []float64) {
 	switch name {
@@ -2222,7 +2236,7 @@ func (wc *WoodColumn) SetValue(name string, vals []float64) {
 }
 func (wc *WoodColumn) String() string {
 	var rtn bytes.Buffer
-	rtn.WriteString(fmt.Sprintf("CODE %3d WOOD %s %54s\n", wc.num, wc.Etype, fmt.Sprintf("\"%s\"", wc.Name)))
+	rtn.WriteString(fmt.Sprintf("CODE %3d WOOD %s %54s\n", wc.num, wc.Etype, fmt.Sprintf("\"%s\"", wc.name)))
 	line2 := fmt.Sprintf("         %%-29s %%s %%%ds\n", 35-len(wc.Wood.Name))
 	rtn.WriteString(fmt.Sprintf(line2, wc.Shape.String(), wc.Wood.Name, fmt.Sprintf("\"%s\"", wc.Shape.Description())))
 	if wc.XFace != nil {
@@ -2368,7 +2382,7 @@ func (wg *WoodGirder) TypeString() string {
 type WoodWall struct {
 	Wood
 	num   int
-	Name  string
+	name  string
 	Thick float64
 	Wrect []float64
 }
@@ -2402,7 +2416,7 @@ func (ww *WoodWall) TypeString() string {
 }
 func (ww *WoodWall) Snapshot() SectionRate {
 	r := NewWoodWall(ww.num)
-	r.Name = ww.Name
+	r.name = ww.name
 	r.Thick = ww.Thick
 	for i := 0; i < 2; i++ {
 		r.Wrect[i] = ww.Wrect[i]
@@ -2412,8 +2426,11 @@ func (ww *WoodWall) Snapshot() SectionRate {
 func (ww *WoodWall) String() string {
 	return ""
 }
+func (ww *WoodWall) Name() string {
+	return ww.name
+}
 func (ww *WoodWall) SetName(name string) {
-	ww.Name = name
+	ww.name = name
 }
 func (ww *WoodWall) SetValue(name string, vals []float64) {
 	switch name {
