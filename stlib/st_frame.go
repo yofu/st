@@ -2628,7 +2628,7 @@ func (frame *Frame) DrawDxfSection(d *drawing.Drawing, el *Elem, position []floa
 		return NotLineElem("DrawDxfSection")
 	}
 	if _, ok := frame.Allows[el.Sect.Num]; !ok {
-		return nil
+		return fmt.Errorf("section not found")
 	}
 	switch al := frame.Allows[el.Sect.Num].(type) {
 	case *SColumn:
