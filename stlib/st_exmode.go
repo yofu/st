@@ -65,6 +65,7 @@ var (
 				"DNUM": []string{"2", "3"},
 			}),
 		"plan/":             complete.MustCompile(":plan [floor:_]", nil),
+		"jiku/":             complete.MustCompile(":jiku [name:_]", nil),
 		"cross/section":     complete.MustCompile(":crosssection [axis:_] [min:_] [max:_]", nil),
 		"fe/nce":            complete.MustCompile(":fence", nil),
 		"no/de":             complete.MustCompile(":node", nil),
@@ -1089,6 +1090,71 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return fmt.Errorf("no file name")
 		}
 		err := frame.WriteDxfPlan(fn, floor, scale, textheight, axissize)
+		if err != nil {
+			return err
+		}
+	case "jiku":
+		if usage {
+			return Usage(":jiku filename {-name=} {-side=1} {-scale=1000} {-height=250} {-axissize=300}")
+		}
+		name := ""
+		axis := 0
+		min := -1.0
+		max := 1.0
+		side := 1
+		scale := 1000.0
+		textheight := 250.0
+		axissize := 300.0
+		if n, ok := argdict["NAME"]; ok {
+			name = n
+		}
+		if name == "" {
+			return fmt.Errorf("kijun name is required")
+		}
+		if k, ok := frame.Kijuns[strings.ToLower(name)]; ok {
+			d := k.Direction()
+			if d[0] < d[1] {
+				axis = 0
+			} else {
+				axis = 1
+			}
+			min = k.Start[axis] - 0.1
+			max = k.Start[axis] + 0.1
+		} else {
+			return fmt.Errorf("kijun %s doesn't exist", name)
+		}
+		if s, ok := argdict["SIDE"]; ok {
+			val, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				return err
+			}
+			side = int(val)
+		}
+		if s, ok := argdict["SCALE"]; ok {
+			val, err := strconv.ParseFloat(s, 64)
+			if err != nil {
+				return err
+			}
+			scale = val
+		}
+		if h, ok := argdict["HEIGHT"]; ok {
+			val, err := strconv.ParseFloat(h, 64)
+			if err != nil {
+				return err
+			}
+			textheight = val
+		}
+		if a, ok := argdict["AXISSIZE"]; ok {
+			val, err := strconv.ParseFloat(a, 64)
+			if err != nil {
+				return err
+			}
+			axissize = val
+		}
+		if fn == "" {
+			return fmt.Errorf("no file name")
+		}
+		err := frame.WriteDxfCrosssection(fn, axis, min, max, side, scale, textheight, axissize)
 		if err != nil {
 			return err
 		}
