@@ -2749,12 +2749,32 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 	return nil
 }
 
-// WriteDxfPlan writes a dxf file of plan
-func (frame *Frame) WriteDxfPlan(filename string, floor int, scale float64, textheight float64, axissize float64) error {
-	d := dxf.NewDrawing()
-	if floor <= 0 || floor >= len(frame.Ai.Boundary) {
-		return fmt.Errorf("out of bounds")
+// WriteDxfCrosssection writes a dxf file of crosssection
+func (frame *Frame) WriteDxfCrosssection(filename string, axis int, min, max float64, side int, scale float64, textheight float64, axissize float64) error {
+	if side != 0 && side != 1 {
+		return fmt.Errorf("unknown side")
 	}
+	var x, y, kx, ky int
+	switch axis {
+	default:
+		return fmt.Errorf("unknown axis")
+	case 0:
+		x = 1
+		y = 2
+		kx = 1
+		ky = 0
+	case 1:
+		x = 0
+		y = 2
+		kx = 0
+		ky = 1
+	case 2:
+		x = 0
+		y = 1
+		kx = 0
+		ky = 1
+	}
+	d := dxf.NewDrawing()
 	d.Header().LtScale = 100.0
 	MCDASH6, _ := d.AddLineType("MCDASH6", "MiniCad+ Generated", 3.175, -1.058075, 0.352692, -0.705771)
 	SIMPLEX, _ := d.AddStyle("SIMPLEX", "simplex.shx", "bigfont.shx", true)
@@ -2762,22 +2782,28 @@ func (frame *Frame) WriteDxfPlan(filename string, floor int, scale float64, text
 	d.AddLayer("KIJUN", dxfcolor.Red, MCDASH6, false)
 	d.AddLayer("AXIS", dxf.DefaultColor, dxf.DefaultLineType, false)
 	d.AddLayer("MOJI", dxf.DefaultColor, dxf.DefaultLineType, false)
+dxfkijun:
 	for _, k := range frame.Kijuns {
-		if k.Start[2] != 0.0 || k.End[2] != 0.0 {
-			continue
+		switch axis {
+		case 0, 1:
+			if k.Start[1-axis] != k.End[1-axis] {
+				continue dxfkijun
+			}
+		case 2:
+			if k.Start[2] != 0.0 || k.End[2] != 0.0 {
+				continue dxfkijun
+			}
 		}
 		d.Layer("KIJUN", true)
-		l, _ := d.Line(k.Start[0]*scale, k.Start[1]*scale, 0.0, k.End[0]*scale, k.End[1]*scale, 0.0)
+		l, _ := d.Line(k.Start[kx]*scale, k.Start[ky]*scale, 0.0, k.End[kx]*scale, k.End[ky]*scale, 0.0)
 		l.SetLtscale(2.0)
 		d.Layer("AXIS", true)
 		direction := k.Direction()
-		d.Circle(k.Start[0]*scale-direction[0]*axissize, k.Start[1]*scale-direction[1]*axissize, 0.0, axissize)
+		d.Circle(k.Start[kx]*scale-direction[kx]*axissize, k.Start[ky]*scale-direction[ky]*axissize, 0.0, axissize)
 		d.Layer("MOJI", true)
-		t, _ := d.Text(k.Name, k.Start[0]*scale-direction[0]*axissize, k.Start[1]*scale-direction[1]*axissize, 0.0, textheight)
+		t, _ := d.Text(k.Name, k.Start[kx]*scale-direction[kx]*axissize, k.Start[ky]*scale-direction[ky]*axissize, 0.0, textheight)
 		t.Anchor(dxfentity.CENTER_CENTER)
 	}
-	min := frame.Ai.Boundary[floor-1]
-	max := frame.Ai.Boundary[floor]
 	setlayer := func(et int) {
 		lname := "0"
 		col := dxf.DefaultColor
@@ -2822,11 +2848,11 @@ func (frame *Frame) WriteDxfPlan(filename string, floor int, scale float64, text
 		if !el.IsLineElem() || el.Etype == WBRACE || el.Etype == SBRACE {
 			continue
 		}
-		if min <= el.Enod[0].Coord[2] && el.Enod[1].Coord[2] <= max {
+		if min <= el.Enod[0].Coord[axis] && el.Enod[1].Coord[axis] <= max {
 			direction := el.Direction(true)
 			textcoord := []float64{
-				0.5*(el.Enod[0].Coord[0]+el.Enod[1].Coord[0])*scale - direction[1]*textheight*0.5,
-				0.5*(el.Enod[0].Coord[1]+el.Enod[1].Coord[1])*scale + direction[0]*textheight*0.5,
+				0.5*(el.Enod[0].Coord[x]+el.Enod[1].Coord[x])*scale - direction[y]*textheight*0.5,
+				0.5*(el.Enod[0].Coord[y]+el.Enod[1].Coord[y])*scale + direction[x]*textheight*0.5,
 			}
 			name := strings.TrimSpace(strings.Split(el.Sect.Name, ":")[0])
 			setlayer(el.Etype)
@@ -2835,41 +2861,76 @@ func (frame *Frame) WriteDxfPlan(filename string, floor int, scale float64, text
 				if b, ok := al.(Breadther); ok {
 					b1 := b.Breadth(true) * 0.01
 					b2 := b.Breadth(false) * 0.01
-					diff := []float64{0.5 * (b1*el.Strong[0] + b2*el.Weak[0]), 0.5 * (b1*el.Strong[1] + b2*el.Weak[1])}
+					diff := []float64{0.5 * (b1*el.Strong[x] + b2*el.Weak[x]), 0.5 * (b1*el.Strong[y] + b2*el.Weak[y])}
 					d.Polyline(true,
-						[]float64{(el.Enod[0].Coord[0] + diff[0]) * scale, (el.Enod[0].Coord[1] + diff[1]) * scale, 0.0},
-						[]float64{(el.Enod[1].Coord[0] + diff[0]) * scale, (el.Enod[1].Coord[1] + diff[1]) * scale, 0.0},
-						[]float64{(el.Enod[1].Coord[0] - diff[0]) * scale, (el.Enod[1].Coord[1] - diff[1]) * scale, 0.0},
-						[]float64{(el.Enod[0].Coord[0] - diff[0]) * scale, (el.Enod[0].Coord[1] - diff[1]) * scale, 0.0})
+						[]float64{(el.Enod[0].Coord[x] + diff[0]) * scale, (el.Enod[0].Coord[y] + diff[1]) * scale, 0.0},
+						[]float64{(el.Enod[1].Coord[x] + diff[0]) * scale, (el.Enod[1].Coord[y] + diff[1]) * scale, 0.0},
+						[]float64{(el.Enod[1].Coord[x] - diff[0]) * scale, (el.Enod[1].Coord[y] - diff[1]) * scale, 0.0},
+						[]float64{(el.Enod[0].Coord[x] - diff[0]) * scale, (el.Enod[0].Coord[y] - diff[1]) * scale, 0.0})
 					for i := 0; i < 2; i++ {
 						textcoord[i] += diff[i] * scale
 					}
 				} else {
-					d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, 0.0, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, 0.0)
+					d.Line(el.Enod[0].Coord[x]*scale, el.Enod[0].Coord[y]*scale, 0.0, el.Enod[1].Coord[x]*scale, el.Enod[1].Coord[y]*scale, 0.0)
 				}
 			} else {
-				d.Line(el.Enod[0].Coord[0]*scale, el.Enod[0].Coord[1]*scale, 0.0, el.Enod[1].Coord[0]*scale, el.Enod[1].Coord[1]*scale, 0.0)
+				d.Line(el.Enod[0].Coord[x]*scale, el.Enod[0].Coord[y]*scale, 0.0, el.Enod[1].Coord[x]*scale, el.Enod[1].Coord[y]*scale, 0.0)
 			}
 			settextlayer(el.Etype)
 			t, _ := d.Text(name, textcoord[0], textcoord[1], 0.0, textheight)
 			t.Anchor(dxfentity.CENTER_BOTTOM)
-			t.Rotation = math.Atan2(el.Enod[1].Coord[1]-el.Enod[0].Coord[1], el.Enod[1].Coord[0]-el.Enod[0].Coord[0]) * 180.0 / math.Pi
+			t.Rotation = math.Atan2(el.Enod[1].Coord[y]-el.Enod[0].Coord[y], el.Enod[1].Coord[x]-el.Enod[0].Coord[x]) * 180.0 / math.Pi
 		}
 	}
-	for _, el := range frame.Fence(2, frame.Ai.Boundary[floor], false) {
+	for _, el := range frame.Fence(axis, []float64{min, max}[side], false) {
 		setlayer(el.Etype)
-		err := frame.DrawDxfSection(d, el, []float64{el.Enod[0].Coord[0], el.Enod[0].Coord[1], 0.0}, scale)
+		os := make([]float64, 3)
+		ow := make([]float64, 3)
+		for i := 0; i < 3; i++ {
+			os[i] = el.Strong[i]
+			ow[i] = el.Weak[i]
+		}
+		if axis == 2 {
+			s, w, err := PrincipalAxis([]float64{0.0, 0.0, 1.0}, el.Cang)
+			if err != nil {
+				continue
+			}
+			el.Strong = s
+			el.Weak = w
+		} else {
+			s, w, err := PrincipalAxis([]float64{0.0, 0.0, 1.0}, el.Cang-0.5*math.Pi)
+			if err != nil {
+				continue
+			}
+			el.Strong = s
+			el.Weak = w
+		}
+		err := frame.DrawDxfSection(d, el, []float64{el.Enod[0].Coord[x], el.Enod[0].Coord[y], 0.0}, scale)
 		if err == nil {
 			settextlayer(el.Etype)
 			name := frame.Allows[el.Sect.Num].Name()
 			textcoord := []float64{
-				el.Enod[0].Coord[0]*scale + textheight,
-				el.Enod[0].Coord[1]*scale + textheight,
+				el.Enod[0].Coord[x]*scale + textheight,
+				el.Enod[0].Coord[y]*scale + textheight,
 			}
 			d.Text(name, textcoord[0], textcoord[1], 0.0, textheight)
 		}
+		for i := 0; i < 3; i++ {
+			el.Strong[i] = os[i]
+			el.Weak[i] = ow[i]
+		}
 	}
 	return d.SaveAs(filename)
+}
+
+// WriteDxfPlan writes a dxf file of plan
+func (frame *Frame) WriteDxfPlan(filename string, floor int, scale float64, textheight float64, axissize float64) error {
+	if floor <= 0 || floor >= len(frame.Ai.Boundary) {
+		return fmt.Errorf("out of bounds")
+	}
+	min := frame.Ai.Boundary[floor-1]
+	max := frame.Ai.Boundary[floor]
+	return frame.WriteDxfCrosssection(filename, 2, min, max, 1, scale, textheight, axissize)
 }
 
 // Check checks whether all elements are valid or not.

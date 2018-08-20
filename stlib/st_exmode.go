@@ -65,6 +65,7 @@ var (
 				"DNUM": []string{"2", "3"},
 			}),
 		"plan/":             complete.MustCompile(":plan [floor:_]", nil),
+		"cross/section":     complete.MustCompile(":crosssection [axis:_] [min:_] [max:_]", nil),
 		"fe/nce":            complete.MustCompile(":fence", nil),
 		"no/de":             complete.MustCompile(":node", nil),
 		"xsc/ale":           complete.MustCompile(":xscale _", nil),
@@ -1088,6 +1089,73 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return fmt.Errorf("no file name")
 		}
 		err := frame.WriteDxfPlan(fn, floor, scale, textheight, axissize)
+		if err != nil {
+			return err
+		}
+	case "crosssection":
+		if usage {
+			return Usage(":crosssection filename {-axis=2} {-min=-1.0} {-max=1.0} {-side=1} {-scale=1000} {-height=250} {-axissize=300}")
+		}
+		axis := 2
+		min := -1.0
+		max := 1.0
+		side := 1
+		scale := 1000.0
+		textheight := 250.0
+		axissize := 300.0
+		if a, ok := argdict["AXIS"]; ok {
+			val, err := strconv.ParseInt(a, 10, 64)
+			if err != nil {
+				return err
+			}
+			axis = int(val)
+		}
+		if m, ok := argdict["MIN"]; ok {
+			val, err := strconv.ParseFloat(m, 64)
+			if err != nil {
+				return err
+			}
+			min = val
+		}
+		if m, ok := argdict["MAX"]; ok {
+			val, err := strconv.ParseFloat(m, 64)
+			if err != nil {
+				return err
+			}
+			max = val
+		}
+		if s, ok := argdict["SIDE"]; ok {
+			val, err := strconv.ParseInt(s, 10, 64)
+			if err != nil {
+				return err
+			}
+			side = int(val)
+		}
+		if s, ok := argdict["SCALE"]; ok {
+			val, err := strconv.ParseFloat(s, 64)
+			if err != nil {
+				return err
+			}
+			scale = val
+		}
+		if h, ok := argdict["HEIGHT"]; ok {
+			val, err := strconv.ParseFloat(h, 64)
+			if err != nil {
+				return err
+			}
+			textheight = val
+		}
+		if a, ok := argdict["AXISSIZE"]; ok {
+			val, err := strconv.ParseFloat(a, 64)
+			if err != nil {
+				return err
+			}
+			axissize = val
+		}
+		if fn == "" {
+			return fmt.Errorf("no file name")
+		}
+		err := frame.WriteDxfCrosssection(fn, axis, min, max, side, scale, textheight, axissize)
 		if err != nil {
 			return err
 		}
