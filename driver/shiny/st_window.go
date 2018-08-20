@@ -103,6 +103,7 @@ type Window struct {
 	lastfig2command string
 	lastcommand     func(st.Commander) chan bool
 	textBox         map[string]*st.TextBox
+	textAlignment   int
 	glasses         map[string]*Glass
 }
 

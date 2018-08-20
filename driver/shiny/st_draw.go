@@ -594,6 +594,39 @@ func (stw *Window) Text(x, y float64, str string) {
 		Dot:  fixed.Point26_6{x0, fixed.I(int(y))},
 	}
 	ss := strings.Split(str, "\n")
+	bound, _ := d.BoundString(str)
+	switch stw.textAlignment {
+	default:
+	case st.NORTH:
+		c0 := bound.Max.Sub(bound.Min)
+		c1 := c0.Div(fixed.I(2))
+		x0 -= c1.X
+		d.Dot.X -= c1.X
+		d.Dot.Y += c0.Y
+	case st.SOUTH:
+		c := bound.Max.Sub(bound.Min).Div(fixed.I(2))
+		x0 -= c.X
+		d.Dot.X -= c.X
+	case st.WEST:
+		c := bound.Max.Sub(bound.Min).Div(fixed.I(2))
+		d.Dot.Y += c.Y
+	case st.EAST:
+		c0 := bound.Max.Sub(bound.Min)
+		c1 := c0.Div(fixed.I(2))
+		x0 -= c0.X
+		d.Dot.X -= c0.X
+		d.Dot.Y += c1.Y
+	case st.CENTER:
+		c := bound.Max.Sub(bound.Min).Div(fixed.I(2))
+		x0 -= c.X
+		d.Dot.X -= c.X
+		d.Dot.Y += c.Y
+	case st.SOUTH_WEST:
+		c := bound.Max.Sub(bound.Min)
+		x0 -= c.X
+		d.Dot.X -= c.X
+	case st.SOUTH_EAST:
+	}
 	d.Dot.Y -= fixed.Int26_6(int(float64(stw.font.height) * 1.2 * float64(len(ss)-1)))
 	for _, s := range ss {
 		d.DrawString(s)
@@ -611,7 +644,8 @@ func (stw *Window) Foreground(fg int) int {
 	return old
 }
 
-func (stw *Window) TextAlignment(int) {
+func (stw *Window) TextAlignment(ta int) {
+	stw.textAlignment = ta
 }
 
 func (stw *Window) TextOrientation(float64) {
