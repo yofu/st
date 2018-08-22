@@ -2515,7 +2515,7 @@ func (elem *Elem) DrawDxfSection(d *drawing.Drawing, position []float64, scale f
 	size := 0
 	for _, v := range vertices {
 		if v == nil {
-			d.Polyline(true, vers[:size]...)
+			d.LwPolyline(true, vers[:size]...)
 			vers = make([][]float64, 0)
 			size = 0
 			continue
@@ -2527,5 +2527,5 @@ func (elem *Elem) DrawDxfSection(d *drawing.Drawing, position []float64, scale f
 		vers = append(vers, coord)
 		size++
 	}
-	d.Polyline(true, vers[:size]...)
+	d.LwPolyline(true, vers[:size]...)
 }

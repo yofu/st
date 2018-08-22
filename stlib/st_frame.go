@@ -2862,7 +2862,7 @@ dxfkijun:
 					b1 := b.Breadth(true) * 0.01
 					b2 := b.Breadth(false) * 0.01
 					diff := []float64{0.5 * (b1*el.Strong[x] + b2*el.Weak[x]), 0.5 * (b1*el.Strong[y] + b2*el.Weak[y])}
-					d.Polyline(true,
+					d.LwPolyline(true,
 						[]float64{(el.Enod[0].Coord[x] + diff[0]) * scale, (el.Enod[0].Coord[y] + diff[1]) * scale, 0.0},
 						[]float64{(el.Enod[1].Coord[x] + diff[0]) * scale, (el.Enod[1].Coord[y] + diff[1]) * scale, 0.0},
 						[]float64{(el.Enod[1].Coord[x] - diff[0]) * scale, (el.Enod[1].Coord[y] - diff[1]) * scale, 0.0},
