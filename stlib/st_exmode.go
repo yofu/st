@@ -77,6 +77,7 @@ var (
 		"z/oubun/r/eaction": complete.MustCompile(":zoubunreaction", nil),
 		"setb/oundary":      complete.MustCompile(":setboundary [eps:_]", nil),
 		"fac/ts":            complete.MustCompile(":facts [skipany:_] [skipall:_]", nil),
+		"1459/":             complete.MustCompile(":1459 [sect:_]", nil),
 		"go/han/l/st":       complete.MustCompile(":gohanlst _ _", nil),
 		"el/em": complete.MustCompile(":elem $TYPE _",
 			map[string][]string{
@@ -1855,6 +1856,68 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		m.WriteString(fmt.Sprintf("Output: %s", fn))
 		return Message(m.String())
+	case "1459":
+		if usage {
+			return Usage(":1459 [-sect= ]")
+		}
+		cond := func(el *Elem) bool {
+			return el.IsLineElem()
+		}
+		if s, ok := argdict["SECT"]; ok {
+			sects := SplitNums(s)
+			cond = func(el *Elem) bool {
+				for _, snum := range sects {
+					if el.Sect.Num == snum {
+						return true
+					}
+				}
+				return false
+			}
+		}
+		maxval := 0.0
+		maxkey := -1
+		maxnode := -1
+		maxspan := 0.0
+		maxdisp := make([]float64, 3)
+		stw.Deselect()
+		for k, v := range frame.Chains {
+			elems := v.Elems()
+			if len(elems) < 2 || !cond(elems[0]) {
+				continue
+			}
+			tmpmax := 0.0
+			tmpnode := -1
+			start := elems[0].Enod[0]
+			end := elems[len(elems)-1].Enod[1]
+			average := -0.5 * (start.ReturnDisp(frame.Show.Period, 2) + end.ReturnDisp(frame.Show.Period, 2))
+			span := Distance(start, end)
+			for _, el := range elems {
+				tmpval := (-1.0*el.Enod[1].ReturnDisp(frame.Show.Period, 2) - average) / span
+				if tmpval > tmpmax {
+					tmpmax = tmpval
+					tmpnode = el.Enod[1].Num
+				}
+			}
+			if tmpmax > maxval {
+				maxval = tmpmax
+				maxkey = k
+				maxnode = tmpnode
+				maxspan = span * 100.0
+				maxdisp[0] = start.ReturnDisp(frame.Show.Period, 2) * (-100.0)
+				maxdisp[1] = frame.Nodes[maxnode].ReturnDisp(frame.Show.Period, 2) * (-100.0)
+				maxdisp[2] = end.ReturnDisp(frame.Show.Period, 2) * (-100.0)
+			}
+		}
+		if maxkey > 0 {
+			delta := maxdisp[1] - 0.5*(maxdisp[0]+maxdisp[2])
+			stw.History(fmt.Sprintf("Disp: %.3f - (%.3f + %.3f)/2 = %.3f [cm]", maxdisp[1], maxdisp[0], maxdisp[2], delta))
+			stw.History(fmt.Sprintf("Distance: %.3f[cm]", maxspan))
+			if delta != 0.0 {
+				stw.History(fmt.Sprintf("Slope: 1/%.1f", math.Abs(maxspan/delta)))
+			}
+			stw.SelectElem(frame.Chains[maxkey].Elems())
+			stw.SelectNode([]*Node{frame.Nodes[maxnode]})
+		}
 	case "amountprop":
 		if usage {
 			return Usage(":amountprop propcode")
