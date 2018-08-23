@@ -2889,11 +2889,16 @@ dxfkijun:
 			d.AddLayer(lname, col, lt, true)
 		}
 	}
+	chains := make(map[int]*Chain)
 	for _, el := range frame.Elems {
 		if !el.IsLineElem() || el.Etype == WBRACE || el.Etype == SBRACE {
 			continue
 		}
 		if min <= el.Enod[0].Coord[axis] && el.Enod[1].Coord[axis] <= max {
+			if el.Chain != nil && el.Chain.IsStraight(1e-2) { // TODO: curved Chain
+				chains[el.Chain.Num()] = el.Chain
+				continue
+			}
 			direction := el.Direction(true)
 			textcoord := []float64{
 				0.5*(el.Enod[0].Coord[x]+el.Enod[1].Coord[x])*scale - direction[y]*textheight*0.5,
@@ -2926,6 +2931,41 @@ dxfkijun:
 			t.Anchor(dxfentity.CENTER_BOTTOM)
 			t.Rotation = math.Atan2(el.Enod[1].Coord[y]-el.Enod[0].Coord[y], el.Enod[1].Coord[x]-el.Enod[0].Coord[x]) * 180.0 / math.Pi
 		}
+	}
+	for _, v := range chains {
+		el1 := v.Elems()[0]
+		el2 := v.Elems()[v.Size()-1]
+		direction := el1.Direction(true)
+		textcoord := []float64{
+			0.5*(el1.Enod[0].Coord[x]+el2.Enod[1].Coord[x])*scale - direction[y]*textheight*0.5,
+			0.5*(el1.Enod[0].Coord[y]+el2.Enod[1].Coord[y])*scale + direction[x]*textheight*0.5,
+		}
+		name := strings.TrimSpace(strings.Split(el1.Sect.Name, ":")[0])
+		setlayer(el1.Etype)
+		if al, ok := frame.Allows[el1.Sect.Num]; ok {
+			name = al.Name()
+			if b, ok := al.(Breadther); ok {
+				b1 := b.Breadth(true) * 0.01
+				b2 := b.Breadth(false) * 0.01
+				diff := []float64{0.5 * (b1*el1.Strong[x] + b2*el1.Weak[x]), 0.5 * (b1*el1.Strong[y] + b2*el1.Weak[y])}
+				d.LwPolyline(true,
+					[]float64{(el1.Enod[0].Coord[x] + diff[0]) * scale, (el1.Enod[0].Coord[y] + diff[1]) * scale, 0.0},
+					[]float64{(el2.Enod[1].Coord[x] + diff[0]) * scale, (el2.Enod[1].Coord[y] + diff[1]) * scale, 0.0},
+					[]float64{(el2.Enod[1].Coord[x] - diff[0]) * scale, (el2.Enod[1].Coord[y] - diff[1]) * scale, 0.0},
+					[]float64{(el1.Enod[0].Coord[x] - diff[0]) * scale, (el1.Enod[0].Coord[y] - diff[1]) * scale, 0.0})
+				for i := 0; i < 2; i++ {
+					textcoord[i] += diff[i] * scale
+				}
+			} else {
+				d.Line(el1.Enod[0].Coord[x]*scale, el1.Enod[0].Coord[y]*scale, 0.0, el2.Enod[1].Coord[x]*scale, el2.Enod[1].Coord[y]*scale, 0.0)
+			}
+		} else {
+			d.Line(el1.Enod[0].Coord[x]*scale, el1.Enod[0].Coord[y]*scale, 0.0, el2.Enod[1].Coord[x]*scale, el2.Enod[1].Coord[y]*scale, 0.0)
+		}
+		settextlayer(el1.Etype)
+		t, _ := d.Text(name, textcoord[0], textcoord[1], 0.0, textheight)
+		t.Anchor(dxfentity.CENTER_BOTTOM)
+		t.Rotation = math.Atan2(el1.Enod[1].Coord[y]-el1.Enod[0].Coord[y], el1.Enod[1].Coord[x]-el1.Enod[0].Coord[x]) * 180.0 / math.Pi
 	}
 	for _, el := range frame.Fence(axis, []float64{min, max}[side], false) {
 		setlayer(el.Etype)
