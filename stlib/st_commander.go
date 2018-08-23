@@ -357,7 +357,7 @@ func PasteClipboard(stw Commander) error {
 			default:
 				tmp = append(tmp, words...)
 			case "NODE", "ELEM":
-				nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, false)
+				nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, false, nil)
 				tmp = words
 			}
 			if err != nil {
@@ -367,7 +367,7 @@ func PasteClipboard(stw Commander) error {
 		if err != nil {
 			return err
 		}
-		nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, false)
+		nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, false, nil)
 		return err
 	}))
 	return nil

@@ -75,6 +75,7 @@ type Elem struct {
 	Children []*Elem
 	Parent   *Elem
 	Eldest   bool
+	Chain    *Chain
 
 	hide bool
 	Lock bool
@@ -1509,6 +1510,11 @@ func (elem *Elem) DivideAtCoord(x, y, z float64, eps float64) (ns []*Node, els [
 	}
 	els[1].Cang = elem.Cang
 	els[1].SetPrincipalAxis()
+	if elem.Chain != nil {
+		newelem.Chain = elem.Chain
+		ind, _ := elem.Chain.Has(elem)
+		elem.Chain.AppendAt(newelem, ind+1)
+	}
 	return
 }
 
@@ -1530,6 +1536,11 @@ func (elem *Elem) DivideAtNode(n *Node, position int, del bool) (rn []*Node, els
 			els := elem.Frame.SearchElem(elem.Enod[0])
 			if len(els) == 1 {
 				delete(elem.Frame.Nodes, elem.Enod[0].Num)
+			} else {
+				if elem.Chain != nil {
+					ind, _ := elem.Chain.Has(elem)
+					elem.Chain.DivideAt(ind)
+				}
 			}
 			elem.Enod[0] = n
 			return []*Node{n}, []*Elem{elem}, nil
@@ -1537,6 +1548,11 @@ func (elem *Elem) DivideAtNode(n *Node, position int, del bool) (rn []*Node, els
 			els := elem.Frame.SearchElem(elem.Enod[1])
 			if len(els) == 1 {
 				delete(elem.Frame.Nodes, elem.Enod[1].Num)
+			} else {
+				if elem.Chain != nil {
+					ind, _ := elem.Chain.Has(elem)
+					elem.Chain.DivideAt(ind + 1)
+				}
 			}
 			elem.Enod[1] = n
 			return []*Node{n}, []*Elem{elem}, nil
@@ -1556,6 +1572,11 @@ func (elem *Elem) DivideAtNode(n *Node, position int, del bool) (rn []*Node, els
 			}
 			els[1].Cang = elem.Cang
 			els[1].SetPrincipalAxis()
+			if elem.Chain != nil {
+				newelem.Chain = elem.Chain
+				ind, _ := elem.Chain.Has(elem)
+				elem.Chain.AppendAt(newelem, ind+1)
+			}
 			return []*Node{n}, els, nil
 		case 0:
 			newelem := elem.Frame.AddLineElem(-1, []*Node{n, elem.Enod[0]}, elem.Sect, elem.Etype)
@@ -1563,6 +1584,11 @@ func (elem *Elem) DivideAtNode(n *Node, position int, del bool) (rn []*Node, els
 			els[1] = newelem
 			els[1].Cang = elem.Cang
 			els[1].SetPrincipalAxis()
+			if elem.Chain != nil {
+				newelem.Chain = elem.Chain
+				ind, _ := elem.Chain.Has(elem)
+				elem.Chain.AppendAt(newelem, ind)
+			}
 			return []*Node{n}, els, nil
 		case 2:
 			newelem := elem.Frame.AddLineElem(-1, []*Node{elem.Enod[1], n}, elem.Sect, elem.Etype)
@@ -1570,6 +1596,11 @@ func (elem *Elem) DivideAtNode(n *Node, position int, del bool) (rn []*Node, els
 			els[1] = newelem
 			els[1].Cang = elem.Cang
 			els[1].SetPrincipalAxis()
+			if elem.Chain != nil {
+				newelem.Chain = elem.Chain
+				ind, _ := elem.Chain.Has(elem)
+				elem.Chain.AppendAt(newelem, ind+1)
+			}
 			return []*Node{n}, els, nil
 		}
 	}

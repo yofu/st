@@ -532,6 +532,7 @@ func PickElem(stw Window, x1, y1, x2, y2 int) ([]*Elem, bool) {
 			}
 		}
 		if el != nil {
+			// TODO: Chain
 			return []*Elem{el}, true
 		} else {
 			return nil, false

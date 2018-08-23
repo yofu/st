@@ -81,6 +81,7 @@ type Frame struct {
 	Allows map[int]SectionRate
 	Piles  map[int]*Pile
 	Bonds  map[int]*Bond
+	Chains map[int]*Chain
 
 	Arclms map[string]*arclm.Frame
 
@@ -122,6 +123,7 @@ func NewFrame() *Frame {
 	f.Props = make(map[int]*Prop)
 	f.Piles = make(map[int]*Pile)
 	f.Bonds = make(map[int]*Bond)
+	f.Chains = make(map[int]*Chain)
 	f.Arclms = make(map[string]*arclm.Frame)
 	f.Eigenvalue = make(map[int]float64)
 	f.Kijuns = make(map[string]*Kijun)
@@ -312,6 +314,13 @@ func (frame *Frame) Snapshot() *Frame {
 	for _, el := range frame.Elems {
 		f.Elems[el.Num] = el.Snapshot(f)
 	}
+	for _, c := range frame.Chains {
+		newc := c.Snapshot(f)
+		f.Chains[c.Num()] = newc
+		for _, el := range newc.Elems() {
+			el.Chain = newc
+		}
+	}
 	for _, a := range frame.Allows {
 		f.Allows[a.Num()] = a.Snapshot()
 	}
@@ -400,6 +409,7 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, ove
 	if len(coord) < 3 {
 		coord = []float64{0.0, 0.0, 0.0}
 	}
+	var chain *Chain
 	err := ParseFile(filename, func(words []string) error {
 		var err error
 		first := words[0]
@@ -413,8 +423,22 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, ove
 		default:
 			tmp = append(tmp, words...)
 		case "PROP", "SECT", "PILE", "BOND", "NODE", "ELEM":
-			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite)
+			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
 			tmp = words
+		case "CHAIN":
+			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
+			tmp = make([]string, 0)
+			chain = NewChain(frame, nil, nil, nil, func(c *Chain) bool { return true }, nil, nil)
+		case "}":
+			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
+			tmp = make([]string, 0)
+			if chain != nil && chain.Size() > 0 {
+				frame.Chains[chain.Elems()[0].Num] = chain
+				for _, el := range chain.Elems() {
+					el.Chain = chain
+				}
+			}
+			chain = nil
 		case "BASE":
 			val, err := strconv.ParseFloat(words[1], 64)
 			if err == nil {
@@ -485,9 +509,15 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, ove
 	if err != nil {
 		return err
 	}
-	nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite)
+	nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
 	if err != nil {
 		return err
+	}
+	if chain != nil && chain.Size() > 0 {
+		frame.Chains[chain.Elems()[0].Num] = chain
+		for _, el := range chain.Elems() {
+			el.Chain = chain
+		}
 	}
 	frame.Name = filepath.Base(filename)
 	frame.Project = ProjectName(filename)
@@ -516,7 +546,7 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, ove
 }
 
 // ParseInp parses a list of strings and switches to each parsing function according to the first string.
-func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodemap map[int]int, overwrite bool) (map[int]int, error) {
+func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodemap map[int]int, overwrite bool, chain *Chain) (map[int]int, error) {
 	var err error
 	var def int
 	var node *Node
@@ -526,7 +556,7 @@ func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodem
 	first := lis[0]
 	switch first {
 	case "ELEM":
-		_, err = frame.ParseElem(lis, nodemap)
+		_, err = frame.ParseElem(lis, nodemap, chain)
 	case "NODE":
 		node, def, err = frame.ParseNode(lis, coord, angle)
 		if err == nil {
@@ -988,7 +1018,7 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (*No
 }
 
 // ParseElem parses ELEM information.
-func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) (*Elem, error) {
+func (frame *Frame) ParseElem(lis []string, nodemap map[int]int, chain *Chain) (*Elem, error) {
 	var num int64
 	var err error
 	e := new(Elem)
@@ -1096,6 +1126,9 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int) (*Elem, error) 
 		el.Bonds = e.Bonds
 		el.Prestress = e.Prestress
 		el.SetPrincipalAxis()
+		if chain != nil {
+			chain.Append(el)
+		}
 	} else {
 		el = NewPlateElem(e.Enod, e.Sect, e.Etype)
 		el.Num = e.Num
@@ -2348,7 +2381,7 @@ func (frame *Frame) Filename() (string, string) {
 
 // WriteInp writes an input file for st frame.
 func (frame *Frame) WriteInp(fn string) error {
-	var bnum, pnum, snum, inum, nnum, enum int
+	var bnum, pnum, snum, inum, nnum, enum, cnum int
 	// Bond
 	bonds := make([]*Bond, len(frame.Bonds))
 	for _, b := range frame.Bonds {
@@ -2397,12 +2430,24 @@ func (frame *Frame) WriteInp(fn string) error {
 		if el.Etype == WBRACE || el.Etype == SBRACE {
 			continue
 		}
-		elems[enum] = el
-		enum++
+		if el.Chain == nil {
+			elems[enum] = el
+			enum++
+		}
 	}
 	elems = elems[:enum]
 	sort.Sort(ElemByNum{elems})
-	return writeinp(fn, frame.Title, frame.View, frame.Ai, bonds, props, sects, piles, nodes, elems)
+	// Chain
+	chains := make([]*Chain, len(frame.Chains))
+	for _, c := range frame.Chains {
+		chains[cnum] = c
+		cnum++
+	}
+	chains = chains[:cnum]
+	sort.Slice(chains, func(i, j int) bool {
+		return chains[i].Elems()[0].Num < chains[j].Elems()[0].Num
+	})
+	return writeinp(fn, frame.Title, frame.View, frame.Ai, bonds, props, sects, piles, nodes, elems, chains)
 }
 
 // WriteOutput writes an output file of analysis.
@@ -3613,6 +3658,11 @@ del_arc:
 }
 
 func (frame *Frame) DeleteElem(num int) {
+	if el, ok := frame.Elems[num]; ok {
+		if el.Chain != nil {
+			el.Chain.Delete(el)
+		}
+	}
 	delete(frame.Elems, num)
 	if frame.Maxenum == num {
 		frame.Maxenum--
@@ -5670,7 +5720,7 @@ func (frame *Frame) BoundedArea(x, y float64, maxdepth int) ([]*Node, []*Elem, e
 	}, func(c *Chain) bool {
 		return c.Node().Num == cand.Enod[0].Num
 	}, func(c *Chain) error {
-		if c.Num() > maxdepth {
+		if c.Size() > maxdepth {
 			return fmt.Errorf("too much recursion")
 		}
 		return nil
@@ -5912,16 +5962,20 @@ func WriteInp(fn string, view *View, ai *Aiparameter, els []*Elem) error {
 	}
 	piles = piles[:inum]
 	sort.Sort(PileByNum{piles})
-	return writeinp(fn, "\"CREATED ORGAN FRAME.\"", view, ai, bonds, props, sects, piles, nodes, elems)
+	return writeinp(fn, "\"CREATED ORGAN FRAME.\"", view, ai, bonds, props, sects, piles, nodes, elems, nil)
 }
 
-func writeinp(fn, title string, view *View, ai *Aiparameter, bonds []*Bond, props []*Prop, sects []*Sect, piles []*Pile, nodes []*Node, elems []*Elem) error {
+func writeinp(fn, title string, view *View, ai *Aiparameter, bonds []*Bond, props []*Prop, sects []*Sect, piles []*Pile, nodes []*Node, elems []*Elem, chains []*Chain) error {
 	var otp bytes.Buffer
 	inum := len(piles)
 	// Frame
+	nelem := len(elems)
+	for _, c := range chains {
+		nelem += c.Size()
+	}
 	otp.WriteString(fmt.Sprintf("%s\n", title))
 	otp.WriteString(fmt.Sprintf("NNODE %d\n", len(nodes)))
-	otp.WriteString(fmt.Sprintf("NELEM %d\n", len(elems)))
+	otp.WriteString(fmt.Sprintf("NELEM %d\n", nelem))
 	otp.WriteString(fmt.Sprintf("NPROP %d\n", len(props)))
 	otp.WriteString(fmt.Sprintf("NSECT %d\n", len(sects)))
 	otp.WriteString(fmt.Sprintf("NBOND %d\n", len(bonds)))
@@ -5976,6 +6030,14 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, bonds []*Bond, prop
 	// Elem
 	for _, el := range elems {
 		otp.WriteString(el.InpString())
+	}
+	// Chain
+	for _, c := range chains {
+		otp.WriteString("CHAIN {\n")
+		for _, el := range c.Elems() {
+			otp.WriteString(el.InpString())
+		}
+		otp.WriteString("}\n")
 	}
 	// Write
 	w, err := os.Create(fn)
