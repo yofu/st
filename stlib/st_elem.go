@@ -1514,6 +1514,9 @@ func (elem *Elem) DivideAtCoord(x, y, z float64, eps float64) (ns []*Node, els [
 		newelem.Chain = elem.Chain
 		ind, _ := elem.Chain.Has(elem)
 		elem.Chain.AppendAt(newelem, ind+1)
+	} else {
+		chain := ChainElem(elem, newelem)
+		frame.Chains[elem.Num] = chain
 	}
 	return
 }
@@ -1576,6 +1579,9 @@ func (elem *Elem) DivideAtNode(n *Node, position int, del bool) (rn []*Node, els
 				newelem.Chain = elem.Chain
 				ind, _ := elem.Chain.Has(elem)
 				elem.Chain.AppendAt(newelem, ind+1)
+			} else {
+				chain := ChainElem(elem, newelem)
+				frame.Chains[elem.Num] = chain
 			}
 			return []*Node{n}, els, nil
 		case 0:
@@ -1588,6 +1594,9 @@ func (elem *Elem) DivideAtNode(n *Node, position int, del bool) (rn []*Node, els
 				newelem.Chain = elem.Chain
 				ind, _ := elem.Chain.Has(elem)
 				elem.Chain.AppendAt(newelem, ind)
+			} else {
+				chain := ChainElem(newelem, elem)
+				frame.Chains[elem.Num] = chain
 			}
 			return []*Node{n}, els, nil
 		case 2:
@@ -1600,6 +1609,9 @@ func (elem *Elem) DivideAtNode(n *Node, position int, del bool) (rn []*Node, els
 				newelem.Chain = elem.Chain
 				ind, _ := elem.Chain.Has(elem)
 				elem.Chain.AppendAt(newelem, ind+1)
+			} else {
+				chain := ChainElem(elem, newelem)
+				frame.Chains[elem.Num] = chain
 			}
 			return []*Node{n}, els, nil
 		}
