@@ -36,6 +36,19 @@ func NewChain(frame *Frame, node *Node, elem *Elem, cond func(*Chain, *Elem) boo
 	}
 }
 
+func ChainElem(elems ...*Elem) *Chain {
+	if len(elems) == 0 {
+		return nil
+	}
+	chain := Chain(elems[0].Frame, elems[0].Enod[1], elems[0], nil, func(c *Chain) bool { return true }, nil, nil)
+	elems[0].Chain = chain
+	for _, el := range elems[1:] {
+		chain.Append(el)
+		el.Chain = chain
+	}
+	return chain
+}
+
 func (c *Chain) Size() int {
 	return len(c.elems)
 }
