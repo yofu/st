@@ -2878,14 +2878,14 @@ func (stw *Window) PasteClipboard() error {
 			default:
 				tmp = append(tmp, words...)
 			case "NODE", "ELEM":
-				nodemap, err = stw.frame.ParseInp(tmp, coord, angle, nodemap, false)
+				nodemap, err = stw.frame.ParseInp(tmp, coord, angle, nodemap, false, nil)
 				tmp = words
 			}
 			if err != nil {
 				break
 			}
 		}
-		nodemap, err = stw.frame.ParseInp(tmp, coord, angle, nodemap, false)
+		nodemap, err = stw.frame.ParseInp(tmp, coord, angle, nodemap, false, nil)
 		stw.EscapeCB()
 	})
 	return nil
