@@ -390,6 +390,9 @@ func (sc *SColumn) Fb(cond *Condition) float64 {
 		if hk, ok := sc.Shape.(HKYOU); ok {
 			if cond.FbOld {
 				rtn = 900.0 / (l * hk.H / (hk.B * hk.Tf))
+				if rtn > sc.F/1.5 {
+					rtn = sc.F / 1.5
+				}
 			} else {
 				rtn = fbnew()
 			}
@@ -400,6 +403,9 @@ func (sc *SColumn) Fb(cond *Condition) float64 {
 		if hw, ok := sc.Shape.(HWEAK); ok {
 			if cond.FbOld {
 				rtn = 900.0 / (l * hw.H / (hw.B * hw.Tf))
+				if rtn > sc.F/1.5 {
+					rtn = sc.F / 1.5
+				}
 			} else {
 				rtn = fbnew()
 			}
