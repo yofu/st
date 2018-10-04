@@ -4365,14 +4365,14 @@ func (frame *Frame) SetBoundary(num int, eps float64) error {
 					bounds[k+1] = bounds[k+2]
 				}
 				dhs[j] = dh
-				bounds[j+1] = nodes[i].Coord[2]
+				bounds[j+1] = nodes[i+1].Coord[2]
 				break
 			}
 		}
 	}
 	bounds[0] = nodes[0].Coord[2] - eps
 	bounds[num] = nodes[nnum-1].Coord[2] + eps
-	for i := 1; i < num-1; i++ {
+	for i := 1; i < num; i++ {
 		bounds[i] += eps
 	}
 	sort.Float64s(bounds)
