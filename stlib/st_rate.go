@@ -133,6 +133,7 @@ var (
 
 	SD295 = SD{"SD295", 2.0, 3.0, 2100.0, 0.3}
 	SD345 = SD{"SD345", 2.2, 3.5, 2100.0, 0.3}
+	SD390 = SD{"SD390", 2.2, 3.9, 2100.0, 0.3}
 
 	S_E70     = Wood{"S-E70", 0.2386, 0.1774, 0.2997, 0.0183, 70.0, 6.5}
 	E70SUGI   = S_E70
@@ -2155,6 +2156,8 @@ func SetSD(name string) SD {
 		return SD295
 	case "SD345":
 		return SD345
+	case "SD390":
+		return SD390
 	}
 }
 
