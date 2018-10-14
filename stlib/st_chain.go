@@ -217,6 +217,9 @@ func (c *Chain) Delete(elem *Elem) error {
 		c.elems = c.elems[:ind]
 		c.ind = ind
 	}
+	if c.ind >= len(c.elems) {
+		c.ind = len(c.elems)-1
+	}
 	return nil
 }
 
