@@ -1,16 +1,18 @@
 package main
 
 import (
-	"github.com/visualfc/go-iup/iup"
-	"github.com/yofu/st/driver/iup"
+	"fmt"
 	"os"
 	"runtime"
 	"runtime/debug"
+
+	"github.com/visualfc/go-iup/iup"
+	"github.com/yofu/st/driver/iup"
 )
 
 const (
 	version  = "0.1.0"
-	modified = "LAST CHANGE:10-Feb-2016."
+	modified = "LAST CHANGE:19-Oct-2018."
 	HOME     = "C:/D/CDOCS/Hogan/Debug"
 	HOGAN    = "C:/D/CDOCS/Hogan/Debug"
 )
@@ -32,6 +34,7 @@ func main() {
 			if err != nil {
 				os.Exit(1)
 			}
+			w.WriteString(fmt.Sprintf("%v\n\n", r))
 			os.Stderr = w
 			debug.PrintStack()
 		}
