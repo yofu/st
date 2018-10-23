@@ -917,7 +917,7 @@ func (tk TKYOU) Cy() float64 {
 }
 func (tk TKYOU) Ix() float64 {
 	cy := tk.Cy()
-	return (tk.B-tk.Tw)*math.Pow(tk.Tf, 3.0)/12.0 + tk.H*math.Pow(tk.Tw, 3.0)/12.0 + (tk.B-tk.Tw)*tk.Tf*math.Pow(cy-0.5*tk.Tf, 2.0) + tk.H*tk.Tw*math.Pow(0.5*tk.H-cy, 2.0)
+	return (tk.B-tk.Tw)*math.Pow(tk.Tf, 3.0)/12.0 + tk.Tw*math.Pow(tk.H, 3.0)/12.0 + (tk.B-tk.Tw)*tk.Tf*math.Pow(cy-0.5*tk.Tf, 2.0) + tk.H*tk.Tw*math.Pow(0.5*tk.H-cy, 2.0)
 }
 func (tk TKYOU) Iy() float64 {
 	return tk.Tf*math.Pow(tk.B, 3.0)/12.0 + (tk.H-tk.Tf)*math.Pow(tk.Tw, 3.0)/12.0
@@ -938,9 +938,9 @@ func (tk TKYOU) Torsion() float64 {
 func (tk TKYOU) Zx() float64 {
 	cy := tk.Cy()
 	if cy >= tk.H*0.5 {
-		return tk.Iy() / cy
+		return tk.Ix() / cy
 	} else {
-		return tk.Iy() / (tk.H - cy)
+		return tk.Ix() / (tk.H - cy)
 	}
 }
 func (tk TKYOU) Zy() float64 {
