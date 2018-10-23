@@ -4559,6 +4559,14 @@ func (frame *Frame) ExtractArclm(fn string) error {
 					an.Force[1] += n.Factor[1] * n.Weight[2]
 				}
 			}
+			if n.Pile != nil {
+				switch p {
+				case "X":
+					an.Force[4] += n.Pile.Moment
+				case "Y":
+					an.Force[3] -= n.Pile.Moment
+				}
+			}
 			n.Force[p] = make([]float64, 6)
 			for j := 0; j < 6; j++ {
 				n.Force[p][j] = an.Force[j]
