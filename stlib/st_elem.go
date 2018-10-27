@@ -2504,7 +2504,11 @@ func (elem *Elem) CurrentValue(show *Show, max, abs bool) float64 {
 			if flag&st != 0 {
 				switch i {
 				case 0:
-					return elem.ReturnStress(show.Period, 0, i) * show.Unit[0]
+					if abs {
+						return math.Abs(elem.ReturnStress(show.Period, 0, i) * show.Unit[0])
+					} else {
+						return elem.ReturnStress(show.Period, 0, i) * show.Unit[0]
+					}
 				case 1, 2:
 					v1 := elem.ReturnStress(show.Period, 0, i) * show.Unit[0]
 					v2 := elem.ReturnStress(show.Period, 1, i) * show.Unit[0]
