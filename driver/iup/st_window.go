@@ -3225,7 +3225,11 @@ func (stw *Window) SelectElemStart(arg *iup.MouseButton) {
 				}
 			}
 			if el != nil {
-				st.MergeSelectElem(stw, []*st.Elem{el}, isShift(arg.Status))
+				if el.Chain != nil && isCtrl(arg.Status) {
+					st.MergeSelectElem(stw, el.Chain.Elems(), isShift(arg.Status))
+				} else {
+					st.MergeSelectElem(stw, []*st.Elem{el}, isShift(arg.Status))
+				}
 			} else {
 				stw.SelectElem(make([]*st.Elem, 0))
 			}
