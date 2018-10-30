@@ -950,9 +950,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 	case "weightcopy":
 		if usage {
-			return Usage(":weightcopy {-si}")
+			return Usage(":weightcopy {-dir=} {-si}")
 		}
-		wgt := filepath.Join(stw.Home(), "hogtxt.wgt")
+		dir := stw.Home()
+		if d, ok := argdict["DIR"]; ok {
+			dir = os.ExpandEnv(d)
+		}
+		wgt := filepath.Join(dir, "hogtxt.wgt")
 		if fn == "" {
 			fn = Ce(frame.Path, ".wgt")
 		}
