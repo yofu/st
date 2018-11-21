@@ -28,6 +28,10 @@ func (r *RecentFiles) Recent() []string {
 }
 
 func (r *RecentFiles) AddRecent(fn string) {
+	abs, err := filepath.Abs(fn)
+	if err == nil {
+		fn = abs
+	}
 	fn = filepath.ToSlash(fn)
 	skip := 0
 	rtn := make([]string, r.size)
