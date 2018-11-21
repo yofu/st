@@ -1,13 +1,22 @@
 package st
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
-	"github.com/yofu/complete"
+	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/yofu/complete"
 )
 
 const (
 	historysize = 100
+)
+
+var (
+	historyfn = filepath.Join(os.Getenv("HOME"), ".st/history.dat")
 )
 
 type CommandLine struct {
@@ -307,4 +316,52 @@ func (c *CommandLine) NextCommandHistory(str string) {
 			return
 		}
 	}
+}
+
+func (c *CommandLine) ReadCommandHistory(fn string) error {
+	if fn == "" {
+		fn = historyfn
+	}
+	if !FileExists(fn) {
+		return fmt.Errorf("file doesn't exist")
+	}
+	tmp := make([]string, historysize)
+	f, err := os.Open(fn)
+	if err != nil {
+		return err
+	}
+	s := bufio.NewScanner(f)
+	num := 0
+	for s.Scan() {
+		if com := s.Text(); com != "" {
+			tmp[num] = com
+			num++
+		}
+	}
+	if err := s.Err(); err != nil {
+		return err
+	}
+	c.history = tmp
+	return nil
+}
+
+func (c *CommandLine) SaveCommandHistory(fn string) error {
+	if fn == "" {
+		fn = historyfn
+	}
+	var otp bytes.Buffer
+	for _, com := range c.history {
+		if com != "" {
+			otp.WriteString(com)
+			otp.WriteString("\n")
+		}
+	}
+	w, err := os.Create(fn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
+	otp = AddCR(otp)
+	otp.WriteTo(w)
+	return nil
 }

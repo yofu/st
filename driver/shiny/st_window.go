@@ -179,6 +179,7 @@ func (stw *Window) Start(fn string) {
 		st.ShowRecent(stw)
 	}
 	st.ReadPgp(stw, pgpfile)
+	stw.ReadCommandHistory("")
 	stw.frame.View.Center[0] = 512
 	stw.frame.View.Center[1] = 512
 	stw.Redraw()
@@ -1067,6 +1068,10 @@ func (stw *Window) Close(bang bool) {
 		return
 	}
 	err := stw.SaveRecent()
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = stw.SaveCommandHistory("")
 	if err != nil {
 		fmt.Println(err)
 	}
