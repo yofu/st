@@ -683,6 +683,105 @@ func (hw HWEAK) Breadth(strong bool) float64 {
 	}
 }
 
+type CROSS struct {
+	Hkyou HKYOU
+	Hweak HWEAK
+}
+
+func NewCROSS(lis []string) (CROSS, error) {
+	cr := CROSS{
+		Hkyou: HKYOU{0.0, 0.0, 0.0, 0.0},
+		Hweak: HWEAK{0.0, 0.0, 0.0, 0.0},
+	}
+	if len(lis) < 8 {
+		return cr, NotEnoughArgs("NewCROSS")
+	}
+	hk, err := NewHKYOU(lis[:4])
+	if err != nil {
+		return cr, err
+	}
+	cr.Hkyou = hk
+	hw, err := NewHWEAK(lis[4:])
+	if err != nil {
+		return cr, err
+	}
+	cr.Hweak = hw
+	return cr, nil
+}
+func (cr CROSS) String() string {
+	return fmt.Sprintf("CROSS %5.1f %5.1f %4.1f %4.1f %5.1f %5.1f %4.1f %4.1f", cr.Hkyou.H, cr.Hkyou.B, cr.Hkyou.Tw, cr.Hkyou.Tf, cr.Hweak.H, cr.Hweak.B, cr.Hweak.Tw, cr.Hweak.Tf)
+}
+func (cr CROSS) Description() string {
+	return fmt.Sprintf("H-%dx%dx%dx%d+H-%dx%dx%dx%d[mm]", int(cr.Hkyou.H*10), int(cr.Hkyou.B*10), int(cr.Hkyou.Tw*10), int(cr.Hkyou.Tf*10), int(cr.Hweak.H*10), int(cr.Hweak.B*10), int(cr.Hweak.Tw*10), int(cr.Hweak.Tf*10))
+}
+func (cr CROSS) A() float64 {
+	return cr.Hkyou.A() + cr.Hweak.A()
+}
+func (cr CROSS) Asx() float64 {
+	return cr.Hkyou.Asx() + cr.Hweak.Asx()
+}
+func (cr CROSS) Asy() float64 {
+	return cr.Hkyou.Asy() + cr.Hweak.Asy()
+}
+func (cr CROSS) Ix() float64 {
+	return cr.Hkyou.Ix() + cr.Hweak.Ix()
+}
+func (cr CROSS) Iy() float64 {
+	return cr.Hkyou.Iy() + cr.Hweak.Iy()
+}
+func (cr CROSS) J() float64 {
+	return cr.Hkyou.J() + cr.Hweak.J()
+}
+func (cr CROSS) Iw() float64 {
+	return cr.Hkyou.Iw() + cr.Hweak.Iw()
+}
+func (cr CROSS) Torsion() float64 {
+	thick := 0.0
+	if cr.Hkyou.Tf > thick {
+		thick = cr.Hkyou.Tf
+	}
+	if cr.Hkyou.Tw > thick {
+		thick = cr.Hkyou.Tw
+	}
+	if cr.Hweak.Tf > thick {
+		thick = cr.Hweak.Tf
+	}
+	if cr.Hweak.Tw > thick {
+		thick = cr.Hweak.Tw
+	}
+	return cr.J() / thick
+}
+func (cr CROSS) Zx() float64 {
+	return cr.Ix() / cr.Hkyou.H * 2.0
+}
+func (cr CROSS) Zy() float64 {
+	return cr.Iy() / cr.Hweak.H * 2.0
+}
+
+func (cr CROSS) Vertices() [][]float64 {
+	vk := cr.Hkyou.Vertices()
+	vw := cr.Hweak.Vertices()
+	vertices := make([][]float64, 25)
+	for i := 0; i < 12; i++ {
+		vertices[i] = make([]float64, 2)
+		vertices[i+13] = make([]float64, 2)
+		for j := 0; j < 2; j++ {
+			vertices[i][j] = vk[i][j]
+			vertices[i+13][j] = vw[i][j]
+		}
+	}
+	vertices[12] = nil
+	return vertices
+}
+
+func (cr CROSS) Breadth(strong bool) float64 {
+	if strong {
+		return cr.Hweak.H
+	} else {
+		return cr.Hkyou.H
+	}
+}
+
 type RPIPE struct {
 	H, B, Tw, Tf float64
 }

@@ -31,6 +31,7 @@ var (
 		"exp/lorer":        complete.MustCompile(":explorer %g", nil),
 		"hk/you":           complete.MustCompile(":hkyou _ _ _ _", nil),
 		"hw/eak":           complete.MustCompile(":hweak _ _ _ _", nil),
+		"cr/oss":           complete.MustCompile(":cross _ _ _ _", nil),
 		"rp/ipe":           complete.MustCompile(":rpipe _ _ _ _", nil),
 		"cp/ipe":           complete.MustCompile(":cpipe _ _", nil),
 		"tk/you":           complete.MustCompile(":tkyou _ _ _ _", nil),
@@ -66,7 +67,7 @@ var (
 			}),
 		"plan/":             complete.MustCompile(":plan [floor:_]", nil),
 		"jiku/":             complete.MustCompile(":jiku [name:_]", nil),
-		"cross/section":     complete.MustCompile(":crosssection [axis:_] [min:_] [max:_]", nil),
+		"crosssec/tion":     complete.MustCompile(":crosssection [axis:_] [min:_] [max:_]", nil),
 		"fe/nce":            complete.MustCompile(":fence", nil),
 		"no/de":             complete.MustCompile(":node", nil),
 		"xsc/ale":           complete.MustCompile(":xscale _", nil),
@@ -421,6 +422,21 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return NotEnoughArgs(":hweak")
 		}
 		al, err := NewHWEAK(args[1:5])
+		if err != nil {
+			return err
+		}
+		stw.ShapeData(al)
+		if pipe {
+			sender = []interface{}{al}
+		}
+	case "cross":
+		if usage {
+			return Usage(":cross h b tw tf h b tw tf")
+		}
+		if narg < 9 {
+			return NotEnoughArgs(":cross")
+		}
+		al, err := NewCROSS(args[1:9])
 		if err != nil {
 			return err
 		}

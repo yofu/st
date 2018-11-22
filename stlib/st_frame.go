@@ -1974,6 +1974,9 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 	case "HWEAK":
 		size = 4
 		shape, err = NewHWEAK(lis[1][1 : 1+size])
+	case "CROSS":
+		size = 8
+		shape, err = NewCROSS(lis[1][1 : 1+size])
 	case "RPIPE":
 		size = 4
 		shape, err = NewRPIPE(lis[1][1 : 1+size])
@@ -2679,7 +2682,7 @@ func (frame *Frame) DrawDxfSection(d *drawing.Drawing, el *Elem, position []floa
 	case *SColumn:
 		sh := al.Shape
 		switch sh.(type) {
-		case HKYOU, HWEAK, RPIPE, PLATE:
+		case HKYOU, HWEAK, CROSS, RPIPE, PLATE:
 			vertices := sh.Vertices()
 			el.DrawDxfSection(d, position, scale, vertices)
 		case CPIPE:
