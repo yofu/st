@@ -4430,6 +4430,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		for _, el := range els {
 			frame.AddElem(-1, el)
 		}
+	case "suspicious":
+		nodes, elems, err := frame.Suspicious()
+		if err != nil {
+			stw.SelectNode(nodes)
+			stw.SelectElem(elems)
+			ErrorMessage(stw, err, ERROR)
+		}
 	case "extractarclm":
 		if usage {
 			return Usage(":extractarclm")
