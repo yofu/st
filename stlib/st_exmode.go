@@ -1589,7 +1589,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		Snapshot(stw)
 	case "srcal":
 		if usage {
-			return Usage(":srcal {-fbold} {-noreload} {-qfact=2.0} {-wfact=2.0} {-bfact=1.0} {-skipshort} {-temporary} {-moeshiro} filename")
+			return Usage(":srcal {-verbose} {-fbold} {-noreload} {-qfact=2.0} {-wfact=2.0} {-bfact=1.0} {-skipshort} {-temporary} {-moeshiro} filename")
 		}
 		var m bytes.Buffer
 		cond := NewCondition()
@@ -1643,6 +1643,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			m.WriteString("MOESHIRO")
 			cond.Skipshort = true
 			cond.Temporary = true
+		}
+		if _, ok := argdict["V"]; ok {
+			argdict["VERBOSE"] = ""
+		}
+		if _, ok := argdict["VERBOSE"]; ok {
+			m.WriteString("VERBOSE")
+			cond.Verbose = true
 		}
 		frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
 		return Message(m.String())
