@@ -363,7 +363,17 @@ func (sc *SColumn) Fc(cond *Condition) float64 {
 	} else {
 		rtn = 0.277 * sc.F / (val * val)
 	}
-	return rtn * sc.Factor(cond.Period)
+	rtn *= sc.Factor(cond.Period)
+	if cond.Verbose {
+		cond.Buffer.WriteString(fmt.Sprintf("# Lkx=%.3f, Lky=%.3f\n", lx, ly))
+		check := ""
+		if lambda > 200 {
+			check = " Lambda>200"
+		}
+		cond.Buffer.WriteString(fmt.Sprintf("# Lambdax=%.3f, Lambday=%.3f: Lambda=%.3f%s\n", lambda_x, lambda_y, lambda, check))
+		cond.Buffer.WriteString(fmt.Sprintf("# Fc=%.3f\n", rtn))
+	}
+	return rtn
 }
 func (sc *SColumn) Ft(cond *Condition) float64 {
 	return sc.F / 1.5 * sc.Factor(cond.Period)
@@ -373,12 +383,18 @@ func (sc *SColumn) Fs(cond *Condition) float64 {
 }
 func (sc *SColumn) Fb(cond *Condition) float64 {
 	l := sc.Lb(cond.Length, cond.Strong)
+	if cond.Verbose {
+		cond.Buffer.WriteString(fmt.Sprintf("# Lb=%.3f\n", l))
+	}
 	var rtn float64
 	fbnew := func() float64 {
 		me := sc.Me(l, 1.0)
 		my := sc.My(cond)
 		lambda_b := math.Sqrt(my / me)
 		nu := 1.5 + math.Pow(lambda_b/E_LAMBDA_B, 2.0)/1.5
+		if cond.Verbose {
+			cond.Buffer.WriteString(fmt.Sprintf("# Me=%.3f, My=%.3f, Lambdab=%.3f\n", me, my, lambda_b))
+		}
 		if lambda_b <= P_LAMBDA_B {
 			return sc.F / nu
 		} else if lambda_b <= E_LAMBDA_B {
@@ -414,7 +430,11 @@ func (sc *SColumn) Fb(cond *Condition) float64 {
 			rtn = sc.F / 1.5
 		}
 	}
-	return rtn * sc.Factor(cond.Period)
+	rtn *= sc.Factor(cond.Period)
+	if cond.Verbose {
+		cond.Buffer.WriteString(fmt.Sprintf("# Fb=%.3f\n", rtn))
+	}
+	return rtn
 }
 func (sc *SColumn) Na(cond *Condition) float64 {
 	switch sc.Shape.(type) {

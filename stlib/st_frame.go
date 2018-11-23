@@ -5027,6 +5027,20 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				otp.WriteString("\n")
 			}
 			otp.WriteString("\n")
+			if cond.Verbose {
+				switch al.(type) {
+				case *SColumn, *WoodColumn:
+					sh := al.(*SColumn).Shape
+					otp.WriteString(fmt.Sprintf("# A   = %10.4f [cm2]\n", sh.A()))
+					otp.WriteString(fmt.Sprintf("# Asx = %10.4f [cm2]\n", sh.Asx()))
+					otp.WriteString(fmt.Sprintf("# Asy = %10.4f [cm2]\n", sh.Asy()))
+					otp.WriteString(fmt.Sprintf("# Ix  = %10.4f [cm4]\n", sh.Ix()))
+					otp.WriteString(fmt.Sprintf("# Iy  = %10.4f [cm4]\n", sh.Iy()))
+					otp.WriteString(fmt.Sprintf("# J   = %10.4f [cm4]\n", sh.J()))
+					otp.WriteString(fmt.Sprintf("# Zx  = %10.4f [cm3]\n", sh.Zx()))
+					otp.WriteString(fmt.Sprintf("# Zy  = %10.4f [cm3]\n", sh.Zy()))
+				}
+			}
 			if cond.Temporary {
 				cond.Period = "S"
 			} else {
