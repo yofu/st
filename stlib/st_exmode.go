@@ -1685,12 +1685,25 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					filename = o
 				}
 			}
+			if p, ok := argdict["PERIOD"]; ok {
+				if p != "" {
+					m.WriteString(fmt.Sprintf("PERIOD: %s", p))
+					cond.Period = p
+				}
+			}
 			switch al.(type) {
 			default:
 				return nil
 			case *RCColumn:
 				nmax := al.(*RCColumn).Nmax(cond)
 				nmin := al.(*RCColumn).Nmin(cond)
+				for i := 0; i <= ndiv; i++ {
+					cond.N = nmax - float64(i)*(nmax-nmin)/float64(ndiv)
+					otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.Ma(cond)))
+				}
+			case *RCGirder:
+				nmax := al.(*RCGirder).Nmax(cond)
+				nmin := al.(*RCGirder).Nmin(cond)
 				for i := 0; i <= ndiv; i++ {
 					cond.N = nmax - float64(i)*(nmax-nmin)/float64(ndiv)
 					otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.Ma(cond)))
