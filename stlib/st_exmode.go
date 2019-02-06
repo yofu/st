@@ -1896,6 +1896,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		m.WriteString(fmt.Sprintf("Output: %s", fn))
 		return Message(m.String())
+	case "unchain":
+		if usage {
+			return Usage(":unchain")
+		}
+		for _, v := range frame.Chains {
+			v.Break()
+		}
 	case "1459":
 		if usage {
 			return Usage(":1459 [-sect= ]")

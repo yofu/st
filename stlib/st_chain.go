@@ -141,6 +141,16 @@ func (c *Chain) Elems() []*Elem {
 	return c.elems
 }
 
+func (c *Chain) Break() {
+	if len(c.elems) == 0 {
+		return
+	}
+	for _, el := range c.elems {
+		el.Chain = nil
+	}
+	delete(c.frame.Chains, c.elems[0].Num)
+}
+
 func (c *Chain) Append(elem *Elem) error {
 	return c.AppendAt(elem, len(c.elems))
 }
@@ -218,7 +228,7 @@ func (c *Chain) Delete(elem *Elem) error {
 		c.ind = ind
 	}
 	if c.ind >= len(c.elems) {
-		c.ind = len(c.elems)-1
+		c.ind = len(c.elems) - 1
 	}
 	return nil
 }
