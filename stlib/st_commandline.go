@@ -282,8 +282,16 @@ func (c *CommandLine) ContextComplete() ([]string, bool) {
 func (c *CommandLine) AddCommandHistory(str string) {
 	tmp := make([]string, historysize)
 	tmp[0] = str
+	ind := 0
 	for i := 0; i < historysize-1; i++ {
-		tmp[i+1] = c.history[i]
+		if c.history[i] == str {
+			ind++
+			if i+ind >= historysize {
+				break
+			}
+			continue
+		}
+		tmp[i+1] = c.history[i+ind]
 	}
 	c.history = tmp
 	c.historypos = -1
