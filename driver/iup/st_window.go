@@ -1626,6 +1626,7 @@ func (stw *Window) Close(force bool) {
 			return
 		}
 	}
+	stw.SaveCommandHistory()
 	stw.SaveRecent()
 	stw.Dlg.Destroy()
 }
