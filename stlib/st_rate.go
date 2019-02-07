@@ -347,15 +347,25 @@ func (sc *SColumn) Lb(length float64, strong bool) float64 {
 }
 func (sc *SColumn) Fc(cond *Condition) float64 {
 	var rtn float64
-	var lambda float64
+	var lambda_x, lambda_y, lambda float64
 	lx := sc.Lk(cond.Length, true)
 	ly := sc.Lk(cond.Length, false)
-	lambda_x := lx / math.Sqrt(sc.Ix()/sc.A())
-	lambda_y := ly / math.Sqrt(sc.Iy()/sc.A())
-	if lambda_x >= lambda_y {
-		lambda = lambda_x
+	if an, ok := sc.Shape.(ANGLE); ok {
+		if lx > ly {
+			lambda = lx / math.Sqrt(an.Imin()/an.A())
+		} else {
+			lambda = ly / math.Sqrt(an.Imin()/an.A())
+		}
+		lambda_x = lambda
+		lambda_y = lambda
 	} else {
-		lambda = lambda_y
+		lambda_x := lx / math.Sqrt(sc.Ix()/sc.A())
+		lambda_y := ly / math.Sqrt(sc.Iy()/sc.A())
+		if lambda_x >= lambda_y {
+			lambda = lambda_x
+		} else {
+			lambda = lambda_y
+		}
 	}
 	val := lambda / sc.Lambda()
 	if val <= 1.0 {
@@ -1483,6 +1493,26 @@ func (an ANGLE) Ix() float64 {
 func (an ANGLE) Iy() float64 {
 	cx := an.Cx()
 	return (an.H-an.Tf)*math.Pow(an.Tw, 3.0)/12.0 + an.Tf*math.Pow(an.B, 3.0)/12.0 + (an.H-an.Tf)*an.Tw*math.Pow(cx-0.5*an.Tw, 2.0) + an.B*an.Tf*math.Pow(0.5*an.B-cx, 2.0)
+}
+func (an ANGLE) Imin() float64 {
+	cx := an.Cx()
+	cy := an.Cy()
+	Ix := an.Ix()
+	Iy := an.Iy()
+	Ixy := math.Abs(0.25 * ((math.Pow(cx, 2.0)-math.Pow(an.B-cx, 2.0))*(math.Pow(-cy+an.Tf, 2.0)-math.Pow(cy, 2.0)) + (math.Pow(cx, 2.0)-math.Pow(cx-an.Tw, 2.0))*math.Pow(an.H-cy, 2.0) - math.Pow(-cy+an.Tf, 2.0)))
+	var theta float64
+	if Ix == Iy {
+		theta = 0.25 * math.Pi
+	} else {
+		theta = 0.5 * (math.Atan(2.0 * Ixy / (Iy - Ix)))
+	}
+	Iu := Ix*math.Pow(math.Sin(theta), 2.0) + Iy*math.Pow(math.Cos(theta), 2.0) + Ixy*math.Sin(2.0*theta)
+	Iv := Iy*math.Pow(math.Sin(theta), 2.0) + Ix*math.Pow(math.Cos(theta), 2.0) - Ixy*math.Sin(2.0*theta)
+	if Iu > Iv {
+		return Iv
+	} else {
+		return Iu
+	}
 }
 func (an ANGLE) J() float64 {
 	return an.B*math.Pow(an.Tf, 3.0)/3.0 + (an.H-an.Tf)*math.Pow(an.Tw, 3.0)/3.0
