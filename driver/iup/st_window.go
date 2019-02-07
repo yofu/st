@@ -5,13 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/atotto/clipboard"
-	"github.com/visualfc/go-iup/cd"
-	"github.com/visualfc/go-iup/iup"
-	"github.com/yofu/abbrev"
-	"github.com/yofu/complete"
-	"github.com/yofu/st/stlib"
-	"gopkg.in/fsnotify.v1"
 	"io"
 	"log"
 	"math"
@@ -24,6 +17,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/atotto/clipboard"
+	"github.com/visualfc/go-iup/cd"
+	"github.com/visualfc/go-iup/iup"
+	"github.com/yofu/abbrev"
+	"github.com/yofu/complete"
+	st "github.com/yofu/st/stlib"
+	fsnotify "gopkg.in/fsnotify.v1"
 )
 
 // Constants & Variables// {{{

@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/visualfc/go-iup/cd"
-	"github.com/visualfc/go-iup/iup"
-	"github.com/yofu/st/stlib"
 	"math"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/visualfc/go-iup/cd"
+	"github.com/visualfc/go-iup/iup"
+	st "github.com/yofu/st/stlib"
 )
 
 var EPS = 1e-4
