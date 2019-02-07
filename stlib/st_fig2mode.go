@@ -3,13 +3,14 @@ package st
 import (
 	"errors"
 	"fmt"
-	"github.com/yofu/abbrev"
-	"github.com/yofu/complete"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/yofu/abbrev"
+	"github.com/yofu/complete"
 )
 
 var (
@@ -997,7 +998,7 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 				val = COLUMN
 			case Re_girder.MatchString(lis[1]):
 				val = GIRDER
-			case Re_slab.MatchString(lis[1]):
+			case Re_brace.MatchString(lis[1]):
 				val = BRACE
 			case Re_wall.MatchString(lis[1]):
 				val = WALL
