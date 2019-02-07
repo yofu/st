@@ -38,6 +38,7 @@ var (
 		"ck/you":           complete.MustCompile(":ckyou _ _ _ _", nil),
 		"cw/eak":           complete.MustCompile(":cweak _ _ _ _", nil),
 		"pla/te":           complete.MustCompile(":plate _ _", nil),
+		"ang/le":           complete.MustCompile(":angle _ _ _ _", nil),
 		"fixr/otate":       complete.MustCompile(":fixrotate", nil),
 		"fixm/ove":         complete.MustCompile(":fixmove", nil),
 		"noun/do":          complete.MustCompile(":noundo", nil),
@@ -118,11 +119,11 @@ var (
 			map[string][]string{
 				"CONDITION": []string{"//", "TT", "on", "adjoin", "cv"},
 			}),
-		"ra/nge":     complete.MustCompile(":range", nil),
-		"h/eigh/t/":  complete.MustCompile(":height _ _", nil),
-		"h/eigh/t+/": complete.MustCompile(":height+", nil),
-		"h/eigh/t-/": complete.MustCompile(":height-", nil),
-		"ang/le":     complete.MustCompile(":angle _ _", nil),
+		"ra/nge":      complete.MustCompile(":range", nil),
+		"h/eigh/t/":   complete.MustCompile(":height _ _", nil),
+		"h/eigh/t+/":  complete.MustCompile(":height+", nil),
+		"h/eigh/t-/":  complete.MustCompile(":height-", nil),
+		"s/et/ang/le": complete.MustCompile(":setangle _ _", nil),
 		"view/": complete.MustCompile(":view $DIRECTION",
 			map[string][]string{
 				"DIRECTION": []string{"top", "front", "back", "right", "left"},
@@ -527,6 +528,21 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return NotEnoughArgs(":plate")
 		}
 		al, err := NewPLATE(args[1:3])
+		if err != nil {
+			return err
+		}
+		stw.ShapeData(al)
+		if pipe {
+			sender = []interface{}{al}
+		}
+	case "angle":
+		if usage {
+			return Usage(":angle h b tw tf")
+		}
+		if narg < 5 {
+			return NotEnoughArgs(":angle")
+		}
+		al, err := NewANGLE(args[1:5])
 		if err != nil {
 			return err
 		}
@@ -4286,12 +4302,12 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		NextFloor(stw)
 	case "height-":
 		PrevFloor(stw)
-	case "angle":
+	case "setangle":
 		if usage {
-			return Usage(":angle phi theta")
+			return Usage(":setangle phi theta")
 		}
 		if narg < 3 {
-			return NotEnoughArgs(":angle")
+			return NotEnoughArgs(":setangle")
 		}
 		angle := make([]float64, 2)
 		for i := 0; i < 2; i++ {
