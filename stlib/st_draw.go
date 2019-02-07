@@ -601,7 +601,7 @@ func DrawSection(stw Drawer, elem *Elem, show *Show) {
 		case *SColumn:
 			sh := al.(*SColumn).Shape
 			switch sh.(type) {
-			case HKYOU, HWEAK, CROSS, RPIPE, CPIPE, PLATE, TKYOU, CKYOU, CWEAK:
+			case HKYOU, HWEAK, CROSS, RPIPE, CPIPE, PLATE, TKYOU, CKYOU, CWEAK, ANGLE:
 				vertices := sh.Vertices()
 				DrawClosedLine(stw, elem, position, strong, weak, show.DrawSize, vertices)
 			}

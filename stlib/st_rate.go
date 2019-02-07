@@ -414,6 +414,15 @@ func (sc *SColumn) Fb(cond *Condition) float64 {
 			} else {
 				rtn = fbnew()
 			}
+		} else if an, ok := sc.Shape.(ANGLE); ok {
+			if cond.FbOld {
+				rtn = 900.0 / (l * an.H / (an.B * an.Tf))
+				if rtn > sc.F/1.5 {
+					rtn = sc.F / 1.5
+				}
+			} else {
+				rtn = fbnew()
+			}
 		} else {
 			rtn = sc.F / 1.5
 		}
@@ -421,6 +430,15 @@ func (sc *SColumn) Fb(cond *Condition) float64 {
 		if hw, ok := sc.Shape.(HWEAK); ok {
 			if cond.FbOld {
 				rtn = 900.0 / (l * hw.H / (hw.B * hw.Tf))
+				if rtn > sc.F/1.5 {
+					rtn = sc.F / 1.5
+				}
+			} else {
+				rtn = fbnew()
+			}
+		} else if an, ok := sc.Shape.(ANGLE); ok {
+			if cond.FbOld {
+				rtn = 900.0 / (l * an.B / (an.H * an.Tw))
 				if rtn > sc.F/1.5 {
 					rtn = sc.F / 1.5
 				}
@@ -1401,6 +1419,123 @@ func (pl PLATE) Breadth(strong bool) float64 {
 		return pl.B
 	} else {
 		return pl.H
+	}
+}
+
+type ANGLE struct {
+	H, B, Tw, Tf float64
+}
+
+func NewANGLE(lis []string) (ANGLE, error) {
+	an := ANGLE{0.0, 0.0, 0.0, 0.0}
+	if len(lis) < 4 {
+		return an, NotEnoughArgs("NewANGLE")
+	}
+	var val float64
+	var err error
+	val, err = strconv.ParseFloat(lis[0], 64)
+	if err != nil {
+		return an, err
+	}
+	an.H = val
+	val, err = strconv.ParseFloat(lis[1], 64)
+	if err != nil {
+		return an, err
+	}
+	an.B = val
+	val, err = strconv.ParseFloat(lis[2], 64)
+	if err != nil {
+		return an, err
+	}
+	an.Tw = val
+	val, err = strconv.ParseFloat(lis[3], 64)
+	if err != nil {
+		return an, err
+	}
+	an.Tf = val
+	return an, nil
+}
+func (an ANGLE) String() string {
+	return fmt.Sprintf("ANGLE %5.1f %5.1f %4.1f %4.1f", an.H, an.B, an.Tw, an.Tf)
+}
+func (an ANGLE) Description() string {
+	return fmt.Sprintf("L-%dx%dx%dx%d[mm]", int(an.H*10), int(an.B*10), int(an.Tw*10), int(an.Tf*10))
+}
+func (an ANGLE) A() float64 {
+	return an.H*an.Tw + an.B*an.Tf - an.Tw*an.Tf
+}
+func (an ANGLE) Asx() float64 {
+	return an.B * an.Tf / 1.5
+}
+func (an ANGLE) Asy() float64 {
+	return an.H * an.Tw / 1.5
+}
+func (an ANGLE) Cx() float64 {
+	return (an.B*an.Tf*0.5*an.B + (an.H-an.Tf)*an.Tw*0.5*an.Tw) / an.A()
+}
+func (an ANGLE) Cy() float64 {
+	return (an.H*an.Tw*0.5*an.H + (an.B-an.Tw)*an.Tf*0.5*an.Tf) / an.A()
+}
+func (an ANGLE) Ix() float64 {
+	cy := an.Cy()
+	return (an.B-an.Tw)*math.Pow(an.Tf, 3.0)/12.0 + an.Tw*math.Pow(an.H, 3.0)/12.0 + (an.B-an.Tw)*an.Tf*math.Pow(cy-0.5*an.Tf, 2.0) + an.H*an.Tw*math.Pow(0.5*an.H-cy, 2.0)
+}
+func (an ANGLE) Iy() float64 {
+	cx := an.Cx()
+	return (an.H-an.Tf)*math.Pow(an.Tw, 3.0)/12.0 + an.Tf*math.Pow(an.B, 3.0)/12.0 + (an.H-an.Tf)*an.Tw*math.Pow(cx-0.5*an.Tw, 2.0) + an.B*an.Tf*math.Pow(0.5*an.B-cx, 2.0)
+}
+func (an ANGLE) J() float64 {
+	return an.B*math.Pow(an.Tf, 3.0)/3.0 + (an.H-an.Tf)*math.Pow(an.Tw, 3.0)/3.0
+}
+func (an ANGLE) Iw() float64 {
+	return 0.0
+}
+func (an ANGLE) Torsion() float64 {
+	if an.Tf >= an.Tw {
+		return an.J() / an.Tf
+	} else {
+		return an.J() / an.Tw
+	}
+}
+func (an ANGLE) Zx() float64 {
+	cy := an.Cy()
+	if cy >= an.H*0.5 {
+		return an.Ix() / cy
+	} else {
+		return an.Ix() / (an.H - cy)
+	}
+}
+func (an ANGLE) Zy() float64 {
+	cx := an.Cx()
+	if cx >= an.B*0.5 {
+		return an.Iy() / cx
+	} else {
+		return an.Iy() / (an.B - cx)
+	}
+}
+
+func (an ANGLE) Vertices() [][]float64 {
+	cx := an.Cx()
+	cy := an.Cy()
+	h := an.H - cy
+	b := an.B - cx
+	w := an.Tw - cx
+	f := an.Tf - cy
+	vertices := make([][]float64, 8)
+	vertices[0] = []float64{-cx, -cy}
+	vertices[1] = []float64{b, -cy}
+	vertices[2] = []float64{b, f}
+	vertices[3] = []float64{w, f}
+	vertices[4] = []float64{w, h}
+	vertices[5] = []float64{-cx, h}
+	return vertices
+}
+
+func (an ANGLE) Breadth(strong bool) float64 {
+	if strong {
+		return an.B
+	} else {
+		return an.H
 	}
 }
 
