@@ -1499,7 +1499,7 @@ func (an ANGLE) Imin() float64 {
 	cy := an.Cy()
 	Ix := an.Ix()
 	Iy := an.Iy()
-	Ixy := math.Abs(0.25 * ((math.Pow(cx, 2.0)-math.Pow(an.B-cx, 2.0))*(math.Pow(-cy+an.Tf, 2.0)-math.Pow(cy, 2.0)) + (math.Pow(cx, 2.0)-math.Pow(cx-an.Tw, 2.0))*math.Pow(an.H-cy, 2.0) - math.Pow(-cy+an.Tf, 2.0)))
+	Ixy := math.Abs(0.25 * ((math.Pow(cx, 2.0)-math.Pow(an.B-cx, 2.0))*(math.Pow(-cy+an.Tf, 2.0)-math.Pow(cy, 2.0)) + (math.Pow(cx, 2.0)-math.Pow(cx-an.Tw, 2.0))*(math.Pow(an.H-cy, 2.0)-math.Pow(-cy+an.Tf, 2.0))))
 	var theta float64
 	if Ix == Iy {
 		theta = 0.25 * math.Pi
