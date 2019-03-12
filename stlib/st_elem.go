@@ -624,12 +624,20 @@ func (elem *Elem) Distribute() error {
 			}
 			if edge != nil {
 				if ok, _ := edge.IsEdgeOfWall(); ok {
-					edge.DistributeWeight(c)
+					if el.Enod[0].Num == edge.Enod[0].Num {
+						edge.DistributeWeight(c, false)
+					} else {
+						edge.DistributeWeight(c, true)
+					}
 				} else {
-					edge.DistributeGirder(c)
+					if el.Enod[0].Num == edge.Enod[0].Num {
+						edge.DistributeGirder(c, false)
+					} else {
+						edge.DistributeGirder(c, true)
+					}
 				}
 			} else {
-				el.DistributeWeight(c)
+				el.DistributeWeight(c, false)
 			}
 		}
 		return nil
@@ -649,7 +657,7 @@ func (elem *Elem) Distribute() error {
 					return err
 				}
 			}
-			el.DistributeWeight(c)
+			el.DistributeWeight(c, false)
 		}
 		return nil
 	case GIRDER:
@@ -665,9 +673,9 @@ func (elem *Elem) Distribute() error {
 			}
 		}
 		if ok, _ := elem.IsEdgeOfWall(); ok {
-			elem.DistributeWeight(c)
+			elem.DistributeWeight(c, false)
 		} else {
-			elem.DistributeGirder(c)
+			elem.DistributeGirder(c, false)
 		}
 		return nil
 	case COLUMN, BRACE:
@@ -679,26 +687,38 @@ func (elem *Elem) Distribute() error {
 				return err
 			}
 		}
-		elem.DistributeWeight(c)
+		elem.DistributeWeight(c, false)
 		return nil
 	default:
 		return fmt.Errorf("Distribute: unknown etype: ELEM %d ETYPE %d", elem.Num, elem.Etype)
 	}
 }
 
-func (elem *Elem) DistributeWeight(c []*Cmq) {
+func (elem *Elem) DistributeWeight(c []*Cmq, invert bool) {
 	for i := 0; i < 3; i++ {
-		elem.Enod[0].Weight[i] += c[i].Qi0
-		elem.Enod[1].Weight[i] += c[i].Qj0
+		if invert {
+			elem.Enod[0].Weight[i] += c[i].Qj0
+			elem.Enod[1].Weight[i] += c[i].Qi0
+		} else {
+			elem.Enod[0].Weight[i] += c[i].Qi0
+			elem.Enod[1].Weight[i] += c[i].Qj0
+		}
 	}
 }
 
-func (elem *Elem) DistributeGirder(c []*Cmq) {
-	elem.Cmq[2] += c[1].Qi0
-	elem.Cmq[4] += c[1].Ci
-	elem.Cmq[8] += c[1].Qj0
-	elem.Cmq[10] += c[1].Cj
-	elem.DistributeWeight(c)
+func (elem *Elem) DistributeGirder(c []*Cmq, invert bool) {
+	if invert {
+		elem.Cmq[2] += c[1].Qi0
+		elem.Cmq[4] += c[1].Ci
+		elem.Cmq[8] += c[1].Qj0
+		elem.Cmq[10] += c[1].Cj
+	} else {
+		elem.Cmq[2] += c[1].Qj0
+		elem.Cmq[4] += c[1].Cj
+		elem.Cmq[8] += c[1].Qi0
+		elem.Cmq[10] += c[1].Ci
+	}
+	elem.DistributeWeight(c, invert)
 }
 
 func (elem *Elem) IsEdgeOfWall() (bool, error) {
