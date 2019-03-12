@@ -4649,7 +4649,10 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	sort.Sort(NodeByNum{nodes})
 	amount := make(map[int]float64)
 	for _, el := range frame.Elems {
-		el.Distribute()
+		err := el.Distribute()
+		if err != nil {
+			return err
+		}
 		if el.Etype != WBRACE || el.Etype != SBRACE {
 			amount[el.Sect.Num] += el.Amount()
 		}
