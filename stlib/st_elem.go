@@ -600,14 +600,18 @@ func (elem *Elem) Distribute() error {
 		if elem.Enods < 3 {
 			return fmt.Errorf("Distribute: too few enods: ELEM %d", elem.Num)
 		}
-		els, err := elem.PlateDivision(false)
+		els, factor, err := elem.PlateDivision(false)
 		if err != nil {
 			return err
+		}
+		area := 0.0
+		for _, el := range els {
+			area += el.Area()
 		}
 		for _, el := range els {
 			c := make([]*Cmq, 3)
 			for i := 0; i < 3; i++ {
-				c[i], err = Polygon(el, w[i])
+				c[i], err = Polygon(el, w[i]*factor)
 				if err != nil {
 					return err
 				}
@@ -645,14 +649,14 @@ func (elem *Elem) Distribute() error {
 		if elem.Enods < 3 {
 			return fmt.Errorf("Distribute: too few enods: ELEM %d", elem.Num)
 		}
-		els, err := elem.PlateDivision(false)
+		els, factor, err := elem.PlateDivision(false)
 		if err != nil {
 			return err
 		}
 		for _, el := range els {
 			c := make([]*Cmq, 3)
 			for i := 0; i < 3; i++ {
-				c[i], err = Polygon(el, w[i])
+				c[i], err = Polygon(el, w[i]*factor)
 				if err != nil {
 					return err
 				}
@@ -790,14 +794,13 @@ func (elem *Elem) PlateSize() (float64, float64) {
 	return 0.5 * (w1 + w2), 0.5 * (h1 + h2)
 }
 
-// TODO: test
-func (elem *Elem) PlateDivision(add bool) ([]*Elem, error) {
+func (elem *Elem) PlateDivision(add bool) ([]*Elem, float64, error) {
 	if elem.Enods < 3 {
-		return nil, fmt.Errorf("PlateDivision: too few enods: ELEM %d", elem.Num)
+		return nil, 0.0, fmt.Errorf("PlateDivision: too few enods: ELEM %d", elem.Num)
 	}
 	switch elem.Enods {
 	default:
-		return nil, fmt.Errorf("PlateDivision: too many enods: ELEM %d", elem.Num)
+		return nil, 0.0, fmt.Errorf("PlateDivision: too many enods: ELEM %d", elem.Num)
 	case 3:
 		d := make([]float64, 3)
 		sum := 0.0
@@ -814,7 +817,7 @@ func (elem *Elem) PlateDivision(add bool) ([]*Elem, error) {
 			sum += d[i]
 		}
 		if sum == 0.0 {
-			return nil, fmt.Errorf("PlateDivision: zero area: ELEM %d", elem.Num)
+			return nil, 0.0, fmt.Errorf("PlateDivision: zero area: ELEM %d", elem.Num)
 		}
 		coord := make([]float64, 3)
 		for i := 0; i < 3; i++ {
@@ -827,11 +830,16 @@ func (elem *Elem) PlateDivision(add bool) ([]*Elem, error) {
 		if add {
 			n = elem.Frame.AddNode(coord[0], coord[1], coord[2])
 		}
-		return []*Elem{
+		rtn := []*Elem{
 			NewPlateElem([]*Node{elem.Enod[0], elem.Enod[1], n}, elem.Sect, elem.Etype),
 			NewPlateElem([]*Node{elem.Enod[1], elem.Enod[2], n}, elem.Sect, elem.Etype),
 			NewPlateElem([]*Node{elem.Enod[2], elem.Enod[0], n}, elem.Sect, elem.Etype),
-		}, nil
+		}
+		area := 0.0
+		for _, el := range rtn {
+			area += el.Area()
+		}
+		return rtn, elem.Area() / area, nil
 	case 4:
 		cand := make([][]*Elem, 2)
 		nodes := make([][]*Node, 2)
@@ -896,14 +904,14 @@ func (elem *Elem) PlateDivision(add bool) ([]*Elem, error) {
 					elem.Frame.DeleteNode(nodes[1][i].Num)
 				}
 			}
-			return cand[0], nil
+			return cand[0], elem.Area() / sum0, nil
 		} else {
 			if add {
 				for i := 0; i < 2; i++ {
 					elem.Frame.DeleteNode(nodes[0][i].Num)
 				}
 			}
-			return cand[1], nil
+			return cand[1], elem.Area() / sum1, nil
 		}
 	}
 }

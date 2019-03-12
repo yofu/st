@@ -4466,7 +4466,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if !stw.ElemSelected() {
 			return nil
 		}
-		els, err := stw.SelectedElems()[0].PlateDivision(true)
+		els, _, err := stw.SelectedElems()[0].PlateDivision(true)
 		if err != nil {
 			return err
 		}

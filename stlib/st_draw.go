@@ -403,7 +403,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 		stw.Foreground(show.PlateEdgeColor)
 		stw.Polyline(coords)
 		if show.CmqLine {
-			cmqels, _ := elem.PlateDivision(false)
+			cmqels, _, _ := elem.PlateDivision(false)
 			for _, cmqel := range cmqels {
 				for _, pn := range cmqel.Enod {
 					elem.Frame.View.ProjectNode(pn)

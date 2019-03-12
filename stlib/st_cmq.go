@@ -86,7 +86,6 @@ func Uniform(L float64, w float64) (*Cmq, error) {
 	return c, nil
 }
 
-// TODO: test
 /*         w0     w1          */
 /*                            */
 /*                *           */
