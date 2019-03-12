@@ -2,8 +2,11 @@ package st
 
 import (
 	"errors"
+	"fmt"
 	"math"
 )
+
+const CmqEps = 1e-8
 
 type Cmq struct {
 	Ci  float64
@@ -53,9 +56,9 @@ func Concentration(P float64, L0, L1, L2 float64) (*Cmq, error) {
 /* ......::::::.......... */
 /*   L1    L2      L3     */
 /*          L0            */ // by Jun SATO
-func RightAngledTriangle(w float64, L0, L1, L2, L3 float64) (*Cmq, error) {
-	if L0 != L1+L2+L3 {
-		return nil, errors.New("CMQ RightAngledTriangle: Length mismatched")
+func RightAngledTriangle(w float64, L0, L1, L2, L3 float64, eps float64) (*Cmq, error) {
+	if math.Abs(L0-(L1+L2+L3)) > eps {
+		return nil, fmt.Errorf("CMQ RightAngledTriangle: Length mismatched: EPS=%.3E", math.Abs(L0-(L1+L2+L3)))
 	}
 	c := new(Cmq)
 	c.Ci = -1.0 / 60.0 * w * L2 / (L0 * L0) * (5.0*(L2*L2+4.0*L2*L3+6.0*L3*L3)*L1 + 2.0*(L2*L2+5.0*L2*L3+10.0*L3*L3)*L2)
@@ -73,7 +76,7 @@ func RightAngledTriangle(w float64, L0, L1, L2, L3 float64) (*Cmq, error) {
 }
 
 func Uniform(L float64, w float64) (*Cmq, error) {
-	c0, err := RightAngledTriangle(w, L, 0.0, L, 0.0)
+	c0, err := RightAngledTriangle(w, L, 0.0, L, 0.0, CmqEps)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +132,7 @@ func Polygon(elem *Elem, w float64) (*Cmq, error) {
 		L2 = d[i] - d[j]
 		L3 = L0 - L1 - L2
 		if L2 > 0.0 {
-			tmp, err := RightAngledTriangle(H, L0, L1, L2, L3)
+			tmp, err := RightAngledTriangle(H, L0, L1, L2, L3, CmqEps)
 			if err != nil {
 				return nil, err
 			}
@@ -140,7 +143,7 @@ func Polygon(elem *Elem, w float64) (*Cmq, error) {
 		L2 = d[j] - d[i]
 		L3 = L0 - L1 - L2
 		if L2 > 0.0 {
-			tmp, err := RightAngledTriangle(H, L0, L1, L2, L3)
+			tmp, err := RightAngledTriangle(H, L0, L1, L2, L3, CmqEps)
 			if err != nil {
 				return nil, err
 			}
