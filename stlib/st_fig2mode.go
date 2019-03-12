@@ -411,6 +411,12 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		stw.DisableLabel("GAXIS")
 		frame.Show.ElementAxis = false
 		stw.DisableLabel("EAXIS")
+	case "cmqline":
+		if un {
+			frame.Show.CmqLine = false
+		} else {
+			frame.Show.CmqLine = true
+		}
 	case "x", "y", "z":
 		axis := strings.Index("xyz", key)
 		if un {

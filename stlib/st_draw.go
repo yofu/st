@@ -402,6 +402,19 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 		}
 		stw.Foreground(show.PlateEdgeColor)
 		stw.Polyline(coords)
+		if show.CmqLine {
+			cmqels, _ := elem.PlateDivision(false)
+			for _, cmqel := range cmqels {
+				for _, pn := range cmqel.Enod {
+					elem.Frame.View.ProjectNode(pn)
+				}
+				cmqcoords := make([][]float64, cmqel.Enods)
+				for i := 0; i < cmqel.Enods; i++ {
+					cmqcoords[i] = []float64{cmqel.Enod[i].Pcoord[0], cmqel.Enod[i].Pcoord[1]}
+				}
+				stw.Polyline(cmqcoords)
+			}
+		}
 		// Stress
 		var flag uint
 		if f, ok := show.Stress[elem.Sect.Num]; ok {
