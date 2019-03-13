@@ -558,7 +558,14 @@ func (elem *Elem) Area() float64 {
 		vs[i-1] = Direction(elem.Enod[0], elem.Enod[i], false)
 	}
 	for i := 0; i < elem.Enods-2; i++ {
-		area += 0.5 * math.Sqrt(ds[i]*ds[i+1]-math.Pow(Dot(vs[i], vs[i+1], 3), 2))
+		val := ds[i]*ds[i+1] - math.Pow(Dot(vs[i], vs[i+1], 3), 2)
+		if val < 0.0 {
+			// val can be very small negative value.
+			// This is because 2 nodes are very near.
+			// TODO: If val is large negative value, Should 0.5*sqrt(abs(val)) be added to area?
+			continue
+		}
+		area += 0.5 * math.Sqrt(val)
 	}
 	return area
 }
