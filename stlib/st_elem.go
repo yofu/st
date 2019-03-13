@@ -719,15 +719,15 @@ func (elem *Elem) DistributeWeight(c []*Cmq, invert bool) {
 
 func (elem *Elem) DistributeGirder(c []*Cmq, invert bool) {
 	if invert {
+		elem.Cmq[2] += c[1].Qj0
+		elem.Cmq[4] -= c[1].Cj
+		elem.Cmq[8] += c[1].Qi0
+		elem.Cmq[10] -= c[1].Ci
+	} else {
 		elem.Cmq[2] += c[1].Qi0
 		elem.Cmq[4] += c[1].Ci
 		elem.Cmq[8] += c[1].Qj0
 		elem.Cmq[10] += c[1].Cj
-	} else {
-		elem.Cmq[2] += c[1].Qj0
-		elem.Cmq[4] += c[1].Cj
-		elem.Cmq[8] += c[1].Qi0
-		elem.Cmq[10] += c[1].Ci
 	}
 	elem.DistributeWeight(c, invert)
 }
