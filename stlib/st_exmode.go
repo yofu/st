@@ -80,6 +80,7 @@ var (
 		"setb/oundary":      complete.MustCompile(":setboundary [eps:_]", nil),
 		"fac/ts":            complete.MustCompile(":facts [skipany:_] [skipall:_]", nil),
 		"1459/":             complete.MustCompile(":1459 [sect:_]", nil),
+		"el/em/dis/tance":   complete.MustCompile(":elemdistance", nil),
 		"go/han/l/st":       complete.MustCompile(":gohanlst _ _", nil),
 		"el/em": complete.MustCompile(":elem $TYPE _",
 			map[string][]string{
@@ -1981,6 +1982,22 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			stw.SelectElem(frame.Chains[maxkey].Elems())
 			stw.SelectNode([]*Node{frame.Nodes[maxnode]})
 		}
+	case "elemdistance":
+		if usage {
+			return Usage(":elemdistance")
+		}
+		els := currentelem(stw, exmodech, exmodeend)
+		if len(els) < 2 {
+			return errors.New(":elemdistance: not enough selected elem")
+		}
+		if !els[0].IsLineElem() || !els[1].IsLineElem() {
+			return errors.New(":elemdistance: not lineelem")
+		}
+		pos1, pos2, d, err := DistLineLine(els[0].Enod[0].Coord, els[0].Direction(false), els[1].Enod[1].Coord, els[1].Direction(false))
+		if err != nil {
+			return err
+		}
+		fmt.Println(pos1, pos2, d)
 	case "amountprop":
 		if usage {
 			return Usage(":amountprop propcode")
