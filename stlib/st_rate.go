@@ -2456,10 +2456,24 @@ type WoodColumn struct {
 	BTLength []float64
 	BBFactor []float64
 	BTFactor []float64
+	multi    float64
 }
 
 func NewWoodColumn(num int, shape Shape, material Wood) *WoodColumn {
-	wc := &WoodColumn{material, shape, num, "COLUMN", "", nil, nil, nil, nil, nil, nil}
+	wc := &WoodColumn{
+		Wood:     material,
+		Shape:    shape,
+		num:      num,
+		Etype:    "COLUMN",
+		name:     "",
+		XFace:    nil,
+		YFace:    nil,
+		BBLength: nil,
+		BTLength: nil,
+		BBFactor: nil,
+		BTFactor: nil,
+		multi:    1.0,
+	}
 	return wc
 }
 func (wc *WoodColumn) Num() int {
@@ -2524,6 +2538,8 @@ func (wc *WoodColumn) SetValue(name string, vals []float64) {
 		wc.BBFactor = vals
 	case "BTFAC":
 		wc.BTFactor = vals
+	case "MULTI":
+		wc.multi = vals[0]
 	}
 }
 func (wc *WoodColumn) String() string {
@@ -2625,29 +2641,29 @@ func (wc *WoodColumn) Fb(cond *Condition) float64 {
 }
 func (wc *WoodColumn) Na(cond *Condition) float64 {
 	if cond.Compression {
-		return wc.Fc(cond) * wc.A()
+		return wc.Fc(cond) * wc.A() * wc.multi
 	} else {
-		return wc.Ft(cond) * wc.A()
+		return wc.Ft(cond) * wc.A() * wc.multi
 	}
 }
 func (wc *WoodColumn) Qa(cond *Condition) float64 {
 	f := wc.Fs(cond)
 	if cond.Strong { // for Qy
-		return f * wc.Asy()
+		return f * wc.Asy() * wc.multi
 	} else { // for Qx
-		return f * wc.Asx()
+		return f * wc.Asx() * wc.multi
 	}
 }
-func (sc *WoodColumn) Ma(cond *Condition) float64 {
-	f := sc.Fb(cond)
+func (wc *WoodColumn) Ma(cond *Condition) float64 {
+	f := wc.Fb(cond)
 	if cond.Strong {
-		return f * sc.Zx() * 0.01 // [tfm]
+		return f * wc.Zx() * 0.01 * wc.multi // [tfm]
 	} else {
-		return f * sc.Zy() * 0.01 // [tfm]
+		return f * wc.Zy() * 0.01 * wc.multi // [tfm]
 	}
 }
 func (wc *WoodColumn) Mza(cond *Condition) float64 {
-	return wc.Fs(cond) * wc.Torsion() * 0.01 // [tfm]
+	return wc.Fs(cond) * wc.Torsion() * 0.01 * wc.multi // [tfm]
 }
 
 func (wc *WoodColumn) Vertices() [][]float64 {

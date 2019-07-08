@@ -2217,6 +2217,12 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 				}
 			}
 			sr.SetValue(first, vals)
+		case "MULTI":
+			val, err := strconv.ParseFloat(words[1], 64)
+			if err != nil {
+				return err
+			}
+			sr.SetValue(first, []float64{val})
 		}
 		if err != nil {
 			return err
