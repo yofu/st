@@ -645,6 +645,9 @@ func (cond *AnalysisCondition) SetSolver(s string) {
 func (cond *AnalysisCondition) SetOutput(o []string) {
 	cond.otp = o
 }
+func (cond *AnalysisCondition) Output() []string {
+	return cond.otp
+}
 func (cond *AnalysisCondition) SetExtra(e [][]float64) {
 	cond.extra = e
 }

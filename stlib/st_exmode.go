@@ -4789,6 +4789,10 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					} else {
 						stw.CurrentLap("Completed", nlap, nlap)
 					}
+					otps := cond.Output()
+					if len(otps) > pind {
+						frame.ResultFileName[pers[pind]] = otps[pind]
+					}
 					SetPeriod(stw, per)
 					stw.Redraw()
 					if wait {
