@@ -2,7 +2,7 @@ package stgui
 
 import (
 	"github.com/visualfc/go-iup/cd"
-	"github.com/yofu/st/stlib"
+	st "github.com/yofu/st/stlib"
 )
 
 func (stw *Window) Line(x1, y1, x2, y2 float64) {
@@ -15,6 +15,7 @@ func (stw *Window) Polyline(coords [][]float64) {
 	for _, c := range coords {
 		cvs.FVertex(c[0], c[1])
 	}
+	cvs.FVertex(coords[0][0], coords[0][1])
 	cvs.End()
 }
 
@@ -24,6 +25,7 @@ func (stw *Window) Polygon(coords [][]float64) {
 	for _, c := range coords {
 		cvs.FVertex(c[0], c[1])
 	}
+	cvs.FVertex(coords[0][0], coords[0][1])
 	cvs.End()
 }
 
