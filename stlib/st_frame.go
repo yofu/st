@@ -5111,11 +5111,16 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			var fact float64
 			if el.Etype == BRACE {
 				fact = cond.Bfact
+				cond.Length = el.Length() * 100.0 // [cm]
 			} else {
 				fact = cond.Wfact
+				if bros, ok := el.Brother(); ok {
+					cond.Length = 0.5 * (el.Length() + bros.Length()) * 100.0 // [cm]
+				} else {
+					cond.Length = el.Length() * 100.0 // [cm]
+				}
 			}
-			cond.Length = el.Length() * 100.0 // [cm]
-			cond.Width = el.Width() * 100.0   // [cm]
+			cond.Width = el.Width() * 100.0 // [cm]
 			otp.WriteString(strings.Repeat("-", 202))
 			var sectstring string
 			if original {

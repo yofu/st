@@ -998,6 +998,22 @@ func (elem *Elem) Adopt(child *Elem) int {
 	return -1
 }
 
+func (elem *Elem) Brother() (*Elem, bool) {
+	if elem.Parent == nil {
+		return nil, false
+	}
+	if elem.Parent.Children == nil || len(elem.Parent.Children) == 0 {
+		return nil, false
+	}
+	for _, el := range elem.Parent.Children {
+		if el == elem {
+			continue
+		}
+		return el, true
+	}
+	return nil, false
+}
+
 func (elem *Elem) OriginalSection() *Sect {
 	switch elem.Etype {
 	default:
