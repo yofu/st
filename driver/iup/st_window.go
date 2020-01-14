@@ -2492,15 +2492,15 @@ func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
 			if black {
 				col := t.Font.Color()
 				t.Font.SetColor(cd.CD_BLACK)
-				DrawText(t, canv)
+				stw.DrawText(t, canv)
 				t.Font.SetColor(col)
 			} else {
-				DrawText(t, canv)
+				stw.DrawText(t, canv)
 			}
 		}
 	}
 	if !STLOGO.IsHidden(stw.frame.Show) {
-		DrawText(STLOGO, canv)
+		stw.DrawText(STLOGO, canv)
 	}
 }
 

@@ -1,6 +1,8 @@
 package stgui
 
 import (
+	"fmt"
+
 	"github.com/visualfc/go-iup/cd"
 	st "github.com/yofu/st/stlib"
 )
@@ -120,14 +122,22 @@ func (stw *Window) Flush() {
 }
 
 // TEXT
-func DrawText(t *st.TextBox, cvs *cd.Canvas) {
+func (stw *Window) DrawText(t *st.TextBox, cvs *cd.Canvas) {
 	s := cvs.SaveState()
 	cvs.Font(t.Font.Face(), cd.CD_PLAIN, t.Font.Size())
 	cvs.Foreground(t.Font.Color())
+	var x0, y0 float64
+	if stw.ShowPrintRange() {
+		w, h := stw.GetCanvasSize()
+		w0, h0, _ := stw.CanvasPaperSize()
+		x0 = 0.5 * (float64(w) - w0)
+		y0 = 0.5 * (float64(h) - h0)
+		fmt.Println(w, h, w0, h0, x0, y0)
+	}
 	for i, txt := range t.Text() {
 		xpos, ypos := t.Position()
 		ypos -= float64(i*t.Font.Size())*1.5 + float64(t.Font.Size())
-		cvs.FText(xpos, ypos, txt)
+		cvs.FText(x0+xpos, y0+ypos, txt)
 	}
 	cvs.RestoreState(s)
 }
