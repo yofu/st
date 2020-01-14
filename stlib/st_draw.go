@@ -736,6 +736,8 @@ func DrawText(stw Drawer, t *TextBox) {
 	d := -1.0
 	if stw.CanvasDirection() == 1 {
 		d = 1.0
+		_, height, _ := stw.CanvasPaperSize()
+		ypos = height - ypos
 	}
 	ypos += d * ls
 	for _, txt := range t.Text() {
