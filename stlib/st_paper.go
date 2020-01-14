@@ -27,3 +27,18 @@ func PaperSizemm(name uint) (float64, float64) {
 		return 0.0, 0.0
 	}
 }
+
+func PaperName(name uint) (string, string) {
+	switch name {
+	case A4_TATE:
+		return "A4", "Portrait"
+	case A4_YOKO:
+		return "A4", "Landscape"
+	case A3_TATE:
+		return "A3", "Portrait"
+	case A3_YOKO:
+		return "A3", "Landscape"
+	default:
+		return "", ""
+	}
+}

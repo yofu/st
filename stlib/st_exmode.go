@@ -1457,12 +1457,25 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return err
 		}
 	case "pdf":
-		pdf, err := NewPDFCanvas(595.28, 841.89)
+		if usage {
+			return Usage(":pdf filename")
+		}
+		paper := stw.PaperSize()
+		w, h := PaperSizemm(paper)
+		n, pl := PaperName(paper)
+		pdf, err := NewPDFCanvas(n, pl, w, h)
 		if err != nil {
 			return err
 		}
-		pdf.Draw(frame)
-		pdf.SaveAs(Ce(fn, ".pdf"))
+		v := frame.View.Copy()
+		frame.View.Center[0] = 0.5 * w * 4
+		frame.View.Center[1] = 0.5 * h * 4
+		pdf.Draw(frame, stw.TextBoxes())
+		err = pdf.SaveAs(Ce(fn, ".pdf"))
+		frame.View = v
+		if err != nil {
+			return err
+		}
 	case "check":
 		if usage {
 			return Usage(":check")
