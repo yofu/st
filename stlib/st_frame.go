@@ -5267,7 +5267,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	return nil
 }
 
-func (frame *Frame) Facts(fn string, etypes []int, skipany, skipall []int) error {
+func (frame *Frame) Facts(fn string, etypes []int, skipany, skipall []int, period []string) error {
 	var err error
 	l := frame.Ai.Nfloor
 	if l < 2 {
@@ -5344,15 +5344,17 @@ fact_node:
 		}
 	}
 	f := NewFact(l, true, frame.Ai.Base[0]/0.2, frame.Ai.Base[1]/0.2)
-	f.SetFileName([]string{frame.DataFileName["L"], frame.DataFileName["X"], frame.DataFileName["Y"]},
-		[]string{frame.ResultFileName["L"], frame.ResultFileName["X"], frame.ResultFileName["Y"]})
+	perx := strings.Split(period[0], "@")[0]
+	pery := strings.Split(period[1], "@")[0]
+	f.SetFileName([]string{frame.DataFileName["L"], frame.DataFileName[perx], frame.DataFileName[pery]},
+		[]string{frame.ResultFileName["L"], frame.ResultFileName[perx], frame.ResultFileName[pery]})
 	for i := 0; i < len(nodes); i++ {
 		sort.Sort(NodeByNum{nodes[i]})
 	}
 	for i := 0; i < len(elems); i++ {
 		sort.Sort(ElemByNum{elems[i]})
 	}
-	err = f.CalcFact(nodes, elems)
+	err = f.CalcFact(nodes, elems, period)
 	if err != nil {
 		return err
 	}
@@ -5365,7 +5367,7 @@ fact_node:
 	return nil
 }
 
-func (frame *Frame) FactsBySect(fn string, etypes []int, nsect, esect [][]int) error {
+func (frame *Frame) FactsBySect(fn string, etypes []int, nsect, esect [][]int, period []string) error {
 	var err error
 	if len(nsect) != len(esect) {
 		return fmt.Errorf("size error")
@@ -5426,15 +5428,17 @@ factbysect_node:
 		nodes[l] = append(nodes[l], n)
 	}
 	f := NewFact(l+1, true, frame.Ai.Base[0]/0.2, frame.Ai.Base[1]/0.2)
-	f.SetFileName([]string{frame.DataFileName["L"], frame.DataFileName["X"], frame.DataFileName["Y"]},
-		[]string{frame.ResultFileName["L"], frame.ResultFileName["X"], frame.ResultFileName["Y"]})
+	perx := strings.Split(period[0], "@")[0]
+	pery := strings.Split(period[1], "@")[0]
+	f.SetFileName([]string{frame.DataFileName["L"], frame.DataFileName[perx], frame.DataFileName[pery]},
+		[]string{frame.ResultFileName["L"], frame.ResultFileName[perx], frame.ResultFileName[pery]})
 	for i := 0; i < len(nodes); i++ {
 		sort.Sort(NodeByNum{nodes[i]})
 	}
 	for i := 0; i < len(elems); i++ {
 		sort.Sort(ElemByNum{elems[i]})
 	}
-	err = f.CalcFact(nodes, elems)
+	err = f.CalcFact(nodes, elems, period)
 	if err != nil {
 		return err
 	}

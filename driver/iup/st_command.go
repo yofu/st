@@ -3958,7 +3958,7 @@ func erase(stw *Window) {
 // FACTS// {{{
 func facts(stw *Window) {
 	fn := st.Ce(stw.frame.Path, ".fes")
-	err := stw.frame.Facts(fn, []int{st.COLUMN, st.GIRDER, st.BRACE, st.WBRACE, st.SBRACE}, nil, nil)
+	err := stw.frame.Facts(fn, []int{st.COLUMN, st.GIRDER, st.BRACE, st.WBRACE, st.SBRACE}, nil, nil, []string{"X", "Y"})
 	if err != nil {
 		st.ErrorMessage(stw, err, st.ERROR)
 	} else {

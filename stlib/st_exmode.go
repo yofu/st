@@ -1858,7 +1858,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		frame.SetBoundary(int(val), eps)
 	case "facts":
 		if usage {
-			return Usage(":facts {-skipany=code} {-skipall=code}")
+			return Usage(":facts {-skipany=code} {-skipall=code} {-skiproof} {-period=X,Y}")
 		}
 		var m bytes.Buffer
 		fn = Ce(frame.Path, ".fes")
@@ -1883,7 +1883,23 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		} else {
 			skipall = nil
 		}
-		err := frame.Facts(fn, []int{COLUMN, GIRDER, BRACE, WBRACE, SBRACE}, skipany, skipall)
+		skiproof := false
+		if _, ok := argdict["SKIPROOF"]; ok {
+			skiproof = true
+		}
+		period := []string{"X", "Y"}
+		if per, ok := argdict["PERIOD"]; ok {
+			lis := strings.Split(per, ",")
+			if len(lis) >= 2 {
+				period[0] = strings.TrimSpace(lis[0])
+				period[1] = strings.TrimSpace(lis[1])
+			}
+		}
+		etypes := []int{COLUMN, GIRDER, BRACE, WBRACE, SBRACE}
+		if skiproof {
+			etypes = []int{COLUMN, BRACE, WBRACE}
+		}
+		err := frame.Facts(fn, etypes, skipany, skipall, period)
 		if err != nil {
 			return err
 		}
@@ -1891,7 +1907,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		return Message(m.String())
 	case "factsbysect": // TODO: define nsect and esect as [][]int
 		if usage {
-			return Usage(":factsbysect {-node=code} {-sect=code}")
+			return Usage(":factsbysect {-node=code} {-sect=code} {-period=X,Y}")
 		}
 		var m bytes.Buffer
 		fn = Ce(frame.Path, ".fes")
@@ -1907,7 +1923,15 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if nsect == nil || esect == nil {
 			return NotEnoughArgs(":factsbysect")
 		}
-		err := frame.FactsBySect(fn, []int{COLUMN, GIRDER, BRACE, WBRACE, SBRACE}, [][]int{nsect}, [][]int{esect})
+		period := []string{"X", "Y"}
+		if per, ok := argdict["PERIOD"]; ok {
+			lis := strings.Split(per, ",")
+			if len(lis) >= 2 {
+				period[0] = strings.TrimSpace(lis[0])
+				period[1] = strings.TrimSpace(lis[1])
+			}
+		}
+		err := frame.FactsBySect(fn, []int{COLUMN, GIRDER, BRACE, WBRACE, SBRACE}, [][]int{nsect}, [][]int{esect}, period)
 		if err != nil {
 			return err
 		}

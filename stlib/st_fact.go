@@ -228,7 +228,7 @@ func (f *Fact) SetFileName(inp []string, otp []string) {
 	}
 }
 
-func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
+func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem, period []string) error {
 	if len(nodes) < f.Floor || len(elems) < f.Floor-1 {
 		return errors.New("CalcFact: Not Enough Data")
 	}
@@ -249,7 +249,7 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
 		for _, n := range nodes[i] {
 			num++
 			av_level += n.Coord[2]
-			for j, d := range []string{"X", "Y"} {
+			for j, d := range period {
 				if f.IgnoreConf && n.Conf[j] {
 					conf[j]++
 					continue
@@ -312,7 +312,7 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem) error {
 		maxdriftelem := make([]int, 2)
 		for _, el := range elems[i] {
 			otp.WriteString(fmt.Sprintf("%d %d", el.Num, el.Sect.Num))
-			for j, per := range []string{"X", "Y"} {
+			for j, per := range period {
 				drift := el.StoryDrift(per)
 				if math.Abs(drift) > math.Abs(tmpmaxdrift[j]) {
 					tmpmaxdrift[j] = drift
