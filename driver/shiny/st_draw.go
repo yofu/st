@@ -1,8 +1,10 @@
 package stshiny
 
 import (
+	"errors"
 	"image"
 	"image/color"
+	"math"
 	"strings"
 
 	"github.com/yofu/st/stlib"
@@ -121,6 +123,7 @@ func (stw *Window) Polyline(coords [][]float64) {
 	for i := 0; i < len(coords)-1; i++ {
 		stw.Line(coords[i][0], coords[i][1], coords[i+1][0], coords[i+1][1])
 	}
+	stw.Line(coords[len(coords)-1][0], coords[len(coords)-1][1], coords[0][0], coords[0][1])
 }
 
 func Blend(cvs *image.RGBA, x, y int, src color.RGBA) {
@@ -678,11 +681,21 @@ func (stw *Window) SelectElemStyle() {
 }
 
 func (stw *Window) ShowPrintRange() bool {
-	return false
+	return showprintrange
 }
 
 func (stw *Window) CanvasPaperSize() (float64, float64, error) {
-	return 0.0, 0.0, nil
+	w, h := stw.GetCanvasSize()
+	length := math.Min(float64(w), float64(h)) * 0.9
+	val := 1.0 / math.Sqrt(2)
+	switch stw.papersize {
+	default:
+		return 0.0, 0.0, errors.New("unknown papersize")
+	case st.A4_TATE, st.A3_TATE:
+		return length * val, length, nil
+	case st.A4_YOKO, st.A3_YOKO:
+		return length, length * val, nil
+	}
 }
 
 func (stw *Window) Flush() {

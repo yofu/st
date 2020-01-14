@@ -65,6 +65,8 @@ var (
 	tailColor        = color.RGBA{0xff, 0xff, 0x00, 0x22}
 	selectleftColor  = color.RGBA{0x00, 0x00, 0x77, 0x22}
 	selectrightColor = color.RGBA{0x00, 0x77, 0x00, 0x22}
+
+	showprintrange = false
 )
 
 const (
@@ -1115,10 +1117,12 @@ func (stw *Window) SetAltSelectNode(a bool) {
 	altselectnode = a
 }
 
-func (stw *Window) SetShowPrintRange(bool) {
+func (stw *Window) SetShowPrintRange(val bool) {
+	showprintrange = val
 }
 
 func (stw *Window) ToggleShowPrintRange() {
+	showprintrange = !showprintrange
 }
 
 func (stw *Window) CurrentLap(string, int, int) {
