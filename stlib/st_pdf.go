@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	defaultfont = filepath.Join(os.Getenv("HOME"), ".st/fonts/ipam.ttf")
+	defaultfont = "ipam.ttf"
 	scale       = 0.25
 )
 
@@ -22,7 +22,7 @@ type PDFCanvas struct {
 }
 
 func NewPDFCanvas(name, style string, width, height float64) (*PDFCanvas, error) {
-	pdf := gofpdf.New(style, "mm", name, "")
+	pdf := gofpdf.New(style, "mm", name, filepath.Join(os.Getenv("HOME"), ".st/fonts"))
 	if err := pdf.Error(); err != nil {
 		return nil, err
 	}
