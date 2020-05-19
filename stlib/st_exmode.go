@@ -907,7 +907,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		ns := stw.SelectedNodes()
 		sort.Sort(NodeByNum{ns})
-		err = WriteReaction(fn, ns, int(tmp))
+		err = WriteReaction(fn, ns, int(tmp), frame.Show.Unit[0])
 		if err != nil {
 			return err
 		}
@@ -3643,14 +3643,19 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			period := frame.Show.Period
 			var w bytes.Buffer
 			for _, el := range currentelem(stw, exmodech, exmodeend) {
-				w.WriteString(fmt.Sprintf("ELEM: %d\n", el.Num))
+				w.WriteString(fmt.Sprintf("%d ", el.Num))
 				for i := 0; i < 2; i++ {
 					for j := 0; j < 6; j++ {
 						if inds[6*i+j] {
-							w.WriteString(fmt.Sprintf(format+"\n", el.ReturnStress(period, i, j)))
+							unit := frame.Show.Unit[0]
+							if j >= 3 {
+								unit *= frame.Show.Unit[1]
+							}
+							w.WriteString(fmt.Sprintf(format, el.ReturnStress(period, i, j)*unit))
 						}
 					}
 				}
+				w.WriteString("\n")
 			}
 			err := clipboard.WriteAll(w.String())
 			if err != nil {

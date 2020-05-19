@@ -2516,13 +2516,13 @@ func (frame *Frame) WriteOutput(fn string, p string) error {
 }
 
 // WriteReaction writes an output file of reaction.
-func (frame *Frame) WriteReaction(fn string, direction int) error {
+func (frame *Frame) WriteReaction(fn string, direction int, unit float64) error {
 	ns := make([]*Node, len(frame.Nodes))
 	for nnum, n := range frame.Nodes {
 		ns[nnum] = n
 	}
 	sort.Sort(NodeByNum{ns})
-	return WriteReaction(fn, ns, direction)
+	return WriteReaction(fn, ns, direction, frame.Show.Unit[0])
 }
 
 // ReportZoubunDisp writes an output file which reports displacement data of push-over analysis.
@@ -6200,7 +6200,7 @@ func WriteOutput(fn string, p string, els []*Elem) error {
 	return nil
 }
 
-func WriteReaction(fn string, ns []*Node, direction int) error {
+func WriteReaction(fn string, ns []*Node, direction int, unit float64) error {
 	var otp bytes.Buffer
 	r := make([]float64, 3)
 	otp.WriteString(" NODE   XCOORD   YCOORD   ZCOORD     WEIGHT       LONG      XSEIS      YSEIS        W+L      W+L+X      W+L-X      W+L+Y      W+L-Y PILE\n")
@@ -6212,10 +6212,10 @@ func WriteReaction(fn string, ns []*Node, direction int) error {
 			continue
 		}
 		otp.WriteString(fmt.Sprintf(" %4d %8.3f %8.3f %8.3f", n.Num, n.Coord[0], n.Coord[1], n.Coord[2]))
-		wgt := n.Weight[1]
+		wgt := n.Weight[1] * unit
 		for i, per := range []string{"L", "X", "Y"} {
 			if rea, ok := n.Reaction[per]; ok {
-				r[i] = rea[direction]
+				r[i] = rea[direction] * unit
 			} else {
 				r[i] = 0.0
 			}

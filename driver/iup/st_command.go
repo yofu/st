@@ -3483,7 +3483,7 @@ func reaction(stw *Window) {
 	sns := stw.SelectedNodes()
 	sort.Sort(st.NodeByNum{sns})
 	fn := st.Ce(stw.frame.Path, ".rct")
-	err = st.WriteReaction(fn, sns, d)
+	err = st.WriteReaction(fn, sns, d, stw.frame.Show.Unit[0])
 	if err != nil {
 		st.ErrorMessage(stw, err, st.ERROR)
 		stw.EscapeCB()
