@@ -2001,6 +2001,9 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 	case "SAREA":
 		size = 1
 		shape, err = NewSAREA(lis[1][1 : 1+size])
+	case "THICK":
+		size = 1
+		shape, err = NewTHICK(lis[1][1 : 1+size])
 	default:
 		return nil
 	}

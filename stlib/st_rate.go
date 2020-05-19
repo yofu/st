@@ -1645,6 +1645,75 @@ func (sa SAREA) Breadth(strong bool) float64 {
 	return math.Sqrt(sa.Area/math.Pi) * 2.0
 }
 
+type THICK struct {
+	Thickness float64
+}
+
+func NewTHICK(lis []string) (THICK, error) {
+	th := THICK{0.0}
+	if len(lis) < 1 {
+		return th, NotEnoughArgs("NewTHICK")
+	}
+	var val float64
+	var err error
+	val, err = strconv.ParseFloat(lis[0], 64)
+	if err != nil {
+		return th, err
+	}
+	th.Thickness = val
+	return th, nil
+}
+func (th THICK) String() string {
+	return fmt.Sprintf("THICK %5.1f", th.Thickness)
+}
+func (th THICK) Description() string {
+	return fmt.Sprintf("%d[mm]", int(th.Thickness*10))
+}
+func (th THICK) A() float64 {
+	return 0.0
+}
+func (th THICK) Asx() float64 {
+	return 0.0
+}
+func (th THICK) Asy() float64 {
+	return 0.0
+}
+func (th THICK) Ix() float64 {
+	return 0.0
+}
+func (th THICK) Iy() float64 {
+	return 0.0
+}
+func (th THICK) J() float64 {
+	return 0.0
+}
+func (th THICK) Iw() float64 {
+	return 0.0
+}
+func (th THICK) Torsion() float64 {
+	return 0.0
+}
+func (th THICK) Zx() float64 {
+	return 0.0
+}
+func (th THICK) Zy() float64 {
+	return 0.0
+}
+
+func (th THICK) Vertices() [][]float64 {
+	vertices := make([][]float64, 4)
+	b := 100.0
+	vertices[0] = []float64{b * 0.5, th.Thickness * 0.5}
+	vertices[1] = []float64{b * 0.5, -th.Thickness * 0.5}
+	vertices[2] = []float64{-b * 0.5, -th.Thickness * 0.5}
+	vertices[3] = []float64{-b * 0.5, th.Thickness * 0.5}
+	return vertices
+}
+
+func (th THICK) Breadth(strong bool) float64 {
+	return 100.0
+}
+
 type SGirder struct {
 	SColumn
 }
