@@ -2033,6 +2033,8 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 		sr = NewSGirder(num, shape, material)
 	case "BRACE":
 		sr = NewSBrace(num, shape, material)
+	case "WALL":
+		sr = NewSWall(num, shape, material)
 	default:
 		return nil
 	}

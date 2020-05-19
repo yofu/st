@@ -1740,6 +1740,92 @@ func (sg *SBrace) TypeString() string {
 	return "Ｓ　筋違"
 }
 
+type SWall struct {
+	Steel
+	Shape
+	num   int
+	name  string
+	Wrect []float64
+}
+
+func NewSWall(num int, shape Shape, material Steel) *SWall {
+	return &SWall{
+		Steel: material,
+		Shape: shape,
+		num:   num,
+		name:  "",
+		Wrect: make([]float64, 2),
+	}
+}
+func (sw *SWall) Num() int {
+	return sw.num
+}
+func (sw *SWall) TypeString() string {
+	return "Ｓ　壁　"
+}
+func (sw *SWall) Snapshot() SectionRate {
+	r := NewSWall(sw.num, sw.Shape, sw.Steel)
+	r.name = sw.name
+	for i := 0; i < 2; i++ {
+		r.Wrect[i] = sw.Wrect[i]
+	}
+	return sw
+}
+func (sw *SWall) String() string {
+	var rtn bytes.Buffer
+	rtn.WriteString(fmt.Sprintf("CODE %3d S WALL %57s\n", sw.num, fmt.Sprintf("\"%s\"", sw.name)))
+	line2 := fmt.Sprintf("         %%-29s %%s %%%ds\n", 35-len(sw.Steel.Name))
+	rtn.WriteString(fmt.Sprintf(line2, sw.Shape.String(), sw.Steel.Name, fmt.Sprintf("\"%s\"", sw.Shape.Description())))
+	return rtn.String()
+}
+func (sw *SWall) Name() string {
+	return sw.name
+}
+func (sw *SWall) SetName(name string) {
+	sw.name = name
+}
+func (sw *SWall) SetValue(name string, vals []float64) {
+	switch name {
+	case "WRECT":
+		sw.Wrect = vals
+	}
+}
+func (sw *SWall) Factor(p string) float64 {
+	switch p {
+	default:
+		return 0.0
+	case "L":
+		return 1.0
+	case "X", "Y", "S":
+		return 1.5
+	}
+}
+func (sw *SWall) Fs(cond *Condition) float64 {
+	return sw.F / (1.5 * math.Sqrt(3)) * sw.Factor(cond.Period)
+}
+func (sw *SWall) Thickness() float64 {
+	return sw.Shape.(THICK).Thickness
+}
+func (sw *SWall) Na(cond *Condition) float64 {
+	fs := sw.Fs(cond)
+	r := 1.0 // TODO: set windowrate
+	Qa := r * sw.Thickness() * cond.Length * fs
+	return 0.5 * Qa
+}
+func (sw *SWall) Qa(cond *Condition) float64 {
+	return 0.0
+}
+func (sw *SWall) Ma(cond *Condition) float64 {
+	return 0.0
+}
+func (sw *SWall) Mza(cond *Condition) float64 {
+	return 0.0
+}
+
+func (sw *SWall) Amount() Amount {
+	return nil
+}
+
 type CShape interface {
 	String() string
 	Bound(int) float64
