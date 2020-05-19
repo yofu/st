@@ -10,6 +10,7 @@ import (
 
 	"golang.org/x/mobile/event/key"
 
+	"github.com/atotto/clipboard"
 	"github.com/yofu/dxf"
 	"github.com/yofu/st/matrix"
 )
@@ -613,6 +614,7 @@ func Notice1459(stw Commander) chan bool {
 		if len(ns) < 2 {
 			return fmt.Errorf("too few nodes")
 		}
+		var otp bytes.Buffer
 		frame := stw.Frame()
 		var delta float64
 		ds := make([]float64, len(ns))
@@ -629,14 +631,19 @@ func Notice1459(stw Commander) chan bool {
 			for i := 0; i < 2; i++ {
 				length += math.Pow(ns[1].Coord[i]-ns[0].Coord[i], 2)
 			}
+			length = math.Sqrt(length) * 100
+			otp.WriteString(fmt.Sprintf("梁G1(部材  、断面  、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - %.3f = %.3f [cm]\n長さL= %.1f [cm]\n変形増大係数α= 1\nα×δ/L=1×%.3f/ %.3f = 1/%d\n", ns[1].Num, ds[1], ds[0], delta, length, delta, length, math.Abs(length/delta)))
+			clipboard.WriteAll(otp.String())
 		case 3:
 			delta = ds[1] - 0.5*(ds[0]+ds[2])
 			stw.History(fmt.Sprintf("Disp: %.3f - (%.3f + %.3f)/2 [cm]", ds[1], ds[0], ds[2]))
 			for i := 0; i < 2; i++ {
 				length += math.Pow(ns[2].Coord[i]-ns[0].Coord[i], 2)
 			}
+			length = math.Sqrt(length) * 100
+			otp.WriteString(fmt.Sprintf("梁G1(部材  、断面  、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - (%.3f + %.3f)/2 = %.3f [cm]\n長さL= %.1f [cm]\n変形増大係数α= 1\nα×δ/L=1×%.3f/ %.3f = 1/%d\n", ns[1].Num, ds[1], ds[0], ds[2], delta, length, delta, length, math.Abs(length/delta)))
+			clipboard.WriteAll(otp.String())
 		}
-		length = math.Sqrt(length) * 100
 		if delta != 0.0 {
 			stw.History(fmt.Sprintf("Distance: %.3f[cm]", length))
 			stw.History(fmt.Sprintf("Slope: 1/%.1f", math.Abs(length/delta)))

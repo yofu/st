@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/atotto/clipboard"
 	"github.com/visualfc/go-iup/cd"
 	"github.com/visualfc/go-iup/iup"
 	st "github.com/yofu/st/stlib"
@@ -3653,6 +3654,7 @@ func notice1459(stw *Window) {
 			ds[i] = -sns[i].ReturnDisp(stw.frame.Show.Period, 2) * 100
 		}
 		var length float64
+		var otp bytes.Buffer
 		switch num {
 		default:
 			stw.EscapeAll()
@@ -3663,14 +3665,42 @@ func notice1459(stw *Window) {
 			for i := 0; i < 2; i++ {
 				length += math.Pow(sns[1].Coord[i]-sns[0].Coord[i], 2)
 			}
+			length = math.Sqrt(length) * 100
+			var enum, snum int
+			for _, el := range stw.frame.SearchElem(sns[0], sns[1]) {
+				if el.Etype == st.GIRDER {
+					enum = el.Num
+					snum = el.Sect.Num
+					break
+				}
+			}
+			otp.WriteString(fmt.Sprintf("梁G1(部材 %d 、断面 %d 、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - %.3f = %.3f [cm]\n長さL= %.1f [cm]\n変形増大係数α= 1\nα×δ/L=1×%.3f/ %.3f = 1/%d\n", enum, snum, sns[1].Num, ds[1], ds[0], delta, length, delta, length, math.Abs(length/delta)))
+			clipboard.WriteAll(otp.String())
 		case 3:
 			delta = ds[1] - 0.5*(ds[0]+ds[2])
 			stw.addHistory(fmt.Sprintf("Disp: %.3f - (%.3f + %.3f)/2 [cm]", ds[1], ds[0], ds[2]))
 			for i := 0; i < 2; i++ {
 				length += math.Pow(sns[2].Coord[i]-sns[0].Coord[i], 2)
 			}
+			length = math.Sqrt(length) * 100
+			var enum1, enum2, snum int
+			for _, el := range stw.frame.SearchElem(sns[0], sns[1]) {
+				if el.Etype == st.GIRDER {
+					enum1 = el.Num
+					snum = el.Sect.Num
+					break
+				}
+			}
+			for _, el := range stw.frame.SearchElem(sns[1], sns[2]) {
+				if el.Etype == st.GIRDER {
+					enum2 = el.Num
+					snum = el.Sect.Num
+					break
+				}
+			}
+			otp.WriteString(fmt.Sprintf("梁G1(部材 %d, %d 、断面 %d 、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - (%.3f + %.3f)/2 = %.3f [cm]\n長さL= %.1f [cm]\n変形増大係数α= 1\nα×δ/L=1×%.3f/ %.1f = 1/%d\n", enum1, enum2, snum, sns[1].Num, ds[1], ds[0], ds[2], delta, length, delta, length, int(math.Abs(length/delta))))
+			clipboard.WriteAll(otp.String())
 		}
-		length = math.Sqrt(length) * 100
 		if delta != 0.0 {
 			stw.addHistory(fmt.Sprintf("Distance: %.3f[cm]", length))
 			stw.addHistory(fmt.Sprintf("Slope: 1/%.1f", math.Abs(length/delta)))
