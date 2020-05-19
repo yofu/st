@@ -127,6 +127,7 @@ var (
 	M40J = Steel{"M40J", 5.438, 8.157, 2100.0, 0.3}
 	T300 = Steel{"T300", 7.477, 11.216, 2100.0, 0.3}
 
+	FC18 = Concrete{"Fc18", 0.180, 210.0, 0.166666}
 	FC24 = Concrete{"Fc24", 0.240, 210.0, 0.166666}
 	FC30 = Concrete{"Fc30", 0.300, 210.0, 0.166666}
 	FC36 = Concrete{"Fc36", 0.360, 210.0, 0.166666}
@@ -1969,6 +1970,8 @@ func (rc *RCColumn) SetConcrete(lis []string) error {
 		rc.CShape = NewCRect(vals)
 	}
 	switch lis[5] {
+	case "FC18":
+		rc.Concrete = FC18
 	case "FC24":
 		rc.Concrete = FC24
 	case "FC30":
@@ -2463,6 +2466,8 @@ func (rw *RCWall) SetConcrete(lis []string) error {
 		rw.Thick = val
 	}
 	switch lis[2] {
+	case "FC18":
+		rw.Concrete = FC18
 	case "FC24":
 		rw.Concrete = FC24
 	case "FC30":
