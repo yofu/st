@@ -929,6 +929,36 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 				ElemCaptionOn(stw, "EC_DRIFT_Y")
 			}
 		}
+	case "tensile":
+		if usage {
+			stw.History("'tensile [x,y]")
+			return nil
+		}
+		if len(lis) < 2 {
+			if un {
+				ElemCaptionOff(stw, "EC_TENSILE_X")
+				ElemCaptionOff(stw, "EC_TENSILE_Y")
+				return nil
+			} else {
+				return NotEnoughArgs("drift")
+			}
+		}
+		switch strings.ToUpper(lis[1]) {
+		default:
+			return errors.New("unknown period")
+		case "X":
+			if un {
+				ElemCaptionOff(stw, "EC_TENSILE_X")
+			} else {
+				ElemCaptionOn(stw, "EC_TENSILE_X")
+			}
+		case "Y":
+			if un {
+				ElemCaptionOff(stw, "EC_TENSILE_Y")
+			} else {
+				ElemCaptionOn(stw, "EC_TENSILE_Y")
+			}
+		}
 	case "deformation":
 		if un {
 			DeformationOff(stw, false)

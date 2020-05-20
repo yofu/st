@@ -131,6 +131,20 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			oncap = true
 		}
 	}
+	if show.ElemCaption&EC_TENSILE_X != 0 {
+		t := elem.UltimateTensileForce("X") * show.Unit[0]
+		if t < 0.0 {
+			ecap.WriteString(fmt.Sprintf("%.3f\n", t))
+			oncap = true
+		}
+	}
+	if show.ElemCaption&EC_TENSILE_Y != 0 {
+		t := elem.UltimateTensileForce("Y") * show.Unit[0]
+		if t < 0.0 {
+			ecap.WriteString(fmt.Sprintf("%.3f\n", t))
+			oncap = true
+		}
+	}
 	if show.SrcanRate != 0 {
 		val, err := elem.RateMax(show)
 		if err == nil {
