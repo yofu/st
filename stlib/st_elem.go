@@ -2183,6 +2183,55 @@ func (elem *Elem) StoryDrift(period string) float64 {
 	}
 }
 
+func (elem *Elem) UltimateTensileForce(period string) float64 {
+	if !elem.IsLineElem() {
+		return 0.0
+	}
+	var axis []float64
+	switch period {
+	default:
+		return 0.0
+	case "X":
+		axis = YAXIS
+	case "Y":
+		axis = XAXIS
+	}
+	maxrate := 0.0
+	plates, err := elem.EdgeOf()
+	if err != nil {
+		return 0.0
+	}
+	for _, plate := range plates {
+		if elem.Num == 1011 {
+			fmt.Println(plate.Num, plate.Etype, plate.IsBraced(), IsParallel(axis, plate.Normal(true), 1e-3))
+		}
+		if plate.Etype == WALL && plate.IsBraced() {
+			if !IsParallel(axis, plate.Normal(true), 1e-3) {
+				continue
+			}
+			r, err := plate.RateMax(elem.Frame.Show)
+			if err != nil {
+				continue
+			}
+			if r > maxrate {
+				maxrate = r
+			}
+		}
+	}
+	if maxrate > 1.0 {
+		maxrate = 1.0
+	} else if maxrate == 0.0 {
+		maxrate = 1.0
+	}
+	nl := elem.N("L", elem.Enod[0].Num)
+	ne := elem.N(period, elem.Enod[0].Num)
+	if ne < 0.0 {
+		return nl + ne/maxrate
+	} else {
+		return nl - ne/maxrate
+	}
+}
+
 func (elem *Elem) ChangeBond(bond []*Bond, side ...int) error {
 	if !elem.IsLineElem() {
 		return NotLineElem("ChangeBond")
