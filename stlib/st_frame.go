@@ -5006,15 +5006,8 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	sort.Sort(ElemByNum{elems})
 	maxrateelem := make(map[int][]*Elem)
 	for _, el := range elems {
-		var al SectionRate
-		original := false
-		if a, ok := frame.Allows[el.Sect.Num]; ok {
-			al = a
-		} else if oa, ok := frame.Allows[el.OriginalSection().Num]; ok {
-			al = oa
-			original = true
-		}
-		if al == nil {
+		al, original, err := el.GetSectionRate()
+		if err != nil {
 			continue
 		}
 		switch el.Etype {

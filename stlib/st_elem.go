@@ -1023,6 +1023,20 @@ func (elem *Elem) OriginalSection() *Sect {
 	}
 }
 
+func (elem *Elem) GetSectionRate() (SectionRate, bool, error) {
+	var al SectionRate
+	original := false
+	if a, ok := elem.Frame.Allows[elem.Sect.Num]; ok {
+		al = a
+	} else if oa, ok := elem.Frame.Allows[elem.OriginalSection().Num]; ok {
+		al = oa
+		original = true
+	} else {
+		return nil, false, fmt.Errorf("cannot find SectionRate")
+	}
+	return al, original, nil
+}
+
 func (elem *Elem) EdgedBy() ([]*Elem, error) {
 	if elem.IsLineElem() {
 		return nil, NotPlateElem("EdgedBy")
