@@ -1832,6 +1832,9 @@ type CShape interface {
 	Bound(int) float64
 	Breadth(bool) float64
 	Area() float64
+	Ix() float64
+	Iy() float64
+	J() float64
 	Height(bool) float64
 	Vertices() [][]float64
 }
@@ -1877,6 +1880,17 @@ func (cr CRect) Height(strong bool) float64 {
 }
 func (cr CRect) Area() float64 {
 	return cr.Breadth(true) * cr.Height(true)
+}
+func (cr CRect) Ix() float64 {
+	return cr.Breadth(true) * math.Pow(cr.Height(true), 3.0) / 12.0
+}
+func (cr CRect) Iy() float64 {
+	return cr.Breadth(false) * math.Pow(cr.Height(false), 3.0) / 12.0
+}
+func (cr CRect) J() float64 {
+	b := cr.Breadth(true)
+	h := cr.Height(true)
+	return math.Pi / 16.0 * math.Pow(b, 3.0) * math.Pow(h, 3.0) / (math.Pow(b, 2.0) + math.Pow(h, 2.0))
 }
 
 func (cr CRect) Vertices() [][]float64 {
