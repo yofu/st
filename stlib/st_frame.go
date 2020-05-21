@@ -4696,7 +4696,7 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	}
 	sort.Ints(ekeys)
 	for _, k := range ekeys {
-		otp.WriteString(fmt.Sprintf("%9d %9.3f\n", k, amount[k]))
+		otp.WriteString(fmt.Sprintf("%9d %9.3f 【%s】\n", k, amount[k], frame.Sects[k].Name))
 	}
 	otp.WriteString("\n")
 	switch frame.Show.UnitName[0] {
@@ -4728,9 +4728,13 @@ func (frame *Frame) AiDistribution() (string, error) {
 	size := frame.Ai.Nfloor
 	frame.Ai.Wi = make([]float64, size)
 	frame.Ai.Level = make([]float64, size)
+	total := make([]float64, 3)
 	nnum := make([]int, size)
 	maxheight := MINCOORD
 	for _, n := range frame.Nodes {
+		for i := 0; i < 3; i++ {
+			total[i] += n.Weight[i]
+		}
 		height := n.Coord[2]
 		if height < frame.Ai.Boundary[0] {
 			continue
@@ -4838,6 +4842,9 @@ func (frame *Frame) AiDistribution() (string, error) {
 	rtn.WriteString(fmt.Sprintf("地域係数             Z =%5.3f\n", frame.Ai.Locate))
 	rtn.WriteString(fmt.Sprintf("標準層せん断力係数   Cox=%5.3f, Coy=%5.3f\n", frame.Ai.Base[0], frame.Ai.Base[1]))
 	rtn.WriteString(fmt.Sprintf("基礎部分の震度       Cfx=%5.3f, Cfy=%5.3f\n\n", facts[0][0], facts[1][0]))
+	rtn.WriteString(fmt.Sprintf("床用積載荷重による総荷重    = %10.3f\n", frame.Show.Unit[0]*total[0]))
+	rtn.WriteString(fmt.Sprintf("柱梁用積載荷重による総荷重  = %10.3f\n", frame.Show.Unit[0]*total[1]))
+	rtn.WriteString(fmt.Sprintf("地震用積載荷重による総荷重  = %10.3f\n\n", frame.Show.Unit[0]*total[2]))
 	rtn.WriteString("各階平均高さ      :")
 	for i := 0; i < size; i++ {
 		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Level[i]))
