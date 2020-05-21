@@ -289,6 +289,16 @@ func (sect *Sect) Iy(ind int) (float64, error) {
 	return 0.0, errors.New(fmt.Sprintf("Iy: SECT %d Fig %d doesn't have IYY", ind, sect.Num))
 }
 
+func (sect *Sect) J(ind int) (float64, error) {
+	if len(sect.Figs) < ind+1 {
+		return 0.0, errors.New(fmt.Sprintf("J: SECT %d has no Fig %d", sect.Num, ind))
+	}
+	if val, ok := sect.Figs[ind].Value["VEN"]; ok {
+		return val, nil
+	}
+	return 0.0, errors.New(fmt.Sprintf("J: SECT %d Fig %d doesn't have VEN", ind, sect.Num))
+}
+
 func (sect *Sect) Thick(ind int) (float64, error) {
 	if len(sect.Figs) < ind+1 {
 		return 0.0, errors.New(fmt.Sprintf("Thick: SECT %d has no Fig %d", sect.Num, ind))
