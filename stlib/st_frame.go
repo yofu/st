@@ -4538,7 +4538,7 @@ func (frame *Frame) ExtractArclm(fn string) error {
 	}
 	for _, p := range []string{"L", "X", "Y"} {
 		af := arclm.NewFrame()
-		af.Sects = make([]*arclm.Sect, snum+len(frame.Bonds))
+		af.Sects = make([]*arclm.Sect, snum+bnum)
 		arclmsects := make(map[int]int)
 		for i, sec := range sects {
 			yield := make([]float64, 12)
@@ -6364,6 +6364,9 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, wind *Windparameter
 	nelem := len(elems)
 	for _, c := range chains {
 		nelem += c.Size()
+	}
+	if len(bonds) == 0 {
+		bonds = []*Bond{Pin}
 	}
 	otp.WriteString(fmt.Sprintf("%s\n", title))
 	otp.WriteString(fmt.Sprintf("NNODE %d\n", len(nodes)))
