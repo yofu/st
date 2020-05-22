@@ -1604,7 +1604,7 @@ func (stw *Window) SaveFileSelected(fn string) error {
 		stw.frame.View.Dists[1] *= scale
 	}
 	passwatcher = true
-	err := st.WriteInp(fn, stw.frame.View, stw.frame.Ai, els)
+	err := st.WriteInp(fn, stw.frame.View, stw.frame.Ai, stw.frame.Wind, els)
 	if v != nil {
 		stw.frame.View = v
 	}
