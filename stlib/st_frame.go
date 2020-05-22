@@ -5250,6 +5250,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	otp.WriteString(fmt.Sprintf("\n安全率の最大値\n Q/QaL=%7.5f Q/QaS=%7.5f\n M/MaL=%7.5f M/MaS=%7.5f\n", maxql, maxqs, maxml, maxms))
 	otp.WriteString("==========================================================================================================================================================================================================\n各断面種別の入力情報の確認\n\n")
 	otp.WriteString("                              A[cm2]      Ix[cm4]      Iy[cm4]       J[cm4]\n")
+	otp.WriteString("                              t[cm]\n")
 	otp.WriteString(frame.CheckLst(keys))
 	w, err := os.Create(Ce(fn, ".tst"))
 	defer w.Close()
@@ -5278,52 +5279,72 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 func (frame *Frame) CheckLst(secnum []int) string {
 	var otp bytes.Buffer
 	for _, snum := range secnum {
-		a1, _ := frame.Sects[snum].Area(0)
-		ix1, _ := frame.Sects[snum].Ix(0)
-		iy1, _ := frame.Sects[snum].Iy(0)
-		j1, _ := frame.Sects[snum].J(0)
-		var a2, ix2, iy2, j2 float64
-		switch al := frame.Allows[snum].(type) {
-		case *SColumn:
-			sh := al.Shape
-			a2 = sh.A()
-			ix2 = sh.Ix()
-			iy2 = sh.Iy()
-			j2 = sh.J()
-		case *SGirder:
-			sh := al.Shape
-			a2 = sh.A()
-			ix2 = sh.Ix()
-			iy2 = sh.Iy()
-			j2 = sh.J()
-		case *RCColumn:
-			sh := al.CShape
-			a2 = sh.Area()
-			ix2 = sh.Ix()
-			iy2 = sh.Iy()
-			j2 = sh.J()
-		case *RCGirder:
-			sh := al.CShape
-			a2 = sh.Area()
-			ix2 = sh.Ix()
-			iy2 = sh.Iy()
-			j2 = sh.J()
-		case *WoodColumn:
-			sh := al.Shape
-			a2 = sh.A()
-			ix2 = sh.Ix()
-			iy2 = sh.Iy()
-			j2 = sh.J()
-		case *WoodGirder:
-			sh := al.Shape
-			a2 = sh.A()
-			ix2 = sh.Ix()
-			iy2 = sh.Iy()
-			j2 = sh.J()
-		default:
+		if snum < 700 {
+			a1, _ := frame.Sects[snum].Area(0)
+			ix1, _ := frame.Sects[snum].Ix(0)
+			iy1, _ := frame.Sects[snum].Iy(0)
+			j1, _ := frame.Sects[snum].J(0)
+			var a2, ix2, iy2, j2 float64
+			switch al := frame.Allows[snum].(type) {
+			case *SColumn:
+				sh := al.Shape
+				a2 = sh.A()
+				ix2 = sh.Ix()
+				iy2 = sh.Iy()
+				j2 = sh.J()
+			case *SGirder:
+				sh := al.Shape
+				a2 = sh.A()
+				ix2 = sh.Ix()
+				iy2 = sh.Iy()
+				j2 = sh.J()
+			case *RCColumn:
+				sh := al.CShape
+				a2 = sh.Area()
+				ix2 = sh.Ix()
+				iy2 = sh.Iy()
+				j2 = sh.J()
+			case *RCGirder:
+				sh := al.CShape
+				a2 = sh.Area()
+				ix2 = sh.Ix()
+				iy2 = sh.Iy()
+				j2 = sh.J()
+			case *WoodColumn:
+				sh := al.Shape
+				a2 = sh.A()
+				ix2 = sh.Ix()
+				iy2 = sh.Iy()
+				j2 = sh.J()
+			case *WoodGirder:
+				sh := al.Shape
+				a2 = sh.A()
+				ix2 = sh.Ix()
+				iy2 = sh.Iy()
+				j2 = sh.J()
+			default:
+			}
+			otp.WriteString(fmt.Sprintf("断面記号: %3d 応力解析: %12.3f %12.3f %12.3f %12.3f\n", snum, a1*1e4, ix1*1e8, iy1*1e8, j1*1e8))
+			otp.WriteString(fmt.Sprintf("              断面算定: %12.3f %12.3f %12.3f %12.3f\n", a2, ix2, iy2, j2))
+		} else {
+			t1, _ := frame.Sects[snum].Thick(0)
+			var t2 float64
+			switch al := frame.Allows[snum].(type) {
+			case *SWall:
+				t2 = al.Thickness()
+			case *RCWall:
+				t2 = al.Thick
+			case *RCSlab:
+				t2 = al.Thick
+			case *WoodWall:
+				t2 = al.Thick
+			case *WoodSlab:
+				t2 = al.Thick
+			default:
+			}
+			otp.WriteString(fmt.Sprintf("断面記号: %3d 応力解析: %12.3f\n", snum, t1*1e2))
+			otp.WriteString(fmt.Sprintf("              断面算定: %12.3f\n", t2))
 		}
-		otp.WriteString(fmt.Sprintf("断面記号: %3d 応力解析: %12.3f %12.3f %12.3f %12.3f\n", snum, a1*1e4, ix1*1e8, iy1*1e8, j1*1e8))
-		otp.WriteString(fmt.Sprintf("              断面算定: %12.3f %12.3f %12.3f %12.3f\n", a2, ix2, iy2, j2))
 	}
 	return otp.String()
 }
