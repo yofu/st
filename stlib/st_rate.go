@@ -1388,10 +1388,18 @@ func (pl PLATE) Iy() float64 {
 	return pl.H * math.Pow(pl.B, 3.0) / 12.0
 }
 func (pl PLATE) J() float64 {
+	var h, b float64
 	if pl.H >= pl.B {
-		return pl.H * math.Pow(pl.B, 3.0) / 3.0
+		h = pl.H
+		b = pl.B
 	} else {
-		return pl.B * math.Pow(pl.H, 3.0) / 3.0
+		h = pl.B
+		b = pl.H
+	}
+	if h > 10.0*b {
+		return h * math.Pow(b, 3.0) / 3.0
+	} else {
+		return math.Pi / 16.0 * math.Pow(b, 3.0) * math.Pow(h, 3.0) / (math.Pow(b, 2.0) + math.Pow(h, 2.0))
 	}
 }
 func (pl PLATE) Iw() float64 {
