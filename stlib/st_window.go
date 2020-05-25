@@ -141,7 +141,7 @@ func OpenFile(stw Window, filename string, readrcfile bool) error {
 			}
 		}
 	}
-	frame.Show.LegendPosition[0] = int(w) - 100
+	frame.Show.LegendPosition[0] = int(w) - 200
 	frame.Show.LegendPosition[1] = dataareaheight - int(float64((len(RainbowColor)+1)*frame.Show.LegendSize)*frame.Show.LegendLineSep)
 	if dw, ok := stw.(Drawer); ok {
 		if dw.CanvasDirection() == 1 {
