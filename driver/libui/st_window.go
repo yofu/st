@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -16,6 +17,10 @@ import (
 var (
 	canvaswidth          = 2400
 	canvasheight         = 1300
+	home                 = os.Getenv("HOME")
+	pgpfile              = filepath.Join(home, ".st/st.pgp")
+	grid                 *ui.Grid
+	lefttitle            *ui.Combobox
 	leftarea             *ui.Box
 	centerarea           *ui.Area
 	entry                *ui.Entry
@@ -28,6 +33,7 @@ var (
 	selectfromrightbrush = mkSolidBrush(0x0032c8, 0.3)
 	windowzoombrush      = mkSolidBrush(0xc8c800, 0.3)
 	dragrectbrush        = selectfromleftbrush
+	openingfilename      = ""
 )
 
 type Window struct {
@@ -421,6 +427,9 @@ func (stw *Window) Draw(a *ui.Area, p *ui.AreaDrawParams) {
 		fmt.Println("Frame is nil")
 		return
 	}
+	if stw.frame.Name != openingfilename {
+		stw.UpdateWindow(stw.frame.Name)
+	}
 	if drawall {
 		st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, true)
 		if selectbox[2] != 0.0 && selectbox[3] != 0.0 {
@@ -548,10 +557,11 @@ func (stw *Window) DragBroken(a *ui.Area) {
 }
 
 func (stw *Window) KeyEvent(a *ui.Area, ke *ui.AreaKeyEvent) (handled bool) {
-	if !ke.Up {
+	if ke.Up {
 		return false
 	}
 	// fmt.Println(ke.ExtKey, ke.Key, ke.Modifier, ke.Modifiers)
+	// TODO: use CommandLine
 	if ke.ExtKey != 0 {
 		switch ke.ExtKey {
 		default:
@@ -572,6 +582,10 @@ func (stw *Window) KeyEvent(a *ui.Area, ke *ui.AreaKeyEvent) (handled bool) {
 			stw.ExecCommand(command)
 			entry.SetText("")
 			stw.Redraw()
+			return true
+		case 8: // Backspace
+			t := entry.Text()
+			entry.SetText(t[:len(t)-1])
 			return true
 		case '1':
 			if ke.Modifiers&ui.Shift != 0 {
@@ -679,20 +693,26 @@ func SetupWindow(fn string) {
 	})
 
 	stw := NewWindow(mainwin)
-	stw.SetCanvasAnimateSpeed(0.001)
+	stw.ReadRecent()
 	if fn != "" {
 		st.OpenFile(stw, fn, true)
-		st.ReadAll(stw)
-		stw.frame.Show.PlateEdge = false
-		stw.frame.Show.ColorMode = st.ECOLOR_BLACKSECT
-		stw.window.SetTitle(fn)
+		openingfilename = fn
+		stw.UpdateWindow(fn)
+	} else {
+		st.ShowRecent(stw)
 	}
+	st.ReadPgp(stw, pgpfile)
+	stw.ReadCommandHistory("")
+	stw.frame.View.Center[0] = 0.5 * float64(canvaswidth)
+	stw.frame.View.Center[1] = 0.5 * float64(canvasheight)
+	stw.frame.Show.PlateEdge = false
+	stw.frame.Show.ColorMode = st.ECOLOR_BLACKSECT
 
 	hbox := ui.NewHorizontalBox()
 	hbox.SetPadded(true)
 	mainwin.SetChild(hbox)
 
-	grid := ui.NewGrid()
+	grid = ui.NewGrid()
 	grid.SetPadded(true)
 	hbox.Append(grid, true)
 
@@ -703,7 +723,7 @@ func SetupWindow(fn string) {
 
 	entry = ui.NewEntry()
 
-	lefttitle := ui.NewCombobox()
+	lefttitle = ui.NewCombobox()
 	centertitle := ui.NewCombobox()
 	lefttitle.Append("LAYER")
 	lefttitle.SetSelected(0)
@@ -718,4 +738,14 @@ func SetupWindow(fn string) {
 	grid.Append(entry, 1, 2, 1, 1, true, ui.AlignFill, false, ui.AlignFill)
 
 	mainwin.Show()
+}
+
+func (stw *Window) UpdateWindow(fn string) {
+	openingfilename = fn
+	stw.window.SetTitle(fn)
+	// TODO: update LAYER
+	// leftarea.Destroy()
+	// newleftarea := SetupLayerTab(stw)
+	// grid.InsertAt(newleftarea, lefttitle, ui.Bottom, 1, 2, false, ui.AlignFill, true, ui.AlignFill)
+	// leftarea = newleftarea
 }
