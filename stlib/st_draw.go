@@ -1294,13 +1294,13 @@ func DrawFrameNode(stw Drawer, frame *Frame, color uint, flush bool) {
 		nomv := show.NoMomentValue
 		show.NoMomentValue = false
 		for _, el := range stw.SelectedElems() {
-			stw.LineStyle(DOTTED)
 			if el == nil || el.IsHidden(show) {
 				continue
 			}
 			if !InBound(el, w, h, show) {
 				continue
 			}
+			stw.SelectElemStyle()
 			if el.Lock {
 				stw.Foreground(LOCKED_ELEM_COLOR)
 			} else {
