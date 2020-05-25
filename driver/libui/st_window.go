@@ -14,14 +14,20 @@ import (
 )
 
 var (
-	canvaswidth    = 2400
-	canvasheight   = 1300
-	leftarea       *ui.Box
-	centerarea     *ui.Area
-	altselectnode  = true
-	showprintrange = false
-	LINE_THICKNESS = 0.8
-	PLATE_OPACITY  = 0.2
+	canvaswidth          = 2400
+	canvasheight         = 1300
+	leftarea             *ui.Box
+	centerarea           *ui.Area
+	entry                *ui.Entry
+	altselectnode        = true
+	showprintrange       = false
+	LINE_THICKNESS       = 0.8
+	PLATE_OPACITY        = 0.2
+	tailnodes            []*st.Node
+	selectfromleftbrush  = mkSolidBrush(0xc83200, 0.3)
+	selectfromrightbrush = mkSolidBrush(0x0032c8, 0.3)
+	windowzoombrush      = mkSolidBrush(0xc8c800, 0.3)
+	dragrectbrush        = selectfromleftbrush
 )
 
 type Window struct {
@@ -42,7 +48,7 @@ type Window struct {
 	currentStrokeParam *ui.DrawStrokeParams
 	currentPen         *ui.DrawBrush
 	currentBrush       *ui.DrawBrush
-	currentFont        *ui.FontDescriptor
+	currentFont        *Font
 	papersize          uint
 	changed            bool
 	lastexcommand      string
@@ -73,15 +79,9 @@ func NewWindow(w *ui.Window) *Window {
 			Thickness:  LINE_THICKNESS,
 			MiterLimit: ui.DrawDefaultMiterLimit,
 		},
-		currentPen:   mkSolidBrush(0x000000, 1.0),
-		currentBrush: mkSolidBrush(0x000000, 1.0),
-		currentFont: &ui.FontDescriptor{
-			Family:  "IPA明朝",
-			Size:    9,
-			Weight:  400,
-			Italic:  ui.TextItalicNormal,
-			Stretch: ui.TextStretchCondensed,
-		},
+		currentPen:      mkSolidBrush(0x000000, 1.0),
+		currentBrush:    mkSolidBrush(0x000000, 1.0),
+		currentFont:     NewFont(),
 		papersize:       st.A4_TATE,
 		changed:         false,
 		lastexcommand:   "",
@@ -100,48 +100,189 @@ func (stw *Window) SetFrame(frame *st.Frame) {
 	stw.frame = frame
 }
 
+func (stw *Window) AddTail(n *st.Node) {
+	if tailnodes == nil {
+		tailnodes = []*st.Node{n}
+	} else {
+		tailnodes = append(tailnodes, n)
+	}
+}
+
+func (stw *Window) EndTail() {
+	tailnodes = nil
+}
+
+func (stw *Window) TailLine() {
+	// TODO
+}
+
+func (stw *Window) CurrentPointerPosition() []int {
+	return []int{int(endX), int(endY)}
+}
+
+func (stw *Window) FeedCommand() {
+	command := stw.CommandLineString()
+	if command != "" {
+		stw.AddCommandHistory(command)
+		stw.ClearCommandLine()
+		stw.ExecCommand(command)
+		stw.Redraw()
+	}
+}
+
 func (stw *Window) ExecCommand(command string) {
-	// if stw.frame == nil {
-	// 	if strings.HasPrefix(command, ":") {
-	// 		err := st.ExMode(stw, command)
-	// 		if err != nil {
-	// 			if _, ok := err.(st.NotRedraw); ok {
-	// 				return
-	// 			} else {
-	// 				st.ErrorMessage(stw, err, st.ERROR)
-	// 			}
-	// 		}
-	// 	} else if strings.HasPrefix(command, "'") {
-	// 		err := st.Fig2Mode(stw, command)
-	// 		if err != nil {
-	// 			st.ErrorMessage(stw, err, st.ERROR)
-	// 		}
-	// 	}
-	// 	return
-	// }
-	// switch {
-	// default:
-	// 	if c, ok := stw.CommandAlias(strings.ToUpper(command)); ok {
-	// 		stw.lastcommand = c
-	// 		stw.Execute(c(stw))
-	// 	} else {
-	// 		stw.History(fmt.Sprintf("command doesn't exist: %s", command))
-	// 	}
-	// case strings.HasPrefix(command, ":"):
-	// 	err := st.ExMode(stw, command)
-	// 	if err != nil {
-	// 		if _, ok := err.(st.NotRedraw); ok {
-	// 			return
-	// 		} else {
-	// 			st.ErrorMessage(stw, err, st.ERROR)
-	// 		}
-	// 	}
-	// case strings.HasPrefix(command, "'"):
-	// 	err := st.Fig2Mode(stw, command)
-	// 	if err != nil {
-	// 		st.ErrorMessage(stw, err, st.ERROR)
-	// 	}
-	// }
+	if stw.frame == nil {
+		if strings.HasPrefix(command, ":") {
+			err := st.ExMode(stw, command)
+			if err != nil {
+				if _, ok := err.(st.NotRedraw); ok {
+					return
+				} else {
+					st.ErrorMessage(stw, err, st.ERROR)
+				}
+			}
+		} else if strings.HasPrefix(command, "'") {
+			err := st.Fig2Mode(stw, command)
+			if err != nil {
+				st.ErrorMessage(stw, err, st.ERROR)
+			}
+		}
+		return
+	}
+	switch {
+	default:
+		if c, ok := stw.CommandAlias(strings.ToUpper(command)); ok {
+			stw.lastcommand = c
+			stw.Execute(c(stw))
+		} else {
+			stw.History(fmt.Sprintf("command doesn't exist: %s", command))
+		}
+	case strings.HasPrefix(command, ":"):
+		err := st.ExMode(stw, command)
+		if err != nil {
+			if _, ok := err.(st.NotRedraw); ok {
+				return
+			} else {
+				st.ErrorMessage(stw, err, st.ERROR)
+			}
+		}
+	case strings.HasPrefix(command, "'"):
+		err := st.Fig2Mode(stw, command)
+		if err != nil {
+			st.ErrorMessage(stw, err, st.ERROR)
+		}
+	}
+}
+
+func (stw *Window) LastExCommand() string {
+	return stw.lastexcommand
+}
+
+func (stw *Window) SetLastExCommand(command string) {
+	stw.lastexcommand = command
+}
+
+func (stw *Window) LastFig2Command() string {
+	return stw.lastfig2command
+}
+
+func (stw *Window) SetLastFig2Command(c string) {
+	stw.lastfig2command = c
+}
+
+func (stw *Window) ShowCenter() {
+	stw.SetAngle(stw.frame.View.Angle[0], stw.frame.View.Angle[1])
+}
+
+func (stw *Window) Print() {
+}
+
+func (stw *Window) SaveAS() {
+	st.SaveFile(stw, "hogtxt.inp")
+}
+
+func (stw *Window) SaveFileSelected(string) error {
+	return nil
+}
+
+func (stw *Window) SearchFile(fn string) (string, error) {
+	return fn, fmt.Errorf("file not found: %s", fn)
+}
+
+func (stw *Window) ShapeData(sh st.Shape) {
+	stw.History(fmt.Sprintf("%s\n", sh.String()))
+	stw.History(fmt.Sprintf("A   = %10.4f [cm2]\n", sh.A()))
+	stw.History(fmt.Sprintf("Asx = %10.4f [cm2]\n", sh.Asx()))
+	stw.History(fmt.Sprintf("Asy = %10.4f [cm2]\n", sh.Asy()))
+	stw.History(fmt.Sprintf("Ix  = %10.4f [cm4]\n", sh.Ix()))
+	stw.History(fmt.Sprintf("Iy  = %10.4f [cm4]\n", sh.Iy()))
+	stw.History(fmt.Sprintf("J   = %10.4f [cm4]\n", sh.J()))
+	stw.History(fmt.Sprintf("Zx  = %10.4f [cm3]\n", sh.Zx()))
+	stw.History(fmt.Sprintf("Zy  = %10.4f [cm3]\n", sh.Zy()))
+}
+
+func (stw *Window) ToggleFixRotate() {
+}
+
+func (stw *Window) ToggleFixMove() {
+}
+
+func (stw *Window) SetShowPrintRange(val bool) {
+	showprintrange = val
+}
+
+func (stw *Window) ToggleShowPrintRange() {
+	showprintrange = !showprintrange
+}
+
+func (stw *Window) CurrentLap(string, int, int) {
+}
+
+func (stw *Window) SectionData(*st.Sect) {
+}
+
+func (stw *Window) TextBox(name string) *st.TextBox {
+	if _, tok := stw.textBox[name]; !tok {
+		stw.textBox[name] = st.NewTextBox(stw.currentFont)
+	}
+	return stw.textBox[name]
+}
+
+func (stw *Window) TextBoxes() []*st.TextBox {
+	rtn := make([]*st.TextBox, len(stw.textBox))
+	i := 0
+	for _, t := range stw.textBox {
+		rtn[i] = t
+		i++
+	}
+	return rtn
+}
+
+func (stw *Window) SetAngle(phi, theta float64) {
+	view := st.CanvasCenterView(stw, []float64{phi, theta})
+	st.Animate(stw, view)
+}
+
+func (stw *Window) SetPaperSize(name uint) {
+	stw.papersize = name
+}
+
+func (stw *Window) PaperSize() uint {
+	return stw.papersize
+}
+
+func (stw *Window) SetPeriod(string) {
+}
+
+func (stw *Window) Pivot() bool {
+	return false
+}
+
+func (stw *Window) DrawPivot([]*st.Node, chan int, chan int) {
+}
+
+func (stw *Window) SetColorMode(mode uint) {
+	stw.frame.Show.ColorMode = mode
 }
 
 func (stw *Window) History(str string) {
@@ -189,7 +330,6 @@ func (stw *Window) IsChanged() bool {
 }
 
 func (stw *Window) Redraw() {
-	st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, true)
 	stw.currentArea.QueueRedrawAll()
 }
 
@@ -253,6 +393,22 @@ func (stw *Window) Zoom(factor float64, x, y float64) {
 	}
 }
 
+func (stw *Window) WindowZoom(factor float64, x, y float64) {
+	stw.frame.View.Center[0] += (factor - 1.0) * (stw.frame.View.Center[0] - x)
+	stw.frame.View.Center[1] += (factor - 1.0) * (stw.frame.View.Center[1] - y)
+	if stw.frame.View.Perspective {
+		stw.frame.View.Dists[1] *= factor
+		if stw.frame.View.Dists[1] < 0.0 {
+			stw.frame.View.Dists[1] = 0.0
+		}
+	} else {
+		stw.frame.View.Gfact *= factor
+		if stw.frame.View.Gfact < 0.0 {
+			stw.frame.View.Gfact = 0.0
+		}
+	}
+}
+
 var (
 	selectbox = []float64{0.0, 0.0, 0.0, 0.0}
 	drawall   = true
@@ -267,6 +423,13 @@ func (stw *Window) Draw(a *ui.Area, p *ui.AreaDrawParams) {
 	}
 	if drawall {
 		st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, true)
+		if selectbox[2] != 0.0 && selectbox[3] != 0.0 {
+			path := ui.DrawNewPath(ui.DrawFillModeWinding)
+			path.AddRectangle(selectbox[0], selectbox[1], selectbox[2], selectbox[3])
+			path.End()
+			p.Context.Fill(path, dragrectbrush)
+			path.Free()
+		}
 	} else {
 		st.DrawFrameNode(stw, stw.frame, stw.frame.Show.ColorMode, true)
 	}
@@ -282,17 +445,22 @@ var (
 )
 
 func (stw *Window) MouseEvent(a *ui.Area, me *ui.AreaMouseEvent) {
-	if me.Down != 0 { // left click
-		if me.Count == 1 { // single click
+	if me.Down != 0 { // click
+		switch me.Count {
+		case 1: // single click
 			startX = me.X
 			startY = me.Y
 			startT = time.Now()
-		}
-		if me.Down == 1 {
-			selectbox[0] = startX
-			selectbox[1] = startY
-		} else if me.Down == 2 {
-			drawall = false
+			if me.Down == 1 { // left click
+				selectbox[0] = startX
+				selectbox[1] = startY
+			} else if me.Down == 2 { // center click
+				drawall = false
+			}
+		case 2: // double click
+			if me.Down == 2 {
+				stw.ShowCenter()
+			}
 		}
 	} else if me.Up != 0 {
 		endX = me.X
@@ -301,7 +469,20 @@ func (stw *Window) MouseEvent(a *ui.Area, me *ui.AreaMouseEvent) {
 		drawall = true
 		switch me.Up {
 		case 1:
-			if (me.Modifiers&ui.Alt == 0) == altselectnode {
+			if me.Modifiers&ui.Ctrl != 0 {
+				if selectbox[2] == 0.0 || selectbox[3] == 0.0 {
+					selectbox[2] = 0.0
+					selectbox[3] = 0.0
+					return
+				}
+				rate1 := float64(canvaswidth) / selectbox[2]
+				rate2 := float64(canvasheight) / selectbox[3]
+				if rate1 < rate2 {
+					stw.WindowZoom(rate1, (startX+endX)*0.5, (startY+endY)*0.5)
+				} else {
+					stw.WindowZoom(rate2, (startX+endX)*0.5, (startY+endY)*0.5)
+				}
+			} else if (me.Modifiers&ui.Alt == 0) == altselectnode {
 				els, picked := st.PickElem(stw, int(startX), int(startY), int(endX), int(endY))
 				if !picked {
 					stw.DeselectElem()
@@ -334,6 +515,13 @@ func (stw *Window) MouseEvent(a *ui.Area, me *ui.AreaMouseEvent) {
 			if i == 1 {
 				selectbox[2] = dx
 				selectbox[3] = dy
+				if me.Modifiers&ui.Ctrl != 0 {
+					dragrectbrush = windowzoombrush
+				} else if dx > 0.0 {
+					dragrectbrush = selectfromleftbrush
+				} else {
+					dragrectbrush = selectfromrightbrush
+				}
 				a.QueueRedrawAll()
 				break
 			} else if i == 2 {
@@ -360,8 +548,47 @@ func (stw *Window) DragBroken(a *ui.Area) {
 }
 
 func (stw *Window) KeyEvent(a *ui.Area, ke *ui.AreaKeyEvent) (handled bool) {
-	// reject all keys
-	return false
+	if !ke.Up {
+		return false
+	}
+	// fmt.Println(ke.ExtKey, ke.Key, ke.Modifier, ke.Modifiers)
+	if ke.ExtKey != 0 {
+		switch ke.ExtKey {
+		default:
+			return false
+		case ui.Escape:
+			stw.Deselect()
+			stw.Redraw()
+			entry.SetText("")
+			return true
+		}
+	} else {
+		switch ke.Key {
+		default:
+			entry.SetText(entry.Text() + string(ke.Key))
+			return true
+		case 10: // Enter
+			command := entry.Text()
+			stw.ExecCommand(command)
+			entry.SetText("")
+			stw.Redraw()
+			return true
+		case '1':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "!")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case ';':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + ";")
+			} else {
+				entry.SetText(entry.Text() + ":")
+			}
+			return true
+		}
+	}
 }
 
 func SetupLayerTab(stw *Window) *ui.Box {
@@ -390,7 +617,7 @@ func SetupLayerTab(stw *Window) *ui.Box {
 	snums := make([]int, len(stw.Frame().Sects))
 	ind := 0
 	for s := range stw.Frame().Sects {
-		if s >= 900 {
+		if s <= 100 || s >= 900 {
 			continue
 		}
 		snums[ind] = s
@@ -452,10 +679,13 @@ func SetupWindow(fn string) {
 	})
 
 	stw := NewWindow(mainwin)
+	stw.SetCanvasAnimateSpeed(0.001)
 	if fn != "" {
 		st.OpenFile(stw, fn, true)
+		st.ReadAll(stw)
+		stw.frame.Show.PlateEdge = false
+		stw.frame.Show.ColorMode = st.ECOLOR_BLACKSECT
 		stw.window.SetTitle(fn)
-		stw.frame.Show.ElemCaptionOn(st.EC_SECT)
 	}
 
 	hbox := ui.NewHorizontalBox()
@@ -471,7 +701,7 @@ func SetupWindow(fn string) {
 	centerarea = ui.NewArea(stw)
 	stw.currentArea = centerarea
 
-	entry := ui.NewEntry()
+	entry = ui.NewEntry()
 
 	lefttitle := ui.NewCombobox()
 	centertitle := ui.NewCombobox()

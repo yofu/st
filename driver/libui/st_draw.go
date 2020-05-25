@@ -77,23 +77,36 @@ func (stw *Window) FilledCircle(x float64, y float64, r float64) {
 
 func (stw *Window) Text(x float64, y float64, txt string) {
 	str := ui.NewAttributedString(txt)
+	// TODO: SrcanRate = trueのときのみカラー、その他は黒にしたい
+	if stw.currentFont.color == st.RainbowColor[0] ||
+		stw.currentFont.color == st.RainbowColor[1] ||
+		stw.currentFont.color == st.RainbowColor[2] ||
+		stw.currentFont.color == st.RainbowColor[3] ||
+		stw.currentFont.color == st.RainbowColor[5] ||
+		stw.currentFont.color == st.RainbowColor[6] {
+		col := st.IntColorFloat64(stw.currentFont.color)
+		str.SetAttribute(ui.TextColor{
+			R: col[0],
+			G: col[1],
+			B: col[2],
+			A: 1.0,
+		}, 0, len(str.String()))
+	}
 	tl := ui.DrawNewTextLayout(&ui.DrawTextLayoutParams{
 		String:      str,
-		DefaultFont: stw.currentFont,
+		DefaultFont: stw.currentFont.uifont,
 		Width:       500,
 		Align:       ui.DrawTextAlign(ui.DrawTextAlignLeft),
 	})
-	stw.currentDrawParam.Context.Text(tl, x, y-float64(stw.currentFont.Size))
+	stw.currentDrawParam.Context.Text(tl, x, y-float64(stw.currentFont.uifont.Size))
 	tl.Free()
 }
 
 func (stw *Window) Foreground(col int) int {
-	r := stw.currentPen.R
-	g := stw.currentPen.G
-	b := stw.currentPen.B
-	old := int(r)<<16 + int(g)<<8 + int(b)
-	stw.currentPen = mkSolidBrush(0x000000, 1.0)
+	old := stw.currentFont.color
+	stw.currentPen = mkSolidBrush(uint32(col), 1.0)
 	stw.currentBrush = mkSolidBrush(uint32(col), PLATE_OPACITY)
+	stw.currentFont.color = col
 	return old
 }
 
@@ -131,22 +144,30 @@ func (stw *Window) TextOrientation(float64) {
 func (stw *Window) DefaultStyle() {
 	stw.Foreground(0x000000)
 	stw.LineStyle(st.CONTINUOUS)
+	PLATE_OPACITY = 0.2
 }
 
-func (stw *Window) BondStyle(*st.Show) {
+func (stw *Window) BondStyle(show *st.Show) {
+	stw.Foreground(show.BondColor)
 }
 
-func (stw *Window) PhingeStyle(*st.Show) {
+func (stw *Window) PhingeStyle(show *st.Show) {
+	stw.Foreground(show.BondColor)
+	PLATE_OPACITY = 1.0
 }
 
-func (stw *Window) ConfStyle(*st.Show) {
+func (stw *Window) ConfStyle(show *st.Show) {
+	stw.Foreground(0x000000)
+	PLATE_OPACITY = 1.0
 }
 
 func (stw *Window) SelectNodeStyle() {
+	stw.Foreground(st.RainbowColor[6])
 }
 
 func (stw *Window) SelectElemStyle() {
 	stw.LineStyle(st.DOTTED)
+	PLATE_OPACITY = 0.7
 }
 
 func (stw *Window) ShowPrintRange() bool {
