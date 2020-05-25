@@ -1115,6 +1115,12 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 					stw.Foreground(BLACK)
 				case ECOLOR_SECT:
 					stw.Foreground(el.Sect.Color)
+				case ECOLOR_BLACKSECT:
+					if el.IsLineElem() {
+						stw.Foreground(BLACK)
+					} else {
+						stw.Foreground(el.Sect.Color)
+					}
 				case ECOLOR_RATE:
 					val, err := el.RateMax(show)
 					if err != nil {
@@ -1182,6 +1188,12 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 				stw.Foreground(BLACK)
 			case ECOLOR_SECT:
 				stw.Foreground(el.Sect.Color)
+			case ECOLOR_BLACKSECT:
+				if el.IsLineElem() {
+					stw.Foreground(BLACK)
+				} else {
+					stw.Foreground(el.Sect.Color)
+				}
 			case ECOLOR_RATE:
 				val, err := el.RateMax(frame.Show)
 				if err != nil {

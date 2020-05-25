@@ -79,7 +79,7 @@ var ( // Boundary for Rainbow (length should be <= 6)
 )
 var (
 	// ECOLORS = []string{ "WHITE", "BLACK", "BY SECTION", "BY RATE", "BY HEIGHT", "BY N" }
-	ECOLORS = []string{"WHITE", "BLACK", "BY SECTION", "BY RATE", "BY N", "BY STRONG", "BY ENERGY"}
+	ECOLORS = []string{"WHITE", "BLACK", "BY SECTION", "BY SECTION", "BY RATE", "BY N", "BY STRONG", "BY ENERGY"}
 	PERIODS = []string{"L", "X", "Y"}
 )
 
@@ -87,6 +87,7 @@ const (
 	ECOLOR_WHITE = iota
 	ECOLOR_BLACK
 	ECOLOR_SECT
+	ECOLOR_BLACKSECT
 	ECOLOR_RATE
 	// ECOLOR_HEIGHT
 	ECOLOR_N
