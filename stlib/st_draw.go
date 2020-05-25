@@ -414,8 +414,10 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			}
 			stw.Text(textpos[0], textpos[1], strings.TrimSuffix(ecap.String(), "\n"))
 		}
-		stw.Foreground(show.PlateEdgeColor)
-		stw.Polyline(coords)
+		if show.PlateEdge {
+			stw.Foreground(show.PlateEdgeColor)
+			stw.Polyline(coords)
+		}
 		if show.CmqLine {
 			cmqels, _, _ := elem.PlateDivision(false)
 			for _, cmqel := range cmqels {

@@ -117,6 +117,7 @@ type Show struct {
 	NodeNormalSize float64
 	ElemNormal     bool
 	ElemNormalSize float64
+	PlateEdge      bool
 	CmqLine        bool
 
 	Conf     bool
@@ -227,6 +228,7 @@ func NewShow(frame *Frame) *Show {
 		NodeNormalSize:       0.2,
 		ElemNormal:           false,
 		ElemNormalSize:       0.2,
+		PlateEdge:            true,
 		CmqLine:              false,
 		Conf:                 true,
 		ConfSize:             9.0,
