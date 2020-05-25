@@ -16,8 +16,7 @@ func setupUI() {
 		}
 	}
 
-	mainwin := ui.NewWindow("st", 1200, 1200, true)
-	stlibui.SetupWindow(mainwin, fn)
+	stlibui.SetupWindow(fn)
 }
 
 func main() {
