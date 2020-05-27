@@ -148,11 +148,11 @@ func (stw *Window) DefaultStyle() {
 }
 
 func (stw *Window) BondStyle(show *st.Show) {
-	stw.Foreground(show.BondColor)
+	stw.Foreground(0x000000)
 }
 
 func (stw *Window) PhingeStyle(show *st.Show) {
-	stw.Foreground(show.BondColor)
+	stw.Foreground(0x000000)
 	PLATE_OPACITY = 1.0
 }
 

@@ -17,6 +17,9 @@ import (
 var (
 	canvaswidth          = 2400
 	canvasheight         = 1300
+	zoomfactor           = 1.0
+	layernum             = 0
+	layercbs             = make([]*ui.Checkbox, 0)
 	home                 = os.Getenv("HOME")
 	pgpfile              = filepath.Join(home, ".st/st.pgp")
 	grid                 *ui.Grid
@@ -267,6 +270,7 @@ func (stw *Window) TextBoxes() []*st.TextBox {
 func (stw *Window) SetAngle(phi, theta float64) {
 	view := st.CanvasCenterView(stw, []float64{phi, theta})
 	st.Animate(stw, view)
+	stw.Redraw()
 }
 
 func (stw *Window) SetPaperSize(name uint) {
@@ -336,6 +340,7 @@ func (stw *Window) IsChanged() bool {
 }
 
 func (stw *Window) Redraw() {
+	drawall = true
 	stw.currentArea.QueueRedrawAll()
 }
 
@@ -382,7 +387,7 @@ func (stw *Window) SetAltSelectNode(a bool) {
 	altselectnode = a
 }
 
-func (stw *Window) Zoom(factor float64, x, y float64) {
+func (stw *Window) Zoom(factor float64, x, y float64) float64 {
 	val := math.Pow(2.0, factor/stw.CanvasScaleSpeed())
 	stw.frame.View.Center[0] += (val - 1.0) * (stw.frame.View.Center[0] - x)
 	stw.frame.View.Center[1] += (val - 1.0) * (stw.frame.View.Center[1] - y)
@@ -397,6 +402,7 @@ func (stw *Window) Zoom(factor float64, x, y float64) {
 			stw.frame.View.Gfact = 0.0
 		}
 	}
+	return val
 }
 
 func (stw *Window) WindowZoom(factor float64, x, y float64) {
@@ -475,6 +481,7 @@ func (stw *Window) MouseEvent(a *ui.Area, me *ui.AreaMouseEvent) {
 		endX = me.X
 		endY = me.Y
 		endT = time.Now()
+		zoomfactor = 1.0
 		drawall = true
 		switch me.Up {
 		case 1:
@@ -534,7 +541,11 @@ func (stw *Window) MouseEvent(a *ui.Area, me *ui.AreaMouseEvent) {
 				a.QueueRedrawAll()
 				break
 			} else if i == 2 {
-				if me.Modifiers&ui.Shift != 0 {
+				if me.Modifiers&ui.Ctrl != 0 {
+					factor := dy / 10.0
+					val := stw.Zoom(factor-stw.CanvasScaleSpeed()*math.Log2(zoomfactor), startX, startY)
+					zoomfactor *= val
+				} else if me.Modifiers&ui.Shift != 0 {
 					stw.frame.View.Center[0] += float64(dx) * stw.CanvasMoveSpeedX()
 					stw.frame.View.Center[1] += float64(dy) * stw.CanvasMoveSpeedY()
 				} else {
@@ -567,6 +578,8 @@ func (stw *Window) KeyEvent(a *ui.Area, ke *ui.AreaKeyEvent) (handled bool) {
 		default:
 			return false
 		case ui.Escape:
+			stw.QuitCommand()
+			stw.ClearCommandLine()
 			stw.Deselect()
 			stw.Redraw()
 			entry.SetText("")
@@ -575,7 +588,11 @@ func (stw *Window) KeyEvent(a *ui.Area, ke *ui.AreaKeyEvent) (handled bool) {
 	} else {
 		switch ke.Key {
 		default:
-			entry.SetText(entry.Text() + string(ke.Key))
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + strings.ToUpper(string(ke.Key)))
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
 			return true
 		case 10: // Enter
 			command := entry.Text()
@@ -587,9 +604,93 @@ func (stw *Window) KeyEvent(a *ui.Area, ke *ui.AreaKeyEvent) (handled bool) {
 			t := entry.Text()
 			entry.SetText(t[:len(t)-1])
 			return true
+		case '`':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "~")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
 		case '1':
 			if ke.Modifiers&ui.Shift != 0 {
 				entry.SetText(entry.Text() + "!")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '2':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "@")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '3':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "#")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '4':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "$")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '5':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "%")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '6':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "^")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '7':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "&")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '8':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "*")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '9':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "(")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '0':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + ")")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '-':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "_")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '=':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "+")
 			} else {
 				entry.SetText(entry.Text() + string(ke.Key))
 			}
@@ -601,14 +702,87 @@ func (stw *Window) KeyEvent(a *ui.Area, ke *ui.AreaKeyEvent) (handled bool) {
 				entry.SetText(entry.Text() + ":")
 			}
 			return true
+		case '\'':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "\"")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '[':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "{")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case ']':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "}")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case ',':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "<")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '.':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + ">")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case '/':
+			if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + "?")
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
+		case 'r':
+			if ke.Modifiers&ui.Ctrl != 0 {
+				st.ReadAll(stw)
+			} else if ke.Modifiers&ui.Shift != 0 {
+				entry.SetText(entry.Text() + strings.ToUpper(string(ke.Key)))
+			} else {
+				entry.SetText(entry.Text() + string(ke.Key))
+			}
+			return true
 		}
 	}
 }
 
 func SetupLayerTab(stw *Window) *ui.Box {
 	leftarea := ui.NewVerticalBox()
-	layercbs := make([]*ui.Checkbox, 0)
-	cb := ui.NewCheckbox("All")
+
+	for i, et := range st.ETYPES {
+		etype := i
+		if etype == st.NULL || etype == st.TRUSS || etype == st.WBRACE || etype == st.SBRACE {
+			continue
+		}
+		etypename := et
+		cb := ui.NewCheckbox(fmt.Sprintf("%s", etypename))
+		cb.OnToggled(func(c *ui.Checkbox) {
+			if c.Checked() {
+				st.ShowEtype(stw, etype)
+			} else {
+				st.HideEtype(stw, etype)
+			}
+			centerarea.QueueRedrawAll()
+		})
+		cb.SetChecked(true)
+		leftarea.Append(cb, false)
+	}
+
+	leftarea.Append(ui.NewHorizontalSeparator(), false)
+
+	layercbs = make([]*ui.Checkbox, 0)
+	cb := ui.NewCheckbox("All Section")
 	cb.OnToggled(func(c *ui.Checkbox) {
 		if c.Checked() {
 			st.ShowAllSection(stw)
@@ -628,6 +802,10 @@ func SetupLayerTab(stw *Window) *ui.Box {
 
 	leftarea.Append(ui.NewHorizontalSeparator(), false)
 
+	return leftarea
+}
+
+func AddLayer(stw *Window) {
 	snums := make([]int, len(stw.Frame().Sects))
 	ind := 0
 	for s := range stw.Frame().Sects {
@@ -653,30 +831,8 @@ func SetupLayerTab(stw *Window) *ui.Box {
 		cb.SetChecked(true)
 		leftarea.Append(cb, false)
 		layercbs = append(layercbs, cb)
+		layernum++
 	}
-
-	leftarea.Append(ui.NewHorizontalSeparator(), false)
-
-	for i, et := range st.ETYPES {
-		etype := i
-		if etype == st.NULL || etype == st.TRUSS || etype == st.WBRACE || etype == st.SBRACE {
-			continue
-		}
-		etypename := et
-		cb := ui.NewCheckbox(fmt.Sprintf("%s", etypename))
-		cb.OnToggled(func(c *ui.Checkbox) {
-			if c.Checked() {
-				st.ShowEtype(stw, etype)
-			} else {
-				st.HideEtype(stw, etype)
-			}
-			centerarea.QueueRedrawAll()
-		})
-		cb.SetChecked(true)
-		leftarea.Append(cb, false)
-	}
-
-	return leftarea
 }
 
 func SetupWindow(fn string) {
@@ -730,12 +886,12 @@ func SetupWindow(fn string) {
 	centertitle.Append("MODEL")
 	centertitle.SetSelected(0)
 
-	grid.Append(lefttitle, 0, 0, 1, 1, false, ui.AlignFill, false, ui.AlignFill)
-	grid.Append(leftarea, 0, 1, 1, 2, false, ui.AlignFill, true, ui.AlignFill)
+	grid.Append(centertitle, 0, 0, 1, 1, false, ui.AlignFill, false, ui.AlignFill)
+	grid.Append(centerarea, 0, 1, 1, 1, true, ui.AlignFill, true, ui.AlignFill)
+	grid.Append(entry, 0, 2, 1, 1, true, ui.AlignFill, false, ui.AlignFill)
 
-	grid.Append(centertitle, 1, 0, 1, 1, false, ui.AlignFill, false, ui.AlignFill)
-	grid.Append(centerarea, 1, 1, 1, 1, true, ui.AlignFill, true, ui.AlignFill)
-	grid.Append(entry, 1, 2, 1, 1, true, ui.AlignFill, false, ui.AlignFill)
+	grid.Append(lefttitle, 1, 0, 1, 1, false, ui.AlignFill, false, ui.AlignFill)
+	grid.Append(leftarea, 1, 1, 1, 2, false, ui.AlignFill, true, ui.AlignFill)
 
 	mainwin.Show()
 }
@@ -743,9 +899,10 @@ func SetupWindow(fn string) {
 func (stw *Window) UpdateWindow(fn string) {
 	openingfilename = fn
 	stw.window.SetTitle(fn)
-	// TODO: update LAYER
-	// leftarea.Destroy()
-	// newleftarea := SetupLayerTab(stw)
-	// grid.InsertAt(newleftarea, lefttitle, ui.Bottom, 1, 2, false, ui.AlignFill, true, ui.AlignFill)
-	// leftarea = newleftarea
+	for i := 0; i < layernum; i++ {
+		leftarea.Delete(8)
+	}
+	layernum = 0
+	layercbs = make([]*ui.Checkbox, 0)
+	AddLayer(stw)
 }
