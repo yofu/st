@@ -179,6 +179,9 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			stw.Line(icoord[0], icoord[1], jcoord[0], jcoord[1])
 		}
 		if oncap {
+			if show.ColorMode == ECOLOR_BLACKSECT {
+				stw.Foreground(BLACK)
+			}
 			textpos := make([]float64, 2)
 			if BRACE <= elem.Etype && elem.Etype <= SBRACE {
 				for k := 0; k < 2; k++ {
@@ -402,18 +405,6 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			}
 		}
 		stw.Polygon(coords)
-		if oncap {
-			textpos := make([]float64, 2)
-			for _, c := range coords {
-				for k := 0; k < 2; k++ {
-					textpos[k] += c[k]
-				}
-			}
-			for k := 0; k < 2; k++ {
-				textpos[k] /= float64(elem.Enods)
-			}
-			stw.Text(textpos[0], textpos[1], strings.TrimSuffix(ecap.String(), "\n"))
-		}
 		if show.PlateEdge {
 			stw.Foreground(show.PlateEdgeColor)
 			stw.Polyline(coords)
@@ -430,6 +421,21 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 				}
 				stw.Polyline(cmqcoords)
 			}
+		}
+		if oncap {
+			if show.ColorMode == ECOLOR_BLACKSECT {
+				stw.Foreground(BLACK)
+			}
+			textpos := make([]float64, 2)
+			for _, c := range coords {
+				for k := 0; k < 2; k++ {
+					textpos[k] += c[k]
+				}
+			}
+			for k := 0; k < 2; k++ {
+				textpos[k] /= float64(elem.Enods)
+			}
+			stw.Text(textpos[0], textpos[1], strings.TrimSuffix(ecap.String(), "\n"))
 		}
 		// Stress
 		var flag uint
@@ -477,6 +483,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 				}
 			}
 			if tex := sttext.String(); tex != "" {
+				stw.Foreground(show.StressTextColor)
 				tcoord := elem.Frame.View.ProjectCoord(elem.MidPoint())
 				stw.Text(tcoord[0], tcoord[1], tex)
 			}
