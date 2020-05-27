@@ -120,6 +120,8 @@ func OpenFile(stw Window, filename string, readrcfile bool) error {
 	frame.View.Center[0] = float64(w) * 0.5
 	frame.View.Center[1] = float64(h) * 0.5
 	switch filepath.Ext(fn) {
+	default:
+		return fmt.Errorf("unknown file type")
 	case ".inp":
 		err = newframe.ReadInp(fn, []float64{0.0, 0.0, 0.0}, 0.0, false)
 		if err != nil {
