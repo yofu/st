@@ -33,6 +33,7 @@ type Window interface {
 	// RecentFiles
 	Recent() []string
 	AddRecent(string)
+	SaveRecent() error
 	// UndoStack
 	UndoEnabled() bool
 	PushUndo(*Frame)
@@ -152,6 +153,7 @@ func OpenFile(stw Window, filename string, readrcfile bool) error {
 	frame.Home = stw.Home()
 	stw.SetCwd(filepath.Dir(fn))
 	stw.AddRecent(fn)
+	stw.SaveRecent()
 	Snapshot(stw)
 	stw.Changed(false)
 	ShowCenter(stw)
