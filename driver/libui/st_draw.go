@@ -78,12 +78,13 @@ func (stw *Window) FilledCircle(x float64, y float64, r float64) {
 func (stw *Window) Text(x float64, y float64, txt string) {
 	str := ui.NewAttributedString(txt)
 	// TODO: SrcanRate = trueのときのみカラー、その他は黒にしたい
-	if stw.currentFont.color == st.RainbowColor[0] ||
-		stw.currentFont.color == st.RainbowColor[1] ||
-		stw.currentFont.color == st.RainbowColor[2] ||
-		stw.currentFont.color == st.RainbowColor[3] ||
-		stw.currentFont.color == st.RainbowColor[5] ||
-		stw.currentFont.color == st.RainbowColor[6] {
+	// if stw.currentFont.color == st.RainbowColor[0] ||
+	// 	stw.currentFont.color == st.RainbowColor[1] ||
+	// 	stw.currentFont.color == st.RainbowColor[2] ||
+	// 	stw.currentFont.color == st.RainbowColor[3] ||
+	// 	stw.currentFont.color == st.RainbowColor[5] ||
+	// 	stw.currentFont.color == st.RainbowColor[6] {
+	if stw.currentFont.color != 0 && stw.currentFont.color != st.RainbowColor[4] {
 		col := st.IntColorFloat64(stw.currentFont.color)
 		str.SetAttribute(ui.TextColor{
 			R: col[0],
