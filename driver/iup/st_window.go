@@ -5655,6 +5655,10 @@ func (stw *Window) SetColorMode(mode uint) {
 	stw.frame.Show.ColorMode = mode
 }
 
+func (stw *Window) DefaultColorMode() uint {
+	return st.ECOLOR_SECT
+}
+
 func (stw *Window) CB_Period(h *iup.Handle, valptr *string) {
 	h.SetCallback(func(arg *iup.CommonKillFocus) {
 		if stw.frame != nil {

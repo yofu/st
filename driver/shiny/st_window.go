@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/yofu/abbrev"
-	"github.com/yofu/st/stlib"
+	st "github.com/yofu/st/stlib"
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
@@ -1173,6 +1173,10 @@ func (stw *Window) DrawPivot([]*st.Node, chan int, chan int) {
 
 func (stw *Window) SetColorMode(mode uint) {
 	stw.frame.Show.ColorMode = mode
+}
+
+func (stw *Window) DefaultColorMode() uint {
+	return st.ECOLOR_SECT
 }
 
 func (stw *Window) Complete() string {

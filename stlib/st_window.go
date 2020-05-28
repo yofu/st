@@ -55,6 +55,8 @@ type Window interface {
 	RedrawNode()
 	EPS() float64
 	SetEPS(float64)
+	SetColorMode(uint)
+	DefaultColorMode() uint
 	Close(bool)
 }
 
@@ -868,7 +870,7 @@ func SrcanRateOn(stw Window, names ...string) {
 	defer func() {
 		if frame.Show.SrcanRate != 0 {
 			stw.EnableLabel("SRCAN_RATE")
-			frame.Show.ColorMode = ECOLOR_RATE
+			stw.SetColorMode(ECOLOR_RATE)
 		}
 	}()
 	if len(names) == 0 {
@@ -896,7 +898,7 @@ func SrcanRateOff(stw Window, names ...string) {
 	defer func() {
 		if frame.Show.SrcanRate == 0 {
 			stw.DisableLabel("SRCAN_RATE")
-			frame.Show.ColorMode = ECOLOR_SECT
+			stw.SetColorMode(stw.DefaultColorMode())
 		}
 	}()
 	if len(names) == 0 {

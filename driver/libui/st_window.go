@@ -371,6 +371,10 @@ func (stw *Window) SetColorMode(mode uint) {
 	stw.frame.Show.ColorMode = mode
 }
 
+func (stw *Window) DefaultColorMode() uint {
+	return st.ECOLOR_BLACKSECT
+}
+
 func (stw *Window) History(str string) {
 	if str == "" {
 		return

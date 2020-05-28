@@ -5,9 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/google/gxui"
-	gxmath "github.com/google/gxui/math"
-	"github.com/yofu/st/stlib"
 	"log"
 	"math"
 	"os"
@@ -16,6 +13,10 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/google/gxui"
+	gxmath "github.com/google/gxui/math"
+	st "github.com/yofu/st/stlib"
 )
 
 // Constants & Variables
@@ -2159,6 +2160,10 @@ func (stw *Window) Yna(title, question, another string) int {
 func (stw *Window) SetColorMode(mode uint) {
 	// stw.Labels["COLORMODE"].SetAttribute("VALUE", fmt.Sprintf("  %s", st.ECOLORS[mode]))
 	stw.Frame.Show.ColorMode = mode
+}
+
+func (stw *Window) DefaultColorMode() uint {
+	return st.ECOLOR_SECT
 }
 
 func (stw *Window) SetPeriod(per string) {

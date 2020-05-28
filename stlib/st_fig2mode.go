@@ -684,7 +684,7 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		}
 	case "srcancolor":
 		if un {
-			stw.SetColorMode(ECOLOR_WHITE)
+			stw.SetColorMode(stw.DefaultColorMode())
 		} else {
 			stw.SetColorMode(ECOLOR_RATE)
 		}
@@ -732,7 +732,7 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		}
 	case "energy":
 		if un {
-			stw.SetColorMode(ECOLOR_WHITE)
+			stw.SetColorMode(stw.DefaultColorMode())
 			frame.Show.Energy = false
 		} else {
 			stw.SetColorMode(ECOLOR_ENERGY)

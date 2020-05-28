@@ -41,7 +41,6 @@ type ExModer interface {
 	PaperSize() uint
 	Pivot() bool
 	DrawPivot([]*Node, chan int, chan int)
-	SetColorMode(uint)
 	TextBoxes() []*TextBox
 }
 
@@ -56,6 +55,5 @@ type Fig2Moder interface {
 	LastFig2Command() string
 	SetLastFig2Command(string)
 	ShowCenter()
-	SetColorMode(uint)
 	TextBox(string) *TextBox
 }
