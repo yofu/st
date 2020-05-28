@@ -722,7 +722,7 @@ func Animate(stw Window, view *View) {
 	}
 }
 
-func CanvasCenterView(stw Window, angle []float64) *View {
+func CenterView(stw Window, angle []float64, showprintrange bool) *View {
 	frame := stw.Frame()
 	if frame == nil {
 		return nil
@@ -758,7 +758,23 @@ func CanvasCenterView(stw Window, angle []float64) *View {
 		if xmax-xmin <= 1e-6 && ymax-ymin <= 1e-6 {
 			return frame.View
 		}
-		w, h := dw.GetCanvasSize()
+		var w, h int
+		var dx, dy float64
+		if showprintrange {
+			pw, ph, err := dw.CanvasPaperSize()
+			if err != nil {
+				return frame.View
+			}
+			w = int(pw)
+			h = int(ph)
+			cw, ch := dw.GetCanvasSize()
+			dx = 0.5 * (float64(cw) - pw)
+			dy = 0.5 * (float64(ch) - ph)
+		} else {
+			w, h = dw.GetCanvasSize()
+			dx = 0.0
+			dy = 0.0
+		}
 		view := frame.View.Copy()
 		view.Focus = focus
 		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * stw.CanvasFitScale()
@@ -767,13 +783,17 @@ func CanvasCenterView(stw Window, angle []float64) *View {
 		} else {
 			view.Gfact = frame.View.Gfact * scale
 		}
-		view.Center[0] = float64(w)*0.5 + scale*(frame.View.Center[0]-0.5*(xmax+xmin))
-		view.Center[1] = float64(h)*0.5 + scale*(frame.View.Center[1]-0.5*(ymax+ymin))
+		view.Center[0] = float64(w)*0.5 + scale*(frame.View.Center[0]-0.5*(xmax+xmin)) + dx
+		view.Center[1] = float64(h)*0.5 + scale*(frame.View.Center[1]-0.5*(ymax+ymin)) + dy
 		view.Angle = angle
 		return view
 	} else {
 		return frame.View
 	}
+}
+
+func CanvasCenterView(stw Window, angle []float64) *View {
+	return CenterView(stw, angle, false)
 }
 
 func SetPeriod(stw Window, per string) {
