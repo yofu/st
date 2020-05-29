@@ -1,6 +1,7 @@
 package stlibui
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"math"
@@ -33,6 +34,7 @@ var (
 	LINE_THICKNESS       = 0.8
 	PLATE_OPACITY        = 0.2
 	tailnodes            []*st.Node
+	blackbrush           = mkSolidBrush(0x000000, 1.0)
 	selectfromleftbrush  = mkSolidBrush(0xc83200, 0.3)
 	selectfromrightbrush = mkSolidBrush(0x0032c8, 0.3)
 	tailbrush            = mkSolidBrush(0xc800c8, 0.3)
@@ -41,6 +43,8 @@ var (
 	openingfilename      = ""
 	prevkey              *ui.AreaKeyEvent
 	cline                string
+	DoubleClickCommand   = []string{"TOGGLEBOND", "EDITPLATEELEM"}
+	shapedata            st.Shape
 )
 
 type Window struct {
@@ -295,15 +299,28 @@ func (stw *Window) SearchFile(fn string) (string, error) {
 }
 
 func (stw *Window) ShapeData(sh st.Shape) {
-	stw.History(fmt.Sprintf("%s\n", sh.String()))
-	stw.History(fmt.Sprintf("A   = %10.4f [cm2]\n", sh.A()))
-	stw.History(fmt.Sprintf("Asx = %10.4f [cm2]\n", sh.Asx()))
-	stw.History(fmt.Sprintf("Asy = %10.4f [cm2]\n", sh.Asy()))
-	stw.History(fmt.Sprintf("Ix  = %10.4f [cm4]\n", sh.Ix()))
-	stw.History(fmt.Sprintf("Iy  = %10.4f [cm4]\n", sh.Iy()))
-	stw.History(fmt.Sprintf("J   = %10.4f [cm4]\n", sh.J()))
-	stw.History(fmt.Sprintf("Zx  = %10.4f [cm3]\n", sh.Zx()))
-	stw.History(fmt.Sprintf("Zy  = %10.4f [cm3]\n", sh.Zy()))
+	shapedata = sh
+	var tb *st.TextBox
+	if t, tok := stw.textBox["SHAPE"]; tok {
+		tb = t
+	} else {
+		tb = st.NewTextBox(NewFont())
+		tb.Show()
+		w, h := stw.GetCanvasSize()
+		tb.SetPosition(float64(w-200), float64(h-200))
+		stw.textBox["SHAPE"] = tb
+	}
+	var otp bytes.Buffer
+	otp.WriteString(fmt.Sprintf("%s\n", sh.String()))
+	otp.WriteString(fmt.Sprintf("A   = %10.4f [cm2]\n", sh.A()))
+	otp.WriteString(fmt.Sprintf("Asx = %10.4f [cm2]\n", sh.Asx()))
+	otp.WriteString(fmt.Sprintf("Asy = %10.4f [cm2]\n", sh.Asy()))
+	otp.WriteString(fmt.Sprintf("Ix  = %10.4f [cm4]\n", sh.Ix()))
+	otp.WriteString(fmt.Sprintf("Iy  = %10.4f [cm4]\n", sh.Iy()))
+	otp.WriteString(fmt.Sprintf("J   = %10.4f [cm4]\n", sh.J()))
+	otp.WriteString(fmt.Sprintf("Zx  = %10.4f [cm3]\n", sh.Zx()))
+	otp.WriteString(fmt.Sprintf("Zy  = %10.4f [cm3]\n", sh.Zy()))
+	tb.SetText(strings.Split(otp.String(), "\n"))
 }
 
 func (stw *Window) ToggleFixRotate() {
@@ -530,6 +547,44 @@ func (stw *Window) Draw(a *ui.Area, p *ui.AreaDrawParams) {
 				path.Free()
 			}
 		}
+		if shapedata != nil {
+			w, h := stw.GetCanvasSize()
+			if showprintrange {
+				_, sy, _, ph := st.GetClipCoord(stw)
+				h = int(ph - sy)
+			}
+			scale := 5.0
+			x0 := float64(w) - 150.0
+			y0 := 200.0
+			vertices := shapedata.Vertices()
+			height := shapedata.Breadth(false)
+			stw.textBox["SHAPE"].SetPosition(float64(w-225), float64(h-225)-scale*height*0.5)
+			path := ui.DrawNewPath(ui.DrawFillModeWinding)
+			path.NewFigure(x0+scale*vertices[0][0], y0+scale*vertices[0][1])
+			closed := false
+			closeind := 0
+			for i := 1; i < len(vertices); i++ {
+				if vertices[i] == nil {
+					path.LineTo(x0+scale*vertices[0][0], y0+scale*vertices[0][1])
+					path.End()
+					p.Context.Stroke(path, blackbrush, stw.currentStrokeParam)
+					closed = true
+					closeind = i + 1
+					path = ui.DrawNewPath(ui.DrawFillModeWinding)
+					continue
+				}
+				if closed {
+					path.NewFigure(x0+scale*vertices[i][0], y0+scale*vertices[i][1])
+					closed = false
+				} else {
+					path.LineTo(x0+scale*vertices[i][0], y0+scale*vertices[i][1])
+				}
+			}
+			path.LineTo(x0+scale*vertices[closeind][0], y0+scale*vertices[closeind][1])
+			path.End()
+			p.Context.Stroke(path, blackbrush, stw.currentStrokeParam)
+			path.Free()
+		}
 		st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, true)
 		for _, t := range stw.textBox {
 			if t.IsHidden(stw.frame.Show) {
@@ -593,7 +648,16 @@ func (stw *Window) MouseEvent(a *ui.Area, me *ui.AreaMouseEvent) {
 				drawall = false
 			}
 		case 2: // double click
-			if me.Down == 2 {
+			if me.Down == 1 {
+				if stw.ElemSelected() {
+					els := stw.SelectedElems()
+					if els[0].IsLineElem() {
+						stw.ExecCommand(DoubleClickCommand[0])
+					} else {
+						stw.ExecCommand(DoubleClickCommand[1])
+					}
+				}
+			} else if me.Down == 2 {
 				stw.ShowCenter()
 			}
 		}
