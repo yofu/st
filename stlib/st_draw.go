@@ -66,6 +66,20 @@ type Drawer interface {
 	CanvasDirection() int
 }
 
+func GetClipCoord(stw Drawer) (float64, float64, float64, float64) {
+	if stw.ShowPrintRange() {
+		cw, ch := stw.GetCanvasSize()
+		pw, ph, err := stw.CanvasPaperSize()
+		if err != nil {
+			return 0.0, 0.0, float64(cw), float64(ch)
+		}
+		return 0.5 * (float64(cw) - pw), 0.5 * (float64(ch) - ph), pw, ph
+	} else {
+		cw, ch := stw.GetCanvasSize()
+		return 0.0, 0.0, float64(cw), float64(ch)
+	}
+}
+
 func DrawElem(stw Drawer, elem *Elem, show *Show) {
 	var ecap bytes.Buffer
 	var oncap bool

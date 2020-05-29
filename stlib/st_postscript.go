@@ -1,8 +1,9 @@
 package st
 
 import (
-	"github.com/yofu/ps"
 	"os"
+
+	"github.com/yofu/ps"
 )
 
 type PostScriptCanvas struct {

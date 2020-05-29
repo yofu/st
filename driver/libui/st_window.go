@@ -314,10 +314,12 @@ func (stw *Window) ToggleFixMove() {
 
 func (stw *Window) SetShowPrintRange(val bool) {
 	showprintrange = val
+	st.SetPosition(stw)
 }
 
 func (stw *Window) ToggleShowPrintRange() {
 	showprintrange = !showprintrange
+	st.SetPosition(stw)
 }
 
 func (stw *Window) CurrentLap(string, int, int) {
@@ -344,7 +346,7 @@ func (stw *Window) TextBoxes() []*st.TextBox {
 }
 
 func (stw *Window) SetAngle(phi, theta float64) {
-	view := st.CanvasCenterView(stw, []float64{phi, theta})
+	view := st.CenterView(stw, []float64{phi, theta})
 	st.Animate(stw, view)
 	stw.Redraw()
 }

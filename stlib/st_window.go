@@ -109,6 +109,29 @@ func ShowCenter(stw Window) {
 	}
 }
 
+func SetPosition(stw Window) {
+	frame := stw.Frame()
+	var sx, sy, w, h float64
+	if dw, ok := stw.(Drawer); ok {
+		sx, sy, w, h = GetClipCoord(dw)
+	} else {
+		sx = 0
+		sy = 0
+		cw, ch := stw.GetCanvasSize()
+		w = float64(cw)
+		h = float64(ch)
+	}
+	frame.View.Center[0] = sx + 0.5*w
+	frame.View.Center[1] = sy + 0.5*h
+	frame.Show.LegendPosition[0] = int(sx + w - 200)
+	frame.Show.LegendPosition[1] = dataareaheight - int(float64((len(RainbowColor)+1)*frame.Show.LegendSize)*frame.Show.LegendLineSep) + int(sy)
+	if dw, ok := stw.(Drawer); ok {
+		if dw.CanvasDirection() == 1 {
+			frame.Show.LegendPosition[1] = int(h) - frame.Show.LegendPosition[1]
+		}
+	}
+}
+
 func OpenFile(stw Window, filename string, readrcfile bool) error {
 	var err error
 	var s *Show
@@ -118,9 +141,6 @@ func OpenFile(stw Window, filename string, readrcfile bool) error {
 	if frame != nil {
 		s = frame.Show
 	}
-	w, h := stw.GetCanvasSize()
-	frame.View.Center[0] = float64(w) * 0.5
-	frame.View.Center[1] = float64(h) * 0.5
 	switch filepath.Ext(fn) {
 	default:
 		return fmt.Errorf("unknown file type")
@@ -146,13 +166,7 @@ func OpenFile(stw Window, filename string, readrcfile bool) error {
 			}
 		}
 	}
-	frame.Show.LegendPosition[0] = int(w) - 200
-	frame.Show.LegendPosition[1] = dataareaheight - int(float64((len(RainbowColor)+1)*frame.Show.LegendSize)*frame.Show.LegendLineSep)
-	if dw, ok := stw.(Drawer); ok {
-		if dw.CanvasDirection() == 1 {
-			frame.Show.LegendPosition[1] = h - frame.Show.LegendPosition[1]
-		}
-	}
+	SetPosition(stw)
 	stw.History(fmt.Sprintf("OPEN: %s", fn))
 	frame.Home = stw.Home()
 	stw.SetCwd(filepath.Dir(fn))
@@ -722,7 +736,7 @@ func Animate(stw Window, view *View) {
 	}
 }
 
-func CenterView(stw Window, angle []float64, showprintrange bool) *View {
+func CenterView(stw Window, angle []float64) *View {
 	frame := stw.Frame()
 	if frame == nil {
 		return nil
@@ -758,42 +772,22 @@ func CenterView(stw Window, angle []float64, showprintrange bool) *View {
 		if xmax-xmin <= 1e-6 && ymax-ymin <= 1e-6 {
 			return frame.View
 		}
-		var w, h int
-		var dx, dy float64
-		if showprintrange {
-			pw, ph, err := dw.CanvasPaperSize()
-			if err != nil {
-				return frame.View
-			}
-			w = int(pw)
-			h = int(ph)
-			cw, ch := dw.GetCanvasSize()
-			dx = 0.5 * (float64(cw) - pw)
-			dy = 0.5 * (float64(ch) - ph)
-		} else {
-			w, h = dw.GetCanvasSize()
-			dx = 0.0
-			dy = 0.0
-		}
+		dx, dy, w, h := GetClipCoord(dw)
 		view := frame.View.Copy()
 		view.Focus = focus
-		scale := math.Min(float64(w)/(xmax-xmin), float64(h)/(ymax-ymin)) * stw.CanvasFitScale()
+		scale := math.Min(w/(xmax-xmin), h/(ymax-ymin)) * stw.CanvasFitScale()
 		if frame.View.Perspective {
 			view.Dists[1] = frame.View.Dists[1] * scale
 		} else {
 			view.Gfact = frame.View.Gfact * scale
 		}
-		view.Center[0] = float64(w)*0.5 + scale*(frame.View.Center[0]-0.5*(xmax+xmin)) + dx
-		view.Center[1] = float64(h)*0.5 + scale*(frame.View.Center[1]-0.5*(ymax+ymin)) + dy
+		view.Center[0] = w*0.5 + scale*(frame.View.Center[0]-0.5*(xmax+xmin)) + dx
+		view.Center[1] = h*0.5 + scale*(frame.View.Center[1]-0.5*(ymax+ymin)) + dy
 		view.Angle = angle
 		return view
 	} else {
 		return frame.View
 	}
-}
-
-func CanvasCenterView(stw Window, angle []float64) *View {
-	return CenterView(stw, angle, false)
 }
 
 func SetPeriod(stw Window, per string) {

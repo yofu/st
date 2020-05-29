@@ -3,8 +3,9 @@ package st
 import (
 	"bytes"
 	"fmt"
-	"github.com/ajstarks/svgo"
 	"os"
+
+	svg "github.com/ajstarks/svgo"
 )
 
 type SVGCanvas struct {
