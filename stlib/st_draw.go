@@ -774,7 +774,7 @@ func DrawText(stw Drawer, t *TextBox) {
 	if stw.CanvasDirection() == 1 {
 		d = 1.0
 		_, sy, _, height := GetClipCoord(stw)
-		ypos = height - ypos - sy
+		ypos = sy + height - ypos
 	}
 	ypos += d * ls
 	for _, txt := range t.Text() {
