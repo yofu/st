@@ -100,11 +100,7 @@ func onenode(stw Commander, f func(*Node) error) chan bool {
 					if err != nil {
 						ErrorMessage(stw, err, ERROR)
 					}
-					stw.SetAltSelectNode(as)
-					stw.DeselectNode()
-					stw.EndCommand()
 					stw.Redraw()
-					break onenode
 				}
 			case c := <-clickch:
 				if c.Button == ButtonRight {
@@ -222,7 +218,7 @@ func ArrayPolar(stw Commander) chan bool {
 	return quit
 }
 
-func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
+func twonodes(stw Commander, f func(*Node, *Node) (bool, error)) chan bool {
 	quit := make(chan bool)
 	go func() {
 		var n0 *Node
@@ -235,21 +231,27 @@ func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 			select {
 			case n := <-nch:
 				if n != nil {
-					if n0 == nil {
+					if !stw.NodeSelected() {
 						stw.SelectNode([]*Node{n})
 						n0 = n
 						stw.AddTail(n0)
 					} else {
-						err := f(n0, n)
+						end, err := f(n0, n)
 						if err != nil {
 							ErrorMessage(stw, err, ERROR)
 						}
-						stw.SetAltSelectNode(as)
-						stw.DeselectNode()
-						stw.EndTail()
-						stw.EndCommand()
-						stw.Redraw()
-						break twonodes
+						if end {
+							stw.SetAltSelectNode(as)
+							stw.DeselectNode()
+							stw.EndTail()
+							stw.EndCommand()
+							stw.Redraw()
+							break twonodes
+						} else {
+							stw.DeselectNode()
+							stw.EndTail()
+							stw.Redraw()
+						}
 					}
 				}
 			case c := <-clickch:
@@ -274,29 +276,29 @@ func twonodes(stw Commander, f func(*Node, *Node) error) chan bool {
 }
 
 func Dists(stw Commander) chan bool {
-	return twonodes(stw, func(n0, n *Node) error {
+	return twonodes(stw, func(n0, n *Node) (bool, error) {
 		dx, dy, dz, d := stw.Frame().Distance(n0, n)
 		stw.History(fmt.Sprintf("NODE: %d - %d", n0.Num, n.Num))
 		stw.History(fmt.Sprintf("DX: %.3f DY: %.3f DZ: %.3f D: %.3f", dx, dy, dz, d))
-		return nil
+		return true, nil
 	})
 }
 
 func AddLineElem(stw Commander) chan bool {
-	return twonodes(stw, func(n0, n *Node) error {
+	return twonodes(stw, func(n0, n *Node) (bool, error) {
 		frame := stw.Frame()
 		sec := frame.DefaultSect()
 		el := frame.AddLineElem(-1, []*Node{n0, n}, sec, NULL)
 		stw.History(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, n0.Num, n.Num, sec.Num))
 		Snapshot(stw)
-		return nil
+		return true, nil
 	})
 }
 
 func EditPlateElem(stw Commander) chan bool {
-	return twonodes(stw, func(n0, n *Node) error {
+	return twonodes(stw, func(n0, n *Node) (bool, error) {
 		if n0 == n {
-			return nil
+			return false, nil
 		}
 		for _, el := range stw.SelectedElems() {
 			for i, en := range el.Enod {
@@ -307,7 +309,7 @@ func EditPlateElem(stw Commander) chan bool {
 			}
 		}
 		Snapshot(stw)
-		return nil
+		return false, nil
 	})
 }
 
