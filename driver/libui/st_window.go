@@ -519,7 +519,24 @@ func (stw *Window) Draw(a *ui.Area, p *ui.AreaDrawParams) {
 		stw.UpdateWindow(stw.frame.Name)
 	}
 	if drawall {
+		if showprintrange {
+			pw, ph, err := stw.CanvasPaperSize()
+			if err == nil {
+				path := ui.DrawNewPath(ui.DrawFillModeWinding)
+				brush := mkSolidBrush(0xffffff, 1.0)
+				path.AddRectangle(0.5*(p.AreaWidth-pw), 0.5*(p.AreaHeight-ph), pw, ph)
+				path.End()
+				p.Context.Fill(path, brush)
+				path.Free()
+			}
+		}
 		st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, true)
+		for _, t := range stw.textBox {
+			if t.IsHidden(stw.frame.Show) {
+				continue
+			}
+			st.DrawText(stw, t)
+		}
 		if selectbox[2] != 0.0 && selectbox[3] != 0.0 {
 			path := ui.DrawNewPath(ui.DrawFillModeWinding)
 			path.AddRectangle(selectbox[0], selectbox[1], selectbox[2], selectbox[3])
@@ -828,7 +845,9 @@ func (stw *Window) KeyEvent(a *ui.Area, ke *ui.AreaKeyEvent) (handled bool) {
 				stw.Complete()
 			}
 		case '`':
-			if ke.Modifiers&ui.Shift != 0 {
+			if ke.Modifiers&ui.Alt != 0 {
+				return false
+			} else if ke.Modifiers&ui.Shift != 0 {
 				stw.TypeCommandLine("~")
 			} else {
 				stw.TypeCommandLine(string(ke.Key))
