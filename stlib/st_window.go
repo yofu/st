@@ -121,8 +121,9 @@ func SetPosition(stw Window) {
 		w = float64(cw)
 		h = float64(ch)
 	}
-	frame.View.Center[0] = sx + 0.5*w
-	frame.View.Center[1] = sy + 0.5*h
+	xmin, xmax, ymin, ymax := frame.Bbox2D(true)
+	frame.View.Center[0] = w*0.5 + (frame.View.Center[0] - 0.5*(xmax+xmin)) + sx
+	frame.View.Center[1] = h*0.5 + (frame.View.Center[1] - 0.5*(ymax+ymin)) + sy
 	frame.Show.LegendPosition[0] = int(sx + w - 200)
 	frame.Show.LegendPosition[1] = dataareaheight - int(float64((len(RainbowColor)+1)*frame.Show.LegendSize)*frame.Show.LegendLineSep) + int(sy)
 	if dw, ok := stw.(Drawer); ok {
