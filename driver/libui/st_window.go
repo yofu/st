@@ -307,7 +307,7 @@ func (stw *Window) ShapeData(sh st.Shape) {
 		tb = st.NewTextBox(NewFont())
 		tb.Show()
 		w, h := stw.GetCanvasSize()
-		tb.SetPosition(float64(w-200), float64(h-200))
+		tb.SetPosition(float64(w-250), float64(h-225))
 		stw.textBox["SHAPE"] = tb
 	}
 	var otp bytes.Buffer
@@ -342,7 +342,22 @@ func (stw *Window) ToggleShowPrintRange() {
 func (stw *Window) CurrentLap(string, int, int) {
 }
 
-func (stw *Window) SectionData(*st.Sect) {
+func (stw *Window) SectionData(sec *st.Sect) {
+	var tb *st.TextBox
+	if t, tok := stw.textBox["SECTION"]; tok {
+		tb = t
+	} else {
+		tb = st.NewTextBox(NewFont())
+		tb.Show()
+		w, h := stw.GetCanvasSize()
+		tb.SetPosition(float64(w-250), float64(h-500))
+		stw.textBox["SECTION"] = tb
+	}
+	tb.SetText(strings.Split(sec.InpString(), "\n"))
+	if al, ok := stw.frame.Allows[sec.Num]; ok {
+		tb.AddText(strings.Split(al.String(), "\n")...)
+	}
+	tb.ScrollToTop()
 }
 
 func (stw *Window) TextBox(name string) *st.TextBox {
@@ -525,6 +540,25 @@ var (
 	drawall   = true
 )
 
+func (stw *Window) SetTextboxPosition() {
+	sx, sy, _, ph := st.GetClipCoord(stw)
+	w, _ := stw.GetCanvasSize()
+	cw := float64(w)
+	// ch := float64(h)
+	if t, tok := stw.textBox["SECTION"]; tok {
+		t.SetPosition(cw-250, ph+sy-500)
+	}
+	if t, tok := stw.textBox["PAGETITLE"]; tok {
+		t.SetPosition(sx+100, ph-100)
+	}
+	if t, tok := stw.textBox["TITLE"]; tok {
+		t.SetPosition(sx+100, ph-200)
+	}
+	if t, tok := stw.textBox["DATA"]; tok {
+		t.SetPosition(sx+100, 200)
+	}
+}
+
 func (stw *Window) Draw(a *ui.Area, p *ui.AreaDrawParams) {
 	stw.currentArea = a
 	stw.currentDrawParam = p
@@ -547,18 +581,19 @@ func (stw *Window) Draw(a *ui.Area, p *ui.AreaDrawParams) {
 				path.Free()
 			}
 		}
+		stw.SetTextboxPosition()
 		if shapedata != nil {
 			w, h := stw.GetCanvasSize()
 			if showprintrange {
 				_, sy, _, ph := st.GetClipCoord(stw)
-				h = int(ph - sy)
+				h = int(ph + sy)
 			}
 			scale := 5.0
-			x0 := float64(w) - 150.0
+			x0 := float64(w) - 175.0
 			y0 := 200.0
 			vertices := shapedata.Vertices()
 			height := shapedata.Breadth(false)
-			stw.textBox["SHAPE"].SetPosition(float64(w-225), float64(h-225)-scale*height*0.5)
+			stw.textBox["SHAPE"].SetPosition(float64(w-250), float64(h-225)-scale*height*0.5)
 			path := ui.DrawNewPath(ui.DrawFillModeWinding)
 			path.NewFigure(x0+scale*vertices[0][0], y0+scale*vertices[0][1])
 			closed := false
