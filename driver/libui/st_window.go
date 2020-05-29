@@ -408,7 +408,7 @@ func (stw *Window) SetLabel(k, v string) {
 }
 
 func (stw *Window) GetCanvasSize() (int, int) {
-	return int(stw.currentDrawParam.ClipWidth), int(stw.currentDrawParam.ClipHeight)
+	return int(stw.currentDrawParam.AreaWidth), int(stw.currentDrawParam.AreaHeight)
 }
 
 func (stw *Window) Changed(c bool) {
