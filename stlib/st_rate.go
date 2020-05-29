@@ -1563,7 +1563,7 @@ func (an ANGLE) Vertices() [][]float64 {
 	b := an.B - cx
 	w := an.Tw - cx
 	f := an.Tf - cy
-	vertices := make([][]float64, 8)
+	vertices := make([][]float64, 6)
 	vertices[0] = []float64{-cx, -cy}
 	vertices[1] = []float64{b, -cy}
 	vertices[2] = []float64{b, f}
