@@ -164,7 +164,7 @@ func (stw *Window) FeedCommand() {
 	if command != "" {
 		stw.AddCommandHistory(command)
 		stw.ClearCommandLine()
-		stw.Typewrite("")
+		stw.ClearTypewrite()
 		stw.ExecCommand(command)
 		stw.Redraw()
 	}
@@ -722,9 +722,9 @@ func (stw *Window) DragBroken(a *ui.Area) {
 func (stw *Window) escape() {
 	stw.QuitCommand()
 	stw.ClearCommandLine()
+	stw.ClearTypewrite()
 	stw.Deselect()
 	stw.Redraw()
-	stw.Typewrite("")
 }
 
 func (stw *Window) KeyEvent(a *ui.Area, ke *ui.AreaKeyEvent) (handled bool) {
@@ -1035,7 +1035,7 @@ func (stw *Window) KeyEvent(a *ui.Area, ke *ui.AreaKeyEvent) (handled bool) {
 			}
 		}
 		if typing {
-			stw.Typewrite(stw.CommandLineStringWithPosition())
+			stw.Typewrite(stw.CommandLineString())
 		}
 		if setprev {
 			prevkey = ke
@@ -1046,7 +1046,19 @@ func (stw *Window) KeyEvent(a *ui.Area, ke *ui.AreaKeyEvent) (handled bool) {
 	}
 }
 
+func (stw *Window) ClearTypewrite() {
+	entry.SetText("")
+}
+
 func (stw *Window) Typewrite(str string) {
+	if str == "" {
+		entry.SetText("")
+		return
+	}
+	t := entry.Text()
+	if !strings.HasPrefix(str, t) && !strings.HasPrefix(t, str) {
+		return
+	}
 	entry.SetText(str)
 }
 
@@ -1177,6 +1189,9 @@ func SetupWindow(fn string) {
 	stw.currentArea = centerarea
 
 	entry = ui.NewEntry()
+	entry.OnChanged(func(en *ui.Entry) {
+		stw.SetCommandLineString(en.Text())
+	})
 
 	lefttitle = ui.NewCombobox()
 	lefttitle.Append("LAYER")
