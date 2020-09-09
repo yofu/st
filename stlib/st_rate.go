@@ -2374,8 +2374,8 @@ func (rc *RCColumn) Mza(cond *Condition) float64 {
 	b := rc.Breadth(true)
 	d := rc.Height(true)
 	dw := 11.0 // TODO: set dw, aw, lw & kaburi
-	aw := 0.7133
-	lw := 20.0
+	// aw := 0.7133
+	// lw := 15.0
 	kaburi := 5.0
 	b0 := b - kaburi*2.0 - dw
 	d0 := d - kaburi*2.0 - dw
@@ -2386,7 +2386,8 @@ func (rc *RCColumn) Mza(cond *Condition) float64 {
 	} else {
 		T1 = b * b * d * fs * 4.0 / 3.0 / 100.0 // [tfm]
 	}
-	T2 = aw * 2.0 * wft * A0 / lw / 100.0                // [tfm]
+	// T2 = aw * 2.0 * wft * A0 / lw / 100.0                // [tfm]
+	T2 = wft * A0 * rc.Hoops.Ps[1] * b / 100.0           // [tfm]
 	T3 = rc.Ai() * 2.0 * ft * A0 / (2*b0 + 2*d0) / 100.0 // [tfm]
 	if cond.Verbose {
 		cond.Buffer.WriteString(fmt.Sprintf("#     許容ねじりモーメント: T1= %.3f [tfm] T2= %.3f [tfm] T3= %.3f [tfm]\n", T1, T2, T3))
