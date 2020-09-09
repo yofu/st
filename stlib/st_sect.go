@@ -25,6 +25,7 @@ type Sect struct {
 	Type     int
 	Original int
 	Color    int
+	Allow    SectionRate
 }
 
 type Fig struct {
@@ -77,6 +78,7 @@ func (sect *Sect) Snapshot(frame *Frame) *Sect {
 	}
 	s.Type = sect.Type
 	s.Color = sect.Color
+	s.Allow = sect.Allow.Snapshot()
 	return s
 }
 

@@ -1694,7 +1694,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if err != nil {
 			return err
 		}
-		if al, ok := frame.Allows[int(tmp)]; ok {
+		if al := frame.Sects[int(tmp)].Allow; al != nil {
 			var otp bytes.Buffer
 			var m bytes.Buffer
 			cond := NewCondition()

@@ -1026,9 +1026,9 @@ func (elem *Elem) OriginalSection() *Sect {
 func (elem *Elem) GetSectionRate() (SectionRate, bool, error) {
 	var al SectionRate
 	original := false
-	if a, ok := elem.Frame.Allows[elem.Sect.Num]; ok {
+	if a := elem.Frame.Sects[elem.Sect.Num].Allow; a != nil {
 		al = a
-	} else if oa, ok := elem.Frame.Allows[elem.OriginalSection().Num]; ok {
+	} else if oa := elem.Frame.Sects[elem.OriginalSection().Num].Allow; oa != nil {
 		al = oa
 		original = true
 	} else {

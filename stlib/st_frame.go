@@ -78,7 +78,6 @@ type Frame struct {
 	Elems  map[int]*Elem
 	Props  map[int]*Prop
 	Sects  map[int]*Sect
-	Allows map[int]SectionRate
 	Piles  map[int]*Pile
 	Bonds  map[int]*Bond
 	Chains map[int]*Chain
@@ -120,7 +119,6 @@ func NewFrame() *Frame {
 	f.Nodes = make(map[int]*Node)
 	f.Elems = make(map[int]*Elem)
 	f.Sects = make(map[int]*Sect)
-	f.Allows = make(map[int]SectionRate)
 	f.Props = make(map[int]*Prop)
 	f.Piles = make(map[int]*Pile)
 	f.Bonds = make(map[int]*Bond)
@@ -344,9 +342,6 @@ func (frame *Frame) Snapshot() *Frame {
 		for _, el := range newc.Elems() {
 			el.Chain = newc
 		}
-	}
-	for _, a := range frame.Allows {
-		f.Allows[a.Num()] = a.Snapshot()
 	}
 	for k, v := range frame.Eigenvalue {
 		f.Eigenvalue[k] = v
@@ -2005,6 +2000,9 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 	var err error
 	tmp, err := strconv.ParseInt(lis[0][1], 10, 64)
 	num = int(tmp)
+	if _, ok := frame.Sects[num]; !ok {
+		return nil
+	}
 	var size int
 	switch lis[1][0] {
 	case "HKYOU":
@@ -2109,7 +2107,7 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 		return err
 	}
 	sr.SetName(strings.Trim(lis[0][4], "\""))
-	frame.Allows[num] = sr
+	frame.Sects[num].Allow = sr
 	return nil
 }
 
@@ -2120,6 +2118,9 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 	var err error
 	tmp, err := strconv.ParseInt(lis[0][1], 10, 64)
 	num = int(tmp)
+	if _, ok := frame.Sects[num]; !ok {
+		return nil
+	}
 	switch lis[0][3] {
 	case "COLUMN":
 		sr = NewRCColumn(num)
@@ -2185,7 +2186,7 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 		return err
 	}
 	sr.SetName(lis[0][4])
-	frame.Allows[num] = sr
+	frame.Sects[num].Allow = sr
 	return nil
 }
 
@@ -2196,6 +2197,9 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 	var err error
 	tmp, err := strconv.ParseInt(lis[0][1], 10, 64)
 	num = int(tmp)
+	if _, ok := frame.Sects[num]; !ok {
+		return nil
+	}
 	switch lis[0][3] {
 	case "COLUMN", "GIRDER":
 		var size int
@@ -2282,7 +2286,7 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 		return err
 	}
 	sr.SetName(strings.Trim(lis[0][4], "\""))
-	frame.Allows[num] = sr
+	frame.Sects[num].Allow = sr
 	return nil
 }
 
@@ -2738,10 +2742,10 @@ func (frame *Frame) DrawDxfSection(d *drawing.Drawing, el *Elem, position []floa
 	if !el.IsLineElem() {
 		return NotLineElem("DrawDxfSection")
 	}
-	if _, ok := frame.Allows[el.Sect.Num]; !ok {
+	if frame.Sects[el.Sect.Num].Allow == nil {
 		return fmt.Errorf("section not found")
 	}
-	switch al := frame.Allows[el.Sect.Num].(type) {
+	switch al := frame.Sects[el.Sect.Num].Allow.(type) {
 	case *SColumn:
 		sh := al.Shape
 		switch sh.(type) {
@@ -2972,7 +2976,7 @@ dxfkijun:
 			}
 			name := strings.TrimSpace(strings.Split(el.Sect.Name, ":")[0])
 			setlayer(el.Etype)
-			if al, ok := frame.Allows[el.Sect.Num]; ok {
+			if al := frame.Sects[el.Sect.Num].Allow; al != nil {
 				name = al.Name()
 				if b, ok := al.(Breadther); ok {
 					b1 := b.Breadth(true) * 0.01
@@ -3008,7 +3012,7 @@ dxfkijun:
 		}
 		name := strings.TrimSpace(strings.Split(el1.Sect.Name, ":")[0])
 		setlayer(el1.Etype)
-		if al, ok := frame.Allows[el1.Sect.Num]; ok {
+		if al := frame.Sects[el1.Sect.Num].Allow; al != nil {
 			name = al.Name()
 			if b, ok := al.(Breadther); ok {
 				b1 := b.Breadth(true) * 0.01
@@ -3059,7 +3063,7 @@ dxfkijun:
 		err := frame.DrawDxfSection(d, el, []float64{el.Enod[0].Coord[x], el.Enod[0].Coord[y], 0.0}, scale)
 		if err == nil {
 			settextlayer(el.Etype)
-			name := frame.Allows[el.Sect.Num].Name()
+			name := frame.Sects[el.Sect.Num].Allow.Name()
 			textcoord := []float64{
 				el.Enod[0].Coord[x]*scale + textheight,
 				el.Enod[0].Coord[y]*scale + textheight,
@@ -5461,7 +5465,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	maxml := 0.0
 	maxms := 0.0
 	for _, k := range keys {
-		otp.WriteString(fmt.Sprintf("断面記号: %d %s   As=   0.00[cm2] Ar=   0.00[cm2] Ac=    0.00[cm2] MAX:", k, frame.Allows[k].TypeString()))
+		otp.WriteString(fmt.Sprintf("断面記号: %d %s   As=   0.00[cm2] Ar=   0.00[cm2] Ac=    0.00[cm2] MAX:", k, frame.Sects[k].Allow.TypeString()))
 		els := maxrateelem[k]
 		switch els[0].Etype {
 		case COLUMN, GIRDER:
@@ -5526,7 +5530,7 @@ func (frame *Frame) CheckLst(secnum []int) string {
 			iy1, _ := frame.Sects[snum].Iy(0)
 			j1, _ := frame.Sects[snum].J(0)
 			var a2, ix2, iy2, j2 float64
-			switch al := frame.Allows[snum].(type) {
+			switch al := frame.Sects[snum].Allow.(type) {
 			case *SColumn:
 				sh := al.Shape
 				a2 = sh.A()
@@ -5570,7 +5574,7 @@ func (frame *Frame) CheckLst(secnum []int) string {
 		} else {
 			t1, _ := frame.Sects[snum].Thick(0)
 			var t2 float64
-			switch al := frame.Allows[snum].(type) {
+			switch al := frame.Sects[snum].Allow.(type) {
 			case *SWall:
 				t2 = al.Thickness()
 			case *RCWall:
@@ -5824,7 +5828,7 @@ func (frame *Frame) AmountLst(fn string, sects ...int) error {
 			var a Amount
 			tot := 0.0
 			if sec.HasArea(0) {
-				if al, ok := frame.Allows[sec.Num]; ok {
+				if al := sec.Allow; al != nil {
 					tot = sec.TotalAmount()
 					if tot == 0.0 {
 						continue

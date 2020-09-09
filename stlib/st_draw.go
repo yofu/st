@@ -645,7 +645,7 @@ func DrawClosedLine(stw Drawer, elem *Elem, position, strong, weak []float64, sc
 }
 
 func DrawSection(stw Drawer, elem *Elem, show *Show) {
-	if al, ok := elem.Frame.Allows[elem.Sect.Num]; ok {
+	if al := elem.Frame.Sects[elem.Sect.Num].Allow; al != nil {
 		position, _, strong, weak := elem.ElementAxes(show.PlotState&PLOT_UNDEFORMED == 0, show.Period, show.Dfact)
 		switch al.(type) {
 		case *SColumn:

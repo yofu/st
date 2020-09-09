@@ -2935,7 +2935,7 @@ func (stw *Window) SectionData(sec *st.Sect) {
 		stw.textBox["SECTION"] = tb
 	}
 	tb.SetText(strings.Split(sec.InpString(), "\n"))
-	if al, ok := stw.frame.Allows[sec.Num]; ok {
+	if al := sec.Allow; al != nil {
 		tb.AddText(strings.Split(al.String(), "\n")...)
 	}
 	tb.ScrollToTop()
