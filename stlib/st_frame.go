@@ -2060,6 +2060,10 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 		material = HT600
 	case "HT700":
 		material = HT700
+	case "A6061T6":
+		material = A6061T6
+	case "A6063T5":
+		material = A6063T5
 	case "M40J":
 		material = M40J
 	case "T300":
