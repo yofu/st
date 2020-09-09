@@ -5274,16 +5274,35 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			otp.WriteString("\n")
 			if cond.Verbose {
 				switch al.(type) {
-				case *SColumn, *WoodColumn:
+				case *SColumn:
 					sh := al.(*SColumn).Shape
-					otp.WriteString(fmt.Sprintf("# A   = %10.4f [cm2]\n", sh.A()))
-					otp.WriteString(fmt.Sprintf("# Asx = %10.4f [cm2]\n", sh.Asx()))
-					otp.WriteString(fmt.Sprintf("# Asy = %10.4f [cm2]\n", sh.Asy()))
-					otp.WriteString(fmt.Sprintf("# Ix  = %10.4f [cm4]\n", sh.Ix()))
-					otp.WriteString(fmt.Sprintf("# Iy  = %10.4f [cm4]\n", sh.Iy()))
-					otp.WriteString(fmt.Sprintf("# J   = %10.4f [cm4]\n", sh.J()))
-					otp.WriteString(fmt.Sprintf("# Zx  = %10.4f [cm3]\n", sh.Zx()))
-					otp.WriteString(fmt.Sprintf("# Zy  = %10.4f [cm3]\n", sh.Zy()))
+					otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
+					otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+					otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+					otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+					otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+					otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+					otp.WriteString(fmt.Sprintf("#     一様ねじり定数      J   = %10.4f [cm4]\n", sh.J()))
+					otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+					otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+				case *WoodColumn:
+					sh := al.(*WoodColumn).Shape
+					otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
+					otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+					otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+					otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+					otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+					otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+					otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J   = %10.4f [cm4]\n", sh.J()))
+					otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+					otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+				case *RCGirder:
+					rc := al.(*RCGirder)
+					otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
+					otp.WriteString(fmt.Sprintf("#     断面積:             A  = %12.2f [cm2]\n", rc.Area()))
+					otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix = %12.2f [cm4]\n", rc.Ix()))
+					otp.WriteString(fmt.Sprintf("#                         Iy = %12.2f [cm4]\n", rc.Iy()))
+					otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J  = %12.2f [cm4]\n", rc.J()))
 				}
 			}
 			if cond.Temporary {

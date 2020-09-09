@@ -367,8 +367,8 @@ func (sc *SColumn) Fc(cond *Condition) float64 {
 		lambda_x = lambda
 		lambda_y = lambda
 	} else {
-		lambda_x := lx / math.Sqrt(sc.Ix()/sc.A())
-		lambda_y := ly / math.Sqrt(sc.Iy()/sc.A())
+		lambda_x = lx / math.Sqrt(sc.Ix()/sc.A())
+		lambda_y = ly / math.Sqrt(sc.Iy()/sc.A())
 		if lambda_x >= lambda_y {
 			lambda = lambda_x
 		} else {
@@ -384,13 +384,13 @@ func (sc *SColumn) Fc(cond *Condition) float64 {
 	}
 	rtn *= sc.Factor(cond.Period)
 	if cond.Verbose {
-		cond.Buffer.WriteString(fmt.Sprintf("# Lkx=%.3f, Lky=%.3f\n", lx, ly))
+		cond.Buffer.WriteString(fmt.Sprintf("#     座屈長さ[cm]: Lkx=%.3f, Lky=%.3f\n", lx, ly))
 		check := ""
 		if lambda > 200 {
-			check = " Lambda>200"
+			check = " λ>200"
 		}
-		cond.Buffer.WriteString(fmt.Sprintf("# Lambdax=%.3f, Lambday=%.3f: Lambda=%.3f%s\n", lambda_x, lambda_y, lambda, check))
-		cond.Buffer.WriteString(fmt.Sprintf("# Fc=%.3f\n", rtn))
+		cond.Buffer.WriteString(fmt.Sprintf("#     細長比: λx=%.3f, λy=%.3f: λ=%.3f%s\n", lambda_x, lambda_y, lambda, check))
+		cond.Buffer.WriteString(fmt.Sprintf("#     許容圧縮応力度: Fc=%.3f [tf/cm2]\n", rtn))
 	}
 	return rtn
 }
@@ -403,7 +403,7 @@ func (sc *SColumn) Fs(cond *Condition) float64 {
 func (sc *SColumn) Fb(cond *Condition) float64 {
 	l := sc.Lb(cond.Length, cond.Strong)
 	if cond.Verbose {
-		cond.Buffer.WriteString(fmt.Sprintf("# Lb=%.3f\n", l))
+		cond.Buffer.WriteString(fmt.Sprintf("#     横座屈長さ[cm]: Lb=%.3f\n", l))
 	}
 	var rtn float64
 	fbnew := func() float64 {
@@ -412,7 +412,7 @@ func (sc *SColumn) Fb(cond *Condition) float64 {
 		lambda_b := math.Sqrt(my / me)
 		nu := 1.5 + math.Pow(lambda_b/E_LAMBDA_B, 2.0)/1.5
 		if cond.Verbose {
-			cond.Buffer.WriteString(fmt.Sprintf("# Me=%.3f, My=%.3f, Lambdab=%.3f\n", me, my, lambda_b))
+			cond.Buffer.WriteString(fmt.Sprintf("#     弾性横座屈モーメント、降伏モーメント、横座屈細長比: Me=%.3f [tfm], My=%.3f [tfm], λb=%.3f\n", me, my, lambda_b))
 		}
 		if lambda_b <= P_LAMBDA_B {
 			return sc.F / nu
@@ -469,7 +469,11 @@ func (sc *SColumn) Fb(cond *Condition) float64 {
 	}
 	rtn *= sc.Factor(cond.Period)
 	if cond.Verbose {
-		cond.Buffer.WriteString(fmt.Sprintf("# Fb=%.3f\n", rtn))
+		if cond.Strong {
+			cond.Buffer.WriteString(fmt.Sprintf("#     許容曲げ応力度(Mx): Fb=%.3f [tf/cm2]\n", rtn))
+		} else {
+			cond.Buffer.WriteString(fmt.Sprintf("#     許容曲げ応力度(My): Fb=%.3f [tf/cm2]\n", rtn))
+		}
 	}
 	return rtn
 }
@@ -2207,8 +2211,8 @@ func (rc *RCColumn) NeutralAxis(cond *Condition) (float64, float64, error) {
 		ryc := rc.NearSideReins(cond)
 		if (xn-ryc)/xn*fc*NCS <= ft { // NeutralAxis is outside of section, Ma is determined by concrete
 			if cond.Verbose {
-				cond.Buffer.WriteString(fmt.Sprintf("# 1. Neutral Axis is outside of section\n"))
-				cond.Buffer.WriteString(fmt.Sprintf("#    Ma is determined by concrete.\n"))
+				cond.Buffer.WriteString(fmt.Sprintf("#     1. Neutral Axis is outside of section\n"))
+				cond.Buffer.WriteString(fmt.Sprintf("#        Ma is determined by concrete.\n"))
 			}
 			return xn, fc, nil
 		} else { // NeutralAxis is outside of section, Ma is determined by reinforcement
@@ -2216,8 +2220,8 @@ func (rc *RCColumn) NeutralAxis(cond *Condition) (float64, float64, error) {
 			den := ft*b*h - NCS*cond.N + NCS*ft*rc.Ai()
 			xn = num / den
 			if cond.Verbose {
-				cond.Buffer.WriteString(fmt.Sprintf("# 2. Neutral Axis is outside of section\n"))
-				cond.Buffer.WriteString(fmt.Sprintf("#    Ma is determined by reinforcement.\n"))
+				cond.Buffer.WriteString(fmt.Sprintf("#     2. Neutral Axis is outside of section\n"))
+				cond.Buffer.WriteString(fmt.Sprintf("#        Ma is determined by reinforcement.\n"))
 			}
 			return xn, xn / (NCS * (xn - ryc)) * ft, nil
 		}
@@ -2232,8 +2236,8 @@ func (rc *RCColumn) NeutralAxis(cond *Condition) (float64, float64, error) {
 			if xn >= 0.0 {
 				if (ryt-xn)/xn*fc*NCS <= ft { // NeutralAxis is inside of section, Ma is determined by concrete
 					if cond.Verbose {
-						cond.Buffer.WriteString(fmt.Sprintf("# 3. Neutral Axis is inside of section\n"))
-						cond.Buffer.WriteString(fmt.Sprintf("#    Ma is determined by concrete.\n"))
+						cond.Buffer.WriteString(fmt.Sprintf("#     3. Neutral Axis is inside of section\n"))
+						cond.Buffer.WriteString(fmt.Sprintf("#        Ma is determined by concrete.\n"))
 					}
 					return xn, fc, nil
 				} else { // NeutralAxis is inside of section, Ma is determined by reinforcement
@@ -2245,8 +2249,8 @@ func (rc *RCColumn) NeutralAxis(cond *Condition) (float64, float64, error) {
 						xn := (-k2 + math.Sqrt(D2)) / (2.0 * k1)
 						if xn >= 0.0 {
 							if cond.Verbose {
-								cond.Buffer.WriteString(fmt.Sprintf("# 4. Neutral Axis is inside of section\n"))
-								cond.Buffer.WriteString(fmt.Sprintf("#    Ma is determined by reinforcement.\n"))
+								cond.Buffer.WriteString(fmt.Sprintf("#     4. Neutral Axis is inside of section\n"))
+								cond.Buffer.WriteString(fmt.Sprintf("#        Ma is determined by reinforcement.\n"))
 							}
 							return xn, xn / (NCS * (ryt - xn)) * ft, nil
 						}
@@ -2258,8 +2262,8 @@ func (rc *RCColumn) NeutralAxis(cond *Condition) (float64, float64, error) {
 		den := ft*rc.Ai() + cond.N
 		xn = num / den
 		if cond.Verbose {
-			cond.Buffer.WriteString(fmt.Sprintf("# 5. Neutral Axis is outside of section\n"))
-			cond.Buffer.WriteString(fmt.Sprintf("#    Ma is determined by reinforcement.\n"))
+			cond.Buffer.WriteString(fmt.Sprintf("#     5. Neutral Axis is outside of section\n"))
+			cond.Buffer.WriteString(fmt.Sprintf("#        Ma is determined by reinforcement.\n"))
 		}
 		return xn, -xn / (NCS * (ryt - xn)) * ft, nil
 	}
@@ -2280,16 +2284,23 @@ func (rc *RCColumn) Nmin(cond *Condition) float64 {
 func (rc *RCColumn) Na(cond *Condition) float64 {
 	if cond.Compression {
 		if cond.Verbose {
-			cond.Buffer.WriteString(fmt.Sprintf("# Fc= %.3f [tf/cm2]\n# Ac= %.3f [cm2]\n", rc.Fc(cond), rc.Area()))
+			cond.Buffer.WriteString(fmt.Sprintf("#     許容圧縮応力度: Fc= %.3f [tf/cm2]\n", rc.Fc(cond)))
 		}
 		return rc.Fc(cond) * rc.Area()
 	} else {
 		if rc.Reins == nil {
 			return 0.0
 		}
+		area := 0.0
+		ft := 0.0
 		rtn := 0.0
 		for _, r := range rc.Reins {
+			area += r.Area
+			ft = r.Ft(cond)
 			rtn += r.Area * r.Ft(cond)
+		}
+		if cond.Verbose {
+			cond.Buffer.WriteString(fmt.Sprintf("#     鉄筋総断面積: at= %.3f [cm2]\n#     鉄筋許容引張応力度 Ft= %.3f [tf/cm2]\n", area, ft))
 		}
 		return rtn
 	}
@@ -2308,6 +2319,9 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 	d := rc.FarSideReins(cond)
 	fs := rc.Fs(cond)
 	alpha := rc.Alpha(d, cond)
+	if cond.Verbose {
+		cond.Buffer.WriteString(fmt.Sprintf("#     許容せん断応力度: b=%.3f, d=%.3f, α=%.3f, Fs=%.3f [tf/cm2]\n", b, d, alpha, fs))
+	}
 	switch cond.Period {
 	default:
 		fmt.Println("unknown period")
@@ -2326,6 +2340,9 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 		} else if pw > 0.012 {
 			pw = 0.012
 		}
+		if cond.Verbose {
+			cond.Buffer.WriteString(fmt.Sprintf("#     せん断補強筋比: pw=%.6f\n", pw))
+		}
 		return 7 / 8.0 * b * d * (2.0/3.0*alpha*fs + 0.5*rc.Hoops.Ftw(cond)*(pw-0.002))
 	}
 }
@@ -2337,7 +2354,7 @@ func (rc *RCColumn) Ma(cond *Condition) float64 {
 		return 0.0
 	}
 	if cond.Verbose {
-		cond.Buffer.WriteString(fmt.Sprintf("# xn= %.3f [m]\n# sigma= %.3f [tf/cm2]\n", xn, sigma))
+		cond.Buffer.WriteString(fmt.Sprintf("#     中立軸: xn= %.3f [cm]\n#     許容応力度: σ= %.3f [tf/cm2]\n", xn, sigma))
 	}
 	if xn >= h {
 		return (sigma/xn*(b*h*(3.0*math.Pow(xn, 2.0)-3.0*xn*h+math.Pow(h, 2.0))/3.0+NCS*(math.Pow(xn, 2.0)*rc.Ai()-2.0*xn*rc.LiAi(cond)+rc.Li2Ai(cond))) - cond.N*(xn-h/2.0)) * 0.01 // [tfm]
@@ -2372,7 +2389,7 @@ func (rc *RCColumn) Mza(cond *Condition) float64 {
 	T2 = aw * 2.0 * wft * A0 / lw / 100.0                // [tfm]
 	T3 = rc.Ai() * 2.0 * ft * A0 / (2*b0 + 2*d0) / 100.0 // [tfm]
 	if cond.Verbose {
-		cond.Buffer.WriteString(fmt.Sprintf("# T1= %.3f [tfm] T2= %.3f [tfm] T3= %.3f [tfm]\n", T1, T2, T3))
+		cond.Buffer.WriteString(fmt.Sprintf("#     許容ねじりモーメント: T1= %.3f [tfm] T2= %.3f [tfm] T3= %.3f [tfm]\n", T1, T2, T3))
 	}
 	if T1 <= T2 {
 		if T1 <= T3 {
@@ -2422,7 +2439,7 @@ func (rg *RCGirder) Qa(cond *Condition) float64 {
 	fs := rg.Fs(cond)
 	alpha := rg.Alpha(d, cond)
 	if cond.Verbose {
-		cond.Buffer.WriteString(fmt.Sprintf("# BREADTH=%.3f, DEPTH=%.3f, ALPHA=%.3f, Fs=%.3f\n", b, d, alpha, fs))
+		cond.Buffer.WriteString(fmt.Sprintf("#     許容せん断応力度: b=%.3f, d=%.3f, α=%.3f, Fs=%.3f [tf/cm2]\n", b, d, alpha, fs))
 	}
 	var pw float64
 	if cond.Strong { // for Qy
@@ -2441,6 +2458,9 @@ func (rg *RCGirder) Qa(cond *Condition) float64 {
 		} else if pw > 0.006 {
 			pw = 0.006
 		}
+		if cond.Verbose {
+			cond.Buffer.WriteString(fmt.Sprintf("#     せん断補強筋比: pw=%.6f\n", pw))
+		}
 		return 7 / 8.0 * b * d * (alpha*fs + 0.5*rg.Hoops.Ftw(cond)*(pw-0.002))
 	case "X", "Y", "S":
 		if pw < 0.002 {
@@ -2448,6 +2468,9 @@ func (rg *RCGirder) Qa(cond *Condition) float64 {
 			return 7 / 8.0 * b * d * fs
 		} else if pw > 0.012 {
 			pw = 0.012
+		}
+		if cond.Verbose {
+			cond.Buffer.WriteString(fmt.Sprintf("#     せん断補強筋比: pw=%.6f\n", pw))
 		}
 		return 7 / 8.0 * b * d * (alpha*fs + 0.5*rg.Hoops.Ftw(cond)*(pw-0.002))
 	}
@@ -2816,6 +2839,15 @@ func (wc *WoodColumn) Fc(cond *Condition) float64 {
 	} else {
 		rtn = 3000.0 / (lambda * lambda)
 	}
+	if cond.Verbose {
+		cond.Buffer.WriteString(fmt.Sprintf("#     座屈長さ[cm]: Lkx=%.3f, Lky=%.3f\n", lx, ly))
+		check := ""
+		if lambda > 150 {
+			check = " λ>150"
+		}
+		cond.Buffer.WriteString(fmt.Sprintf("#     細長比: λx=%.3f, λy=%.3f: λ=%.3f%s\n", lambda_x, lambda_y, lambda, check))
+		cond.Buffer.WriteString(fmt.Sprintf("#     許容圧縮応力度: Fc=%.3f [tf/cm2]\n", rtn))
+	}
 	return rtn * wc.Factor(cond.Period) * wc.fc
 }
 func (wc *WoodColumn) Ft(cond *Condition) float64 {
@@ -3046,7 +3078,16 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 	fa := make([]float64, 12)
 	var ind int
 	var otp bytes.Buffer
+	verbose := false
 	for i := 0; i < 2; i++ {
+		if cond.Verbose {
+			if i == 0 {
+				cond.Buffer.WriteString(fmt.Sprintf("# 算定詳細\n"))
+				verbose = cond.Verbose
+			} else {
+				cond.Verbose = false
+			}
+		}
 		if i == 0 {
 			cond.N = stress[6*i]
 			cond.M = stress[6*i+4]
@@ -3113,6 +3154,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		rate[ind] = math.Abs(stress[ind] / maz)
 		fa[ind] = maz
 	}
+	cond.Verbose = verbose
 	for i := 0; i < 6; i++ {
 		for j := 0; j < 2; j++ {
 			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[6*j+i], stress[6*j+i]*SI))
