@@ -4741,13 +4741,13 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	}
 	otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
 	otp.WriteString("各断面の部材総量（参考資料）\n\n")
-	otp.WriteString(" 断面番号   長さ,面積[m,m2]\n")
+	otp.WriteString(" 断面番号 長さ,面積 重量(柱梁用)\n             [m,m2]     [ton]\n")
 	for k := range amount {
 		ekeys = append(ekeys, k)
 	}
 	sort.Ints(ekeys)
 	for _, k := range ekeys {
-		otp.WriteString(fmt.Sprintf("%9d %9.3f 【%s】\n", k, amount[k], frame.Sects[k].Name))
+		otp.WriteString(fmt.Sprintf("%9d %9.3f %9.3f 【%s】\n", k, amount[k], amount[k]*frame.Sects[k].Weight()[1], frame.Sects[k].Name))
 	}
 	otp.WriteString("\n")
 	switch frame.Show.UnitName[0] {
