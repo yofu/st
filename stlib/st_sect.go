@@ -55,6 +55,7 @@ func NewSect() *Sect {
 	s.Lload = make([]float64, 3)
 	s.Yield = make([]float64, 12)
 	s.Color = 16777215
+	s.Allow = nil
 	return s
 }
 
@@ -78,7 +79,9 @@ func (sect *Sect) Snapshot(frame *Frame) *Sect {
 	}
 	s.Type = sect.Type
 	s.Color = sect.Color
-	s.Allow = sect.Allow.Snapshot()
+	if s.Allow != nil {
+		s.Allow = sect.Allow.Snapshot()
+	}
 	return s
 }
 

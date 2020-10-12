@@ -5245,6 +5245,13 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			default:
 				isrc = false
 			}
+			if isrc && cond.Qfact < 2.0 {
+				factor[1] = 2.0
+				factor[2] = 2.0
+			} else {
+				factor[1] = cond.Qfact
+				factor[2] = cond.Qfact
+			}
 			var qlrate, qsrate, qurate, mlrate, msrate, murate float64
 			msrates := make([]float64, 4)
 			cond.Length = el.Length() * 100.0 // [cm]
