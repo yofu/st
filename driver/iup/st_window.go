@@ -2918,6 +2918,9 @@ func (stw *Window) ShapeData(sh st.Shape) {
 	otp.WriteString(fmt.Sprintf("Asy = %10.4f [cm2]\n", sh.Asy()))
 	otp.WriteString(fmt.Sprintf("Ix  = %10.4f [cm4]\n", sh.Ix()))
 	otp.WriteString(fmt.Sprintf("Iy  = %10.4f [cm4]\n", sh.Iy()))
+	if an, ok := sh.(st.ANGLE); ok {
+		otp.WriteString(fmt.Sprintf("Imin= %10.4f [cm4]\n", an.Imin()))
+	}
 	otp.WriteString(fmt.Sprintf("J   = %10.4f [cm4]\n", sh.J()))
 	otp.WriteString(fmt.Sprintf("Zx  = %10.4f [cm3]\n", sh.Zx()))
 	otp.WriteString(fmt.Sprintf("Zy  = %10.4f [cm3]\n", sh.Zy()))
