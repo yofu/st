@@ -21,6 +21,7 @@ type Sect struct {
 	Exp      float64
 	Exq      float64
 	Lload    []float64
+	Perpl    []float64
 	Yield    []float64
 	Type     int
 	Original int
@@ -53,6 +54,7 @@ func NewSect() *Sect {
 	s.Exp = arclm.EXPONENT
 	s.Exq = arclm.EXPONENT
 	s.Lload = make([]float64, 3)
+	s.Perpl = make([]float64, 3)
 	s.Yield = make([]float64, 12)
 	s.Color = 16777215
 	s.Allow = nil
@@ -73,6 +75,7 @@ func (sect *Sect) Snapshot(frame *Frame) *Sect {
 	s.Exq = sect.Exq
 	for i := 0; i < 3; i++ {
 		s.Lload[i] = sect.Lload[i]
+		s.Perpl[i] = sect.Perpl[i]
 	}
 	for i := 0; i < 12; i++ {
 		s.Yield[i] = sect.Yield[i]
@@ -148,6 +151,9 @@ func (sect *Sect) InpString() string {
 	}
 	if sect.Lload[0] != 0.0 || sect.Lload[1] != 0.0 || sect.Lload[2] != 0.0 {
 		rtn.WriteString(fmt.Sprintf("         LLOAD %.3f %.3f %.3f\n", sect.Lload[0], sect.Lload[1], sect.Lload[2]))
+	}
+	if sect.Perpl[0] != 0.0 || sect.Perpl[1] != 0.0 || sect.Perpl[2] != 0.0 {
+		rtn.WriteString(fmt.Sprintf("         PERPL %.3f %.3f %.3f\n", sect.Perpl[0], sect.Perpl[1], sect.Perpl[2]))
 	}
 	rtn.WriteString(fmt.Sprintf("         COLOR %s\n", col))
 	return rtn.String()

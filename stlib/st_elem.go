@@ -594,9 +594,24 @@ func (elem *Elem) Weight() []float64 {
 	a := elem.Amount()
 	w := elem.Sect.Weight()
 	for i := 0; i < 3; i++ {
-		rtn[i] = a * w[i]
+		p := elem.ConvertPerpendicularLoad(i, 2)
+		rtn[i] = a * (w[i] + p)
 	}
 	return rtn
+}
+
+func (elem *Elem) ConvertPerpendicularLoad(ind int, direction int) float64 {
+	if elem.Sect.Perpl == nil || len(elem.Sect.Perpl) < 3 || (elem.Sect.Perpl[1] == 0.0 && elem.Sect.Perpl[2] == 0.0) {
+		return 0.0
+	}
+	if ind < 0 || ind > 2 {
+		return 0.0
+	}
+	if direction < 0 || direction > 2 {
+		return 0.0
+	}
+	edir := elem.Normal(true)
+	return edir[direction] * elem.Sect.Perpl[ind]
 }
 
 func (elem *Elem) Distribute() error {

@@ -766,6 +766,11 @@ func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 				s.Lload[j], err = strconv.ParseFloat(lis[i+1+j], 64)
 			}
 			skip = 3
+		case "PERPL":
+			for j := 0; j < 3; j++ {
+				s.Perpl[j], err = strconv.ParseFloat(lis[i+1+j], 64)
+			}
+			skip = 3
 		case "EXP":
 			s.Exp, err = strconv.ParseFloat(lis[i+1], 64)
 			skip = 1
@@ -4645,6 +4650,24 @@ func (frame *Frame) ExtractArclm(fn string) error {
 			an.Mass = n.Weight[2] / 9.80665
 			af.Nodes[i] = an
 			arclmnodes[n.Num] = i
+		}
+		for _, el := range frame.Elems {
+			for i := 0; i < 3; i++ {
+				var val float64
+				switch p {
+				case "L":
+					val = el.ConvertPerpendicularLoad(1, i)
+				case "X", "Y":
+					val = el.ConvertPerpendicularLoad(2, i)
+				}
+				if val != 0.0 {
+					a := el.Amount()
+					for _, n := range el.Enod {
+						an := af.Nodes[arclmnodes[n.Num]]
+						an.Force[i] += val * a / float64(el.Enods)
+					}
+				}
+			}
 		}
 		af.Elems = make([]*arclm.Elem, enum)
 		for i, el := range elems {
