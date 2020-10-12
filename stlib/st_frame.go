@@ -5669,7 +5669,7 @@ fact_node:
 		for i := 0; i < l-1; i++ {
 			if (el.Enod[0].Coord[2]-frame.Ai.Boundary[i+1])*(el.Enod[1].Coord[2]-frame.Ai.Boundary[i+1]) < 0 {
 				elems[i] = append(elems[i], el)
-				break
+				// break
 			}
 		}
 	}

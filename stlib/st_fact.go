@@ -314,7 +314,7 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem, period []string) error
 			otp.WriteString(fmt.Sprintf("%d %d", el.Num, el.Sect.Num))
 			for j, per := range period {
 				drift := el.StoryDrift(per)
-				if math.Abs(drift) > math.Abs(tmpmaxdrift[j]) {
+				if (el.Etype == COLUMN || el.Etype == GIRDER) && (math.Abs(drift) > math.Abs(tmpmaxdrift[j])) {
 					tmpmaxdrift[j] = drift
 					maxdriftelem[j] = el.Num
 				}
