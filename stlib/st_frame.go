@@ -5053,7 +5053,14 @@ func (frame *Frame) WindPressure() (string, error) {
 	otp.WriteString(fmt.Sprintf("Er                           : %.3f\n", er))
 	otp.WriteString(fmt.Sprintf("Gf                           : %.3f\n", gf))
 	otp.WriteString(fmt.Sprintf("E=Er^2 Gf                    : %.3f\n", e))
-	otp.WriteString(fmt.Sprintf("q=0.6 E V0^2[N/m2]           : %.3f\n", q*frame.Show.Unit[0]))
+	switch frame.Show.UnitName[0] {
+	case "tf":
+		otp.WriteString(fmt.Sprintf("q=0.6 E V0^2[kgf/m2]        : %.3f\n", q*frame.Show.Unit[0]))
+	case "kN":
+		otp.WriteString(fmt.Sprintf("q=0.6 E V0^2[N/m2]          : %.3f\n", q*frame.Show.Unit[0]))
+	default:
+		otp.WriteString(fmt.Sprintf("q=0.6 E V0^2[kgf/m2]        : %.3f\n", q*frame.Show.Unit[0]))
+	}
 	otp.WriteString("\n風圧力を算定する高さ Z1[m]   :")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", z[i]))
@@ -5082,27 +5089,27 @@ func (frame *Frame) WindPressure() (string, error) {
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", cf[i]))
 	}
-	otp.WriteString("\n外力 Wx=Cf (Zi-Zi+1) b1[kN]  :")
+	otp.WriteString(fmt.Sprintf("\n外力 Wx=Cf (Zi-Zi+1) b1[%s]  :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", wx[i]*frame.Show.Unit[0]))
 	}
-	otp.WriteString("\n     Wy=Cf (Zi-Zi+1) b2[kN]  :")
+	otp.WriteString(fmt.Sprintf("\n     Wy=Cf (Zi-Zi+1) b2[%s]  :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", wy[i]*frame.Show.Unit[0]))
 	}
-	otp.WriteString("\n層せん断力 Qwx=ΣWx[kN]      :")
+	otp.WriteString(fmt.Sprintf("\n層せん断力 Qwx=ΣWx[%s]      :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", qx[i]*frame.Show.Unit[0]))
 	}
-	otp.WriteString("\n           Qwy=ΣWy[kN]      :")
+	otp.WriteString(fmt.Sprintf("\n           Qwy=ΣWy[%s]      :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", qy[i]*frame.Show.Unit[0]))
 	}
-	otp.WriteString("\n地震層せん断力 Qex[kN]       :")
+	otp.WriteString(fmt.Sprintf("\n地震層せん断力 Qex[%s]       :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Qi[0][i+1]*frame.Show.Unit[0]))
 	}
-	otp.WriteString("\n               Qey[kN]       :")
+	otp.WriteString(fmt.Sprintf("\n               Qey[%s]       :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Qi[1][i+1]*frame.Show.Unit[0]))
 	}
