@@ -922,6 +922,17 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if err != nil {
 			return err
 		}
+	case "writefig2":
+		if usage {
+			return Usage("writefig2 filename")
+		}
+		if fn == "" {
+			fn = Ce(frame.Path, ".fig2")
+		}
+		err := WriteFig2(fn, frame.View, frame.Show)
+		if err != nil {
+			return err
+		}
 	case "zoubundisp":
 		if usage {
 			return Usage(":zoubundisp period direction")

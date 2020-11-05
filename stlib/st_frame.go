@@ -6610,6 +6610,67 @@ func WriteReaction(fn string, ns []*Node, direction int, unit float64) error {
 	return nil
 }
 
+func WriteFig2(fn string, view *View, show *Show) error {
+	var otp bytes.Buffer
+	if view.Perspective {
+		otp.WriteString("perspective\n")
+	} else {
+		otp.WriteString("axonometric\n")
+	}
+	otp.WriteString(fmt.Sprintf("gfact %.1f\n", view.Gfact))
+	otp.WriteString(fmt.Sprintf("gaxis %.1f\n", show.GlobalAxisSize))
+	otp.WriteString(fmt.Sprintf("focus %.3f %.3f %.3f\n", view.Focus[0], view.Focus[1], view.Focus[2]))
+	otp.WriteString(fmt.Sprintf("angle %.1f %.1f\n", view.Angle[0], view.Angle[1]))
+	otp.WriteString(fmt.Sprintf("dists %.0f %.0f\n", view.Dists[0], view.Dists[1]))
+	otp.WriteString("elem")
+	for i, etname := range ETYPES {
+		if i == NULL || i == TRUSS {
+			continue
+		}
+		if show.Etype[i] {
+			otp.WriteString(fmt.Sprintf(" %s", strings.ToLower(etname)))
+		}
+	}
+	otp.WriteString("\n")
+	if show.Conf {
+		otp.WriteString(fmt.Sprintf("conf %.1f\n", show.ConfSize))
+	}
+	if show.Bond {
+		otp.WriteString(fmt.Sprintf("hinge %.1f\n", show.BondSize))
+	} else {
+		otp.WriteString("hinge 0")
+	}
+	if show.PlotState&PLOT_DEFORMED != 0 {
+		otp.WriteString(fmt.Sprintf("dfact %.1f\ndeformation %s\n", show.Dfact, strings.ToLower(show.Period)))
+	}
+	if show.ColorMode == ECOLOR_RATE {
+		otp.WriteString("srcancolor\n")
+	}
+	if show.SrcanRate != 0 {
+		// TODO: set srcanrate value
+		otp.WriteString("srcanrate\n")
+	}
+	for i, etname := range ETYPES {
+		if i == NULL || i == TRUSS {
+			continue
+		}
+		if show.Stress[i] != 0 {
+			for j, stname := range []string{"n", "qx", "qy", "mz", "mx", "my"} {
+				if show.Stress[i]&(1<<uint(j)) != 0 {
+					otp.WriteString(fmt.Sprintf("stress %s %s %s\n", strings.ToLower(etname), strings.ToLower(show.Period), stname))
+				}
+			}
+		}
+	}
+	w, err := os.Create(fn)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+	otp.WriteTo(w)
+	return nil
+}
+
 func NodeDuplication(nodes map[int]*Node, eps float64) map[*Node]*Node {
 	dups := make(map[*Node]*Node, 0)
 	keys := make([]int, len(nodes))
