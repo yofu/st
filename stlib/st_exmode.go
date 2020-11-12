@@ -2974,28 +2974,44 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 	case "setcang":
 		if narg < 2 {
 			if usage {
-				return Usage(":setcang [plate]")
+				return Usage(":setcang [plate -enum=]")
 			}
 			return NotEnoughArgs(":setcang")
 		}
 		switch strings.ToLower(args[1]) {
 		case "plate":
+			var normal []float64
+			if en, ok := argdict["ENUM"]; ok {
+				enum, err := strconv.ParseInt(en, 10, 64)
+				if err == nil {
+					if el, ok := frame.Elems[int(enum)]; ok {
+						if !el.IsLineElem() {
+							normal = el.Normal(true)
+						}
+					}
+				}
+			}
 			els := currentelem(stw, exmodech, exmodeend)
+			var err error
 			for _, el := range els {
 				if el.IsNotEditable(frame.Show) || !el.IsLineElem() {
 					continue
 				}
 				plates := frame.SearchElem(el.Enod...)
-				vec := make([]float64, 3)
-				for _, p := range plates {
-					if p.Etype == WALL || p.Etype == SLAB {
-						tmp := p.Normal(true)
-						for i := 0; i < 3; i++ {
-							vec[i] += tmp[i]
+				if normal == nil {
+					vec := make([]float64, 3)
+					for _, p := range plates {
+						if p.Etype == WALL || p.Etype == SLAB {
+							tmp := p.Normal(true)
+							for i := 0; i < 3; i++ {
+								vec[i] += tmp[i]
+							}
 						}
 					}
+					_, err = el.AxisToCang(vec, false)
+				} else {
+					_, err = el.AxisToCang(normal, false)
 				}
-				_, err := el.AxisToCang(vec, false)
 				if err != nil {
 					return err
 				}
