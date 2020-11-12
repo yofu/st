@@ -95,6 +95,14 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 		}
 		oncap = true
 	}
+	if show.ElemCaption&EC_SIZE != 0 {
+		if elem.IsLineElem() {
+			ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Length()))
+		} else {
+			ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Area()))
+		}
+		oncap = true
+	}
 	if show.ElemCaption&EC_WIDTH != 0 {
 		ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Width()))
 		oncap = true

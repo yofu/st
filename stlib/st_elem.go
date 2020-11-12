@@ -2564,6 +2564,13 @@ func (elem *Elem) CurrentValue(show *Show, max, abs bool) float64 {
 	if show.ElemCaption&EC_SECT != 0 {
 		return float64(elem.Sect.Num)
 	}
+	if show.ElemCaption&EC_SIZE != 0 {
+		if elem.IsLineElem() {
+			return elem.Length()
+		} else {
+			return elem.Area()
+		}
+	}
 	if show.ElemCaption&EC_WIDTH != 0 {
 		return elem.Width()
 	}

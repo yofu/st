@@ -670,6 +670,12 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		} else {
 			ElemCaptionOn(stw, "EC_SECT")
 		}
+	case "size":
+		if un {
+			ElemCaptionOff(stw, "EC_SIZE")
+		} else {
+			ElemCaptionOn(stw, "EC_SIZE")
+		}
 	case "width":
 		if un {
 			ElemCaptionOff(stw, "EC_WIDTH")
