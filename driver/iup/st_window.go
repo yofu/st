@@ -1628,7 +1628,7 @@ func (stw *Window) Close(force bool) {
 	}
 	stw.SaveCommandHistory()
 	stw.SaveRecent()
-	stw.Dlg.Destroy()
+	iup.ExitLoop()
 }
 
 // Read// {{{
