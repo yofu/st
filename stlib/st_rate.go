@@ -133,6 +133,7 @@ var (
 
 	FC18 = Concrete{"Fc18", 0.180, 210.0, 0.166666}
 	FC24 = Concrete{"Fc24", 0.240, 210.0, 0.166666}
+	FC27 = Concrete{"Fc27", 0.270, 210.0, 0.166666}
 	FC30 = Concrete{"Fc30", 0.300, 210.0, 0.166666}
 	FC36 = Concrete{"Fc36", 0.360, 210.0, 0.166666}
 
@@ -2004,6 +2005,8 @@ func (rc *RCColumn) SetConcrete(lis []string) error {
 		rc.Concrete = FC18
 	case "FC24":
 		rc.Concrete = FC24
+	case "FC27":
+		rc.Concrete = FC27
 	case "FC30":
 		rc.Concrete = FC30
 	case "FC36":
@@ -2520,6 +2523,8 @@ func (rw *RCWall) SetConcrete(lis []string) error {
 		rw.Concrete = FC18
 	case "FC24":
 		rw.Concrete = FC24
+	case "FC27":
+		rw.Concrete = FC27
 	case "FC30":
 		rw.Concrete = FC30
 	case "FC36":
