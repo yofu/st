@@ -3,11 +3,12 @@ package stgui
 import (
 	"bytes"
 	"fmt"
-	"github.com/visualfc/go-iup/iup"
-	"github.com/yofu/st/stlib"
 	"math"
 	"os"
 	"sort"
+
+	"github.com/yofu/go-iup/iup"
+	"github.com/yofu/st/stlib"
 )
 
 var (

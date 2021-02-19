@@ -19,10 +19,10 @@ import (
 	"time"
 
 	"github.com/atotto/clipboard"
-	"github.com/visualfc/go-iup/cd"
-	"github.com/visualfc/go-iup/iup"
 	"github.com/yofu/abbrev"
 	"github.com/yofu/complete"
+	"github.com/yofu/go-iup/cd"
+	"github.com/yofu/go-iup/iup"
 	st "github.com/yofu/st/stlib"
 	fsnotify "gopkg.in/fsnotify.v1"
 )
@@ -727,6 +727,7 @@ func NewWindow(homedir string) *Window { // {{{
 		"EXPAND=YES",
 		"NAME=canvas",
 		func(arg *iup.CommonMap) {
+			// cd.UseContextPlus(true)
 			stw.cdcanv = cd.CreateCanvas(cd.CD_IUP, stw.canv)
 			stw.dbuff = cd.CreateCanvas(cd.CD_DBUFFER, stw.cdcanv)
 			stw.cdcanv.Foreground(cd.CD_WHITE)

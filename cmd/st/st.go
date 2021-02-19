@@ -6,13 +6,13 @@ import (
 	"runtime"
 	"runtime/debug"
 
-	"github.com/visualfc/go-iup/iup"
+	"github.com/yofu/go-iup/iup"
 	"github.com/yofu/st/driver/iup"
 )
 
 const (
 	version  = "0.1.0"
-	modified = "LAST CHANGE:19-Oct-2018."
+	modified = "LAST CHANGE:19-Feb-2021."
 	HOME     = "C:/D/CDOCS/Hogan/Debug"
 	HOGAN    = "C:/D/CDOCS/Hogan/Debug"
 )

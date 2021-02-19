@@ -2,12 +2,13 @@ package stgui
 
 import (
 	"fmt"
-	"github.com/visualfc/go-iup/iup"
-	"github.com/yofu/st/stlib"
 	"math"
 	"sort"
 	"strconv"
 	"time"
+
+	"github.com/yofu/go-iup/iup"
+	"github.com/yofu/st/stlib"
 )
 
 var (

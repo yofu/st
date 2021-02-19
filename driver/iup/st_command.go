@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/atotto/clipboard"
-	"github.com/visualfc/go-iup/cd"
-	"github.com/visualfc/go-iup/iup"
+	"github.com/yofu/go-iup/cd"
+	"github.com/yofu/go-iup/iup"
 	st "github.com/yofu/st/stlib"
 )
 

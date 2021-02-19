@@ -1,7 +1,7 @@
 package stgui
 
 import (
-	"github.com/visualfc/go-iup/cd"
+	"github.com/yofu/go-iup/cd"
 )
 
 var (

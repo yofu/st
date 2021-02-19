@@ -3,7 +3,7 @@ package stgui
 import (
 	"fmt"
 
-	"github.com/visualfc/go-iup/cd"
+	"github.com/yofu/go-iup/cd"
 	st "github.com/yofu/st/stlib"
 )
 
