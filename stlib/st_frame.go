@@ -5861,11 +5861,12 @@ func (frame *Frame) AmountProp(fn string, props ...int) error {
 
 func (frame *Frame) AmountLst(fn string, sects ...int) error {
 	var otp bytes.Buffer
-	otp.WriteString("断面 名前                                    長さ/面積     鉄骨量     ＲＣ量     鉄筋量\n")
-	otp.WriteString("                                                [m/m2]       [tf]       [m3]       [tf]\n")
+	otp.WriteString("断面 名前                                    長さ/面積     鉄骨量     ＲＣ量     鉄筋量   型枠面積\n")
+	otp.WriteString("                                                [m/m2]       [tf]       [m3]       [tf]       [m2]\n")
 	total := NewAmount()
 	total["REINS"] = 0.0
 	total["CONCRETE"] = 0.0
+	total["FORMWORK"] = 0.0
 	total["STEEL"] = 0.0
 	for _, s := range sects {
 		if sec, ok := frame.Sects[s]; ok {
@@ -5888,6 +5889,9 @@ func (frame *Frame) AmountLst(fn string, sects ...int) error {
 							a["CONCRETE"] = val * tot * h / 2.4
 						}
 					}
+					if val, ok := al["FORMWORK"]; ok {
+						a["FORMWORK"] = val * tot
+					}
 					if val, ok := al["STEEL"]; ok {
 						a["STEEL"] = val * tot * 7.8
 					}
@@ -5896,34 +5900,32 @@ func (frame *Frame) AmountLst(fn string, sects ...int) error {
 				if !sec.HasBrace() {
 					continue
 				}
-				pw, err := sec.Srein(0)
-				if err != nil {
-					continue
-				}
-				t, err := sec.Thick(0)
-				if err != nil {
-					continue
-				}
-				area := 0.0
-				for _, el := range frame.Elems {
-					if el.Sect == sec {
-						area += el.Area()
+				if al := sec.Allow; al != nil {
+					tot = sec.TotalAmount()
+					al := al.Amount()
+					a = NewAmount()
+					if val, ok := al["REINS"]; ok {
+						a["REINS"] = val * tot * 2 * 7.8
+					}
+					if val, ok := al["CONCRETE"]; ok {
+						a["CONCRETE"] = val * tot
+					}
+					if val, ok := al["FORMWORK"]; ok {
+						a["FORMWORK"] = val * tot
 					}
 				}
-				a = NewAmount()
-				a["REINS"] = pw * t * area * 2 * 7.8
-				a["CONCRETE"] = t * area
-				tot = area
 			}
 			if a != nil {
 				total["REINS"] += a["REINS"]
 				total["CONCRETE"] += a["CONCRETE"]
+				total["FORMWORK"] += a["FORMWORK"]
 				total["STEEL"] += a["STEEL"]
-				otp.WriteString(fmt.Sprintf("%4d %-40s %8.3f %10.4f %10.4f %10.4f\n", sec.Num, sec.Name, tot, a["STEEL"], a["CONCRETE"], a["REINS"]))
+				otp.WriteString(fmt.Sprintf("%4d %-40s %8.3f %10.4f %10.4f %10.4f %10.4f\n", sec.Num, sec.Name, tot, a["STEEL"], a["CONCRETE"], a["REINS"], a["FORMWORK"]))
 			}
 		}
 	}
-	otp.WriteString(fmt.Sprintf("                                                       %10.4f %10.4f %10.4f\n", total["STEEL"], total["CONCRETE"], total["REINS"]))
+	otp.WriteString("--------------------------------------------------------------------------------------------------\n")
+	otp.WriteString(fmt.Sprintf("                                                       %10.4f %10.4f %10.4f %10.4f\n", total["STEEL"], total["CONCRETE"], total["REINS"], total["FORMWORK"]))
 	w, err := os.Create(fn)
 	defer w.Close()
 	if err != nil {

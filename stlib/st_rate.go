@@ -2414,6 +2414,7 @@ func (rc *RCColumn) Amount() Amount {
 	area := rc.Area()
 	a["REINS"] = (rc.Ai() + area*(rc.Hoops.Ps[0]+rc.Hoops.Ps[1])) * 0.0001
 	a["CONCRETE"] = area * 0.0001
+	a["FORMWORK"] = (rc.Breadth(true) + rc.Height(true)) * 2 * 0.01
 	return a
 }
 
@@ -2478,6 +2479,14 @@ func (rg *RCGirder) Qa(cond *Condition) float64 {
 		}
 		return 7 / 8.0 * b * d * (alpha*fs + 0.5*rg.Hoops.Ftw(cond)*(pw-0.002))
 	}
+}
+func (rg *RCGirder) Amount() Amount {
+	a := NewAmount()
+	area := rg.Area()
+	a["REINS"] = (rg.Ai() + area*(rg.Hoops.Ps[0]+rg.Hoops.Ps[1])) * 0.0001
+	a["CONCRETE"] = area * 0.0001
+	a["FORMWORK"] = (rg.Breadth(true) + rg.Height(true)*2) * 0.01
+	return a
 }
 
 type RCWall struct {
@@ -2629,7 +2638,12 @@ func (rw *RCWall) Mza(cond *Condition) float64 {
 }
 
 func (rw *RCWall) Amount() Amount {
-	return nil
+	a := NewAmount()
+	thick := rw.Thick
+	a["REINS"] = thick * 0.01 * rw.Srein
+	a["CONCRETE"] = thick * 0.01
+	a["FORMWORK"] = 2.0
+	return a
 }
 
 type RCSlab struct {
@@ -2646,6 +2660,15 @@ func NewRCSlab(num int) *RCSlab {
 }
 func (rs *RCSlab) TypeString() string {
 	return "ＲＣ床　"
+}
+
+func (rs *RCSlab) Amount() Amount {
+	a := NewAmount()
+	thick := rs.Thick
+	a["REINS"] = thick * 0.01 * rs.Srein
+	a["CONCRETE"] = thick * 0.01
+	a["FORMWORK"] = 1.0
+	return a
 }
 
 func SetSD(name string) SD {

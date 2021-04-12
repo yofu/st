@@ -2090,7 +2090,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if len(sects) == 0 {
 			return errors.New(":amountlst: no selected sect")
 		}
-		fn := filepath.Join(filepath.Dir(frame.Path), "amountltxt")
+		fn := filepath.Join(filepath.Dir(frame.Path), "amountl.txt")
 		err := frame.AmountLst(fn, sects...)
 		if err != nil {
 			return err
