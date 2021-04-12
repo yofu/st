@@ -8,13 +8,14 @@ import (
 
 	"github.com/yofu/go-iup/iup"
 	"github.com/yofu/st/driver/iup"
+	"github.com/yofu/st/stlib"
 )
 
 const (
 	version  = "0.1.0"
-	modified = "LAST CHANGE:19-Feb-2021."
-	HOME     = "C:/D/CDOCS/Hogan/Debug"
-	HOGAN    = "C:/D/CDOCS/Hogan/Debug"
+	modified = "LAST CHANGE:26-Mar-2021."
+	HOME     = "C:/Users/yofu8/st"
+	HOGAN    = "C:/Users/yofu8/st"
 )
 
 func main() {
@@ -22,6 +23,11 @@ func main() {
 	iup.Open()
 	defer iup.Close()
 	sw := stgui.NewWindow(HOME)
+	if len(os.Args) >= 2 {
+		if _, err := os.Stat(os.Args[1]); err == nil {
+			st.OpenFile(sw, os.Args[1], true)
+		}
+	}
 	defer sw.SaveCommandHistory()
 	defer stgui.StopLogging()
 	sw.Version = version
