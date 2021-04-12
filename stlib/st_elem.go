@@ -1803,21 +1803,56 @@ func (elem *Elem) DivideAtOns(eps float64) (rn []*Node, els []*Elem, err error) 
 		}
 		return rn, els, nil
 	} else {
-		if elem.Enods != 4 {
-			return nil, nil, errors.New("DivideAtOns: Enod != 4")
-		}
-		for i := 0; i < 2; i++ {
-			rn1 := elem.OnNode(i, eps)
-			rn2 := elem.OnNode(i+2, eps)
-			if len(rn1) != 1 || len(rn2) != 1 {
-				continue
+		switch elem.Enods {
+		default:
+			return nil, nil, errors.New("DivideAtOns: Enod != 3 or 4")
+		case 3:
+			rns := make([][]*Node, 3)
+			for i := 0; i < 3; i++ {
+				rns[i] = elem.OnNode(i, eps)
 			}
-			newel := elem.Frame.AddPlateElem(-1, []*Node{rn1[0], elem.Enod[1+i], elem.Enod[2+i], rn2[0]}, elem.Sect, elem.Etype)
-			elem.Enod[1+i] = rn1[0]
-			elem.Enod[2+i] = rn2[0]
-			return []*Node{rn1[0], rn2[0]}, []*Elem{elem, newel}, nil
+			if len(rns[0]) == 0 {
+				if len(rns[1]) == 0 || len(rns[2]) == 0 {
+					return nil, nil, errors.New("DivideAtOns: cannot divide")
+				}
+				newel := elem.Frame.AddPlateElem(-1, []*Node{elem.Enod[0], elem.Enod[1], rns[1][0], rns[2][0]}, elem.Sect, elem.Etype)
+				elem.Enod[0] = rns[1][0]
+				elem.Enod[1] = rns[2][0]
+				return []*Node{rns[1][0], rns[2][0]}, []*Elem{elem, newel}, nil
+			} else {
+				if len(rns[1]) != 0 && len(rns[2]) != 0 {
+					newel1 := elem.Frame.AddPlateElem(-1, []*Node{rns[0][0], elem.Enod[1], rns[1][0]}, elem.Sect, elem.Etype)
+					newel2 := elem.Frame.AddPlateElem(-1, []*Node{rns[2][0], rns[1][0], elem.Enod[2]}, elem.Sect, elem.Etype)
+					newel3 := elem.Frame.AddPlateElem(-1, []*Node{rns[0][0], rns[1][0], rns[2][0]}, elem.Sect, elem.Etype)
+					elem.Enod[1] = rns[0][0]
+					elem.Enod[2] = rns[2][0]
+					return []*Node{rns[0][0], rns[1][0], rns[2][0]}, []*Elem{elem, newel1, newel2, newel3}, nil
+				} else if len(rns[1]) == 0 {
+					newel := elem.Frame.AddPlateElem(-1, []*Node{rns[0][0], elem.Enod[1], elem.Enod[2], rns[2][0]}, elem.Sect, elem.Etype)
+					elem.Enod[1] = rns[0][0]
+					elem.Enod[2] = rns[2][0]
+					return []*Node{rns[0][0], rns[2][0]}, []*Elem{elem, newel}, nil
+				} else {
+					newel := elem.Frame.AddPlateElem(-1, []*Node{elem.Enod[0], rns[0][0], rns[1][0], elem.Enod[2]}, elem.Sect, elem.Etype)
+					elem.Enod[0] = rns[0][0]
+					elem.Enod[2] = rns[1][0]
+					return []*Node{rns[0][0], rns[1][0]}, []*Elem{elem, newel}, nil
+				}
+			}
+		case 4:
+			for i := 0; i < 2; i++ {
+				rn1 := elem.OnNode(i, eps)
+				rn2 := elem.OnNode(i+2, eps)
+				if len(rn1) != 1 || len(rn2) != 1 {
+					continue
+				}
+				newel := elem.Frame.AddPlateElem(-1, []*Node{rn1[0], elem.Enod[1+i], elem.Enod[2+i], rn2[0]}, elem.Sect, elem.Etype)
+				elem.Enod[1+i] = rn1[0]
+				elem.Enod[2+i] = rn2[0]
+				return []*Node{rn1[0], rn2[0]}, []*Elem{elem, newel}, nil
+			}
+			return nil, nil, errors.New("DivideAtOns: divide pattern is indeterminate")
 		}
-		return nil, nil, errors.New("DivideAtOns: divide pattern is indeterminate")
 	}
 }
 
