@@ -3977,6 +3977,35 @@ func (frame *Frame) NodeSort(d int) (int, error) {
 	return frame.BandWidth(), nil
 }
 
+func (frame *Frame) EliminateAllPin() []*Node {
+	rtn := make([]*Node, 0)
+	for _, n := range frame.Nodes {
+		es := frame.SearchElem(n)
+		if len(es) == 0 {
+			continue
+		}
+		allpin := true
+		pinelem := make([]*Elem, 0)
+		for _, el := range es {
+			if el.IsLineElem() && el.Etype <= BRACE {
+				if el.IsRigid(n.Num) {
+					allpin = false
+				} else {
+					pinelem = append(pinelem, el)
+				}
+			}
+		}
+		if len(pinelem) == 0 {
+			continue
+		}
+		if allpin {
+			pinelem[0].ToggleBond(n.Num)
+			rtn = append(rtn, n)
+		}
+	}
+	return rtn
+}
+
 func (frame *Frame) Suspicious() ([]*Node, []*Elem, error) {
 	var otp bytes.Buffer
 	ns := make([]*Node, 0)
