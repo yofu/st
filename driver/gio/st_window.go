@@ -18,12 +18,13 @@ import (
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
+
 	// "gioui.org/op/clip"
 	// "gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 	"github.com/yofu/abbrev"
-	"github.com/yofu/st/stlib"
+	st "github.com/yofu/st/stlib"
 )
 
 var (
@@ -105,7 +106,7 @@ func (stw *Window) QueueRedrawAll() {
 }
 
 func (stw *Window) Run(w *app.Window) error {
-	st.OpenFile(stw, "/home/yofu/st/penta02/penta02.inp", true)
+	st.OpenFile(stw, "C:\\Users\\yofu8\\st\\karuhouse\\karuhouse01\\karuhouse01.inp", true)
 	var ops op.Ops
 	for {
 		select {
@@ -154,6 +155,7 @@ func (stw *Window) Run(w *app.Window) error {
 					dy := end.Y - start.Y
 					switch press {
 					case pointer.ButtonMiddle:
+						fmt.Println(e)
 						if e.Modifiers&key.ModShift != 0 {
 							stw.frame.View.Center[0] += float64(dx) * stw.CanvasMoveSpeedX()
 							stw.frame.View.Center[1] += float64(dy) * stw.CanvasMoveSpeedY()

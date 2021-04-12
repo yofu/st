@@ -13,7 +13,7 @@ import (
 )
 
 func (stw *Window) Line(x1 float64, y1 float64, x2 float64, y2 float64) {
-	stk := op.Push(stw.context.Ops)
+	stk := op.Save(stw.context.Ops)
 	var path clip.Path
 	path.Begin(stw.context.Ops)
 	path.Move(f32.Pt(float32(x1), float32(y1)))
@@ -28,11 +28,11 @@ func (stw *Window) Line(x1 float64, y1 float64, x2 float64, y2 float64) {
 		},
 	}.Op().Add(stw.context.Ops)
 	paint.Fill(stw.context.Ops, stw.currentPen)
-	stk.Pop()
+	stk.Load()
 }
 
 func (stw *Window) Polyline(coords [][]float64) {
-	stk := op.Push(stw.context.Ops)
+	stk := op.Save(stw.context.Ops)
 	var path clip.Path
 	path.Begin(stw.context.Ops)
 	path.Move(f32.Pt(float32(coords[0][0]), float32(coords[0][1])))
@@ -50,11 +50,11 @@ func (stw *Window) Polyline(coords [][]float64) {
 		},
 	}.Op().Add(stw.context.Ops)
 	paint.Fill(stw.context.Ops, stw.currentPen)
-	stk.Pop()
+	stk.Load()
 }
 
 func (stw *Window) Polygon(coords [][]float64) {
-	stk := op.Push(stw.context.Ops)
+	stk := op.Save(stw.context.Ops)
 	var path clip.Path
 	path.Begin(stw.context.Ops)
 	path.Move(f32.Pt(float32(coords[0][0]), float32(coords[0][1])))
@@ -66,11 +66,11 @@ func (stw *Window) Polygon(coords [][]float64) {
 		Path: path.End(),
 	}.Op().Add(stw.context.Ops)
 	paint.Fill(stw.context.Ops, stw.currentBrush)
-	stk.Pop()
+	stk.Load()
 }
 
 func (stw *Window) Circle(x float64, y float64, r float64) {
-	stk := op.Push(stw.context.Ops)
+	stk := op.Save(stw.context.Ops)
 	var path clip.Path
 	path.Begin(stw.context.Ops)
 	path.Move(f32.Pt(float32(x-r/2), float32(y-r/2)))
@@ -85,11 +85,11 @@ func (stw *Window) Circle(x float64, y float64, r float64) {
 		},
 	}.Op().Add(stw.context.Ops)
 	paint.Fill(stw.context.Ops, stw.currentPen)
-	stk.Pop()
+	stk.Load()
 }
 
 func (stw *Window) FilledCircle(x float64, y float64, r float64) {
-	stk := op.Push(stw.context.Ops)
+	stk := op.Save(stw.context.Ops)
 	var path clip.Path
 	path.Begin(stw.context.Ops)
 	path.Move(f32.Pt(float32(x-r/2), float32(y-r/2)))
@@ -98,7 +98,7 @@ func (stw *Window) FilledCircle(x float64, y float64, r float64) {
 		Path: path.End(),
 	}.Op().Add(stw.context.Ops)
 	paint.Fill(stw.context.Ops, stw.currentBrush)
-	stk.Pop()
+	stk.Load()
 }
 
 func (stw *Window) Text(x float64, y float64, txt string) {
