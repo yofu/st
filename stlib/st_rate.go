@@ -3029,7 +3029,9 @@ func (wc *WoodColumn) Vertices() [][]float64 {
 }
 
 func (wc *WoodColumn) Amount() Amount {
-	return nil
+	a := NewAmount()
+	a["WOOD"] = wc.A() * 0.0001
+	return a
 }
 
 type WoodGirder struct {

@@ -5894,8 +5894,8 @@ func (frame *Frame) AmountProp(fn string, props ...int) error {
 
 func (frame *Frame) AmountLst(fn string, sects ...int) error {
 	var otp bytes.Buffer
-	otp.WriteString("断面 名前                                    長さ/面積     鉄骨量     ＲＣ量     鉄筋量   型枠面積\n")
-	otp.WriteString("                                                [m/m2]       [tf]       [m3]       [tf]       [m2]\n")
+	otp.WriteString("断面 名前                                    長さ/面積     鉄骨量     木材量     ＲＣ量     鉄筋量   型枠面積\n")
+	otp.WriteString("                                                [m/m2]       [tf]       [m3]       [m3]       [tf]       [m2]\n")
 	total := NewAmount()
 	total["REINS"] = 0.0
 	total["CONCRETE"] = 0.0
@@ -5928,6 +5928,9 @@ func (frame *Frame) AmountLst(fn string, sects ...int) error {
 					if val, ok := al["STEEL"]; ok {
 						a["STEEL"] = val * tot * 7.8
 					}
+					if val, ok := al["WOOD"]; ok {
+						a["WOOD"] = val * tot
+					}
 				}
 			} else if sec.HasThick(0) {
 				if !sec.HasBrace() {
@@ -5953,12 +5956,13 @@ func (frame *Frame) AmountLst(fn string, sects ...int) error {
 				total["CONCRETE"] += a["CONCRETE"]
 				total["FORMWORK"] += a["FORMWORK"]
 				total["STEEL"] += a["STEEL"]
-				otp.WriteString(fmt.Sprintf("%4d %-40s %8.3f %10.4f %10.4f %10.4f %10.4f\n", sec.Num, sec.Name, tot, a["STEEL"], a["CONCRETE"], a["REINS"], a["FORMWORK"]))
+				total["WOOD"] += a["WOOD"]
+				otp.WriteString(fmt.Sprintf("%4d %-40s %8.3f %10.4f %10.4f %10.4f %10.4f %10.4f\n", sec.Num, sec.Name, tot, a["STEEL"], a["WOOD"], a["CONCRETE"], a["REINS"], a["FORMWORK"]))
 			}
 		}
 	}
-	otp.WriteString("--------------------------------------------------------------------------------------------------\n")
-	otp.WriteString(fmt.Sprintf("                                                       %10.4f %10.4f %10.4f %10.4f\n", total["STEEL"], total["CONCRETE"], total["REINS"], total["FORMWORK"]))
+	otp.WriteString("-------------------------------------------------------------------------------------------------------------\n")
+	otp.WriteString(fmt.Sprintf("                                                       %10.4f %10.4f %10.4f %10.4f %10.4f\n", total["STEEL"], total["WOOD"], total["CONCRETE"], total["REINS"], total["FORMWORK"]))
 	w, err := os.Create(fn)
 	defer w.Close()
 	if err != nil {
