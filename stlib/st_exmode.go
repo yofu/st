@@ -4585,6 +4585,8 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 	case "elimallpin":
 		nodes := frame.EliminateAllPin()
 		stw.SelectNode(nodes)
+	case "keisansho":
+		frame.OutputTex()
 	case "extractarclm":
 		if usage {
 			return Usage(":extractarclm")

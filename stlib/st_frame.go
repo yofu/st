@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/mattn/natural"
 	"github.com/yofu/dxf"
@@ -5964,6 +5965,128 @@ func (frame *Frame) AmountLst(fn string, sects ...int) error {
 		return err
 	}
 	otp.WriteTo(w)
+	return nil
+}
+
+func (frame *Frame) OutputTex() error {
+	// Section2.3
+	// TODO:
+	// ・templateをexeに埋め込む
+	// ・材料特性のtabularもPropから生成するようにする
+	// ・使われていないSectを出力しないようにする
+	lineelems := make([]*Sect, 0)
+	plateelems := make([]*Sect, 0)
+	snum1 := 0
+	snum2 := 0
+	for _, sect := range frame.Sects {
+		if sect.HasArea(0) {
+			lineelems = append(lineelems, sect)
+			snum1++
+		} else if sect.HasThick(0) {
+			plateelems = append(plateelems, sect)
+			snum2++
+		}
+	}
+	lineelems = lineelems[:snum1]
+	plateelems = plateelems[:snum2]
+	sort.Sort(SectByNum{lineelems})
+	sort.Sort(SectByNum{plateelems})
+	var tmpl23 = template.Must(template.ParseFiles("../../template/2_3.tex"))
+	typematerial := func(sect *Sect) (string, int) {
+		material := 0
+		typename := ""
+		switch {
+		case sect.Figs[0].Prop.IsRc(1e-3):
+			material = 1
+			typename = "ＲＣ"
+		case sect.Figs[0].Prop.IsPc(1e-3):
+			material = 2
+			typename = "ＰＣ"
+		case sect.Figs[0].Prop.IsSteel(1e-3):
+			material = 3
+			typename = "Ｓ"
+		case sect.Figs[0].Prop.IsWood(7e5, 1e-3):
+			material = 4
+			typename = "木"
+		case sect.Figs[0].Prop.IsWood(9.5e5, 1e-3):
+			material = 5
+			typename = "木"
+		case sect.Figs[0].Prop.IsWood(14e5, 1e-3):
+			material = 6
+			typename = "木"
+		case sect.Figs[0].Prop.IsGohan(1e-3):
+			material = 7
+		}
+		if sect.Num < 300 {
+			typename += "柱"
+		} else if sect.Num < 600 {
+			typename += "梁"
+		} else if sect.Num < 700 {
+			typename += "筋違"
+		} else if sect.Num < 800 {
+			typename += "床"
+		} else if sect.Num < 900 {
+			typename += "壁"
+		}
+		return typename, material
+	}
+	signname := func(str string) (string, string) {
+		sn := strings.Split(str, ":")
+		if len(sn) < 2 {
+			return "", str
+		} else {
+			return sn[0], sn[1]
+		}
+	}
+	lineelem := func(sect *Sect) string {
+		area, _ := sect.Area(0)
+		ix, _ := sect.Ix(0)
+		iy, _ := sect.Iy(0)
+		j, _ := sect.J(0)
+		w := sect.Weight()
+		typename, material := typematerial(sect)
+		sign, name := signname(sect.Name)
+		return fmt.Sprintf("    %s & %d & %s & %d & 1～2F & %s & %.1f & %.0f & %.0f & %.0f & %.0f & 1.000\\\\", sign, sect.Num, typename, material, name, w[0]*1000, area*1e4, ix*1e8, iy*1e8, j*1e8)
+	}
+	plateelem := func(sect *Sect) string {
+		if sect.HasBrace() {
+			t, _ := sect.Thick(0)
+			w := sect.Weight()
+			w0 := w[1] - sect.Lload[1]
+			w1 := t * sect.Figs[0].Prop.Hiju
+			w2 := w[1] - w1 - sect.Lload[1]
+			typename, material := typematerial(sect)
+			sign, name := signname(sect.Name)
+			return fmt.Sprintf("    %s & %d & %s & %d & 1～2F & %s &  %.0f & ○ & %.2f & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, material, name, w0*1000, t*1000, w2*1000)
+		} else {
+			w := sect.Weight()
+			w0 := w[1] - sect.Lload[1]
+			typename := "非構造"
+			if sect.Num < 800 {
+				typename += "床"
+			} else if sect.Num < 900 {
+				typename += "壁"
+			}
+			sign, name := signname(sect.Name)
+			return fmt.Sprintf("    %s  & %d & %s & - & 1～2F & %s & %.0f & × & - & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, name, w0*1000, w0*1000)
+		}
+	}
+	table1 := make([]string, snum1)
+	table2 := make([]string, snum2)
+	for i := 0; i < snum1; i++ {
+		table1[i] = lineelem(lineelems[i])
+	}
+	for i := 0; i < snum2; i++ {
+		table2[i] = plateelem(plateelems[i])
+	}
+	data := map[string]interface{}{
+		"table1": strings.Join(table1, "\n"),
+		"table2": strings.Join(table2, "\n"),
+	}
+	err := tmpl23.Execute(os.Stdout, data)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
