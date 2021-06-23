@@ -1134,6 +1134,115 @@ func (tk TKYOU) Breadth(strong bool) float64 {
 	}
 }
 
+type TWEAK struct {
+	H, B, Tw, Tf float64
+}
+
+func NewTWEAK(lis []string) (TWEAK, error) {
+	tk := TWEAK{0.0, 0.0, 0.0, 0.0}
+	if len(lis) < 4 {
+		return tk, NotEnoughArgs("NewTWEAK")
+	}
+	var val float64
+	var err error
+	val, err = strconv.ParseFloat(lis[0], 64)
+	if err != nil {
+		return tk, err
+	}
+	tk.H = val
+	val, err = strconv.ParseFloat(lis[1], 64)
+	if err != nil {
+		return tk, err
+	}
+	tk.B = val
+	val, err = strconv.ParseFloat(lis[2], 64)
+	if err != nil {
+		return tk, err
+	}
+	tk.Tw = val
+	val, err = strconv.ParseFloat(lis[3], 64)
+	if err != nil {
+		return tk, err
+	}
+	tk.Tf = val
+	return tk, nil
+}
+func (tk TWEAK) String() string {
+	return fmt.Sprintf("TWEAK %5.1f %5.1f %4.1f %4.1f", tk.H, tk.B, tk.Tw, tk.Tf)
+}
+func (tk TWEAK) Description() string {
+	return fmt.Sprintf("T-%dx%dx%dx%d(WEAK)[mm]", int(tk.H*10), int(tk.B*10), int(tk.Tw*10), int(tk.Tf*10))
+}
+func (tk TWEAK) A() float64 {
+	return tk.H*tk.B - (tk.H-tk.Tf)*(tk.B-tk.Tw)
+}
+func (tk TWEAK) Asx() float64 {
+	return (tk.H - tk.Tf) * tk.Tw / 1.5
+}
+func (tk TWEAK) Asy() float64 {
+	return tk.B * tk.Tf / 1.5
+}
+func (tk TWEAK) Cx() float64 {
+	return ((tk.B-tk.Tw)*tk.Tf*0.5*tk.Tf + tk.H*tk.Tw*0.5*tk.H) / tk.A()
+}
+func (tk TWEAK) Ix() float64 {
+	return tk.Tf*math.Pow(tk.B, 3.0)/12.0 + (tk.H-tk.Tf)*math.Pow(tk.Tw, 3.0)/12.0
+}
+func (tk TWEAK) Iy() float64 {
+	cx := tk.Cx()
+	return (tk.B-tk.Tw)*math.Pow(tk.Tf, 3.0)/12.0 + tk.Tw*math.Pow(tk.H, 3.0)/12.0 + (tk.B-tk.Tw)*tk.Tf*math.Pow(cx-0.5*tk.Tf, 2.0) + tk.H*tk.Tw*math.Pow(0.5*tk.H-cx, 2.0)
+}
+func (tk TWEAK) J() float64 {
+	return tk.B*math.Pow(tk.Tf, 3.0)/3.0 + (tk.H-tk.Tf)*math.Pow(tk.Tw, 3.0)/3.0
+}
+func (tk TWEAK) Iw() float64 {
+	return 0.0
+}
+func (tk TWEAK) Torsion() float64 {
+	if tk.Tf >= tk.Tw {
+		return tk.J() / tk.Tf
+	} else {
+		return tk.J() / tk.Tw
+	}
+}
+func (tk TWEAK) Zx() float64 {
+	return tk.Ix() / tk.B * 2.0
+}
+func (tk TWEAK) Zy() float64 {
+	cx := tk.Cx()
+	if cx >= tk.H*0.5 {
+		return tk.Iy() / cx
+	} else {
+		return tk.Iy() / (tk.H - cx)
+	}
+}
+
+func (tk TWEAK) Vertices() [][]float64 {
+	c := tk.Cx()
+	h := tk.H - c
+	b := tk.B * 0.5
+	w := tk.Tw * 0.5
+	f := tk.Tf
+	vertices := make([][]float64, 8)
+	vertices[0] = []float64{-h, -w}
+	vertices[1] = []float64{-h, w}
+	vertices[2] = []float64{c - f, w}
+	vertices[3] = []float64{c - f, b}
+	vertices[4] = []float64{c, b}
+	vertices[5] = []float64{c, -b}
+	vertices[6] = []float64{c - f, -b}
+	vertices[7] = []float64{c - f, -w}
+	return vertices
+}
+
+func (tk TWEAK) Breadth(strong bool) float64 {
+	if strong {
+		return tk.H
+	} else {
+		return tk.B
+	}
+}
+
 type CKYOU struct {
 	H, B, Tw, Tf float64
 }
