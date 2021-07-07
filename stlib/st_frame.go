@@ -5401,6 +5401,9 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 					mlrate = 10.0
 				} else {
 					mlrate = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+					if mlrate == 0.0 { // 両端ピン柱の場合は軸力の検定比を表示
+						mlrate = rate[0]
+					}
 				}
 			}
 			if cond.Skipshort {
@@ -5427,6 +5430,9 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 						msrates[p-1] = 10.0
 					} else {
 						msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+						if msrates[p-1] == 0.0 { // 両端ピン柱の場合は軸力の検定比を表示
+							msrates[p-1] = rate[0]
+						}
 					}
 				}
 			}
