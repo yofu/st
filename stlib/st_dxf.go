@@ -130,6 +130,27 @@ func (frame *Frame) ParseDxfEntities(lis []string, elemhandle map[int]*Elem, coo
 	return vertices, elemhandle, err
 }
 
+func (frame *Frame) parseLayerName(str string) (int, *Sect, error) {
+	var sect *Sect
+	etype := Etype(layeretype.FindString(str))
+	if etype != 0 {
+		tmp, err := strconv.ParseInt(layersect.FindString(str), 10, 64)
+		if err != nil {
+			return 0, nil, err
+		}
+		if val, ok := frame.Sects[int(tmp)]; ok {
+			sect = val
+		} else {
+			sec := frame.AddSect(int(tmp))
+			sect = sec
+		}
+	} else {
+		etype = NULL
+		sect = frame.DefaultSect()
+	}
+	return etype, sect, nil
+}
+
 func (frame *Frame) ParseDxfLine(lis []string, elemhandle map[int]*Elem, coord []float64, eps float64) (map[int]*Elem, error) {
 	var err error
 	var index, h int64
@@ -153,20 +174,12 @@ func (frame *Frame) ParseDxfLine(lis []string, elemhandle map[int]*Elem, coord [
 			}
 			handle = int(h)
 		case 8:
-			etype = Etype(layeretype.FindString(lis[i+1]))
-			if etype == 0 {
-				return elemhandle, nil
-			}
-			tmp, err := strconv.ParseInt(layersect.FindString(lis[i+1]), 10, 64)
+			et, sec, err := frame.parseLayerName(lis[i+1])
 			if err != nil {
 				return elemhandle, err
 			}
-			if val, ok := frame.Sects[int(tmp)]; ok {
-				sect = val
-			} else {
-				sec := frame.AddSect(int(tmp))
-				sect = sec
-			}
+			etype = et
+			sect = sec
 		case 10:
 			startx, err = strconv.ParseFloat(lis[i+1], 64)
 		case 20:
@@ -334,20 +347,12 @@ func (frame *Frame) ParseDxf3DFace(lis []string, coord []float64, eps float64) e
 		}
 		switch int(index) {
 		case 8:
-			etype = Etype(layeretype.FindString(lis[i+1]))
-			if etype == 0 {
-				return nil
-			}
-			tmp, err := strconv.ParseInt(layersect.FindString(lis[i+1]), 10, 64)
+			et, sec, err := frame.parseLayerName(lis[i+1])
 			if err != nil {
 				return err
 			}
-			if val, ok := frame.Sects[int(tmp)]; ok {
-				sect = val
-			} else {
-				sec := frame.AddSect(int(tmp))
-				sect = sec
-			}
+			etype = et
+			sect = sec
 		case 10, 11, 12, 13:
 			coords[size][0], err = strconv.ParseFloat(lis[i+1], 64)
 		case 20, 21, 22, 23:
@@ -414,20 +419,12 @@ func (frame *Frame) ParseDxfVertex(lis []string, coord []float64, vertices []*No
 		}
 		switch int(index) {
 		case 8:
-			etype = Etype(layeretype.FindString(lis[i+1]))
-			if etype == 0 {
-				return vertices, nil
-			}
-			tmp, err := strconv.ParseInt(layersect.FindString(lis[i+1]), 10, 64)
+			et, sec, err := frame.parseLayerName(lis[i+1])
 			if err != nil {
-				return nil, err
+				return vertices, err
 			}
-			if val, ok := frame.Sects[int(tmp)]; ok {
-				sect = val
-			} else {
-				sec := frame.AddSect(int(tmp))
-				sect = sec
-			}
+			etype = et
+			sect = sec
 		case 10:
 			x, err = strconv.ParseFloat(lis[i+1], 64)
 		case 20:
