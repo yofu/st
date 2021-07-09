@@ -3294,6 +3294,33 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			divfunc = func(el *Elem) ([]*Node, []*Elem, error) {
 				return el.DivideAtLength(val, EPS)
 			}
+		case "range":
+			if usage {
+				return Usage("divide range l")
+			}
+			if narg < 3 {
+				return NotEnoughArgs(":divide length")
+			}
+			val, err := strconv.ParseFloat(args[2], 64)
+			elems := stw.SelectedElems()
+			en, err := CommonEnod(elems...)
+			if err != nil {
+				return err
+			}
+			if len(en) == 0 || en[0] == nil {
+				return fmt.Errorf("no common enod")
+			}
+			common := en[0]
+			divfunc = func(el *Elem) ([]*Node, []*Elem, error) {
+				var length float64
+				ind, _ := el.EnodIndex(common.Num)
+				if ind == 0 {
+					length = val
+				} else {
+					length = el.Length() - val
+				}
+				return el.DivideAtLength(length, EPS)
+			}
 		}
 		if divfunc == nil {
 			return errors.New(":divide: unknown format")
