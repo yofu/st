@@ -31,7 +31,9 @@ type Sect struct {
 
 type Fig struct {
 	Num   int
+	Name  string
 	Prop  *Prop
+	Shape Shape
 	Value map[string]float64
 }
 
@@ -91,6 +93,7 @@ func (sect *Sect) Snapshot(frame *Frame) *Sect {
 func NewFig() *Fig {
 	f := new(Fig)
 	f.Num = 1
+	f.Name = ""
 	f.Value = make(map[string]float64)
 	return f
 }
@@ -98,7 +101,9 @@ func NewFig() *Fig {
 func (fig *Fig) Snapshot(frame *Frame) *Fig {
 	f := NewFig()
 	f.Num = fig.Num
+	f.Name = fig.Name
 	f.Prop = frame.Props[fig.Prop.Num]
+	f.Shape = fig.Shape
 	for k, v := range fig.Value {
 		f.Value[k] = v
 	}
@@ -106,6 +111,7 @@ func (fig *Fig) Snapshot(frame *Frame) *Fig {
 }
 
 func (fig *Fig) SetShapeProperty(s Shape) {
+	fig.Shape = s
 	fig.Value["AREA"] = s.A() * 0.0001
 	fig.Value["IXX"] = s.Ix() * 1e-8
 	fig.Value["IYY"] = s.Iy() * 1e-8
@@ -162,6 +168,12 @@ func (sect *Sect) InpString() string {
 func (fig *Fig) InpString() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("         FIG %3d FPROP %d\n", fig.Num, fig.Prop.Num))
+	if fig.Name != "" {
+		rtn.WriteString(fmt.Sprintf("                 FNAME %s\n", fig.Name))
+	}
+	if fig.Shape != nil {
+		rtn.WriteString(fmt.Sprintf("                 SHAPE %s\n", fig.Shape.String()))
+	}
 	for _, k := range FIGKEYS {
 		if val, ok := fig.Value[k]; ok {
 			switch k {

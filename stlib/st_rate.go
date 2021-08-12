@@ -575,7 +575,7 @@ func NewHKYOU(lis []string) (HKYOU, error) {
 	return hk, nil
 }
 func (hk HKYOU) String() string {
-	return fmt.Sprintf("HKYOU %5.1f %5.1f %4.1f %4.1f", hk.H, hk.B, hk.Tw, hk.Tf)
+	return fmt.Sprintf("HKYOU %5.1f %5.1f %4.2f %4.1f", hk.H, hk.B, hk.Tw, hk.Tf)
 }
 func (hk HKYOU) Description() string {
 	return fmt.Sprintf("H-%dx%dx%dx%d(KYOU)[mm]", int(hk.H*10), int(hk.B*10), int(hk.Tw*10), int(hk.Tf*10))
@@ -678,7 +678,7 @@ func NewHWEAK(lis []string) (HWEAK, error) {
 	return hw, nil
 }
 func (hw HWEAK) String() string {
-	return fmt.Sprintf("HWEAK %5.1f %5.1f %4.1f %4.1f", hw.H, hw.B, hw.Tw, hw.Tf)
+	return fmt.Sprintf("HWEAK %5.1f %5.1f %4.2f %4.1f", hw.H, hw.B, hw.Tw, hw.Tf)
 }
 func (hw HWEAK) Description() string {
 	return fmt.Sprintf("H-%dx%dx%dx%d(WEAK)[mm]", int(hw.H*10), int(hw.B*10), int(hw.Tw*10), int(hw.Tf*10))
@@ -880,7 +880,7 @@ func NewRPIPE(lis []string) (RPIPE, error) {
 	return rp, nil
 }
 func (rp RPIPE) String() string {
-	return fmt.Sprintf("RPIPE %5.1f %5.1f %4.1f %4.1f", rp.H, rp.B, rp.Tw, rp.Tf)
+	return fmt.Sprintf("RPIPE %5.1f %5.1f %4.2f %4.2f", rp.H, rp.B, rp.Tw, rp.Tf)
 }
 func (rp RPIPE) Description() string {
 	return fmt.Sprintf("BOX-%dx%dx%dx%d[mm]", int(rp.H*10), int(rp.B*10), int(rp.Tw*10), int(rp.Tf*10))
@@ -970,7 +970,7 @@ func NewCPIPE(lis []string) (CPIPE, error) {
 	return cp, nil
 }
 func (cp CPIPE) String() string {
-	return fmt.Sprintf("CPIPE %5.1f %5.1f", cp.D, cp.T)
+	return fmt.Sprintf("CPIPE %5.2f %5.2f", cp.D, cp.T)
 }
 func (cp CPIPE) Description() string {
 	return fmt.Sprintf("PIPE-%dx%d[mm]", int(cp.D*10), int(cp.T*10))
@@ -1061,7 +1061,7 @@ func NewTKYOU(lis []string) (TKYOU, error) {
 	return tk, nil
 }
 func (tk TKYOU) String() string {
-	return fmt.Sprintf("TKYOU %5.1f %5.1f %4.1f %4.1f", tk.H, tk.B, tk.Tw, tk.Tf)
+	return fmt.Sprintf("TKYOU %5.1f %5.1f %4.2f %4.1f", tk.H, tk.B, tk.Tw, tk.Tf)
 }
 func (tk TKYOU) Description() string {
 	return fmt.Sprintf("T-%dx%dx%dx%d(KYOU)[mm]", int(tk.H*10), int(tk.B*10), int(tk.Tw*10), int(tk.Tf*10))
@@ -1170,7 +1170,7 @@ func NewTWEAK(lis []string) (TWEAK, error) {
 	return tk, nil
 }
 func (tk TWEAK) String() string {
-	return fmt.Sprintf("TWEAK %5.1f %5.1f %4.1f %4.1f", tk.H, tk.B, tk.Tw, tk.Tf)
+	return fmt.Sprintf("TWEAK %5.1f %5.1f %4.2f %4.1f", tk.H, tk.B, tk.Tw, tk.Tf)
 }
 func (tk TWEAK) Description() string {
 	return fmt.Sprintf("T-%dx%dx%dx%d(WEAK)[mm]", int(tk.H*10), int(tk.B*10), int(tk.Tw*10), int(tk.Tf*10))
@@ -1279,7 +1279,7 @@ func NewCKYOU(lis []string) (CKYOU, error) {
 	return ck, nil
 }
 func (ck CKYOU) String() string {
-	return fmt.Sprintf("CKYOU %5.1f %5.1f %4.1f %4.1f", ck.H, ck.B, ck.Tw, ck.Tf)
+	return fmt.Sprintf("CKYOU %5.1f %5.1f %4.2f %4.2f", ck.H, ck.B, ck.Tw, ck.Tf)
 }
 func (ck CKYOU) Description() string {
 	return fmt.Sprintf("C-%dx%dx%dx%d(KYOU)[mm]", int(ck.H*10), int(ck.B*10), int(ck.Tw*10), int(ck.Tf*10))
@@ -1388,7 +1388,7 @@ func NewCWEAK(lis []string) (CWEAK, error) {
 	return cw, nil
 }
 func (cw CWEAK) String() string {
-	return fmt.Sprintf("CWEAK %5.1f %5.1f %4.1f %4.1f", cw.H, cw.B, cw.Tw, cw.Tf)
+	return fmt.Sprintf("CWEAK %5.1f %5.1f %4.2f %4.2f", cw.H, cw.B, cw.Tw, cw.Tf)
 }
 func (cw CWEAK) Description() string {
 	return fmt.Sprintf("C-%dx%dx%dx%d(WEAK)[mm]", int(cw.H*10), int(cw.B*10), int(cw.Tw*10), int(cw.Tf*10))
@@ -1793,7 +1793,7 @@ func NewTHICK(lis []string) (THICK, error) {
 	return th, nil
 }
 func (th THICK) String() string {
-	return fmt.Sprintf("THICK %5.1f", th.Thickness)
+	return fmt.Sprintf("THICK %5.2f", th.Thickness)
 }
 func (th THICK) Description() string {
 	return fmt.Sprintf("%d[mm]", int(th.Thickness*10))

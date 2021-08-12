@@ -736,7 +736,7 @@ func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 		switch word {
 		default:
 			tmp = append(tmp, word)
-		case "FPROP", "AREA", "IXX", "IYY", "VEN", "THICK", "SREIN", "SIGMA", "XFACE", "YFACE":
+		case "FPROP", "FNAME", "SHAPE", "AREA", "IXX", "IYY", "VEN", "THICK", "SREIN", "SIGMA", "XFACE", "YFACE":
 			if key != "" {
 				figmap[key] = tmp
 				tmp = make([]string, 0)
@@ -845,6 +845,14 @@ func (sect *Sect) ParseFig(frame *Frame, figmap map[string][]string) error {
 					return fmt.Errorf("PROP %d doesn't exist", pnum)
 				}
 			}
+		case "FNAME":
+			f.Name = data[0]
+		case "SHAPE":
+			shape, _, err := ParseShape(data)
+			if err != nil {
+				return err
+			}
+			f.SetShapeProperty(shape)
 		case "AREA":
 			val, err := strconv.ParseFloat(data[0], 64)
 			if err != nil {
@@ -1997,11 +2005,63 @@ func (frame *Frame) ParseLst(lis [][]string) error {
 	return err
 }
 
+func ParseShape(data []string) (Shape, int, error) {
+	if len(data) < 1 {
+		return nil, 0, fmt.Errorf("not enough data")
+	}
+	var shape Shape
+	var err error
+	var size int
+	switch data[0] {
+	case "HKYOU":
+		size = 4
+		shape, err = NewHKYOU(data[1 : 1+size])
+	case "HWEAK":
+		size = 4
+		shape, err = NewHWEAK(data[1 : 1+size])
+	case "CROSS":
+		size = 8
+		shape, err = NewCROSS(data[1 : 1+size])
+	case "RPIPE":
+		size = 4
+		shape, err = NewRPIPE(data[1 : 1+size])
+	case "CPIPE":
+		size = 2
+		shape, err = NewCPIPE(data[1 : 1+size])
+	case "TKYOU":
+		size = 4
+		shape, err = NewTKYOU(data[1 : 1+size])
+	case "TWEAK":
+		size = 4
+		shape, err = NewTWEAK(data[1 : 1+size])
+	case "CKYOU":
+		size = 4
+		shape, err = NewCKYOU(data[1 : 1+size])
+	case "CWEAK":
+		size = 4
+		shape, err = NewCWEAK(data[1 : 1+size])
+	case "PLATE":
+		size = 2
+		shape, err = NewPLATE(data[1 : 1+size])
+	case "ANGLE":
+		size = 4
+		shape, err = NewANGLE(data[1 : 1+size])
+	case "SAREA":
+		size = 1
+		shape, err = NewSAREA(data[1 : 1+size])
+	case "THICK":
+		size = 1
+		shape, err = NewTHICK(data[1 : 1+size])
+	default:
+		return nil, 0, fmt.Errorf("unknown shape name: %s", data[0])
+	}
+	return shape, size, err
+}
+
 // ParseLstSteel parses steel sections.
 func (frame *Frame) ParseLstSteel(lis [][]string) error {
 	var num int
 	var sr SectionRate
-	var shape Shape
 	var material Steel
 	var err error
 	tmp, err := strconv.ParseInt(lis[0][1], 10, 64)
@@ -2009,50 +2069,7 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 	if _, ok := frame.Sects[num]; !ok {
 		return nil
 	}
-	var size int
-	switch lis[1][0] {
-	case "HKYOU":
-		size = 4
-		shape, err = NewHKYOU(lis[1][1 : 1+size])
-	case "HWEAK":
-		size = 4
-		shape, err = NewHWEAK(lis[1][1 : 1+size])
-	case "CROSS":
-		size = 8
-		shape, err = NewCROSS(lis[1][1 : 1+size])
-	case "RPIPE":
-		size = 4
-		shape, err = NewRPIPE(lis[1][1 : 1+size])
-	case "CPIPE":
-		size = 2
-		shape, err = NewCPIPE(lis[1][1 : 1+size])
-	case "TKYOU":
-		size = 4
-		shape, err = NewTKYOU(lis[1][1 : 1+size])
-	case "TWEAK":
-		size = 4
-		shape, err = NewTWEAK(lis[1][1 : 1+size])
-	case "CKYOU":
-		size = 4
-		shape, err = NewCKYOU(lis[1][1 : 1+size])
-	case "CWEAK":
-		size = 4
-		shape, err = NewCWEAK(lis[1][1 : 1+size])
-	case "PLATE":
-		size = 2
-		shape, err = NewPLATE(lis[1][1 : 1+size])
-	case "ANGLE":
-		size = 4
-		shape, err = NewANGLE(lis[1][1 : 1+size])
-	case "SAREA":
-		size = 1
-		shape, err = NewSAREA(lis[1][1 : 1+size])
-	case "THICK":
-		size = 1
-		shape, err = NewTHICK(lis[1][1 : 1+size])
-	default:
-		return nil
-	}
+	shape, size, err := ParseShape(lis[1])
 	if err != nil {
 		return err
 	}
