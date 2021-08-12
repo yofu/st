@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -63,6 +64,7 @@ var (
 		"w/ei/g/htcopy": complete.MustCompile(":weightcopy [si:]", nil),
 		"har/dcopy":     complete.MustCompile(":hardcopy", nil),
 		"fi/g2":         complete.MustCompile(":fig2", nil),
+		"f/ig2/p/rint":  complete.MustCompile(":fig2print", nil),
 		"dxf/": complete.MustCompile(":dxf [dimension:$DNUM] [scale:_]",
 			map[string][]string{
 				"DNUM": []string{"2", "3"},
@@ -1049,6 +1051,20 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return Usage(":fig2 filename")
 		}
 		err := ReadFig2(stw, fn)
+		if err != nil {
+			return err
+		}
+	case "fig2print":
+		if usage {
+			return Usage(":fig2print")
+		}
+		if fn == "" {
+			fn = Ce(frame.Path, ".fig2")
+		}
+		cmd := exec.Command("fig2", frame.Path, fn)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Run()
 		if err != nil {
 			return err
 		}
