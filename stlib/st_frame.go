@@ -2,6 +2,7 @@ package st
 
 import (
 	"bytes"
+	"embed"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -5997,12 +5998,22 @@ func (frame *Frame) AmountLst(fn string, sects ...int) error {
 	return nil
 }
 
+//go:embed template
+var tempdir embed.FS
+
 func (frame *Frame) OutputTex() error {
 	// Section2.3
 	// TODO:
-	// ・templateをexeに埋め込む
-	// ・材料特性のtabularもPropから生成するようにする
 	// ・使われていないSectを出力しないようにする
+	// ・使用階を追加
+	props := make([]*Prop, 0)
+	pnum := 0
+	for _, prop := range frame.Props {
+		props = append(props, prop)
+		pnum++
+	}
+	props = props[:pnum]
+	sort.Sort(PropByNum{props})
 	lineelems := make([]*Sect, 0)
 	plateelems := make([]*Sect, 0)
 	snum1 := 0
@@ -6020,44 +6031,26 @@ func (frame *Frame) OutputTex() error {
 	plateelems = plateelems[:snum2]
 	sort.Sort(SectByNum{lineelems})
 	sort.Sort(SectByNum{plateelems})
-	var tmpl23 = template.Must(template.ParseFiles("../../template/2_3.tex"))
-	typematerial := func(sect *Sect) (string, int) {
-		material := 0
-		typename := ""
+	tmpl23, _ := template.ParseFS(tempdir, "template/2_3.tex")
+	typematerial := func(prop *Prop) string {
 		switch {
-		case sect.Figs[0].Prop.IsRc(1e-3):
-			material = 1
-			typename = "ＲＣ"
-		case sect.Figs[0].Prop.IsPc(1e-3):
-			material = 2
-			typename = "ＰＣ"
-		case sect.Figs[0].Prop.IsSteel(1e-3):
-			material = 3
-			typename = "Ｓ"
-		case sect.Figs[0].Prop.IsWood(7e5, 1e-3):
-			material = 4
-			typename = "木"
-		case sect.Figs[0].Prop.IsWood(9.5e5, 1e-3):
-			material = 5
-			typename = "木"
-		case sect.Figs[0].Prop.IsWood(14e5, 1e-3):
-			material = 6
-			typename = "木"
-		case sect.Figs[0].Prop.IsGohan(1e-3):
-			material = 7
+		default:
+			return ""
+		case prop.IsRc(1e-3):
+			return "ＲＣ"
+		case prop.IsPc(1e-3):
+			return "ＰＣ"
+		case prop.IsSteel(1e-3):
+			return "Ｓ"
+		case prop.IsWood(7e5, 1e-3):
+			return "木"
+		case prop.IsWood(9.5e5, 1e-3):
+			return "木"
+		case prop.IsWood(14e5, 1e-3):
+			return "木"
+		case prop.IsGohan(1e-3):
+			return "木"
 		}
-		if sect.Num < 300 {
-			typename += "柱"
-		} else if sect.Num < 600 {
-			typename += "梁"
-		} else if sect.Num < 700 {
-			typename += "筋違"
-		} else if sect.Num < 800 {
-			typename += "床"
-		} else if sect.Num < 900 {
-			typename += "壁"
-		}
-		return typename, material
 	}
 	signname := func(str string) (string, string) {
 		sn := strings.Split(str, ":")
@@ -6067,15 +6060,26 @@ func (frame *Frame) OutputTex() error {
 			return sn[0], sn[1]
 		}
 	}
+	property := func(prop *Prop) string {
+		typename := typematerial(prop)
+		return fmt.Sprintf("    %s & %d & %s & %.5f & %.3f & %.5f\\\\", typename, prop.Num, prop.Name, prop.Hiju, prop.EL, prop.Poi)
+	}
 	lineelem := func(sect *Sect) string {
 		area, _ := sect.Area(0)
 		ix, _ := sect.Ix(0)
 		iy, _ := sect.Iy(0)
 		j, _ := sect.J(0)
 		w := sect.Weight()
-		typename, material := typematerial(sect)
+		typename := typematerial(sect.Figs[0].Prop)
+		if sect.Num < 300 {
+			typename += "柱"
+		} else if sect.Num < 600 {
+			typename += "梁"
+		} else if sect.Num < 700 {
+			typename += "筋違"
+		}
 		sign, name := signname(sect.Name)
-		return fmt.Sprintf("    %s & %d & %s & %d & 1～2F & %s & %.1f & %.0f & %.0f & %.0f & %.0f & 1.000\\\\", sign, sect.Num, typename, material, name, w[0]*1000, area*1e4, ix*1e8, iy*1e8, j*1e8)
+		return fmt.Sprintf("    %s & %d & %s & %d & %s & %.1f & %.0f & %.0f & %.0f & %.0f & 1.000\\\\", sign, sect.Num, typename, sect.Figs[0].Prop.Num, name, w[0]*1000, area*1e4, ix*1e8, iy*1e8, j*1e8)
 	}
 	plateelem := func(sect *Sect) string {
 		if sect.HasBrace() {
@@ -6084,9 +6088,14 @@ func (frame *Frame) OutputTex() error {
 			w0 := w[1] - sect.Lload[1]
 			w1 := t * sect.Figs[0].Prop.Hiju
 			w2 := w[1] - w1 - sect.Lload[1]
-			typename, material := typematerial(sect)
+			typename := typematerial(sect.Figs[0].Prop)
+			if sect.Num < 800 {
+				typename += "床"
+			} else if sect.Num < 900 {
+				typename += "壁"
+			}
 			sign, name := signname(sect.Name)
-			return fmt.Sprintf("    %s & %d & %s & %d & 1～2F & %s &  %.0f & ○ & %.2f & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, material, name, w0*1000, t*1000, w2*1000)
+			return fmt.Sprintf("    %s & %d & %s & %d & %s &  %.0f & ○ & %.2f & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, sect.Figs[0].Prop.Num, name, w0*1000, t*1000, w2*1000)
 		} else {
 			w := sect.Weight()
 			w0 := w[1] - sect.Lload[1]
@@ -6097,11 +6106,15 @@ func (frame *Frame) OutputTex() error {
 				typename += "壁"
 			}
 			sign, name := signname(sect.Name)
-			return fmt.Sprintf("    %s  & %d & %s & - & 1～2F & %s & %.0f & × & - & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, name, w0*1000, w0*1000)
+			return fmt.Sprintf("    %s  & %d & %s & - & %s & %.0f & × & - & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, name, w0*1000, w0*1000)
 		}
 	}
+	table0 := make([]string, pnum)
 	table1 := make([]string, snum1)
 	table2 := make([]string, snum2)
+	for i := 0; i < pnum; i++ {
+		table0[i] = property(props[i])
+	}
 	for i := 0; i < snum1; i++ {
 		table1[i] = lineelem(lineelems[i])
 	}
@@ -6109,10 +6122,54 @@ func (frame *Frame) OutputTex() error {
 		table2[i] = plateelem(plateelems[i])
 	}
 	data := map[string]interface{}{
+		"table0": strings.Join(table0, "\n"),
 		"table1": strings.Join(table1, "\n"),
 		"table2": strings.Join(table2, "\n"),
 	}
 	err := tmpl23.Execute(os.Stdout, data)
+	if err != nil {
+		return err
+	}
+	// Section 3.1
+	// TODO: Implement
+	// S1 & 702 & デッキスラブ & 2F & 機械等 & 60 \\
+	//    &     & (t=150+25mm) &    & 仕上等 & 40 \\
+	//    &     &              &    & ＲＣスラブ 150+25mm & 420 \\ \cmidrule{5-6}
+	//    &     &              &    & 小計 & 520 \\ \cmidrule{5-8}
+	//    &     &              &    & & 床用 & 柱梁用 & 地震用 \\
+	//    &     &              &    & 積載荷重(事務室相当) & 300 & 185 & 85 \\ \cmidrule{5-8}
+	//    &     &              &    & 計 & 820 & 705 & 605 \\
+	//    &     &              &    & & (8041) & (6914) & (5933) \\ \midrule
+	tmpl31, _ := template.ParseFS(tempdir, "template/3_1.tex")
+	plateload := func(sect *Sect) string {
+		t, _ := sect.Thick(0)
+		w := sect.Weight()
+		w0 := w[1] - sect.Lload[1]
+		w1 := t * sect.Figs[0].Prop.Hiju
+		w2 := w[1] - w1 - sect.Lload[1]
+		typename := typematerial(sect.Figs[0].Prop)
+		if sect.Num < 800 {
+			typename += "床"
+		} else if sect.Num < 900 {
+			typename += "壁"
+		}
+		sign, name := signname(sect.Name)
+		return fmt.Sprintf("    %s & %d & %s & %d & %s &  %.0f & ○ & %.2f & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, sect.Figs[0].Prop.Num, name, w0*1000, t*1000, w2*1000)
+	}
+	table3 := make([]string, snum2)
+	ind := 0
+	for i := 0; i < snum2; i++ {
+		if plateelems[i].Num > 800 {
+			continue
+		}
+		table3[ind] = plateload(plateelems[i])
+		ind++
+	}
+	table3 = table3[:ind]
+	data31 := map[string]interface{}{
+		"table3": strings.Join(table3, "\n"),
+	}
+	err = tmpl31.Execute(os.Stdout, data31)
 	if err != nil {
 		return err
 	}

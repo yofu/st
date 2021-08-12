@@ -54,7 +54,10 @@ func (prop *Prop) InpString() string {
 }
 
 func (prop *Prop) IsSteel(eps float64) bool {
-	if val := prop.EL/2.1e7 - 1.0; val < -eps || val > eps {
+	E0 := 2.1e7
+	p0 := 7.8
+	E := E0 * prop.Hiju / p0
+	if val := prop.EL/E - 1.0; val < -eps || val > eps {
 		return false
 	}
 	if val := prop.Poi*3.0 - 1.0; val < -eps || val > eps {
@@ -84,9 +87,9 @@ func (prop *Prop) IsPc(eps float64) bool {
 }
 
 func (prop *Prop) IsWood(E float64, eps float64) bool {
-	if val := prop.ES/E - 1.0; val < -eps || val > eps {
-		return false
-	}
+	// if val := prop.ES/E - 1.0; val < -eps || val > eps {
+	// 	return false
+	// }
 	if val := prop.Poi/6.5 - 1.0; val < -eps || val > eps {
 		return false
 	}
