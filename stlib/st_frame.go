@@ -5416,9 +5416,9 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			default:
 				isrc = false
 			}
-			if isrc && cond.Qfact < 2.0 {
-				factor[1] = 2.0
-				factor[2] = 2.0
+			if isrc && cond.Qfact < 1.5 {
+				factor[1] = 1.5
+				factor[2] = 1.5
 			} else {
 				factor[1] = cond.Qfact
 				factor[2] = cond.Qfact
@@ -5544,6 +5544,13 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
 			el.Rate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 		case BRACE, WBRACE, SBRACE:
+			var isrc bool
+			switch al.(type) {
+			case *RCWall, *RCGirder:
+				isrc = true
+			default:
+				isrc = false
+			}
 			var qlrate, qsrate, qurate float64
 			var fact float64
 			if el.Etype == BRACE {
@@ -5556,6 +5563,9 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				} else {
 					cond.Length = el.Length() * 100.0 // [cm]
 				}
+			}
+			if isrc && fact < 2.0 {
+				fact = 2.0
 			}
 			cond.Width = el.Width() * 100.0 // [cm]
 			otp.WriteString(strings.Repeat("-", 202))
