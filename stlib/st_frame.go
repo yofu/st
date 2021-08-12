@@ -247,6 +247,7 @@ type Windparameter struct {
 	Roughness int
 	Velocity  float64
 	Factor    float64
+	Qi        [][]float64
 }
 
 func NewWindparameter() *Windparameter {
@@ -254,14 +255,26 @@ func NewWindparameter() *Windparameter {
 		Roughness: 3,
 		Velocity:  30.0,
 		Factor:    1.0,
+		Qi:        make([][]float64, 2),
 	}
 }
 
 func (wp *Windparameter) Snapshot() *Windparameter {
+	qi := make([][]float64, 2)
+	if len(wp.Qi[0]) > 0 {
+		for i := 0; i < 2; i++ {
+			size := len(wp.Qi[i])
+			qi[i] = make([]float64, size)
+			for j := 0; j < size; j++ {
+				qi[i][j] = wp.Qi[i][j]
+			}
+		}
+	}
 	return &Windparameter{
 		Roughness: wp.Roughness,
 		Velocity:  wp.Velocity,
 		Factor:    wp.Factor,
+		Qi:        qi,
 	}
 }
 
@@ -4841,6 +4854,70 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	otp.WriteString(aistr)
 	otp.WriteString("\n")
 	otp.WriteString(wstr)
+	check := false
+	for i := 0; i < frame.Ai.Nfloor-1; i++ {
+		if frame.Wind.Qi[0][i] > frame.Ai.Qi[0][i+1] {
+			if frame.Ai.Qi[0][i+1] != 0.0 {
+				otp.WriteString(fmt.Sprintf("風圧力の方が大きい: X方向 %d階 C0=%.3f相当\n", i+1, frame.Ai.Base[0]*frame.Wind.Qi[0][i]/frame.Ai.Qi[0][i+1]))
+			} else {
+				otp.WriteString(fmt.Sprintf("風圧力の方が大きい: X方向 %d階 Qex=0.0\n", i+1))
+			}
+			check = true
+		}
+		if frame.Wind.Qi[1][i] > frame.Ai.Qi[1][i+1] {
+			if frame.Ai.Qi[1][i+1] != 0.0 {
+				otp.WriteString(fmt.Sprintf("風圧力の方が大きい: Y方向 %d階 C0=%.3f相当\n", i+1, frame.Ai.Base[1]*frame.Wind.Qi[1][i]/frame.Ai.Qi[1][i+1]))
+			} else {
+				otp.WriteString(fmt.Sprintf("風圧力の方が大きい: Y方向 %d階 Qey=0.0\n", i+1))
+			}
+			check = true
+		}
+	}
+	if !check {
+		otp.WriteString("以上より、風圧力は地震力よりも小さい。\n")
+	} else {
+		size := frame.Ai.Nfloor
+		hx := make([]float64, size)
+		hy := make([]float64, size)
+		for _, n := range frame.Nodes {
+			height := n.Coord[2]
+			ind := 0
+			if height < frame.Ai.Boundary[0] {
+				ind = 0
+			} else if height >= frame.Ai.Boundary[size] {
+				ind = size - 1
+			}
+			for i := 0; i < size; i++ {
+				if height < frame.Ai.Boundary[i+1] {
+					ind = i
+					break
+				}
+			}
+			if ind == 0 { // FOR BASEMENT
+				continue
+			}
+			for i := 0; i < 2; i++ {
+				val := frame.Wind.Qi[i][ind-1] / frame.Ai.Qi[i][ind]
+				if val > 1.0 {
+					n.Factor[i] *= val
+				}
+			}
+			hx[ind] += n.Weight[2] * n.Factor[0]
+			hy[ind] += n.Weight[2] * n.Factor[1]
+		}
+		qx := make([]float64, size-1)
+		qy := make([]float64, size-1)
+		for i := 0; i < size-1; i++ {
+			for j := size - 1; j > i; j-- {
+				qx[i] += hx[j]
+				qy[i] += hy[j]
+			}
+		}
+		fmt.Println(hx)
+		fmt.Println(hy)
+		fmt.Println(qx)
+		fmt.Println(qy)
+	}
 	if fn == "" {
 		fn = filepath.Join(frame.Home, DefaultWgt)
 	}
@@ -5021,9 +5098,7 @@ func (frame *Frame) WindPressure() (string, error) {
 	if frame.Ai.Nfloor == 0 && len(frame.Ai.Boundary) == 0 {
 		return "", fmt.Errorf("level isn't set up")
 	}
-	xmin, xmax, ymin, ymax, zmin, zmax := frame.Bbox(false)
-	breadth := ymax - ymin
-	length := xmax - xmin
+	_, _, _, _, zmin, zmax := frame.Bbox(false)
 	height := zmax - zmin
 	roughness := frame.Wind.Roughness
 	var zb, zg, alpha, er, gf0, gf1, gf float64
@@ -5067,7 +5142,7 @@ func (frame *Frame) WindPressure() (string, error) {
 	}
 	e := er * er * gf
 	q := 0.6 * e * math.Pow(frame.Wind.Velocity*frame.Wind.Factor, 2.0) / 9.80665
-	size := len(frame.Ai.Level) - 1
+	size := frame.Ai.Nfloor - 1
 	z := make([]float64, size)
 	kz := make([]float64, size)
 	cpe := make([]float64, size)
@@ -5075,8 +5150,10 @@ func (frame *Frame) WindPressure() (string, error) {
 	cf := make([]float64, size)
 	wx := make([]float64, size)
 	wy := make([]float64, size)
-	qx := make([]float64, size)
-	qy := make([]float64, size)
+	breadth := make([]float64, size)
+	length := make([]float64, size)
+	frame.Wind.Qi[0] = make([]float64, size)
+	frame.Wind.Qi[1] = make([]float64, size)
 	for i := 0; i < size; i++ {
 		z[i] = frame.Ai.Level[i+1]
 		if height <= zb {
@@ -5091,13 +5168,43 @@ func (frame *Frame) WindPressure() (string, error) {
 		cpe[i] = 0.8 * kz[i]
 		cpi[i] = -0.2
 		cf[i] = cpe[i] - cpi[i]
-		wx[i] = q * cf[i] * (frame.Ai.Level[i+1] - frame.Ai.Level[i]) * breadth * 0.001
-		wy[i] = q * cf[i] * (frame.Ai.Level[i+1] - frame.Ai.Level[i]) * length * 0.001
+		var minx, miny, maxx, maxy float64
+		first := true
+		for _, j := range frame.Nodes {
+			if j.Coord[2] > frame.Ai.Boundary[i+1] && j.Coord[2] < frame.Ai.Boundary[i+2] {
+				if first {
+					minx = j.Coord[0]
+					maxx = j.Coord[0]
+					miny = j.Coord[1]
+					maxy = j.Coord[1]
+					first = false
+				} else {
+					if j.Coord[0] < minx {
+						minx = j.Coord[0]
+					}
+					if j.Coord[0] > maxx {
+						maxx = j.Coord[0]
+					}
+					if j.Coord[1] < miny {
+						miny = j.Coord[1]
+					}
+					if j.Coord[1] > maxy {
+						maxy = j.Coord[1]
+					}
+				}
+			}
+		}
+		breadth[i] = maxy - miny
+		length[i] = maxx - minx
+		wx[i] = q * cf[i] * (frame.Ai.Level[i+1] - frame.Ai.Level[i]) * breadth[i] * 0.001
+		wy[i] = q * cf[i] * (frame.Ai.Level[i+1] - frame.Ai.Level[i]) * length[i] * 0.001
 		for j := 0; j <= i; j++ {
-			qx[j] += wx[i]
-			qy[j] += wy[i]
+			frame.Wind.Qi[0][j] += wx[i]
+			frame.Wind.Qi[1][j] += wy[i]
 		}
 	}
+	fmt.Println(breadth)
+	fmt.Println(length)
 	var otp bytes.Buffer
 	otp.WriteString("風圧力の算定・閉鎖型の建築物\n建築基準法令第87条\n\n")
 	otp.WriteString(fmt.Sprintf("建物高さ H [m]               : %.3f\n", height))
@@ -5124,11 +5231,11 @@ func (frame *Frame) WindPressure() (string, error) {
 	}
 	otp.WriteString("\n張間方向幅 b1[m]             :")
 	for i := 0; i < size; i++ {
-		otp.WriteString(fmt.Sprintf(" %10.3f", breadth))
+		otp.WriteString(fmt.Sprintf(" %10.3f", breadth[i]))
 	}
 	otp.WriteString("\n桁行方向幅 b2[m]             :")
 	for i := 0; i < size; i++ {
-		otp.WriteString(fmt.Sprintf(" %10.3f", length))
+		otp.WriteString(fmt.Sprintf(" %10.3f", length[i]))
 	}
 	otp.WriteString("\nkz                           :")
 	for i := 0; i < size; i++ {
@@ -5156,11 +5263,11 @@ func (frame *Frame) WindPressure() (string, error) {
 	}
 	otp.WriteString(fmt.Sprintf("\n層せん断力 Qwx=ΣWx[%s]      :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
-		otp.WriteString(fmt.Sprintf(" %10.3f", qx[i]*frame.Show.Unit[0]))
+		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Wind.Qi[0][i]*frame.Show.Unit[0]))
 	}
 	otp.WriteString(fmt.Sprintf("\n           Qwy=ΣWy[%s]      :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
-		otp.WriteString(fmt.Sprintf(" %10.3f", qy[i]*frame.Show.Unit[0]))
+		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Wind.Qi[1][i]*frame.Show.Unit[0]))
 	}
 	otp.WriteString(fmt.Sprintf("\n地震層せん断力 Qex[%s]       :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
@@ -5171,29 +5278,6 @@ func (frame *Frame) WindPressure() (string, error) {
 		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Qi[1][i+1]*frame.Show.Unit[0]))
 	}
 	otp.WriteString("\n\n")
-	check := false
-	for i := 0; i < size; i++ {
-		fmt.Println(qx[i], frame.Ai.Qi[0][i+1], qy[i], frame.Ai.Qi[1][i+1])
-		if qx[i] > frame.Ai.Qi[0][i+1] {
-			if frame.Ai.Qi[0][i+1] != 0.0 {
-				otp.WriteString(fmt.Sprintf("風圧力の方が大きい: X方向 %d階 C0=%.3f相当\n", i+1, frame.Ai.Base[0]*qx[i]/frame.Ai.Qi[0][i+1]))
-			} else {
-				otp.WriteString(fmt.Sprintf("風圧力の方が大きい: X方向 %d階 Qex=0.0\n", i+1))
-			}
-			check = true
-		}
-		if qy[i] > frame.Ai.Qi[1][i+1] {
-			if frame.Ai.Qi[1][i+1] != 0.0 {
-				otp.WriteString(fmt.Sprintf("風圧力の方が大きい: Y方向 %d階 C0=%.3f相当\n", i+1, frame.Ai.Base[1]*qy[i]/frame.Ai.Qi[1][i+1]))
-			} else {
-				otp.WriteString(fmt.Sprintf("風圧力の方が大きい: Y方向 %d階 Qey=0.0\n", i+1))
-			}
-			check = true
-		}
-	}
-	if !check {
-		otp.WriteString("以上より、風圧力は地震力よりも小さい。\n")
-	}
 	return otp.String(), nil
 }
 
