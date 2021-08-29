@@ -4794,6 +4794,8 @@ func (frame *Frame) ExtractArclm(fn string) error {
 
 func (frame *Frame) WeightDistribution(fn string) error {
 	var otp bytes.Buffer
+	var tex32 bytes.Buffer
+	var tex33 bytes.Buffer
 	var ekeys []int
 	nodes := make([]*Node, len(frame.Nodes))
 	nnum := 0
@@ -4812,36 +4814,49 @@ func (frame *Frame) WeightDistribution(fn string) error {
 			amount[el.Sect.Num] += el.Amount()
 		}
 	}
-	aistr, err := frame.AiDistribution()
+	aistr, aistrtex, err := frame.AiDistribution()
 	if err != nil {
 		return err
 	}
-	wstr, err := frame.WindPressure()
+	wstr, wstrtex, err := frame.WindPressure()
 	if err != nil {
 		return err
 	}
+	tex33.WriteString(aistrtex)
+	tex33.WriteString(wstrtex)
 	total := make([]float64, 3)
 	otp.WriteString("3.2 : 節点重量\n\n")
 	otp.WriteString("節点ごとに重量を集計した結果を記す。\n")
 	otp.WriteString("柱，壁は階高の中央で上下に分配するものとする。\n\n")
 	otp.WriteString(fmt.Sprintf(" 節点番号          積載荷重別の重量 [%s]\n\n", frame.Show.UnitName[0]))
 	otp.WriteString("                 床用     柱梁用     地震用\n")
+	tex32.WriteString("{\\footnotesize\n\\begin{supertabular}{r r r r}\n")
+	tex32.WriteString(fmt.Sprintf("節点番号&\\multicolumn{3}{c}{積載荷重別の重量 ${\\rm [%s]}$}\\\\\n", frame.Show.UnitName[0]))
+	tex32.WriteString("&   床用    & 柱梁用  &  地震用\\\\\n")
 	for _, n := range nodes {
 		otp.WriteString(n.WgtString(frame.Show.Unit[0]))
+		tex32.WriteString(n.WgtStringTex(frame.Show.Unit[0]))
 		for i := 0; i < 3; i++ {
 			total[i] += n.Weight[i]
 		}
 	}
 	otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
+	tex32.WriteString(fmt.Sprintf("       計 & %10.3f & %10.3f & %10.3f\\\\\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
+	tex32.WriteString("\\end{supertabular}\n\\onecolumn\n")
 	otp.WriteString("各断面の部材総量（参考資料）\n\n")
 	otp.WriteString(" 断面番号 長さ,面積 重量(柱梁用)\n             [m,m2]     [ton]\n")
+	tex32.WriteString("各断面の部材総量（参考資料）\\\\\n\\\\\n")
+	tex32.WriteString("\\begin{supertabular}{r r r l}\n")
+	tex32.WriteString(" 断面番号 & 長さ,面積 & 重量(柱梁用)& \\\\\n          & ${\\rm [m,m^2]}$ & ${\\rm [ton]}$&\\\\\n")
 	for k := range amount {
 		ekeys = append(ekeys, k)
 	}
 	sort.Ints(ekeys)
 	for _, k := range ekeys {
 		otp.WriteString(fmt.Sprintf("%9d %9.3f %9.3f 【%s】\n", k, amount[k], amount[k]*frame.Sects[k].Weight()[1], frame.Sects[k].Name))
+		tex32.WriteString(fmt.Sprintf("%9d & %9.3f & %9.3f & 【%s】\\\\\n", k, amount[k], amount[k]*frame.Sects[k].Weight()[1], frame.Sects[k].Name))
 	}
+	tex32.WriteString("\\end{supertabular}\n}\n\\newpage")
 	otp.WriteString("\n")
 	switch frame.Show.UnitName[0] {
 	default:
@@ -4928,12 +4943,29 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	}
 	otp = AddCR(otp)
 	otp.WriteTo(w)
+
+	w32, err := os.Create(filepath.Join(filepath.Dir(frame.Path), "3_2.tex"))
+	defer w32.Close()
+	if err != nil {
+		return err
+	}
+	tex32 = AddCR(tex32)
+	tex32.WriteTo(w32)
+
+	w33, err := os.Create(filepath.Join(filepath.Dir(frame.Path), "3_3.tex"))
+	defer w33.Close()
+	if err != nil {
+		return err
+	}
+	tex33 = AddCR(tex33)
+	tex33.WriteTo(w33)
+
 	return nil
 }
 
-func (frame *Frame) AiDistribution() (string, error) {
+func (frame *Frame) AiDistribution() (string, string, error) {
 	if frame.Ai.Nfloor == 0 && len(frame.Ai.Boundary) == 0 {
-		return "", fmt.Errorf("level isn't set up")
+		return "", "", fmt.Errorf("level isn't set up")
 	}
 	size := frame.Ai.Nfloor
 	frame.Ai.Wi = make([]float64, size)
@@ -5042,6 +5074,7 @@ func (frame *Frame) AiDistribution() (string, error) {
 		}
 	}
 	var rtn bytes.Buffer
+	var tex bytes.Buffer
 	rtn.WriteString("3.3 : Ai分布型地震荷重\n\n")
 	rtn.WriteString("水平荷重は建築基準法施行令第88条および建設省告示1793号に従い、Ａi分布型の地震力とする。\n\n")
 	rtn.WriteString(fmt.Sprintf("階数       　　　    n =%d\n", size))
@@ -5055,48 +5088,83 @@ func (frame *Frame) AiDistribution() (string, error) {
 	rtn.WriteString(fmt.Sprintf("床用積載荷重による総荷重    = %10.3f\n", frame.Show.Unit[0]*total[0]))
 	rtn.WriteString(fmt.Sprintf("柱梁用積載荷重による総荷重  = %10.3f\n", frame.Show.Unit[0]*total[1]))
 	rtn.WriteString(fmt.Sprintf("地震用積載荷重による総荷重  = %10.3f\n\n", frame.Show.Unit[0]*total[2]))
+	tex.WriteString("水平荷重は建築基準法施行令第88条および建設省告示1793号に従い、Ａi分布型の地震力とする。\\\\\n\\\\\n")
+	tex.WriteString("\\begin{tabular}{l l}\n")
+	tex.WriteString(fmt.Sprintf("階数       　　　  & $n =%d$\\\\\n", size))
+	tex.WriteString(fmt.Sprintf("高さ         　　　& $H =%.3f$\\\\\n", maxheight))
+	tex.WriteString(fmt.Sprintf("１次固有周期       & $T_1=%5.3fH=%5.3f$\\\\\n", frame.Ai.Tfact, frame.Ai.T))
+	tex.WriteString(fmt.Sprintf("地盤周期           & $T_c=%5.3f$\\\\\n", frame.Ai.Gperiod))
+	tex.WriteString(fmt.Sprintf("振動特性係数       & $R_t=%5.3f$\\\\\n", frame.Ai.Rt))
+	tex.WriteString(fmt.Sprintf("地域係数           & $Z =%5.3f$\\\\\n", frame.Ai.Locate))
+	tex.WriteString(fmt.Sprintf("標準層せん断力係数 & $C_{ox}=%5.3f, C_{oy}=%5.3f$\\\\\n", frame.Ai.Base[0], frame.Ai.Base[1]))
+	tex.WriteString(fmt.Sprintf("基礎部分の震度     & $C_{fx}=%5.3f, C_{fy}=%5.3f$\\\\\n", facts[0][0], facts[1][0]))
+	tex.WriteString("\\end{tabular}\\\\\n\\vspace{5mm}\n\\\\\n")
+	tex.WriteString("\\begin{tabular}{l c r}\n")
+	tex.WriteString(fmt.Sprintf("床用積載荷重による総荷重   &=&%10.3f\\\\\n", frame.Show.Unit[0]*total[0]))
+	tex.WriteString(fmt.Sprintf("柱梁用積載荷重による総荷重 &=&%10.3f\\\\\n", frame.Show.Unit[0]*total[1]))
+	tex.WriteString(fmt.Sprintf("地震用積載荷重による総荷重 &=&%10.3f\\\\\n", frame.Show.Unit[0]*total[2]))
+	tex.WriteString("\\end{tabular}\\\\\n\\vspace{5mm}\n\\\\\n")
 	rtn.WriteString("各階平均高さ      :")
+	tex.WriteString("\\begin{tabular}{l r c" + strings.Repeat("r", size) + "}\n")
+	tex.WriteString("各階平均高さ& &:")
 	for i := 0; i < size; i++ {
 		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Level[i]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Level[i]))
 	}
 	rtn.WriteString("\n各階重量       wi :")
+	tex.WriteString("\\\\\n各階重量 & $w_i$ & :")
 	for i := 0; i < size; i++ {
 		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Wi[i]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Show.Unit[0]*frame.Ai.Wi[i]))
 	}
 	rtn.WriteString("\n        Wi = Σwi :")
+	tex.WriteString("\\\\\n & $W_i = \\sum w_i$ & :")
 	for i := 0; i < size; i++ {
 		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.W[i]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Show.Unit[0]*frame.Ai.W[i]))
 	}
 	rtn.WriteString("\n               Ai :           ")
+	tex.WriteString("\\\\\n & $A_i$ & :")
 	for i := 0; i < size-1; i++ {
 		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Ai[i]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Ai[i]))
 	}
 	for d, str := range []string{"X", "Y"} {
 		rtn.WriteString(fmt.Sprintf("\n%s方向", str))
+		tex.WriteString(fmt.Sprintf("\\\\\n%s方向&&&&&", str))
 		rtn.WriteString("\n層せん断力係数 Ci :           ")
+		tex.WriteString("\\\\\n層せん断力係数& $C_i$ & :")
 		for i := 1; i < size; i++ {
 			rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Ci[d][i]))
+			tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Ci[d][i]))
 		}
 		rtn.WriteString("\n層せん断力     Qi :           ")
+		tex.WriteString("\\\\\n層せん断力& $Q_i$ & :")
 		for i := 1; i < size; i++ {
 			rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Qi[d][i]))
+			tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Show.Unit[0]*frame.Ai.Qi[d][i]))
 		}
 		rtn.WriteString("\n各階外力       Hi :           ")
+		tex.WriteString("\\\\\n各階外力& $H_i$ & :")
 		for i := 1; i < size; i++ {
 			rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Hi[d][i]))
+			tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Show.Unit[0]*frame.Ai.Hi[d][i]))
 		}
 		rtn.WriteString("\n外力係数    Hi/wi :")
+		tex.WriteString("\\\\\n外力係数& $H_i/w_i$ & :")
 		for i := 0; i < size; i++ {
 			rtn.WriteString(fmt.Sprintf(" %10.3f", facts[d][i]))
+			tex.WriteString(fmt.Sprintf(" &%10.3f", facts[d][i]))
 		}
 	}
 	rtn.WriteString("\n")
-	return rtn.String(), nil
+	tex.WriteString("\\end{tabular}\n\\newpage\n")
+	return rtn.String(), tex.String(), nil
 }
 
-func (frame *Frame) WindPressure() (string, error) {
+func (frame *Frame) WindPressure() (string, string, error) {
 	if frame.Ai.Nfloor == 0 && len(frame.Ai.Boundary) == 0 {
-		return "", fmt.Errorf("level isn't set up")
+		return "", "", fmt.Errorf("level isn't set up")
 	}
 	_, _, _, _, zmin, zmax := frame.Bbox(false)
 	height := zmax - zmin
@@ -5203,9 +5271,8 @@ func (frame *Frame) WindPressure() (string, error) {
 			frame.Wind.Qi[1][j] += wy[i]
 		}
 	}
-	fmt.Println(breadth)
-	fmt.Println(length)
 	var otp bytes.Buffer
+	var tex bytes.Buffer
 	otp.WriteString("風圧力の算定・閉鎖型の建築物\n建築基準法令第87条\n\n")
 	otp.WriteString(fmt.Sprintf("建物高さ H [m]               : %.3f\n", height))
 	otp.WriteString(fmt.Sprintf("地表面粗度区分               : %d\n", frame.Wind.Roughness))
@@ -5217,68 +5284,112 @@ func (frame *Frame) WindPressure() (string, error) {
 	otp.WriteString(fmt.Sprintf("Er                           : %.3f\n", er))
 	otp.WriteString(fmt.Sprintf("Gf                           : %.3f\n", gf))
 	otp.WriteString(fmt.Sprintf("E=Er^2 Gf                    : %.3f\n", e))
+	tex.WriteString("風圧力の算定・閉鎖型の建築物\n建築基準法令第87条\\\\\n\\\\\n")
+	tex.WriteString("\\begin{tabular}{l c l}\n")
+	tex.WriteString(fmt.Sprintf("建物高さ $H {\\rm [m]}$     &:&%.3f\\\\\n", height))
+	tex.WriteString(fmt.Sprintf("地表面粗度区分              &:&%d\\\\\n", frame.Wind.Roughness))
+	tex.WriteString(fmt.Sprintf("基準風速 $V_0 {\\rm [m/s]}$ &:&%.3f\\\\\n", frame.Wind.Velocity))
+	tex.WriteString(fmt.Sprintf("風速倍率                    &:&%.3f\\\\\n", frame.Wind.Factor))
+	tex.WriteString(fmt.Sprintf("$Z_b {\\rm [m]}$            &:&%.3f\\\\\n", zb))
+	tex.WriteString(fmt.Sprintf("$Z_G {\\rm [m]}$            &:&%.3f\\\\\n", zg))
+	tex.WriteString(fmt.Sprintf("$\\alpha$                   &:&%.3f\\\\\n", alpha))
+	tex.WriteString(fmt.Sprintf("$E_r$                       &:&%.3f\\\\\n", er))
+	tex.WriteString(fmt.Sprintf("$G_f$                       &:&%.3f\\\\\n", gf))
+	tex.WriteString(fmt.Sprintf("$E=E_r^2 G_f$               &:&%.3f\\\\\n", e))
+	var unit string
 	switch frame.Show.UnitName[0] {
 	case "tf":
-		otp.WriteString(fmt.Sprintf("q=0.6 E V0^2[kgf/m2]        : %.3f\n", q*frame.Show.Unit[0]))
+		unit = "[kgf/m2]"
 	case "kN":
-		otp.WriteString(fmt.Sprintf("q=0.6 E V0^2[N/m2]          : %.3f\n", q*frame.Show.Unit[0]))
+		unit = "[N/m2]"
 	default:
-		otp.WriteString(fmt.Sprintf("q=0.6 E V0^2[kgf/m2]        : %.3f\n", q*frame.Show.Unit[0]))
+		unit = "[kgf/m2]"
 	}
+	otp.WriteString(fmt.Sprintf("q=0.6 E V0^2[%s]        : %.3f\n", unit, q*frame.Show.Unit[0]))
+	tex.WriteString(fmt.Sprintf("$q=0.6 E V_0^2 {\\rm [%s]}$  &:&%.3f\\\\\n", unit, q*frame.Show.Unit[0]))
+	tex.WriteString("\\end{tabular}\\\\\n\\vspace{5mm}\n\\\\\n")
 	otp.WriteString("\n風圧力を算定する高さ Z1[m]   :")
+	tex.WriteString("\\begin{tabular}{l r c" + strings.Repeat("r", size) + "}\n")
+	tex.WriteString("風圧力を算定する高さ & $Z_1 {\\rm [m]}$ & :")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", z[i]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", z[i]))
 	}
 	otp.WriteString("\n張間方向幅 b1[m]             :")
+	tex.WriteString("\\\\\n張間方向幅 & $b_1 {\\rm [m]}$ & :")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", breadth[i]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", breadth[i]))
 	}
 	otp.WriteString("\n桁行方向幅 b2[m]             :")
+	tex.WriteString("\\\\\n桁行方向幅 & $b_2 {\\rm [m]}$ & :")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", length[i]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", length[i]))
 	}
 	otp.WriteString("\nkz                           :")
+	tex.WriteString("\\\\\n $k_z$ & & :")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", kz[i]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", kz[i]))
 	}
 	otp.WriteString("\n外圧係数 Cpe                 :")
+	tex.WriteString("\\\\\n外圧係数 & $C_{pe}$ & :")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", cpe[i]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", cpe[i]))
 	}
 	otp.WriteString("\n内圧係数 Cpi                 :")
+	tex.WriteString("\\\\\n内圧係数 & $C_{pi}$ & :")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", cpi[i]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", cpi[i]))
 	}
 	otp.WriteString("\n風力係数 Cf                  :")
+	tex.WriteString("\\\\\n風力係数 & $C_f$ & :")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", cf[i]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", cf[i]))
 	}
 	otp.WriteString(fmt.Sprintf("\n外力 Wx=Cf (Zi-Zi+1) b1[%s]  :", frame.Show.UnitName[0]))
+	tex.WriteString(fmt.Sprintf("\\\\\n外力 & $W_x=C_f (Z_i-Z_{i+1}) b_1 {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", wx[i]*frame.Show.Unit[0]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", wx[i]*frame.Show.Unit[0]))
 	}
 	otp.WriteString(fmt.Sprintf("\n     Wy=Cf (Zi-Zi+1) b2[%s]  :", frame.Show.UnitName[0]))
+	tex.WriteString(fmt.Sprintf("\\\\\n & $W_y=C_f (Z_i-Z_{i+1}) b_2 {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", wy[i]*frame.Show.Unit[0]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", wy[i]*frame.Show.Unit[0]))
 	}
 	otp.WriteString(fmt.Sprintf("\n層せん断力 Qwx=ΣWx[%s]      :", frame.Show.UnitName[0]))
+	tex.WriteString(fmt.Sprintf("\\\\\n層せん断力 & $Q_{wx}=\\sum W_x {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Wind.Qi[0][i]*frame.Show.Unit[0]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Wind.Qi[0][i]*frame.Show.Unit[0]))
 	}
 	otp.WriteString(fmt.Sprintf("\n           Qwy=ΣWy[%s]      :", frame.Show.UnitName[0]))
+	tex.WriteString(fmt.Sprintf("\\\\\n & $Q_{wy}=\\sum W_y {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Wind.Qi[1][i]*frame.Show.Unit[0]))
+		otp.WriteString(fmt.Sprintf(" &%10.3f", frame.Wind.Qi[1][i]*frame.Show.Unit[0]))
 	}
 	otp.WriteString(fmt.Sprintf("\n地震層せん断力 Qex[%s]       :", frame.Show.UnitName[0]))
+	tex.WriteString(fmt.Sprintf("\\\\\n地震層せん断力 & $Q_{ex} {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Qi[0][i+1]*frame.Show.Unit[0]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Qi[0][i+1]*frame.Show.Unit[0]))
 	}
 	otp.WriteString(fmt.Sprintf("\n               Qey[%s]       :", frame.Show.UnitName[0]))
+	tex.WriteString(fmt.Sprintf("\\\\\n & $Q_{ey} {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Qi[1][i+1]*frame.Show.Unit[0]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Qi[1][i+1]*frame.Show.Unit[0]))
 	}
 	otp.WriteString("\n\n")
-	return otp.String(), nil
+	tex.WriteString("\\end{tabular}\n\\newpage\n")
+	return otp.String(), tex.String(), nil
 }
 
 func (frame *Frame) SaveAsArclm(name string) error {
@@ -6113,6 +6224,9 @@ func (frame *Frame) OutputTex() error {
 	snum1 := 0
 	snum2 := 0
 	for _, sect := range frame.Sects {
+		if sect.Num >= 900 {
+			continue
+		}
 		if sect.HasArea(0) {
 			lineelems = append(lineelems, sect)
 			snum1++
@@ -6216,31 +6330,22 @@ func (frame *Frame) OutputTex() error {
 		table2[i] = plateelem(plateelems[i])
 	}
 	data := map[string]interface{}{
-		"table0": strings.Join(table0, "\n"),
-		"table1": strings.Join(table1, "\n"),
-		"table2": strings.Join(table2, "\n"),
+		"table0": strings.Join(table0, "\n") + "\\bottomrule",
+		"table1": strings.Join(table1, "\n") + "\\bottomrule",
+		"table2": strings.Join(table2, "\n") + "\\bottomrule",
 	}
-	err := tmpl23.Execute(os.Stdout, data)
+	w23, err := os.Create(filepath.Join(filepath.Dir(frame.Path), "2_3.tex"))
+	if err != nil {
+		return err
+	}
+	defer w23.Close()
+	err = tmpl23.Execute(w23, data)
 	if err != nil {
 		return err
 	}
 	// Section 3.1
-	// TODO: Implement
-	// S1 & 702 & デッキスラブ & 2F & 機械等 & 60 \\
-	//    &     & (t=150+25mm) &    & 仕上等 & 40 \\
-	//    &     &              &    & ＲＣスラブ 150+25mm & 420 \\ \cmidrule{5-6}
-	//    &     &              &    & 小計 & 520 \\ \cmidrule{5-8}
-	//    &     &              &    & & 床用 & 柱梁用 & 地震用 \\
-	//    &     &              &    & 積載荷重(事務室相当) & 300 & 185 & 85 \\ \cmidrule{5-8}
-	//    &     &              &    & 計 & 820 & 705 & 605 \\
-	//    &     &              &    & & (8041) & (6914) & (5933) \\ \midrule
 	tmpl31, _ := template.ParseFS(tempdir, "template/3_1.tex")
 	plateload := func(sect *Sect) string {
-		t, _ := sect.Thick(0)
-		w := sect.Weight()
-		w0 := w[1] - sect.Lload[1]
-		w1 := t * sect.Figs[0].Prop.Hiju
-		w2 := w[1] - w1 - sect.Lload[1]
 		typename := typematerial(sect.Figs[0].Prop)
 		if sect.Num < 800 {
 			typename += "床"
@@ -6248,7 +6353,31 @@ func (frame *Frame) OutputTex() error {
 			typename += "壁"
 		}
 		sign, name := signname(sect.Name)
-		return fmt.Sprintf("    %s & %d & %s & %d & %s &  %.0f & ○ & %.2f & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, sect.Figs[0].Prop.Num, name, w0*1000, t*1000, w2*1000)
+		var otp bytes.Buffer
+		sum := 0.0
+		for i, fig := range sect.Figs {
+			endl := ""
+			if i == len(sect.Figs)-1 {
+				endl = " \\cmidrule{4-5}"
+			}
+			w := fig.Weight() * 1000
+			sum += w
+			switch i {
+			case 0:
+				otp.WriteString(fmt.Sprintf("    %s & %d & %s & %s & %.0f \\\\%s\n", sign, sect.Num, name, fig.Name, w, endl))
+			default:
+				otp.WriteString(fmt.Sprintf("         &      &      & %s & %.0f \\\\%s\n", fig.Name, w, endl))
+			}
+		}
+		otp.WriteString(fmt.Sprintf("         &      &      & 小計 & %.0f \\\\ \\cmidrule{4-7}\n", sum))
+		otp.WriteString("         &      &      & & 床用 & 柱梁用 & 地震用 \\\\\n")
+		if sect.Lload != nil && len(sect.Lload) == 3 {
+			otp.WriteString(fmt.Sprintf("         &      &      & 積載荷重 & %.0f & %.0f & %.0f \\\\ \\cmidrule{4-7}\n", sect.Lload[0]*1000, sect.Lload[1]*1000, sect.Lload[2]*1000))
+		}
+		wtotal := sect.Weight()
+		otp.WriteString(fmt.Sprintf("         &      &      & 計 & %.0f & %.0f & %.0f \\\\\n", wtotal[0]*1000, wtotal[1]*1000, wtotal[2]*1000))
+		otp.WriteString(fmt.Sprintf("         &      &      & & (%.0f) & (%.0f) & (%.0f) \\\\", wtotal[0]*1000*SI, wtotal[1]*1000*SI, wtotal[2]*1000*SI))
+		return otp.String()
 	}
 	table3 := make([]string, snum2)
 	ind := 0
@@ -6261,9 +6390,14 @@ func (frame *Frame) OutputTex() error {
 	}
 	table3 = table3[:ind]
 	data31 := map[string]interface{}{
-		"table3": strings.Join(table3, "\n"),
+		"table3": strings.Join(table3, "\\midrule\n") + "\\bottomrule",
 	}
-	err = tmpl31.Execute(os.Stdout, data31)
+	w31, err := os.Create(filepath.Join(filepath.Dir(frame.Path), "3_1.tex"))
+	if err != nil {
+		return err
+	}
+	defer w31.Close()
+	err = tmpl31.Execute(w31, data31)
 	if err != nil {
 		return err
 	}

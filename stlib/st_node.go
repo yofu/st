@@ -213,6 +213,10 @@ func (node *Node) WgtString(factor float64) string {
 	return fmt.Sprintf("%9d  %10.3f %10.3f %10.3f\n", node.Num, factor*(node.Weight[0]-node.Load[2]), factor*(node.Weight[1]-node.Load[2]), factor*(node.Weight[2]-node.Load[2]))
 }
 
+func (node *Node) WgtStringTex(factor float64) string {
+	return fmt.Sprintf("%9d & %10.3f & %10.3f & %10.3f\\\\\n", node.Num, factor*(node.Weight[0]-node.Load[2]), factor*(node.Weight[1]-node.Load[2]), factor*(node.Weight[2]-node.Load[2]))
+}
+
 func (node *Node) OutputDisp(p string) string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("%4d ", node.Num))

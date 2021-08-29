@@ -118,6 +118,16 @@ func (fig *Fig) SetShapeProperty(s Shape) {
 	fig.Value["VEN"] = s.J() * 1e-8
 }
 
+func (fig *Fig) Weight() float64 {
+	if aval, ok := fig.Value["AREA"]; ok {
+		return aval * fig.Prop.Hiju
+	} else if tval, ok := fig.Value["THICK"]; ok {
+		return tval * fig.Prop.Hiju
+	} else {
+		return 0.0
+	}
+}
+
 func (sect *Sect) Hide() {
 	sect.Frame.Show.Sect[sect.Num] = false
 }
@@ -391,11 +401,7 @@ func (sect *Sect) PropWeight(props []int) float64 {
 	for _, fig := range sect.Figs {
 		for _, num := range props {
 			if fig.Prop.Num == num {
-				if aval, ok := fig.Value["AREA"]; ok {
-					sum += aval * fig.Prop.Hiju
-				} else if tval, ok := fig.Value["THICK"]; ok {
-					sum += tval * fig.Prop.Hiju
-				}
+				sum += fig.Weight()
 				break
 			}
 		}
@@ -420,11 +426,7 @@ func (sect *Sect) Weight() []float64 {
 	rtn := make([]float64, 3)
 	sum := 0.0
 	for _, fig := range sect.Figs {
-		if aval, ok := fig.Value["AREA"]; ok {
-			sum += aval * fig.Prop.Hiju
-		} else if tval, ok := fig.Value["THICK"]; ok {
-			sum += tval * fig.Prop.Hiju
-		}
+		sum += fig.Weight()
 	}
 	for i := 0; i < 3; i++ {
 		rtn[i] = sum + sect.Lload[i]
