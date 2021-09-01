@@ -3212,14 +3212,14 @@ func NewCondition() *Condition {
 	}
 }
 
-func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string, error) {
+func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string, string, error) {
 	if len(stress) < 12 {
-		return nil, "", errors.New("Rate: Not enough number of Stress")
+		return nil, "", "", errors.New("Rate: Not enough number of Stress")
 	}
 	rate := make([]float64, 12)
 	fa := make([]float64, 12)
 	var ind int
-	var otp bytes.Buffer
+	var otp, tex bytes.Buffer
 	verbose := false
 	for i := 0; i < 2; i++ {
 		if cond.Verbose {
@@ -3243,7 +3243,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		cond.Compression = cond.N >= 0.0
 		na := sr.Na(cond)
 		if na == 0.0 && stress[ind] != 0.0 {
-			return rate, "", ZeroAllowableError{"Na"}
+			return rate, "", "", ZeroAllowableError{"Na"}
 		}
 		rate[ind] = math.Abs(stress[ind] / na)
 		fa[ind] = na
@@ -3252,7 +3252,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		cond.Positive = cond.M >= 0.0
 		qay := sr.Qa(cond)
 		if qay == 0.0 && stress[ind] != 0.0 {
-			return rate, "", ZeroAllowableError{"Qay"}
+			return rate, "", "", ZeroAllowableError{"Qay"}
 		}
 		rate[ind] = math.Abs(stress[ind] / qay)
 		fa[ind] = qay
@@ -3276,7 +3276,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		ind = 6*i + 1
 		qax := sr.Qa(cond)
 		if qax == 0.0 && stress[ind] != 0.0 {
-			return rate, "", ZeroAllowableError{"Qax"}
+			return rate, "", "", ZeroAllowableError{"Qax"}
 		}
 		rate[ind] = math.Abs(stress[ind] / qax)
 		fa[ind] = qax
@@ -3291,7 +3291,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		ind = 6*i + 3
 		maz := sr.Mza(cond)
 		if maz == 0.0 && stress[ind] != 0.0 {
-			return rate, "", ZeroAllowableError{"Maz"}
+			return rate, "", "", ZeroAllowableError{"Maz"}
 		}
 		rate[ind] = math.Abs(stress[ind] / maz)
 		fa[ind] = maz
@@ -3300,6 +3300,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 	for i := 0; i < 6; i++ {
 		for j := 0; j < 2; j++ {
 			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[6*j+i], stress[6*j+i]*SI))
+			tex.WriteString(fmt.Sprintf(" &%8.3f", stress[6*j+i]*SI))
 			if i == 0 || i == 3 {
 				break
 			}
@@ -3312,41 +3313,48 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		otp.WriteString("\n")
 	}
 	otp.WriteString("     許容値:")
+	tex.WriteString("\\\\\n~~~~~許容値&:")
 	for i := 0; i < 6; i++ {
 		for j := 0; j < 2; j++ {
 			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", fa[6*j+i], fa[6*j+i]*SI))
+			tex.WriteString(fmt.Sprintf(" &%8.3f", fa[6*j+i]*SI))
 			if i == 0 || i == 3 {
 				break
 			}
 		}
 	}
 	otp.WriteString("\n     安全率:")
+	tex.WriteString("\\\\\n~~~~~安全率&:")
 	for i := 0; i < 6; i++ {
 		for j := 0; j < 2; j++ {
 			otp.WriteString(fmt.Sprintf(" %8.3f          ", rate[6*j+i]))
+			tex.WriteString(fmt.Sprintf(" &%8.3f", rate[6*j+i]))
 			if i == 0 || i == 3 {
 				break
 			}
 		}
 	}
 	otp.WriteString("\n")
-	return rate, otp.String(), nil
+	tex.WriteString("\\\\\n")
+	return rate, otp.String(), tex.String(), nil
 }
 
-func Rate2(sr SectionRate, stress float64, cond *Condition) (float64, string, error) {
+func Rate2(sr SectionRate, stress float64, cond *Condition) (float64, string, string, error) {
 	var rate float64
-	var otp bytes.Buffer
+	var otp, tex bytes.Buffer
 	cond.Compression = stress >= 0.0
 	na := sr.Na(cond)
 	if na == 0.0 && stress != 0.0 {
-		return rate, "", ZeroAllowableError{"Na"}
+		return rate, "", "", ZeroAllowableError{"Na"}
 	}
 	rate = math.Abs(stress / na)
 	otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)\n", stress, stress*SI))
+	tex.WriteString(fmt.Sprintf(" &%8.3f\\\\\n", stress*SI))
 	if cond.Verbose {
 		otp.WriteString(cond.Buffer.String())
 		cond.Buffer.Reset()
 	}
 	otp.WriteString(fmt.Sprintf("     許容値: %8.3f(%8.2f)\n     安全率: %8.3f\n", na, na*SI, rate))
-	return rate, otp.String(), nil
+	tex.WriteString(fmt.Sprintf("~~~~~許容値&: &%8.3f\\\\\n~~~~~安全率&: &%8.3f\\\\\n", na*SI, rate))
+	return rate, otp.String(), tex.String(), nil
 }

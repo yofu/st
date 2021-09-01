@@ -4874,22 +4874,27 @@ func (frame *Frame) WeightDistribution(fn string) error {
 		if frame.Wind.Qi[0][i] > frame.Ai.Qi[0][i+1] {
 			if frame.Ai.Qi[0][i+1] != 0.0 {
 				otp.WriteString(fmt.Sprintf("風圧力の方が大きい: X方向 %d階 C0=%.3f相当\n", i+1, frame.Ai.Base[0]*frame.Wind.Qi[0][i]/frame.Ai.Qi[0][i+1]))
+				tex33.WriteString(fmt.Sprintf("風圧力の方が大きい: X方向 %d階 $C_0=%.3f$相当\\\\\n", i+1, frame.Ai.Base[0]*frame.Wind.Qi[0][i]/frame.Ai.Qi[0][i+1]))
 			} else {
-				otp.WriteString(fmt.Sprintf("風圧力の方が大きい: X方向 %d階 Qex=0.0\n", i+1))
+				otp.WriteString(fmt.Sprintf("風圧力の方が大きい: X方向 %d階 $Q_{ex}=0.0$\n", i+1))
+				tex33.WriteString(fmt.Sprintf("風圧力の方が大きい: X方向 %d階 $Q_{ex}=0.0$\\\\\n", i+1))
 			}
 			check = true
 		}
 		if frame.Wind.Qi[1][i] > frame.Ai.Qi[1][i+1] {
 			if frame.Ai.Qi[1][i+1] != 0.0 {
 				otp.WriteString(fmt.Sprintf("風圧力の方が大きい: Y方向 %d階 C0=%.3f相当\n", i+1, frame.Ai.Base[1]*frame.Wind.Qi[1][i]/frame.Ai.Qi[1][i+1]))
+				tex33.WriteString(fmt.Sprintf("風圧力の方が大きい: Y方向 %d階 $C_0=%.3f$相当\\\\\n", i+1, frame.Ai.Base[0]*frame.Wind.Qi[0][i]/frame.Ai.Qi[0][i+1]))
 			} else {
 				otp.WriteString(fmt.Sprintf("風圧力の方が大きい: Y方向 %d階 Qey=0.0\n", i+1))
+				tex33.WriteString(fmt.Sprintf("風圧力の方が大きい: X方向 %d階 $Q_{ex}=0.0$\\\\\n", i+1))
 			}
 			check = true
 		}
 	}
 	if !check {
 		otp.WriteString("以上より、風圧力は地震力よりも小さい。\n")
+		tex33.WriteString("\\\\\n以上より、風圧力は地震力よりも小さい。\\\\\n\\newpage\n")
 	} else {
 		size := frame.Ai.Nfloor
 		hx := make([]float64, size)
@@ -5124,7 +5129,7 @@ func (frame *Frame) AiDistribution() (string, string, error) {
 		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Show.Unit[0]*frame.Ai.W[i]))
 	}
 	rtn.WriteString("\n               Ai :           ")
-	tex.WriteString("\\\\\n & $A_i$ & :")
+	tex.WriteString("\\\\\n & $A_i$ & :&")
 	for i := 0; i < size-1; i++ {
 		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Ai[i]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Ai[i]))
@@ -5133,19 +5138,19 @@ func (frame *Frame) AiDistribution() (string, string, error) {
 		rtn.WriteString(fmt.Sprintf("\n%s方向", str))
 		tex.WriteString(fmt.Sprintf("\\\\\n%s方向&&&&&", str))
 		rtn.WriteString("\n層せん断力係数 Ci :           ")
-		tex.WriteString("\\\\\n層せん断力係数& $C_i$ & :")
+		tex.WriteString("\\\\\n層せん断力係数& $C_i$ & :&")
 		for i := 1; i < size; i++ {
 			rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Ci[d][i]))
 			tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Ci[d][i]))
 		}
 		rtn.WriteString("\n層せん断力     Qi :           ")
-		tex.WriteString("\\\\\n層せん断力& $Q_i$ & :")
+		tex.WriteString("\\\\\n層せん断力& $Q_i$ & :&")
 		for i := 1; i < size; i++ {
 			rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Qi[d][i]))
 			tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Show.Unit[0]*frame.Ai.Qi[d][i]))
 		}
 		rtn.WriteString("\n各階外力       Hi :           ")
-		tex.WriteString("\\\\\n各階外力& $H_i$ & :")
+		tex.WriteString("\\\\\n各階外力& $H_i$ & :&")
 		for i := 1; i < size; i++ {
 			rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Hi[d][i]))
 			tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Show.Unit[0]*frame.Ai.Hi[d][i]))
@@ -5158,7 +5163,7 @@ func (frame *Frame) AiDistribution() (string, string, error) {
 		}
 	}
 	rtn.WriteString("\n")
-	tex.WriteString("\\end{tabular}\n\\newpage\n")
+	tex.WriteString("\\\\\n\\end{tabular}\n\n\\newpage\n\n")
 	return rtn.String(), tex.String(), nil
 }
 
@@ -5284,7 +5289,7 @@ func (frame *Frame) WindPressure() (string, string, error) {
 	otp.WriteString(fmt.Sprintf("Er                           : %.3f\n", er))
 	otp.WriteString(fmt.Sprintf("Gf                           : %.3f\n", gf))
 	otp.WriteString(fmt.Sprintf("E=Er^2 Gf                    : %.3f\n", e))
-	tex.WriteString("風圧力の算定・閉鎖型の建築物\n建築基準法令第87条\\\\\n\\\\\n")
+	tex.WriteString("\\subsection{風荷重}\n\n建築基準法施行令第87条に従い、風圧力を算定する。\\\\\n\\\\\n")
 	tex.WriteString("\\begin{tabular}{l c l}\n")
 	tex.WriteString(fmt.Sprintf("建物高さ $H {\\rm [m]}$     &:&%.3f\\\\\n", height))
 	tex.WriteString(fmt.Sprintf("地表面粗度区分              &:&%d\\\\\n", frame.Wind.Roughness))
@@ -5299,14 +5304,14 @@ func (frame *Frame) WindPressure() (string, string, error) {
 	var unit string
 	switch frame.Show.UnitName[0] {
 	case "tf":
-		unit = "[kgf/m2]"
+		unit = "[kgf/m^2]"
 	case "kN":
-		unit = "[N/m2]"
+		unit = "[N/m^2]"
 	default:
-		unit = "[kgf/m2]"
+		unit = "[kgf/m^2]"
 	}
-	otp.WriteString(fmt.Sprintf("q=0.6 E V0^2[%s]        : %.3f\n", unit, q*frame.Show.Unit[0]))
-	tex.WriteString(fmt.Sprintf("$q=0.6 E V_0^2 {\\rm [%s]}$  &:&%.3f\\\\\n", unit, q*frame.Show.Unit[0]))
+	otp.WriteString(fmt.Sprintf("q=0.6 E V0^2%s        : %.3f\n", unit, q*frame.Show.Unit[0]))
+	tex.WriteString(fmt.Sprintf("$q=0.6 E V_0^2 {\\rm %s}$  &:&%.3f\\\\\n", unit, q*frame.Show.Unit[0]))
 	tex.WriteString("\\end{tabular}\\\\\n\\vspace{5mm}\n\\\\\n")
 	otp.WriteString("\n風圧力を算定する高さ Z1[m]   :")
 	tex.WriteString("\\begin{tabular}{l r c" + strings.Repeat("r", size) + "}\n")
@@ -5352,7 +5357,7 @@ func (frame *Frame) WindPressure() (string, string, error) {
 		tex.WriteString(fmt.Sprintf(" &%10.3f", cf[i]))
 	}
 	otp.WriteString(fmt.Sprintf("\n外力 Wx=Cf (Zi-Zi+1) b1[%s]  :", frame.Show.UnitName[0]))
-	tex.WriteString(fmt.Sprintf("\\\\\n外力 & $W_x=C_f (Z_i-Z_{i+1}) b_1 {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
+	tex.WriteString(fmt.Sprintf("\\\\\n外力 & $W_x=C_f (Z_i-Z_{i-1}) b_1 {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", wx[i]*frame.Show.Unit[0]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", wx[i]*frame.Show.Unit[0]))
@@ -5373,7 +5378,7 @@ func (frame *Frame) WindPressure() (string, string, error) {
 	tex.WriteString(fmt.Sprintf("\\\\\n & $Q_{wy}=\\sum W_y {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Wind.Qi[1][i]*frame.Show.Unit[0]))
-		otp.WriteString(fmt.Sprintf(" &%10.3f", frame.Wind.Qi[1][i]*frame.Show.Unit[0]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Wind.Qi[1][i]*frame.Show.Unit[0]))
 	}
 	otp.WriteString(fmt.Sprintf("\n地震層せん断力 Qex[%s]       :", frame.Show.UnitName[0]))
 	tex.WriteString(fmt.Sprintf("\\\\\n地震層せん断力 & $Q_{ex} {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
@@ -5388,7 +5393,7 @@ func (frame *Frame) WindPressure() (string, string, error) {
 		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Qi[1][i+1]*frame.Show.Unit[0]))
 	}
 	otp.WriteString("\n\n")
-	tex.WriteString("\\end{tabular}\n\\newpage\n")
+	tex.WriteString("\\\\\n\\end{tabular}\n")
 	return otp.String(), tex.String(), nil
 }
 
@@ -5455,7 +5460,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	if enum == 0 {
 		return nil
 	}
-	var otp, rat, rlt bytes.Buffer
+	var otp, tex, rat, rlt bytes.Buffer
 	var rate []float64
 	var rate2 float64
 	var err error
@@ -5472,20 +5477,22 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 		} else {
 			stress = st1
 		}
-		rate, txt, err := Rate1(allow, stress, cond)
+		rate, txt, textxt, err := Rate1(allow, stress, cond)
 		if err != nil {
 			return rate, err
 		}
 		otp.WriteString(txt)
+		tex.WriteString(textxt)
 		return rate, nil
 	}
 	calc2 := func(allow SectionRate, n1, n2, fact, sign float64) (float64, error) {
 		stress := n1 + sign*fact*n2
-		rate, txt, err := Rate2(allow, stress, cond)
+		rate, txt, textxt, err := Rate2(allow, stress, cond)
 		if err != nil {
 			return rate, err
 		}
 		otp.WriteString(txt)
+		tex.WriteString(textxt)
 		return rate, nil
 	}
 	maxrate := func(rate ...float64) float64 {
@@ -5510,6 +5517,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	otp.WriteString("N:軸力 Q:せん断力 Mt:ねじりモーメント M:曲げモーメント\n")
 	otp.WriteString("添字 i:始端 j:終端 c:中央\n")
 	otp.WriteString("a:許容 u:終局\n")
+	tex.WriteString("\\begin{tabular}{l c r r r r r r r r r r}\n")
 	elems = elems[:enum]
 	sort.Sort(ElemByNum{elems})
 	maxrateelem := make(map[int][]*Elem)
@@ -5540,6 +5548,8 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			otp.WriteString(strings.Repeat("-", 202))
 			otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
 			otp.WriteString("応力       :        N                Qxi                Qxj                Qyi                Qyj                 Mt                Mxi                Mxj                Myi                Myj\n")
+			tex.WriteString(fmt.Sprintf("\\multicolumn{12}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
+			tex.WriteString("応力       &: &      $N$&$Q_{xi}$&$Q_{yi}$&$Q_{xj}$&$Q_{yj}$&   $M_t$&$M_{xi}$&$M_{xj}$&$M_{yi}$&$M_{yj}$\\\\\n")
 			stress := make([][]float64, 5)
 			for p, per := range []string{long, x1, x2, y1, y2} {
 				stress[p] = make([]float64, 12)
@@ -5554,17 +5564,21 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 					continue
 				}
 				otp.WriteString(stname[p])
+				tex.WriteString(strings.Replace(stname[p], ":", "&:", -1))
 				for i := 0; i < 6; i++ {
 					for j := 0; j < 2; j++ {
 						otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[p][6*j+i], stress[p][6*j+i]*SI))
+						tex.WriteString(fmt.Sprintf(" &%8.3f", stress[p][6*j+i]*SI))
 						if i == 0 || i == 3 {
 							break
 						}
 					}
 				}
 				otp.WriteString("\n")
+				tex.WriteString("\\\\\n")
 			}
 			otp.WriteString("\n")
+			tex.WriteString("\\\\\n")
 			if cond.Verbose {
 				switch al.(type) {
 				case *SColumn:
@@ -5607,6 +5621,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				cond.Period = "L"
 			}
 			otp.WriteString(pername[0])
+			tex.WriteString(strings.Replace(pername[0], ":", "&:", -1))
 			rate, err = calc1(al, stress[0], nil, nil, 1.0)
 			qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
 			if isrc {
@@ -5623,6 +5638,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			}
 			if cond.Skipshort {
 				otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
+				tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
 				el.Rate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 				break
 			}
@@ -5631,11 +5647,13 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			for p := 1; p < 5; p++ {
 				if p%2 == 1 {
 					otp.WriteString("\n")
+					tex.WriteString("\\\\\n")
 					s = 1.0
 				} else {
 					s = sign
 				}
 				otp.WriteString(pername[p])
+				tex.WriteString(strings.Replace(pername[p], ":", "&:", -1))
 				rate, err = calc1(al, stress[0], stress[p], factor, s)
 				qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
 				if isrc {
@@ -5653,6 +5671,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			}
 			msrate = maxrate(msrates...)
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
+			tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
 			el.Rate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 		case BRACE, WBRACE, SBRACE:
 			var isrc bool
@@ -5688,6 +5707,8 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			}
 			otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
 			otp.WriteString("応力       :        N\n")
+			tex.WriteString(fmt.Sprintf("\\multicolumn{12}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
+			tex.WriteString("応力       &:&      $N$\\\\\n")
 			stress := make([]float64, 5)
 			for p, per := range []string{long, x1, x2, y1, y2} {
 				if st, ok := el.Stress[per]; ok {
@@ -5699,6 +5720,8 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				otp.WriteString(stname[p])
 				otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[p], stress[p]*SI))
 				otp.WriteString("\n")
+				tex.WriteString(strings.Replace(stname[p], ":", "&:", -1))
+				tex.WriteString(fmt.Sprintf(" &%8.3f\\\\\n", stress[p]*SI))
 			}
 			otp.WriteString("\n")
 			if cond.Temporary {
@@ -5707,10 +5730,12 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				cond.Period = "L"
 			}
 			otp.WriteString(pername[0])
+			tex.WriteString(strings.Replace(pername[0], ":", "&:", -1))
 			rate2, err = calc2(al, stress[0], 0.0, 0.0, 1.0)
 			qlrate = rate2
 			if cond.Skipshort {
 				otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
+				tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate))
 				el.Rate = []float64{qlrate, qsrate, qurate}
 				break
 			}
@@ -5724,10 +5749,12 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 					s = sign
 				}
 				otp.WriteString(pername[p])
+				tex.WriteString(strings.Replace(pername[p], ":", "&:", -1))
 				rate2, err = calc2(al, stress[0], stress[p], fact, s)
 				qsrate = maxrate(qsrate, rate2)
 			}
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
+			tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate))
 			el.Rate = []float64{qlrate, qsrate, qurate}
 		}
 		rat.WriteString(el.OutputRate())
@@ -5761,6 +5788,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 		}
 	}
 	otp.WriteString("==========================================================================================================================================================================================================\n各断面種別の許容,終局曲げ安全率の最大値\n\n")
+	tex.WriteString("\\end{tabular}\n\\newpage")
 	keys := make([]int, len(maxrateelem))
 	i := 0
 	for k := range maxrateelem {
@@ -5812,6 +5840,13 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	}
 	otp = AddCR(otp)
 	otp.WriteTo(w)
+	wtex, err := os.Create(filepath.Join(filepath.Dir(frame.Path), "4_3.tex"))
+	defer wtex.Close()
+	if err != nil {
+		return err
+	}
+	tex = AddCR(tex)
+	tex.WriteTo(wtex)
 	wrat, err := os.Create(Ce(fn, ".rat"))
 	defer wrat.Close()
 	if err != nil {
@@ -5978,7 +6013,7 @@ fact_node:
 			}
 		}
 	}
-	f := NewFact(l, true, frame.Ai.Base[0]/0.2, frame.Ai.Base[1]/0.2)
+	f := NewFact(l, false, frame.Ai.Base[0]/0.2, frame.Ai.Base[1]/0.2)
 	perx := strings.Split(period[0], "@")[0]
 	pery := strings.Split(period[1], "@")[0]
 	f.SetFileName([]string{frame.DataFileName["L"], frame.DataFileName[perx], frame.DataFileName[pery]},
