@@ -3311,8 +3311,63 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			if err != nil {
 				return err
 			}
+			side := 1
+			if sd, ok := argdict["SIDE"]; ok {
+				switch sd {
+				case "0":
+					side = 1
+				case "1":
+					side = 2
+				case "both", "BOTH":
+					side = 3
+				case "pin", "PIN":
+					side = 4
+				}
+			}
 			divfunc = func(el *Elem) ([]*Node, []*Elem, error) {
-				return el.DivideAtLength(val, EPS)
+				switch side {
+				case 1:
+					return el.DivideAtLength(val, EPS)
+				case 2:
+					return el.DivideAtLength(el.Length()-val, EPS)
+				case 3:
+					ns, els, err := el.DivideAtLength(val, EPS)
+					if err != nil {
+						return ns, els, err
+					}
+					ns2, els2, err := els[1].DivideAtLength(els[1].Length()-val, EPS)
+					if err != nil {
+						return ns, els, err
+					}
+					ns = append(ns, ns2...)
+					els = append(els, els2[1])
+					return ns, els, nil
+				case 4:
+					ns := make([]*Node, 0)
+					els := []*Elem{el}
+					divelem := el
+					if divelem.IsPin(0) {
+						ns1, els1, err := divelem.DivideAtLength(val, EPS)
+						if err != nil {
+							return ns, els, err
+						}
+						ns = append(ns, ns1...)
+						els = append(els, els1[1])
+						divelem = els1[1]
+					}
+					if divelem.IsPin(1) {
+						ns1, els1, err := divelem.DivideAtLength(divelem.Length()-val, EPS)
+						if err != nil {
+							return ns, els, err
+						}
+						ns = append(ns, ns1...)
+						els = append(els, els1[1])
+						divelem = els1[1]
+					}
+					return ns, els, nil
+				default:
+					return el.DivideAtLength(val, EPS)
+				}
 			}
 		case "range":
 			if usage {
