@@ -2879,7 +2879,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 	case "bond":
 		if usage {
-			return Usage(":bond [pin,rigid,[01_t]{6}] [upper,lower,sect sectcode]")
+			return Usage(":bond [pin,rigid,[01_t]{6}] [upper,lower,sect sectcode, nonrigid]")
 		}
 		if narg < 2 {
 			return NotEnoughArgs(":bond")
@@ -2942,6 +2942,10 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 						}
 					}
 					return false
+				}
+			case abbrev.For("nonr/igid", condition):
+				f = func(el *Elem, ind int) bool {
+					return !el.IsRigid(ind)
 				}
 			}
 		}
