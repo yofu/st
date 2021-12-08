@@ -3796,7 +3796,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 							if j >= 3 {
 								unit *= frame.Show.Unit[1]
 							}
-							w.WriteString(fmt.Sprintf(format, el.ReturnStress(period, i, j)*unit))
+							w.WriteString(fmt.Sprintf(" "+format, el.ReturnStress(period, i, j)*unit))
 						}
 					}
 				}
