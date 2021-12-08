@@ -151,6 +151,7 @@ var (
 	E90HINOKI = H_E90
 	M_E90     = Wood{"M-E90", 0.1714, 0.1285, 0.2142, 0.0244, 90.0, 6.5}
 	M_E110    = Wood{"M-E110", 0.2508, 0.1896, 0.3120, 0.0244, 110.0, 6.5}
+	MATSU     = Wood{"MATSU", 0.2263, 0.1804, 0.2875, 0.0244, 100.0, 6.5}
 	E95_F270  = Wood{"E95-F270", 0.2221, 0.1927, 0.2753, 0.0367, 95.0, 6.5}
 	E95_F315  = Wood{"E95-F315", 0.2651, 0.2314, 0.3212, 0.0367, 95.0, 6.5}
 	E120_F330 = Wood{"E120-F330", 0.2569, 0.2263, 0.3303, 0.0367, 120.0, 6.5}
@@ -2979,6 +2980,7 @@ func (wc *WoodColumn) Fc(cond *Condition) float64 {
 	} else {
 		rtn = 3000.0 / (lambda * lambda)
 	}
+	rtn *= wc.Factor(cond.Period) * wc.fc
 	if cond.Verbose {
 		cond.Buffer.WriteString(fmt.Sprintf("#     座屈長さ[cm]: Lkx=%.3f, Lky=%.3f\n", lx, ly))
 		check := ""
@@ -2988,7 +2990,7 @@ func (wc *WoodColumn) Fc(cond *Condition) float64 {
 		cond.Buffer.WriteString(fmt.Sprintf("#     細長比: λx=%.3f, λy=%.3f: λ=%.3f%s\n", lambda_x, lambda_y, lambda, check))
 		cond.Buffer.WriteString(fmt.Sprintf("#     許容圧縮応力度: Fc=%.3f [tf/cm2]\n", rtn))
 	}
-	return rtn * wc.Factor(cond.Period) * wc.fc
+	return rtn
 }
 func (wc *WoodColumn) Ft(cond *Condition) float64 {
 	return wc.ft * wc.Factor(cond.Period)

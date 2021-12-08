@@ -2251,13 +2251,7 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 		var size int
 		var shape Shape
 		var material Wood
-		switch lis[1][0] {
-		case "PLATE":
-			size = 2
-			shape, err = NewPLATE(lis[1][1 : 1+size])
-		default:
-			return nil
-		}
+		shape, size, err := ParseShape(lis[1])
 		if err != nil {
 			return err
 		}
@@ -2266,6 +2260,8 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 			material = S_E70
 		case "S-E70", "E70SUGI":
 			material = S_E70
+		case "SUGI":
+			material = SUGI
 		case "H-E70", "E70HINOKI":
 			material = H_E70
 		case "H-E90", "E90HINOKI":
@@ -2274,6 +2270,8 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 			material = M_E90
 		case "M-E110":
 			material = M_E110
+		case "MATSU":
+			material = MATSU
 		case "E95-F270":
 			material = E95_F270
 		case "E95-F315":
