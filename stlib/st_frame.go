@@ -6242,22 +6242,23 @@ var tempdir embed.FS
 func (frame *Frame) OutputTex() error {
 	// Section2.3
 	// TODO:
-	// ・使われていないSectを出力しないようにする
 	// ・使用階を追加
-	props := make([]*Prop, 0)
-	pnum := 0
-	for _, prop := range frame.Props {
-		props = append(props, prop)
-		pnum++
-	}
-	props = props[:pnum]
-	sort.Sort(PropByNum{props})
 	lineelems := make([]*Sect, 0)
 	plateelems := make([]*Sect, 0)
 	snum1 := 0
 	snum2 := 0
 	for _, sect := range frame.Sects {
 		if sect.Num >= 900 {
+			continue
+		}
+		add := false
+		for _, elem := range frame.Elems {
+			if elem.Sect.Num == sect.Num {
+				add = true
+				break
+			}
+		}
+		if !add {
 			continue
 		}
 		if sect.HasArea(0) {
@@ -6272,6 +6273,42 @@ func (frame *Frame) OutputTex() error {
 	plateelems = plateelems[:snum2]
 	sort.Sort(SectByNum{lineelems})
 	sort.Sort(SectByNum{plateelems})
+	props := make([]*Prop, 0)
+	pnum := 0
+	for _, prop := range frame.Props {
+		add := false
+	search_prop_line:
+		for _, sect := range lineelems {
+			if sect.Num >= 900 {
+				continue
+			}
+			for _, fig := range sect.Figs {
+				if fig.Prop.Num == prop.Num {
+					add = true
+					break search_prop_line
+				}
+			}
+		}
+	search_prop_plate:
+		for _, sect := range plateelems {
+			if sect.Num >= 900 {
+				continue
+			}
+			for _, fig := range sect.Figs {
+				if fig.Prop.Num == prop.Num {
+					add = true
+					break search_prop_plate
+				}
+			}
+		}
+		if !add {
+			continue
+		}
+		props = append(props, prop)
+		pnum++
+	}
+	props = props[:pnum]
+	sort.Sort(PropByNum{props})
 	tmpl23, _ := template.ParseFS(tempdir, "template/2_3.tex")
 	typematerial := func(prop *Prop) string {
 		switch {
@@ -6336,7 +6373,11 @@ func (frame *Frame) OutputTex() error {
 				typename += "壁"
 			}
 			sign, name := signname(sect.Name)
-			return fmt.Sprintf("    %s & %d & %s & %d & %s &  %.0f & ○ & %.2f & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, sect.Figs[0].Prop.Num, name, w0*1000, t*1000, w2*1000)
+			if sect.Num < 800 {
+				return fmt.Sprintf("    %s & %d & %s & %d & %s &  %.0f & ○ & %.2f & 1.000 & 荷重は3.1節に示す \\\\", sign, sect.Num, typename, sect.Figs[0].Prop.Num, name, w0*1000, t*1000)
+			} else {
+				return fmt.Sprintf("    %s & %d & %s & %d & %s &  %.0f & ○ & %.2f & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, sect.Figs[0].Prop.Num, name, w0*1000, t*1000, w2*1000)
+			}
 		} else {
 			w := sect.Weight()
 			w0 := w[1] - sect.Lload[1]
@@ -6347,7 +6388,11 @@ func (frame *Frame) OutputTex() error {
 				typename += "壁"
 			}
 			sign, name := signname(sect.Name)
-			return fmt.Sprintf("    %s  & %d & %s & - & %s & %.0f & × & - & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, name, w0*1000, w0*1000)
+			if sect.Num < 800 {
+				return fmt.Sprintf("    %s  & %d & %s & - & %s & %.0f & × & - & 1.000 & 荷重は3.1節に示す \\\\", sign, sect.Num, typename, name, w0*1000)
+			} else {
+				return fmt.Sprintf("    %s  & %d & %s & - & %s & %.0f & × & - & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, name, w0*1000, w0*1000)
+			}
 		}
 	}
 	table0 := make([]string, pnum)
