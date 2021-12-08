@@ -169,6 +169,8 @@ type Show struct {
 
 	Select bool
 
+	Grey bool
+
 	Sect  map[int]bool
 	Etype map[int]bool
 

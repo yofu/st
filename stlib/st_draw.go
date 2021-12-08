@@ -1123,6 +1123,12 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 	loop:
 		for _, el := range els {
 			if el.IsHidden(frame.Show) {
+				if frame.Show.Grey {
+					if el.IsLineElem() {
+						stw.Foreground(GREY_500)
+						DrawElemLine(stw, el, show)
+					}
+				}
 				continue
 			}
 			for _, j := range stw.SelectedElems() {

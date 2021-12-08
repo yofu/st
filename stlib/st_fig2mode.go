@@ -99,6 +99,7 @@ var (
 		"p/age/tit/le":     complete.MustCompile("'pagetitle", nil),
 		"tit/le":           complete.MustCompile("'title", nil),
 		"pos/ition":        complete.MustCompile("'position", nil),
+		"gr/ey":            complete.MustCompile("'grey", nil),
 	}
 )
 
@@ -1232,6 +1233,12 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		}
 	case "ncolor":
 		stw.SetColorMode(ECOLOR_N)
+	case "grey", "gray":
+		if un {
+			frame.Show.Grey = false
+		} else {
+			frame.Show.Grey = true
+		}
 	case "pagetitle":
 		if un {
 			stw.TextBox("PAGETITLE").Clear()
