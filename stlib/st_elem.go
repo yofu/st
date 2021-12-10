@@ -61,8 +61,9 @@ type Elem struct {
 	Cmq   []float64
 	Wrect []float64
 
-	Rate   []float64
-	Stress map[string]map[int][]float64
+	Rate    map[string][]float64
+	MaxRate []float64
+	Stress  map[string]map[int][]float64
 
 	Values    map[string]float64
 	Prestress float64
@@ -76,6 +77,8 @@ type Elem struct {
 	Parent   *Elem
 	Eldest   bool
 	Chain    *Chain
+
+	Condition *Condition
 
 	hide bool
 	Lock bool
@@ -149,9 +152,9 @@ func (elem *Elem) Snapshot(frame *Frame) *Elem {
 			el.Bonds[i] = elem.Bonds[i]
 			el.Cmq[i] = elem.Cmq[i]
 		}
-		el.Rate = make([]float64, len(elem.Rate))
-		for i, r := range elem.Rate {
-			el.Rate[i] = r
+		el.MaxRate = make([]float64, len(elem.MaxRate))
+		for i, r := range elem.MaxRate {
+			el.MaxRate[i] = r
 		}
 		for i := 0; i < 3; i++ {
 			el.Strong[i] = elem.Strong[i]
@@ -478,13 +481,13 @@ func (elem *Elem) OutputStress(p string) string {
 	return rtn.String()
 }
 
-func (elem *Elem) OutputRate() string {
-	if elem.Rate == nil {
+func (elem *Elem) OutputMaxRate() string {
+	if elem.MaxRate == nil {
 		return ""
 	}
 	var rat bytes.Buffer
 	rat.WriteString(fmt.Sprintf("ELEM: %5d SECT: %4d", elem.Num, elem.Sect.Num))
-	for _, r := range elem.Rate {
+	for _, r := range elem.MaxRate {
 		rat.WriteString(fmt.Sprintf(" %8.5f", r))
 	}
 	rat.WriteString("\n")
@@ -492,17 +495,154 @@ func (elem *Elem) OutputRate() string {
 }
 
 func (elem *Elem) OutputRateRlt() string {
-	if elem.Rate == nil {
+	if elem.MaxRate == nil {
 		return ""
 	}
 	var rlt bytes.Buffer
 	rlt.WriteString(fmt.Sprintf("ELEM: %5d SECT: %4d MAX:", elem.Num, elem.Sect.Num))
 	str := []string{"Q/QaL", "Q/QaS", "Q/Qu", "M/MaL", "M/MaS", "M/Mu"}
-	for i, r := range elem.Rate {
+	for i, r := range elem.MaxRate {
 		rlt.WriteString(fmt.Sprintf(" %s=%8.5f", str[i], r))
 	}
 	rlt.WriteString("\n")
 	return rlt.String()
+}
+
+func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string) (string, error) {
+	al, _, err := elem.GetSectionRate()
+	// al, original, err := elem.GetSectionRate()
+	if err != nil {
+		return "", fmt.Errorf("rate is nil")
+	}
+	if elem.Condition == nil {
+		return "", fmt.Errorf("condition is nil")
+	}
+	stname := []string{"鉛直時Z    :", "水平時X    :", "水平時X負  :", "水平時Y    :", "水平時Y負  :"}
+	pername := []string{"長期       :", "短期X正方向:", "短期X負方向:", "短期Y正方向:", "短期Y負方向:"}
+	var otp bytes.Buffer
+	switch elem.Etype {
+	case COLUMN, GIRDER:
+		length := elem.Length() * 100.0 // [cm]
+		otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, elem.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), length, length, length))
+		otp.WriteString("応力       :        N                Qxi                Qxj                Qyi                Qyj                 Mt                Mxi                Mxj                Myi                Myj\n")
+		stress := make([][]float64, 5)
+		for p, per := range []string{long, x1, x2, y1, y2} {
+			stress[p] = make([]float64, 12)
+			for i := 0; i < 2; i++ {
+				for j := 0; j < 6; j++ {
+					stress[p][6*i+j] = elem.ReturnStress(per, i, j)
+				}
+			}
+			if (p == 2 && x1 == x2) || (p == 4 && y1 == y2) {
+				continue
+			}
+			otp.WriteString(stname[p])
+			for i := 0; i < 6; i++ {
+				for j := 0; j < 2; j++ {
+					otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[p][6*j+i], stress[p][6*j+i]*SI))
+					if i == 0 || i == 3 {
+						break
+					}
+				}
+			}
+			otp.WriteString("\n")
+		}
+		otp.WriteString("\n")
+		if elem.Condition.Verbose {
+			switch al.(type) {
+			case *SColumn:
+				sh := al.(*SColumn).Shape
+				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
+				otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+				otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+				otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+				otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+				otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+				if an, ok := sh.(ANGLE); ok {
+					otp.WriteString(fmt.Sprintf("#                         Imin= %10.4f [cm4]\n", an.Imin()))
+				}
+				otp.WriteString(fmt.Sprintf("#     一様ねじり定数      J   = %10.4f [cm4]\n", sh.J()))
+				otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+				otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+			case *WoodColumn:
+				sh := al.(*WoodColumn).Shape
+				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
+				otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+				otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+				otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+				otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+				otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+				otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J   = %10.4f [cm4]\n", sh.J()))
+				otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+				otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+			case *RCGirder:
+				rc := al.(*RCGirder)
+				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
+				otp.WriteString(fmt.Sprintf("#     断面積:             A  = %12.2f [cm2]\n", rc.Area()))
+				otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix = %12.2f [cm4]\n", rc.Ix()))
+				otp.WriteString(fmt.Sprintf("#                         Iy = %12.2f [cm4]\n", rc.Iy()))
+				otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J  = %12.2f [cm4]\n", rc.J()))
+			}
+		}
+		if elem.Condition.Temporary {
+			elem.Condition.Period = "S"
+		} else {
+			elem.Condition.Period = "L"
+		}
+		otp.WriteString(pername[0])
+		// rate, err = calc1(al, stress[0], nil, nil, 1.0)
+		// qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
+		// if isrc {
+		// 	mlrate = maxrate(rate[4], rate[5], rate[10], rate[11])
+		// } else {
+		// 	if rate[0] >= 1.0 {
+		// 		mlrate = 10.0
+		// 	} else {
+		// 		mlrate = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+		// 		if mlrate == 0.0 { // 両端ピン柱の場合は軸力の検定比を表示
+		// 			mlrate = rate[0]
+		// 		}
+		// 	}
+		// }
+		// if el.Condition.Skipshort {
+		// 	otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
+		// 	tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
+		// 	el.Rate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
+		// 	break
+		// }
+		// el.Condition.Period = "S"
+		// var s float64
+		// for p := 1; p < 5; p++ {
+		// 	if p%2 == 1 {
+		// 		otp.WriteString("\n")
+		// 		tex.WriteString("\\\\\n")
+		// 		s = 1.0
+		// 	} else {
+		// 		s = sign
+		// 	}
+		// 	otp.WriteString(pername[p])
+		// 	tex.WriteString(strings.Replace(pername[p], ":", "&:", -1))
+		// 	rate, err = calc1(al, stress[0], stress[p], factor, s)
+		// 	qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
+		// 	if isrc {
+		// 		msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11])
+		// 	} else {
+		// 		if rate[0] >= 1.0 {
+		// 			msrates[p-1] = 10.0
+		// 		} else {
+		// 			msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+		// 			if msrates[p-1] == 0.0 { // 両端ピン柱の場合は軸力の検定比を表示
+		// 				msrates[p-1] = rate[0]
+		// 			}
+		// 		}
+		// 	}
+		// }
+		// msrate = maxrate(msrates...)
+		// otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
+		// tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
+		// el.Rate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
+	}
+	return otp.String(), nil
 }
 
 func (elem *Elem) Amount() float64 {
@@ -2484,15 +2624,15 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 		if len(els) == 0 || els[0] == nil {
 			return 0.0, errors.New("RateMax: no value")
 		}
-		if els[0].Rate == nil {
+		if els[0].MaxRate == nil {
 			return 0.0, errors.New("RateMax: no value")
 		}
-		l := len(els[0].Rate)
+		l := len(els[0].MaxRate)
 		for _, el := range els[1:] {
-			if el.Rate == nil {
+			if el.MaxRate == nil {
 				return 0.0, errors.New("RateMax: no value")
 			}
-			if len(el.Rate) != l {
+			if len(el.MaxRate) != l {
 				return 0.0, errors.New("RateMax: different size")
 			}
 		}
@@ -2501,7 +2641,7 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 			for i := 0; i < l; i++ {
 				tmp := 0.0
 				for _, el := range els {
-					tmp += el.Rate[i]
+					tmp += el.MaxRate[i]
 				}
 				if tmp > val {
 					val = tmp
@@ -2514,7 +2654,7 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 				if i < 2 && (show.SrcanRate&SRCAN_Q != 0) || i >= 2 && (show.SrcanRate&SRCAN_M != 0) {
 					tmp := 0.0
 					for _, el := range els {
-						tmp += el.Rate[i]
+						tmp += el.MaxRate[i]
 					}
 					if tmp > val {
 						val = tmp
@@ -2534,9 +2674,9 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 						default:
 							continue
 						case 0:
-							tmpl += el.Rate[i]
+							tmpl += el.MaxRate[i]
 						case 1:
-							tmps += el.Rate[i]
+							tmps += el.MaxRate[i]
 						}
 					}
 					if tmpl > vall {

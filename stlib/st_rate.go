@@ -3214,6 +3214,31 @@ func NewCondition() *Condition {
 	}
 }
 
+func (cond *Condition) Snapshot() *Condition {
+	c := NewCondition()
+	c.Period = cond.Period
+	c.Length = cond.Length
+	c.Width = cond.Width
+	c.Compression = cond.Compression
+	c.Strong = cond.Strong
+	c.Positive = cond.Positive
+	c.FbOld = cond.FbOld
+	c.N = cond.N
+	c.M = cond.M
+	c.Q = cond.Q
+	c.Sign = cond.Sign
+	c.Verbose = cond.Verbose
+	// Buffer      *bytes.Buffer
+	c.Nfact = cond.Nfact
+	c.Qfact = cond.Qfact
+	c.Mfact = cond.Mfact
+	c.Bfact = cond.Bfact
+	c.Wfact = cond.Wfact
+	c.Skipshort = cond.Skipshort
+	c.Temporary = cond.Temporary
+	return c
+}
+
 func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string, string, error) {
 	if len(stress) < 12 {
 		return nil, "", "", errors.New("Rate: Not enough number of Stress")

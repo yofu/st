@@ -4689,6 +4689,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		stw.SelectNode(nodes)
 	case "keisansho":
 		frame.OutputTex()
+		t, err := frame.Elems[1003].OutputRateInformation("L", "X", "X", "Y", "Y")
+		if err != nil {
+			return err
+		}
+		fmt.Println(t)
 	case "extractarclm":
 		if usage {
 			return Usage(":extractarclm")

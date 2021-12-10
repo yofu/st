@@ -199,8 +199,8 @@ func ven14errorelem(stw *Window) {
 	tmpels := make([]*st.Elem, len(stw.frame.Elems))
 	i := 0
 	for _, el := range stw.frame.Elems {
-		if el.Rate != nil {
-			for _, val := range el.Rate {
+		if el.MaxRate != nil {
+			for _, val := range el.MaxRate {
 				if val > 1.15 {
 					tmpels[i] = el
 					i++

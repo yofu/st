@@ -2347,7 +2347,7 @@ func (frame *Frame) ReadRat(filename string) error {
 			return err
 		}
 		if el, ok := frame.Elems[int(enum)]; ok {
-			el.Rate = rate
+			el.MaxRate = rate
 		}
 		return nil
 	})
@@ -5464,7 +5464,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	var err error
 	stname := []string{"鉛直時Z    :", "水平時X    :", "水平時X負  :", "水平時Y    :", "水平時Y負  :"}
 	pername := []string{"長期       :", "短期X正方向:", "短期X負方向:", "短期Y正方向:", "短期Y負方向:"}
-	calc1 := func(allow SectionRate, st1, st2, fact []float64, sign float64) ([]float64, error) {
+	calc1 := func(allow SectionRate, cond *Condition, st1, st2, fact []float64, sign float64) ([]float64, error) {
 		stress := make([]float64, 12)
 		if st2 != nil {
 			for i := 0; i < 2; i++ {
@@ -5483,7 +5483,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 		tex.WriteString(textxt)
 		return rate, nil
 	}
-	calc2 := func(allow SectionRate, n1, n2, fact, sign float64) (float64, error) {
+	calc2 := func(allow SectionRate, cond *Condition, n1, n2, fact, sign float64) (float64, error) {
 		stress := n1 + sign*fact*n2
 		rate, txt, textxt, err := Rate2(allow, stress, cond)
 		if err != nil {
@@ -5520,6 +5520,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	sort.Sort(ElemByNum{elems})
 	maxrateelem := make(map[int][]*Elem)
 	for _, el := range elems {
+		el.Condition = cond.Snapshot()
 		al, original, err := el.GetSectionRate()
 		if err != nil {
 			continue
@@ -5533,20 +5534,20 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			default:
 				isrc = false
 			}
-			if isrc && cond.Qfact < 1.5 {
+			if isrc && el.Condition.Qfact < 1.5 {
 				factor[1] = 1.5
 				factor[2] = 1.5
 			} else {
-				factor[1] = cond.Qfact
-				factor[2] = cond.Qfact
+				factor[1] = el.Condition.Qfact
+				factor[2] = el.Condition.Qfact
 			}
 			var qlrate, qsrate, qurate, mlrate, msrate, murate float64
 			msrates := make([]float64, 4)
-			cond.Length = el.Length() * 100.0 // [cm]
+			el.Condition.Length = el.Length() * 100.0 // [cm]
 			otp.WriteString(strings.Repeat("-", 202))
-			otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
+			otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), el.Condition.Length, el.Condition.Length, el.Condition.Length))
 			otp.WriteString("応力       :        N                Qxi                Qxj                Qyi                Qyj                 Mt                Mxi                Mxj                Myi                Myj\n")
-			tex.WriteString(fmt.Sprintf("\\multicolumn{12}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
+			tex.WriteString(fmt.Sprintf("\\multicolumn{12}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), el.Condition.Length, el.Condition.Length, el.Condition.Length))
 			tex.WriteString("応力       &: &      $N$&$Q_{xi}$&$Q_{yi}$&$Q_{xj}$&$Q_{yj}$&   $M_t$&$M_{xi}$&$M_{xj}$&$M_{yi}$&$M_{yj}$\\\\\n")
 			stress := make([][]float64, 5)
 			for p, per := range []string{long, x1, x2, y1, y2} {
@@ -5577,7 +5578,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			}
 			otp.WriteString("\n")
 			tex.WriteString("\\\\\n")
-			if cond.Verbose {
+			if el.Condition.Verbose {
 				switch al.(type) {
 				case *SColumn:
 					sh := al.(*SColumn).Shape
@@ -5613,14 +5614,14 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 					otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J  = %12.2f [cm4]\n", rc.J()))
 				}
 			}
-			if cond.Temporary {
-				cond.Period = "S"
+			if el.Condition.Temporary {
+				el.Condition.Period = "S"
 			} else {
-				cond.Period = "L"
+				el.Condition.Period = "L"
 			}
 			otp.WriteString(pername[0])
 			tex.WriteString(strings.Replace(pername[0], ":", "&:", -1))
-			rate, err = calc1(al, stress[0], nil, nil, 1.0)
+			rate, err = calc1(al, el.Condition, stress[0], nil, nil, 1.0)
 			qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
 			if isrc {
 				mlrate = maxrate(rate[4], rate[5], rate[10], rate[11])
@@ -5634,13 +5635,13 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 					}
 				}
 			}
-			if cond.Skipshort {
+			if el.Condition.Skipshort {
 				otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
 				tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
-				el.Rate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
+				el.MaxRate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 				break
 			}
-			cond.Period = "S"
+			el.Condition.Period = "S"
 			var s float64
 			for p := 1; p < 5; p++ {
 				if p%2 == 1 {
@@ -5652,7 +5653,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				}
 				otp.WriteString(pername[p])
 				tex.WriteString(strings.Replace(pername[p], ":", "&:", -1))
-				rate, err = calc1(al, stress[0], stress[p], factor, s)
+				rate, err = calc1(al, el.Condition, stress[0], stress[p], factor, s)
 				qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
 				if isrc {
 					msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11])
@@ -5670,7 +5671,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			msrate = maxrate(msrates...)
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
 			tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
-			el.Rate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
+			el.MaxRate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 		case BRACE, WBRACE, SBRACE:
 			var isrc bool
 			switch al.(type) {
@@ -5682,20 +5683,20 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			var qlrate, qsrate, qurate float64
 			var fact float64
 			if el.Etype == BRACE {
-				fact = cond.Bfact
-				cond.Length = el.Length() * 100.0 // [cm]
+				fact = el.Condition.Bfact
+				el.Condition.Length = el.Length() * 100.0 // [cm]
 			} else {
-				fact = cond.Wfact
+				fact = el.Condition.Wfact
 				if bros, ok := el.Brother(); ok {
-					cond.Length = 0.5 * (el.Length() + bros.Length()) * 100.0 // [cm]
+					el.Condition.Length = 0.5 * (el.Length() + bros.Length()) * 100.0 // [cm]
 				} else {
-					cond.Length = el.Length() * 100.0 // [cm]
+					el.Condition.Length = el.Length() * 100.0 // [cm]
 				}
 			}
 			if isrc && fact < 2.0 {
 				fact = 2.0
 			}
-			cond.Width = el.Width() * 100.0 // [cm]
+			el.Condition.Width = el.Width() * 100.0 // [cm]
 			otp.WriteString(strings.Repeat("-", 202))
 			var sectstring string
 			if original {
@@ -5722,22 +5723,22 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				tex.WriteString(fmt.Sprintf(" &%8.3f\\\\\n", stress[p]*SI))
 			}
 			otp.WriteString("\n")
-			if cond.Temporary {
-				cond.Period = "S"
+			if el.Condition.Temporary {
+				el.Condition.Period = "S"
 			} else {
-				cond.Period = "L"
+				el.Condition.Period = "L"
 			}
 			otp.WriteString(pername[0])
 			tex.WriteString(strings.Replace(pername[0], ":", "&:", -1))
-			rate2, err = calc2(al, stress[0], 0.0, 0.0, 1.0)
+			rate2, err = calc2(al, el.Condition, stress[0], 0.0, 0.0, 1.0)
 			qlrate = rate2
-			if cond.Skipshort {
+			if el.Condition.Skipshort {
 				otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
 				tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate))
-				el.Rate = []float64{qlrate, qsrate, qurate}
+				el.MaxRate = []float64{qlrate, qsrate, qurate}
 				break
 			}
-			cond.Period = "S"
+			el.Condition.Period = "S"
 			var s float64
 			for p := 1; p < 5; p++ {
 				if p%2 == 1 {
@@ -5748,15 +5749,15 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				}
 				otp.WriteString(pername[p])
 				tex.WriteString(strings.Replace(pername[p], ":", "&:", -1))
-				rate2, err = calc2(al, stress[0], stress[p], fact, s)
+				rate2, err = calc2(al, el.Condition, stress[0], stress[p], fact, s)
 				qsrate = maxrate(qsrate, rate2)
 			}
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
 			tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate))
-			el.Rate = []float64{qlrate, qsrate, qurate}
+			el.MaxRate = []float64{qlrate, qsrate, qurate}
 		}
-		rat.WriteString(el.OutputRate())
-		for _, r := range el.Rate {
+		rat.WriteString(el.OutputMaxRate())
+		for _, r := range el.MaxRate {
 			if r >= 1.0 {
 				rlt.WriteString(el.OutputRateRlt())
 				break
@@ -5766,7 +5767,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 		case COLUMN, GIRDER:
 			if mels, ok := maxrateelem[al.Num()]; ok {
 				for ind, pos := range []int{0, 1, 3, 4} {
-					if el.Rate[pos] > mels[ind].Rate[pos] {
+					if el.MaxRate[pos] > mels[ind].MaxRate[pos] {
 						maxrateelem[al.Num()][ind] = el
 					}
 				}
@@ -5776,7 +5777,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 		case BRACE, WBRACE, SBRACE:
 			if mels, ok := maxrateelem[al.Num()]; ok {
 				for ind, pos := range []int{0, 1} {
-					if el.Rate[pos] > mels[ind].Rate[pos] {
+					if el.MaxRate[pos] > mels[ind].MaxRate[pos] {
 						maxrateelem[al.Num()][ind] = el
 					}
 				}
@@ -5803,26 +5804,26 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 		els := maxrateelem[k]
 		switch els[0].Etype {
 		case COLUMN, GIRDER:
-			otp.WriteString(fmt.Sprintf("Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", els[0].Rate[0], els[1].Rate[1], els[2].Rate[3], els[3].Rate[4]))
-			if els[0].Rate[0] > maxql {
-				maxql = els[0].Rate[0]
+			otp.WriteString(fmt.Sprintf("Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", els[0].MaxRate[0], els[1].MaxRate[1], els[2].MaxRate[3], els[3].MaxRate[4]))
+			if els[0].MaxRate[0] > maxql {
+				maxql = els[0].MaxRate[0]
 			}
-			if els[1].Rate[1] > maxqs {
-				maxqs = els[1].Rate[1]
+			if els[1].MaxRate[1] > maxqs {
+				maxqs = els[1].MaxRate[1]
 			}
-			if els[2].Rate[3] > maxml {
-				maxml = els[2].Rate[3]
+			if els[2].MaxRate[3] > maxml {
+				maxml = els[2].MaxRate[3]
 			}
-			if els[3].Rate[4] > maxms {
-				maxms = els[3].Rate[4]
+			if els[3].MaxRate[4] > maxms {
+				maxms = els[3].MaxRate[4]
 			}
 		case BRACE, WBRACE, SBRACE:
-			otp.WriteString(fmt.Sprintf("Q/QaL=%.5f Q/QaS=%.5f\n", els[0].Rate[0], els[1].Rate[1]))
-			if els[0].Rate[0] > maxql {
-				maxql = els[0].Rate[0]
+			otp.WriteString(fmt.Sprintf("Q/QaL=%.5f Q/QaS=%.5f\n", els[0].MaxRate[0], els[1].MaxRate[1]))
+			if els[0].MaxRate[0] > maxql {
+				maxql = els[0].MaxRate[0]
 			}
-			if els[1].Rate[1] > maxqs {
-				maxqs = els[1].Rate[1]
+			if els[1].MaxRate[1] > maxqs {
+				maxqs = els[1].MaxRate[1]
 			}
 		}
 	}
