@@ -13,10 +13,10 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20210202160940-bed99a852dfe // indirect
 	github.com/goxjs/gl v0.0.0-20210104184919-e3fafc6f8f2a // indirect
 	github.com/goxjs/glfw v0.0.0-20191126052801-d2efb5f20838 // indirect
-	github.com/jung-kurt/gofpdf v1.16.2
 	github.com/llgcode/draw2d v0.0.0-20200930101115-bfaf5d914d1e
 	github.com/mattn/go-runewidth v0.0.10
 	github.com/mattn/natural v0.0.0-20150430114811-6b2ca5c8eb9a
+	github.com/signintech/gopdf v0.10.4
 	github.com/yofu/abbrev v0.0.0-20150827131102-a4f84ab279d3
 	github.com/yofu/complete v0.0.0-20160907024332-deca8e98be10
 	github.com/yofu/dxf v0.0.0-20190710012328-5a6d1e83f16c

@@ -2,42 +2,60 @@ package st
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/signintech/gopdf"
 )
 
 var (
-	defaultfont = "ipam.ttf"
+	defaultfont = filepath.Join(home, ".st/fonts/ipam.ttf")
 	scale       = 0.25
+	opaque      = gopdf.Transparency{
+		Alpha:         1.0,
+		BlendModeType: "",
+	}
 )
 
 type PDFCanvas struct {
 	*Alias
-	canvas *gofpdf.Fpdf
-	width  float64
-	height float64
+	canvas       gopdf.GoPdf
+	width        float64
+	height       float64
+	torient      float64
+	transparency gopdf.Transparency
 }
 
 func NewPDFCanvas(name, style string, width, height float64) (*PDFCanvas, error) {
-	pdf := gofpdf.New(style, "mm", name, filepath.Join(os.Getenv("HOME"), ".st/fonts"))
-	if err := pdf.Error(); err != nil {
-		return nil, err
+	pdf := gopdf.GoPdf{}
+	var psize gopdf.Rect
+	switch name {
+	case "A3":
+		psize = *gopdf.PageSizeA3
+	case "A4":
+		psize = *gopdf.PageSizeA4
 	}
-	pdf.AddUTF8Font("IPA明朝", "", defaultfont)
-	pdf.SetFont("IPA明朝", "", 8)
+	pdf.Start(gopdf.Config{
+		PageSize: psize,
+	})
 	pdf.AddPage()
-	if err := pdf.Error(); err != nil {
+	err := pdf.AddTTFFont("IPA明朝", defaultfont)
+	if err != nil {
 		return nil, err
 	}
-	pdf.SetLineWidth(0.1)
+	err = pdf.SetFont("IPA明朝", "", 8)
+	if err != nil {
+		return nil, err
+	}
 	return &PDFCanvas{
-		Alias:  NewAlias(),
-		canvas: pdf,
-		width:  width / scale,
-		height: height / scale,
+		Alias:   NewAlias(),
+		canvas:  pdf,
+		width:   width / scale,
+		height:  height / scale,
+		torient: 0.0,
+		transparency: gopdf.Transparency{
+			Alpha:         0.5,
+			BlendModeType: "",
+		},
 	}, nil
 }
 
@@ -53,81 +71,85 @@ func (p *PDFCanvas) Draw(frame *Frame, textBox []*TextBox) {
 }
 
 func (p *PDFCanvas) SaveAs(fn string) error {
-	p.canvas.OutputFileAndClose(fn)
-	if err := p.canvas.Error(); err != nil {
-		return err
-	}
-	return nil
+	return p.canvas.WritePdf(fn)
 }
 
 func (p *PDFCanvas) Line(x1, y1, x2, y2 float64) {
+	p.canvas.SetTransparency(opaque)
 	p.Foreground(BLACK)
-	p.canvas.MoveTo(x1*scale, y1*scale)
-	p.canvas.LineTo(x2*scale, y2*scale)
+	p.canvas.Line(x1*scale, y1*scale, x2*scale, y2*scale)
 }
 
 func (p *PDFCanvas) Polyline(coords [][]float64) {
-	p.Foreground(BLACK)
-	points := make([]gofpdf.PointType, len(coords))
+	p.canvas.SetTransparency(opaque)
+	points := make([]gopdf.Point, len(coords))
 	for i := 0; i < len(coords); i++ {
-		points[i] = gofpdf.PointType{X: coords[i][0] * scale, Y: coords[i][1] * scale}
+		points[i] = gopdf.Point{X: coords[i][0], Y: coords[i][1]}
 	}
 	p.canvas.Polygon(points, "D")
 }
 
 func (p *PDFCanvas) Polygon(coords [][]float64) {
-	p.canvas.SetAlpha(0.3, "Normal")
-	points := make([]gofpdf.PointType, len(coords))
+	p.canvas.SetTransparency(p.transparency)
+	points := make([]gopdf.Point, len(coords))
 	for i := 0; i < len(coords); i++ {
-		points[i] = gofpdf.PointType{X: coords[i][0] * scale, Y: coords[i][1] * scale}
+		points[i] = gopdf.Point{X: coords[i][0], Y: coords[i][1]}
 	}
-	p.canvas.Polygon(points, "DF")
-	p.canvas.SetAlpha(1.0, "Normal")
+	p.canvas.Polygon(points, "F")
 }
 
 func (p *PDFCanvas) Circle(x, y, d float64) {
-	p.canvas.Circle(x*scale, y*scale, d*0.5*scale, "D")
+	p.canvas.SetTransparency(opaque)
+	p.canvas.Oval(x-d/2, y-d/2, x+d/2, y+d/2)
 }
 
 func (p *PDFCanvas) FilledCircle(x, y, d float64) {
-	p.canvas.Circle(x*scale, y*scale, d*0.5*scale, "DF")
+	// TODO: fill
+	p.canvas.SetTransparency(opaque)
+	p.canvas.Oval(x-d/2, y-d/2, x+d/2, y+d/2)
 }
 
 func (p *PDFCanvas) Text(x, y float64, str string) {
-	for _, s := range strings.Split(strings.TrimSuffix(str, "\n"), "\n") {
-		p.canvas.Text(x*scale, y*scale, s)
-	}
+	p.canvas.SetTransparency(opaque)
+	p.canvas.SetX(x)
+	p.canvas.SetY(y)
+	p.canvas.Rotate(p.torient, x, y)
+	p.canvas.Text(str)
+	p.canvas.RotateReset()
 }
 
 func (p *PDFCanvas) Foreground(fg int) int {
 	if fg == WHITE {
 		fg = BLACK
 	}
-	r, g, b := p.canvas.GetDrawColor()
+	// r, g, b := p.canvas.GetDrawColor()
 	lis := IntColorList(fg)
-	p.canvas.SetDrawColor(lis[0], lis[1], lis[2])
-	p.canvas.SetFillColor(lis[0], lis[1], lis[2])
-	p.canvas.SetTextColor(lis[0], lis[1], lis[2])
-	return r<<16 + g<<8 + b
+	p.canvas.SetStrokeColor(uint8(lis[0]), uint8(lis[1]), uint8(lis[2]))
+	p.canvas.SetFillColor(uint8(lis[0]), uint8(lis[1]), uint8(lis[2]))
+	p.canvas.SetTextColor(uint8(lis[0]), uint8(lis[1]), uint8(lis[2]))
+	// return r<<16 + g<<8 + b
+	return fg
 }
 
 func (p *PDFCanvas) LineStyle(ls int) {
 	switch ls {
 	case CONTINUOUS:
-		p.canvas.SetDashPattern([]float64{}, 0.0)
+		p.canvas.SetLineType("solid")
 	case DOTTED:
-		p.canvas.SetDashPattern([]float64{2.0, 2.0}, 0.0)
+		p.canvas.SetLineType("dotted")
 	case DASHED:
-		p.canvas.SetDashPattern([]float64{10.0, 5.0}, 0.0)
+		p.canvas.SetLineType("dashed")
 	case DASH_DOT:
-		p.canvas.SetDashPattern([]float64{10.0, 5.0, 2.0, 5.0}, 0.0)
+		// TODO: add dash-dot
+		p.canvas.SetLineType("dashed")
 	}
 }
 
 func (p *PDFCanvas) TextAlignment(int) {
 }
 
-func (p *PDFCanvas) TextOrientation(float64) {
+func (p *PDFCanvas) TextOrientation(angle float64) {
+	p.torient = angle
 }
 
 func (p *PDFCanvas) SelectedNodes() []*Node {
