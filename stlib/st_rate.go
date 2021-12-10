@@ -176,6 +176,69 @@ type SectionRate interface {
 	Amount() Amount
 }
 
+func InpString(sr SectionRate) string {
+	var rtn bytes.Buffer
+	rtn.WriteString(fmt.Sprintf("SECT %3d SNAME %s\n", sr.Num(), sr.Name()))
+	rtn.WriteString("         NFIG 1\n")
+	fprop := 101 // TODO
+	rtn.WriteString(fmt.Sprintf("         FIG 1 FPROP %d\n", fprop))
+	if sr.Num() < 700 {
+		area := 1.0
+		if area < 1e-4 {
+			rtn.WriteString(fmt.Sprintf("                 AREA %7.4E\n", area))
+		} else {
+			rtn.WriteString(fmt.Sprintf("                 AREA %7.4f\n", area))
+		}
+		ixx := 1.0
+		if ixx < 1e-8 {
+			rtn.WriteString(fmt.Sprintf("                 IXX  %11.8E\n", ixx))
+		} else {
+			rtn.WriteString(fmt.Sprintf("                 IXX  %11.8f\n", ixx))
+		}
+		iyy := 1.0
+		if iyy < 1e-8 {
+			rtn.WriteString(fmt.Sprintf("                 IXX  %11.8E\n", iyy))
+		} else {
+			rtn.WriteString(fmt.Sprintf("                 IXX  %11.8f\n", iyy))
+		}
+		ven := 1.0
+		if ven < 1e-8 {
+			rtn.WriteString(fmt.Sprintf("                 IXX  %11.8E\n", ven))
+		} else {
+			rtn.WriteString(fmt.Sprintf("                 IXX  %11.8f\n", ven))
+		}
+		rtn.WriteString("         EXP 1.5\n")
+		cond := NewCondition()
+		cond.Period = "S"   // TODO calculate strength for Period=U
+		cond.Length = 300.0 // TODO set length
+		cond.Compression = true
+		cond.Strong = true
+		nc := sr.Na(cond)
+		cond.Compression = false
+		nt := sr.Na(cond)
+		qy := sr.Qa(cond)
+		mx := sr.Ma(cond)
+		cond.Strong = false
+		qx := sr.Qa(cond)
+		my := sr.Ma(cond)
+		mz := sr.Mza(cond)
+		rtn.WriteString(fmt.Sprintf("         NZMAX %9.3f NZMIN %9.3f\n", nc, nt))
+		rtn.WriteString(fmt.Sprintf("         QXMAX %9.3f QXMIN %9.3f\n", qx, qx))
+		rtn.WriteString(fmt.Sprintf("         QYMAX %9.3f QYMIN %9.3f\n", qy, qy))
+		rtn.WriteString(fmt.Sprintf("         MZMAX %9.3f MZMIN %9.3f\n", mz, mz))
+		rtn.WriteString(fmt.Sprintf("         MXMAX %9.3f MXMIN %9.3f\n", mx, mx))
+		rtn.WriteString(fmt.Sprintf("         MYMAX %9.3f MYMIN %9.3f\n", my, my))
+	} else {
+		thick := 1.0
+		rtn.WriteString(fmt.Sprintf("                 THICK %7.5f\n", thick))
+		// TODO fc, sd, ...
+	}
+	// TODO lload, perpl,
+	col := "255 255 255"
+	rtn.WriteString(fmt.Sprintf("         COLOR %s\n", col))
+	return rtn.String()
+}
+
 type Shape interface {
 	String() string
 	Description() string
