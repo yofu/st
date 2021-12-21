@@ -5622,10 +5622,16 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			otp.WriteString(pername[0])
 			tex.WriteString(strings.Replace(pername[0], ":", "&:", -1))
 			rate, err = calc1(al, el.Condition, stress[0], nil, nil, 1.0)
-			qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
 			if isrc {
-				mlrate = maxrate(rate[4], rate[5], rate[10], rate[11])
+				if cond.RCTorsion {
+					qlrate = maxrate(rate[1]+rate[3], rate[2]+rate[3], rate[7]+rate[3], rate[8]+rate[3]) // TODO: use T1,T2 if T1,T2>T3
+					mlrate = maxrate(rate[4]+rate[3], rate[5]+rate[3], rate[10]+rate[3], rate[11]+rate[3]) // TODO: use T3 if T1,T2<T3
+				} else {
+					qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
+					mlrate = maxrate(rate[4], rate[5], rate[10], rate[11])
+				}
 			} else {
+				qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
 				if rate[0] >= 1.0 {
 					mlrate = 10.0
 				} else {
@@ -5654,10 +5660,16 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				otp.WriteString(pername[p])
 				tex.WriteString(strings.Replace(pername[p], ":", "&:", -1))
 				rate, err = calc1(al, el.Condition, stress[0], stress[p], factor, s)
-				qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
 				if isrc {
-					msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11])
+					if cond.RCTorsion {
+						qsrate = maxrate(qsrate, rate[1]+rate[3], rate[2]+rate[3], rate[7]+rate[3], rate[8]+rate[3])
+						msrates[p-1] = maxrate(rate[4]+rate[3], rate[5]+rate[3], rate[10]+rate[3], rate[11]+rate[3])
+					} else {
+						qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
+						msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11])
+					}
 				} else {
+					qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
 					if rate[0] >= 1.0 {
 						msrates[p-1] = 10.0
 					} else {

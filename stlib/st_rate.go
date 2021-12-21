@@ -2551,7 +2551,7 @@ func (rc *RCColumn) Mza(cond *Condition) float64 {
 	wft := rc.Hoops.Ftw(cond)
 	b := rc.Breadth(true)
 	d := rc.Height(true)
-	dw := 11.0 // TODO: set dw, aw, lw & kaburi
+	dw := 1.1 // TODO: set dw, aw, lw & kaburi
 	// aw := 0.7133
 	// lw := 15.0
 	kaburi := 5.0
@@ -3237,6 +3237,7 @@ type Condition struct {
 	Strong      bool
 	Positive    bool
 	FbOld       bool
+	RCTorsion   bool
 	N           float64
 	M           float64
 	Q           float64
@@ -3261,6 +3262,7 @@ func NewCondition() *Condition {
 		Strong:      true,
 		Positive:    true,
 		FbOld:       false,
+		RCTorsion:   false,
 		N:           0.0,
 		M:           0.0,
 		Q:           0.0,
