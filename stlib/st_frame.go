@@ -2138,7 +2138,7 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 				vals[i] = val
 			}
 			sr.SetValue(first, vals)
-		case "MULTI":
+		case "MULTI", "QFACT", "WFACT":
 			val, err := strconv.ParseFloat(words[1], 64)
 			if err != nil {
 				return err
@@ -2223,6 +2223,12 @@ func (frame *Frame) ParseLstRC(lis [][]string) error {
 				}
 			}
 			sr.SetValue(first, vals)
+		case "QFACT", "WFACT":
+			val, err := strconv.ParseFloat(words[1], 64)
+			if err != nil {
+				return err
+			}
+			sr.SetValue(first, []float64{val})
 		}
 		if err != nil {
 			return err
@@ -2315,7 +2321,7 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 				}
 			}
 			sr.SetValue(first, vals)
-		case "MULTI":
+		case "MULTI", "QFACT", "WFACT":
 			val, err := strconv.ParseFloat(words[1], 64)
 			if err != nil {
 				return err

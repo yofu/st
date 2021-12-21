@@ -269,6 +269,7 @@ type SColumn struct {
 	BBFactor []float64
 	BTFactor []float64
 	multi    float64
+	Qfact    float64
 }
 
 func NewSColumn(num int, shape Shape, material Steel) *SColumn {
@@ -285,6 +286,7 @@ func NewSColumn(num int, shape Shape, material Steel) *SColumn {
 		BBFactor: nil,
 		BTFactor: nil,
 		multi:    1.0,
+		Qfact:    1.0,
 	}
 }
 func (sc *SColumn) Num() int {
@@ -327,6 +329,8 @@ func (sc *SColumn) Snapshot() SectionRate {
 		s.BTFactor[0] = sc.BTFactor[0]
 		s.BTFactor[1] = sc.BTFactor[1]
 	}
+	s.multi = sc.multi
+	s.Qfact = sc.Qfact
 	return s
 }
 func (sc *SColumn) Name() string {
@@ -351,6 +355,8 @@ func (sc *SColumn) SetValue(name string, vals []float64) {
 		sc.BTFactor = vals
 	case "MULTI":
 		sc.multi = vals[0]
+	case "QFACT":
+		sc.Qfact = vals[0]
 	}
 }
 func (sc *SColumn) String() string {
@@ -1939,6 +1945,7 @@ type SWall struct {
 	num   int
 	name  string
 	Wrect []float64
+	Wfact float64
 }
 
 func NewSWall(num int, shape Shape, material Steel) *SWall {
@@ -1948,6 +1955,7 @@ func NewSWall(num int, shape Shape, material Steel) *SWall {
 		num:   num,
 		name:  "",
 		Wrect: make([]float64, 2),
+		Wfact: 1.0,
 	}
 }
 func (sw *SWall) Num() int {
@@ -1981,6 +1989,8 @@ func (sw *SWall) SetValue(name string, vals []float64) {
 	switch name {
 	case "WRECT":
 		sw.Wrect = vals
+	case "WFACT":
+		sw.Wfact = vals[0]
 	}
 }
 func (sw *SWall) Factor(p string) float64 {
