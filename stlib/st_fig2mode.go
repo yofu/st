@@ -407,6 +407,38 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 				stw.SetLabel("EAXISSIZE", fmt.Sprintf("%f", val))
 			}
 		}
+	case "enormal":
+		if un {
+			frame.Show.ElemNormal = false
+			// stw.DisableLabel("ENORMAL")
+		} else {
+			frame.Show.ElemNormal = true
+			// stw.EnableLabel("ENORMAL")
+			if len(lis) >= 2 {
+				val, err := strconv.ParseFloat(lis[1], 64)
+				if err != nil {
+					return err
+				}
+				frame.Show.ElemNormalSize = val
+				// stw.SetLabel("EAXISSIZE", fmt.Sprintf("%f", val))
+			}
+		}
+	case "perpl":
+		if un {
+			frame.Show.PerpendicularLoad = false
+			// stw.DisableLabel("ENORMAL")
+		} else {
+			frame.Show.PerpendicularLoad = true
+			// stw.EnableLabel("ENORMAL")
+			if len(lis) >= 2 {
+				val, err := strconv.ParseFloat(lis[1], 64)
+				if err != nil {
+					return err
+				}
+				frame.Show.ElemNormalSize = val
+				// stw.SetLabel("EAXISSIZE", fmt.Sprintf("%f", val))
+			}
+		}
 	case "noaxis":
 		frame.Show.GlobalAxis = false
 		stw.DisableLabel("GAXIS")

@@ -516,6 +516,11 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 		if show.ElemNormal {
 			DrawElemNormal(stw, elem, show)
 		}
+		if show.PerpendicularLoad {
+			if !(elem.Sect.Perpl == nil || len(elem.Sect.Perpl) < 3 || (elem.Sect.Perpl[1] == 0.0 && elem.Sect.Perpl[2] == 0.0)) {
+				DrawElemArrow(stw, elem, elem.Normal(true), show.ElemNormalSize*elem.Sect.Perpl[1], fmt.Sprintf("%.3f", elem.Sect.Perpl[1]))
+			}
+		}
 	}
 }
 
@@ -625,7 +630,27 @@ func DrawElementAxis(stw Drawer, elem *Elem, show *Show) {
 func DrawWrect(stw Drawer, elem *Elem, show *Show) {
 }
 
+func DrawElemArrow(stw Drawer, elem *Elem, vector []float64, size float64, str string) {
+	v := make([]float64, 3)
+	m := elem.MidPoint()
+	for i := 0; i < 3; i++ {
+		v[i] = m[i] + vector[i]
+	}
+	mid := elem.Frame.View.ProjectCoord(m)
+	vec := elem.Frame.View.ProjectCoord(v)
+	stw.LineStyle(CONTINUOUS)
+	Arrow(stw, mid[0], mid[1], vec[0], vec[1], size, deg10)
+	if str != "" {
+		tcoord := make([]float64, 2)
+		for i := 0; i < 2; i++ {
+			tcoord[i] = 0.5 * (mid[i] + vec[i])
+		}
+		stw.Text(tcoord[0], tcoord[1], str)
+	}
+}
+
 func DrawElemNormal(stw Drawer, elem *Elem, show *Show) {
+	DrawElemArrow(stw, elem, elem.Normal(true), show.ElemNormalSize, "")
 }
 
 func DrawClosedLine(stw Drawer, elem *Elem, position, strong, weak []float64, scale float64, vertices [][]float64) {
