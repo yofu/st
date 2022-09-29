@@ -1314,6 +1314,7 @@ func (elem *Elem) RectToBrace(nbrace int, rfact float64) []*Elem {
 		f.Prop = elem.Sect.Figs[0].Prop
 		f.Value["AREA"] = Ae
 		var sec *Sect
+		// TODO: Use different brace section depending on the original plate section
 		sec = elem.Frame.SearchBraceSect(f, elem.Etype-2)
 		if sec == nil {
 			elem.Frame.Maxsnum++
