@@ -1150,7 +1150,7 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 			if el.IsHidden(frame.Show) {
 				if frame.Show.Grey {
 					if el.IsLineElem() {
-						stw.Foreground(GREY_500)
+						stw.Foreground(frame.Show.GreyColor)
 						DrawElemLine(stw, el, show)
 					}
 				}

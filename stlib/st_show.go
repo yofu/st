@@ -171,6 +171,7 @@ type Show struct {
 	Select bool
 
 	Grey bool
+	GreyColor int
 
 	Sect  map[int]bool
 	Etype map[int]bool
@@ -268,6 +269,8 @@ func NewShow(frame *Frame) *Show {
 		Measure:              true,
 		Arc:                  true,
 		Select:               false,
+		Grey:                 false,
+		GreyColor:            GREY_500,
 		Sect:                 sects,
 		Etype:                etypes,
 		Xrange:               []float64{RANGE_MIN, RANGE_MAX},

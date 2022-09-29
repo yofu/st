@@ -1271,6 +1271,37 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		} else {
 			frame.Show.Grey = true
 		}
+		if len(lis) > 1 {
+			val, err := strconv.ParseFloat(lis[1], 64)
+			if err != nil {
+				return err
+			}
+			if val == 0 {
+				frame.Show.GreyColor = GREY_1000
+			} else if val < 33 {
+				frame.Show.GreyColor = GREY_900
+			} else if val < 66 {
+				frame.Show.GreyColor = GREY_800
+			} else if val < 97 {
+				frame.Show.GreyColor = GREY_700
+			} else if val < 117 {
+				frame.Show.GreyColor = GREY_600
+			} else if val < 158 {
+				frame.Show.GreyColor = GREY_500
+			} else if val < 189 {
+				frame.Show.GreyColor = GREY_400
+			} else if val < 224 {
+				frame.Show.GreyColor = GREY_300
+			} else if val < 238 {
+				frame.Show.GreyColor = GREY_200
+			} else if val < 245 {
+				frame.Show.GreyColor = GREY_100
+			} else if val < 250 {
+				frame.Show.GreyColor = GREY_50
+			} else {
+				frame.Show.GreyColor = GREY_0
+			}
+		}
 	case "pagetitle":
 		if un {
 			stw.TextBox("PAGETITLE").Clear()
