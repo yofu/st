@@ -506,6 +506,11 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, ove
 				frame.Ai.Nfloor = int(val)
 			}
 			frame.Ai.Boundary = make([]float64, frame.Ai.Nfloor+1)
+			// for d := 0; d < 2; d++ {
+			// 	frame.Ai.Ci[d] = make([]float64, frame.Ai.Nfloor)
+			// 	frame.Ai.Qi[d] = make([]float64, frame.Ai.Nfloor)
+			// 	frame.Ai.Hi[d] = make([]float64, frame.Ai.Nfloor)
+			// }
 		case "HEIGHT":
 			if frame.Ai.Nfloor == 0 {
 				frame.Ai.Nfloor = len(words) - 2
@@ -2377,9 +2382,11 @@ func (frame *Frame) ReadWgt(filename string) error {
 		lis = strings.Split(string(f), "\n")
 	}
 	num := len(frame.Nodes)
+	// current := 0
 rwgtloop:
 	for _, j := range lis {
 		if num == 0 {
+			// current = i
 			break
 		}
 		var words []string
@@ -2411,6 +2418,22 @@ rwgtloop:
 			num--
 		}
 	}
+	// direction := 0
+	// for _, j := range lis[current:] {
+	// 	if strings.HasPrefix(j, "X方向") {
+	// 		direction = 0
+	// 	} else if strings.HasPrefix(j, "Y方向") {
+	// 		direction = 1
+	// 	} else if strings.HasPrefix(j, "層せん断力係数") {
+	// 		for k, l := range strings.Fields(j)[3:] {
+	// 			val, err := strconv.ParseFloat(l, 64)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 			frame.Ai.Ci[direction][k+1] = val
+	// 		}
+	// 	}
+	// }
 	return nil
 }
 
@@ -4864,6 +4887,33 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
 	tex32.WriteString(fmt.Sprintf("       計 & %10.3f & %10.3f & %10.3f\\\\\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
 	tex32.WriteString("\\end{supertabular}\n\\onecolumn\n")
+	// PERPLの出力
+	perpl := make(map[int][]float64, 0)
+	perplkey := make([]int, 0)
+	perplsum := make([]float64, 3)
+	otp.WriteString(fmt.Sprintf(" 節点番号             節点荷重 [%s]\n\n", frame.Show.UnitName[0]))
+	otp.WriteString("                    X          Y          Z\n")
+	for _, el := range frame.Elems {
+		if el.Sect.Perpl == nil || len(el.Sect.Perpl) < 3 || (el.Sect.Perpl[1] == 0.0 && el.Sect.Perpl[2] == 0.0) {
+			continue
+		}
+		for _, n := range el.Enod {
+			if _, ok := perpl[n.Num]; !ok {
+				perpl[n.Num] = make([]float64, 3)
+				perplkey = append(perplkey, n.Num)
+			}
+			for i := 0; i < 3; i++ {
+				val := el.ConvertPerpendicularLoad(1, i) * el.Area() / float64(el.Enods)
+				perpl[n.Num][i] += val
+				perplsum[i] += val
+			}
+		}
+	}
+	sort.Ints(perplkey)
+	for _, nnum := range perplkey {
+		otp.WriteString(fmt.Sprintf("%9d  %10.3f %10.3f %10.3f\n", nnum, frame.Show.Unit[0]*perpl[nnum][0], frame.Show.Unit[0]*perpl[nnum][1], frame.Show.Unit[0]*perpl[nnum][2]))
+	}
+	otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", frame.Show.Unit[0]*perplsum[0], frame.Show.Unit[0]*perplsum[1], frame.Show.Unit[0]*perplsum[2]))
 	otp.WriteString("各断面の部材総量（参考資料）\n\n")
 	otp.WriteString(" 断面番号 長さ,面積 重量(柱梁用)\n             [m,m2]     [ton]\n")
 	tex32.WriteString("各断面の部材総量（参考資料）\\\\\n\\\\\n")
@@ -5732,6 +5782,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				fact = 2.0
 			}
 			el.Condition.Width = el.Width() * 100.0 // [cm]
+			el.Condition.Height = el.Height() * 100.0 // [cm]
 			otp.WriteString(strings.Repeat("-", 202))
 			var sectstring string
 			if original {

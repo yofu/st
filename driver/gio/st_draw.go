@@ -2,37 +2,57 @@ package stgio
 
 import (
 	"fmt"
+	"image"
 	"image/color"
 	"math"
 
 	"gioui.org/f32"
-	"gioui.org/op" // op is used for recording different operations.
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	st "github.com/yofu/st/stlib"
 )
 
+func boundingbox(coords [][]float64) []int {
+	maxx := coords[0][0]
+	minx := coords[0][0]
+	maxy := coords[0][1]
+	miny := coords[0][1]
+	for i := 0; i < len(coords); i++ {
+		if coords[i][0] > maxx {
+			maxx = coords[i][0]
+		}
+		if coords[i][0] < minx {
+			minx = coords[i][0]
+		}
+		if coords[i][1] > maxy {
+			maxy = coords[i][1]
+		}
+		if coords[i][1] < miny {
+			miny = coords[i][1]
+		}
+	}
+	return []int{int(minx-1), int(miny-1), int(maxx+1), int(maxy+1)}
+}
+
 func (stw *Window) Line(x1 float64, y1 float64, x2 float64, y2 float64) {
-	stk := op.Save(stw.context.Ops)
+	bb := boundingbox([][]float64{{x1, y1}, {x2, y2}})
+	bounds := image.Rect(bb[0], bb[1], bb[2], bb[3])
+	defer clip.RRect{Rect: bounds, SE: 0, SW: 0, NW: 0, NE: 0}.Push(stw.context.Ops).Pop()
 	var path clip.Path
 	path.Begin(stw.context.Ops)
 	path.Move(f32.Pt(float32(x1), float32(y1)))
 	path.LineTo(f32.Pt(float32(x2), float32(y2)))
-	clip.Stroke{
-		Path: path.End(),
-		Style: clip.StrokeStyle{
+	paint.FillShape(stw.context.Ops, stw.currentPen,
+		clip.Stroke{
+			Path: path.End(),
 			Width: 1,
-			Cap:   clip.FlatCap,
-			Join:  clip.BevelJoin,
-			Miter: 0,
-		},
-	}.Op().Add(stw.context.Ops)
-	paint.Fill(stw.context.Ops, stw.currentPen)
-	stk.Load()
+	}.Op())
 }
 
 func (stw *Window) Polyline(coords [][]float64) {
-	stk := op.Save(stw.context.Ops)
+	bb := boundingbox(coords)
+	bounds := image.Rect(bb[0], bb[1], bb[2], bb[3])
+	defer clip.RRect{Rect: bounds, SE: 0, SW: 0, NW: 0, NE: 0}.Push(stw.context.Ops).Pop()
 	var path clip.Path
 	path.Begin(stw.context.Ops)
 	path.Move(f32.Pt(float32(coords[0][0]), float32(coords[0][1])))
@@ -40,21 +60,17 @@ func (stw *Window) Polyline(coords [][]float64) {
 		path.LineTo(f32.Pt(float32(coords[i][0]), float32(coords[i][1])))
 	}
 	path.LineTo(f32.Pt(float32(coords[0][0]), float32(coords[0][1])))
+	paint.FillShape(stw.context.Ops, stw.currentPen,
 	clip.Stroke{
 		Path: path.End(),
-		Style: clip.StrokeStyle{
-			Width: 1,
-			Cap:   clip.FlatCap,
-			Join:  clip.BevelJoin,
-			Miter: 0,
-		},
-	}.Op().Add(stw.context.Ops)
-	paint.Fill(stw.context.Ops, stw.currentPen)
-	stk.Load()
+		Width: 1,
+	}.Op())
 }
 
 func (stw *Window) Polygon(coords [][]float64) {
-	stk := op.Save(stw.context.Ops)
+	bb := boundingbox(coords)
+	bounds := image.Rect(bb[0], bb[1], bb[2], bb[3])
+	defer clip.RRect{Rect: bounds, SE: 0, SW: 0, NW: 0, NE: 0}.Push(stw.context.Ops).Pop()
 	var path clip.Path
 	path.Begin(stw.context.Ops)
 	path.Move(f32.Pt(float32(coords[0][0]), float32(coords[0][1])))
@@ -62,43 +78,37 @@ func (stw *Window) Polygon(coords [][]float64) {
 		path.LineTo(f32.Pt(float32(coords[i][0]), float32(coords[i][1])))
 	}
 	path.LineTo(f32.Pt(float32(coords[0][0]), float32(coords[0][1])))
+	paint.FillShape(stw.context.Ops, stw.currentBrush,
 	clip.Outline{
 		Path: path.End(),
-	}.Op().Add(stw.context.Ops)
-	paint.Fill(stw.context.Ops, stw.currentBrush)
-	stk.Load()
+	}.Op())
 }
 
 func (stw *Window) Circle(x float64, y float64, r float64) {
-	stk := op.Save(stw.context.Ops)
+	bounds := image.Rect(int(x-r-1), int(y-r-1), int(x+r+1), int(y+r+1))
+	defer clip.RRect{Rect: bounds, SE: 0, SW: 0, NW: 0, NE: 0}.Push(stw.context.Ops).Pop()
 	var path clip.Path
 	path.Begin(stw.context.Ops)
 	path.Move(f32.Pt(float32(x-r/2), float32(y-r/2)))
 	path.Arc(f32.Pt(float32(r/2), float32(r/2)), f32.Pt(float32(r/2), float32(r/2)), 2*math.Pi)
+	paint.FillShape(stw.context.Ops, stw.currentPen,
 	clip.Stroke{
 		Path: path.End(),
-		Style: clip.StrokeStyle{
-			Width: 1,
-			Cap:   clip.FlatCap,
-			Join:  clip.BevelJoin,
-			Miter: 0,
-		},
-	}.Op().Add(stw.context.Ops)
-	paint.Fill(stw.context.Ops, stw.currentPen)
-	stk.Load()
+		Width: 1,
+	}.Op())
 }
 
 func (stw *Window) FilledCircle(x float64, y float64, r float64) {
-	stk := op.Save(stw.context.Ops)
+	bounds := image.Rect(int(x-r-1), int(y-r-1), int(x+r+1), int(y+r+1))
+	defer clip.RRect{Rect: bounds, SE: 0, SW: 0, NW: 0, NE: 0}.Push(stw.context.Ops).Pop()
 	var path clip.Path
 	path.Begin(stw.context.Ops)
 	path.Move(f32.Pt(float32(x-r/2), float32(y-r/2)))
 	path.Arc(f32.Pt(float32(r/2), float32(r/2)), f32.Pt(float32(r/2), float32(r/2)), 2*math.Pi)
+	paint.FillShape(stw.context.Ops, stw.currentBrush,
 	clip.Outline{
 		Path: path.End(),
-	}.Op().Add(stw.context.Ops)
-	paint.Fill(stw.context.Ops, stw.currentBrush)
-	stk.Load()
+	}.Op())
 }
 
 func (stw *Window) Text(x float64, y float64, txt string) {

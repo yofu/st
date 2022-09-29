@@ -133,7 +133,8 @@ func (f *Fact) WriteTo(fn string) error {
 	otp.WriteString("  層間変形角  1/120以下\n")
 	otp.WriteString("  剛性率      0.600以上\n")
 	otp.WriteString("  偏心率      0.150以下\n")
-	otp.WriteString("を満たしている。\n\n")
+	otp.WriteString("を満たしている。\n")
+	otp.WriteString("ねじり剛性の計算方法は告示第594号第5による。\n\n")
 	otp.WriteString(fmt.Sprintf("入力データファイル：%s\n", f.Input[0]))
 	otp.WriteString(fmt.Sprintf("                    %s\n", f.Input[1]))
 	otp.WriteString(fmt.Sprintf("                    %s\n", f.Input[2]))
@@ -156,6 +157,7 @@ func (f *Fact) WriteTo(fn string) error {
 		if f.Factor[0] != 1.0 || f.Factor[1] != 1.0 {
 			otp.WriteString(fmt.Sprintf("      (C0=0.2: 1/%4d) (C0=0.2:1/%4d)\n", int(f.Factor[0]/f.AverageDrift[i][0]), int(f.Factor[1]/f.AverageDrift[i][1])))
 		}
+		otp.WriteString(fmt.Sprintf("      HEIGHT= %.5f[m]\n", f.AverageLevel[i+1]-f.AverageLevel[i]))
 	}
 	otp.WriteString("\n層間変形角（最大値） D/H：○印が最大\n")
 	m = maru(f.MaxDrift, true)

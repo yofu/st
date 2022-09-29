@@ -19,7 +19,7 @@ import (
 	"gioui.org/layout"
 	"gioui.org/op"
 
-	// "gioui.org/op/clip"
+	"gioui.org/op/clip"
 	// "gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
@@ -102,11 +102,12 @@ func NewWindow(w *app.Window) *Window {
 }
 
 func (stw *Window) QueueRedrawAll() {
-	redrawch <- 1
+	stw.window.Invalidate()
+	// redrawch <- 1
 }
 
 func (stw *Window) Run(w *app.Window) error {
-	st.OpenFile(stw, "C:\\Users\\yofu8\\st\\karuhouse\\karuhouse01\\karuhouse01.inp", true)
+	st.OpenFile(stw, "C:\\Users\\yofu8\\st\\karuhouse\\table01\\table01_03.inp", true)
 	var ops op.Ops
 	for {
 		select {
@@ -117,12 +118,14 @@ func (stw *Window) Run(w *app.Window) error {
 		case e := <-w.Events():
 			// detect the type of the event.
 			switch e := e.(type) {
+			default:
+				fmt.Println(e)
 			// this is sent when the application should re-render.
 			case system.FrameEvent:
 				// gtx is used to pass around rendering and event information.
 				gtx := layout.NewContext(&ops, e)
 				stw.context = gtx
-				// render and handle UI.
+
 				stw.Layout(gtx)
 				// render and handle the operations from the UI.
 				e.Frame(gtx.Ops)
@@ -141,7 +144,7 @@ func (stw *Window) Run(w *app.Window) error {
 					start = e.Position
 					press = e.Buttons
 					switch press {
-					case pointer.ButtonMiddle:
+					case pointer.ButtonTertiary:
 						drawall = false
 					}
 				case pointer.Release:
@@ -154,7 +157,7 @@ func (stw *Window) Run(w *app.Window) error {
 					dx := end.X - start.X
 					dy := end.Y - start.Y
 					switch press {
-					case pointer.ButtonMiddle:
+					case pointer.ButtonTertiary:
 						fmt.Println(e)
 						if e.Modifiers&key.ModShift != 0 {
 							stw.frame.View.Center[0] += float64(dx) * stw.CanvasMoveSpeedX()
@@ -188,11 +191,72 @@ func (stw *Window) Run(w *app.Window) error {
 func (stw *Window) Layout(gtx layout.Context) layout.Dimensions {
 	th := stw.Theme
 
+	for _, e := range gtx.Events(stw) {
+		switch e := e.(type) {
+		default:
+			fmt.Println(e)
+		case key.Event:
+			fmt.Print(e.Name)
+		case pointer.Event:
+			switch e.Type {
+			case pointer.Press:
+				start = e.Position
+				press = e.Buttons
+				switch press {
+				case pointer.ButtonTertiary:
+					drawall = false
+				}
+			case pointer.Release:
+				end = e.Position
+				drawall = true
+				press = 0
+				stw.QueueRedrawAll()
+			case pointer.Drag:
+				end = e.Position
+				dx := end.X - start.X
+				dy := end.Y - start.Y
+				switch press {
+				case pointer.ButtonTertiary:
+					fmt.Println(e.Modifiers)
+					if e.Modifiers&key.ModShift != 0 {
+						stw.frame.View.Center[0] += float64(dx) * stw.CanvasMoveSpeedX()
+						stw.frame.View.Center[1] += float64(dy) * stw.CanvasMoveSpeedY()
+					} else {
+						stw.frame.View.Angle[0] += float64(dy) * stw.CanvasRotateSpeedY()
+						stw.frame.View.Angle[1] -= float64(dx) * stw.CanvasRotateSpeedX()
+					}
+					stw.QueueRedrawAll()
+				}
+			case pointer.Scroll:
+				end = e.Position
+				fmt.Print(e.Scroll)
+				if e.Scroll.Y > 0 {
+					stw.Zoom(-1.0, float64(end.X), float64(end.Y))
+				} else {
+					stw.Zoom(1.0, float64(end.X), float64(end.Y))
+				}
+				stw.QueueRedrawAll()
+			}
+		}
+	}
+
+	area := clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops)
+	key.InputOp{
+		Tag: stw,
+		Keys: key.NameEscape,
+	}.Add(gtx.Ops)
+	pointer.InputOp{
+		Tag: stw,
+		Types: pointer.Press | pointer.Release | pointer.Drag | pointer.Scroll,
+	}.Add(gtx.Ops)
+	area.Pop()
+
 	// inset is used to add padding around the window border.
 	inset := layout.UniformInset(defaultMargin)
 	return inset.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 		return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-			layout.Rigid(layout.Spacer{Height: th.TextSize}.Layout),
+			// layout.Rigid(layout.Spacer{Height: th.TextSize}.Layout),
+			layout.Rigid(layout.Spacer{Height: 12}.Layout),
 			layout.Rigid(material.Body1(th, "st").Layout),
 			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 				if drawall {

@@ -3655,6 +3655,8 @@ func notice1459(stw *Window) {
 		}
 		var length float64
 		var otp bytes.Buffer
+		sname := "G1"
+		alpha := 1.0
 		switch num {
 		default:
 			stw.EscapeAll()
@@ -3671,10 +3673,17 @@ func notice1459(stw *Window) {
 				if el.Etype == st.GIRDER {
 					enum = el.Num
 					snum = el.Sect.Num
+					sname = el.Sect.Name
 					break
 				}
 			}
-			otp.WriteString(fmt.Sprintf("梁G1(部材 %d 、断面 %d 、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - %.3f = %.3f [cm]\n長さL= %.1f [cm]\n変形増大係数α= 1\nα×δ/L=1×%.3f/ %.3f = 1/%d\n", enum, snum, sns[1].Num, ds[1], ds[0], delta, length, delta, length, math.Abs(length/delta)))
+			if _, ok := stw.frame.Sects[snum]; ok {
+				switch {
+				case stw.frame.Sects[snum].IsRc(1e-3):
+					alpha = 8.0
+				}
+			}
+			otp.WriteString(fmt.Sprintf("梁%s(部材 %d 、断面 %d 、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - %.3f = %.3f [cm]\n長さL= %.1f [cm]\n変形増大係数α= %.0f\nα×δ/L=%.0f×%.3f/ %.3f = 1/%d\n", sname, enum, snum, sns[1].Num, ds[1], ds[0], delta, length, alpha, alpha, delta, length, math.Abs(length/(alpha*delta))))
 			clipboard.WriteAll(otp.String())
 		case 3:
 			delta = ds[1] - 0.5*(ds[0]+ds[2])
@@ -3688,6 +3697,7 @@ func notice1459(stw *Window) {
 				if el.Etype == st.GIRDER {
 					enum1 = el.Num
 					snum = el.Sect.Num
+					sname = el.Sect.Name
 					break
 				}
 			}
@@ -3695,15 +3705,23 @@ func notice1459(stw *Window) {
 				if el.Etype == st.GIRDER {
 					enum2 = el.Num
 					snum = el.Sect.Num
+					sname = el.Sect.Name
 					break
 				}
 			}
-			otp.WriteString(fmt.Sprintf("梁G1(部材 %d, %d 、断面 %d 、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - (%.3f + %.3f)/2 = %.3f [cm]\n長さL= %.1f [cm]\n変形増大係数α= 1\nα×δ/L=1×%.3f/ %.1f = 1/%d\n", enum1, enum2, snum, sns[1].Num, ds[1], ds[0], ds[2], delta, length, delta, length, int(math.Abs(length/delta))))
+			if _, ok := stw.frame.Sects[snum]; ok {
+				switch {
+				case stw.frame.Sects[snum].IsRc(1e-3):
+					alpha = 8.0
+				}
+			}
+			otp.WriteString(fmt.Sprintf("梁%s(部材 %d, %d 、断面 %d 、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - (%.3f + %.3f)/2 = %.3f [cm]\n長さL= %.1f [cm]\n変形増大係数α= %.0f\nα×δ/L=%.0f×%.3f/ %.1f = 1/%d\n", sname, enum1, enum2, snum, sns[1].Num, ds[1], ds[0], ds[2], delta, length, alpha, alpha, delta, length, int(math.Abs(length/(alpha*delta)))))
 			clipboard.WriteAll(otp.String())
 		}
 		if delta != 0.0 {
 			stw.addHistory(fmt.Sprintf("Distance: %.3f[cm]", length))
-			stw.addHistory(fmt.Sprintf("Slope: 1/%.1f", math.Abs(length/delta)))
+			stw.addHistory(fmt.Sprintf("Alpha: %.0f", alpha))
+			stw.addHistory(fmt.Sprintf("Slope: 1/%.1f", math.Abs(length/(alpha*delta))))
 		}
 		stw.EscapeAll()
 	})

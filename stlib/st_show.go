@@ -138,6 +138,7 @@ type Show struct {
 	Dfact     float64
 
 	PointedLoad bool
+	PerpendicularLoad bool
 	Pfact       float64
 
 	Rfact float64
@@ -170,6 +171,7 @@ type Show struct {
 	Select bool
 
 	Grey bool
+	GreyColor int
 
 	Sect  map[int]bool
 	Etype map[int]bool
@@ -245,6 +247,7 @@ func NewShow(frame *Frame) *Show {
 		PlotState:            PLOT_UNDEFORMED,
 		Dfact:                100.0,
 		PointedLoad:          false,
+		PerpendicularLoad:    false,
 		Pfact:                1.0,
 		Rfact:                0.5,
 		Stress:               map[int]uint{COLUMN: 0, GIRDER: 0, BRACE: 0, WBRACE: 0, SBRACE: 0},
@@ -266,6 +269,8 @@ func NewShow(frame *Frame) *Show {
 		Measure:              true,
 		Arc:                  true,
 		Select:               false,
+		Grey:                 false,
+		GreyColor:            GREY_500,
 		Sect:                 sects,
 		Etype:                etypes,
 		Xrange:               []float64{RANGE_MIN, RANGE_MAX},
@@ -316,6 +321,7 @@ func (show *Show) Copy() *Show {
 	s.PlotState = show.PlotState
 	s.Dfact = 100.0
 	s.PointedLoad = false
+	s.PerpendicularLoad = false
 	s.Pfact = 1.0
 	for _, et := range []int{COLUMN, GIRDER, BRACE, WBRACE, SBRACE} {
 		s.Stress[et] = show.Stress[et]
@@ -396,6 +402,10 @@ func (show *Show) Dataline() []string {
 	}
 	if show.PointedLoad {
 		first = append(first, "節点荷重")
+		num1++
+	}
+	if show.PerpendicularLoad {
+		first = append(first, "垂直荷重")
 		num1++
 	}
 	for i, nc := range []uint{NC_NUM, NC_WEIGHT, NC_ZCOORD, NC_DX, NC_DY, NC_DZ, NC_TX, NC_TY, NC_TZ, NC_RX, NC_RY, NC_RZ, NC_MX, NC_MY, NC_MZ, NC_PILE} {
