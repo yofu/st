@@ -1918,10 +1918,21 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		frame.SetBoundary(int(val), eps)
 	case "facts":
 		if usage {
-			return Usage(":facts {-skipany=code} {-skipall=code} {-skiproof} {-period=X,Y}")
+			return Usage(":facts {-skipany=code} {-skipall=code} {-skiproof} {-period=X,Y} {-abs=false}")
 		}
 		var m bytes.Buffer
 		fn = Ce(frame.Path, ".fes")
+		abs := false
+		if sabs, ok := argdict["ABS"]; ok {
+			switch sabs {
+			case "true", "True", "TRUE":
+				abs = true
+			case "false", "False", "FALSE":
+				abs = false
+			default:
+				abs = false
+			}
+		}
 		var skipany, skipall []int
 		if sany, ok := argdict["SKIPANY"]; ok {
 			if sany == "" {
@@ -1959,7 +1970,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if skiproof {
 			etypes = []int{COLUMN, BRACE, WBRACE}
 		}
-		err := frame.Facts(fn, etypes, skipany, skipall, period)
+		err := frame.Facts(fn, etypes, skipany, skipall, period, abs)
 		if err != nil {
 			return err
 		}

@@ -20,6 +20,7 @@ import (
 	dxfcolor "github.com/yofu/dxf/color"
 	"github.com/yofu/dxf/drawing"
 	dxfentity "github.com/yofu/dxf/entity"
+	dxftable "github.com/yofu/dxf/table"
 	"github.com/yofu/st/arclm"
 	"github.com/yofu/unit"
 )
@@ -2893,6 +2894,22 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 				d.AddLayer("SECTION", dxf.DefaultColor, dxf.DefaultLineType, true)
 			}
 			frame.DrawDxfSection(d, el, el.MidPoint(), scale)
+			if frame.Show.PlotState&PLOT_DEFORMED != 0 {
+				_, err = d.Layer("DEFORMATION", true)
+				if err != nil {
+					d.AddLayer("DEFORMATION", dxf.DefaultColor, dxftable.LT_HIDDEN, true)
+				}
+				dstart := make([]float64, 3)
+				dend := make([]float64, 3)
+				for i := 0; i < 3; i++ {
+					dstart[i]= (el.Enod[0].Coord[i] + frame.Show.Dfact*el.Enod[0].ReturnDisp(frame.Show.Period, i))*scale
+					dend[i]= (el.Enod[1].Coord[i] + frame.Show.Dfact*el.Enod[1].ReturnDisp(frame.Show.Period, i))*scale
+				}
+				_, err := d.Line(dstart[0], dstart[1], dstart[2], dend[0], dend[1], dend[2])
+				if err != nil {
+					continue
+				}
+			}
 		} else {
 			switch el.Enods {
 			case 3:
@@ -5954,7 +5971,7 @@ func (frame *Frame) CheckLst(secnum []int) string {
 	return otp.String()
 }
 
-func (frame *Frame) Facts(fn string, etypes []int, skipany, skipall []int, period []string) error {
+func (frame *Frame) Facts(fn string, etypes []int, skipany, skipall []int, period []string, abs bool) error {
 	var err error
 	l := frame.Ai.Nfloor
 	if l < 2 {
@@ -6030,7 +6047,7 @@ fact_node:
 			}
 		}
 	}
-	f := NewFact(l, false, frame.Ai.Base[0]/0.2, frame.Ai.Base[1]/0.2)
+	f := NewFact(l, abs, frame.Ai.Base[0]/0.2, frame.Ai.Base[1]/0.2) // facts.Abs
 	perx := strings.Split(period[0], "@")[0]
 	pery := strings.Split(period[1], "@")[0]
 	f.SetFileName([]string{frame.DataFileName["L"], frame.DataFileName[perx], frame.DataFileName[pery]},
