@@ -1068,6 +1068,8 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if err != nil {
 			return err
 		}
+	case "sectionlist":
+		SectionList(frame)
 	case "svg":
 		if usage {
 			return Usage(":svg {-size=a4tate} filename")
@@ -3826,6 +3828,81 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 				frame.AddPlateElem(-1, enod, sect, etype)
 			}
+		case "edge":
+			if usage {
+				return Usage(":add edge {-sect=code} {-etype=type}")
+			}
+			var etype int
+			if et, ok := argdict["ETYPE"]; ok {
+				switch {
+				case Re_column.MatchString(et):
+					etype = COLUMN
+				case Re_girder.MatchString(et):
+					etype = GIRDER
+				case Re_slab.MatchString(et):
+					etype = BRACE
+				case Re_wall.MatchString(et):
+					etype = WALL
+				case Re_slab.MatchString(et):
+					etype = SLAB
+				default:
+					tmp, err := strconv.ParseInt(et, 10, 64)
+					if err != nil {
+						return err
+					}
+					etype = int(tmp)
+				}
+			} else {
+				return errors.New(":add elem: no etype selected")
+			}
+			var sect *Sect
+			if sc, ok := argdict["SECT"]; ok {
+				tmp, err := strconv.ParseInt(sc, 10, 64)
+				if err != nil {
+					return err
+				}
+				if sec, ok := frame.Sects[int(tmp)]; ok {
+					sect = sec
+				} else {
+					return errors.New(fmt.Sprintf(":add elem: SECT %d doesn't exist", tmp))
+				}
+			} else {
+				return errors.New(":add elem: no sectcode selected")
+			}
+			els := currentelem(stw, exmodech, exmodeend)
+			if len(els) == 0 {
+				return fmt.Errorf("no elems selected")
+			}
+			rtn := make([]*Elem, 0)
+			for _, el := range els {
+				if el.IsLineElem() {
+					continue
+				}
+				if el.Enods < 3 {
+					continue
+				}
+				for i := 0; i < el.Enods; i++ {
+					addedge := true
+					ind1 := i
+					ind2 := i+1
+					if ind2 >= el.Enods {
+						ind2 = 0
+					}
+					cels := frame.SearchElem(el.Enod[ind1], el.Enod[ind2])
+					for _, cel := range cels {
+						if cel.IsLineElem() {
+							addedge = false
+							break
+						}
+					}
+					if addedge {
+						newel := frame.AddLineElem(-1, []*Node{el.Enod[ind1], el.Enod[ind2]}, sect, etype)
+						rtn = append(rtn, newel)
+					}
+				}
+			}
+			stw.Deselect()
+			stw.SelectElem(rtn)
 		case "sec", "sect":
 			if usage {
 				return Usage(":add sect sectcode")
