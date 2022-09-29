@@ -2381,9 +2381,11 @@ func (frame *Frame) ReadWgt(filename string) error {
 		lis = strings.Split(string(f), "\n")
 	}
 	num := len(frame.Nodes)
+	// current := 0
 rwgtloop:
 	for _, j := range lis {
 		if num == 0 {
+			// current = i
 			break
 		}
 		var words []string
@@ -2415,6 +2417,22 @@ rwgtloop:
 			num--
 		}
 	}
+	// direction := 0
+	// for _, j := range lis[current:] {
+	// 	if strings.HasPrefix(j, "X方向") {
+	// 		direction = 0
+	// 	} else if strings.HasPrefix(j, "Y方向") {
+	// 		direction = 1
+	// 	} else if strings.HasPrefix(j, "層せん断力係数") {
+	// 		for k, l := range strings.Fields(j)[3:] {
+	// 			val, err := strconv.ParseFloat(l, 64)
+	// 			if err != nil {
+	// 				return err
+	// 			}
+	// 			frame.Ai.Ci[direction][k+1] = val
+	// 		}
+	// 	}
+	// }
 	return nil
 }
 
