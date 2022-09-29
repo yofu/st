@@ -505,6 +505,11 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, ove
 				frame.Ai.Nfloor = int(val)
 			}
 			frame.Ai.Boundary = make([]float64, frame.Ai.Nfloor+1)
+			// for d := 0; d < 2; d++ {
+			// 	frame.Ai.Ci[d] = make([]float64, frame.Ai.Nfloor)
+			// 	frame.Ai.Qi[d] = make([]float64, frame.Ai.Nfloor)
+			// 	frame.Ai.Hi[d] = make([]float64, frame.Ai.Nfloor)
+			// }
 		case "HEIGHT":
 			if frame.Ai.Nfloor == 0 {
 				frame.Ai.Nfloor = len(words) - 2
