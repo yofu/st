@@ -1730,6 +1730,81 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
 		return Message(m.String())
+	case "srcalangle":
+		if usage {
+			return Usage(":srcalangle {-angle=0[deg]}")
+		}
+		cond := NewCondition()
+		var otpfn string
+		if fn == "" {
+			otpfn = frame.Path
+		} else {
+			otpfn = fn
+		}
+		angle := 0.0
+		if a, ok := argdict["ANGLE"]; ok {
+			val, err := strconv.ParseFloat(a, 64)
+			if err != nil {
+				return err
+			}
+			angle = val
+		}
+		if _, ok := argdict["V"]; ok {
+			argdict["VERBOSE"] = ""
+		}
+		if _, ok := argdict["VERBOSE"]; ok {
+			cond.Verbose = true
+		}
+		reload := true
+		if _, ok := argdict["NORELOAD"]; ok {
+			reload = false
+		}
+		if reload {
+			ReadFile(stw, Ce(otpfn, ".lst"))
+		}
+		if qf, ok := argdict["QFACT"]; ok {
+			val, err := strconv.ParseFloat(qf, 64)
+			if err == nil {
+				cond.Qfact = val
+			}
+		}
+		if wf, ok := argdict["WFACT"]; ok {
+			val, err := strconv.ParseFloat(wf, 64)
+			if err == nil {
+				cond.Wfact = val
+			}
+		}
+		els := stw.SelectedElems()
+		sort.Sort(ElemByNum{els})
+		var otp,rat bytes.Buffer
+		for _, el := range els {
+			if el == nil {
+				continue
+			}
+			el.Condition = cond.Snapshot()
+			t, err := el.OutputRateInformation("L", "X", "X", "Y", "Y", nil, angle)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			otp.WriteString(t)
+			otp.WriteString(strings.Repeat("-", 202))
+			rat.WriteString(el.OutputMaxRate())
+		}
+		w, err := os.Create(Ce(otpfn, ".tst2"))
+		defer w.Close()
+		if err != nil {
+			return err
+		}
+		otp = AddCR(otp)
+		otp.WriteTo(w)
+		wrat, err := os.Create(Ce(otpfn, ".rat"))
+		defer wrat.Close()
+		if err != nil {
+			return err
+		}
+		rat = AddCR(rat)
+		rat.WriteTo(wrat)
 	case "nminteraction":
 		if usage {
 			return Usage(":nminteraction sectcode")
@@ -2004,6 +2079,97 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		for _, v := range frame.Chains {
 			v.Break()
 		}
+	case "593_2_3":
+		if usage {
+			return Usage(":593_2_3")
+		}
+		cond := NewCondition()
+		var otpfn string
+		if fn == "" {
+			otpfn = frame.Path
+		} else {
+			otpfn = fn
+		}
+		reload := true
+		if _, ok := argdict["NORELOAD"]; ok {
+			reload = false
+		}
+		sects := make([][]int, 2)
+		sects[0] = make([]int, 0)
+		sects[1] = make([]int, 0)
+		if sx, ok := argdict["SKIPX"]; ok {
+			sects[0] = SplitNums(sx)
+		}
+		if sy, ok := argdict["SKIPY"]; ok {
+			sects[1] = SplitNums(sy)
+		}
+		if reload {
+			ReadFile(stw, Ce(otpfn, ".lst"))
+		}
+		els := stw.SelectedElems()
+		sort.Sort(ElemByNum{els})
+		a := 0.25
+		var otp bytes.Buffer
+		if len(frame.Ai.Ci[0]) == 0 {
+			_, _, err := frame.AiDistribution()
+			if err != nil {
+				return err
+			}
+		}
+		for _, el := range els {
+			if el == nil {
+				continue
+			}
+			el.Condition = cond.Snapshot()
+			Nl := el.ReturnStress("L", 0, 0)
+			alpha := make([]float64, 2)
+		loop593:
+			for d, dstr := range []string{"X", "Y"} {
+				for _, sx := range sects[d] {
+					if el.Sect.Num == sx {
+						alpha[d] = 1.0
+						continue loop593
+					}
+				}
+				Q := el.ReturnStress(dstr, 0, 2-d)
+				height := el.Enod[0].Coord[2]
+				Ci := 0.0
+				if height < frame.Ai.Boundary[0] {
+					Ci = frame.Ai.Ci[d][0]
+				} else if height >= frame.Ai.Boundary[frame.Ai.Nfloor-1] {
+					Ci = frame.Ai.Ci[d][frame.Ai.Nfloor-1]
+				}
+				for i := 0; i < frame.Ai.Nfloor-1; i++ {
+					// fmt.Println(height, frame.Ai.Boundary[i+1])
+					if height < frame.Ai.Boundary[i+1] {
+						Ci = frame.Ai.Ci[d][i+1]
+						break
+					}
+				}
+				Q2 := a * Ci * Nl
+				al := Q2/Q
+				fmt.Println(Q, Q2, Ci, Nl, al)
+				if math.Abs(al) < 1.0 {
+					al = 1.0
+				}
+				alpha[d] = al
+				otp.WriteString(fmt.Sprintf("%s方向: a=%.3f Ci=%.3f N=%.3f QE=%.3f Q=a×Ci×Nl=%.3f, α=max{Q/QE,1.0}=%.3f\n", dstr, a, Ci, Nl, Q, Q2, al))
+			}
+			t, err := el.OutputRateInformation("L", "X", "X", "Y", "Y", alpha, 0.0)
+			if err != nil {
+				return err
+			}
+			otp.WriteString(t)
+			otp.WriteString(strings.Repeat("-", 202))
+			otp.WriteString("\n")
+		}
+		w, err := os.Create(Ce(otpfn, ".593"))
+		defer w.Close()
+		if err != nil {
+			return err
+		}
+		otp = AddCR(otp)
+		otp.WriteTo(w)
 	case "1459":
 		if usage {
 			return Usage(":1459 [-sect= ]")
@@ -4693,11 +4859,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		stw.SelectNode(nodes)
 	case "keisansho":
 		frame.OutputTex()
-		t, err := frame.Elems[1003].OutputRateInformation("L", "X", "X", "Y", "Y")
-		if err != nil {
-			return err
-		}
-		fmt.Println(t)
+		// t, err := frame.Elems[1003].OutputRateInformation("L", "X", "X", "Y", "Y")
+		// if err != nil {
+		// 	return err
+		// }
+		// fmt.Println(t)
 	case "extractarclm":
 		if usage {
 			return Usage(":extractarclm")

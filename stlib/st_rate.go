@@ -993,8 +993,8 @@ func (rp RPIPE) Zy() float64 {
 func (rp RPIPE) Vertices() [][]float64 {
 	h := rp.H * 0.5
 	b := rp.B * 0.5
-	hw := h - rp.Tw
-	bf := b - rp.Tf
+	hw := h - rp.Tf
+	bf := b - rp.Tw
 	vertices := make([][]float64, 9)
 	vertices[0] = []float64{-b, -h}
 	vertices[1] = []float64{b, -h}
@@ -2515,7 +2515,7 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 		fmt.Println("unknown period")
 		return 0.0
 	case "L":
-		return 7 / 8.0 * b * d * alpha * fs
+		return 7 / 8.0 * b * d * alpha * fs // RC規準2018 (15.1)式
 	case "X", "Y", "S":
 		var pw float64
 		if cond.Strong { // for Qy
@@ -2531,7 +2531,8 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 		if cond.Verbose {
 			cond.Buffer.WriteString(fmt.Sprintf("#     せん断補強筋比: pw=%.6f\n", pw))
 		}
-		return 7 / 8.0 * b * d * (2.0/3.0*alpha*fs + 0.5*rc.Hoops.Ftw(cond)*(pw-0.002))
+		return 7 / 8.0 * b * d * (2.0/3.0*alpha*fs + 0.5*rc.Hoops.Ftw(cond)*(pw-0.002)) // RC規準2018 (15.3)式
+		// return 7 / 8.0 * b * d * (fs + 0.5*rc.Hoops.Ftw(cond)*(pw-0.002)) // RC規準2018 (15.6)式
 	}
 }
 func (rc *RCColumn) Ma(cond *Condition) float64 {
@@ -2651,7 +2652,7 @@ func (rg *RCGirder) Qa(cond *Condition) float64 {
 		if cond.Verbose {
 			cond.Buffer.WriteString(fmt.Sprintf("#     せん断補強筋比: pw=%.6f\n", pw))
 		}
-		return 7 / 8.0 * b * d * (alpha*fs + 0.5*rg.Hoops.Ftw(cond)*(pw-0.002))
+		return 7 / 8.0 * b * d * (alpha*fs + 0.5*rg.Hoops.Ftw(cond)*(pw-0.002)) // RC規準2018 (15.2)式
 	case "X", "Y", "S":
 		if pw < 0.002 {
 			// fmt.Printf("shortage in pw: %.6f\n", pw)
@@ -2662,7 +2663,7 @@ func (rg *RCGirder) Qa(cond *Condition) float64 {
 		if cond.Verbose {
 			cond.Buffer.WriteString(fmt.Sprintf("#     せん断補強筋比: pw=%.6f\n", pw))
 		}
-		return 7 / 8.0 * b * d * (alpha*fs + 0.5*rg.Hoops.Ftw(cond)*(pw-0.002))
+		return 7 / 8.0 * b * d * (alpha*fs + 0.5*rg.Hoops.Ftw(cond)*(pw-0.002)) // RC規準2018 (15.5)式
 	}
 }
 func (rg *RCGirder) Amount() Amount {
@@ -2794,7 +2795,18 @@ func (rw *RCWall) Fs(cond *Condition) float64 {
 func (rw *RCWall) Na(cond *Condition) float64 {
 	fs := rw.Fs(cond)
 	var Qc, Qw, Qa float64
-	r := 1.0 // TODO: set windowrate
+	l0 := cond.Width
+	h0 := cond.Height
+	l1 := rw.Wrect[0]
+	h1 := rw.Wrect[1]
+	r := 1.0
+	if l1 > 0.0 && h1 > 0.0 {
+		r0 := math.Sqrt((h1*l1)/(h0*l0))
+		if r0 > 0.4 {
+			cond.Buffer.WriteString(fmt.Sprintf("r0 > 0.4: r0= %.3f\n", r0))
+		}
+		r = 1.0 - 1.25*r0
+	}
 	Qc = r * rw.Thick * cond.Length * fs
 	switch cond.Period {
 	case "L":
@@ -2803,10 +2815,18 @@ func (rw *RCWall) Na(cond *Condition) float64 {
 		Qa = Qc
 		le := cond.Width - (rw.XFace[0] + rw.XFace[1])
 		if le >= 0.0 {
-			l0 := cond.Width
 			Qw = r * rw.Thick * rw.Srein * cond.Length * le / l0 * rw.Material.Fs
 			if Qw > Qc {
 				Qa = Qw
+			}
+			if cond.Verbose {
+				cond.Buffer.WriteString(fmt.Sprintf("#     l0=%.3f, le=%.3f\n", l0, le))
+				cond.Buffer.WriteString(fmt.Sprintf("#     pw=%.6f\n", rw.Srein))
+				cond.Buffer.WriteString(fmt.Sprintf("#     t=%.3f\n", rw.Thick))
+				cond.Buffer.WriteString(fmt.Sprintf("#     r=%.3f\n", r))
+				cond.Buffer.WriteString(fmt.Sprintf("#     fcs=%.3f\n", fs))
+				cond.Buffer.WriteString(fmt.Sprintf("#     frs=%.3f\n", rw.Material.Fs))
+				cond.Buffer.WriteString(fmt.Sprintf("#     Qc=%.3f Qw=%.3f Qa=max{Qw,Qc}=%.3f\n", Qc, Qw, Qa))
 			}
 		}
 	}
@@ -3243,6 +3263,7 @@ type Condition struct {
 	Period      string
 	Length      float64
 	Width       float64
+	Height      float64
 	Compression bool
 	Strong      bool
 	Positive    bool
@@ -3268,6 +3289,7 @@ func NewCondition() *Condition {
 		Period:      "L",
 		Length:      0.0,
 		Width:       0.0,
+		Height:      0.0,
 		Compression: false,
 		Strong:      true,
 		Positive:    true,
@@ -3294,6 +3316,7 @@ func (cond *Condition) Snapshot() *Condition {
 	c.Period = cond.Period
 	c.Length = cond.Length
 	c.Width = cond.Width
+	c.Height = cond.Height
 	c.Compression = cond.Compression
 	c.Strong = cond.Strong
 	c.Positive = cond.Positive

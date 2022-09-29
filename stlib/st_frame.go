@@ -5742,6 +5742,7 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 				fact = 2.0
 			}
 			el.Condition.Width = el.Width() * 100.0 // [cm]
+			el.Condition.Height = el.Height() * 100.0 // [cm]
 			otp.WriteString(strings.Repeat("-", 202))
 			var sectstring string
 			if original {
