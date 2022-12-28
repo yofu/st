@@ -641,6 +641,28 @@ func ParseFile(filename string, do func([]string) error) error {
 	return nil
 }
 
+func ParseScanner(scanner *bufio.Scanner, do func([]string) error) error {
+	for scanner.Scan() {
+		var words []string
+		for _, k := range strings.Split(scanner.Text(), " ") {
+			if k != "" {
+				words = append(words, k)
+			}
+		}
+		if len(words) == 0 {
+			continue
+		}
+		err := do(words)
+		if err != nil {
+			return err
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func AddCR(before bytes.Buffer) bytes.Buffer {
 	var after bytes.Buffer
 	after.WriteString(strings.Replace(before.String(), "\n", "\r\n", -1))

@@ -1,6 +1,7 @@
 package st
 
 import (
+	"bufio"
 	"bytes"
 	"embed"
 	"errors"
@@ -439,13 +440,30 @@ func (frame *Frame) Bbox2D(hide bool) (xmin, xmax, ymin, ymax float64) {
 
 // ReadInp reads an input file for st frame.
 func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, overwrite bool) error {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	s := bufio.NewScanner(f)
+	return frame.readInp(s, filename, coord, angle, overwrite)
+}
+
+// ReadInpString reads an input string for st frame.
+func (frame *Frame) ReadInpString(str string, filename string, coord []float64, angle float64, overwrite bool) error {
+	scanner := bufio.NewScanner(strings.NewReader(str))
+	return frame.readInp(scanner, filename, coord, angle, overwrite)
+}
+
+// ReadInp reads an input file for st frame.
+func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []float64, angle float64, overwrite bool) error {
 	tmp := make([]string, 0)
 	nodemap := make(map[int]int)
 	if len(coord) < 3 {
 		coord = []float64{0.0, 0.0, 0.0}
 	}
 	var chain *Chain
-	err := ParseFile(filename, func(words []string) error {
+	err := ParseScanner(scanner, func(words []string) error {
 		var err error
 		first := words[0]
 		if strings.HasPrefix(first, "\"") {
