@@ -626,6 +626,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 		// length := elem.Length() * 100.0 // [cm]
 		// otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, elem.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), length, length, length))
 		elem.Condition.Length = elem.Length() * 100.0 // [cm]
+		otp.WriteString(strings.Repeat("-", 202))
 		otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, elem.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
 		if alpha != nil {
 			otp.WriteString(fmt.Sprintf(" αx=%.3f αy=%.3f", alpha[0], alpha[1]))
@@ -836,12 +837,12 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 			otp.WriteString(pername[p])
 			if angle != 0.0 {
 				if p <= 2 {
-					rate2, err = calc2angle(al, elem.Condition, stress[0], stress[p], stress[p+2], fact, s, angle, 0)
+					rate2, err = calc2angle(al, elem.Condition, stress[0], stress[p], stress[p+2], fact*factor[p-1][0], s, angle, 0)
 				} else {
-					rate2, err = calc2angle(al, elem.Condition, stress[0], stress[p-2], stress[p], fact, s, angle, 1)
+					rate2, err = calc2angle(al, elem.Condition, stress[0], stress[p-2], stress[p], fact*factor[p-1][0], s, angle, 1)
 				}
 			} else {
-				rate2, err = calc2(al, elem.Condition, stress[0], stress[p], fact, s)
+				rate2, err = calc2(al, elem.Condition, stress[0], stress[p], fact*factor[p-1][0], s)
 			}
 			qsrate = maxrate(qsrate, rate2)
 		}

@@ -1734,9 +1734,10 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		return Message(m.String())
 	case "srcalangle":
 		if usage {
-			return Usage(":srcalangle {-angle=0[deg]}")
+			return Usage(":srcalangle {-angle=0[deg]} {-fact=1.0}")
 		}
 		cond := NewCondition()
+		alpha := []float64{1.0, 1.0}
 		var otpfn string
 		if fn == "" {
 			otpfn = frame.Path
@@ -1744,6 +1745,28 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			otpfn = fn
 		}
 		angle := 0.0
+		if f, ok := argdict["FACT"]; ok {
+			val, err := strconv.ParseFloat(f, 64)
+			if err != nil {
+				return err
+			}
+			alpha[0] = val
+			alpha[1] = val
+		}
+		if f, ok := argdict["XFACT"]; ok {
+			val, err := strconv.ParseFloat(f, 64)
+			if err != nil {
+				return err
+			}
+			alpha[0] = val
+		}
+		if f, ok := argdict["YFACT"]; ok {
+			val, err := strconv.ParseFloat(f, 64)
+			if err != nil {
+				return err
+			}
+			alpha[1] = val
+		}
 		if a, ok := argdict["ANGLE"]; ok {
 			val, err := strconv.ParseFloat(a, 64)
 			if err != nil {
@@ -1778,21 +1801,105 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		els := stw.SelectedElems()
 		sort.Sort(ElemByNum{els})
+		maxrateelem := make(map[int][]*Elem)
 		var otp,rat bytes.Buffer
+		otp.WriteString("断面算定 \"S,RC,SRC\" 長期,短期,終局\n")
+		otp.WriteString("使用ファイル\n")
+		otp.WriteString(fmt.Sprintf("入力データ               =%s\n", frame.DataFileName["L"]))
+		otp.WriteString(fmt.Sprintf("鉛直荷重時解析結果       =%s\n", frame.ResultFileName["L"]))
+		otp.WriteString(fmt.Sprintf("水平荷重時解析結果 X方向 =%s\n", frame.ResultFileName["X"]))
+		otp.WriteString(fmt.Sprintf("                   Y方向 =%s\n", frame.ResultFileName["Y"]))
+		otp.WriteString(fmt.Sprintf("仮定断面                 =%s\n", frame.LstFileName))
+		otp.WriteString("\n単位系 tf(kN),tfm(kNm)\n")
+		otp.WriteString("\nAs:鉄骨 Ar:主筋 Ac:コンクリート Ap:ＰＣストランド\n")
+		otp.WriteString("N:軸力 Q:せん断力 Mt:ねじりモーメント M:曲げモーメント\n")
+		otp.WriteString("添字 i:始端 j:終端 c:中央\n")
+		otp.WriteString("a:許容 u:終局\n")
 		for _, el := range els {
 			if el == nil {
 				continue
 			}
 			el.Condition = cond.Snapshot()
-			t, err := el.OutputRateInformation("L", "X", "X", "Y", "Y", nil, angle)
+			al, _, err := el.GetSectionRate()
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			t, err := el.OutputRateInformation("L", "X", "X", "Y", "Y", alpha, angle)
 			if err != nil {
 				fmt.Println(err)
 				continue
 			}
 			otp.WriteString(t)
-			otp.WriteString(strings.Repeat("-", 202))
 			rat.WriteString(el.OutputMaxRate())
+			switch el.Etype {
+			case COLUMN, GIRDER:
+				if mels, ok := maxrateelem[al.Num()]; ok {
+					for ind, pos := range []int{0, 1, 3, 4} {
+						if el.MaxRate[pos] > mels[ind].MaxRate[pos] {
+							maxrateelem[al.Num()][ind] = el
+						}
+					}
+				} else {
+					maxrateelem[al.Num()] = []*Elem{el, el, el, el}
+				}
+			case BRACE, WBRACE, SBRACE:
+				if mels, ok := maxrateelem[al.Num()]; ok {
+					for ind, pos := range []int{0, 1} {
+						if el.MaxRate[pos] > mels[ind].MaxRate[pos] {
+							maxrateelem[al.Num()][ind] = el
+						}
+					}
+				} else {
+					maxrateelem[al.Num()] = []*Elem{el, el}
+				}
+			}
 		}
+		otp.WriteString("==========================================================================================================================================================================================================\n各断面種別の許容,終局曲げ安全率の最大値\n\n")
+		keys := make([]int, len(maxrateelem))
+		i := 0
+		for k := range maxrateelem {
+			keys[i] = k
+			i++
+		}
+		sort.Ints(keys)
+		maxql := 0.0
+		maxqs := 0.0
+		maxml := 0.0
+		maxms := 0.0
+		for _, k := range keys {
+			otp.WriteString(fmt.Sprintf("断面記号: %d %s   As=   0.00[cm2] Ar=   0.00[cm2] Ac=    0.00[cm2] MAX:", k, frame.Sects[k].Allow.TypeString()))
+			els := maxrateelem[k]
+			switch els[0].Etype {
+			case COLUMN, GIRDER:
+				otp.WriteString(fmt.Sprintf("Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", els[0].MaxRate[0], els[1].MaxRate[1], els[2].MaxRate[3], els[3].MaxRate[4]))
+				if els[0].MaxRate[0] > maxql {
+					maxql = els[0].MaxRate[0]
+				}
+				if els[1].MaxRate[1] > maxqs {
+					maxqs = els[1].MaxRate[1]
+				}
+				if els[2].MaxRate[3] > maxml {
+					maxml = els[2].MaxRate[3]
+				}
+				if els[3].MaxRate[4] > maxms {
+					maxms = els[3].MaxRate[4]
+				}
+			case BRACE, WBRACE, SBRACE:
+				otp.WriteString(fmt.Sprintf("Q/QaL=%.5f Q/QaS=%.5f\n", els[0].MaxRate[0], els[1].MaxRate[1]))
+				if els[0].MaxRate[0] > maxql {
+					maxql = els[0].MaxRate[0]
+				}
+				if els[1].MaxRate[1] > maxqs {
+					maxqs = els[1].MaxRate[1]
+				}
+			}
+		}
+		otp.WriteString(fmt.Sprintf("\n安全率の最大値\n Q/QaL=%7.5f Q/QaS=%7.5f\n M/MaL=%7.5f M/MaS=%7.5f\n", maxql, maxqs, maxml, maxms))
+		otp.WriteString("==========================================================================================================================================================================================================\n各断面種別の入力情報の確認\n\n")
+		otp.WriteString("                              A[cm2]      Ix[cm4]      Iy[cm4]       J[cm4]\n")
+		otp.WriteString("                              t[cm]\n")
+		otp.WriteString(frame.CheckLst(keys))
 		w, err := os.Create(Ce(otpfn, ".tst2"))
 		defer w.Close()
 		if err != nil {
