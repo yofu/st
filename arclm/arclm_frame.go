@@ -828,6 +828,13 @@ func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCond
 		if lap >= cond.nlap-1 && total >= cond.max {
 			for nans, ans := range answers {
 				f := frame.SaveState()
+				if nans >= 1 { // subtract CMQ for extra load
+					for _, el := range frame.Elems {
+						for i := 0; i < 12; i++ {
+							el.Stress[i] -= el.Cmq[i]
+						}
+					}
+				}
 				vec := frame.FillConf(ans)
 				_, err := frame.UpdateStress(vec)
 				if err != nil {
