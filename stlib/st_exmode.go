@@ -5396,6 +5396,157 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		return Usage("DEPRECATED: use :analysis -nlgeom -pp=imcomp {-sects=val} {-comp=val} {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
 	case "arclm203":
 		return Usage("DEPRECATED: use :analysis -nlgeom -pp=floor {-z=val} {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
+	case "arclm101":
+		if usage {
+			return Usage(":arclm101 {-period=name} {-eps=val} {-step=nlap;delta;start;max} filename")
+		}
+		cond := arclm.NewAnalysisCondition()
+		if e, ok := argdict["EPS"]; ok {
+			if e != "" {
+				tmp, err := strconv.ParseFloat(e, 64)
+				if err == nil {
+					cond.SetEps(tmp)
+				}
+			}
+		}
+		var otp string
+		var m bytes.Buffer
+		if fn == "" {
+			otp = Ce(frame.Path, ".otp")
+		} else {
+			otp = fn
+		}
+		if o, ok := argdict["OTP"]; ok {
+			otp = o
+		}
+		cond.SetOutput([]string{otp})
+		eps := 1E-3
+		if s, ok := argdict["EPS"]; ok {
+			tmp, err := strconv.ParseFloat(s, 64)
+			if err == nil {
+				eps = tmp
+			}
+		}
+		per := "L"
+		if p, ok := argdict["PERIOD"]; ok {
+			if p != "" {
+				per = strings.ToUpper(p)
+			}
+		}
+		pers := []string{per}
+		if s, ok := argdict["STEP"]; ok { // NLAP;DELTA;START;MAX
+			ns := strings.Count(s, ";")
+			if ns < 3 {
+				s += strings.Repeat(";", 3-ns)
+			}
+			lis := strings.Split(s, ";")
+			val, err := strconv.ParseInt(lis[0], 10, 64)
+			if err == nil {
+				cond.SetNlap(int(val))
+			}
+			tmp, err := strconv.ParseFloat(lis[1], 64)
+			if err == nil {
+				cond.SetDelta(tmp)
+			}
+			tmp, err = strconv.ParseFloat(lis[2], 64)
+			if err == nil {
+				cond.SetStart(tmp)
+			}
+			tmp, err = strconv.ParseFloat(lis[3], 64)
+			if err == nil {
+				cond.SetMax(tmp)
+			}
+		}
+		if _, ok := argdict["NOINIT"]; ok {
+			cond.SetInit(false)
+		}
+		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
+		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
+		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
+		af := frame.Arclms[per]
+		if af == nil {
+			return fmt.Errorf(":arclm101: frame isn't extracted to period %s", per)
+		}
+		af.Output = stw.HistoryWriter()
+		if af.Running() {
+			return fmt.Errorf("analysis is running")
+		}
+		m.WriteString(fmt.Sprintf("PERIOD      : %s\n", per))
+		m.WriteString(cond.String())
+		wait := false
+		var wch chan int
+		if _, ok := argdict["WAIT"]; ok {
+			wait = true
+			wch = make(chan int)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			err := af.Arclm101(cancel, cond)
+			af.Endch <- err
+		}()
+		nlap := cond.Nlap()
+		stw.CurrentLap("Calculating...", 0, nlap)
+		pivot := make(chan int)
+		end := make(chan int)
+		nodes := make([]*Node, len(frame.Nodes))
+		i := 0
+		for _, n := range frame.Nodes {
+			nodes[i] = n
+			i++
+		}
+		sort.Sort(NodeByNum{nodes})
+		if stw.Pivot() {
+			go stw.DrawPivot(nodes, pivot, end)
+		} else {
+			stw.Redraw()
+		}
+		pind := 0
+		go func() {
+			retval := 0
+		read101:
+			for {
+				select {
+				case <-ctx.Done():
+					retval = 1
+				case <-af.Pivot:
+					if stw.Pivot() {
+						pivot <- 1
+					}
+				case lap := <-af.Lapch:
+					frame.ReadArclmData(af, pers[pind])
+					pind++
+					if pind == len(pers) {
+						pind = 0
+					}
+					af.Lapch <- retval
+					stw.CurrentLap("Calculating...", lap, nlap)
+					stw.Redraw()
+				case err := <-af.Endch:
+					if stw.Pivot() {
+						end <- 1
+					}
+					if err != nil {
+						stw.History(err.Error())
+					} else {
+						stw.CurrentLap("Completed", nlap, nlap)
+					}
+					otps := cond.Output()
+					if len(otps) > pind {
+						frame.ResultFileName[pers[pind]] = otps[pind]
+					}
+					SetPeriod(stw, per)
+					stw.Redraw()
+					if wait {
+						wch <- 1
+					}
+					break read101
+				}
+			}
+		}()
+		if wait {
+			<-wch
+		}
+		return ArclmStart(m.String())
 	case "arclm301":
 		if usage {
 			return Usage(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")

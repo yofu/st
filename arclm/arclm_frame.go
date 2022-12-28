@@ -499,7 +499,16 @@ func (frame *Frame) UpdateStressEnergy(vec []float64) ([][]float64, []float64, e
 // TODO: implement
 func (frame *Frame) UpdateStressPlastic(vec []float64) ([][]float64, error) {
 	rtn := make([][]float64, len(frame.Elems))
+	fc := make([]float64, 6)
+	fu := make([]float64, 6)
 	for enum, el := range frame.Elems {
+		estiff, err := el.StiffMatrix() // TODO: check
+		lambda := make([]float64, 2) // TODO: check
+		dup := make([][]float64, 2)
+		for j := 0; j < 6; j++ {
+			dup[j] = make([]float64, 6)
+		}
+		fe, dfdpe, qe, ae, _ := el.Coefficients(estiff)
 		gdisp := make([]float64, 12)
 		for i := 0; i < 2; i++ {
 			for j := 0; j < 6; j++ {
@@ -509,6 +518,56 @@ func (frame *Frame) UpdateStressPlastic(vec []float64) ([][]float64, error) {
 		df, err := el.ElemStress(gdisp)
 		if err != nil {
 			return nil, err
+		}
+		f, _, _, _, _ := el.Coefficients(estiff)
+		for j := 0; j < 6; j++ {
+			fc[j] = 0.5 * (el.Sect.Yield[2*j] + el.Sect.Yield[2*j+1])
+			fu[j] = 0.5 * (el.Sect.Yield[2*j] - el.Sect.Yield[2*j+1])
+		}
+		switch {
+		case ae[0][0] != 0.0 && ae[1][1] == 0.0: // I=PLASTIC J=ELASTIC
+			for i := 0; i < 12; i++ {
+				if el.Bonds[i].Num == 1 || el.Bonds[i].Num == -2 || el.Bonds[i].Num == -3 {
+					continue
+				}
+				lambda[0] += 1.0 / ae[0][0] * qe[i][0] * gdisp[i] // TODO: check
+			}
+			for j := 0; j < 6; j++ {
+				dup[0][j] = lambda[0] * dfdpe[0][j]
+			}
+		case ae[0][0] == 0.0 && ae[1][1] != 0.0: // I=ELASTIC J=PLASTIC
+			for i := 0; i < 12; i++ {
+				if el.Bonds[i].Num == 1 || el.Bonds[i].Num == -2 || el.Bonds[i].Num == -3 {
+					continue
+				}
+				lambda[1] += 1.0 / ae[1][1] * qe[i][1] * gdisp[i] // TODO: check
+			}
+			for j := 0; j < 6; j++ {
+				dup[1][j] = lambda[1] * dfdpe[1][j]
+			}
+		case ae[0][0] != 0.0 && ae[1][1] != 0.0:
+			for i := 0; i < 12; i++ {
+				if el.Bonds[i].Num == 1 || el.Bonds[i].Num == -2 || el.Bonds[i].Num == -3 {
+					continue
+				}
+				det := ae[0][0]*ae[1][1] - ae[0][1]*ae[1][0]
+				if det == 0.0 {
+					return nil, errors.New(fmt.Sprintf("ELEM %d: matrix singular", el.Num))
+				} else {
+					lambda[0] += 1.0 / det * (ae[1][1]*qe[i][0]*gdisp[i] - ae[0][1]*qe[i][1]*gdisp[i])
+					lambda[1] += 1.0 / det * (-ae[1][0]*qe[i][0]*gdisp[i] + ae[0][0]*qe[i][1]*gdisp[i])
+				}
+			}
+			for j := 0; j < 6; j++ {
+				dup[0][j] = lambda[0] * dfdpe[0][j]
+				dup[1][j] = lambda[1] * dfdpe[1][j]
+			}
+		case ae[0][0] == 0.0 && ae[1][1] == 0.0: // I=ELASTIC J=ELASTIC
+			if ae[0][0] == 0.0 && fe[0]>=f[0] {
+				lambda[0] = -1.0
+			} else if ae[1][1] == 0.0 && fe[1]>=f[1] {
+				lambda[1] = -1.0
+			}
 		}
 		rtn[enum] = df
 	}
@@ -888,7 +947,12 @@ func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCond
 }
 
 // TODO: implement && merge to StaticAnalysis
-func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) error { // TODO: speed up
+// func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) error { // TODO: speed up
+func (frame *Frame) Arclm101(cancel context.CancelFunc, cond *AnalysisCondition) error {
+	init := cond.init
+	otp := cond.otp[0]
+	nlap := cond.nlap
+	dsafety := cond.delta
 	if init {
 		frame.Initialise()
 	}
