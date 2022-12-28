@@ -886,6 +886,9 @@ func (sect *Sect) ParseFig(frame *Frame, figmap map[string][]string) error {
 		case "FNAME":
 			f.Name = data[0]
 		case "SHAPE":
+			if _, ok := figmap["AREA"]; ok { // TODO:
+				continue
+			}
 			shape, _, err := ParseShape(data)
 			if err != nil {
 				return err
@@ -4867,7 +4870,14 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	}
 	sort.Sort(NodeByNum{nodes})
 	amount := make(map[int]float64)
+	elems := make([]*Elem, len(frame.Elems))
+	enum := 0
 	for _, el := range frame.Elems {
+		elems[enum] = el
+		enum++
+	}
+	sort.Sort(ElemByNum{elems})
+	for _, el := range elems {
 		err := el.Distribute()
 		if err != nil {
 			return err
