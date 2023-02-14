@@ -107,7 +107,7 @@ func (stw *Window) QueueRedrawAll() {
 }
 
 func (stw *Window) Run(w *app.Window) error {
-	st.OpenFile(stw, "C:\\Users\\yofu8\\st\\karuhouse\\table01\\table01_03.inp", true)
+	st.OpenFile(stw, "C:\\Users\\yofu8\\st\\yamawa\\yamawa02\\yamawa02.inp", true)
 	var ops op.Ops
 	for {
 		select {
@@ -119,7 +119,6 @@ func (stw *Window) Run(w *app.Window) error {
 			// detect the type of the event.
 			switch e := e.(type) {
 			default:
-				fmt.Println(e)
 			// this is sent when the application should re-render.
 			case system.FrameEvent:
 				// gtx is used to pass around rendering and event information.
@@ -217,7 +216,6 @@ func (stw *Window) Layout(gtx layout.Context) layout.Dimensions {
 				dy := end.Y - start.Y
 				switch press {
 				case pointer.ButtonTertiary:
-					fmt.Println(e.Modifiers)
 					if e.Modifiers&key.ModShift != 0 {
 						stw.frame.View.Center[0] += float64(dx) * stw.CanvasMoveSpeedX()
 						stw.frame.View.Center[1] += float64(dy) * stw.CanvasMoveSpeedY()
@@ -229,7 +227,6 @@ func (stw *Window) Layout(gtx layout.Context) layout.Dimensions {
 				}
 			case pointer.Scroll:
 				end = e.Position
-				fmt.Print(e.Scroll)
 				if e.Scroll.Y > 0 {
 					stw.Zoom(-1.0, float64(end.X), float64(end.Y))
 				} else {
@@ -243,11 +240,12 @@ func (stw *Window) Layout(gtx layout.Context) layout.Dimensions {
 	area := clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops)
 	key.InputOp{
 		Tag: stw,
-		Keys: key.NameEscape,
+		Keys: key.Set("Shift-A"),
 	}.Add(gtx.Ops)
 	pointer.InputOp{
 		Tag: stw,
 		Types: pointer.Press | pointer.Release | pointer.Drag | pointer.Scroll,
+		ScrollBounds: image.Rect(-100,-100,100,100),
 	}.Add(gtx.Ops)
 	area.Pop()
 
@@ -265,7 +263,7 @@ func (stw *Window) Layout(gtx layout.Context) layout.Dimensions {
 					st.DrawFrameNode(stw, stw.frame, stw.frame.Show.ColorMode, false)
 				}
 				return layout.Dimensions{
-					Size: image.Point{X: 1000, Y: 1000},
+					Size: image.Point{X: 2000, Y: 2000},
 				}
 			}),
 		)
@@ -579,7 +577,7 @@ func (stw *Window) SetLabel(k, v string) {
 }
 
 func (stw *Window) GetCanvasSize() (int, int) {
-	return 1000, 1000
+	return 2000, 2000
 }
 
 func (stw *Window) Changed(c bool) {
