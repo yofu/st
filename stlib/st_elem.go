@@ -1286,7 +1286,7 @@ func (elem *Elem) PlateDivision(add bool) ([]*Elem, float64, error) {
 }
 
 func (elem *Elem) IsBraced() bool {
-	if elem.Enods != 4 || elem.Sect.Figs[0].Prop.ES == 0.0 {
+	if elem.Enods != 4 || elem.Sect.Figs[0].Prop.ES() == 0.0 {
 		return false
 	} else {
 		return true
@@ -1297,49 +1297,52 @@ func (elem *Elem) RectToBrace(nbrace int, rfact float64) []*Elem {
 	if !elem.IsBraced() {
 		return nil
 	}
-	if thick, ok := elem.Sect.Figs[0].Value["THICK"]; ok {
-		poi := elem.Sect.Figs[0].Prop.Poi
-		l, h := elem.PlateSize()
-		// TODO: check wrate calculation
-		wrate1 := elem.Wrect[0] / l
-		wrate2 := 1.25 * math.Sqrt((elem.Wrect[0]*elem.Wrect[1])/(l*h))
-		var wrate float64
-		if wrate1 > wrate2 {
-			wrate = wrate1
-		} else {
-			wrate = wrate2
-		}
-		Ae := (1.0 - wrate) * rfact / 1.2 * math.Pow(l*l+h*h, 1.5) * thick / (4.0 * (1.0 + poi) * l * h)
-		Ae *= 2.0 / float64(nbrace)
-		f := NewFig()
-		f.Prop = elem.Sect.Figs[0].Prop
-		f.Value["AREA"] = Ae
-		var sec *Sect
-		// TODO: Use different brace section depending on the original plate section
-		sec = elem.Frame.SearchBraceSect(f, elem.Etype-2)
-		if sec == nil {
-			elem.Frame.Maxsnum++
-			sec = elem.Frame.AddSect(elem.Frame.Maxsnum)
-			sec.Figs = []*Fig{f}
-			sec.Type = elem.Etype - 2
-			sec.Color = elem.Sect.Color
-			sec.Original = elem.Sect.Num
-			for i := 0; i < 12; i++ {
-				if i%2 == 0 {
-					sec.Yield[i] = 100.0
-				} else {
-					sec.Yield[i] = -100.0
-				}
-			}
-		}
-		rtn := make([]*Elem, nbrace)
-		for i := 0; i < 2; i++ {
-			rtn[i] = NewLineElem([]*Node{elem.Enod[i], elem.Enod[i+2]}, sec, elem.Etype-2)
-		}
-		return rtn
+	var thick float64
+	if t, ok := elem.Sect.Figs[0].Value["THICK"]; ok {
+		thick = t
+	} else if k, ok := elem.Sect.Figs[0].Value["KFACT"]; ok {
+		thick = k * 0.2*150/GOHAN.G()/1e4
 	} else {
 		return nil
 	}
+	poi := elem.Sect.Figs[0].Prop.Poi()
+	l, h := elem.PlateSize()
+	// TODO: check wrate calculation
+	wrate1 := elem.Wrect[0] / l
+	wrate2 := 1.25 * math.Sqrt((elem.Wrect[0]*elem.Wrect[1])/(l*h))
+	var wrate float64
+	if wrate1 > wrate2 {
+		wrate = wrate1
+	} else {
+		wrate = wrate2
+	}
+	Ae := (1.0 - wrate) * rfact / 1.2 * math.Pow(l*l+h*h, 1.5) * thick / (4.0 * (1.0 + poi) * l * h)
+	Ae *= 2.0 / float64(nbrace)
+	f := NewFig()
+	f.Prop = elem.Sect.Figs[0].Prop
+	f.Value["AREA"] = Ae
+	var sec *Sect
+	sec = elem.Frame.SearchBraceSect(f, elem.Etype-2, elem.Sect.Num)
+	if sec == nil {
+		elem.Frame.Maxsnum++
+		sec = elem.Frame.AddSect(elem.Frame.Maxsnum)
+		sec.Figs = []*Fig{f}
+		sec.Type = elem.Etype - 2
+		sec.Color = elem.Sect.Color
+		sec.Original = elem.Sect.Num
+		for i := 0; i < 12; i++ {
+			if i%2 == 0 {
+				sec.Yield[i] = 100.0
+			} else {
+				sec.Yield[i] = -100.0
+			}
+		}
+	}
+	rtn := make([]*Elem, nbrace)
+	for i := 0; i < 2; i++ {
+		rtn[i] = NewLineElem([]*Node{elem.Enod[i], elem.Enod[i+2]}, sec, elem.Etype-2)
+	}
+	return rtn
 }
 
 func (elem *Elem) Adopt(child *Elem) int {
@@ -1395,7 +1398,17 @@ func (elem *Elem) GetSectionRate() (SectionRate, bool, error) {
 		al = oa
 		original = true
 	} else {
-		return nil, false, fmt.Errorf("cannot find SectionRate")
+		if len(elem.Sect.Figs) == 0 || elem.Sect.Figs[0] == nil {
+			return nil, false, fmt.Errorf("cannot find SectionRate")
+		}
+		if a := elem.Sect.Figs[0].GetSectionRate(elem.Sect.Num, elem.Etype); a != nil {
+			al = a
+			sign, _ := elem.Sect.SplitName()
+			al.SetName(sign)
+			elem.Sect.Allow = a
+		} else {
+			return nil, false, fmt.Errorf("cannot find SectionRate")
+		}
 	}
 	return al, original, nil
 }

@@ -951,6 +951,28 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if err != nil {
 			return err
 		}
+	case "writelst":
+		if usage {
+			return Usage("writelst filename")
+		}
+		if fn == "" {
+			fn = Ce(frame.Path, ".lst")
+		}
+		snum := 0
+		sects := make([]*Sect, len(frame.Sects))
+		for _, sec := range frame.Sects {
+			if sec.Num < 100 || sec.Num > 900 {
+				continue
+			}
+			sects[snum] = sec
+			snum++
+		}
+		sects = sects[:snum]
+		sort.Sort(SectByNum{sects})
+		err := WriteLst(fn, sects)
+		if err != nil {
+			return err
+		}
 	case "zoubundisp":
 		if usage {
 			return Usage(":zoubundisp period direction")
@@ -3485,7 +3507,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				continue
 			}
 			if a, ok := el.Sect.Figs[0].Value["AREA"]; ok {
-				val := el.Sect.Figs[0].Prop.EL * a * alpha * tmp
+				val := el.Sect.Figs[0].Prop.EL() * a * alpha * tmp
 				el.Cmq[0] += val
 				el.Cmq[6] -= val
 			}

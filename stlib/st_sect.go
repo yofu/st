@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/yofu/st/arclm"
 )
 
 var (
-	FIGKEYS = []string{"AREA", "IXX", "IYY", "VEN", "THICK", "SREIN", "XFACE", "YFACE"}
+	FIGKEYS = []string{"AREA", "IXX", "IYY", "VEN", "THICK", "SREIN", "XFACE", "YFACE", "KFACT"}
+	REINSKEYS = []string{"TREIN", "BREIN", "RREIN", "WREIN", "LREIN", "CREIN", "HOOP", "KABURI"}
 )
 
 type Sect struct {
@@ -35,6 +37,7 @@ type Fig struct {
 	Prop  *Prop
 	Shape Shape
 	Value map[string]float64
+	Reins map[string][]string
 }
 
 type Sects []*Sect
@@ -95,6 +98,7 @@ func NewFig() *Fig {
 	f.Num = 1
 	f.Name = ""
 	f.Value = make(map[string]float64)
+	f.Reins = make(map[string][]string)
 	return f
 }
 
@@ -107,22 +111,128 @@ func (fig *Fig) Snapshot(frame *Frame) *Fig {
 	for k, v := range fig.Value {
 		f.Value[k] = v
 	}
+	for k, v := range fig.Reins {
+		f.Reins[k] = v
+	}
 	return f
 }
 
 func (fig *Fig) SetShapeProperty(s Shape) {
 	fig.Shape = s
-	fig.Value["AREA"] = s.A() * 0.0001
-	fig.Value["IXX"] = s.Ix() * 1e-8
-	fig.Value["IYY"] = s.Iy() * 1e-8
-	fig.Value["VEN"] = s.J() * 1e-8
+	fac := 1.0
+	if fig.Prop.Material != nil {
+		fac = fig.Prop.EFactor
+		if fac == 0.0 {
+			fac = 1.0
+		}
+	}
+	fig.Value["AREA"] = s.A() * 0.0001 / fac
+	fig.Value["IXX"] = s.Ix() * 1e-8 / fac
+	fig.Value["IYY"] = s.Iy() * 1e-8 / fac
+	fig.Value["VEN"] = s.J() * 1e-8 / fac
+}
+
+func (fig *Fig) GetSectionRate(num, etype int) SectionRate {
+	if fig.Prop.Material == nil {
+		return nil
+	}
+	if etype <=BRACE && fig.Shape == nil {
+		return nil
+	}
+	switch v := fig.Prop.Material.(type) {
+	case Steel:
+		switch etype {
+		case COLUMN:
+			return NewSColumn(num, fig.Shape, v)
+		case GIRDER:
+			return NewSGirder(num, fig.Shape, v)
+		case BRACE:
+			return NewSBrace(num, fig.Shape, v)
+		default:
+			return nil
+		}
+	case Concrete:
+		switch etype {
+		case COLUMN:
+			rc := NewRCColumn(num)
+			pl := fig.Shape.(PLATE)
+			rc.CShape = NewCRect([]float64{-0.5*pl.B, -0.5*pl.H, 0.5*pl.B, 0.5*pl.H})
+			rc.Concrete = v
+			err := rc.AutoLayoutReins(fig.Reins)
+			if err != nil {
+				return nil
+			}
+			return rc
+		case GIRDER:
+			rc := NewRCGirder(num)
+			pl := fig.Shape.(PLATE)
+			rc.CShape = NewCRect([]float64{-0.5*pl.B, -0.5*pl.H, 0.5*pl.B, 0.5*pl.H})
+			rc.Concrete = v
+			err := rc.AutoLayoutReins(fig.Reins)
+			if err != nil {
+				return nil
+			}
+			return rc
+		case WALL:
+			rc := NewRCWall(num)
+			rc.Concrete = v
+			if val, ok := fig.Value["THICK"]; ok {
+				rc.Thick = val*100 // m -> cm
+			}
+			if val, ok := fig.Reins["WREIN"]; ok {
+				rc.SetWrein(val)
+			}
+			return rc
+		case SLAB:
+			rc := NewRCSlab(num)
+			rc.Concrete = v
+			if val, ok := fig.Value["THICK"]; ok {
+				rc.Thick = val*100 // m -> cm
+			}
+			if val, ok := fig.Reins["WREIN"]; ok {
+				rc.SetWrein(val)
+			}
+			return rc
+		default:
+			return nil
+		}
+	case Wood:
+		switch etype {
+		case COLUMN:
+			return NewWoodColumn(num, fig.Shape, v)
+		case GIRDER:
+			return NewWoodGirder(num, fig.Shape, v)
+		case WALL:
+			ww := NewWoodWall(num)
+			ww.Wood = v
+			if val, ok := fig.Value["KFACT"]; ok {
+				ww.Kfact = val
+			} else if val, ok := fig.Value["THICK"]; ok {
+				ww.Thick = val*100*0.250/0.225 // m -> cm
+			}
+			return ww
+		case SLAB:
+			ww := NewWoodSlab(num)
+			ww.Wood = v
+			if val, ok := fig.Value["KFACT"]; ok {
+				ww.Kfact = val
+			} else if val, ok := fig.Value["THICK"]; ok {
+				ww.Thick = val*100*0.250/0.225 // m -> cm
+			}
+			return ww
+		default:
+			return nil
+		}
+	default:
+		return nil
+	}
 }
 
 func (fig *Fig) Weight() float64 {
 	if aval, ok := fig.Value["AREA"]; ok {
-		return aval * fig.Prop.Hiju
+		return aval * fig.Prop.Hiju()
 	} else if tval, ok := fig.Value["THICK"]; ok {
-		return tval * fig.Prop.Hiju
+		return tval * fig.Prop.Hiju()
 	} else {
 		return 0.0
 	}
@@ -138,6 +248,15 @@ func (sect *Sect) Show() {
 
 func (sect *Sect) IsHidden(show *Show) bool {
 	return !show.Sect[sect.Num]
+}
+
+func (sect *Sect) SplitName() (string, string) {
+	sn := strings.Split(sect.Name, ":")
+	if len(sn) < 2 {
+		return "", sect.Name
+	} else {
+		return sn[0], sn[1]
+	}
 }
 
 func (sect *Sect) InpString() string {
@@ -184,6 +303,11 @@ func (fig *Fig) InpString() string {
 	if fig.Shape != nil {
 		rtn.WriteString(fmt.Sprintf("                 SHAPE %s\n", fig.Shape.String()))
 	}
+	for _, k := range REINSKEYS {
+		if val, ok := fig.Reins[k]; ok {
+			rtn.WriteString(fmt.Sprintf("                 %s %s\n", k, strings.Join(val, " ")))
+		}
+	}
 	for _, k := range FIGKEYS {
 		if val, ok := fig.Value[k]; ok {
 			switch k {
@@ -229,6 +353,8 @@ func (fig *Fig) InpString() string {
 						rtn.WriteString(" 1\n")
 					}
 				}
+			case "KFACT":
+				rtn.WriteString(fmt.Sprintf("                 KFACT %.1f\n", val))
 			case "SREIN":
 				rtn.WriteString(fmt.Sprintf("                 SREIN %8.6f\n", val))
 			case "XFACE", "YFACE":
@@ -253,7 +379,13 @@ func (sect *Sect) HasBrace() bool {
 		return false
 	}
 	if _, ok := sect.Figs[0].Value["THICK"]; ok {
-		if sect.Figs[0].Prop.ES != 0.0 {
+		if sect.Figs[0].Prop.ES() != 0.0 {
+			return true
+		} else {
+			return false
+		}
+	} else if val, ok := sect.Figs[0].Value["KFACT"]; ok {
+		if val > 0.0 {
 			return true
 		} else {
 			return false
@@ -280,6 +412,8 @@ func (sect *Sect) HasThick(ind int) bool {
 	}
 	if _, ok := sect.Figs[ind].Value["THICK"]; ok {
 		return true
+	} else if _, ok := sect.Figs[ind].Value["KFACT"]; ok {
+		return true
 	} else {
 		return false
 	}
@@ -289,7 +423,7 @@ func (sect *Sect) Hiju(ind int) (float64, error) {
 	if len(sect.Figs) < ind+1 {
 		return 0.0, errors.New(fmt.Sprintf("Hiju: SECT %d has no Fig %d", sect.Num, ind))
 	}
-	return sect.Figs[ind].Prop.Hiju, nil
+	return sect.Figs[ind].Prop.Hiju(), nil
 }
 
 func (sect *Sect) Area(ind int) (float64, error) {
@@ -340,6 +474,16 @@ func (sect *Sect) Thick(ind int) (float64, error) {
 		return val, nil
 	}
 	return 0.0, errors.New(fmt.Sprintf("Thick: SECT %d Fig %d doesn't have THICK", ind, sect.Num))
+}
+
+func (sect *Sect) Kfact(ind int) (float64, error) {
+	if len(sect.Figs) < ind+1 {
+		return 0.0, errors.New(fmt.Sprintf("Kfact: SECT %d has no Fig %d", sect.Num, ind))
+	}
+	if val, ok := sect.Figs[ind].Value["KFACT"]; ok {
+		return val, nil
+	}
+	return 0.0, errors.New(fmt.Sprintf("Kfact: SECT %d Fig %d doesn't have KFACT", ind, sect.Num))
 }
 
 func (sect *Sect) Srein(ind int) (float64, error) {

@@ -688,6 +688,13 @@ func DrawSection(stw Drawer, elem *Elem, show *Show) {
 				vertices := sh.Vertices()
 				DrawClosedLine(stw, elem, position, strong, weak, show.DrawSize, vertices)
 			}
+		case *SGirder:
+			sh := al.(*SGirder).Shape
+			switch sh.(type) {
+			case HKYOU, HWEAK, CROSS, RPIPE, CPIPE, PLATE, TKYOU, CKYOU, CWEAK, ANGLE:
+				vertices := sh.Vertices()
+				DrawClosedLine(stw, elem, position, strong, weak, show.DrawSize, vertices)
+			}
 		case *RCColumn:
 			rc := al.(*RCColumn)
 			vertices := rc.CShape.Vertices()
@@ -707,7 +714,14 @@ func DrawSection(stw Drawer, elem *Elem, show *Show) {
 		case *WoodColumn:
 			sh := al.(*WoodColumn).Shape
 			switch sh.(type) {
-			case PLATE:
+			case PLATE, CPIPE:
+				vertices := sh.Vertices()
+				DrawClosedLine(stw, elem, position, strong, weak, show.DrawSize, vertices)
+			}
+		case *WoodGirder:
+			sh := al.(*WoodGirder).Shape
+			switch sh.(type) {
+			case PLATE, CPIPE:
 				vertices := sh.Vertices()
 				DrawClosedLine(stw, elem, position, strong, weak, show.DrawSize, vertices)
 			}

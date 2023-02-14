@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -15,31 +16,107 @@ const (
 	NCS        = 15.0
 )
 
+var (
+	reinsarea = map[string]float64{
+		"D10":0.7133,
+		"D13":1.267,
+		"D16":1.986,
+		"D19":2.865,
+		"D22":3.871,
+		"D25":5.067,
+		"D29":6.424,
+		"D32":7.942,
+		"D35":9.566,
+		"D38":11.40,
+		"D41":13.40,
+		"D51":20.27,
+	}
+	reinswidth = map[string]float64{
+		"D10":1.1,
+		"D13":1.4,
+		"D16":1.8,
+		"D19":2.1,
+		"D22":2.5,
+		"D25":2.8,
+		"D29":3.3,
+		"D32":3.6,
+		"D35":4.0,
+		"D38":4.3,
+		"D41":4.7,
+		"D51":5.8,
+	}
+)
+
 type Breadther interface {
 	Breadth(bool) float64
 }
 
 // Material
 type Material interface {
+	Name() string
+	Hiju() float64
+	EL() float64
+	ES() float64
+	Poi() float64
 }
 
 type Steel struct {
-	Name string
+	name string
 	F    float64
 	Fu   float64
-	E    float64
-	Poi  float64
+	e    float64
+	poi  float64
+}
+
+func (st Steel) Name() string {
+	return st.name
+}
+
+func (st Steel) Hiju() float64 {
+	return 7.8
+}
+
+func (st Steel) EL() float64 {
+	return st.e
+}
+
+func (st Steel) ES() float64 {
+	return st.e
+}
+
+func (st Steel) Poi() float64 {
+	return st.poi
 }
 
 func (st Steel) Lambda() float64 {
-	return math.Pi * math.Sqrt(st.E/(0.6*st.F))
+	return math.Pi * math.Sqrt(st.e/(0.6*st.F))
 }
 
 type Concrete struct {
-	Name string
+	name string
 	fc   float64
-	E    float64
-	Poi  float64
+	e    float64
+	poi  float64
+}
+
+func (c Concrete) Name() string {
+	return c.name
+}
+
+func (c Concrete) Hiju() float64 {
+	return 2.4
+}
+
+func (c Concrete) EL() float64 {
+	return c.e
+}
+
+func (c Concrete) ES() float64 {
+	return c.e
+}
+
+func (c Concrete) Poi() float64 {
+	return c.poi
 }
 
 type SD struct {
@@ -54,10 +131,16 @@ type Reinforce struct {
 	Area     float64
 	Position []float64
 	Material SD
+	Caption  string
 }
 
 func NewReinforce(sd SD) Reinforce {
-	return Reinforce{0.0, []float64{0.0, 0.0}, sd}
+	return Reinforce{
+		Area: 0.0,
+		Position: []float64{0.0, 0.0},
+		Material: sd,
+		Caption: "",
+	}
 }
 func (rf Reinforce) Ft(cond *Condition) float64 {
 	switch cond.Period {
@@ -106,13 +189,38 @@ func (rf Reinforce) Vertices() [][]float64 {
 }
 
 type Wood struct {
-	Name string
+	name string
 	fc   float64
 	ft   float64
 	fb   float64
 	fs   float64
 	e    float64
 	poi  float64
+	hiju float64
+}
+
+func (w Wood) Name() string {
+	return w.name
+}
+
+func (w Wood) Hiju() float64 {
+	return w.hiju
+}
+
+func (w Wood) EL() float64 {
+	return w.e
+}
+
+func (w Wood) ES() float64 {
+	return w.e
+}
+
+func (w Wood) G() float64 {
+	return w.e/(2*(1+w.poi))
+}
+
+func (w Wood) Poi() float64 {
+	return w.poi
 }
 
 var (
@@ -134,32 +242,100 @@ var (
 	M40J = Steel{"M40J", 5.438, 8.157, 1100.0, 0.3}
 	T300 = Steel{"T300", 7.477, 11.216, 1100.0, 0.3}
 
-	FC18 = Concrete{"Fc18", 0.180, 210.0, 0.166666}
-	FC24 = Concrete{"Fc24", 0.240, 210.0, 0.166666}
-	FC27 = Concrete{"Fc27", 0.270, 210.0, 0.166666}
-	FC30 = Concrete{"Fc30", 0.300, 210.0, 0.166666}
-	FC36 = Concrete{"Fc36", 0.360, 210.0, 0.166666}
+	FC18 = Concrete{"FC18", 0.180, 210.0, 0.166666}
+	FC21 = Concrete{"FC21", 0.210, 210.0, 0.166666}
+	FC24 = Concrete{"FC24", 0.240, 210.0, 0.166666}
+	FC27 = Concrete{"FC27", 0.270, 210.0, 0.166666}
+	FC30 = Concrete{"FC30", 0.300, 210.0, 0.166666}
+	FC36 = Concrete{"FC36", 0.360, 210.0, 0.166666}
 
 	SD295 = SD{"SD295", 2.0, 3.0, 2100.0, 0.3}
 	SD345 = SD{"SD345", 2.2, 3.5, 2100.0, 0.3}
 	SD390 = SD{"SD390", 2.2, 3.9, 2100.0, 0.3}
 
-	S_E70     = Wood{"S-E70", 0.2386, 0.1774, 0.2997, 0.0183, 70.0, 6.5}
-	SUGI      = Wood{"SUGI", 0.1804, 0.1376, 0.2263, 0.0183, 70.0, 6.5}
+	S_E70     = Wood{"S-E70", 0.2386, 0.1774, 0.2997, 0.0183, 70.0, 6.5, 0.4}
+	SUGI      = Wood{"SUGI", 0.1804, 0.1376, 0.2263, 0.0183, 70.0, 6.5, 0.4}
 	E70SUGI   = S_E70
-	H_E70     = Wood{"H-E70", 0.1835, 0.1346, 0.2263, 0.0214, 70.0, 6.5}
+	H_E70     = Wood{"H-E70", 0.1835, 0.1346, 0.2263, 0.0214, 70.0, 6.5, 0.4}
 	E70HINOKI = H_E70
-	H_E90     = Wood{"H-E90", 0.2508, 0.1896, 0.3120, 0.0214, 90.0, 6.5}
+	H_E90     = Wood{"H-E90", 0.2508, 0.1896, 0.3120, 0.0214, 90.0, 6.5, 0.4}
 	E90HINOKI = H_E90
-	M_E90     = Wood{"M-E90", 0.1714, 0.1285, 0.2142, 0.0244, 90.0, 6.5}
-	M_E110    = Wood{"M-E110", 0.2508, 0.1896, 0.3120, 0.0244, 110.0, 6.5}
-	MATSU     = Wood{"MATSU", 0.2263, 0.1804, 0.2875, 0.0244, 100.0, 6.5}
-	E95_F270  = Wood{"E95-F270", 0.2221, 0.1927, 0.2753, 0.0367, 95.0, 6.5}
-	E95_F315  = Wood{"E95-F315", 0.2651, 0.2314, 0.3212, 0.0367, 95.0, 6.5}
-	E120_F330 = Wood{"E120-F330", 0.2569, 0.2263, 0.3303, 0.0367, 120.0, 6.5}
+	M_E90     = Wood{"M-E90", 0.1714, 0.1285, 0.2142, 0.0244, 90.0, 6.5, 0.4}
+	M_E110    = Wood{"M-E110", 0.2508, 0.1896, 0.3120, 0.0244, 110.0, 6.5, 0.4}
+	MATSU     = Wood{"MATSU", 0.2263, 0.1804, 0.2875, 0.0244, 100.0, 6.5, 0.4}
+	E95_F270  = Wood{"E95-F270", 0.2221, 0.1927, 0.2753, 0.0367, 95.0, 6.5, 0.5}
+	E95_F315  = Wood{"E95-F315", 0.2651, 0.2314, 0.3212, 0.0367, 95.0, 6.5, 0.5}
+	E120_F330 = Wood{"E120-F330", 0.2569, 0.2263, 0.3303, 0.0367, 120.0, 6.5, 0.5}
 
-	GOHAN = Wood{"GOHAN", 0.0, 0.0, 0.0, 0.012, 0.0, 0.0}
+	GOHAN = Wood{"GOHAN", 0.0, 0.0, 0.0, 0.012, 45.0, 4.625, 0.55}
 )
+
+func materialname(name string) (Material, error) {
+	switch name {
+	default:
+		return nil, fmt.Errorf("unknown material")
+	case "SN400":
+		return SN400, nil
+	case "SN490":
+		return SN490, nil
+	case "SN400T40":
+		return SN400T40, nil
+	case "SN490T40":
+		return SN490T40, nil
+	case "BCR295":
+		return BCR295, nil
+	case "BCR365":
+		return BCR365, nil
+	case "HT600":
+		return HT600, nil
+	case "HT700":
+		return HT700, nil
+	case "A6061T6":
+		return A6061T6,nil
+	case "A6063T5":
+		return A6063T5,nil
+	case "AlSi10Mg":
+		return AlSi10Mg, nil
+	case "M40J":
+		return M40J, nil
+	case "T300":
+		return T300, nil
+	case "FC18":
+		return FC18, nil
+	case "FC21":
+		return FC21, nil
+	case "FC24":
+		return FC24, nil
+	case "FC27":
+		return FC27, nil
+	case "FC30":
+		return FC30, nil
+	case "FC36":
+		return FC36, nil
+	case "S-E70", "E70SUGI":
+		return S_E70, nil
+	case "SUGI":
+		return SUGI, nil
+	case "H-E70", "E70HINOKI":
+		return H_E70, nil
+	case "H-E90", "E90HINOKI":
+		return H_E90, nil
+	case "M-E90":
+		return M_E90, nil
+	case "M-E110":
+		return M_E110, nil
+	case "MATSU":
+		return MATSU, nil
+	case "E95-F270":
+		return E95_F270, nil
+	case "E95-F315":
+		return E95_F315, nil
+	case "E120-F330":
+		return E120_F330, nil
+	case "GOHAN":
+		return GOHAN, nil
+	}
+}
 
 // Section
 type SectionRate interface {
@@ -364,8 +540,8 @@ func (sc *SColumn) SetValue(name string, vals []float64) {
 func (sc *SColumn) String() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("CODE %3d S %s %57s\n", sc.num, sc.Etype, fmt.Sprintf("\"%s\"", sc.name)))
-	line2 := fmt.Sprintf("         %%-29s %%s %%%ds\n", 35-len(sc.Steel.Name))
-	rtn.WriteString(fmt.Sprintf(line2, sc.Shape.String(), sc.Steel.Name, fmt.Sprintf("\"%s\"", sc.Shape.Description())))
+	line2 := fmt.Sprintf("         %%-29s %%s %%%ds\n", 35-len(sc.Steel.Name()))
+	rtn.WriteString(fmt.Sprintf(line2, sc.Shape.String(), sc.Steel.Name(), fmt.Sprintf("\"%s\"", sc.Shape.Description())))
 	if sc.XFace != nil {
 		rtn.WriteString(fmt.Sprintf("         XFACE %5.1f %5.1f %48s\n", sc.XFace[0], sc.XFace[1], fmt.Sprintf("\"FACE LENGTH Mx:HEAD= %.0f,TAIL= %.0f[cm]\"", sc.XFace[0], sc.XFace[1])))
 	} else {
@@ -573,7 +749,8 @@ func (sc *SColumn) Qa(cond *Condition) float64 {
 	}
 }
 func (sc *SColumn) Me(length, Cb float64) float64 {
-	g := sc.E / (2.0 * (1.0 + sc.Poi))
+	E := sc.EL()
+	g := E / (2.0 * (1.0 + sc.Poi()))
 	var I float64
 	Ix := sc.Ix()
 	Iy := sc.Iy()
@@ -582,7 +759,7 @@ func (sc *SColumn) Me(length, Cb float64) float64 {
 	} else {
 		I = Ix
 	}
-	return Cb * math.Sqrt(math.Pow(math.Pi, 4.0)*sc.E*I*sc.E*sc.Iw()/math.Pow(length, 4.0)+math.Pow(math.Pi, 2.0)*sc.E*I*g*sc.J()/math.Pow(length, 2.0)) * 0.01 * sc.multi // [tfm]
+	return Cb * math.Sqrt(math.Pow(math.Pi, 4.0)*E*I*E*sc.Iw()/math.Pow(length, 4.0)+math.Pow(math.Pi, 2.0)*E*I*g*sc.J()/math.Pow(length, 2.0)) * 0.01 * sc.multi // [tfm]
 }
 func (sc *SColumn) My(cond *Condition) float64 {
 	if cond.Strong {
@@ -1792,7 +1969,7 @@ func NewSAREA(lis []string) (SAREA, error) {
 	return sa, nil
 }
 func (sa SAREA) String() string {
-	return fmt.Sprintf("SAREA %5.1f", sa.Area)
+	return fmt.Sprintf("SAREA %5.3f", sa.Area)
 }
 func (sa SAREA) Description() string {
 	return fmt.Sprintf("%d[mm2]", int(sa.Area*100))
@@ -1977,8 +2154,8 @@ func (sw *SWall) Snapshot() SectionRate {
 func (sw *SWall) String() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("CODE %3d S WALL %57s\n", sw.num, fmt.Sprintf("\"%s\"", sw.name)))
-	line2 := fmt.Sprintf("         %%-29s %%s %%%ds\n", 35-len(sw.Steel.Name))
-	rtn.WriteString(fmt.Sprintf(line2, sw.Shape.String(), sw.Steel.Name, fmt.Sprintf("\"%s\"", sw.Shape.Description())))
+	line2 := fmt.Sprintf("         %%-29s %%s %%%ds\n", 35-len(sw.Steel.Name()))
+	rtn.WriteString(fmt.Sprintf(line2, sw.Shape.String(), sw.Steel.Name(), fmt.Sprintf("\"%s\"", sw.Shape.Description())))
 	return rtn.String()
 }
 func (sw *SWall) Name() string {
@@ -2111,6 +2288,7 @@ type RCColumn struct {
 	Concrete
 	CShape
 	num    int
+	Etype  string
 	name   string
 	Nreins int
 	Reins  []Reinforce
@@ -2138,6 +2316,7 @@ func (hp Hoop) Ftw(cond *Condition) float64 {
 func NewRCColumn(num int) *RCColumn {
 	rc := new(RCColumn)
 	rc.num = num
+	rc.Etype = "COLUMN"
 	rc.Nreins = 0
 	rc.Reins = make([]Reinforce, 0)
 	rc.XFace = make([]float64, 2)
@@ -2157,6 +2336,9 @@ func (rc *RCColumn) AddReins(lis []string) error {
 			return err
 		}
 		rf.Position[i] = val
+	}
+	if len(lis) >= 5 {
+		rf.Caption = lis[4]
 	}
 	rc.Nreins++
 	rc.Reins = append(rc.Reins, rf)
@@ -2190,6 +2372,8 @@ func (rc *RCColumn) SetConcrete(lis []string) error {
 	switch lis[5] {
 	case "FC18":
 		rc.Concrete = FC18
+	case "FC21":
+		rc.Concrete = FC21
 	case "FC24":
 		rc.Concrete = FC24
 	case "FC27":
@@ -2201,8 +2385,196 @@ func (rc *RCColumn) SetConcrete(lis []string) error {
 	}
 	return nil
 }
+var hoopstr = regexp.MustCompile("^([0-9]+)x([0-9]+)-(D[0-9]+)@([0-9]+)$")
+var reinstr = regexp.MustCompile("^([0-9,]+)-(D[0-9]+)$")
+func (rc *RCColumn) AutoLayoutReins(data map[string][]string) error {
+	b := rc.Breadth(true)
+	h := rc.Height(true)
+	kaburi := 5.0
+	if k, ok := data["KABURI"]; ok {
+		if len(k) < 1 {
+			return fmt.Errorf("KABURI format error")
+		}
+		val, err := strconv.ParseFloat(k[0], 64)
+		if err != nil {
+			return err
+		}
+		kaburi = val
+	}
+	dw := reinswidth["D10"]
+	if hstr, ok := data["HOOP"]; ok {
+		if len(hstr) < 2 {
+			return fmt.Errorf("HOOP format error")
+		}
+		if hoopstr.MatchString(hstr[0]) {
+			fs := hoopstr.FindStringSubmatch(hstr[0])
+			if d, ok := reinswidth[fs[3]]; ok {
+				dw = d
+			}
+			if a, ok := reinsarea[fs[3]]; ok {
+				x, err := strconv.ParseFloat(fs[1], 64)
+				if err != nil {
+					return err
+				}
+				y, err := strconv.ParseFloat(fs[2], 64)
+				if err != nil {
+					return err
+				}
+				p, err := strconv.ParseFloat(fs[4], 64)
+				if err != nil {
+					return err
+				}
+				p /= 10.0
+				rc.Hoops = Hoop{[]float64{(x*a)/(h*p), (y*a)/(b*p)}, fmt.Sprintf("HOOP Qx:%s-%s@%s Qy:%s-%s@%s", fs[1], fs[3], fs[4], fs[2], fs[3], fs[4]), SetSD(hstr[1])}
+			}
+		}
+	}
+	layout := func(ind int, startx, starty, signx, signy, width, delta float64, lis []string) (float64, float64) {
+		fs := reinstr.FindStringSubmatch(lis[0])
+		dd := reinswidth[fs[2]]
+		starty += signy*0.5*dd
+		width -= dd
+		plis := strings.Split(fs[1], ",")
+		for j, p := range plis {
+			val, _ := strconv.ParseInt(p, 10, 64)
+			for i := 0; i < int(val); i++ {
+				rf := NewReinforce(SetSD(lis[1]))
+				rf.Area = reinsarea[fs[2]]
+				rf.Position[ind] = startx + signx*(0.5*dd + width/float64(int(val)+2*ind-1)*float64(i+ind))
+				rf.Position[1-ind] = starty
+				if i == 0 && j == 0 {
+					rf.Caption = fmt.Sprintf("\"%s\"", lis[0])
+				}
+				rc.Nreins++
+				rc.Reins = append(rc.Reins, rf)
+			}
+			starty += signy*delta
+		}
+		return startx, starty
+	}
+	if t, ok := data["CREIN"]; ok {
+		switch len(t) {
+		case 2:
+			if reinstr.MatchString(t[0]) {
+				data["TREIN"] = t
+				data["BREIN"] = t
+				data["RREIN"] = t
+				data["LREIN"] = t
+			}
+		case 3:
+			if reinstr.MatchString(t[0]) {
+				data["TREIN"] = []string{t[0], t[2]}
+				data["BREIN"] = []string{t[0], t[2]}
+			}
+			if reinstr.MatchString(t[1]) {
+				data["RREIN"] = []string{t[1], t[2]}
+				data["LREIN"] = []string{t[1], t[2]}
+			}
+		case 4:
+			if reinstr.MatchString(t[0]) {
+				data["TREIN"] = []string{t[0], t[3]}
+			}
+			if reinstr.MatchString(t[2]) {
+				data["BREIN"] = []string{t[2], t[3]}
+			}
+			if reinstr.MatchString(t[1]) {
+				data["RREIN"] = []string{t[1], t[3]}
+				data["LREIN"] = []string{t[1], t[3]}
+			}
+		case 5:
+			if reinstr.MatchString(t[0]) {
+				data["TREIN"] = []string{t[0], t[4]}
+			}
+			if reinstr.MatchString(t[1]) {
+				data["RREIN"] = []string{t[1], t[4]}
+			}
+			if reinstr.MatchString(t[2]) {
+				data["BREIN"] = []string{t[2], t[4]}
+			}
+			if reinstr.MatchString(t[3]) {
+				data["LREIN"] = []string{t[3], t[4]}
+			}
+		default:
+			return fmt.Errorf("CREIN format error")
+		}
+	}
+	dx := 8.0
+	dy := 8.0
+	topx := -0.5*b+dw+kaburi
+	topy :=  0.5*h-dw-kaburi
+	b0 := b - (kaburi+dw)*2
+	if t, ok := data["TREIN"]; ok {
+		if len(t) < 2 {
+			return fmt.Errorf("TREIN format error")
+		}
+		if reinstr.MatchString(t[0]) {
+			topx, topy = layout(0, topx, topy, 1.0, -1.0, b0, dy, t)
+		}
+	}
+	topy += dy
+	bottomx := -0.5*b+dw+kaburi
+	bottomy := -0.5*h+dw+kaburi
+	if t, ok := data["BREIN"]; ok {
+		if len(t) < 2 {
+			return fmt.Errorf("BREIN format error")
+		}
+		if reinstr.MatchString(t[0]) {
+			bottomx, bottomy = layout(0, bottomx, bottomy, 1.0, 1.0, b0, dy, t)
+		}
+	}
+	bottomy -= dy
+	rightx := 0.5*b-dw-kaburi
+	righty := topy
+	h0 := topy - bottomy
+	if t, ok := data["RREIN"]; ok {
+		if len(t) < 2 {
+			return fmt.Errorf("RREIN format error")
+		}
+		if reinstr.MatchString(t[0]) {
+			righty, rightx = layout(1, righty, rightx, -1.0, -1.0, h0, dx, t)
+		}
+	}
+	leftx := -0.5*b+dw+kaburi
+	lefty := topy
+	if t, ok := data["LREIN"]; ok {
+		if len(t) < 2 {
+			return fmt.Errorf("LREIN format error")
+		}
+		if reinstr.MatchString(t[0]) {
+			lefty, leftx = layout(1, lefty, leftx, -1.0, 1.0, h0, dx, t)
+		}
+	}
+	if _, ok := data["CREIN"]; ok {
+		delete(data, "TREIN")
+		delete(data, "BREIN")
+		delete(data, "RREIN")
+		delete(data, "LREIN")
+	}
+	return nil
+}
 func (rc *RCColumn) String() string {
-	return ""
+	var rtn bytes.Buffer
+	rtn.WriteString(fmt.Sprintf("CODE %3d RC %s %56s\n", rc.num, rc.Etype, fmt.Sprintf("\"%s\"", rc.name)))
+	for _, r := range rc.Reins {
+		if r.Caption != "" {
+			rtn.WriteString(fmt.Sprintf("         REINS %6.3f %6.1f %6.1f   %s %31s\n", r.Area, r.Position[0], r.Position[1], r.Material.Name, r.Caption))
+		} else {
+			rtn.WriteString(fmt.Sprintf("         REINS %6.3f %6.1f %6.1f   %s\n", r.Area, r.Position[0], r.Position[1], r.Material.Name))
+		}
+	}
+	rtn.WriteString(fmt.Sprintf("         %s  %s %26s\n", rc.CShape.String(), rc.Concrete.Name(), fmt.Sprintf("\"CONCRETE %.0fx%.0f[cm]\"", rc.CShape.Breadth(true), rc.CShape.Height(true))))
+	rtn.WriteString(fmt.Sprintf("         HOOPS %8.6f %8.6f  %s %35s\n", rc.Hoops.Ps[0], rc.Hoops.Ps[1], rc.Hoops.Material.Name, fmt.Sprintf("\"%s\"", rc.Hoops.Name)))
+	if rc.XFace != nil {
+		rtn.WriteString(fmt.Sprintf("         XFACE %5.1f %5.1f %48s\n", rc.XFace[0], rc.XFace[1], fmt.Sprintf("\"FACE LENGTH Mx:HEAD= %.0f,TAIL= %.0f[cm]\"", rc.XFace[0], rc.XFace[1])))
+	} else {
+		rtn.WriteString("         XFACE   0.0   0.0             \"FACE LENGTH Mx:HEAD= 0,TAIL= 0[cm]\"\n")
+	}
+	if rc.YFace != nil {
+		rtn.WriteString(fmt.Sprintf("         YFACE %5.1f %5.1f %48s\n", rc.YFace[0], rc.YFace[1], fmt.Sprintf("\"FACE LENGTH My:HEAD= %.0f,TAIL= %.0f[cm]\"", rc.XFace[0], rc.XFace[1])))
+	} else {
+		rtn.WriteString("         YFACE   0.0   0.0             \"FACE LENGTH My:HEAD= 0,TAIL= 0[cm]\"\n")
+	}
+	return rtn.String()
 }
 func (rc *RCColumn) Num() int {
 	return rc.num
@@ -2612,6 +2984,7 @@ type RCGirder struct {
 
 func NewRCGirder(num int) *RCGirder {
 	rc := NewRCColumn(num)
+	rc.Etype = "GIRDER"
 	return &RCGirder{*rc}
 }
 func (rg *RCGirder) TypeString() string {
@@ -2680,6 +3053,7 @@ func (rg *RCGirder) Amount() Amount {
 type RCWall struct {
 	Concrete
 	num      int
+	Etype    string
 	name     string
 	Thick    float64
 	Srein    float64
@@ -2692,6 +3066,7 @@ type RCWall struct {
 func NewRCWall(num int) *RCWall {
 	rw := new(RCWall)
 	rw.num = num
+	rw.Etype = "WALL"
 	rw.Wrect = make([]float64, 2)
 	rw.XFace = make([]float64, 2)
 	rw.YFace = make([]float64, 2)
@@ -2703,6 +3078,26 @@ func (rw *RCWall) SetSrein(lis []string) error {
 		return err
 	}
 	rw.Srein = val
+	rw.Material = SetSD(lis[1])
+	return nil
+}
+var wreinstr = regexp.MustCompile("^([0-9]+)-(D[0-9]+)@([0-9]+)$")
+func (rw *RCWall) SetWrein(lis []string) error {
+	t := rw.Thick
+	if t == 0.0 {
+		return fmt.Errorf("thickness is 0")
+	}
+	if len(lis) < 2 {
+		return fmt.Errorf("WREIN format error")
+	}
+	if wreinstr.MatchString(lis[0]) {
+		fs := wreinstr.FindStringSubmatch(lis[0])
+		if a, ok := reinsarea[fs[2]]; ok {
+			n, _ := strconv.ParseFloat(fs[1], 64)
+			p, _ := strconv.ParseFloat(fs[3], 64)
+			rw.Srein = a*n/(t*p/10.0)
+		}
+	}
 	rw.Material = SetSD(lis[1])
 	return nil
 }
@@ -2718,6 +3113,8 @@ func (rw *RCWall) SetConcrete(lis []string) error {
 	switch lis[2] {
 	case "FC18":
 		rw.Concrete = FC18
+	case "FC21":
+		rw.Concrete = FC21
 	case "FC24":
 		rw.Concrete = FC24
 	case "FC27":
@@ -2747,7 +3144,26 @@ func (rw *RCWall) Snapshot() SectionRate {
 	return rw
 }
 func (rw *RCWall) String() string {
-	return ""
+	var rtn bytes.Buffer
+	rtn.WriteString(fmt.Sprintf("CODE %3d RC %s %58s\n", rw.num, rw.Etype, fmt.Sprintf("\"%s\"", rw.name)))
+	rtn.WriteString(fmt.Sprintf("         THICK  %4.1f       %s %43s\n", rw.Thick, rw.Concrete.Name(), fmt.Sprintf("\"THICKNESS_%.0f[cm]\"", rw.Thick)))
+	rtn.WriteString(fmt.Sprintf("         SREIN  %8.6f  %s %43s\n", rw.Srein, rw.Material.Name, fmt.Sprintf("\"Ps=%.6f[RATE]\"", rw.Srein*100)))
+	if rw.Wrect != nil {
+		rtn.WriteString(fmt.Sprintf("         WRECT %5.1f %5.1f %48s\n", rw.Wrect[0], rw.Wrect[1], fmt.Sprintf("\"WINDOW_RECTANGLE_%.1fx%.1f[cm]\"", rw.Wrect[0], rw.Wrect[1])))
+	} else {
+		rtn.WriteString("         WRECT   0.0   0.0                   \"WINDOW_RECTANGLE_0.0x0.0[cm]\"\n")
+	}
+	if rw.XFace != nil {
+		rtn.WriteString(fmt.Sprintf("         XFACE %5.1f %5.1f %48s\n", rw.XFace[0], rw.XFace[1], fmt.Sprintf("\"FACE LENGTH:HEAD=%3.1f,TAIL=%3.1f[cm]\"", rw.XFace[0], rw.XFace[1])))
+	} else {
+		 rtn.WriteString("         XFACE   0.0   0.0            \"FACE LENGTH:HEAD= 0.0,TAIL= 0.0[cm]\"\n")
+	}
+	if rw.YFace != nil {
+		rtn.WriteString(fmt.Sprintf("         YFACE %5.1f %5.1f %48s\n", rw.YFace[0], rw.YFace[1], fmt.Sprintf("\"FACE LENGTH:HEAD=%3.1f,TAIL=%3.1f[cm]\"", rw.XFace[0], rw.XFace[1])))
+	} else {
+		rtn.WriteString("         YFACE   0.0   0.0             \"FACE LENGTH:HEAD= 0.0,TAIL= 0.0[cm]\"\n")
+	}
+	return rtn.String()
 }
 func (rw *RCWall) Name() string {
 	return rw.name
@@ -2860,6 +3276,7 @@ type RCSlab struct {
 func NewRCSlab(num int) *RCSlab {
 	rs := new(RCSlab)
 	rs.num = num
+	rs.Etype = "SLAB"
 	rs.Wrect = make([]float64, 2)
 	rs.XFace = make([]float64, 2)
 	rs.YFace = make([]float64, 2)
@@ -2992,8 +3409,8 @@ func (wc *WoodColumn) SetValue(name string, vals []float64) {
 func (wc *WoodColumn) String() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("CODE %3d WOOD %s %54s\n", wc.num, wc.Etype, fmt.Sprintf("\"%s\"", wc.name)))
-	line2 := fmt.Sprintf("         %%-29s %%s %%%ds\n", 35-len(wc.Wood.Name))
-	rtn.WriteString(fmt.Sprintf(line2, wc.Shape.String(), wc.Wood.Name, fmt.Sprintf("\"%s\"", wc.Shape.Description())))
+	line2 := fmt.Sprintf("         %%-29s %%s %%%ds\n", 35-len(wc.Wood.Name()))
+	rtn.WriteString(fmt.Sprintf(line2, wc.Shape.String(), wc.Wood.Name(), fmt.Sprintf("\"%s\"", wc.Shape.Description())))
 	if wc.XFace != nil {
 		rtn.WriteString(fmt.Sprintf("         XFACE %5.1f %5.1f %48s\n", wc.XFace[0], wc.XFace[1], fmt.Sprintf("\"FACE LENGTH Mx:HEAD= %.0f,TAIL= %.0f[cm]\"", wc.XFace[0], wc.XFace[1])))
 	} else {
@@ -3149,14 +3566,17 @@ func (wg *WoodGirder) TypeString() string {
 type WoodWall struct {
 	Wood
 	num   int
+	Etype string
 	name  string
 	Thick float64
+	Kfact float64
 	Wrect []float64
 }
 
 func NewWoodWall(num int) *WoodWall {
 	ww := new(WoodWall)
 	ww.num = num
+	ww.Etype = "WALL"
 	ww.Wrect = make([]float64, 2)
 	return ww
 }
@@ -3168,6 +3588,12 @@ func (ww *WoodWall) SetWood(lis []string) error {
 			return err
 		}
 		ww.Thick = val
+	case "KFACT":
+		val, err := strconv.ParseFloat(lis[1], 64)
+		if err != nil {
+			return err
+		}
+		ww.Kfact = val
 	}
 	switch lis[2] {
 	case "GOHAN":
@@ -3185,13 +3611,27 @@ func (ww *WoodWall) Snapshot() SectionRate {
 	r := NewWoodWall(ww.num)
 	r.name = ww.name
 	r.Thick = ww.Thick
+	r.Kfact = ww.Kfact
 	for i := 0; i < 2; i++ {
 		r.Wrect[i] = ww.Wrect[i]
 	}
 	return ww
 }
 func (ww *WoodWall) String() string {
-	return ""
+	var rtn bytes.Buffer
+	rtn.WriteString(fmt.Sprintf("CODE %3d WOOD %s %56s\n", ww.num, ww.Etype, fmt.Sprintf("\"%s\"", ww.name)))
+	if ww.Thick != 0.0 {
+		rtn.WriteString(fmt.Sprintf("         THICK %5.3f       %s %42s\n", ww.Thick, ww.Wood.Name(), fmt.Sprintf("\"x%.1f\"", ww.Thick*3/0.250)))
+	}
+	if ww.Kfact != 0.0 {
+		rtn.WriteString(fmt.Sprintf("         KFACT %5.3f       %s %42s\n", ww.Kfact, ww.Wood.Name(), fmt.Sprintf("\"x%.1f\"", ww.Kfact)))
+	}
+	if ww.Wrect != nil {
+		rtn.WriteString(fmt.Sprintf("         WRECT %5.1f %5.1f %48s\n", ww.Wrect[0], ww.Wrect[1], fmt.Sprintf("\"WINDOW_RECTANGLE_%.1fx%.1f[cm]\"", ww.Wrect[0], ww.Wrect[1])))
+	} else {
+		rtn.WriteString("         WRECT   0.0   0.0                   \"WINDOW_RECTANGLE_0.0x0.0[cm]\"\n")
+	}
+	return rtn.String()
 }
 func (ww *WoodWall) Name() string {
 	return ww.name
@@ -3228,9 +3668,14 @@ func (ww *WoodWall) Fs(cond *Condition) float64 {
 	return rtn
 }
 func (ww *WoodWall) Na(cond *Condition) float64 {
-	fs := ww.Fs(cond)
 	r := 1.0 // TODO: set windowrate
-	Qa := r * ww.Thick * cond.Length * fs
+	Qa := 0.0
+	if ww.Kfact != 0.0 {
+		Qa = r * ww.Factor(cond.Period) * ww.Kfact * 0.001 * cond.Length
+	} else if ww.Thick != 0.0 {
+		fs := ww.Fs(cond)
+		Qa = r * ww.Thick * cond.Length * fs
+	}
 	return 0.5 * Qa
 }
 func (ww *WoodWall) Qa(cond *Condition) float64 {
@@ -3253,6 +3698,7 @@ type WoodSlab struct {
 
 func NewWoodSlab(num int) *WoodSlab {
 	ww := NewWoodWall(num)
+	ww.Etype = "SLAB"
 	return &WoodSlab{*ww}
 }
 

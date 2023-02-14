@@ -659,15 +659,21 @@ func (frame *Frame) ParseProp(lis []string, overwrite bool) (*Prop, error) {
 			p.Num = int(num)
 		case "PNAME":
 			p.Name, err = lis[i+1], nil
+		case "MATERIAL":
+			p.Material, err = materialname(lis[i+1])
+		case "HFACT":
+			p.HFactor, err = strconv.ParseFloat(lis[i+1], 64)
+		case "EFACT":
+			p.EFactor, err = strconv.ParseFloat(lis[i+1], 64)
 		case "HIJU":
-			p.Hiju, err = strconv.ParseFloat(lis[i+1], 64)
+			p.hiju, err = strconv.ParseFloat(lis[i+1], 64)
 		case "E":
-			p.EL, err = strconv.ParseFloat(lis[i+1], 64)
-			p.ES = p.EL
+			p.eL, err = strconv.ParseFloat(lis[i+1], 64)
+			p.eS = p.eL
 		case "ES":
-			p.ES, err = strconv.ParseFloat(lis[i+1], 64)
+			p.eS, err = strconv.ParseFloat(lis[i+1], 64)
 		case "POI":
-			p.Poi, err = strconv.ParseFloat(lis[i+1], 64)
+			p.poi, err = strconv.ParseFloat(lis[i+1], 64)
 		case "PCOLOR":
 			var tmpcol int64
 			val := 65536
@@ -774,7 +780,7 @@ func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 		switch word {
 		default:
 			tmp = append(tmp, word)
-		case "FPROP", "FNAME", "SHAPE", "AREA", "IXX", "IYY", "VEN", "THICK", "SREIN", "SIGMA", "XFACE", "YFACE":
+		case "FPROP", "FNAME", "SHAPE", "TREIN", "BREIN", "RREIN", "LREIN", "CREIN", "HOOP", "KABURI", "WREIN", "AREA", "IXX", "IYY", "VEN", "THICK", "KFACT", "SREIN", "SIGMA", "XFACE", "YFACE":
 			if key != "" {
 				figmap[key] = tmp
 				tmp = make([]string, 0)
@@ -865,35 +871,54 @@ func (sect *Sect) ParseFig(frame *Frame, figmap map[string][]string) error {
 		return nil
 	}
 	var err error
-	f := &Fig{Value: make(map[string]float64)}
+	f := NewFig()
+	if fi, ok := figmap["FIG"]; ok {
+		if len(fi) < 1 {
+			return fmt.Errorf("FIG not found")
+		}
+		num, err = strconv.ParseInt(fi[0], 10, 64)
+		f.Num = int(num)
+	} else {
+		return fmt.Errorf("FIG not found")
+	}
+	if fi, ok := figmap["FPROP"]; ok {
+		if len(fi) < 1 {
+			return fmt.Errorf("FPROP not found")
+		}
+		pnum, err := strconv.ParseInt(fi[0], 10, 64)
+		if err == nil {
+			if val, ok := frame.Props[int(pnum)]; ok {
+				f.Prop = val
+			} else {
+				return fmt.Errorf("PROP %d doesn't exist", pnum)
+			}
+		}
+	} else {
+		return fmt.Errorf("FPROP not found")
+	}
 	for key, data := range figmap {
 		if len(data) < 1 {
 			continue
 		}
 		switch key {
 		case "FIG":
-			num, err = strconv.ParseInt(data[0], 10, 64)
-			f.Num = int(num)
+			continue
 		case "FPROP":
-			pnum, err := strconv.ParseInt(data[0], 10, 64)
-			if err == nil {
-				if val, ok := frame.Props[int(pnum)]; ok {
-					f.Prop = val
-				} else {
-					return fmt.Errorf("PROP %d doesn't exist", pnum)
-				}
-			}
+			continue
 		case "FNAME":
 			f.Name = data[0]
 		case "SHAPE":
-			if _, ok := figmap["AREA"]; ok { // TODO:
-				continue
-			}
 			shape, _, err := ParseShape(data)
 			if err != nil {
 				return err
 			}
-			f.SetShapeProperty(shape)
+			if _, ok := figmap["AREA"]; ok { // TODO:
+				f.Shape = shape
+			} else {
+				f.SetShapeProperty(shape)
+			}
+		case "TREIN", "BREIN", "RREIN", "LREIN", "HOOP", "KABURI", "WREIN", "CREIN":
+			f.Reins[key] = data
 		case "AREA":
 			val, err := strconv.ParseFloat(data[0], 64)
 			if err != nil {
@@ -943,6 +968,12 @@ func (sect *Sect) ParseFig(frame *Frame, figmap map[string][]string) error {
 					return err
 				}
 				val = uval
+			}
+			f.Value[key] = val
+		case "KFACT":
+			val, err := strconv.ParseFloat(data[0], 64)
+			if err != nil {
+				return err
 			}
 			f.Value[key] = val
 		case "SREIN":
@@ -2103,7 +2134,6 @@ func ParseShape(data []string) (Shape, int, error) {
 func (frame *Frame) ParseLstSteel(lis [][]string) error {
 	var num int
 	var sr SectionRate
-	var material Steel
 	var err error
 	tmp, err := strconv.ParseInt(lis[0][1], 10, 64)
 	num = int(tmp)
@@ -2114,45 +2144,22 @@ func (frame *Frame) ParseLstSteel(lis [][]string) error {
 	if err != nil {
 		return err
 	}
-	switch lis[1][1+size] {
-	default:
-		material = SN400
-	case "SN400":
-		material = SN400
-	case "SN490":
-		material = SN490
-	case "SN400T40":
-		material = SN400T40
-	case "SN490T40":
-		material = SN490T40
-	case "BCR295":
-		material = BCR295
-	case "BCR365":
-		material = BCR365
-	case "HT600":
-		material = HT600
-	case "HT700":
-		material = HT700
-	case "A6061T6":
-		material = A6061T6
-	case "A6063T5":
-		material = A6063T5
-	case "AlSi10Mg":
-		material = AlSi10Mg
-	case "M40J":
-		material = M40J
-	case "T300":
-		material = T300
+	material, err := materialname(lis[1][1+size])
+	if err != nil {
+		return err
+	}
+	if _, ok := material.(Steel); !ok {
+		return fmt.Errorf("material is not Steel")
 	}
 	switch lis[0][3] {
 	case "COLUMN":
-		sr = NewSColumn(num, shape, material)
+		sr = NewSColumn(num, shape, material.(Steel))
 	case "GIRDER":
-		sr = NewSGirder(num, shape, material)
+		sr = NewSGirder(num, shape, material.(Steel))
 	case "BRACE":
-		sr = NewSBrace(num, shape, material)
+		sr = NewSBrace(num, shape, material.(Steel))
 	case "WALL":
-		sr = NewSWall(num, shape, material)
+		sr = NewSWall(num, shape, material.(Steel))
 	default:
 		return nil
 	}
@@ -2287,44 +2294,26 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 	case "COLUMN", "GIRDER":
 		var size int
 		var shape Shape
-		var material Wood
 		shape, size, err := ParseShape(lis[1])
 		if err != nil {
 			return err
 		}
-		switch lis[1][1+size] {
-		default:
-			material = S_E70
-		case "S-E70", "E70SUGI":
-			material = S_E70
-		case "SUGI":
-			material = SUGI
-		case "H-E70", "E70HINOKI":
-			material = H_E70
-		case "H-E90", "E90HINOKI":
-			material = H_E90
-		case "M-E90":
-			material = M_E90
-		case "M-E110":
-			material = M_E110
-		case "MATSU":
-			material = MATSU
-		case "E95-F270":
-			material = E95_F270
-		case "E95-F315":
-			material = E95_F315
-		case "E120-F330":
-			material = E120_F330
+		material, err := materialname(lis[1][1+size])
+		if err != nil {
+			return err
+		}
+		if _, ok := material.(Wood); !ok {
+			return fmt.Errorf("material is not Wood")
 		}
 		if lis[0][3] == "COLUMN" {
-			sr = NewWoodColumn(num, shape, material)
+			sr = NewWoodColumn(num, shape, material.(Wood))
 		} else {
-			sr = NewWoodGirder(num, shape, material)
+			sr = NewWoodGirder(num, shape, material.(Wood))
 		}
 	case "WALL":
 		sr = NewWoodWall(num)
 		switch lis[1][0] {
-		case "THICK":
+		case "THICK", "KFACT":
 			sr.(*WoodWall).SetWood(lis[1])
 		default:
 			return nil
@@ -2332,7 +2321,7 @@ func (frame *Frame) ParseLstWood(lis [][]string) error {
 	case "SLAB":
 		sr = NewWoodSlab(num)
 		switch lis[1][0] {
-		case "THICK":
+		case "THICK", "KFACT":
 			sr.(*WoodSlab).SetWood(lis[1])
 		default:
 			return nil
@@ -2800,7 +2789,7 @@ func (frame *Frame) WritePlateWeight(fn string) error {
 	for _, sec := range sects {
 		w := sec.Weight()
 		if sec.HasBrace() {
-			otp.WriteString(fmt.Sprintf("%4d %10.1f %6.3f    %6.3f   %6.3f   %6.3f\n", sec.Num, sec.Figs[0].Prop.EL, sec.Figs[0].Value["THICK"], w[0], w[1], w[2]))
+			otp.WriteString(fmt.Sprintf("%4d %10.1f %6.3f    %6.3f   %6.3f   %6.3f\n", sec.Num, sec.Figs[0].Prop.EL(), sec.Figs[0].Value["THICK"], w[0], w[1], w[2]))
 		} else {
 			otp.WriteString(fmt.Sprintf("%4d %10s %6s    %6.3f   %6.3f   %6.3f\n", sec.Num, "", "", w[0], w[1], w[2]))
 		}
@@ -2862,6 +2851,23 @@ func (frame *Frame) DrawDxfSection(d *drawing.Drawing, el *Elem, position []floa
 				dxf.SetExtrusion(c, direction)
 			}
 		}
+	case *SGirder:
+		sh := al.Shape
+		switch sh.(type) {
+		case HKYOU, HWEAK, CROSS, RPIPE, PLATE, ANGLE, TKYOU, TWEAK, CKYOU, CWEAK:
+			vertices := sh.Vertices()
+			el.DrawDxfSection(d, position, scale, vertices)
+		case CPIPE:
+			direction := el.Direction(true)
+			c, err := d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, sh.(CPIPE).D*0.01*0.5*scale)
+			if err == nil {
+				dxf.SetExtrusion(c, direction)
+			}
+			c, err = d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, (sh.(CPIPE).D*0.5-sh.(CPIPE).T)*0.01*scale)
+			if err == nil {
+				dxf.SetExtrusion(c, direction)
+			}
+		}
 	case *RCColumn:
 		vertices := al.CShape.Vertices()
 		el.DrawDxfSection(d, position, scale, vertices)
@@ -2896,6 +2902,33 @@ func (frame *Frame) DrawDxfSection(d *drawing.Drawing, el *Elem, position []floa
 		case PLATE:
 			vertices := sh.Vertices()
 			el.DrawDxfSection(d, position, scale, vertices)
+		case CPIPE:
+			direction := el.Direction(true)
+			c, err := d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, sh.(CPIPE).D*0.01*0.5*scale)
+			if err == nil {
+				dxf.SetExtrusion(c, direction)
+			}
+			c, err = d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, (sh.(CPIPE).D*0.5-sh.(CPIPE).T)*0.01*scale)
+			if err == nil {
+				dxf.SetExtrusion(c, direction)
+			}
+		}
+	case *WoodGirder:
+		sh := al.Shape
+		switch sh.(type) {
+		case PLATE:
+			vertices := sh.Vertices()
+			el.DrawDxfSection(d, position, scale, vertices)
+		case CPIPE:
+			direction := el.Direction(true)
+			c, err := d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, sh.(CPIPE).D*0.01*0.5*scale)
+			if err == nil {
+				dxf.SetExtrusion(c, direction)
+			}
+			c, err = d.Circle(position[0]*scale, position[1]*scale, position[2]*scale, (sh.(CPIPE).D*0.5-sh.(CPIPE).T)*0.01*scale)
+			if err == nil {
+				dxf.SetExtrusion(c, direction)
+			}
 		}
 	}
 	return nil
@@ -3835,12 +3868,13 @@ func (frame *Frame) Connected(n *Node) []*Node {
 }
 
 // TODO: check if this func works as intended
-func (frame *Frame) SearchBraceSect(f *Fig, t int) *Sect {
+func (frame *Frame) SearchBraceSect(f *Fig, t int, orig int) *Sect {
 	for _, sec := range frame.Sects {
 		if sec.Num <= 900 {
 			continue
 		}
 		if (sec.Type == t) && (sec.Figs[0].Prop == f.Prop) &&
+			(sec.Original == orig) &&
 			(sec.Figs[0].Value["AREA"] == f.Value["AREA"]) &&
 			(sec.Figs[0].Value["IXX"] == 0.0) && (sec.Figs[0].Value["IYY"] == 0.0) {
 			return sec
@@ -4699,14 +4733,14 @@ func (frame *Frame) ExtractArclm(fn string) error {
 			}
 			var E float64
 			if p == "L" {
-				E = sec.Figs[0].Prop.EL
+				E = sec.Figs[0].Prop.EL()
 			} else {
-				E = sec.Figs[0].Prop.ES
+				E = sec.Figs[0].Prop.ES()
 			}
 			af.Sects[i] = &arclm.Sect{
 				Num:      sec.Num,
 				E:        E,
-				Poi:      sec.Figs[0].Prop.Poi,
+				Poi:      sec.Figs[0].Prop.Poi(),
 				Value:    sec.ArclmValue(),
 				Yield:    yield,
 				Type:     sec.Type,
@@ -5699,8 +5733,33 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 					otp.WriteString(fmt.Sprintf("#     一様ねじり定数      J   = %10.4f [cm4]\n", sh.J()))
 					otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
 					otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+				case *SGirder:
+					sh := al.(*SGirder).Shape
+					otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
+					otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+					otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+					otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+					otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+					otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+					if an, ok := sh.(ANGLE); ok {
+						otp.WriteString(fmt.Sprintf("#                         Imin= %10.4f [cm4]\n", an.Imin()))
+					}
+					otp.WriteString(fmt.Sprintf("#     一様ねじり定数      J   = %10.4f [cm4]\n", sh.J()))
+					otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+					otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
 				case *WoodColumn:
 					sh := al.(*WoodColumn).Shape
+					otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
+					otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+					otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+					otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+					otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+					otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+					otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J   = %10.4f [cm4]\n", sh.J()))
+					otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+					otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+				case *WoodGirder:
+					sh := al.(*WoodGirder).Shape
 					otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
 					otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
 					otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
@@ -6449,17 +6508,9 @@ func (frame *Frame) OutputTex() error {
 			return "木"
 		}
 	}
-	signname := func(str string) (string, string) {
-		sn := strings.Split(str, ":")
-		if len(sn) < 2 {
-			return "", str
-		} else {
-			return sn[0], sn[1]
-		}
-	}
 	property := func(prop *Prop) string {
 		typename := typematerial(prop)
-		return fmt.Sprintf("    %s & %d & %s & %.5f & %.3f & %.5f\\\\", typename, prop.Num, prop.Name, prop.Hiju, prop.EL, prop.Poi)
+		return fmt.Sprintf("    %s & %d & %s & %.5f & %.3f & %.5f\\\\", typename, prop.Num, prop.Name, prop.Hiju(), prop.EL(), prop.Poi())
 	}
 	lineelem := func(sect *Sect) string {
 		area, _ := sect.Area(0)
@@ -6475,15 +6526,28 @@ func (frame *Frame) OutputTex() error {
 		} else if sect.Num < 700 {
 			typename += "筋違"
 		}
-		sign, name := signname(sect.Name)
+		sign, name := sect.SplitName()
 		return fmt.Sprintf("    %s & %d & %s & %d & %s & %.1f & %.0f & %.0f & %.0f & %.0f & 1.000\\\\", sign, sect.Num, typename, sect.Figs[0].Prop.Num, name, w[0]*1000, area*1e4, ix*1e8, iy*1e8, j*1e8)
 	}
 	plateelem := func(sect *Sect) string {
 		if sect.HasBrace() {
-			t, _ := sect.Thick(0)
+			var tstr string
+			var t float64
+			var err error
+			t, err  = sect.Thick(0)
+			if err != nil {
+				k, err := sect.Kfact(0)
+				if err != nil {
+					return ""
+				}
+				tstr = fmt.Sprintf("%.1f倍", k)
+				t = 0.0
+			} else {
+				tstr = fmt.Sprintf("%.2f", t*1000)
+			}
 			w := sect.Weight()
 			w0 := w[1] - sect.Lload[1]
-			w1 := t * sect.Figs[0].Prop.Hiju
+			w1 := t * sect.Figs[0].Prop.Hiju()
 			w2 := w[1] - w1 - sect.Lload[1]
 			typename := typematerial(sect.Figs[0].Prop)
 			if sect.Num < 800 {
@@ -6491,11 +6555,11 @@ func (frame *Frame) OutputTex() error {
 			} else if sect.Num < 900 {
 				typename += "壁"
 			}
-			sign, name := signname(sect.Name)
+			sign, name := sect.SplitName()
 			if sect.Num < 800 {
-				return fmt.Sprintf("    %s & %d & %s & %d & %s &  %.0f & ○ & %.2f & 1.000 & 荷重は3.1節に示す \\\\", sign, sect.Num, typename, sect.Figs[0].Prop.Num, name, w0*1000, t*1000)
+				return fmt.Sprintf("    %s & %d & %s & %d & %s &  %.0f & ○ & %s & 1.000 & 荷重は3.1節に示す \\\\", sign, sect.Num, typename, sect.Figs[0].Prop.Num, name, w0*1000, tstr)
 			} else {
-				return fmt.Sprintf("    %s & %d & %s & %d & %s &  %.0f & ○ & %.2f & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, sect.Figs[0].Prop.Num, name, w0*1000, t*1000, w2*1000)
+				return fmt.Sprintf("    %s & %d & %s & %d & %s &  %.0f & ○ & %s & 1.000 & 仕上等$%.0f{\\rm kgf/m^2}$ \\\\", sign, sect.Num, typename, sect.Figs[0].Prop.Num, name, w0*1000, tstr, w2*1000)
 			}
 		} else {
 			w := sect.Weight()
@@ -6506,7 +6570,7 @@ func (frame *Frame) OutputTex() error {
 			} else if sect.Num < 900 {
 				typename += "壁"
 			}
-			sign, name := signname(sect.Name)
+			sign, name := sect.SplitName()
 			if sect.Num < 800 {
 				return fmt.Sprintf("    %s  & %d & %s & - & %s & %.0f & × & - & 1.000 & 荷重は3.1節に示す \\\\", sign, sect.Num, typename, name, w0*1000)
 			} else {
@@ -6549,7 +6613,7 @@ func (frame *Frame) OutputTex() error {
 		} else if sect.Num < 900 {
 			typename += "壁"
 		}
-		sign, name := signname(sect.Name)
+		sign, name := sect.SplitName()
 		var otp bytes.Buffer
 		sum := 0.0
 		for i, fig := range sect.Figs {
@@ -7332,6 +7396,74 @@ func WriteFig2(fn string, view *View, show *Show) error {
 					otp.WriteString(fmt.Sprintf("stress %s %s %s\n", strings.ToLower(etname), strings.ToLower(show.Period), stname))
 				}
 			}
+		}
+	}
+	w, err := os.Create(fn)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+	otp.WriteTo(w)
+	return nil
+}
+
+func WriteLst(fn string, sects []*Sect) error {
+	var otp bytes.Buffer
+	prefix := `仮定断面の入力データ
+
+"INPUT DATA"
+"MATERIAL TYPE:S,RC,SRC,PC"
+"MEMBER TYPE  :COLUMN,GIRDER,WALL,SLAB,BRACE"
+"SRECT:STEEL.                                    LEFT,BOTTOM,TOP,RIGHT[cm]"
+"HKYOU:STEEL H, x=STRONG AXIS.                               H,B,tw,tf[cm]"
+"HWEAK:STEEL H, x=WEAK AXIS.                                 H,B,tw,tf[cm]"
+"RPIPE:STEEL RECTANGLE PIPE.                                 H,B,tw,tf[cm]"
+"CPIPE:STEEL CIRCLE PIPE.                                          D,t[cm]"
+"SAREA:AREA OF STEEL BRACE.                                      AREA[cm2]"
+"REINS:REINFOCEMENT.                                          AREA,X,Y[cm]"
+"CRECT:CONCRETE.                                 LEFT,BOTTOM,TOP,RIGHT[cm]"
+"THICK:THICKNESS OF RC WALL.                                 THICKNESS[cm]"
+"HOOPS:HOOP,STP.                                       FOR Qx,FOR Qy[RATE]"
+"SREIN:REINFORCEMENT FOR SHEAR OF WALL.                           pw[RATE]"
+"WRECT:WINDOW RECTANGLE OF WALL.                         LENGTH,HEIGHT[cm]"
+"XFACE:FACE FOR Mx,FACE FOR WALL LENGTH.                     HEAD,TAIL[cm]"
+"YFACE:FACE FOR My,FACE FOR WALL HEIGHT.                     HEAD,TAIL[cm]"
+`
+	otp.WriteString(prefix)
+	for _, sec := range sects {
+		var al SectionRate
+		if a := sec.Allow; a != nil {
+			al = a
+		} else {
+			if len(sec.Figs) == 0 || sec.Figs[0] == nil {
+				continue
+			}
+			var etype int
+			if sec.Num < 300 {
+				etype = COLUMN
+			} else if sec.Num < 600 {
+				etype = GIRDER
+			} else if sec.Num < 700 {
+				etype = BRACE
+			} else if sec.Num < 800 {
+				etype = WALL
+			} else if sec.Num < 900 {
+				etype = SLAB
+			}
+			if etype == 0 {
+				continue
+			}
+			if a := sec.Figs[0].GetSectionRate(sec.Num, etype); a != nil {
+				al = a
+				sign, _ := sec.SplitName()
+				al.SetName(sign)
+				sec.Allow = al
+			}
+		}
+		if al != nil {
+			fmt.Println(sec.Num, al)
+			otp.WriteString("\n")
+			otp.WriteString(al.String())
 		}
 	}
 	w, err := os.Create(fn)
