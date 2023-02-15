@@ -47,6 +47,7 @@ var (
 var (
 	gopath          = os.Getenv("GOPATH")
 	home            = os.Getenv("HOME")
+	stdir           = os.Getenv("STDIR")
 	releasenote     = filepath.Join(home, ".st/help/releasenote.html")
 	pgpfile         = filepath.Join(home, ".st/st.pgp")
 	historyfn       = filepath.Join(home, ".st/history.dat")

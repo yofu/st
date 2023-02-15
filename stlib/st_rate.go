@@ -253,19 +253,23 @@ var (
 	SD345 = SD{"SD345", 2.2, 3.5, 2100.0, 0.3}
 	SD390 = SD{"SD390", 2.2, 3.9, 2100.0, 0.3}
 
-	S_E70     = Wood{"S-E70", 0.2386, 0.1774, 0.2997, 0.0183, 70.0, 6.5, 0.4}
-	SUGI      = Wood{"SUGI", 0.1804, 0.1376, 0.2263, 0.0183, 70.0, 6.5, 0.4}
-	E70SUGI   = S_E70
-	H_E70     = Wood{"H-E70", 0.1835, 0.1346, 0.2263, 0.0214, 70.0, 6.5, 0.4}
-	E70HINOKI = H_E70
-	H_E90     = Wood{"H-E90", 0.2508, 0.1896, 0.3120, 0.0214, 90.0, 6.5, 0.4}
-	E90HINOKI = H_E90
-	M_E90     = Wood{"M-E90", 0.1714, 0.1285, 0.2142, 0.0244, 90.0, 6.5, 0.4}
-	M_E110    = Wood{"M-E110", 0.2508, 0.1896, 0.3120, 0.0244, 110.0, 6.5, 0.4}
-	MATSU     = Wood{"MATSU", 0.2263, 0.1804, 0.2875, 0.0244, 100.0, 6.5, 0.4}
-	E95_F270  = Wood{"E95-F270", 0.2221, 0.1927, 0.2753, 0.0367, 95.0, 6.5, 0.5}
-	E95_F315  = Wood{"E95-F315", 0.2651, 0.2314, 0.3212, 0.0367, 95.0, 6.5, 0.5}
-	E120_F330 = Wood{"E120-F330", 0.2569, 0.2263, 0.3303, 0.0367, 120.0, 6.5, 0.5}
+	S_E70      = Wood{"S-E70", 0.2386, 0.1774, 0.2997, 0.0183, 70.0, 6.5, 0.4}
+	SUGI       = Wood{"SUGI", 0.1804, 0.1376, 0.2263, 0.0183, 70.0, 6.5, 0.4}
+	E70SUGI    = S_E70
+	H_E70      = Wood{"H-E70", 0.1835, 0.1346, 0.2263, 0.0214, 70.0, 6.5, 0.4}
+	E70HINOKI  = H_E70
+	H_E90      = Wood{"H-E90", 0.2508, 0.1896, 0.3120, 0.0214, 90.0, 6.5, 0.4}
+	E90HINOKI  = H_E90
+	M_E90      = Wood{"M-E90", 0.1714, 0.1285, 0.2142, 0.0244, 90.0, 6.5, 0.4}
+	M_E110     = Wood{"M-E110", 0.2508, 0.1896, 0.3120, 0.0244, 110.0, 6.5, 0.4}
+	MATSU      = Wood{"MATSU", 0.2263, 0.1804, 0.2875, 0.0244, 100.0, 6.5, 0.4}
+	E95_F270   = Wood{"E95-F270", 0.2221, 0.1927, 0.2753, 0.0367, 95.0, 6.5, 0.5}
+	E95_F315   = Wood{"E95-F315", 0.2651, 0.2314, 0.3212, 0.0367, 95.0, 6.5, 0.5}
+	E120_F330  = Wood{"E120-F330", 0.2569, 0.2263, 0.3303, 0.0367, 120.0, 6.5, 0.5}
+	Mx60_3_4IS = Wood{"Mx60-3-4IS", 0.0826, 0.0612, 0.0826, 0.0150, 30.6, 2.0, 0.5}
+	Mx60_3_4IW = Wood{"Mx60-3-4IW", 0.0596, 0.0439, 0.0596, 0.0150, 15.3, 0.5, 0.5}
+	Mx60_3_4OS = Wood{"Mx60-3-4OS", 0.0826, 0.0612, 0.1173, 0.0150, 53.5, 127.05, 0.5}
+	Mx60_3_4OW = Wood{"Mx60-3-4OW", 0.0596, 0.0439, 0.0120, 0.0150, 3.82, 3.0, 0.5}
 
 	GOHAN = Wood{"GOHAN", 0.0, 0.0, 0.0, 0.012, 45.0, 4.625, 0.55}
 )
@@ -273,7 +277,7 @@ var (
 func materialname(name string) (Material, error) {
 	switch name {
 	default:
-		return nil, fmt.Errorf("unknown material")
+		return nil, fmt.Errorf("unknown material %s", name)
 	case "SN400":
 		return SN400, nil
 	case "SN490":
@@ -332,6 +336,14 @@ func materialname(name string) (Material, error) {
 		return E95_F315, nil
 	case "E120-F330":
 		return E120_F330, nil
+	case "Mx60-3-4IS":
+		return Mx60_3_4IS, nil
+	case "Mx60-3-4IW":
+		return Mx60_3_4IW, nil
+	case "Mx60-3-4OS":
+		return Mx60_3_4OS, nil
+	case "Mx60-3-4OW":
+		return Mx60_3_4OW, nil
 	case "GOHAN":
 		return GOHAN, nil
 	}
@@ -2440,7 +2452,11 @@ func (rc *RCColumn) AutoLayoutReins(data map[string][]string) error {
 			for i := 0; i < int(val); i++ {
 				rf := NewReinforce(SetSD(lis[1]))
 				rf.Area = reinsarea[fs[2]]
-				rf.Position[ind] = startx + signx*(0.5*dd + width/float64(int(val)+2*ind-1)*float64(i+ind))
+				if val == 1 {
+					rf.Position[ind] = 0.0
+				} else {
+					rf.Position[ind] = startx + signx*(0.5*dd + width/float64(int(val)+2*ind-1)*float64(i+ind))
+				}
 				rf.Position[1-ind] = starty
 				if i == 0 && j == 0 {
 					rf.Caption = fmt.Sprintf("\"%s\"", lis[0])
@@ -3595,9 +3611,15 @@ func (ww *WoodWall) SetWood(lis []string) error {
 		}
 		ww.Kfact = val
 	}
-	switch lis[2] {
-	case "GOHAN":
-		ww.Wood = GOHAN
+	w, err := materialname(lis[2])
+	if err != nil {
+		return err
+	}
+	switch w.(type) {
+	case Wood:
+		ww.Wood = w.(Wood)
+	default:
+		return fmt.Errorf("unknown material %s", lis[2])
 	}
 	return nil
 }

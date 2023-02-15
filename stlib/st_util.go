@@ -29,6 +29,7 @@ const (
 
 var (
 	home    = os.Getenv("HOME")
+	stdir   = os.Getenv("STDIR")
 	tooldir = filepath.Join(home, ".st/tool")
 )
 

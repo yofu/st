@@ -7446,9 +7446,9 @@ func WriteLst(fn string, sects []*Sect) error {
 			} else if sec.Num < 700 {
 				etype = BRACE
 			} else if sec.Num < 800 {
-				etype = WALL
-			} else if sec.Num < 900 {
 				etype = SLAB
+			} else if sec.Num < 900 {
+				etype = WALL
 			}
 			if etype == 0 {
 				continue
@@ -7461,7 +7461,6 @@ func WriteLst(fn string, sects []*Sect) error {
 			}
 		}
 		if al != nil {
-			fmt.Println(sec.Num, al)
 			otp.WriteString("\n")
 			otp.WriteString(al.String())
 		}

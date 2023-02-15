@@ -209,6 +209,8 @@ func (fig *Fig) GetSectionRate(num, etype int) SectionRate {
 				ww.Kfact = val
 			} else if val, ok := fig.Value["THICK"]; ok {
 				ww.Thick = val*100*0.250/0.225 // m -> cm
+			} else {
+				return nil
 			}
 			return ww
 		case SLAB:
@@ -218,6 +220,8 @@ func (fig *Fig) GetSectionRate(num, etype int) SectionRate {
 				ww.Kfact = val
 			} else if val, ok := fig.Value["THICK"]; ok {
 				ww.Thick = val*100*0.250/0.225 // m -> cm
+			} else {
+				return nil
 			}
 			return ww
 		default:

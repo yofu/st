@@ -446,9 +446,13 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 		}
 	}
 	if strings.HasPrefix(str, "~") {
-		home := os.Getenv("HOME")
 		if home != "" {
 			str = strings.Replace(str, "~", home, 1)
+		}
+	}
+	if strings.HasPrefix(str, "$st") {
+		if stdir != "" {
+			str = strings.Replace(str, "$st", stdir, 1)
 		}
 	}
 	var complete func(string, string, string) string
