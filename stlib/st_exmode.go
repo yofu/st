@@ -4679,6 +4679,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":count")
 		}
+		if stw.NodeSelected() || stw.ElemSelected() {
+			ns := stw.SelectedNodes()
+			els := stw.SelectedElems()
+			return Message(fmt.Sprintf("NODES: %d, ELEMS: %d", len(ns), len(els)))
+		}
 		var nnode, nelem int
 	ex_count:
 		for {
