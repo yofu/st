@@ -1031,10 +1031,10 @@ func (frame *Frame) Arclm101(cancel context.CancelFunc, cond *AnalysisCondition)
 	for lap := 0; lap < nlap; lap++ {
 		safety += dsafety
 		gmtx, gvct, err = frame.KP(dsafety)
-		csize, conf, vec = frame.AssemConf(gvct, dsafety)
 		if err != nil {
 			return err
 		}
+		csize, conf, vec = frame.AssemConf(gvct, dsafety)
 		laptime("Assem")
 		answers, err = solver.Solve(gmtx, csize, conf, vec)
 		if err != nil {
@@ -1047,7 +1047,11 @@ func (frame *Frame) Arclm101(cancel context.CancelFunc, cond *AnalysisCondition)
 		}
 		frame.UpdateReaction(gmtx, tmp)
 		frame.UpdateForm(tmp)
-		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f", lap+1, nlap, safety))
+		sign := 0.0
+		for i := 0; i < len(vec); i++ {
+			sign += answers[0][i] * vec[i]
+		}
+		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f, SIGN=%.3f", lap+1, nlap, safety, sign))
 		frame.Lapch <- lap + 1
 		<-frame.Lapch
 	}
