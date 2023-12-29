@@ -260,6 +260,9 @@ func NewElem() *Elem {
 	el := new(Elem)
 	el.Enod = make([]*Node, 2)
 	el.Bonds = make([]*Sect, 12)
+	for i := 0; i < 12; i++ {
+		el.Bonds[i] = NewRigid()
+	}
 	el.Phinge = make([]bool, 2)
 	el.Cmq = make([]float64, 12)
 	el.Stress = make([]float64, 12)

@@ -5385,6 +5385,10 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					otps := cond.Output()
 					if len(otps) > pind {
 						frame.ResultFileName[pers[pind]] = otps[pind]
+						// TODO
+						// frame.ReadArclmData(af, pers[pind])
+						// n := af.Nodes[0]
+						// fmt.Printf("NODE %d %v\n", n.Num, n.Reaction)
 					}
 					SetPeriod(stw, per)
 					stw.Redraw()
@@ -5488,13 +5492,30 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				cond.SetMax(tmp)
 			}
 		}
+		af := frame.Arclms[per]
 		if _, ok := argdict["NOINIT"]; ok {
 			cond.SetInit(false)
+			// TODO 直前の解析の応力と変形を引き継げていない
+			// af0 := frame.Arclms[frame.Show.Period]
+			// n0 := af0.Nodes[0]
+			// fmt.Printf("NDOE %d %v\n", n0.Num, n0.Reaction)
+			// for j, n := range af.Nodes {
+			// 	for i := 0; i < 6; i++ {
+			// 		n.Disp[i] = af0.Nodes[j].Disp[i]
+			// 		n.Reaction[i] = af0.Nodes[j].Reaction[i]
+			// 	}
+			// }
+			// for j, el := range af.Elems {
+			// 	for i := 0; i < 12; i++ {
+			// 		el.Stress[i] = af0.Elems[j].Stress[i]
+			// 	}
+			// 	el.Energy = af0.Elems[j].Energy
+			// 	el.Energyb = af0.Elems[j].Energyb
+			// }
 		}
 		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
 		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
 		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
-		af := frame.Arclms[per]
 		if af == nil {
 			return fmt.Errorf(":arclm101: frame isn't extracted to period %s", per)
 		}
