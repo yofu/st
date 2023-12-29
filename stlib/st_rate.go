@@ -3522,7 +3522,8 @@ func (wc *WoodColumn) Fc(cond *Condition) float64 {
 			check = " λ>150"
 		}
 		cond.Buffer.WriteString(fmt.Sprintf("#     細長比: λx=%.3f, λy=%.3f: λ=%.3f%s\n", lambda_x, lambda_y, lambda, check))
-		cond.Buffer.WriteString(fmt.Sprintf("#     許容圧縮応力度: Fc=%.3f [tf/cm2]\n", rtn))
+		cond.Buffer.WriteString(fmt.Sprintf("#     許容圧縮応力度: fc=%.3f [tf/cm2]\n", rtn))
+		cond.Buffer.WriteString(fmt.Sprintf("#     圧縮基準強度: Fc=%.3f [tf/cm2]\n", wc.fc))
 	}
 	return rtn
 }
