@@ -5881,9 +5881,9 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 			} else {
 				sectstring = fmt.Sprintf("　%d/◯%d", el.OriginalSection().Num, el.Sect.Num)
 			}
-			otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
+			otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), el.Condition.Length, el.Condition.Length, el.Condition.Length))
 			otp.WriteString("応力       :        N\n")
-			tex.WriteString(fmt.Sprintf("\\multicolumn{12}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
+			tex.WriteString(fmt.Sprintf("\\multicolumn{12}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, el.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), el.Condition.Length, el.Condition.Length, el.Condition.Length))
 			tex.WriteString("応力       &:&      $N$\\\\\n")
 			stress := make([]float64, 5)
 			for p, per := range []string{long, x1, x2, y1, y2} {
