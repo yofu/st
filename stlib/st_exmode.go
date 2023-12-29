@@ -1772,6 +1772,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			if err != nil {
 				return err
 			}
+			cond.Nfact = val
 			alpha[0] = val
 			alpha[1] = val
 		}
@@ -1780,6 +1781,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			if err != nil {
 				return err
 			}
+			cond.Nfact = val
 			alpha[0] = val
 		}
 		if f, ok := argdict["YFACT"]; ok {
@@ -1787,6 +1789,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			if err != nil {
 				return err
 			}
+			cond.Nfact = val
 			alpha[1] = val
 		}
 		if a, ok := argdict["ANGLE"]; ok {
@@ -2263,6 +2266,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				continue
 			}
 			el.Condition = cond.Snapshot()
+			el.Condition.Nfact = 1.0
 			Nl := el.ReturnStress("L", 0, 0)
 			alpha := make([]float64, 2)
 		loop593:
