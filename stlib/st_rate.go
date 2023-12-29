@@ -66,6 +66,7 @@ type Steel struct {
 	Fu   float64
 	e    float64
 	poi  float64
+	hiju float64
 }
 
 func (st Steel) Name() string {
@@ -73,7 +74,7 @@ func (st Steel) Name() string {
 }
 
 func (st Steel) Hiju() float64 {
-	return 7.8
+	return st.hiju
 }
 
 func (st Steel) EL() float64 {
@@ -224,23 +225,26 @@ func (w Wood) Poi() float64 {
 }
 
 var (
-	SN400    = Steel{"SN400", 2.4, 4.0, 2100.0, 0.3}
-	SN490    = Steel{"SN490", 3.3, 5.0, 2100.0, 0.3}
-	SN400T40 = Steel{"SN400T40", 2.2, 4.0, 2100.0, 0.3}
-	SN490T40 = Steel{"SN490T40", 3.0, 5.0, 2100.0, 0.3}
-	BCR295   = Steel{"BCR295", 3.0, 4.0, 2100.0, 0.3}
-	BCR365   = Steel{"BCR365", 3.7, 5.0, 2100.0, 0.3}
-	HT600    = Steel{"HT600", 6.0, 8.0, 2100.0, 0.3}
-	HT700    = Steel{"HT700", 7.0, 9.0, 2100.0, 0.3}
+	SN400    = Steel{"SN400", 2.4, 4.0, 2100.0, 0.3, 7.8}
+	SN490    = Steel{"SN490", 3.3, 5.0, 2100.0, 0.3, 7.8}
+	SN400T40 = Steel{"SN400T40", 2.2, 4.0, 2100.0, 0.3, 7.8}
+	SN490T40 = Steel{"SN490T40", 3.0, 5.0, 2100.0, 0.3, 7.8}
+	BCR295   = Steel{"BCR295", 3.0, 4.0, 2100.0, 0.3, 7.8}
+	BCR365   = Steel{"BCR365", 3.7, 5.0, 2100.0, 0.3, 7.8}
+	HT600    = Steel{"HT600", 6.0, 8.0, 2100.0, 0.3, 7.8}
+	HT700    = Steel{"HT700", 7.0, 9.0, 2100.0, 0.3, 7.8}
 
 	// ALUMINIUM
-	A6061T6  = Steel{"A6061T6", 2.141, 4.0, 700.0, 0.3}
-	A6063T5  = Steel{"A6063T5", 1.121, 4.0, 700.0, 0.3}
-	AlSi10Mg = Steel{"AlSi10Mg", 1.223, 1.427, 700.0, 0.3} // PENTA曲げ実験2020-07-20より、F=120N/mm2, Fu=140N/mm2とする
+	A6061T6  = Steel{"A6061T6", 2.141, 4.0, 700.0, 0.3, 2.7}
+	A6063T5  = Steel{"A6063T5", 1.121, 4.0, 700.0, 0.3, 2.7}
+	AlSi10Mg = Steel{"AlSi10Mg", 1.223, 1.427, 700.0, 0.3, 2.7} // PENTA曲げ実験2020-07-20より、F=120N/mm2, Fu=140N/mm2とする
+
+	// GLASS
+	GLASST8  = Steel{"GLASST8", 0.250, 0.560, 730.0, 0.23, 2.5}
 
 	// CARBON
-	M40J = Steel{"M40J", 5.438, 8.157, 1100.0, 0.3}
-	T300 = Steel{"T300", 7.477, 11.216, 1100.0, 0.3}
+	M40J = Steel{"M40J", 5.438, 8.157, 1100.0, 0.3, 2.0}
+	T300 = Steel{"T300", 7.477, 11.216, 1100.0, 0.3, 2.0}
 
 	FC18 = Concrete{"FC18", 0.180, 210.0, 0.166666}
 	FC21 = Concrete{"FC21", 0.210, 210.0, 0.166666}
@@ -300,6 +304,8 @@ func materialname(name string) (Material, error) {
 		return A6063T5,nil
 	case "AlSi10Mg":
 		return AlSi10Mg, nil
+	case "GLASST8":
+		return GLASST8, nil
 	case "M40J":
 		return M40J, nil
 	case "T300":
