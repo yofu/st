@@ -234,6 +234,14 @@ var (
 	HT600    = Steel{"HT600", 6.0, 8.0, 2100.0, 0.3, 7.8}
 	HT700    = Steel{"HT700", 7.0, 9.0, 2100.0, 0.3, 7.8}
 
+	FCD350 = Steel{"FCD350",220/98.0665,350/98.0665,2100.0,0.3}
+	FCD400 = Steel{"FCD400",250/98.0665,400/98.0665,2100.0,0.3}
+	FCD450 = Steel{"FCD450",280/98.0665,450/98.0665,2100.0,0.3}
+	FCD500 = Steel{"FCD500",320/98.0665,500/98.0665,2100.0,0.3}
+	FCD600 = Steel{"FCD600",370/98.0665,600/98.0665,2100.0,0.3}
+	FCD700 = Steel{"FCD700",420/98.0665,700/98.0665,2100.0,0.3}
+	FCD800 = Steel{"FCD800",480/98.0665,800/98.0665,2100.0,0.3}
+
 	// ALUMINIUM
 	A6061T6  = Steel{"A6061T6", 2.141, 4.0, 700.0, 0.3, 2.7}
 	A6063T5  = Steel{"A6063T5", 1.121, 4.0, 700.0, 0.3, 2.7}
@@ -245,6 +253,7 @@ var (
 	// CARBON
 	M40J = Steel{"M40J", 5.438, 8.157, 1100.0, 0.3, 2.0}
 	T300 = Steel{"T300", 7.477, 11.216, 1100.0, 0.3, 2.0}
+	PA6CF = Steel{"PA6-CF", 1.070, 1.070, 76.0, 0.3, 2.0} // データシートより https://polymaker.com/product/polymide-pa6-cf/
 
 	FC18 = Concrete{"FC18", 0.180, 210.0, 0.166666}
 	FC21 = Concrete{"FC21", 0.210, 210.0, 0.166666}
@@ -298,6 +307,20 @@ func materialname(name string) (Material, error) {
 		return HT600, nil
 	case "HT700":
 		return HT700, nil
+	case "FCD350":
+		return FCD350, nil
+	case "FCD400":
+		return FCD400, nil
+	case "FCD450":
+		return FCD450, nil
+	case "FCD500":
+		return FCD500, nil
+	case "FCD600":
+		return FCD600, nil
+	case "FCD700":
+		return FCD700, nil
+	case "FCD800":
+		return FCD800, nil
 	case "A6061T6":
 		return A6061T6,nil
 	case "A6063T5":
@@ -310,6 +333,8 @@ func materialname(name string) (Material, error) {
 		return M40J, nil
 	case "T300":
 		return T300, nil
+	case "PA6-CF":
+		return PA6CF, nil
 	case "FC18":
 		return FC18, nil
 	case "FC21":

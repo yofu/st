@@ -9,12 +9,14 @@ type Bond struct {
 	Num       int
 	Name      string
 	Stiffness []float64
+	Plastic   bool
 }
 
 var Pin = &Bond{
 	Num:       1,
 	Name:      "PIN",
 	Stiffness: []float64{0.0, 0.0},
+	Plastic:   false,
 }
 
 type Bonds []*Bond
@@ -38,6 +40,7 @@ func (bond *Bond) Snapshot() *Bond {
 	for i := 0; i < 2; i++ {
 		b.Stiffness[i] = bond.Stiffness[i]
 	}
+	b.Plastic = bond.Plastic
 	return b
 }
 
