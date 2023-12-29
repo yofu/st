@@ -2579,7 +2579,8 @@ func (elem *Elem) LateralStiffness(period string, abs bool) float64 {
 			return 0.0
 		}
 		if delta == 0.0 {
-			return 1e16
+			// return 1e16
+			return 0.0
 		}
 		if abs {
 			return math.Abs(shear / delta)
