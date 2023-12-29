@@ -4869,9 +4869,9 @@ func (frame *Frame) ExtractArclm(fn string) error {
 			}
 			for j := 0; j < 12; j++ {
 				if el.Bonds[j] == nil {
-					ae.Bonds[j] = arclm.Rigid
+					ae.Bonds[j] = arclm.NewRigid()
 				} else {
-					ae.Bonds[j] = af.Sects[arclmsects[el.Bonds[j].Num]]
+					ae.Bonds[j] = af.Sects[arclmsects[el.Bonds[j].Num]].Snapshot()
 				}
 				if p == "L" {
 					ae.Cmq[j] = el.Cmq[j]
@@ -5572,6 +5572,12 @@ func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
 				}
 			}
 			el.Stress[per] = stress
+			if el.Phinge[per] == nil {
+				el.Phinge[per] = make(map[int]bool)
+			}
+			for i := 0; i < 2; i++ {
+				el.Phinge[per][el.Enod[i].Num] = ael.Phinge[i]
+			}
 			el.Values["ENERGY"] = ael.Energy
 			el.Values["ENERGYB"] = ael.Energyb
 			if ael.IsValid {

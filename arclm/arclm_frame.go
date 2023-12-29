@@ -505,8 +505,10 @@ func (frame *Frame) UpdateStressPlastic(vec []float64) ([][]float64, error) {
 		estiff, err := el.StiffMatrix() // TODO: check
 		lambda := make([]float64, 2) // TODO: check
 		dup := make([][]float64, 2)
-		for j := 0; j < 6; j++ {
+		due := make([][]float64, 2)
+		for j := 0; j < 2; j++ {
 			dup[j] = make([]float64, 6)
+			due[j] = make([]float64, 6)
 		}
 		fe, dfdpe, qe, ae, _ := el.Coefficients(estiff)
 		gdisp := make([]float64, 12)
@@ -562,11 +564,68 @@ func (frame *Frame) UpdateStressPlastic(vec []float64) ([][]float64, error) {
 				dup[0][j] = lambda[0] * dfdpe[0][j]
 				dup[1][j] = lambda[1] * dfdpe[1][j]
 			}
-		case ae[0][0] == 0.0 && ae[1][1] == 0.0: // I=ELASTIC J=ELASTIC
-			if ae[0][0] == 0.0 && fe[0]>=f[0] {
+		}
+		if ae[0][0] == 0.0 || ae[1][1] == 0.0 { // I=ELASTIC OR J=ELASTIC
+			if el.IsBrace() {
+				dL := gdisp[6] - gdisp[0]
+				if dL < 0.0 && el.Bonds[0].Num == -2 && ae[0][0] == 0.0 {
+					lambda[0] = -1.0
+				}
+				if dL < 0.0 && el.Bonds[6].Num == -2 && ae[1][1] == 0.0 {
+					lambda[1] = -1.0
+				}
+				if dL >= 0.0 && el.Bonds[0].Num == -3 && ae[0][0] == 0.0 {
+					lambda[0] = -1.0
+				}
+				if dL >= 0.0 && el.Bonds[1].Num == -3 && ae[1][1] == 0.0 {
+					lambda[1] = -1.0
+				}
+			} else if ae[0][0] == 0.0 && fe[0]>=f[0] {
 				lambda[0] = -1.0
 			} else if ae[1][1] == 0.0 && fe[1]>=f[1] {
 				lambda[1] = -1.0
+			}
+		}
+		for i := 0; i < 2; i++ {
+			for j := 0; j < 6; j++ {
+				due[i][j] = gdisp[6*i+j] * dup[i][j]
+			}
+		}
+		for i := 0; i < 2; i++ {
+			// YIELD JUDGEMENT
+			if f[i] >= RADIUS {
+				fmt.Printf("YIELDED: ELEM %d %d %.3f %.3f", el.Num, i, f[i], lambda[i])
+				for j := 0; j < 6; j++ {
+					fmt.Printf(" %.3f/%.3f", el.Stress[6*i+j], fu[j])
+					if el.Bonds[6*i+j].Num == 0 {
+						if el.IsBrace() {
+							if j == 0 {
+								dL := gdisp[6] - gdisp[0]
+								rate := (el.Stress[6*i+j]-math.Pow(-1.0,float64(i))*fc[j])/fu[j]
+								if dL >= 0.0 && ((i==0 && rate<0.0)||(i==1 && rate>0.0)) {
+									el.Bonds[6*i+j].Num = -2 // LONGING
+								} else if dL < 0.0 && ((i==0 && rate>0.0)||(i==1 && rate<0.0)) {
+									el.Bonds[6*i+j].Num = -3 // SHORTING
+								}
+							}
+						} else {
+							el.Bonds[6*i+j].Num = -1 // PLASTIC
+						}
+						el.Phinge[i] = true
+					}
+				}
+				fmt.Printf("\n")
+			} else if lambda[i] < 0.0 { // DISLOAD JUDGEMENT
+				for j := 0; j < 6; j++ {
+					if el.Bonds[6*i+j].Num == -1 {
+						el.Bonds[6*i+j].Num = 0 // ELASTIC
+						el.Phinge[i] = false
+					}
+				}
+				if el.IsBrace() && (el.Bonds[6*i+0].Num == 1 || el.Bonds[6*i+0].Num == -2 || el.Bonds[6*i+0].Num == -3) {
+					el.Bonds[6*i+0].Num = 0
+					el.Phinge[i] = false
+				}
 			}
 		}
 		rtn[enum] = df
@@ -971,8 +1030,8 @@ func (frame *Frame) Arclm101(cancel context.CancelFunc, cond *AnalysisCondition)
 	safety := 0.0
 	for lap := 0; lap < nlap; lap++ {
 		safety += dsafety
-		gmtx, gvct, err = frame.KP(safety)
-		csize, conf, vec = frame.AssemConf(gvct, safety)
+		gmtx, gvct, err = frame.KP(dsafety)
+		csize, conf, vec = frame.AssemConf(gvct, dsafety)
 		if err != nil {
 			return err
 		}

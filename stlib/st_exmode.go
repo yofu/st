@@ -5523,48 +5523,49 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			stw.Redraw()
 		}
 		pind := 0
-		go func() {
-			retval := 0
-		read101:
-			for {
-				select {
-				case <-ctx.Done():
-					retval = 1
-				case <-af.Pivot:
-					if stw.Pivot() {
-						pivot <- 1
-					}
-				case lap := <-af.Lapch:
-					frame.ReadArclmData(af, pers[pind])
-					pind++
-					if pind == len(pers) {
-						pind = 0
-					}
-					af.Lapch <- retval
-					stw.CurrentLap("Calculating...", lap, nlap)
-					stw.Redraw()
-				case err := <-af.Endch:
-					if stw.Pivot() {
-						end <- 1
-					}
-					if err != nil {
-						stw.History(err.Error())
-					} else {
-						stw.CurrentLap("Completed", nlap, nlap)
-					}
-					otps := cond.Output()
-					if len(otps) > pind {
-						frame.ResultFileName[pers[pind]] = otps[pind]
-					}
-					SetPeriod(stw, per)
-					stw.Redraw()
-					if wait {
-						wch <- 1
-					}
-					break read101
+		retval := 0
+	read101:
+		for {
+			select {
+			case <-ctx.Done():
+				retval = 1
+			case <-af.Pivot:
+				if stw.Pivot() {
+					pivot <- 1
 				}
+			case lap := <-af.Lapch:
+				nper := fmt.Sprintf("%s@%d", pers[pind], lap+1)
+				SetPeriod(stw, nper)
+				frame.ReadArclmData(af, nper)
+				// pind++
+				// if pind == len(pers) {
+				// 	pind = 0
+				// }
+				// time.Sleep(500*time.Millisecond)
+				af.Lapch <- retval
+				stw.CurrentLap("Calculating...", lap, nlap)
+				stw.Redraw()
+			case err := <-af.Endch:
+				if stw.Pivot() {
+					end <- 1
+				}
+				if err != nil {
+					stw.History(err.Error())
+				} else {
+					stw.CurrentLap("Completed", nlap, nlap)
+				}
+				otps := cond.Output()
+				if len(otps) > pind {
+					frame.ResultFileName[pers[pind]] = otps[pind]
+				}
+				SetPeriod(stw, fmt.Sprintf("%s@%d", per, nlap))
+				stw.Redraw()
+				if wait {
+					wch <- 1
+				}
+				break read101
 			}
-		}()
+		}
 		if wait {
 			<-wch
 		}

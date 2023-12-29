@@ -40,10 +40,42 @@ var Rigid = &Sect{
 	Original: 0,
 }
 
+func NewRigid() *Sect {
+	return &Sect{
+		Num:      0,
+		E:        0.0,
+		Poi:      0.0,
+		Value:    []float64{0.0, -1.0, -1.0, 0.0},
+		Yield:    []float64{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},
+		Type:     -1,
+		Exp:      0.0,
+		Exq:      0.0,
+		Original: 0,
+	}
+}
+
 func NewSect() *Sect {
 	s := new(Sect)
 	s.Value = make([]float64, 4)
 	s.Yield = make([]float64, 12)
+	return s
+}
+
+func (sect *Sect) Snapshot() *Sect {
+	s := NewSect()
+	s.Num = sect.Num
+	s.E = sect.E
+	s.Poi = sect.Poi
+	for i := 0; i< 4; i++ {
+		s.Value[i] = sect.Value[i]
+	}
+	for i := 0; i< 12; i++ {
+		s.Yield[i] = sect.Yield[i]
+	}
+	s.Type = sect.Type
+	s.Exp = sect.Exp
+	s.Exq = sect.Exq
+	s.Original = sect.Original
 	return s
 }
 
@@ -213,6 +245,7 @@ type Elem struct {
 	Enod      []*Node
 	Cang      float64
 	Bonds     []*Sect
+	Phinge    []bool
 	Strong    []float64
 	Weak      []float64
 	Cmq       []float64
@@ -227,6 +260,7 @@ func NewElem() *Elem {
 	el := new(Elem)
 	el.Enod = make([]*Node, 2)
 	el.Bonds = make([]*Sect, 12)
+	el.Phinge = make([]bool, 2)
 	el.Cmq = make([]float64, 12)
 	el.Stress = make([]float64, 12)
 	el.IsValid = true
@@ -256,6 +290,15 @@ func (elem *Elem) Number() int {
 
 func (elem *Elem) Enode(ind int) int {
 	return elem.Enod[ind].Num
+}
+
+func (elem *Elem) IsBrace() bool {
+	for i := 1; i <= 3; i++ { // IXX, IYY, VEN
+		if elem.Sect.Value[i] != 0.0 {
+			return false
+		}
+	}
+	return true
 }
 
 func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error) {
@@ -309,23 +352,23 @@ func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error)
 			snum := int(tmp)
 			for _, s := range sects {
 				if s.Num == snum {
-					el.Bonds[i+3] = s
+					el.Bonds[i+3] = s.Snapshot()
 					break
 				}
 			}
 			if el.Bonds[i+3] == nil {
-				el.Bonds[i+3] = Rigid
+				el.Bonds[i+3] = NewRigid()
 			}
 		} else {
 			snum := int(tmp)
 			for _, s := range sects {
 				if s.Num == snum {
-					el.Bonds[i+6] = s
+					el.Bonds[i+6] = s.Snapshot()
 					break
 				}
 			}
 			if el.Bonds[i+6] == nil {
-				el.Bonds[i+6] = Rigid
+				el.Bonds[i+6] = NewRigid()
 			}
 		}
 	}
@@ -468,12 +511,12 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 			}
 			switch j {
 			case 0, 3: // Nz, Mz
-				v = elem.Stress[2*i+j] - math.Pow(-1.0, float64(i))*fc[j]
+				v = elem.Stress[6*i+j] - math.Pow(-1.0, float64(i))*fc[j]
 				value = math.Abs(v) / fu[j]
 				values[j] = value
 				f1[i] += math.Pow(value, elem.Sect.Exp)
 			case 1, 2: // Qx, Qy
-				v = elem.Stress[2*i+j] - fc[j]
+				v = elem.Stress[6*i+j] - fc[j]
 				value = math.Abs(v) / fu[j]
 				values[j] = value
 				if value*QUFACT > 1.0 {
@@ -481,7 +524,7 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 				}
 				f2[i] += math.Pow(value, elem.Sect.Exp)
 			case 4, 5: // Mx, My
-				v = elem.Stress[2*i+j] - fc[j]
+				v = elem.Stress[6*i+j] - fc[j]
 				value = math.Abs(v) / fu[j]
 				values[j] = value
 				f1[i] += math.Pow(value, elem.Sect.Exp)
@@ -654,7 +697,7 @@ func (elem *Elem) PlasticMatrix(estiff [][]float64) ([][]float64, error) {
 				p[i][j] = -1.0 / a[1][1] * q[i][1] * q[j][1]
 			}
 		}
-	case a[0][0] != 0.0 && a[1][1] != 0.0:
+	case a[0][0] != 0.0 && a[1][1] != 0.0: // I=PLASTIC J=PLASTIC
 		for i := 0; i < 12; i++ {
 			if elem.Bonds[i].Num == 1 || elem.Bonds[i].Num == -2 || elem.Bonds[i].Num == -3 {
 				continue
@@ -684,6 +727,48 @@ func (elem *Elem) PlasticMatrix(estiff [][]float64) ([][]float64, error) {
 		}
 	}
 	return estiff, nil
+}
+
+func (elem *Elem) PlasticMatrix2(estiff [][]float64) ([][]float64, error) { // ModifyHingeを参考にした版。valが回転剛性
+	val := 0.0
+	h := make([][]float64, 12)
+	rtn := make([][]float64, 12)
+	for i := 0; i < 12; i++ {
+		h[i] = make([]float64, 12)
+		rtn[i] = make([]float64, 12)
+		for j := 0; j < 12; j++ {
+			rtn[i][j] = estiff[i][j]
+		}
+	}
+	for n := 0; n < 2; n++ {
+		if elem.Phinge[n] {
+			fmt.Printf("PlasticMatrix2: ELEM %d %d\n", elem.Num, n)
+			for i := 4; i < 6; i++ { // TODO check
+				kk := 6*n+i
+				if estiff[kk][kk] == 0.0 {
+					return nil, errors.New(fmt.Sprintf("PlasticMatrix2: ELEM %d: Matrix Singular", elem.Num))
+				}
+				l := elem.Length()
+				k1 := (val * l) / (4.0 * elem.Sect.E * elem.Sect.Value[1])
+				k2 := (val * l) / (4.0 * elem.Sect.E * elem.Sect.Value[2])
+				for ii := 0; ii < 12; ii++ {
+					for jj := 0; jj < 12; jj++ {
+						if ii == 2 || ii == 4 || ii == 8 || ii == 10 {
+							h[ii][jj] = -rtn[ii][kk] / rtn[kk][kk] * rtn[kk][jj] * 1.0 / (k1 + 1.0)
+						} else {
+							h[ii][jj] = -rtn[ii][kk] / rtn[kk][kk] * rtn[kk][jj] * 1.0 / (k2 + 1.0)
+						}
+					}
+				}
+				for ii := 0; ii < 12; ii++ {
+					for jj := 0; jj < 12; jj++ {
+						rtn[ii][jj] += h[ii][jj]
+					}
+				}
+			}
+		}
+	}
+	return rtn, nil
 }
 
 func (elem *Elem) GeoStiffMatrix() ([][]float64, error) {
@@ -787,7 +872,8 @@ func (elem *Elem) ModifyHinge(estiff [][]float64) ([][]float64, error) {
 	}
 	for n := 0; n < 2; n++ {
 		for i := 0; i < 6; i++ {
-			if elem.Bonds[6*n+i] != Rigid {
+			// if elem.Bonds[6*n+i] != Rigid {
+			if elem.Bonds[6*n+i].Num != 0 {
 				kk := 6*n + i
 				if rtn[kk][kk] == 0.0 {
 					return nil, errors.New(fmt.Sprintf("Modifyhinge: ELEM %d: Matrix Singular", elem.Num))
