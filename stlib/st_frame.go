@@ -4169,7 +4169,7 @@ susnode:
 		if err1 {
 			ns = append(ns, n)
 			otp.WriteString(fmt.Sprintf("no line elem: %d\n", n.Num))
-		} else if err2 {
+		} else if err2 && !n.IsFixed() {
 			ns = append(ns, n)
 			otp.WriteString(fmt.Sprintf("all pin: %d\n", n.Num))
 		}
