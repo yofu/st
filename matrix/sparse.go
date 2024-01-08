@@ -967,7 +967,7 @@ func (ll *LLSMatrix) LDLT(ch chan int) (*LLSMatrix, error) {
 	for col := 0; col < size; col++ {
 		n = ll.diag[col]
 		if n.value == 0.0 {
-			return nil, errors.New(fmt.Sprintf("matrix singular: %d", col))
+			return nil, errors.New(fmt.Sprintf("matrix singular: %d/%d", col, size))
 		}
 		w := 1.0 / n.value
 		for {

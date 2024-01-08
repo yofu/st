@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -248,6 +249,31 @@ func (frame *Frame) RestoreState(fs *FrameState) {
 			el.Stress[j] = fs.Stress[i][j]
 		}
 	}
+}
+
+func (frame *Frame) CheckSingularNode(e error) error {
+	pat := regexp.MustCompile("^matrix singular: ([0-9]+)/([0-9]+)$")
+	txt := e.Error()
+	if !pat.MatchString(txt) {
+		return e
+	}
+	fs := pat.FindStringSubmatch(txt)
+	num, err := strconv.ParseInt(fs[1], 10, 64)
+	if err != nil {
+		return e
+	}
+	for _, n := range frame.Nodes {
+		for i := 0; i < 6; i++ {
+			if !n.Conf[i] {
+				num--
+			}
+			if num == 0 {
+				return fmt.Errorf("matrix singular at NODE %d[%d]\n", n.Num, i)
+				return nil
+			}
+		}
+	}
+	return e
 }
 
 func (frame *Frame) AssemGlobalVector(safety float64) (int, []bool, []float64, error) {
@@ -915,7 +941,7 @@ func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCond
 			answers, err = solver.Solve(gmtx, csize, conf, vec)
 		}
 		if err != nil {
-			return err
+			return frame.CheckSingularNode(err)
 		}
 		sign = 0.0
 		for i := 0; i < len(vec); i++ {
