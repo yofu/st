@@ -140,14 +140,14 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 		}
 	}
 	if show.ElemCaption&EC_DRIFT_X != 0 {
-		drift := elem.StoryDrift("X")
+		drift := elem.StoryDrift(show.Period, 0)
 		if drift != 0.0 && !math.IsNaN(drift) {
 			ecap.WriteString(fmt.Sprintf("1/%.0f\n", 1.0/math.Abs(drift)))
 			oncap = true
 		}
 	}
 	if show.ElemCaption&EC_DRIFT_Y != 0 {
-		drift := elem.StoryDrift("Y")
+		drift := elem.StoryDrift(show.Period, 1)
 		if drift != 0.0 && !math.IsNaN(drift) {
 			ecap.WriteString(fmt.Sprintf("1/%.0f\n", 1.0/math.Abs(drift)))
 			oncap = true
