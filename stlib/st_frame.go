@@ -4993,9 +4993,10 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	otp.WriteString("柱，壁は階高の中央で上下に分配するものとする。\n\n")
 	otp.WriteString(fmt.Sprintf(" 節点番号          積載荷重別の重量 [%s]\n\n", frame.Show.UnitName[0]))
 	otp.WriteString("                 床用     柱梁用     地震用\n")
-	tex32.WriteString("{\\footnotesize\n\\begin{supertabular}{r r r r}\n")
-	tex32.WriteString(fmt.Sprintf("節点番号&\\multicolumn{3}{c}{積載荷重別の重量 ${\\rm [%s]}$}\\\\\n", frame.Show.UnitName[0]))
-	tex32.WriteString("&   床用    & 柱梁用  &  地震用\\\\\n")
+	tex32.WriteString("{\\footnotesize\n\\begin{tabbing}\n")
+	tex32.WriteString("\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\kill\n")
+	tex32.WriteString(fmt.Sprintf("節点番号 \\> 積載荷重別の重量 ${\\rm [%s]}$ \\\\ \n", frame.Show.UnitName[0]))
+	tex32.WriteString("\\>   床用    \\> 柱梁用  \\>  地震用\\\\\n")
 	for _, n := range nodes {
 		otp.WriteString(n.WgtString(frame.Show.Unit[0]))
 		tex32.WriteString(n.WgtStringTex(frame.Show.Unit[0]))
@@ -5004,14 +5005,18 @@ func (frame *Frame) WeightDistribution(fn string) error {
 		}
 	}
 	otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
-	tex32.WriteString(fmt.Sprintf("       計 & %10.3f & %10.3f & %10.3f\\\\\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
-	tex32.WriteString("\\end{supertabular}\n\\onecolumn\n")
+	tex32.WriteString(fmt.Sprintf("       計 \\> %10.3f \\> %10.3f \\> %10.3f\\\\\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
+	tex32.WriteString("\\end{tabbing}\n\n")
 	// PERPLの出力
 	perpl := make(map[int][]float64, 0)
 	perplkey := make([]int, 0)
 	perplsum := make([]float64, 3)
 	otp.WriteString(fmt.Sprintf(" 節点番号             節点荷重 [%s]\n\n", frame.Show.UnitName[0]))
 	otp.WriteString("                    X          Y          Z\n")
+	tex32.WriteString("\\begin{tabbing}\n")
+	tex32.WriteString("\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\kill\n")
+	tex32.WriteString(fmt.Sprintf("節点番号 \\> 節点荷重 ${\\rm [%s]}$ \\\\\n", frame.Show.UnitName[0]))
+	tex32.WriteString("\\>   X    \\> Y  \\>  Z\\\\\n")
 	for _, el := range frame.Elems {
 		if el.Sect.Perpl == nil || len(el.Sect.Perpl) < 3 || (el.Sect.Perpl[1] == 0.0 && el.Sect.Perpl[2] == 0.0) {
 			continue
@@ -5031,22 +5036,25 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	sort.Ints(perplkey)
 	for _, nnum := range perplkey {
 		otp.WriteString(fmt.Sprintf("%9d  %10.3f %10.3f %10.3f\n", nnum, frame.Show.Unit[0]*perpl[nnum][0], frame.Show.Unit[0]*perpl[nnum][1], frame.Show.Unit[0]*perpl[nnum][2]))
+		tex32.WriteString(fmt.Sprintf("%9d \\> %10.3f \\> %10.3f \\> %10.3f\n", nnum, frame.Show.Unit[0]*perpl[nnum][0], frame.Show.Unit[0]*perpl[nnum][1], frame.Show.Unit[0]*perpl[nnum][2]))
 	}
+	tex32.WriteString("\\end{tabbing}\n")
 	otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", frame.Show.Unit[0]*perplsum[0], frame.Show.Unit[0]*perplsum[1], frame.Show.Unit[0]*perplsum[2]))
 	otp.WriteString("各断面の部材総量（参考資料）\n\n")
 	otp.WriteString(" 断面番号 長さ,面積 重量(柱梁用)\n             [m,m2]     [ton]\n")
-	tex32.WriteString("各断面の部材総量（参考資料）\\\\\n\\\\\n")
-	tex32.WriteString("\\begin{supertabular}{r r r l}\n")
-	tex32.WriteString(" 断面番号 & 長さ,面積 & 重量(柱梁用)& \\\\\n          & ${\\rm [m,m^2]}$ & ${\\rm [ton]}$&\\\\\n")
+	tex32.WriteString("各断面の部材総量（参考資料）\\\\\n")
+	tex32.WriteString("\\begin{tabbing}\n")
+	tex32.WriteString("\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\kill\n")
+	tex32.WriteString(" 断面番号 \\> 長さ,面積 \\> 重量(柱梁用) \\> \\\\\n          \\> ${\\rm [m,m^2]}$ \\> ${\\rm [ton]}$\\>\\\\\n")
 	for k := range amount {
 		ekeys = append(ekeys, k)
 	}
 	sort.Ints(ekeys)
 	for _, k := range ekeys {
 		otp.WriteString(fmt.Sprintf("%9d %9.3f %9.3f 【%s】\n", k, amount[k], amount[k]*frame.Sects[k].Weight()[1], frame.Sects[k].Name))
-		tex32.WriteString(fmt.Sprintf("%9d & %9.3f & %9.3f & 【%s】\\\\\n", k, amount[k], amount[k]*frame.Sects[k].Weight()[1], frame.Sects[k].Name))
+		tex32.WriteString(fmt.Sprintf("%9d \\> %9.3f \\> %9.3f \\> 【%s】\\\\\n", k, amount[k], amount[k]*frame.Sects[k].Weight()[1], frame.Sects[k].Name))
 	}
-	tex32.WriteString("\\end{supertabular}\n}\n\\newpage")
+	tex32.WriteString("\\end{tabbing}\n}\n\\newpage")
 	otp.WriteString("\n")
 	switch frame.Show.UnitName[0] {
 	default:
