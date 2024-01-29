@@ -5385,10 +5385,6 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					otps := cond.Output()
 					if len(otps) > pind {
 						frame.ResultFileName[pers[pind]] = otps[pind]
-						// TODO
-						// frame.ReadArclmData(af, pers[pind])
-						// n := af.Nodes[0]
-						// fmt.Printf("NODE %d %v\n", n.Num, n.Reaction)
 					}
 					SetPeriod(stw, per)
 					stw.Redraw()
@@ -5495,23 +5491,6 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		af := frame.Arclms[per]
 		if _, ok := argdict["NOINIT"]; ok {
 			cond.SetInit(false)
-			// TODO 直前の解析の応力と変形を引き継げていない
-			// af0 := frame.Arclms[frame.Show.Period]
-			// n0 := af0.Nodes[0]
-			// fmt.Printf("NDOE %d %v\n", n0.Num, n0.Reaction)
-			// for j, n := range af.Nodes {
-			// 	for i := 0; i < 6; i++ {
-			// 		n.Disp[i] = af0.Nodes[j].Disp[i]
-			// 		n.Reaction[i] = af0.Nodes[j].Reaction[i]
-			// 	}
-			// }
-			// for j, el := range af.Elems {
-			// 	for i := 0; i < 12; i++ {
-			// 		el.Stress[i] = af0.Elems[j].Stress[i]
-			// 	}
-			// 	el.Energy = af0.Elems[j].Energy
-			// 	el.Energyb = af0.Elems[j].Energyb
-			// }
 		}
 		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
 		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
@@ -5554,48 +5533,49 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		pind := 0
 		retval := 0
-	read101:
-		for {
-			select {
-			case <-ctx.Done():
-				retval = 1
-			case <-af.Pivot:
-				if stw.Pivot() {
-					pivot <- 1
+		currentlap := 0
+		go func() {
+		read101:
+			for {
+				select {
+				case <-ctx.Done():
+					retval = 1
+				case <-af.Pivot:
+					if stw.Pivot() {
+						pivot <- 1
+					}
+				case lap := <-af.Lapch:
+					currentlap = lap
+					nper := fmt.Sprintf("%s@%d", pers[pind], lap)
+					SetPeriod(stw, nper)
+					frame.ReadArclmData(af, nper)
+					af.Lapch <- retval
+					stw.CurrentLap("Calculating...", lap, nlap)
+					stw.Redraw()
+				case err := <-af.Endch:
+					if stw.Pivot() {
+						end <- 1
+					}
+					if err != nil {
+						stw.History(err.Error())
+					} else {
+						stw.CurrentLap("Completed", nlap, nlap)
+					}
+					otps := cond.Output()
+					if len(otps) > pind {
+						frame.ResultFileName[pers[pind]] = otps[pind]
+					}
+					SetPeriod(stw, fmt.Sprintf("%s@%d", per, currentlap))
+					frame.Nlap[per] = currentlap
+					frame.ZoubunSummary(filepath.Join(stw.Cwd(), "summary.txt"), per, cond)
+					stw.Redraw()
+					if wait {
+						wch <- 1
+					}
+					break read101
 				}
-			case lap := <-af.Lapch:
-				nper := fmt.Sprintf("%s@%d", pers[pind], lap+1)
-				SetPeriod(stw, nper)
-				frame.ReadArclmData(af, nper)
-				// pind++
-				// if pind == len(pers) {
-				// 	pind = 0
-				// }
-				// time.Sleep(500*time.Millisecond)
-				af.Lapch <- retval
-				stw.CurrentLap("Calculating...", lap, nlap)
-				stw.Redraw()
-			case err := <-af.Endch:
-				if stw.Pivot() {
-					end <- 1
-				}
-				if err != nil {
-					stw.History(err.Error())
-				} else {
-					stw.CurrentLap("Completed", nlap, nlap)
-				}
-				otps := cond.Output()
-				if len(otps) > pind {
-					frame.ResultFileName[pers[pind]] = otps[pind]
-				}
-				SetPeriod(stw, fmt.Sprintf("%s@%d", per, nlap))
-				stw.Redraw()
-				if wait {
-					wch <- 1
-				}
-				break read101
 			}
-		}
+		}()
 		if wait {
 			<-wch
 		}

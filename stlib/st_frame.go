@@ -2665,6 +2665,59 @@ func (frame *Frame) WriteReaction(fn string, direction int, unit float64) error 
 	return WriteReaction(fn, ns, direction, frame.Show.Unit[0])
 }
 
+func (frame *Frame) ZoubunSummary(fn string, period string, cond *arclm.AnalysisCondition) error {
+	if _, ok := frame.Nlap[period]; !ok {
+		return fmt.Errorf("zoubun result not found for period %s", period)
+	}
+	var otp bytes.Buffer
+	otp.WriteString(cond.String())
+	otp.WriteString("\n")
+	nlap := frame.Nlap[period]
+	ind := 0
+	switch strings.ToUpper(period) {
+	case "X":
+		ind = 0
+	case "Y":
+		ind = 1
+	}
+	// TODO: factsを使いたいが、Node.Forceなどを設定する必要あり
+	nodes := frame.FloorNodes(nil, nil)
+	elems := frame.FloorElems([]int{COLUMN, GIRDER, BRACE, WBRACE, SBRACE}, nil, nil)
+	for lap := 0; lap < nlap; lap++ {
+		nper := fmt.Sprintf("%s@%d", period, lap+1)
+		avedisp := make([]float64, frame.Ai.Nfloor)
+		storydrift := make([]float64, frame.Ai.Nfloor-1)
+		shear := make([]float64, frame.Ai.Nfloor-1)
+		otp.WriteString(fmt.Sprintf("%3d", lap+1))
+		for i := 0; i < frame.Ai.Nfloor; i++ {
+			for _, n := range nodes[i] {
+				avedisp[i] += n.Disp[nper][ind]
+			}
+			avedisp[i] /= float64(len(nodes[i]))
+		}
+		for i := 0; i < frame.Ai.Nfloor-1; i++ {
+			storydrift[i] = avedisp[i+1] - avedisp[i]
+			for _, el := range elems[i] {
+				if ind == 0 {
+					shear[i] -= el.VectorStress(nper, 0, XAXIS)
+				} else {
+					shear[i] -= el.VectorStress(nper, 0, YAXIS)
+				}
+			}
+			otp.WriteString(fmt.Sprintf(" %10.6f %10.6f", storydrift[i], shear[i]))
+		}
+		otp.WriteString("\n")
+	}
+	w, err := os.Create(fn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
+	otp = AddCR(otp)
+	otp.WriteTo(w)
+	return nil
+}
+
 // ReportZoubunDisp writes an output file which reports displacement data of push-over analysis.
 func (frame *Frame) ReportZoubunDisp(fn string, ns []*Node, pers []string, direction int) error {
 	var otp bytes.Buffer
@@ -6119,19 +6172,11 @@ func (frame *Frame) CheckLst(secnum []int) string {
 	return otp.String()
 }
 
-func (frame *Frame) Facts(fn string, etypes []int, skipany, skipall []int, period []string, abs bool) error {
-	var err error
+func (frame *Frame) FloorNodes(skipany, skipall []int) [][]*Node {
 	l := frame.Ai.Nfloor
-	if l < 2 {
-		return errors.New("Facts: Nfloor < 2")
-	}
 	nodes := make([][]*Node, l)
-	elems := make([][]*Elem, l-1)
 	for i := 0; i < l; i++ {
 		nodes[i] = make([]*Node, 0)
-		if i < l-1 {
-			elems[i] = make([]*Elem, 0)
-		}
 	}
 	var cont bool
 fact_node:
@@ -6165,6 +6210,12 @@ fact_node:
 			}
 		}
 	}
+	return nodes
+}
+
+func (frame *Frame) FloorElems(etypes []int, skipany, skipall []int) [][]*Elem {
+	l := frame.Ai.Nfloor
+	elems := make([][]*Elem, l-1)
 	for _, el := range frame.Elems {
 		contained := false
 		for _, et := range etypes {
@@ -6195,6 +6246,17 @@ fact_node:
 			}
 		}
 	}
+	return elems
+}
+
+func (frame *Frame) Facts(fn string, etypes []int, skipany, skipall []int, period []string, abs bool) error {
+	var err error
+	l := frame.Ai.Nfloor
+	if l < 2 {
+		return errors.New("Facts: Nfloor < 2")
+	}
+	nodes := frame.FloorNodes(skipany, skipall)
+	elems := frame.FloorElems(etypes, skipany, skipall)
 	f := NewFact(l, abs, frame.Ai.Base[0]/0.2, frame.Ai.Base[1]/0.2) // facts.Abs
 	perx := strings.Split(period[0], "@")[0]
 	pery := strings.Split(period[1], "@")[0]
