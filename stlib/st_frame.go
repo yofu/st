@@ -4980,6 +4980,15 @@ func (frame *Frame) WeightDistribution(fn string) error {
 		otp.WriteString(fmt.Sprintf("%9d  %10.3f %10.3f %10.3f\n", nnum, frame.Show.Unit[0]*perpl[nnum][0], frame.Show.Unit[0]*perpl[nnum][1], frame.Show.Unit[0]*perpl[nnum][2]))
 	}
 	otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", frame.Show.Unit[0]*perplsum[0], frame.Show.Unit[0]*perplsum[1], frame.Show.Unit[0]*perplsum[2]))
+	// 杭頭曲げモーメントの出力
+	otp.WriteString(fmt.Sprintf(" 節点番号             杭頭曲げモーメント [%s%s]\n\n", frame.Show.UnitName[0], frame.Show.UnitName[1]))
+	otp.WriteString("                    M\n")
+	for _, n := range nodes {
+		if n.Pile != nil {
+			otp.WriteString(fmt.Sprintf("%9d  %10.3f\n", n.Num, frame.Show.Unit[0]*frame.Show.Unit[1]*n.Pile.Moment))
+		}
+	}
+	otp.WriteString("\n")
 	otp.WriteString("各断面の部材総量（参考資料）\n\n")
 	otp.WriteString(" 断面番号 長さ,面積 重量(柱梁用)\n             [m,m2]     [ton]\n")
 	tex32.WriteString("各断面の部材総量（参考資料）\\\\\n\\\\\n")
