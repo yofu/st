@@ -2565,16 +2565,19 @@ func (elem *Elem) PlateStress(period string, vec []float64) float64 {
 func (elem *Elem) LateralStiffness(period string, abs bool) float64 {
 	if elem.IsLineElem() {
 		var axis []float64
+		var index int
 		switch period {
 		default:
 			return 0.0
 		case "X":
 			axis = XAXIS
+			index = 0
 		case "Y":
 			axis = YAXIS
+			index = 1
 		}
 		shear := elem.VectorStress(period, 0, axis)
-		delta := elem.Delta(period)
+		delta := elem.Delta(period, index)
 		if shear == 0.0 {
 			return 0.0
 		}
@@ -2592,26 +2595,17 @@ func (elem *Elem) LateralStiffness(period string, abs bool) float64 {
 	}
 }
 
-func (elem *Elem) Delta(period string) float64 {
+func (elem *Elem) Delta(period string, index int) float64 {
 	if elem.IsLineElem() {
-		var index int
-		switch period {
-		default:
-			return 0.0
-		case "X":
-			index = 0
-		case "Y":
-			index = 1
-		}
 		return elem.Enod[1].ReturnDisp(period, index) - elem.Enod[0].ReturnDisp(period, index)
 	} else {
 		return 0.0
 	}
 }
 
-func (elem *Elem) StoryDrift(period string) float64 {
+func (elem *Elem) StoryDrift(period string, index int) float64 {
 	if elem.IsLineElem() {
-		delta := elem.Delta(period)
+		delta := elem.Delta(period, index)
 		height := elem.Direction(false)[2]
 		return delta / height
 	} else {
@@ -3006,10 +3000,10 @@ func (elem *Elem) CurrentValue(show *Show, max, abs bool) float64 {
 		}
 	}
 	if show.ElemCaption&EC_DRIFT_X != 0 {
-		return elem.StoryDrift("X")
+		return elem.StoryDrift(show.Period, 0)
 	}
 	if show.ElemCaption&EC_DRIFT_Y != 0 {
-		return elem.StoryDrift("Y")
+		return elem.StoryDrift(show.Period, 1)
 	}
 	if show.SrcanRate != 0 {
 		val, err := elem.RateMax(show)

@@ -16,6 +16,17 @@ const (
 	NCS        = 15.0
 )
 
+var BTRATIO = []string{"P-I-1", "P-I-2", "P-I", "P-II", "P-III", "P-IV"}
+
+const (
+	P_I_1 = iota
+	P_I_2
+	P_I
+	P_II
+	P_III
+	P_IV
+)
+
 var (
 	reinsarea = map[string]float64{
 		"D10":0.7133,
@@ -473,6 +484,10 @@ type Shape interface {
 	Torsion() float64
 	Zx() float64
 	Zy() float64
+	Zpx() float64
+	Zpy() float64
+	BT_ratio() []float64
+	BT_ratio_category(Steel) int
 	Vertices() [][]float64
 	Breadth(bool) float64
 }
@@ -783,6 +798,62 @@ func (sc *SColumn) Na(cond *Condition) float64 {
 		}
 	}
 }
+func (sc *SColumn) Ny() float64 {
+	return sc.F * sc.A()
+}
+func (sc *SColumn) Ne(cond *Condition) float64 {
+	lx := sc.Lk(cond.Length, true)
+	ly := sc.Lk(cond.Length, false)
+	if an, ok := sc.Shape.(ANGLE); ok {
+		if lx > ly {
+			return math.Pow(math.Pi, 2.0) * sc.EL() * an.Imin() / math.Pow(lx, 2.0)
+		} else {
+			return math.Pow(math.Pi, 2.0) * sc.EL() * an.Imin() / math.Pow(ly, 2.0)
+		}
+	} else {
+		nex := math.Pow(math.Pi, 2.0) * sc.EL() * sc.Ix() / math.Pow(lx, 2.0)
+		ney := math.Pow(math.Pi, 2.0) * sc.EL() * sc.Iy() / math.Pow(ly, 2.0)
+		if nex < ney {
+			return nex
+		} else {
+			return ney
+		}
+	}
+}
+func (sc *SColumn) Nc1(cond *Condition) float64 {
+	ny := sc.Ny()
+	ne := sc.Ne(cond)
+	lambda := math.Sqrt(ny/ne)
+	if lambda <= 0.15 {
+		return ny
+	} else if lambda <= 1.0/math.Sqrt(0.6) {
+		return (1.0-0.5*(lambda-0.15)/(1/math.Sqrt(0.6)-0.15))*ny
+	} else {
+		return 1.0/(1.2*math.Pow(lambda, 2.0))*ny
+	}
+}
+func (sc *SColumn) Nc2(cond *Condition) float64 {
+	switch sc.Shape.(type) {
+	case HKYOU, HWEAK:
+		btc := sc.Shape.BT_ratio_category(sc.Steel)
+		switch btc {
+		case  P_I_1, P_I_2, P_I, P_II:
+			return sc.Ny()
+		default:
+			btr := sc.Shape.BT_ratio()
+			ef := math.Sqrt(sc.EL()/sc.Steel.F)
+			var1 := 670-453*btr[1]/ef*410*sc.Steel.F/sc.EL()
+			var2 := (1720-453*btr[0]/ef)*201*sc.Steel.F/sc.EL()
+			if var1 < var2 {
+				return var1 * sc.A()*100/9.80665/1000
+			} else {
+				return var2 * sc.A()*100/9.80665/1000
+			}
+		}
+	default:
+		return sc.Ny()
+	}
+}
 func (sc *SColumn) Qa(cond *Condition) float64 {
 	f := sc.Fs(cond)
 	if cond.Strong { // for Qy
@@ -906,6 +977,43 @@ func (hk HKYOU) Zx() float64 {
 func (hk HKYOU) Zy() float64 {
 	return hk.Iy() / hk.B * 2.0
 }
+func (hk HKYOU) Zpx() float64 {
+	return (hk.B*math.Pow(hk.H, 2.0) - (hk.B-hk.Tw)*math.Pow(hk.H-2*hk.Tf, 2.0)) / 4.0
+}
+func (hk HKYOU) Zpy() float64 {
+	return 2.0*hk.Tf*math.Pow(hk.B, 2.0)/4.0 + (hk.H-2*hk.Tf)*math.Pow(hk.Tw, 2.0)/4.0
+}
+func (hk HKYOU) BT_ratio() []float64 {
+	return []float64{(hk.H-2*hk.Tf)/hk.Tw, hk.B/2/hk.Tf}
+}
+func (hk HKYOU) BT_ratio_category(material Steel) int {
+	var k []float64
+	switch material.Name() {
+	case "SN400":
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6}
+	case "SN490":
+		k = []float64{0.57, 2.6, 0.73, 3.2, 0.88, 3.9}
+	default:
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6} // TODO
+	}
+	ef := math.Sqrt(material.EL()/material.F)
+	btr := hk.BT_ratio()
+	if btr[0] <=2.2*ef {
+		if math.Pow(btr[1], 2.0)/math.Pow(k[0]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[1]*ef, 2.0) <= 1.0 {
+			return P_I_1
+		} else if math.Pow(btr[1], 2.0)/math.Pow(k[2]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[3]*ef, 2.0) <= 1.0 {
+			return P_I_2
+		} else {
+			return P_I
+		}
+	} else if (btr[0] <= 2.4*ef) && (math.Pow(btr[1], 2.0)/math.Pow(k[4]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[5]*ef, 2.0) <= 1.0) {
+		return P_II
+	} else if btr[1] <= 0.82*ef && btr[0] <= 6*ef {
+		return P_III
+	} else {
+		return P_IV
+	}
+}
 
 func (hk HKYOU) Vertices() [][]float64 {
 	h := hk.H * 0.5
@@ -1008,6 +1116,43 @@ func (hw HWEAK) Zx() float64 {
 }
 func (hw HWEAK) Zy() float64 {
 	return hw.Iy() / hw.H * 2.0
+}
+func (hw HWEAK) Zpx() float64 {
+	return 2.0*hw.Tf*math.Pow(hw.B, 2.0)/4.0 + (hw.H-2*hw.Tf)*math.Pow(hw.Tw, 2.0)/4.0
+}
+func (hw HWEAK) Zpy() float64 {
+	return (hw.B*math.Pow(hw.H, 2.0) - (hw.B-hw.Tw)*math.Pow(hw.H-2*hw.Tf, 2.0)) / 4.0
+}
+func (hw HWEAK) BT_ratio() []float64 {
+	return []float64{(hw.H-2*hw.Tf)/hw.Tw, hw.B/2/hw.Tf}
+}
+func (hw HWEAK) BT_ratio_category(material Steel) int {
+	var k []float64
+	switch material.Name() {
+	case "SN400":
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6}
+	case "SN490":
+		k = []float64{0.57, 2.6, 0.73, 3.2, 0.88, 3.9}
+	default:
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6} // TODO
+	}
+	ef := math.Sqrt(material.EL()/material.F)
+	btr := hw.BT_ratio()
+	if btr[0] <=2.2*ef {
+		if math.Pow(btr[1], 2.0)/math.Pow(k[0]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[1]*ef, 2.0) <= 1.0 {
+			return P_I_1
+		} else if math.Pow(btr[1], 2.0)/math.Pow(k[2]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[3]*ef, 2.0) <= 1.0 {
+			return P_I_2
+		} else {
+			return P_I
+		}
+	} else if (btr[0] <= 2.4*ef) && (math.Pow(btr[1], 2.0)/math.Pow(k[4]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[5]*ef, 2.0) <= 1.0) {
+		return P_II
+	} else if btr[1] <= 0.82*ef && btr[0] <= 6*ef {
+		return P_III
+	} else {
+		return P_IV
+	}
 }
 
 func (hw HWEAK) Vertices() [][]float64 {
@@ -1113,6 +1258,22 @@ func (cr CROSS) Zx() float64 {
 func (cr CROSS) Zy() float64 {
 	return cr.Iy() / cr.Hweak.H * 2.0
 }
+func (cr CROSS) Zpx() float64 {
+	return cr.Hkyou.Zpx() + cr.Hweak.Zpx()
+}
+func (cr CROSS) Zpy() float64 {
+	return cr.Hkyou.Zpy() + cr.Hweak.Zpy()
+}
+func (cr CROSS) BT_ratio() []float64 {
+	bt1 := cr.Hkyou.BT_ratio()
+	bt2 := cr.Hweak.BT_ratio()
+	return []float64{math.Min(bt1[0], bt2[0]), math.Min(bt1[1], bt2[1])}
+}
+func (cr CROSS) BT_ratio_category(material Steel) int {
+	btc1 := cr.Hkyou.BT_ratio_category(material)
+	btc2 := cr.Hweak.BT_ratio_category(material)
+	return int(math.Min(float64(btc1), float64(btc2)))
+}
 
 func (cr CROSS) Vertices() [][]float64 {
 	vk := cr.Hkyou.Vertices()
@@ -1211,6 +1372,25 @@ func (rp RPIPE) Zx() float64 {
 func (rp RPIPE) Zy() float64 {
 	return rp.Iy() / rp.B * 2.0
 }
+func (rp RPIPE) Zpx() float64 {
+	return (rp.B*math.Pow(rp.H, 2.0) - (rp.B-2*rp.Tw)*math.Pow(rp.H-2*rp.Tf, 2.0))/4.0
+}
+func (rp RPIPE) Zpy() float64 {
+	return (rp.H*math.Pow(rp.B, 2.0) - (rp.H-2*rp.Tf)*math.Pow(rp.B-2*rp.Tw, 2.0))/4.0
+}
+func (rp RPIPE) BT_ratio() []float64 {
+	return []float64{rp.H/rp.Tw, rp.B/rp.Tf}
+}
+func (rp RPIPE) BT_ratio_category(material Steel) int {
+	btr := rp.BT_ratio()
+	if btr[0] <= 24 {
+		return P_I_1
+	} else if btr[0] <= 28 {
+		return P_I_2
+	} else {
+		return P_II
+	}
+}
 
 func (rp RPIPE) Vertices() [][]float64 {
 	h := rp.H * 0.5
@@ -1296,6 +1476,18 @@ func (cp CPIPE) Zx() float64 {
 }
 func (cp CPIPE) Zy() float64 {
 	return cp.Iy() / cp.D * 2.0
+}
+func (cp CPIPE) Zpx() float64 {
+	return (math.Pow(cp.D, 3.0) - math.Pow(cp.D-2*cp.T, 3.0))/6.0
+}
+func (cp CPIPE) Zpy() float64 {
+	return (math.Pow(cp.D, 3.0) - math.Pow(cp.D-2*cp.T, 3.0))/6.0
+}
+func (cp CPIPE) BT_ratio() []float64 {
+	return []float64{cp.D/cp.T}
+}
+func (cp CPIPE) BT_ratio_category(material Steel) int {
+	return P_I_1 // TODO
 }
 
 func (cp CPIPE) Vertices() [][]float64 {
@@ -1400,6 +1592,40 @@ func (tk TKYOU) Zx() float64 {
 }
 func (tk TKYOU) Zy() float64 {
 	return tk.Iy() / tk.B * 2.0
+}
+func (tk TKYOU) Zpx() float64 {
+	cy := tk.Cy()
+	return (tk.B-tk.Tw)*math.Pow(tk.Tf, 2.0)/4.0 + tk.Tw*math.Pow(tk.H, 2.0)/4.0 + (tk.B-tk.Tw)*tk.Tf*math.Abs(cy-0.5*tk.Tf) + tk.H*tk.Tw*math.Abs(0.5*tk.H-cy)
+}
+func (tk TKYOU) Zpy() float64 {
+	return tk.Tf*math.Pow(tk.B, 2.0)/4.0 + (tk.H-tk.Tf)*math.Pow(tk.Tw, 2.0)/4.0
+}
+func (tk TKYOU) BT_ratio() []float64 {
+	return []float64{tk.H/2/tk.Tw, tk.B/2/tk.Tf}
+}
+func (tk TKYOU) BT_ratio_category(material Steel) int { // TODO
+	var k []float64
+	switch material.Name() {
+	case "SN400":
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6}
+	case "SN490":
+		k = []float64{0.57, 2.6, 0.73, 3.2, 0.88, 3.9}
+	default:
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6} // TODO
+	}
+	ef := math.Sqrt(material.EL()/material.F)
+	btr := tk.BT_ratio()
+	if math.Pow(btr[1], 2.0)/math.Pow(k[0]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[0]*ef, 2.0) <= 1.0 {
+		return P_I_1
+	} else if math.Pow(btr[1], 2.0)/math.Pow(k[2]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[2]*ef, 2.0) <= 1.0 {
+		return P_I_2
+	} else if (math.Pow(btr[1], 2.0)/math.Pow(k[4]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[4]*ef, 2.0) <= 1.0) {
+		return P_II
+	} else if btr[1] <= 0.82*ef && btr[0] <= 0.82*ef {
+		return P_III
+	} else {
+		return P_IV
+	}
 }
 
 func (tk TKYOU) Vertices() [][]float64 {
@@ -1508,6 +1734,40 @@ func (tk TWEAK) Zy() float64 {
 		return tk.Iy() / cx
 	} else {
 		return tk.Iy() / (tk.H - cx)
+	}
+}
+func (tw TWEAK) Zpx() float64 {
+	return tw.Tf*math.Pow(tw.B, 2.0)/4.0 + (tw.H-tw.Tf)*math.Pow(tw.Tw, 2.0)/4.0
+}
+func (tw TWEAK) Zpy() float64 {
+	cx := tw.Cx()
+	return (tw.B-tw.Tw)*math.Pow(tw.Tf, 2.0)/4.0 + tw.Tw*math.Pow(tw.H, 2.0)/4.0 + (tw.B-tw.Tw)*tw.Tf*math.Abs(cx-0.5*tw.Tf) + tw.H*tw.Tw*math.Abs(0.5*tw.H-cx)
+}
+func (tw TWEAK) BT_ratio() []float64 {
+	return []float64{tw.H/2/tw.Tw, tw.B/2/tw.Tf}
+}
+func (tw TWEAK) BT_ratio_category(material Steel) int { // TODO
+	var k []float64
+	switch material.Name() {
+	case "SN400":
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6}
+	case "SN490":
+		k = []float64{0.57, 2.6, 0.73, 3.2, 0.88, 3.9}
+	default:
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6} // TODO
+	}
+	ef := math.Sqrt(material.EL()/material.F)
+	btr := tw.BT_ratio()
+	if math.Pow(btr[1], 2.0)/math.Pow(k[0]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[0]*ef, 2.0) <= 1.0 {
+		return P_I_1
+	} else if math.Pow(btr[1], 2.0)/math.Pow(k[2]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[2]*ef, 2.0) <= 1.0 {
+		return P_I_2
+	} else if (math.Pow(btr[1], 2.0)/math.Pow(k[4]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[4]*ef, 2.0) <= 1.0) {
+		return P_II
+	} else if btr[1] <= 0.82*ef && btr[0] <= 0.82*ef {
+		return P_III
+	} else {
+		return P_IV
 	}
 }
 
@@ -1619,6 +1879,44 @@ func (ck CKYOU) Zy() float64 {
 		return ck.Iy() / (ck.B - cx)
 	}
 }
+func (ck CKYOU) Zpx() float64 {
+	return (ck.B*math.Pow(ck.H, 2.0) - (ck.B-ck.Tw)*math.Pow(ck.H-2*ck.Tf, 2.0)) / 4.0
+}
+func (ck CKYOU) Zpy() float64 {
+	cx := ck.Cx()
+	return 2.0*ck.Tf*math.Pow(ck.B, 2.0)/4.0 + (ck.H-2*ck.Tf)*math.Pow(ck.Tw, 2.0)/4.0 + 2.0*ck.B*ck.Tf*math.Abs(0.5*ck.B-cx) + (ck.H-2*ck.Tf)*ck.Tw*math.Abs(cx-0.5*ck.Tw)
+}
+func (ck CKYOU) BT_ratio() []float64 {
+	return []float64{(ck.H-2*ck.Tf)/ck.Tw, ck.B/ck.Tf}
+}
+func (ck CKYOU) BT_ratio_category(material Steel) int {
+	var k []float64
+	switch material.Name() {
+	case "SN400":
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6}
+	case "SN490":
+		k = []float64{0.57, 2.6, 0.73, 3.2, 0.88, 3.9}
+	default:
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6} // TODO
+	}
+	ef := math.Sqrt(material.EL()/material.F)
+	btr := ck.BT_ratio()
+	if btr[0] <=2.2*ef {
+		if math.Pow(btr[1], 2.0)/math.Pow(k[0]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[1]*ef, 2.0) <= 1.0 {
+			return P_I_1
+		} else if math.Pow(btr[1], 2.0)/math.Pow(k[2]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[3]*ef, 2.0) <= 1.0 {
+			return P_I_2
+		} else {
+			return P_I
+		}
+	} else if (btr[0] <= 2.4*ef) && (math.Pow(btr[1], 2.0)/math.Pow(k[4]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[5]*ef, 2.0) <= 1.0) {
+		return P_II
+	} else if btr[1] <= 0.82*ef && btr[0] <= 6*ef {
+		return P_III
+	} else {
+		return P_IV
+	}
+}
 
 func (ck CKYOU) Vertices() [][]float64 {
 	h := ck.H * 0.5
@@ -1728,6 +2026,44 @@ func (cw CWEAK) Zx() float64 {
 func (cw CWEAK) Zy() float64 {
 	return cw.Iy() / cw.H * 2.0
 }
+func (cw CWEAK) Zpx() float64 {
+	cx := cw.Cy()
+	return 2.0*cw.Tf*math.Pow(cw.B, 2.0)/4.0 + (cw.H-2*cw.Tf)*math.Pow(cw.Tw, 2.0)/4.0 + 2.0*cw.B*cw.Tf*math.Abs(0.5*cw.B-cx) + (cw.H-2*cw.Tf)*cw.Tw*math.Abs(cx-0.5*cw.Tw)
+}
+func (cw CWEAK) Zpy() float64 {
+	return (cw.B*math.Pow(cw.H, 2.0) - (cw.B-cw.Tw)*math.Pow(cw.H-2*cw.Tf, 2.0)) / 4.0
+}
+func (cw CWEAK) BT_ratio() []float64 {
+	return []float64{(cw.H-2*cw.Tf)/cw.Tw, cw.B/cw.Tf}
+}
+func (cw CWEAK) BT_ratio_category(material Steel) int {
+	var k []float64
+	switch material.Name() {
+	case "SN400":
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6}
+	case "SN490":
+		k = []float64{0.57, 2.6, 0.73, 3.2, 0.88, 3.9}
+	default:
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6} // TODO
+	}
+	ef := math.Sqrt(material.EL()/material.F)
+	btr := cw.BT_ratio()
+	if btr[0] <=2.2*ef {
+		if math.Pow(btr[1], 2.0)/math.Pow(k[0]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[1]*ef, 2.0) <= 1.0 {
+			return P_I_1
+		} else if math.Pow(btr[1], 2.0)/math.Pow(k[2]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[3]*ef, 2.0) <= 1.0 {
+			return P_I_2
+		} else {
+			return P_I
+		}
+	} else if (btr[0] <= 2.4*ef) && (math.Pow(btr[1], 2.0)/math.Pow(k[4]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[5]*ef, 2.0) <= 1.0) {
+		return P_II
+	} else if btr[1] <= 0.82*ef && btr[0] <= 6*ef {
+		return P_III
+	} else {
+		return P_IV
+	}
+}
 
 func (cw CWEAK) Vertices() [][]float64 {
 	h := cw.H * 0.5
@@ -1829,6 +2165,18 @@ func (pl PLATE) Zx() float64 {
 }
 func (pl PLATE) Zy() float64 {
 	return pl.H * math.Pow(pl.B, 2.0) / 6.0
+}
+func (pl PLATE) Zpx() float64 {
+	return pl.B * math.Pow(pl.H, 2.0) / 4.0
+}
+func (pl PLATE) Zpy() float64 {
+	return pl.H * math.Pow(pl.B, 2.0) / 4.0
+}
+func (pl PLATE) BT_ratio() []float64 {
+	return []float64{pl.H/pl.B}
+}
+func (pl PLATE) BT_ratio_category(material Steel) int {
+	return P_I_1 // TODO
 }
 
 func (pl PLATE) Vertices() [][]float64 {
@@ -1967,6 +2315,41 @@ func (an ANGLE) Zy() float64 {
 		return an.Iy() / (an.B - cx)
 	}
 }
+func (an ANGLE) Zpx() float64 {
+	cy := an.Cy()
+	return (an.B-an.Tw)*math.Pow(an.Tf, 2.0)/4.0 + an.Tw*math.Pow(an.H, 2.0)/4.0 + (an.B-an.Tw)*an.Tf*math.Abs(cy-0.5*an.Tf) + an.H*an.Tw*math.Abs(0.5*an.H-cy)
+}
+func (an ANGLE) Zpy() float64 {
+	cx := an.Cx()
+	return (an.H-an.Tf)*math.Pow(an.Tw, 2.0)/4.0 + an.Tf*math.Pow(an.B, 2.0)/4.0 + (an.H-an.Tf)*an.Tw*math.Abs(cx-0.5*an.Tw) + an.B*an.Tf*math.Abs(0.5*an.B-cx)
+}
+func (an ANGLE) BT_ratio() []float64 {
+	return []float64{an.H/an.Tw, an.B/an.Tf}
+}
+func (an ANGLE) BT_ratio_category(material Steel) int { // TODO
+	var k []float64
+	switch material.Name() {
+	case "SN400":
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6}
+	case "SN490":
+		k = []float64{0.57, 2.6, 0.73, 3.2, 0.88, 3.9}
+	default:
+		k = []float64{0.49, 3.2, 0.60, 3.8, 0.71, 4.6} // TODO
+	}
+	ef := math.Sqrt(material.EL()/material.F)
+	btr := an.BT_ratio()
+	if math.Pow(btr[1], 2.0)/math.Pow(k[0]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[0]*ef, 2.0) <= 1.0 {
+		return P_I_1
+	} else if math.Pow(btr[1], 2.0)/math.Pow(k[2]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[2]*ef, 2.0) <= 1.0 {
+		return P_I_2
+	} else if (math.Pow(btr[1], 2.0)/math.Pow(k[4]*ef, 2.0)+math.Pow(btr[0], 2.0)/math.Pow(k[4]*ef, 2.0) <= 1.0) {
+		return P_II
+	} else if btr[1] <= 0.82*ef && btr[0] <= 0.82*ef {
+		return P_III
+	} else {
+		return P_IV
+	}
+}
 
 func (an ANGLE) Vertices() [][]float64 {
 	cx := an.Cx()
@@ -2047,6 +2430,20 @@ func (sa SAREA) Zx() float64 {
 func (sa SAREA) Zy() float64 {
 	return math.Pow(sa.Area, 1.5) / (4.0 * math.Sqrt(math.Pi))
 }
+func (sa SAREA) Zpx() float64 {
+	d := math.Sqrt(4.0*sa.Area/math.Pi)
+	return math.Pow(d, 3.0)/6.0
+}
+func (sa SAREA) Zpy() float64 {
+	d := math.Sqrt(4.0*sa.Area/math.Pi)
+	return math.Pow(d, 3.0)/6.0
+}
+func (sa SAREA) BT_ratio() []float64 {
+	return []float64{1.0}
+}
+func (sa SAREA) BT_ratio_category(material Steel) int {
+	return P_I_1 // TODO
+}
 
 func (sa SAREA) Vertices() [][]float64 {
 	d := math.Sqrt(sa.Area/math.Pi) * 2.0
@@ -2119,6 +2516,18 @@ func (th THICK) Zx() float64 {
 }
 func (th THICK) Zy() float64 {
 	return 0.0
+}
+func (th THICK) Zpx() float64 {
+	return 0.0
+}
+func (th THICK) Zpy() float64 {
+	return 0.0
+}
+func (th THICK) BT_ratio() []float64 {
+	return []float64{1.0}
+}
+func (th THICK) BT_ratio_category(material Steel) int {
+	return P_I_1 // TODO
 }
 
 func (th THICK) Vertices() [][]float64 {

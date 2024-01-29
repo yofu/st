@@ -2665,6 +2665,59 @@ func (frame *Frame) WriteReaction(fn string, direction int, unit float64) error 
 	return WriteReaction(fn, ns, direction, frame.Show.Unit[0])
 }
 
+func (frame *Frame) ZoubunSummary(fn string, period string, cond *arclm.AnalysisCondition) error {
+	if _, ok := frame.Nlap[period]; !ok {
+		return fmt.Errorf("zoubun result not found for period %s", period)
+	}
+	var otp bytes.Buffer
+	otp.WriteString(cond.String())
+	otp.WriteString("\n")
+	nlap := frame.Nlap[period]
+	ind := 0
+	switch strings.ToUpper(period) {
+	case "X":
+		ind = 0
+	case "Y":
+		ind = 1
+	}
+	// TODO: factsを使いたいが、Node.Forceなどを設定する必要あり
+	nodes := frame.FloorNodes(nil, nil)
+	elems := frame.FloorElems([]int{COLUMN, GIRDER, BRACE, WBRACE, SBRACE}, nil, nil)
+	for lap := 0; lap < nlap; lap++ {
+		nper := fmt.Sprintf("%s@%d", period, lap+1)
+		avedisp := make([]float64, frame.Ai.Nfloor)
+		storydrift := make([]float64, frame.Ai.Nfloor-1)
+		shear := make([]float64, frame.Ai.Nfloor-1)
+		otp.WriteString(fmt.Sprintf("%3d", lap+1))
+		for i := 0; i < frame.Ai.Nfloor; i++ {
+			for _, n := range nodes[i] {
+				avedisp[i] += n.Disp[nper][ind]
+			}
+			avedisp[i] /= float64(len(nodes[i]))
+		}
+		for i := 0; i < frame.Ai.Nfloor-1; i++ {
+			storydrift[i] = avedisp[i+1] - avedisp[i]
+			for _, el := range elems[i] {
+				if ind == 0 {
+					shear[i] -= el.VectorStress(nper, 0, XAXIS)
+				} else {
+					shear[i] -= el.VectorStress(nper, 0, YAXIS)
+				}
+			}
+			otp.WriteString(fmt.Sprintf(" %10.6f %10.6f", storydrift[i], shear[i]))
+		}
+		otp.WriteString("\n")
+	}
+	w, err := os.Create(fn)
+	defer w.Close()
+	if err != nil {
+		return err
+	}
+	otp = AddCR(otp)
+	otp.WriteTo(w)
+	return nil
+}
+
 // ReportZoubunDisp writes an output file which reports displacement data of push-over analysis.
 func (frame *Frame) ReportZoubunDisp(fn string, ns []*Node, pers []string, direction int) error {
 	var otp bytes.Buffer
@@ -4169,7 +4222,7 @@ susnode:
 		if err1 {
 			ns = append(ns, n)
 			otp.WriteString(fmt.Sprintf("no line elem: %d\n", n.Num))
-		} else if err2 {
+		} else if err2 && !n.IsFixed() {
 			ns = append(ns, n)
 			otp.WriteString(fmt.Sprintf("all pin: %d\n", n.Num))
 		}
@@ -4940,9 +4993,10 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	otp.WriteString("柱，壁は階高の中央で上下に分配するものとする。\n\n")
 	otp.WriteString(fmt.Sprintf(" 節点番号          積載荷重別の重量 [%s]\n\n", frame.Show.UnitName[0]))
 	otp.WriteString("                 床用     柱梁用     地震用\n")
-	tex32.WriteString("{\\footnotesize\n\\begin{supertabular}{r r r r}\n")
-	tex32.WriteString(fmt.Sprintf("節点番号&\\multicolumn{3}{c}{積載荷重別の重量 ${\\rm [%s]}$}\\\\\n", frame.Show.UnitName[0]))
-	tex32.WriteString("&   床用    & 柱梁用  &  地震用\\\\\n")
+	tex32.WriteString("{\\footnotesize\n\\begin{tabbing}\n")
+	tex32.WriteString("\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\kill\n")
+	tex32.WriteString(fmt.Sprintf("節点番号 \\> 積載荷重別の重量 ${\\rm [%s]}$ \\\\ \n", frame.Show.UnitName[0]))
+	tex32.WriteString("\\>   床用    \\> 柱梁用  \\>  地震用\\\\\n")
 	for _, n := range nodes {
 		otp.WriteString(n.WgtString(frame.Show.Unit[0]))
 		tex32.WriteString(n.WgtStringTex(frame.Show.Unit[0]))
@@ -4951,14 +5005,18 @@ func (frame *Frame) WeightDistribution(fn string) error {
 		}
 	}
 	otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
-	tex32.WriteString(fmt.Sprintf("       計 & %10.3f & %10.3f & %10.3f\\\\\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
-	tex32.WriteString("\\end{supertabular}\n\\onecolumn\n")
+	tex32.WriteString(fmt.Sprintf("       計 \\> %10.3f \\> %10.3f \\> %10.3f\\\\\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
+	tex32.WriteString("\\end{tabbing}\n\n")
 	// PERPLの出力
 	perpl := make(map[int][]float64, 0)
 	perplkey := make([]int, 0)
 	perplsum := make([]float64, 3)
 	otp.WriteString(fmt.Sprintf(" 節点番号             節点荷重 [%s]\n\n", frame.Show.UnitName[0]))
 	otp.WriteString("                    X          Y          Z\n")
+	tex32.WriteString("\\begin{tabbing}\n")
+	tex32.WriteString("\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\kill\n")
+	tex32.WriteString(fmt.Sprintf("節点番号 \\> 節点荷重 ${\\rm [%s]}$ \\\\\n", frame.Show.UnitName[0]))
+	tex32.WriteString("\\>   X    \\> Y  \\>  Z\\\\\n")
 	for _, el := range frame.Elems {
 		if el.Sect.Perpl == nil || len(el.Sect.Perpl) < 3 || (el.Sect.Perpl[1] == 0.0 && el.Sect.Perpl[2] == 0.0) {
 			continue
@@ -4978,7 +5036,9 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	sort.Ints(perplkey)
 	for _, nnum := range perplkey {
 		otp.WriteString(fmt.Sprintf("%9d  %10.3f %10.3f %10.3f\n", nnum, frame.Show.Unit[0]*perpl[nnum][0], frame.Show.Unit[0]*perpl[nnum][1], frame.Show.Unit[0]*perpl[nnum][2]))
+		tex32.WriteString(fmt.Sprintf("%9d \\> %10.3f \\> %10.3f \\> %10.3f\n", nnum, frame.Show.Unit[0]*perpl[nnum][0], frame.Show.Unit[0]*perpl[nnum][1], frame.Show.Unit[0]*perpl[nnum][2]))
 	}
+	tex32.WriteString("\\end{tabbing}\n")
 	otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", frame.Show.Unit[0]*perplsum[0], frame.Show.Unit[0]*perplsum[1], frame.Show.Unit[0]*perplsum[2]))
 	// 杭頭曲げモーメントの出力
 	otp.WriteString(fmt.Sprintf(" 節点番号             杭頭曲げモーメント [%s%s]\n\n", frame.Show.UnitName[0], frame.Show.UnitName[1]))
@@ -4991,18 +5051,19 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	otp.WriteString("\n")
 	otp.WriteString("各断面の部材総量（参考資料）\n\n")
 	otp.WriteString(" 断面番号 長さ,面積 重量(柱梁用)\n             [m,m2]     [ton]\n")
-	tex32.WriteString("各断面の部材総量（参考資料）\\\\\n\\\\\n")
-	tex32.WriteString("\\begin{supertabular}{r r r l}\n")
-	tex32.WriteString(" 断面番号 & 長さ,面積 & 重量(柱梁用)& \\\\\n          & ${\\rm [m,m^2]}$ & ${\\rm [ton]}$&\\\\\n")
+	tex32.WriteString("各断面の部材総量（参考資料）\\\\\n")
+	tex32.WriteString("\\begin{tabbing}\n")
+	tex32.WriteString("\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\kill\n")
+	tex32.WriteString(" 断面番号 \\> 長さ,面積 \\> 重量(柱梁用) \\> \\\\\n          \\> ${\\rm [m,m^2]}$ \\> ${\\rm [ton]}$\\>\\\\\n")
 	for k := range amount {
 		ekeys = append(ekeys, k)
 	}
 	sort.Ints(ekeys)
 	for _, k := range ekeys {
 		otp.WriteString(fmt.Sprintf("%9d %9.3f %9.3f 【%s】\n", k, amount[k], amount[k]*frame.Sects[k].Weight()[1], frame.Sects[k].Name))
-		tex32.WriteString(fmt.Sprintf("%9d & %9.3f & %9.3f & 【%s】\\\\\n", k, amount[k], amount[k]*frame.Sects[k].Weight()[1], frame.Sects[k].Name))
+		tex32.WriteString(fmt.Sprintf("%9d \\> %9.3f \\> %9.3f \\> 【%s】\\\\\n", k, amount[k], amount[k]*frame.Sects[k].Weight()[1], frame.Sects[k].Name))
 	}
-	tex32.WriteString("\\end{supertabular}\n}\n\\newpage")
+	tex32.WriteString("\\end{tabbing}\n}\n\\newpage")
 	otp.WriteString("\n")
 	switch frame.Show.UnitName[0] {
 	default:
@@ -6128,19 +6189,11 @@ func (frame *Frame) CheckLst(secnum []int) string {
 	return otp.String()
 }
 
-func (frame *Frame) Facts(fn string, etypes []int, skipany, skipall []int, period []string, abs bool) error {
-	var err error
+func (frame *Frame) FloorNodes(skipany, skipall []int) [][]*Node {
 	l := frame.Ai.Nfloor
-	if l < 2 {
-		return errors.New("Facts: Nfloor < 2")
-	}
 	nodes := make([][]*Node, l)
-	elems := make([][]*Elem, l-1)
 	for i := 0; i < l; i++ {
 		nodes[i] = make([]*Node, 0)
-		if i < l-1 {
-			elems[i] = make([]*Elem, 0)
-		}
 	}
 	var cont bool
 fact_node:
@@ -6174,6 +6227,12 @@ fact_node:
 			}
 		}
 	}
+	return nodes
+}
+
+func (frame *Frame) FloorElems(etypes []int, skipany, skipall []int) [][]*Elem {
+	l := frame.Ai.Nfloor
+	elems := make([][]*Elem, l-1)
 	for _, el := range frame.Elems {
 		contained := false
 		for _, et := range etypes {
@@ -6204,6 +6263,17 @@ fact_node:
 			}
 		}
 	}
+	return elems
+}
+
+func (frame *Frame) Facts(fn string, etypes []int, skipany, skipall []int, period []string, abs bool) error {
+	var err error
+	l := frame.Ai.Nfloor
+	if l < 2 {
+		return errors.New("Facts: Nfloor < 2")
+	}
+	nodes := frame.FloorNodes(skipany, skipall)
+	elems := frame.FloorElems(etypes, skipany, skipall)
 	f := NewFact(l, abs, frame.Ai.Base[0]/0.2, frame.Ai.Base[1]/0.2) // facts.Abs
 	perx := strings.Split(period[0], "@")[0]
 	pery := strings.Split(period[1], "@")[0]

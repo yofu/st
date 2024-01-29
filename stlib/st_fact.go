@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"sort"
+	"strings"
 )
 
 type Fact struct {
@@ -315,7 +316,13 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem, period []string) error
 		for _, el := range elems[i] {
 			otp.WriteString(fmt.Sprintf("%d %d", el.Num, el.Sect.Num))
 			for j, per := range period {
-				drift := el.StoryDrift(per)
+				var index int
+				if strings.Contains(strings.ToUpper(per), "X") {
+					index = 0
+				} else if strings.Contains(strings.ToUpper(per), "Y") {
+					index = 1
+				}
+				drift := el.StoryDrift(per, index)
 				if (el.Etype == COLUMN || el.Etype == GIRDER) && (math.Abs(drift) > math.Abs(tmpmaxdrift[j])) {
 					tmpmaxdrift[j] = drift
 					maxdriftelem[j] = el.Num
@@ -343,7 +350,7 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem, period []string) error
 				tk[j] += stiff
 				tkx[j] += stiff * coord
 				tkxx[j] += stiff * coord * coord
-				disp := el.Delta(per)
+				disp := el.Delta(per, index)
 				otp.WriteString(fmt.Sprintf(" %.8f %.8f %.8f %.3f", shear, disp, stiff, coord))
 			}
 			otp.WriteString("\n")

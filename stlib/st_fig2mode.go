@@ -940,31 +940,30 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		}
 	case "drift":
 		if usage {
-			stw.History("'drift [x,y]")
+			stw.History("'drift")
 			return nil
 		}
-		if len(lis) < 2 {
-			if un {
+		if un {
+			if len(lis) < 2 {
 				ElemCaptionOff(stw, "EC_DRIFT_X")
 				ElemCaptionOff(stw, "EC_DRIFT_Y")
-				return nil
 			} else {
+				switch strings.ToUpper(lis[2]) {
+				case "X":
+					ElemCaptionOff(stw, "EC_DRIFT_X")
+				case "Y":
+					ElemCaptionOff(stw, "EC_DRIFT_Y")
+				}
+			}
+		} else {
+			if len(lis) < 3 {
 				return NotEnoughArgs("drift")
 			}
-		}
-		switch strings.ToUpper(lis[1]) {
-		default:
-			return errors.New("unknown period")
-		case "X":
-			if un {
-				ElemCaptionOff(stw, "EC_DRIFT_X")
-			} else {
+			SetPeriod(stw, strings.ToUpper(lis[1]))
+			switch strings.ToUpper(lis[2]) {
+			case "X":
 				ElemCaptionOn(stw, "EC_DRIFT_X")
-			}
-		case "Y":
-			if un {
-				ElemCaptionOff(stw, "EC_DRIFT_Y")
-			} else {
+			case "Y":
 				ElemCaptionOn(stw, "EC_DRIFT_Y")
 			}
 		}
