@@ -970,8 +970,9 @@ func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCond
 			}
 		}
 		if lap >= cond.nlap-1 && total >= cond.max {
+			f := frame.SaveState() // TODO
 			for nans, ans := range answers {
-				f := frame.SaveState()
+				frame.RestoreState(f) // TODO
 				if nans >= 1 { // subtract CMQ for extra load
 					for _, el := range frame.Elems {
 						for i := 0; i < 12; i++ {
@@ -990,7 +991,6 @@ func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCond
 				output(cond.otp, nans, lap+1, cond.nlap)
 				frame.Lapch <- lap + 1
 				<-frame.Lapch
-				frame.RestoreState(f)
 			}
 			break
 		} else {
@@ -1078,18 +1078,18 @@ func (frame *Frame) Arclm101(cancel context.CancelFunc, cond *AnalysisCondition)
 			sign += answers[0][i] * vec[i]
 		}
 		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f, SIGN=%.3f", lap+1, nlap, safety, sign))
+		if otp == "" {
+			otp = "hogtxt.otp"
+		}
+		w, err := os.Create(strings.Replace(otp, ".", fmt.Sprintf("@%d.", lap+1), -1))
+		if err != nil {
+			return err
+		}
+		defer w.Close()
+		frame.WriteTo(w)
 		frame.Lapch <- lap + 1
 		<-frame.Lapch
 	}
-	if otp == "" {
-		otp = "hogtxt.otp"
-	}
-	w, err := os.Create(otp)
-	if err != nil {
-		return err
-	}
-	defer w.Close()
-	frame.WriteTo(w)
 	return nil
 }
 
