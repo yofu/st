@@ -2686,22 +2686,25 @@ func (frame *Frame) ZoubunSummary(fn string, period string, cond *arclm.Analysis
 	for lap := 0; lap < nlap; lap++ {
 		nper := fmt.Sprintf("%s@%d", period, lap+1)
 		avedisp := make([]float64, frame.Ai.Nfloor)
+		aveheight := make([]float64, frame.Ai.Nfloor)
 		storydrift := make([]float64, frame.Ai.Nfloor-1)
 		shear := make([]float64, frame.Ai.Nfloor-1)
 		otp.WriteString(fmt.Sprintf("%3d", lap+1))
 		for i := 0; i < frame.Ai.Nfloor; i++ {
 			for _, n := range nodes[i] {
 				avedisp[i] += n.Disp[nper][ind]
+				aveheight[i] += n.Coord[2]
 			}
 			avedisp[i] /= float64(len(nodes[i]))
+			aveheight[i] /= float64(len(nodes[i]))
 		}
 		for i := 0; i < frame.Ai.Nfloor-1; i++ {
-			storydrift[i] = avedisp[i+1] - avedisp[i]
+			storydrift[i] = (avedisp[i+1] - avedisp[i])/(aveheight[i+1]-aveheight[i])
 			for _, el := range elems[i] {
 				if ind == 0 {
-					shear[i] -= el.VectorStress(nper, 0, XAXIS)
+					shear[i] -= el.VectorStress(nper, 0, XAXIS)*frame.Show.Unit[0]
 				} else {
-					shear[i] -= el.VectorStress(nper, 0, YAXIS)
+					shear[i] -= el.VectorStress(nper, 0, YAXIS)*frame.Show.Unit[0]
 				}
 			}
 			otp.WriteString(fmt.Sprintf(" %10.6f %10.6f", storydrift[i], shear[i]))
