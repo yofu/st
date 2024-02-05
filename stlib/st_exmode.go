@@ -5490,6 +5490,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		af := frame.Arclms[per]
 		if _, ok := argdict["NOINIT"]; ok {
+			af.RestoreState(frame.Arclms[frame.Show.Period].SaveState())
 			cond.SetInit(false)
 		}
 		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
