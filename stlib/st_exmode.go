@@ -83,6 +83,7 @@ var (
 		"setb/oundary":      complete.MustCompile(":setboundary [eps:_]", nil),
 		"fac/ts":            complete.MustCompile(":facts [skipany:_] [skipall:_]", nil),
 		"1459/":             complete.MustCompile(":1459 [sect:_]", nil),
+		"sl/ope":             complete.MustCompile(":slope", nil),
 		"el/em/dis/tance":   complete.MustCompile(":elemdistance", nil),
 		"go/han/l/st":       complete.MustCompile(":gohanlst _ _", nil),
 		"el/em": complete.MustCompile(":elem $TYPE _",
@@ -2378,6 +2379,20 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			stw.SelectElem(frame.Chains[maxkey].Elems())
 			stw.SelectNode([]*Node{frame.Nodes[maxnode]})
 		}
+	case "slope":
+		if usage {
+			return Usage(":slope")
+		}
+		els := currentelem(stw, exmodech, exmodeend)
+		if len(els) < 1 {
+			return errors.New(":slope: not enough selected elem")
+		}
+		if els[0].IsLineElem() {
+			return errors.New(":slope: not plateelem")
+		}
+		normal := els[0].Normal(true)
+		deg := math.Acos(normal[2])*180.0/math.Pi
+		stw.History(fmt.Sprintf("SLOPE: %.3f[deg]", deg))
 	case "elemdistance":
 		if usage {
 			return Usage(":elemdistance")
