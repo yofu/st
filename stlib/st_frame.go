@@ -6756,6 +6756,27 @@ func (frame *Frame) OutputTex() error {
 	if err != nil {
 		return err
 	}
+	// Section 5.1
+	var tex51 bytes.Buffer
+	tex51.WriteString("\\begin{tabular}{l l r r r r r r} \\toprule\n")
+	tex51.WriteString("  断面番号 &  & $N$[kN] & $Q_x$[kN] & $Q_y$[kN] & $M_z$[kNm] & $M_x$[kNm] & $M_y$[kNm] \\\\\\midrule\n")
+	for i, sect := range lineelems {
+		tex51.WriteString(fmt.Sprintf("%5d & 最大 & %.3f & %.3f & %.3f & %.3f & %.3f & %.3f \\\\\n", sect.Num, frame.Show.Unit[0]*sect.Yield[0], frame.Show.Unit[0]*sect.Yield[2], frame.Show.Unit[0]*sect.Yield[4], frame.Show.Unit[0]*frame.Show.Unit[1]*sect.Yield[6], frame.Show.Unit[0]*frame.Show.Unit[1]*sect.Yield[8], frame.Show.Unit[0]*frame.Show.Unit[1]*sect.Yield[10]))
+		if i == len(lineelems)-1 {
+			tex51.WriteString(fmt.Sprintf("    & 最小 & %.3f & %.3f & %.3f & %.3f & %.3f & %.3f \\\\ \\bottomrule\n", frame.Show.Unit[0]*sect.Yield[1], frame.Show.Unit[0]*sect.Yield[3], frame.Show.Unit[0]*sect.Yield[5], frame.Show.Unit[0]*frame.Show.Unit[1]*sect.Yield[7], frame.Show.Unit[0]*frame.Show.Unit[1]*sect.Yield[9], frame.Show.Unit[0]*frame.Show.Unit[1]*sect.Yield[11]))
+		} else {
+			tex51.WriteString(fmt.Sprintf("    & 最小 & %.3f & %.3f & %.3f & %.3f & %.3f & %.3f \\\\\n", frame.Show.Unit[0]*sect.Yield[1], frame.Show.Unit[0]*sect.Yield[3], frame.Show.Unit[0]*sect.Yield[5], frame.Show.Unit[0]*frame.Show.Unit[1]*sect.Yield[7], frame.Show.Unit[0]*frame.Show.Unit[1]*sect.Yield[9], frame.Show.Unit[0]*frame.Show.Unit[1]*sect.Yield[11]))
+		}
+	}
+	tex51.WriteString("\\end{tabular}\\\\\n")
+	w51, err := os.Create(filepath.Join(filepath.Dir(frame.Path), "5_1.tex"))
+	if err != nil {
+		return err
+	}
+	defer w51.Close()
+	tex51 = AddCR(tex51)
+	tex51.WriteTo(w51)
+	return nil
 	return nil
 }
 
