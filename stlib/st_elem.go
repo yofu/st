@@ -2562,7 +2562,7 @@ func (elem *Elem) PlateStress(period string, vec []float64) float64 {
 	return rtn
 }
 
-func (elem *Elem) LateralStiffness(period string, abs bool) float64 {
+func (elem *Elem) LateralStiffness(period string, abs bool, chain bool) float64 {
 	if elem.IsLineElem() {
 		var axis []float64
 		var index int
@@ -2577,9 +2577,16 @@ func (elem *Elem) LateralStiffness(period string, abs bool) float64 {
 			index = 1
 		}
 		shear := elem.VectorStress(period, 0, axis)
-		delta := elem.Delta(period, index)
 		if shear == 0.0 {
 			return 0.0
+		}
+		var delta float64
+		if chain && elem.Chain != nil {
+			for _, el := range elem.Chain.Elems() {
+				delta += el.Delta(period, index)
+			}
+		} else {
+			delta = elem.Delta(period, index)
 		}
 		if delta == 0.0 {
 			// return 1e16
@@ -2603,11 +2610,21 @@ func (elem *Elem) Delta(period string, index int) float64 {
 	}
 }
 
-func (elem *Elem) StoryDrift(period string, index int) float64 {
+func (elem *Elem) StoryDrift(period string, index int, chain bool) float64 {
 	if elem.IsLineElem() {
-		delta := elem.Delta(period, index)
-		height := elem.Direction(false)[2]
-		return delta / height
+		if chain && elem.Chain != nil {
+			delta := 0.0
+			height := 0.0
+			for _, el := range elem.Chain.Elems() {
+				delta += el.Delta(period, index)
+				height += el.Direction(false)[2]
+			}
+			return delta / height
+		} else {
+			delta := elem.Delta(period, index)
+			height := elem.Direction(false)[2]
+			return delta / height
+		}
 	} else {
 		return 0.0
 	}
@@ -2987,23 +3004,23 @@ func (elem *Elem) CurrentValue(show *Show, max, abs bool) float64 {
 	}
 	if show.ElemCaption&EC_STIFF_X != 0 {
 		if abs {
-			return math.Abs(elem.LateralStiffness("X", false)) * show.Unit[0] / show.Unit[1]
+			return math.Abs(elem.LateralStiffness("X", false, false)) * show.Unit[0] / show.Unit[1]
 		} else {
-			return elem.LateralStiffness("X", false) * show.Unit[0] / show.Unit[1]
+			return elem.LateralStiffness("X", false, false) * show.Unit[0] / show.Unit[1]
 		}
 	}
 	if show.ElemCaption&EC_STIFF_Y != 0 {
 		if abs {
-			return math.Abs(elem.LateralStiffness("Y", false)) * show.Unit[0] / show.Unit[1]
+			return math.Abs(elem.LateralStiffness("Y", false, false)) * show.Unit[0] / show.Unit[1]
 		} else {
-			return elem.LateralStiffness("Y", false) * show.Unit[0] / show.Unit[1]
+			return elem.LateralStiffness("Y", false, false) * show.Unit[0] / show.Unit[1]
 		}
 	}
 	if show.ElemCaption&EC_DRIFT_X != 0 {
-		return elem.StoryDrift(show.Period, 0)
+		return elem.StoryDrift(show.Period, 0, false)
 	}
 	if show.ElemCaption&EC_DRIFT_Y != 0 {
-		return elem.StoryDrift(show.Period, 1)
+		return elem.StoryDrift(show.Period, 1, false)
 	}
 	if show.SrcanRate != 0 {
 		val, err := elem.RateMax(show)

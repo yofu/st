@@ -118,39 +118,83 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 		}
 	}
 	if show.ElemCaption&EC_STIFF_X != 0 {
-		stiff := elem.LateralStiffness("X", false) * show.Unit[0] / show.Unit[1]
-		if stiff != 0.0 {
-			if stiff == 1e16 {
-				ecap.WriteString("∞")
-			} else {
-				ecap.WriteString(fmt.Sprintf("%.3f\n", stiff))
+		if elem.Chain != nil {
+			stiff1 := elem.LateralStiffness("X", false, false) * show.Unit[0] / show.Unit[1]
+			stiff2 := elem.LateralStiffness("X", false, true) * show.Unit[0] / show.Unit[1]
+			if stiff1 != 0.0 {
+				if stiff1 == 1e16 {
+					ecap.WriteString("∞")
+				} else {
+					ecap.WriteString(fmt.Sprintf("%.3f(%.3f)\n", stiff1, stiff2))
+				}
+				oncap = true
 			}
-			oncap = true
+		} else {
+			stiff := elem.LateralStiffness("X", false, false) * show.Unit[0] / show.Unit[1]
+			if stiff != 0.0 {
+				if stiff == 1e16 {
+					ecap.WriteString("∞")
+				} else {
+					ecap.WriteString(fmt.Sprintf("%.3f\n", stiff))
+				}
+				oncap = true
+			}
 		}
 	}
 	if show.ElemCaption&EC_STIFF_Y != 0 {
-		stiff := elem.LateralStiffness("Y", false) * show.Unit[0] / show.Unit[1]
-		if stiff != 0.0 {
-			if stiff == 1e16 {
-				ecap.WriteString("∞")
-			} else {
-				ecap.WriteString(fmt.Sprintf("%.3f\n", stiff))
+		if elem.Chain != nil {
+			stiff1 := elem.LateralStiffness("Y", false, false) * show.Unit[0] / show.Unit[1]
+			stiff2 := elem.LateralStiffness("Y", false, true) * show.Unit[0] / show.Unit[1]
+			if stiff1 != 0.0 {
+				if stiff1 == 1e16 {
+					ecap.WriteString("∞")
+				} else {
+					ecap.WriteString(fmt.Sprintf("%.3f(%.3f)\n", stiff1, stiff2))
+				}
+				oncap = true
 			}
-			oncap = true
+		} else {
+			stiff := elem.LateralStiffness("Y", false, false) * show.Unit[0] / show.Unit[1]
+			if stiff != 0.0 {
+				if stiff == 1e16 {
+					ecap.WriteString("∞")
+				} else {
+					ecap.WriteString(fmt.Sprintf("%.3f\n", stiff))
+				}
+				oncap = true
+			}
 		}
 	}
 	if show.ElemCaption&EC_DRIFT_X != 0 {
-		drift := elem.StoryDrift(show.Period, 0)
-		if drift != 0.0 && !math.IsNaN(drift) {
-			ecap.WriteString(fmt.Sprintf("1/%.0f\n", 1.0/math.Abs(drift)))
-			oncap = true
+		if elem.Chain != nil {
+			drift1 := elem.StoryDrift(show.Period, 0, false)
+			drift2 := elem.StoryDrift(show.Period, 0, true)
+			if drift1 != 0.0 && !math.IsNaN(drift1) && drift2 != 0.0 && !math.IsNaN(drift2) {
+				ecap.WriteString(fmt.Sprintf("1/%.0f(1/%.0f)\n", 1.0/math.Abs(drift1), 1.0/math.Abs(drift2)))
+				oncap = true
+			}
+		} else {
+			drift := elem.StoryDrift(show.Period, 0, false)
+			if drift != 0.0 && !math.IsNaN(drift) {
+				ecap.WriteString(fmt.Sprintf("1/%.0f\n", 1.0/math.Abs(drift)))
+				oncap = true
+			}
 		}
 	}
 	if show.ElemCaption&EC_DRIFT_Y != 0 {
-		drift := elem.StoryDrift(show.Period, 1)
-		if drift != 0.0 && !math.IsNaN(drift) {
-			ecap.WriteString(fmt.Sprintf("1/%.0f\n", 1.0/math.Abs(drift)))
-			oncap = true
+		if elem.Chain != nil {
+			drift1 := elem.StoryDrift(show.Period, 1, false)
+			drift2 := elem.StoryDrift(show.Period, 1, true)
+			if drift1 != 0.0 && !math.IsNaN(drift1) && drift2 != 0.0 && !math.IsNaN(drift2) {
+				ecap.WriteString(fmt.Sprintf("1/%.0f(1/%.0f)\n", 1.0/math.Abs(drift1), 1.0/math.Abs(drift2)))
+				oncap = true
+			}
+		} else {
+			drift := elem.StoryDrift(show.Period, 1, false)
+			if drift != 0.0 && !math.IsNaN(drift) {
+				ecap.WriteString(fmt.Sprintf("1/%.0f\n", 1.0/math.Abs(drift)))
+				oncap = true
+			}
 		}
 	}
 	if show.ElemCaption&EC_TENSILE_X != 0 {

@@ -322,7 +322,12 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem, period []string) error
 				} else if strings.Contains(strings.ToUpper(per), "Y") {
 					index = 1
 				}
-				drift := el.StoryDrift(per, index)
+				var drift float64
+				if el.Chain != nil {
+					drift = el.StoryDrift(per, index, true)
+				} else {
+					drift = el.StoryDrift(per, index, false)
+				}
 				if (el.Etype == COLUMN || el.Etype == GIRDER) && (math.Abs(drift) > math.Abs(tmpmaxdrift[j])) {
 					tmpmaxdrift[j] = drift
 					maxdriftelem[j] = el.Num
@@ -334,7 +339,12 @@ func (f *Fact) CalcFact(nodes [][]*Node, elems [][]*Elem, period []string) error
 				} else {
 					shear = -el.VectorStress(per, 0, YAXIS)
 				}
-				stiff := el.LateralStiffness(per, f.Abs)
+				var stiff float64
+				if el.Chain != nil {
+					stiff = el.LateralStiffness(per, f.Abs, true)
+				} else {
+					stiff = el.LateralStiffness(per, f.Abs, false)
+				}
 				if _, ok := f.Shear[i][el.Sect.Num]; ok {
 					f.Shear[i][el.Sect.Num][j] += shear
 				} else {
