@@ -5199,6 +5199,9 @@ func (frame *Frame) AiDistribution() (string, string, error) {
 			total[i] += n.Weight[i]
 		}
 		height := n.Coord[2]
+		if height > maxheight {
+			maxheight = height
+		}
 		if height < frame.Ai.Boundary[0] {
 			continue
 		}
@@ -5232,9 +5235,9 @@ func (frame *Frame) AiDistribution() (string, string, error) {
 	frame.Ai.W = make([]float64, size)
 	for i := 0; i < size; i++ {
 		frame.Ai.Level[i] /= float64(nnum[i])
-		if frame.Ai.Level[i] > maxheight {
-			maxheight = frame.Ai.Level[i]
-		}
+		// if frame.Ai.Level[i] > maxheight {
+			// maxheight = frame.Ai.Level[i]
+		// }
 		for j := size - 1; j >= i; j-- {
 			frame.Ai.W[i] += frame.Ai.Wi[j]
 		}
