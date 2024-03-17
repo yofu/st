@@ -6128,6 +6128,53 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	return nil
 }
 
+func (frame *Frame) MaxRatio() (map[int]float64, map[int][]*Elem) {
+	maxrate := make(map[int]float64, 0)
+	maxrateelem := make(map[int][]*Elem, 0)
+	for _, el := range frame.Elems {
+		if val, err := el.RateMax(frame.Show); err != nil {
+			sect := el.OriginalSection()
+			switch el.Etype {
+			case COLUMN, GIRDER, BRACE:
+				if _, ok := maxrate[sect.Num]; !ok {
+					maxrate[sect.Num] = val
+					maxrateelem[sect.Num] = []*Elem{el}
+				} else {
+					maxval := maxrate[sect.Num]
+					if val > maxval {
+						maxrate[sect.Num] = val
+						maxrateelem[sect.Num] = []*Elem{el}
+					}
+				}
+			case WBRACE, SBRACE:
+				if _, ok := maxrate[sect.Num]; !ok {
+					if b, bok := el.Brother(); bok {
+						els := []*Elem{el, b}
+						sort.Sort(ElemByNum{els})
+						maxrate[sect.Num] = val
+						maxrateelem[sect.Num] = els
+					}
+				} else {
+					maxval := maxrate[sect.Num]
+					if val > maxval {
+						if b, bok := el.Brother(); bok {
+							els := []*Elem{el, b}
+							sort.Sort(ElemByNum{els})
+							maxrate[sect.Num] = val
+							maxrateelem[sect.Num] = els
+						}
+					}
+				}
+			}
+		}
+	}
+	return maxrate, maxrateelem
+}
+
+func (frame *Frame) MaxFile() error {
+	return nil
+}
+
 func (frame *Frame) CheckLst(secnum []int) string {
 	var otp bytes.Buffer
 	for _, snum := range secnum {

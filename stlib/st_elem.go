@@ -525,7 +525,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 	} else {
 		pername = []string{"長期       :", "短期X正方向:", "短期X負方向:", "短期Y正方向:", "短期Y負方向:"}
 	}
-	var otp bytes.Buffer
+	var otp, tex bytes.Buffer
 	var rate []float64
 	var rate2 float64
 	calc1 := func(allow SectionRate, cond *Condition, st1, st2, fact []float64, sign float64) ([]float64, error) {
@@ -539,11 +539,12 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 		} else {
 			stress = st1
 		}
-		rate, txt, _, err := Rate1(allow, stress, cond)
+		rate, txt, textxt, err := Rate1(allow, stress, cond)
 		if err != nil {
 			return rate, err
 		}
 		otp.WriteString(txt)
+		tex.WriteString(textxt)
 		return rate, nil
 	}
 	calc1angle := func(allow SectionRate, cond *Condition, st1, st2, st3, fact []float64, sign float64, angle float64, direction int) ([]float64, error) {
@@ -562,20 +563,22 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 		} else {
 			stress = st1
 		}
-		rate, txt, _, err := Rate1(allow, stress, cond)
+		rate, txt, textxt, err := Rate1(allow, stress, cond)
 		if err != nil {
 			return rate, err
 		}
 		otp.WriteString(txt)
+		tex.WriteString(textxt)
 		return rate, nil
 	}
 	calc2 := func(allow SectionRate, cond *Condition, n1, n2, fact, sign float64) (float64, error) {
 		stress := n1 + sign*fact*n2
-		rate, txt, _, err := Rate2(allow, stress, cond)
+		rate, txt, textxt, err := Rate2(allow, stress, cond)
 		if err != nil {
 			return rate, err
 		}
 		otp.WriteString(txt)
+		tex.WriteString(textxt)
 		return rate, nil
 	}
 	calc2angle := func(allow SectionRate, cond *Condition, n1, n2, n3, fact, sign float64, angle float64, direction int) (float64, error) {
@@ -586,11 +589,12 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 		} else {
 			stress = n1 + sign*fact*(-n2*math.Sin(theta)+n3*math.Cos(theta))
 		}
-		rate, txt, _, err := Rate2(allow, stress, cond)
+		rate, txt, textxt, err := Rate2(allow, stress, cond)
 		if err != nil {
 			return rate, err
 		}
 		otp.WriteString(txt)
+		tex.WriteString(textxt)
 		return rate, nil
 	}
 	maxrate := func(rate ...float64) float64 {
@@ -635,6 +639,9 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 			otp.WriteString(fmt.Sprintf(" θ=%.3f°", angle))
 		}
 		otp.WriteString("\n応力       :        N                Qxi                Qxj                Qyi                Qyj                 Mt                Mxi                Mxj                Myi                Myj\n")
+		tex.WriteString(fmt.Sprintf("\\multicolumn{12}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, elem.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
+		tex.WriteString("応力       &: &      $N$&$Q_{xi}$&$Q_{yi}$&$Q_{xj}$&$Q_{yj}$&   $M_t$&$M_{xi}$&$M_{xj}$&$M_{yi}$&$M_{yj}$\\\\\n")
+		tex.WriteString("           &  &     [kN]&    [kN]&    [kN]&    [kN]&    [kN]&   [kNm]&   [kNm]&   [kNm]&   [kNm]&   [kNm]\\\\\n")
 		stress := make([][]float64, 5)
 		var qlrate, qsrate, qurate, mlrate, msrate, murate float64
 		msrates := make([]float64, 4)
@@ -649,17 +656,21 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 				continue
 			}
 			otp.WriteString(stname[p])
+			tex.WriteString(strings.Replace(stname[p], ":", "&:", -1))
 			for i := 0; i < 6; i++ {
 				for j := 0; j < 2; j++ {
 					otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[p][6*j+i], stress[p][6*j+i]*SI))
+					tex.WriteString(fmt.Sprintf(" &%8.3f", stress[p][6*j+i]*SI))
 					if i == 0 || i == 3 {
 						break
 					}
 				}
 			}
 			otp.WriteString("\n")
+			tex.WriteString("\\\\\n")
 		}
 		otp.WriteString("\n")
+		tex.WriteString("\\\\\n")
 		if elem.Condition.Verbose {
 			switch al.(type) {
 			case *SColumn:
@@ -702,6 +713,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 			elem.Condition.Period = "L"
 		}
 		otp.WriteString(pername[0])
+		tex.WriteString(strings.Replace(pername[0], ":", "&:", -1))
 		rate, err = calc1(al, elem.Condition, stress[0], nil, nil, 1.0)
 		qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
 		if isrc {
@@ -718,6 +730,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 		}
 		if elem.Condition.Skipshort {
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
+			tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
 			elem.MaxRate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 			break
 		}
@@ -726,11 +739,13 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 		for p := 1; p < 5; p++ {
 			if p%2 == 1 {
 				otp.WriteString("\n")
+				tex.WriteString("\\\\\n")
 				s = 1.0
 			} else {
 				s = sign
 			}
 			otp.WriteString(pername[p])
+			tex.WriteString(strings.Replace(pername[p], ":", "&:", -1))
 			if angle != 0.0 {
 				if p <= 2 {
 					rate, err = calc1angle(al, elem.Condition, stress[0], stress[p], stress[p+2], factor[p-1], s, angle, 0)
@@ -756,6 +771,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 		}
 		msrate = maxrate(msrates...)
 		otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
+		tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
 		elem.MaxRate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 	case BRACE, WBRACE, SBRACE:
 		var isrc bool
@@ -791,6 +807,8 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 			sectstring = fmt.Sprintf("　%d/◯%d", elem.OriginalSection().Num, elem.Sect.Num)
 		}
 		otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
+		tex.WriteString(fmt.Sprintf("\\multicolumn{12}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
+		tex.WriteString("応力       &:&      $N$\\\\\n")
 		if alpha != nil {
 			otp.WriteString(fmt.Sprintf(" αx=%.3f αy=%.3f", alpha[0], alpha[1]))
 		}
