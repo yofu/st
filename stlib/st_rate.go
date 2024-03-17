@@ -2760,7 +2760,7 @@ func (hp Hoop) Ftw(cond *Condition) float64 {
 		return 0.0
 	case "L":
 		return 2.0
-	case "X", "Y", "S":
+	case "X", "Y", "S", "U":
 		return hp.Material.Fs
 	}
 }
@@ -3211,6 +3211,58 @@ func (rc *RCColumn) NearSideReins(cond *Condition) float64 {
 	}
 	return rtn
 }
+func (rc *RCColumn) ReinsCentroid(cond *Condition) (float64, float64) {
+	if rc.Reins == nil {
+		return 0.0, 0.0
+	}
+	pos_num := 0.0
+	pos_den := 0.0
+	neg_num := 0.0
+	neg_den := 0.0
+	for _, r := range rc.Reins {
+		if cond.Strong {
+			if cond.Positive {
+				if r.Position[1] >= 0 {
+					pos_num += r.Position[1]*r.Area
+					pos_den += r.Area
+				} else {
+					neg_num += r.Position[1]*r.Area
+					neg_den += r.Area
+				}
+			} else {
+				if r.Position[1] >= 0 {
+					neg_num += r.Position[1]*r.Area
+					neg_den += r.Area
+				} else {
+					pos_num += r.Position[1]*r.Area
+					pos_den += r.Area
+				}
+			}
+		} else {
+			if cond.Positive {
+				if r.Position[0] >= 0 {
+					pos_num += r.Position[0]*r.Area
+					pos_den += r.Area
+				} else {
+					neg_num += r.Position[0]*r.Area
+					neg_den += r.Area
+				}
+			} else {
+				if r.Position[0] >= 0 {
+					neg_num += r.Position[0]*r.Area
+					neg_den += r.Area
+				} else {
+					pos_num += r.Position[0]*r.Area
+					pos_den += r.Area
+				}
+			}
+		}
+	}
+	if pos_den == 0.0 || neg_den == 0.0 {
+		return 0.0, 0.0
+	}
+	return pos_num/pos_den, neg_num/neg_den
+}
 func (rc *RCColumn) NeutralAxis(cond *Condition) (float64, float64, error) {
 	if rc.Nreins == 0 {
 		return 0.0, 0.0, errors.New("NeutralAxis: No Reinforce")
@@ -3346,7 +3398,7 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 	}
 	switch cond.Period {
 	default:
-		fmt.Println("unknown period")
+		fmt.Println("unknown period: %s", cond.Period)
 		return 0.0
 	case "L":
 		return 7 / 8.0 * b * d * alpha * fs // RC規準2018 (15.1)式
@@ -3367,6 +3419,31 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 		}
 		return 7 / 8.0 * b * d * (2.0/3.0*alpha*fs + 0.5*rc.Hoops.Ftw(cond)*(pw-0.002)) // RC規準2018 (15.3)式
 		// return 7 / 8.0 * b * d * (fs + 0.5*rc.Hoops.Ftw(cond)*(pw-0.002)) // RC規準2018 (15.6)式
+	case "U":
+		var pw float64
+		if cond.Strong { // for Qy
+			pw = rc.Hoops.Ps[1]
+		} else { // for Qx
+			pw = rc.Hoops.Ps[0]
+		}
+		if pw > 0.012 {
+			pw = 0.012
+		}
+		pt := rc.Ai()*0.5/(b*d)
+		Fc := rc.fc*100 // N/mm2
+		ft := rc.Hoops.Ftw(cond)*98.0665 // N/mm2
+		alpha := 1.0
+		if cond.Q == 0.0 {
+			alpha = 1.0
+		} else {
+			alpha = math.Abs(cond.M*100.0/(cond.Q*d))
+			if alpha < 1.0 {
+				alpha = 1.0
+			} else if alpha > 3.0 {
+				alpha = 3.0
+			}
+		}
+		return (b*7/8.0*d*((0.068*math.Pow(pt, 0.23)*(Fc+18))/(alpha+0.12)+0.85*math.Sqrt(pw*ft)))/9.80665/10 // tf
 	}
 }
 func (rc *RCColumn) Ma(cond *Condition) float64 {
@@ -3385,6 +3462,30 @@ func (rc *RCColumn) Ma(cond *Condition) float64 {
 		return -(NCS*sigma/xn*(math.Pow(xn, 2.0)*rc.Ai()-2.0*xn*rc.LiAi(cond)+rc.Li2Ai(cond)) + cond.N*(xn-h/2.0)) * 0.01 // [tfm]
 	} else {
 		return (sigma*(b*math.Pow(xn, 2.0)/3.0+NCS*(xn*rc.Ai()-2.0*rc.LiAi(cond)+rc.Li2Ai(cond)/xn)) - cond.N*(xn-h/2.0)) * 0.01 // [tfm]
+	}
+}
+func (rc *RCColumn) Mu(cond *Condition) float64 {
+	cond.Period = "U"
+	fc := rc.Fc(cond)
+	ft := rc.Reins[0].Ft(cond)
+	b := rc.Breadth(cond.Strong)
+	h := rc.Height(cond.Strong)
+	nmax := fc*b*h + ft*rc.Ai()
+	nmin := -ft * rc.Ai()
+	c1, c2 := rc.ReinsCentroid(cond)
+	g1 := (c1-c2)/h
+	ag := rc.Ai()
+	Nb := 0.22*(1+g1)*b*h*fc
+	if cond.N < nmin {
+		return 0.0
+	} else if cond.N < 0 {
+		return (0.5*ag*ft*g1*h+0.5*cond.N*g1*h)*0.01
+	} else if cond.N <= Nb {
+		return (0.5*ag*ft*g1*h+0.5*cond.N*h*(1-cond.N/(b*h*fc)))*0.01
+	} else if cond.N <= nmax {
+		return ((0.5*ag*ft*g1*h+0.024*(1+g1)*(3.6-g1)*b*h*h*fc)*(nmax-cond.N)/(nmax-Nb))*0.01
+	} else {
+		return 0.0
 	}
 }
 func (rc *RCColumn) Mza(cond *Condition) float64 {
@@ -3475,7 +3576,7 @@ func (rg *RCGirder) Qa(cond *Condition) float64 {
 	}
 	switch cond.Period {
 	default:
-		fmt.Println("unknown period")
+		fmt.Println("unknown period: %s", cond.Period)
 		return 0.0
 	case "L":
 		if pw < 0.002 {
@@ -3499,6 +3600,31 @@ func (rg *RCGirder) Qa(cond *Condition) float64 {
 			cond.Buffer.WriteString(fmt.Sprintf("#     せん断補強筋比: pw=%.6f\n", pw))
 		}
 		return 7 / 8.0 * b * d * (alpha*fs + 0.5*rg.Hoops.Ftw(cond)*(pw-0.002)) // RC規準2018 (15.5)式
+	case "U":
+		var pw float64
+		if cond.Strong { // for Qy
+			pw = rg.Hoops.Ps[1]
+		} else { // for Qx
+			pw = rg.Hoops.Ps[0]
+		}
+		if pw > 0.012 {
+			pw = 0.012
+		}
+		pt := rg.Ai()*0.5/(b*d)
+		Fc := rg.fc*100 // N/mm2
+		ft := rg.Hoops.Ftw(cond)*98.0665 // N/mm2
+		alpha := 1.0
+		if cond.Q == 0.0 {
+			alpha = 1.0
+		} else {
+			alpha = math.Abs(cond.M*100.0/(cond.Q*d))
+			if alpha < 1.0 {
+				alpha = 1.0
+			} else if alpha > 3.0 {
+				alpha = 3.0
+			}
+		}
+		return (b*7/8.0*d*((0.068*math.Pow(pt, 0.23)*(Fc+18))/(alpha+0.12)+0.85*math.Sqrt(pw*ft)))/9.80665/10 // tf
 	}
 }
 func (rg *RCGirder) Amount() Amount {

@@ -1965,7 +1965,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					}
 				}
 			}
-			filename := "nmi.txt"
+			filename := filepath.Join(filepath.Dir(frame.Path), "nmi.txt")
 			if o, ok := argdict["OUTPUT"]; ok {
 				if o != "" {
 					m.WriteString(fmt.Sprintf("OUTPUT: %s", o))
@@ -1979,24 +1979,73 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					cond.Period = p
 				}
 			}
-			switch al.(type) {
-			default:
-				return nil
-			case *RCColumn:
-				nmax := al.(*RCColumn).Nmax(cond)
-				nmin := al.(*RCColumn).Nmin(cond)
-				for i := 0; i <= ndiv; i++ {
-					cond.N = nmax - float64(i)*(nmax-nmin)/float64(ndiv)
-					otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.Ma(cond)))
+			yield := make([]float64, 12)
+			for i := 0; i < 2; i++ {
+				if i == 0 {
+					otp.WriteString("STRONG\n")
+					cond.Strong = true
+				} else {
+					otp.WriteString("WEAK\n")
+					cond.Strong = false
 				}
-			case *RCGirder:
-				nmax := al.(*RCGirder).Nmax(cond)
-				nmin := al.(*RCGirder).Nmin(cond)
-				for i := 0; i <= ndiv; i++ {
-					cond.N = nmax - float64(i)*(nmax-nmin)/float64(ndiv)
-					otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.Ma(cond)))
+				switch al.(type) {
+				default:
+					return nil
+				case *RCColumn:
+					nmax := al.(*RCColumn).Nmax(cond)
+					nmin := al.(*RCColumn).Nmin(cond)
+					for i := 0; i <= ndiv; i++ {
+						cond.N = nmax - float64(i)*(nmax-nmin)/float64(ndiv)
+						if cond.Period == "U" {
+							otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.(*RCColumn).Mu(cond)))
+						} else {
+							otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.Ma(cond)))
+						}
+					}
+					otp.WriteString(fmt.Sprintf("Qu %.5f\n", al.Qa(cond)))
+				case *RCGirder:
+					nmax := al.(*RCGirder).Nmax(cond)
+					nmin := al.(*RCGirder).Nmin(cond)
+					nmid := 0.0
+					mmax := 0.0
+					for i := 0; i <= ndiv; i++ {
+						cond.N = nmax - float64(i)*(nmax-nmin)/float64(ndiv)
+						if cond.Period == "U" {
+							m := al.(*RCGirder).Mu(cond)
+							if m > mmax {
+								mmax = m
+								nmid = cond.N
+							}
+							otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, m))
+						} else {
+							otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.Ma(cond)))
+						}
+					}
+					qu := al.Qa(cond)
+					if i == 0 {
+						mt := al.Mza(cond)
+						yield[0] = 2*nmid - nmin
+						yield[1] = nmin
+						yield[4] = qu
+						yield[5] = -qu
+						yield[6] = mt
+						yield[7] = -mt
+						yield[8] = mmax
+						yield[9] = -mmax
+					} else {
+						yield[2] = qu
+						yield[3] = -qu
+						yield[10] = mmax
+						yield[11] = -mmax
+					}
 				}
 			}
+			otp.WriteString(fmt.Sprintf("         NZMAX %9.3f NZMIN %9.3f\n", yield[0], yield[1]))
+			otp.WriteString(fmt.Sprintf("         QXMAX %9.3f QXMIN %9.3f\n", yield[2], yield[3]))
+			otp.WriteString(fmt.Sprintf("         QYMAX %9.3f QYMIN %9.3f\n", yield[4], yield[5]))
+			otp.WriteString(fmt.Sprintf("         MZMAX %9.3f MZMIN %9.3f\n", yield[6], yield[7]))
+			otp.WriteString(fmt.Sprintf("         MXMAX %9.3f MXMIN %9.3f\n", yield[8], yield[9]))
+			otp.WriteString(fmt.Sprintf("         MYMAX %9.3f MYMIN %9.3f\n", yield[10], yield[11]))
 			w, err := os.Create(filename)
 			defer w.Close()
 			if err != nil {
