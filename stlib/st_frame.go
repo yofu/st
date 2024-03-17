@@ -2689,7 +2689,7 @@ func (frame *Frame) ZoubunSummary(fn string, period string, cond *arclm.Analysis
 		aveheight := make([]float64, frame.Ai.Nfloor)
 		storydrift := make([]float64, frame.Ai.Nfloor-1)
 		shear := make([]float64, frame.Ai.Nfloor-1)
-		otp.WriteString(fmt.Sprintf("%3d", lap+1))
+		otp.WriteString(fmt.Sprintf("%4d", lap+1))
 		for i := 0; i < frame.Ai.Nfloor; i++ {
 			for _, n := range nodes[i] {
 				avedisp[i] += n.Disp[nper][ind]
