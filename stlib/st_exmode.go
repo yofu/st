@@ -1974,6 +1974,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 			if p, ok := argdict["PERIOD"]; ok {
 				if p != "" {
+					p = strings.ToUpper(p)
 					m.WriteString(fmt.Sprintf("PERIOD: %s", p))
 					cond.Period = p
 				}

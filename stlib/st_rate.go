@@ -169,7 +169,7 @@ func (rf Reinforce) Ft(cond *Condition) float64 {
 		} else {
 			return f
 		}
-	case "X", "Y", "S":
+	case "X", "Y", "S", "U":
 		return rf.Material.Fs
 	}
 }
@@ -179,7 +179,7 @@ func (rf Reinforce) Ftw(cond *Condition) float64 {
 		return 0.0
 	case "L":
 		return 2.0
-	case "X", "Y", "S":
+	case "X", "Y", "S", "U":
 		return rf.Material.Fs
 	}
 }
@@ -3077,6 +3077,8 @@ func (rc *RCColumn) Factor(p string) float64 {
 		return 1.0
 	case "X", "Y", "S":
 		return 2.0
+	case "U":
+		return 3.0
 	}
 }
 func (rc *RCColumn) Fs(cond *Condition) float64 {
@@ -3095,6 +3097,8 @@ func (rc *RCColumn) Fs(cond *Condition) float64 {
 		rtn *= 1.0
 	case "X", "Y", "S":
 		rtn *= 1.5
+	case "U":
+		rtn *= 3.0
 	}
 	return rtn
 }
