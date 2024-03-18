@@ -5484,6 +5484,18 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if err != nil {
 			return err
 		}
+	case "sleep":
+		if usage {
+			return Usage(":sleep millisecond")
+		}
+		if narg < 2 {
+			return NotEnoughArgs(":sleep")
+		}
+		val, err := strconv.ParseInt(args[1], 10, 64)
+		if err != nil {
+			return err
+		}
+		time.Sleep(time.Duration(int(val))*time.Millisecond)
 	case "arclm001":
 		return Usage("DEPRECATED: use :analysis {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} {-wait} filename")
 	case "arclm201":
