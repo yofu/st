@@ -1584,7 +1584,7 @@ func (stw *Window) SaveAS() {
 		fn := st.Ce(name, ".inp")
 		err = st.SaveFile(stw, fn)
 		if err == nil && fn != stw.frame.Path {
-			st.Copylsts(stw, name)
+			st.Copylsts(stw, name, false)
 			st.Rebase(stw, fn)
 		}
 	}

@@ -382,8 +382,8 @@ func ParseFig2Page(stw Fig2Moder, lis [][]string) error {
 	return nil
 }
 
-func Copylsts(stw Window, name string) {
-	if stw.Yn("SAVE AS", ".lst, .fig2, .kjnファイルがあればコピーしますか?") {
+func Copylsts(stw Window, name string, bang bool) {
+	if bang || stw.Yn("SAVE AS", ".lst, .fig2, .kjnファイルがあればコピーしますか?") {
 		frame := stw.Frame()
 		for _, ext := range []string{".lst", ".fig2", ".kjn"} {
 			src := Ce(frame.Path, ext)
