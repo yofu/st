@@ -1092,7 +1092,21 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return err
 		}
 	case "sectionlist":
-		SectionList(frame)
+		if usage {
+			return Usage(":sectionlist {-scale=0.025}")
+		}
+		scale := 0.025
+		if v, ok := argdict["SCALE"]; ok {
+			val, err := strconv.ParseFloat(v, 64)
+			if err != nil {
+				return err
+			}
+			scale = val
+		}
+		err := SectionList(frame, scale)
+		if err != nil {
+			return err
+		}
 	case "svg":
 		if usage {
 			return Usage(":svg {-size=a4tate} filename")

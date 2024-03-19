@@ -489,6 +489,7 @@ type Shape interface {
 	BT_ratio() []float64
 	BT_ratio_category(Steel) int
 	Vertices() [][]float64
+	PgfString(float64, float64, float64) string
 	Breadth(bool) float64
 }
 
@@ -1036,6 +1037,14 @@ func (hk HKYOU) Vertices() [][]float64 {
 	return vertices
 }
 
+func (hk HKYOU) PgfString(cx, cy, scale float64) string {
+	h := hk.H * 0.5 * scale
+	b := hk.B * 0.5 * scale
+	w := hk.Tw * 0.5 * scale
+	f := hk.Tf * scale
+	return fmt.Sprintf("\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- cycle;\n", cx, cy, -b, -h, 2*b, f, -(b-w), 2*(h-f), b-w, f, -2*b, -f, b-w, -2*(h-f), -(b-w))
+}
+
 func (hk HKYOU) Breadth(strong bool) float64 {
 	if strong {
 		return hk.B
@@ -1176,6 +1185,14 @@ func (hw HWEAK) Vertices() [][]float64 {
 	return vertices
 }
 
+func (hw HWEAK) PgfString(cx, cy, scale float64) string {
+	h := hw.H * 0.5 * scale
+	b := hw.B * 0.5 * scale
+	w := hw.Tw * 0.5 * scale
+	f := hw.Tf * scale
+	return fmt.Sprintf("\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- cycle;\n", cx, cy, -h, -b, 2*b, f, -(b-w), 2*(h-f), b-w, f, -2*b, -f, b-w, -2*(h-f), -(b-w))
+}
+
 func (hw HWEAK) Breadth(strong bool) float64 {
 	if strong {
 		return hw.H
@@ -1289,6 +1306,12 @@ func (cr CROSS) Vertices() [][]float64 {
 	}
 	vertices[12] = nil
 	return vertices
+}
+
+func (cr CROSS) PgfString(cx, cy, scale float64) string {
+	s1 := cr.Hkyou.PgfString(cx, cy, scale)
+	s2 := cr.Hweak.PgfString(cx, cy, scale)
+	return fmt.Sprintf("%s%s", s1, s2)
 }
 
 func (cr CROSS) Breadth(strong bool) float64 {
@@ -1410,6 +1433,14 @@ func (rp RPIPE) Vertices() [][]float64 {
 	return vertices
 }
 
+func (rp RPIPE) PgfString(cx, cy, scale float64) string {
+	h := rp.H * 0.5 * scale
+	b := rp.B * 0.5 * scale
+	hw := h - rp.Tf * scale
+	bf := b - rp.Tw * scale
+	return fmt.Sprintf("\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- cycle;\n\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- cycle;\n", cx, cy, -b, -h, 2*b, 2*h, -2*b, cx, cy, -bf, -hw, 2*bf, 2*hw, -2*bf)
+}
+
 func (rp RPIPE) Breadth(strong bool) float64 {
 	if strong {
 		return rp.B
@@ -1505,6 +1536,12 @@ func (cp CPIPE) Vertices() [][]float64 {
 	}
 	vertices[16] = nil
 	return vertices
+}
+
+func (cp CPIPE) PgfString(cx, cy, scale float64) string {
+	d := 0.5 * cp.D * scale
+	dt := d - cp.T * scale
+	return fmt.Sprintf("\\draw (%.3f,%.3f) circle (%.3f);\n\\draw (%.3f,%.3f) circle (%.3f);\n", cx, cy, d, cx, cy, dt)
 }
 
 func (cp CPIPE) Breadth(strong bool) float64 {
@@ -1644,6 +1681,15 @@ func (tk TKYOU) Vertices() [][]float64 {
 	vertices[6] = []float64{-b, c - f}
 	vertices[7] = []float64{-w, c - f}
 	return vertices
+}
+
+func (tk TKYOU) PgfString(cx, cy, scale float64) string {
+	c := tk.Cy() * scale
+	h := tk.H * scale -c
+	b := tk.B * 0.5 * scale
+	w := tk.Tw * 0.5 * scale
+	f := tk.Tf * scale
+	return fmt.Sprintf("\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- cycle;\n", cx, cy, -w, -h, 2*w, c-f+h, b-w, f, -2*b, -f, b-w)
 }
 
 func (tk TKYOU) Breadth(strong bool) float64 {
@@ -1787,6 +1833,15 @@ func (tk TWEAK) Vertices() [][]float64 {
 	vertices[6] = []float64{c - f, -b}
 	vertices[7] = []float64{c - f, -w}
 	return vertices
+}
+
+func (tw TWEAK) PgfString(cx, cy, scale float64) string {
+	c := tw.Cx() * scale
+	h := tw.H * scale -c
+	b := tw.B * 0.5 * scale
+	w := tw.Tw * 0.5 * scale
+	f := tw.Tf * scale
+	return fmt.Sprintf("\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- cycle;\n", cx, cy, -h, -w, 2*w, c-f+h, b-w, f, -2*b, -f, b-w)
 }
 
 func (tk TWEAK) Breadth(strong bool) float64 {
@@ -1936,6 +1991,15 @@ func (ck CKYOU) Vertices() [][]float64 {
 	return vertices
 }
 
+func (ck CKYOU) PgfString(cx, cy, scale float64) string {
+	h := ck.H * 0.5 * scale
+	c := ck.Cx() * scale
+	b := ck.B * scale - c
+	w := ck.Tw * scale - c
+	f := ck.Tf * scale
+	return fmt.Sprintf("\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- cycle;\n", cx, cy, -c, -h, b+c, f, -(b-w), 2*(h-f), b-w, f, -(c+b))
+}
+
 func (ck CKYOU) Breadth(strong bool) float64 {
 	if strong {
 		return ck.B
@@ -2083,6 +2147,15 @@ func (cw CWEAK) Vertices() [][]float64 {
 	return vertices
 }
 
+func (cw CWEAK) PgfString(cx, cy, scale float64) string {
+	h := cw.H * 0.5 * scale
+	c := cw.Cy() * scale
+	b := cw.B * scale - c
+	w := cw.Tw * scale - c
+	f := cw.Tf * scale
+	return fmt.Sprintf("\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- cycle;\n", cx, cy, -h, -c, b+c, f, -(b-w), 2*(h-f), b-w, f, -(b+c))
+}
+
 func (cw CWEAK) Breadth(strong bool) float64 {
 	if strong {
 		return cw.H
@@ -2194,6 +2267,12 @@ func (pl PLATE) Vertices() [][]float64 {
 	vertices[8] = []float64{b, -h}
 	vertices[9] = []float64{-b, h}
 	return vertices
+}
+
+func (pl PLATE) PgfString(cx, cy, scale float64) string {
+	h := pl.H * 0.5 * scale
+	b := pl.B * 0.5 * scale
+	return fmt.Sprintf("\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- cycle;\n\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- (%.3f,%3f);\n\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- (%.3f,%3f);\n", cx, cy, -b, -h, 2*b, 2*h, -2*b, cx, cy, -b, -h, 2*b, 2*h, cx, cy, b, -h, -2*b, 2*h)
 }
 
 func (pl PLATE) Breadth(strong bool) float64 {
@@ -2368,6 +2447,16 @@ func (an ANGLE) Vertices() [][]float64 {
 	return vertices
 }
 
+func (an ANGLE) PgfString(c1, c2, scale float64) string {
+	cx := an.Cx() * scale
+	cy := an.Cy() * scale
+	h := an.H * scale- cy
+	b := an.B * scale- cx
+	w := an.Tw * scale- cx
+	f := an.Tf * scale- cy
+	return fmt.Sprintf("\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- cycle;\n", c1, c2, -cx, -cy, b+cx, f+cy, w-b, h-f, -(cx+w))
+}
+
 func (an ANGLE) Breadth(strong bool) float64 {
 	if strong {
 		return an.B
@@ -2459,6 +2548,12 @@ func (sa SAREA) Vertices() [][]float64 {
 	return vertices
 }
 
+func (sa SAREA) PgfString(cx, cy, scale float64) string {
+	d := math.Sqrt(sa.Area/math.Pi) * 2.0 * scale
+	return fmt.Sprintf("\\draw (%.3f,%.3f) circle (%.3f);\n", cx, cy, d)
+}
+
+
 func (sa SAREA) Breadth(strong bool) float64 {
 	return math.Sqrt(sa.Area/math.Pi) * 2.0
 }
@@ -2538,6 +2633,10 @@ func (th THICK) Vertices() [][]float64 {
 	vertices[2] = []float64{-b * 0.5, -th.Thickness * 0.5}
 	vertices[3] = []float64{-b * 0.5, th.Thickness * 0.5}
 	return vertices
+}
+
+func (th THICK) PgfString(cx, cy, scale float64) string {
+	return ""
 }
 
 func (th THICK) Breadth(strong bool) float64 {
@@ -3537,6 +3636,20 @@ func (rc *RCColumn) Amount() Amount {
 	a["CONCRETE"] = area * 0.0001
 	a["FORMWORK"] = (rc.Breadth(true) + rc.Height(true)) * 2 * 0.01
 	return a
+}
+func (rc *RCColumn) PgfString(cx, cy, scale float64) string {
+	var otp bytes.Buffer
+	switch rc.CShape.(type) {
+	case CRect:
+		v := rc.Vertices()
+		otp.WriteString(fmt.Sprintf("\\draw (%.3f,%.3f) +(%.3f,%.3f) -- +(%.3f,%.3f) -- +(%.3f,%.3f) -- +(%.3f,%.3f) -- cycle;\n", cx, cy, v[0][0]*scale, v[0][1]*scale, v[1][0]*scale, v[1][1]*scale, v[2][0]*scale, v[2][1]*scale, v[3][0]*scale, v[3][1]*scale))
+	}
+	for _, reins := range rc.Reins {
+		p := reins.Position
+		r := reins.Radius() * scale
+		otp.WriteString(fmt.Sprintf("\\draw (%.3f,%.3f) ++(%.3f,%.3f) circle (%.3f);\n", cx, cy, p[0]*scale, p[1]*scale, r))
+	}
+	return otp.String()
 }
 
 type RCGirder struct {
