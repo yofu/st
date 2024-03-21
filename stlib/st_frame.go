@@ -4998,17 +4998,17 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	otp.WriteString("                 床用     柱梁用     地震用\n")
 	tex32.WriteString("{\\footnotesize\n\\begin{tabbing}\n")
 	tex32.WriteString("\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\kill\n")
-	tex32.WriteString(fmt.Sprintf("節点番号 \\> 積載荷重別の重量 ${\\rm [%s]}$ \\\\ \n", frame.Show.UnitName[0]))
+	tex32.WriteString("節点番号 \\> 積載荷重別の重量 ${\\rm [kN]}$ \\\\ \n")
 	tex32.WriteString("\\>   床用    \\> 柱梁用  \\>  地震用\\\\\n")
 	for _, n := range nodes {
 		otp.WriteString(n.WgtString(frame.Show.Unit[0]))
-		tex32.WriteString(n.WgtStringTex(frame.Show.Unit[0]))
+		tex32.WriteString(n.WgtStringTex(SI))
 		for i := 0; i < 3; i++ {
 			total[i] += n.Weight[i]
 		}
 	}
 	otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
-	tex32.WriteString(fmt.Sprintf("       計 \\> %10.3f \\> %10.3f \\> %10.3f\\\\\n", frame.Show.Unit[0]*total[0], frame.Show.Unit[0]*total[1], frame.Show.Unit[0]*total[2]))
+	tex32.WriteString(fmt.Sprintf("       計 \\> %10.3f \\> %10.3f \\> %10.3f\\\\\n", SI*total[0], SI*total[1], SI*total[2]))
 	tex32.WriteString("\\end{tabbing}\n\n")
 	// PERPLの出力
 	perpl := make(map[int][]float64, 0)
@@ -5018,7 +5018,7 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	otp.WriteString("                    X          Y          Z\n")
 	tex32.WriteString("\\begin{tabbing}\n")
 	tex32.WriteString("\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\=\\hspace{.22\\linewidth}\\kill\n")
-	tex32.WriteString(fmt.Sprintf("節点番号 \\> 節点荷重 ${\\rm [%s]}$ \\\\\n", frame.Show.UnitName[0]))
+	tex32.WriteString("節点番号 \\> 節点荷重 ${\\rm [kN]}$ \\\\\n")
 	tex32.WriteString("\\>   X    \\> Y  \\>  Z\\\\\n")
 	for _, el := range frame.Elems {
 		if el.Sect.Perpl == nil || len(el.Sect.Perpl) < 3 || (el.Sect.Perpl[1] == 0.0 && el.Sect.Perpl[2] == 0.0) {
@@ -5039,7 +5039,7 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	sort.Ints(perplkey)
 	for _, nnum := range perplkey {
 		otp.WriteString(fmt.Sprintf("%9d  %10.3f %10.3f %10.3f\n", nnum, frame.Show.Unit[0]*perpl[nnum][0], frame.Show.Unit[0]*perpl[nnum][1], frame.Show.Unit[0]*perpl[nnum][2]))
-		tex32.WriteString(fmt.Sprintf("%9d \\> %10.3f \\> %10.3f \\> %10.3f\\\\\n", nnum, frame.Show.Unit[0]*perpl[nnum][0], frame.Show.Unit[0]*perpl[nnum][1], frame.Show.Unit[0]*perpl[nnum][2]))
+		tex32.WriteString(fmt.Sprintf("%9d \\> %10.3f \\> %10.3f \\> %10.3f\\\\\n", nnum, SI*perpl[nnum][0], SI*perpl[nnum][1], SI*perpl[nnum][2]))
 	}
 	tex32.WriteString("\\end{tabbing}\n")
 	otp.WriteString(fmt.Sprintf("\n       計  %10.3f %10.3f %10.3f\n\n", frame.Show.Unit[0]*perplsum[0], frame.Show.Unit[0]*perplsum[1], frame.Show.Unit[0]*perplsum[2]))
@@ -5048,12 +5048,12 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	otp.WriteString("                    M\n")
 	tex32.WriteString("\\begin{tabbing}\n")
 	tex32.WriteString("\\hspace{.22\\linewidth}\\=\\hspace{.66\\linewidth}\\kill\n")
-	tex32.WriteString(fmt.Sprintf("節点番号 \\> 杭頭曲げモーメント ${\\rm [%s%s]}$ \\\\\n", frame.Show.UnitName[0], frame.Show.UnitName[1]))
+	tex32.WriteString("節点番号 \\> 杭頭曲げモーメント ${\\rm [kNm]}$ \\\\\n")
 	tex32.WriteString("\\>   M\\\\\n")
 	for _, n := range nodes {
 		if n.Pile != nil {
 			otp.WriteString(fmt.Sprintf("%9d  %10.3f\n", n.Num, frame.Show.Unit[0]*frame.Show.Unit[1]*n.Pile.Moment))
-			tex32.WriteString(fmt.Sprintf("%9d \\> %10.3f\\\\\n", n.Num, frame.Show.Unit[0]*frame.Show.Unit[1]*n.Pile.Moment))
+			tex32.WriteString(fmt.Sprintf("%9d \\> %10.3f\\\\\n", n.Num, SI*n.Pile.Moment))
 		}
 	}
 	tex32.WriteString("\\end{tabbing}\n")
@@ -5324,31 +5324,31 @@ func (frame *Frame) AiDistribution() (string, string, error) {
 	tex.WriteString(fmt.Sprintf("基礎部分の震度     & $C_{fx}=%5.3f, C_{fy}=%5.3f$\\\\\n", facts[0][0], facts[1][0]))
 	tex.WriteString("\\end{tabular}\\\\\n\\vspace{5mm}\n\\\\\n")
 	tex.WriteString("\\begin{tabular}{l c r}\n")
-	tex.WriteString(fmt.Sprintf("床用積載荷重による総荷重   &=&%10.3f\\\\\n", frame.Show.Unit[0]*total[0]))
-	tex.WriteString(fmt.Sprintf("柱梁用積載荷重による総荷重 &=&%10.3f\\\\\n", frame.Show.Unit[0]*total[1]))
-	tex.WriteString(fmt.Sprintf("地震用積載荷重による総荷重 &=&%10.3f\\\\\n", frame.Show.Unit[0]*total[2]))
+	tex.WriteString(fmt.Sprintf("床用積載荷重による総荷重   &=&%10.3f\\\\\n", SI*total[0]))
+	tex.WriteString(fmt.Sprintf("柱梁用積載荷重による総荷重 &=&%10.3f\\\\\n", SI*total[1]))
+	tex.WriteString(fmt.Sprintf("地震用積載荷重による総荷重 &=&%10.3f\\\\\n", SI*total[2]))
 	tex.WriteString("\\end{tabular}\\\\\n\\vspace{5mm}\n\\\\\n")
 	rtn.WriteString("各階平均高さ      :")
-	tex.WriteString("\\begin{tabular}{l r c" + strings.Repeat("r", size) + "}\n")
-	tex.WriteString("各階平均高さ& &:")
+	tex.WriteString("\\begin{tabular}{l r |" + strings.Repeat("r", size) + "}\n")
+	tex.WriteString("各階平均高さ&")
 	for i := 0; i < size; i++ {
 		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Level[i]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Level[i]))
 	}
 	rtn.WriteString("\n各階重量       wi :")
-	tex.WriteString("\\\\\n各階重量 & $w_i$ & :")
+	tex.WriteString("\\\\\n各階重量 & $w_i$")
 	for i := 0; i < size; i++ {
 		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Wi[i]))
-		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Show.Unit[0]*frame.Ai.Wi[i]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", SI*frame.Ai.Wi[i]))
 	}
 	rtn.WriteString("\n        Wi = Σwi :")
-	tex.WriteString("\\\\\n & $W_i = \\sum w_i$ & :")
+	tex.WriteString("\\\\\n & $W_i = \\sum w_i$")
 	for i := 0; i < size; i++ {
 		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.W[i]))
-		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Show.Unit[0]*frame.Ai.W[i]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", SI*frame.Ai.W[i]))
 	}
 	rtn.WriteString("\n               Ai :           ")
-	tex.WriteString("\\\\\n & $A_i$ & :&")
+	tex.WriteString("\\\\\n & $A_i$ &")
 	for i := 0; i < size-1; i++ {
 		rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Ai[i]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Ai[i]))
@@ -5357,32 +5357,32 @@ func (frame *Frame) AiDistribution() (string, string, error) {
 		rtn.WriteString(fmt.Sprintf("\n%s方向", str))
 		tex.WriteString(fmt.Sprintf("\\\\\n%s方向&&&&&", str))
 		rtn.WriteString("\n層せん断力係数 Ci :           ")
-		tex.WriteString("\\\\\n層せん断力係数& $C_i$ & :&")
+		tex.WriteString("\\\\\n層せん断力係数& $C_i$ &")
 		for i := 1; i < size; i++ {
 			rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Ci[d][i]))
 			tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Ci[d][i]))
 		}
 		rtn.WriteString("\n層せん断力     Qi :           ")
-		tex.WriteString("\\\\\n層せん断力& $Q_i$ & :&")
+		tex.WriteString("\\\\\n層せん断力& $Q_i$ &")
 		for i := 1; i < size; i++ {
 			rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Qi[d][i]))
-			tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Show.Unit[0]*frame.Ai.Qi[d][i]))
+			tex.WriteString(fmt.Sprintf(" &%10.3f", SI*frame.Ai.Qi[d][i]))
 		}
 		rtn.WriteString("\n各階外力       Hi :           ")
-		tex.WriteString("\\\\\n各階外力& $H_i$ & :&")
+		tex.WriteString("\\\\\n各階外力& $H_i$ &")
 		for i := 1; i < size; i++ {
 			rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Show.Unit[0]*frame.Ai.Hi[d][i]))
-			tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Show.Unit[0]*frame.Ai.Hi[d][i]))
+			tex.WriteString(fmt.Sprintf(" &%10.3f", SI*frame.Ai.Hi[d][i]))
 		}
 		rtn.WriteString("\n外力係数    Hi/wi :")
-		tex.WriteString("\\\\\n外力係数& $H_i/w_i$ & :")
+		tex.WriteString("\\\\\n外力係数& $H_i/w_i$")
 		for i := 0; i < size; i++ {
 			rtn.WriteString(fmt.Sprintf(" %10.3f", facts[d][i]))
 			tex.WriteString(fmt.Sprintf(" &%10.3f", facts[d][i]))
 		}
 	}
 	rtn.WriteString("\n")
-	tex.WriteString("\\\\\n\\end{tabular}\n\n\\newpage\n\n")
+	tex.WriteString("\\\\\n\\end{tabular}\n\n\n\n")
 	return rtn.String(), tex.String(), nil
 }
 
@@ -5508,7 +5508,7 @@ func (frame *Frame) WindPressure() (string, string, error) {
 	otp.WriteString(fmt.Sprintf("Er                           : %.3f\n", er))
 	otp.WriteString(fmt.Sprintf("Gf                           : %.3f\n", gf))
 	otp.WriteString(fmt.Sprintf("E=Er^2 Gf                    : %.3f\n", e))
-	tex.WriteString("\\subsection{風荷重}\n\n建築基準法施行令第87条に従い、風圧力を算定する。\\\\\n\\\\\n")
+	tex.WriteString("\\paragraph{風荷重}\n\n建築基準法施行令第87条に従い、風圧力を算定する。\\\\\n\\\\\n")
 	tex.WriteString("\\begin{tabular}{l c l}\n")
 	tex.WriteString(fmt.Sprintf("建物高さ $H {\\rm [m]}$     &:&%.3f\\\\\n", height))
 	tex.WriteString(fmt.Sprintf("地表面粗度区分              &:&%d\\\\\n", frame.Wind.Roughness))
@@ -5530,86 +5530,86 @@ func (frame *Frame) WindPressure() (string, string, error) {
 		unit = "[kgf/m^2]"
 	}
 	otp.WriteString(fmt.Sprintf("q=0.6 E V0^2%s        : %.3f\n", unit, q*frame.Show.Unit[0]))
-	tex.WriteString(fmt.Sprintf("$q=0.6 E V_0^2 {\\rm %s}$  &:&%.3f\\\\\n", unit, q*frame.Show.Unit[0]))
+	tex.WriteString(fmt.Sprintf("$q=0.6 E V_0^2 {\\rm [N/m^2]}$  &:&%.3f\\\\\n", q*SI))
 	tex.WriteString("\\end{tabular}\\\\\n\\vspace{5mm}\n\\\\\n")
 	otp.WriteString("\n風圧力を算定する高さ Z1[m]   :")
-	tex.WriteString("\\begin{tabular}{l r c" + strings.Repeat("r", size) + "}\n")
-	tex.WriteString("風圧力を算定する高さ & $Z_1 {\\rm [m]}$ & :")
+	tex.WriteString("\\begin{tabular}{l r |" + strings.Repeat("r", size) + "}\n")
+	tex.WriteString("風圧力算定高さ & $Z_1 {\\rm [m]}$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", z[i]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", z[i]))
 	}
 	otp.WriteString("\n張間方向幅 b1[m]             :")
-	tex.WriteString("\\\\\n張間方向幅 & $b_1 {\\rm [m]}$ & :")
+	tex.WriteString("\\\\\n張間方向幅 & $b_1 {\\rm [m]}$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", breadth[i]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", breadth[i]))
 	}
 	otp.WriteString("\n桁行方向幅 b2[m]             :")
-	tex.WriteString("\\\\\n桁行方向幅 & $b_2 {\\rm [m]}$ & :")
+	tex.WriteString("\\\\\n桁行方向幅 & $b_2 {\\rm [m]}$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", length[i]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", length[i]))
 	}
 	otp.WriteString("\nkz                           :")
-	tex.WriteString("\\\\\n $k_z$ & & :")
+	tex.WriteString("\\\\\n $k_z$ &")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", kz[i]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", kz[i]))
 	}
 	otp.WriteString("\n外圧係数 Cpe                 :")
-	tex.WriteString("\\\\\n外圧係数 & $C_{pe}$ & :")
+	tex.WriteString("\\\\\n外圧係数 & $C_{pe}$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", cpe[i]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", cpe[i]))
 	}
 	otp.WriteString("\n内圧係数 Cpi                 :")
-	tex.WriteString("\\\\\n内圧係数 & $C_{pi}$ & :")
+	tex.WriteString("\\\\\n内圧係数 & $C_{pi}$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", cpi[i]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", cpi[i]))
 	}
 	otp.WriteString("\n風力係数 Cf                  :")
-	tex.WriteString("\\\\\n風力係数 & $C_f$ & :")
+	tex.WriteString("\\\\\n風力係数 & $C_f$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", cf[i]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", cf[i]))
 	}
 	otp.WriteString(fmt.Sprintf("\n外力 Wx=Cf (Zi-Zi+1) b1[%s]  :", frame.Show.UnitName[0]))
-	tex.WriteString(fmt.Sprintf("\\\\\n外力 & $W_x=C_f (Z_i-Z_{i-1}) b_1 {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
+	tex.WriteString("\\\\\n外力 & $W_x=C_f (Z_i-Z_{i-1}) b_1 {\\rm [kN]}$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", wx[i]*frame.Show.Unit[0]))
-		tex.WriteString(fmt.Sprintf(" &%10.3f", wx[i]*frame.Show.Unit[0]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", wx[i]*SI))
 	}
 	otp.WriteString(fmt.Sprintf("\n     Wy=Cf (Zi-Zi+1) b2[%s]  :", frame.Show.UnitName[0]))
-	tex.WriteString(fmt.Sprintf("\\\\\n & $W_y=C_f (Z_i-Z_{i+1}) b_2 {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
+	tex.WriteString("\\\\\n & $W_y=C_f (Z_i-Z_{i+1}) b_2 {\\rm [kN]}$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", wy[i]*frame.Show.Unit[0]))
-		tex.WriteString(fmt.Sprintf(" &%10.3f", wy[i]*frame.Show.Unit[0]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", wy[i]*SI))
 	}
 	otp.WriteString(fmt.Sprintf("\n層せん断力 Qwx=ΣWx[%s]      :", frame.Show.UnitName[0]))
-	tex.WriteString(fmt.Sprintf("\\\\\n層せん断力 & $Q_{wx}=\\sum W_x {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
+	tex.WriteString("\\\\\n層せん断力 & $Q_{wx}=\\sum W_x {\\rm [kN]}$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Wind.Qi[0][i]*frame.Show.Unit[0]))
-		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Wind.Qi[0][i]*frame.Show.Unit[0]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Wind.Qi[0][i]*SI))
 	}
 	otp.WriteString(fmt.Sprintf("\n           Qwy=ΣWy[%s]      :", frame.Show.UnitName[0]))
-	tex.WriteString(fmt.Sprintf("\\\\\n & $Q_{wy}=\\sum W_y {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
+	tex.WriteString("\\\\\n & $Q_{wy}=\\sum W_y {\\rm [kN]}$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Wind.Qi[1][i]*frame.Show.Unit[0]))
-		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Wind.Qi[1][i]*frame.Show.Unit[0]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Wind.Qi[1][i]*SI))
 	}
 	otp.WriteString(fmt.Sprintf("\n地震層せん断力 Qex[%s]       :", frame.Show.UnitName[0]))
-	tex.WriteString(fmt.Sprintf("\\\\\n地震層せん断力 & $Q_{ex} {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
+	tex.WriteString("\\\\\n地震層せん断力 & $Q_{ex} {\\rm [kN]}$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Qi[0][i+1]*frame.Show.Unit[0]))
-		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Qi[0][i+1]*frame.Show.Unit[0]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Qi[0][i+1]*SI))
 	}
 	otp.WriteString(fmt.Sprintf("\n               Qey[%s]       :", frame.Show.UnitName[0]))
-	tex.WriteString(fmt.Sprintf("\\\\\n & $Q_{ey} {\\rm [%s]}$ & :", frame.Show.UnitName[0]))
+	tex.WriteString("\\\\\n & $Q_{ey} {\\rm [kN]}$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.Qi[1][i+1]*frame.Show.Unit[0]))
-		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Qi[1][i+1]*frame.Show.Unit[0]))
+		tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.Qi[1][i+1]*SI))
 	}
 	otp.WriteString("\n\n")
 	tex.WriteString("\\\\\n\\end{tabular}\n")
