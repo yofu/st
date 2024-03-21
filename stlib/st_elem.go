@@ -78,6 +78,8 @@ type Elem struct {
 	Eldest   bool
 	Chain    *Chain
 
+	SrcalTex string
+
 	Condition *Condition
 
 	hide bool
@@ -645,9 +647,9 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 			otp.WriteString(fmt.Sprintf(" θ=%.3f°", angle))
 		}
 		otp.WriteString("\n応力       :        N                Qxi                Qxj                Qyi                Qyj                 Mt                Mxi                Mxj                Myi                Myj\n")
-		tex.WriteString(fmt.Sprintf("\\multicolumn{12}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, elem.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
-		tex.WriteString("応力       &: &      $N$&$Q_{xi}$&$Q_{yi}$&$Q_{xj}$&$Q_{yj}$&   $M_t$&$M_{xi}$&$M_{xj}$&$M_{yi}$&$M_{yj}$\\\\\n")
-		tex.WriteString("           &  &     [kN]&    [kN]&    [kN]&    [kN]&    [kN]&   [kNm]&   [kNm]&   [kNm]&   [kNm]&   [kNm]\\\\\n")
+		tex.WriteString(fmt.Sprintf("\\multicolumn{11}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, elem.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
+		tex.WriteString("応力       &      $N$&$Q_{xi}$&$Q_{yi}$&$Q_{xj}$&$Q_{yj}$&   $M_t$&$M_{xi}$&$M_{xj}$&$M_{yi}$&$M_{yj}$\\\\\n")
+		tex.WriteString("           &     [kN]&    [kN]&    [kN]&    [kN]&    [kN]&   [kNm]&   [kNm]&   [kNm]&   [kNm]&   [kNm]\\\\\n")
 		stress := make([][]float64, 5)
 		var qlrate, qsrate, qurate, mlrate, msrate, murate float64
 		msrates := make([]float64, 4)
@@ -662,7 +664,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 				continue
 			}
 			otp.WriteString(stname[p])
-			tex.WriteString(strings.Replace(stname[p], ":", "&:", -1))
+			tex.WriteString(strings.Replace(stname[p], ":", "", -1))
 			for i := 0; i < 6; i++ {
 				for j := 0; j < 2; j++ {
 					otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[p][6*j+i], stress[p][6*j+i]*SI))
@@ -744,7 +746,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 			elem.Condition.Period = "L"
 		}
 		otp.WriteString(pername[0])
-		tex.WriteString(strings.Replace(pername[0], ":", "&:", -1))
+		tex.WriteString(strings.Replace(pername[0], ":", "", -1))
 		rate, err = calc1(al, elem.Condition, stress[0], nil, nil, 1.0)
 		if isrc {
 			if elem.Condition.RCTorsion {
@@ -768,7 +770,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 		}
 		if elem.Condition.Skipshort {
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
-			tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
+			tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{11}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
 			elem.MaxRate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 			break
 		}
@@ -783,7 +785,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 				s = sign
 			}
 			otp.WriteString(pername[p])
-			tex.WriteString(strings.Replace(pername[p], ":", "&:", -1))
+			tex.WriteString(strings.Replace(pername[p], ":", "", -1))
 			if angle != 0.0 {
 				if p <= 2 {
 					rate, err = calc1angle(al, elem.Condition, stress[0], stress[p], stress[p+2], factor[p-1], s, angle, 0)
@@ -816,7 +818,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 		}
 		msrate = maxrate(msrates...)
 		otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
-		tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
+		tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{11}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
 		elem.MaxRate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 	case BRACE, WBRACE, SBRACE:
 		var isrc bool
@@ -853,8 +855,8 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 		}
 		otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
 		otp.WriteString("\n応力       :        N\n")
-		tex.WriteString(fmt.Sprintf("\\multicolumn{12}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
-		tex.WriteString("応力       &:&      $N$\\\\\n")
+		tex.WriteString(fmt.Sprintf("\\multicolumn{11}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
+		tex.WriteString("応力       &      $N$\\\\\n")
 		if alpha != nil {
 			otp.WriteString(fmt.Sprintf(" αx=%.3f αy=%.3f", alpha[0], alpha[1]))
 		}
@@ -872,7 +874,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 			otp.WriteString(stname[p])
 			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[p], stress[p]*SI))
 			otp.WriteString("\n")
-			tex.WriteString(strings.Replace(stname[p], ":", "&:", -1))
+			tex.WriteString(strings.Replace(stname[p], ":", "", -1))
 			tex.WriteString(fmt.Sprintf(" &%8.3f\\\\\n", stress[p]*SI))
 		}
 		otp.WriteString("\n")
@@ -882,12 +884,12 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 			elem.Condition.Period = "L"
 		}
 		otp.WriteString(pername[0])
-		tex.WriteString(strings.Replace(pername[0], ":", "&:", -1))
+		tex.WriteString(strings.Replace(pername[0], ":", "", -1))
 		rate2, err = calc2(al, elem.Condition, stress[0], 0.0, 0.0, 1.0)
 		qlrate = rate2
 		if elem.Condition.Skipshort {
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
-			tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate))
+			tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{11}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate))
 			elem.MaxRate = []float64{qlrate, qsrate, qurate}
 			break
 		}
@@ -913,9 +915,10 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 			qsrate = maxrate(qsrate, rate2)
 		}
 		otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
-		tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate))
+		tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{11}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate))
 		elem.MaxRate = []float64{qlrate, qsrate, qurate}
 	}
+	elem.SrcalTex = tex.String()
 	return al, otp.String(), nil
 }
 
@@ -2946,7 +2949,7 @@ func (elem *Elem) RateMax(show *Show) (float64, error) {
 				return 0.0, errors.New("RateMax: different size")
 			}
 		}
-		if show.SrcanRate == 0 {
+		if show == nil || show.SrcanRate == 0 {
 			val := 0.0
 			for i := 0; i < l; i++ {
 				tmp := 0.0

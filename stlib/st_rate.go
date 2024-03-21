@@ -4592,7 +4592,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		otp.WriteString("\n")
 	}
 	otp.WriteString("     許容値:")
-	tex.WriteString("\\\\\n~~~~~許容値&:")
+	tex.WriteString("\\\\\n~~~~~許容値")
 	for i := 0; i < 6; i++ {
 		for j := 0; j < 2; j++ {
 			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", fa[6*j+i], fa[6*j+i]*SI))
@@ -4603,7 +4603,7 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		}
 	}
 	otp.WriteString("\n     安全率:")
-	tex.WriteString("\\\\\n~~~~~安全率&:")
+	tex.WriteString("\\\\\n~~~~~安全率")
 	for i := 0; i < 6; i++ {
 		for j := 0; j < 2; j++ {
 			otp.WriteString(fmt.Sprintf(" %8.3f          ", rate[6*j+i]))
@@ -4634,6 +4634,6 @@ func Rate2(sr SectionRate, stress float64, cond *Condition) (float64, string, st
 		cond.Buffer.Reset()
 	}
 	otp.WriteString(fmt.Sprintf("     許容値: %8.3f(%8.2f)\n     安全率: %8.3f\n", na, na*SI, rate))
-	tex.WriteString(fmt.Sprintf("~~~~~許容値&: &%8.3f\\\\\n~~~~~安全率&: &%8.3f\\\\\n", na*SI, rate))
+	tex.WriteString(fmt.Sprintf("~~~~~許容値 &%8.3f\\\\\n~~~~~安全率 &%8.3f\\\\\n", na*SI, rate))
 	return rate, otp.String(), tex.String(), nil
 }
