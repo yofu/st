@@ -508,15 +508,13 @@ func (elem *Elem) OutputRateRlt() string {
 	return rlt.String()
 }
 
-func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []float64, angle float64) (string, error) {
-	sign := -1.0
-	// al, _, err := elem.GetSectionRate()
+func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float64, alpha []float64, angle float64) (SectionRate, string, error) {
 	al, original, err := elem.GetSectionRate()
 	if err != nil {
-		return "", fmt.Errorf("rate is nil: ELEM %d", elem.Num)
+		return al, "", fmt.Errorf("rate is nil: ELEM %d", elem.Num)
 	}
 	if elem.Condition == nil {
-		return "", fmt.Errorf("condition is nil")
+		return al, "", fmt.Errorf("condition is nil")
 	}
 	stname := []string{"鉛直時Z    :", "水平時X    :", "水平時X負  :", "水平時Y    :", "水平時Y負  :"}
 	var pername []string
@@ -606,7 +604,6 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 		}
 		return rtn
 	}
-	// factor := []float64{cond.Nfact, cond.Qfact, cond.Qfact, 1.0, cond.Mfact, cond.Mfact}
 	factor := make([][]float64, 4)
 	if alpha != nil {
 		factor[0] = []float64{alpha[0], alpha[0], alpha[0], alpha[0], alpha[0], alpha[0]}
@@ -627,8 +624,17 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 		default:
 			isrc = false
 		}
-		// length := elem.Length() * 100.0 // [cm]
-		// otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, elem.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), length, length, length))
+		if isrc && elem.Condition.Qfact < 1.5 {
+			for i := 0; i < 4; i++ {
+				factor[i][1] = 1.5
+				factor[i][2] = 1.5
+			}
+		} else {
+			for i := 0; i < 4; i++ {
+				factor[i][1] = elem.Condition.Qfact
+				factor[i][2] = elem.Condition.Qfact
+			}
+		}
 		elem.Condition.Length = elem.Length() * 100.0 // [cm]
 		otp.WriteString(strings.Repeat("-", 202))
 		otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, elem.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
@@ -687,6 +693,20 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 				otp.WriteString(fmt.Sprintf("#     一様ねじり定数      J   = %10.4f [cm4]\n", sh.J()))
 				otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
 				otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+				case *SGirder:
+					sh := al.(*SGirder).Shape
+					otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
+					otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+					otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+					otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+					otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+					otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+					if an, ok := sh.(ANGLE); ok {
+						otp.WriteString(fmt.Sprintf("#                         Imin= %10.4f [cm4]\n", an.Imin()))
+					}
+					otp.WriteString(fmt.Sprintf("#     一様ねじり定数      J   = %10.4f [cm4]\n", sh.J()))
+					otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+					otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
 			case *WoodColumn:
 				sh := al.(*WoodColumn).Shape
 				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
@@ -698,6 +718,17 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 				otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J   = %10.4f [cm4]\n", sh.J()))
 				otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
 				otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+				case *WoodGirder:
+					sh := al.(*WoodGirder).Shape
+					otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
+					otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+					otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+					otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+					otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+					otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+					otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J   = %10.4f [cm4]\n", sh.J()))
+					otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+					otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
 			case *RCGirder:
 				rc := al.(*RCGirder)
 				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
@@ -715,16 +746,23 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 		otp.WriteString(pername[0])
 		tex.WriteString(strings.Replace(pername[0], ":", "&:", -1))
 		rate, err = calc1(al, elem.Condition, stress[0], nil, nil, 1.0)
-		qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
 		if isrc {
-			mlrate = maxrate(rate[4], rate[5], rate[10], rate[11])
+			if elem.Condition.RCTorsion {
+				qlrate = maxrate(rate[1]+rate[3], rate[2]+rate[3], rate[7]+rate[3], rate[8]+rate[3]) // TODO: use T1,T2 if T1,T2>T3
+				mlrate = maxrate(rate[4]+rate[3], rate[5]+rate[3], rate[10]+rate[3], rate[11]+rate[3]) // TODO: use T3 if T1,T2<T3
+			} else {
+				qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
+				mlrate = maxrate(rate[4], rate[5], rate[10], rate[11])
+			}
 		} else {
+				qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
 			if rate[0] >= 1.0 {
 				mlrate = 10.0
 			} else {
-				mlrate = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
-				if mlrate == 0.0 { // 両端ピン柱の場合は軸力の検定比を表示
+				if elem.BondState() == PIN_PIN { // 両端ピン柱の場合は軸力の検定比を表示
 					mlrate = rate[0]
+				} else {
+					mlrate = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
 				}
 			}
 		}
@@ -755,16 +793,23 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 			} else {
 				rate, err = calc1(al, elem.Condition, stress[0], stress[p], factor[p-1], s)
 			}
-			qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
 			if isrc {
-				msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11])
+				if elem.Condition.RCTorsion {
+					qsrate = maxrate(qsrate, rate[1]+rate[3], rate[2]+rate[3], rate[7]+rate[3], rate[8]+rate[3])
+					msrates[p-1] = maxrate(rate[4]+rate[3], rate[5]+rate[3], rate[10]+rate[3], rate[11]+rate[3])
+				} else {
+					qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
+					msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11])
+				}
 			} else {
+				qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
 				if rate[0] >= 1.0 {
 					msrates[p-1] = 10.0
 				} else {
-					msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
-					if msrates[p-1] == 0.0 { // 両端ピン柱の場合は軸力の検定比を表示
+					if elem.BondState() == PIN_PIN { // 両端ピン柱の場合は軸力の検定比を表示
 						msrates[p-1] = rate[0]
+					} else {
+						msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
 					}
 				}
 			}
@@ -807,6 +852,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 			sectstring = fmt.Sprintf("　%d/◯%d", elem.OriginalSection().Num, elem.Sect.Num)
 		}
 		otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
+		otp.WriteString("\n応力       :        N\n")
 		tex.WriteString(fmt.Sprintf("\\multicolumn{12}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
 		tex.WriteString("応力       &:&      $N$\\\\\n")
 		if alpha != nil {
@@ -815,8 +861,6 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 		if angle != 0.0 {
 			otp.WriteString(fmt.Sprintf(" θ=%.3f°", angle))
 		}
-		// otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]\n", el.Num, el.Enod[0].Num, el.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
-		otp.WriteString("\n応力       :        N\n")
 		stress := make([]float64, 5)
 		for p, per := range []string{long, x1, x2, y1, y2} {
 			if st, ok := elem.Stress[per]; ok {
@@ -828,6 +872,8 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 			otp.WriteString(stname[p])
 			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[p], stress[p]*SI))
 			otp.WriteString("\n")
+			tex.WriteString(strings.Replace(stname[p], ":", "&:", -1))
+			tex.WriteString(fmt.Sprintf(" &%8.3f\\\\\n", stress[p]*SI))
 		}
 		otp.WriteString("\n")
 		if elem.Condition.Temporary {
@@ -836,10 +882,12 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 			elem.Condition.Period = "L"
 		}
 		otp.WriteString(pername[0])
+		tex.WriteString(strings.Replace(pername[0], ":", "&:", -1))
 		rate2, err = calc2(al, elem.Condition, stress[0], 0.0, 0.0, 1.0)
 		qlrate = rate2
 		if elem.Condition.Skipshort {
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
+			tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate))
 			elem.MaxRate = []float64{qlrate, qsrate, qurate}
 			break
 		}
@@ -865,9 +913,10 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, alpha []flo
 			qsrate = maxrate(qsrate, rate2)
 		}
 		otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
+		tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{12}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate))
 		elem.MaxRate = []float64{qlrate, qsrate, qurate}
 	}
-	return otp.String(), nil
+	return al, otp.String(), nil
 }
 
 func (elem *Elem) Amount() float64 {

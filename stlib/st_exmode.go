@@ -1865,7 +1865,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				fmt.Println(err)
 				continue
 			}
-			t, err := el.OutputRateInformation("L", "X", "X", "Y", "Y", alpha, angle)
+			_, t, err := el.OutputRateInformation("L", "X", "X", "Y", "Y", -1.0, alpha, angle)
 			if err != nil {
 				fmt.Println(err)
 				continue
@@ -2366,7 +2366,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				alpha[d] = al
 				otp.WriteString(fmt.Sprintf("%s方向: a=%.3f Ci=%.3f N=%.3f QE=%.3f Q=a×Ci×Nl=%.3f, α=max{Q/QE,1.0}=%.3f\n", dstr, a, Ci, Nl, Q, Q2, al))
 			}
-			t, err := el.OutputRateInformation("L", "X", "X", "Y", "Y", alpha, 0.0)
+			_, t, err := el.OutputRateInformation("L", "X", "X", "Y", "Y", -1.0, alpha, 0.0)
 			if err != nil {
 				return err
 			}
