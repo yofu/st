@@ -139,3 +139,213 @@ func SectionList(fn string, frame *Frame, scale float64) error {
 	rtn.WriteTo(w)
 	return nil
 }
+
+type PGFCanvas struct {
+	scale float64
+	width float64
+	height float64
+	buffer bytes.Buffer
+	linestyle map[string]string
+	fillstyle map[string]string
+	textstyle map[string]string
+}
+
+func NewPGFCanvas(width, height float64) *PGFCanvas {
+	var otp bytes.Buffer
+	return &PGFCanvas{
+		scale: 0.01,
+		width: width,
+		height: height,
+		buffer: otp,
+		linestyle: make(map[string]string),
+		fillstyle: make(map[string]string),
+		textstyle: make(map[string]string),
+	}
+}
+
+func (p *PGFCanvas) Draw(frame *Frame, textBox []*TextBox) {
+	p.buffer.WriteString("\\documentclass[uplatex,a4paper,dvipdfmx,10pt]{jsarticle}\n\\usepackage{tikz}\n\\begin{document}\n\\begin{tikzpicture}\n")
+	DrawFrame(p, frame, frame.Show.ColorMode, false)
+	p.Foreground(BLACK)
+	for _, t := range textBox {
+		if !t.IsHidden(frame.Show) {
+			DrawText(p, t)
+		}
+	}
+	p.buffer.WriteString("\\end{tikzpicture}\n\\end{document}\n")
+}
+
+func (p *PGFCanvas) SaveAs(fn string) error {
+	w, err := os.Create(fn)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+	p.buffer.WriteTo(w)
+	return nil
+}
+
+// TODO
+func (p *PGFCanvas) linestylestring() string {
+	return ""
+}
+
+// TODO
+func (p *PGFCanvas) fillstylestring() string {
+	return ""
+}
+
+// TODO
+func (p *PGFCanvas) textstylestring() string {
+	return ""
+}
+
+func (p *PGFCanvas) Line(x1, y1, x2, y2 float64) {
+	p.buffer.WriteString(fmt.Sprintf("\\draw[%s] (%.3f,%.3f) -- (%.3f,%.3f);\n", p.linestylestring(), x1*p.scale, y1*p.scale, x2*p.scale, y2*p.scale))
+}
+
+func (p *PGFCanvas) Polyline(coord [][]float64) {
+	if len(coord) < 2 {
+		return
+	}
+	p.buffer.WriteString(fmt.Sprintf("\\draw[%s] (%.3f,%.3f)", p.linestylestring(), coord[0][0]*p.scale, coord[0][1]*p.scale))
+	for i := 1; i < len(coord); i++ {
+		p.buffer.WriteString(fmt.Sprintf(" -- (%.3f,%.3f)", coord[i][0]*p.scale, coord[i][1]*p.scale))
+	}
+	p.buffer.WriteString(";\n")
+}
+
+func (p *PGFCanvas) Polygon(coord [][]float64) {
+	if len(coord) < 2 {
+		return
+	}
+	p.buffer.WriteString(fmt.Sprintf("\\fill[%s] (%.3f,%.3f)", p.fillstylestring(), coord[0][0]*p.scale, coord[0][1]*p.scale))
+	for i := 1; i < len(coord); i++ {
+		p.buffer.WriteString(fmt.Sprintf(" -- (%.3f,%.3f)", coord[i][0]*p.scale, coord[i][1]*p.scale))
+	}
+	p.buffer.WriteString(";\n")
+}
+
+func (p *PGFCanvas) Circle(x, y, d float64) {
+	p.buffer.WriteString(fmt.Sprintf("\\draw[%s] (%.3f,%.3f) circle (%.3f);\n", p.linestylestring(), x*p.scale, y*p.scale, 0.5*d*p.scale))
+}
+
+
+func (p *PGFCanvas) FilledCircle(x, y, d float64) {
+	p.buffer.WriteString(fmt.Sprintf("\\fill[%s] (%.3f,%.3f) circle (%.3f);\n", p.fillstylestring(), x*p.scale, y*p.scale, 0.5*d*p.scale))
+}
+
+
+func (p *PGFCanvas) Text(x, y float64, str string) {
+	p.buffer.WriteString(fmt.Sprintf("\\node[%s] at (%.3f,%.3f) {%s};\n", p.textstylestring(), x, y, str))
+}
+
+// TODO
+func (p *PGFCanvas) Foreground(fg int) int {
+	if fg == WHITE {
+		fg = BLACK
+	}
+	// r, g, b := p.canvas.GetDrawColor()
+	// lis := IntColorList(fg)
+	p.linestyle["color"] = ""
+	p.fillstyle["color"] = ""
+	p.textstyle["color"] = ""
+	return fg
+}
+
+func (p *PGFCanvas) LineStyle(ls int) {
+	switch ls {
+	case CONTINUOUS:
+		p.linestyle["pattern"] = ""
+	case DOTTED:
+		p.linestyle["pattern"] = "dotted"
+	case DASHED:
+		p.linestyle["pattern"] = "dashed"
+	case DASH_DOT:
+		// TODO
+		p.linestyle["pattern"] = "dashed"
+	}
+}
+
+func (p *PGFCanvas) TextAlignment(ta int) {
+	switch ta {
+	case SOUTH:
+		p.textstyle["align"] = "align=south"
+	case NORTH:
+		p.textstyle["align"] = "align=north"
+	case WEST:
+		p.textstyle["align"] = "align=west"
+	case EAST:
+		p.textstyle["align"] = "align=east"
+	case CENTER:
+		p.textstyle["align"] = "align=center"
+	}
+}
+
+// TODO
+func (p *PGFCanvas) TextOrientation(to float64) {
+	if to == 0.0 {
+		p.textstyle["orientation"] = ""
+	} else {
+		p.textstyle["orientation"] = fmt.Sprintf("rotate=%f", to)
+	}
+}
+
+func (p *PGFCanvas) SectionAlias(s int) (string, bool) {
+	return "", false
+}
+
+func (p *PGFCanvas) SelectedNodes() []*Node {
+	return nil
+}
+
+func (p *PGFCanvas) SelectedElems() []*Elem {
+	return nil
+}
+
+func (p *PGFCanvas) ElemSelected() bool {
+	return false
+}
+
+func (p *PGFCanvas) DefaultStyle() {
+	p.linestyle["color"] = ""
+	p.fillstyle["color"] = ""
+	p.textstyle["color"] = ""
+	p.textstyle["anchor"] = ""
+	p.textstyle["orientation"] = ""
+}
+
+func (p *PGFCanvas) BondStyle(show *Show) {
+}
+
+func (p *PGFCanvas) PhingeStyle(show *Show) {
+}
+
+func (p *PGFCanvas) ConfStyle(show *Show) {
+}
+
+func (p *PGFCanvas) SelectNodeStyle() {
+}
+
+func (p *PGFCanvas) SelectElemStyle() {
+}
+
+func (p *PGFCanvas) ShowPrintRange() bool {
+	return false
+}
+
+func (p *PGFCanvas) GetCanvasSize() (int, int) {
+	return int(p.width), int(p.height)
+}
+
+func (p *PGFCanvas) CanvasPaperSize() (float64, float64, error) {
+	return p.width, p.height, nil
+}
+
+func (p *PGFCanvas) Flush() {
+	p.buffer.WriteString("\\end{tikzpicture}")
+}
+
+func (p *PGFCanvas) CanvasDirection() int {
+	return 1
+}

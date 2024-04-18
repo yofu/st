@@ -1561,6 +1561,22 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if err != nil {
 			return err
 		}
+	case "tex":
+		if usage {
+			return Usage(":tex filename")
+		}
+		paper := stw.PaperSize()
+		w, h := PaperSizemm(paper)
+		pgf := NewPGFCanvas(w, h)
+		v := frame.View.Copy()
+		frame.View.Center[0] = 0.5 * w
+		frame.View.Center[1] = 0.5 * h
+		pgf.Draw(frame, stw.TextBoxes())
+		err := pgf.SaveAs(Ce(fn, ".tex"))
+		frame.View = v
+		if err != nil {
+			return err
+		}
 	case "check":
 		if usage {
 			return Usage(":check")
