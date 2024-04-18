@@ -1103,7 +1103,10 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 			scale = val
 		}
-		err := SectionList(frame, scale)
+		if fn == "" {
+			fn = filepath.Join(filepath.Dir(frame.Path), "sectionlist.tex")
+		}
+		err := SectionList(fn, frame, scale)
 		if err != nil {
 			return err
 		}

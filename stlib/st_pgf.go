@@ -43,7 +43,7 @@ func ConvertNumberToAlphabet(val int) string {
 	return rtn
 }
 
-func SectionList(frame *Frame, scale float64) error {
+func SectionList(fn string, frame *Frame, scale float64) error {
 	var rtn bytes.Buffer
 	sects := make(map[int]int, 0)
 	for _, el := range frame.Elems {
@@ -130,7 +130,7 @@ func SectionList(frame *Frame, scale float64) error {
 		}
 	}
 	rtn.WriteString("\\end{tikzpicture}\n")
-	w, err := os.Create("sectionlist.tex")
+	w, err := os.Create(fn)
 	defer w.Close()
 	if err != nil {
 		return err
