@@ -153,6 +153,7 @@ type Aiparameter struct {
 	Locate   float64
 	Tfact    float64
 	Gperiod  float64
+	H0       float64
 	T        float64
 	Rt       float64
 	Nfloor   int
@@ -174,6 +175,7 @@ func NewAiparameter() *Aiparameter {
 	a.Locate = 1.0
 	a.Tfact = 0.02
 	a.Gperiod = 0.6
+	a.H0 = 0.0
 	a.T = 0.0
 	a.Rt = 1.0
 	a.Nfloor = 0
@@ -203,6 +205,7 @@ func (ai *Aiparameter) Snapshot() *Aiparameter {
 	a.Locate = ai.Locate
 	a.Tfact = ai.Tfact
 	a.Gperiod = ai.Gperiod
+	a.H0 = ai.H0
 	a.T = ai.T
 	a.Rt = ai.Rt
 	a.Nfloor = ai.Nfloor
@@ -544,6 +547,12 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 				}
 				frame.Ai.Boundary[i] = val
 			}
+		case "NOKIHEIGHT":
+			val, err := strconv.ParseFloat(words[1], 64)
+			if err != nil {
+				break
+			}
+			frame.Ai.H0 = val
 		case "ROUGHNESS":
 			val, err := strconv.ParseInt(words[1], 10, 64)
 			if err == nil {
@@ -5232,6 +5241,9 @@ func (frame *Frame) AiDistribution() (string, string, error) {
 		//     }
 		// }
 	}
+	if frame.Ai.H0 != 0.0 {
+		maxheight = frame.Ai.H0
+	}
 	frame.Ai.W = make([]float64, size)
 	for i := 0; i < size; i++ {
 		frame.Ai.Level[i] /= float64(nnum[i])
@@ -5392,6 +5404,9 @@ func (frame *Frame) WindPressure() (string, string, error) {
 	}
 	_, _, _, _, zmin, zmax := frame.Bbox(false)
 	height := zmax - zmin
+	if frame.Ai.H0 != 0.0 {
+		height = frame.Ai.H0
+	}
 	roughness := frame.Wind.Roughness
 	var zb, zg, alpha, er, gf0, gf1, gf float64
 	switch roughness {
@@ -7093,6 +7108,7 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, wind *Windparameter
 		}
 		otp.WriteString("\n")
 	}
+	otp.WriteString(fmt.Sprintf("NOKIHEIGHT %5.3f\n", ai.H0))
 	otp.WriteString("\n")
 	otp.WriteString(fmt.Sprintf("ROUGHNESS %d\n", wind.Roughness))
 	otp.WriteString(fmt.Sprintf("VELOCITY  %5.3f\n", wind.Velocity))

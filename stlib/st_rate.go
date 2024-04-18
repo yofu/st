@@ -3928,6 +3928,13 @@ func (rw *RCWall) Na(cond *Condition) float64 {
 	switch cond.Period {
 	case "L":
 		Qa = Qc
+		if cond.Verbose {
+			cond.Buffer.WriteString(fmt.Sprintf("#     l=%.3f\n", cond.Length))
+			cond.Buffer.WriteString(fmt.Sprintf("#     t=%.3f\n", rw.Thick))
+			cond.Buffer.WriteString(fmt.Sprintf("#     r=%.3f\n", r))
+			cond.Buffer.WriteString(fmt.Sprintf("#     fcs=%.3f\n", fs))
+			cond.Buffer.WriteString(fmt.Sprintf("#     Qc=%.3f\n", Qc))
+		}
 	case "X", "Y", "S":
 		Qa = Qc
 		le := cond.Width - (rw.XFace[0] + rw.XFace[1])
@@ -3937,6 +3944,7 @@ func (rw *RCWall) Na(cond *Condition) float64 {
 				Qa = Qw
 			}
 			if cond.Verbose {
+				cond.Buffer.WriteString(fmt.Sprintf("#     l=%.3f\n", cond.Length))
 				cond.Buffer.WriteString(fmt.Sprintf("#     l0=%.3f, le=%.3f\n", l0, le))
 				cond.Buffer.WriteString(fmt.Sprintf("#     pw=%.6f\n", rw.Srein))
 				cond.Buffer.WriteString(fmt.Sprintf("#     t=%.3f\n", rw.Thick))
