@@ -3528,7 +3528,7 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 		if pw > 0.012 {
 			pw = 0.012
 		}
-		pt := rc.Ai()*0.5/(b*d)
+		pt := rc.Ai()*0.5/(b*d)*100
 		Fc := rc.fc*100 // N/mm2
 		ft := rc.Hoops.Ftw(cond)*98.0665 // N/mm2
 		alpha := 1.0
@@ -3723,7 +3723,7 @@ func (rg *RCGirder) Qa(cond *Condition) float64 {
 		if pw > 0.012 {
 			pw = 0.012
 		}
-		pt := rg.Ai()*0.5/(b*d)
+		pt := rg.Ai()*0.5/(b*d)*100
 		Fc := rg.fc*100 // N/mm2
 		ft := rg.Hoops.Ftw(cond)*98.0665 // N/mm2
 		alpha := 1.0
