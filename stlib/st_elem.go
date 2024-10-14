@@ -903,6 +903,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 				s = sign
 			}
 			otp.WriteString(pername[p])
+			tex.WriteString(strings.Replace(pername[p], ":", "", -1))
 			if angle != 0.0 {
 				if p <= 2 {
 					rate2, err = calc2angle(al, elem.Condition, stress[0], stress[p], stress[p+2], fact*factor[p-1][0], s, angle, 0)
