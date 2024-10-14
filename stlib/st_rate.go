@@ -2272,7 +2272,7 @@ func (pl PLATE) Vertices() [][]float64 {
 func (pl PLATE) PgfString(cx, cy, scale float64) string {
 	h := pl.H * 0.5 * scale
 	b := pl.B * 0.5 * scale
-	return fmt.Sprintf("\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- cycle;\n\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- (%.3f,%3f);\n\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- (%.3f,%3f);\n", cx, cy, -b, -h, 2*b, 2*h, -2*b, cx, cy, -b, -h, 2*b, 2*h, cx, cy, b, -h, -2*b, 2*h)
+	return fmt.Sprintf("\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(%.3f,0) -- ++(0,%.3f) -- ++(%.3f,0) -- cycle;\n\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(%.3f,%3f);\n\\draw (%.3f,%.3f) ++(%.3f,%.3f) -- ++(%.3f,%3f);\n", cx, cy, -b, -h, 2*b, 2*h, -2*b, cx, cy, -b, -h, 2*b, 2*h, cx, cy, b, -h, -2*b, 2*h)
 }
 
 func (pl PLATE) Breadth(strong bool) float64 {

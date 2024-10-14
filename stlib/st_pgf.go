@@ -117,6 +117,13 @@ func SectionList(fn string, frame *Frame, scale float64) error {
 				str := sh.PgfString(cx, cy, scale)
 				rtn.WriteString(str)
 			}
+		case *WoodGirder:
+			sh := al.(*WoodGirder).Shape
+			switch sh.(type) {
+			case PLATE:
+				str := sh.PgfString(cx, cy, scale)
+				rtn.WriteString(str)
+			}
 		}
 		rtn.WriteString(fmt.Sprintf("\\node[anchor=north west, align=left] at (%.3f, %.3f) {\\s%s};\n", cx+0.5*sizex, cy+0.5*sizey, ConvertNumberToAlphabet(al.Num())))
 		indy++
