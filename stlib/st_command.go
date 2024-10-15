@@ -30,6 +30,7 @@ var (
 		"MOVENODE":           MoveNode,
 		"MOVEELEM":           MoveElem,
 		"MIRROR":             Mirror,
+		"DIVIDEATPLANE":      DivideAtPlane,
 		"ARRAYPOLAR":         ArrayPolar,
 		"TRIM":               Trim,
 		"EXTEND":             Extend,
@@ -605,6 +606,47 @@ func Mirror(stw Commander) chan bool {
 					frame.AddPlateElem(-1, newenod, el.Sect, el.Etype)
 				}
 			}
+		}
+		Snapshot(stw)
+		return nil
+	}, false)
+}
+
+func DivideAtPlane(stw Commander) chan bool {
+	return multinodes(stw, func(ns []*Node) error {
+		if len(ns) < 3 {
+			return nil
+		}
+		eps := stw.EPS()
+		v1 := make([]float64, 3)
+		v2 := make([]float64, 3)
+		for i := 0; i < 3; i++ {
+			v1[i] = ns[1].Coord[i] - ns[0].Coord[i]
+			v2[i] = ns[2].Coord[i] - ns[0].Coord[i]
+		}
+		vec := Cross(v1, v2)
+		n := Normalize(vec)
+		h := Dot(n, ns[0].Coord, 3)
+		for _, el := range stw.SelectedElems() {
+			if !el.IsLineElem() {
+				continue
+			}
+			d := el.Direction(true)
+			l := el.Length()
+			dot := Dot(d, n, 3)
+			if dot == 0 {
+				continue
+			}
+			val := Dot(n, el.Enod[0].Coord, 3)
+			val2 := (h - val)/dot
+			if val2 <= 0 || val2 >= l {
+				continue
+			}
+			coord := make([]float64, 3)
+			for i := 0; i < 3; i++ {
+				coord[i] = el.Enod[0].Coord[i] + val2*d[i]
+			}
+			el.DivideAtCoord(coord[0], coord[1], coord[2], eps)
 		}
 		Snapshot(stw)
 		return nil

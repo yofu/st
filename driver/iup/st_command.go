@@ -70,6 +70,7 @@ var (
 	PINCHNODE           = &Command{"NDPC", "PINCH NODE", "pinch nodes", pinchnode}
 	ROTATE              = &Command{"ROTE", "ROTATE", "rotate selected nodes", rotate}
 	MIRROR              = &Command{"MIRR", "MIRROR", "mirror selected elems", mirror}
+	DIVIDEATPLANE       = &Command{"DIVP", "DIVIDEATPLANE", "divide selected elems", divideatplane}
 	SCALE               = &Command{"SCLE", "SCALE", "scale selected nodes", scale}
 	SEARCHELEM          = &Command{"ELSR", "SEARCH ELEM", "search elems using node", searchelem}
 	NODETOELEM          = &Command{"N->E", "NODE TO ELEM", "select elems using selected node", nodetoelemall}
@@ -160,6 +161,7 @@ func init() {
 	Commands["PINCHNODE"] = PINCHNODE
 	Commands["ROTATE"] = ROTATE
 	Commands["MIRROR"] = MIRROR
+	Commands["DIVIDEATPLANE"] = DIVIDEATPLANE
 	Commands["SCALE"] = SCALE
 	Commands["SEARCHELEM"] = SEARCHELEM
 	Commands["NODETOELEM"] = NODETOELEM
@@ -1566,6 +1568,68 @@ func mirror(stw *Window) {
 			}
 			vec := st.Cross(v1, v2)
 			createmirrors(sns[0].Coord, vec)
+			stw.EscapeAll()
+		}
+	})
+}
+
+// }}}
+
+// DIVIDEATPLANE// {{{
+func divideatplane(stw *Window) {
+	if !stw.ElemSelected() {
+		return
+	}
+	stw.addHistory("対称面を指定[1点又は3点]")
+	maxnum := 3
+	divide := func(n []float64, h float64) {
+		for _, el := range stw.SelectedElems() {
+			if !el.IsLineElem() {
+				continue
+			}
+			d := el.Direction(true)
+			l := el.Length()
+			dot := st.Dot(d, n, 3)
+			if dot == 0 {
+				continue
+			}
+			val := st.Dot(n, el.Enod[0].Coord, 3)
+			val2 := (h - val)/dot
+			if val2 <= 0 || val2 >= l {
+				continue
+			}
+			coord := make([]float64, 3)
+			for i := 0; i < 3; i++ {
+				coord[i] = el.Enod[0].Coord[i] + val2*d[i]
+			}
+			el.DivideAtCoord(coord[0], coord[1], coord[2], EPS)
+		}
+		st.Snapshot(stw)
+	}
+	getnnodes(stw, maxnum, func(num int) {
+		switch num {
+		default:
+			stw.EscapeAll()
+		case 1:
+			stw.addHistory("法線方向を選択[ダイアログ(D)]")
+			getvector(stw, func(x, y, z float64) {
+				n := st.Normalize([]float64{x, y, z})
+				h := st.Dot(n, stw.SelectedNodes()[0].Coord, 3)
+				divide(n, h)
+				stw.EscapeAll()
+			})
+		case 3:
+			v1 := make([]float64, 3)
+			v2 := make([]float64, 3)
+			sns := stw.SelectedNodes()
+			for i := 0; i < 3; i++ {
+				v1[i] = sns[1].Coord[i] - sns[0].Coord[i]
+				v2[i] = sns[2].Coord[i] - sns[0].Coord[i]
+			}
+			vec := st.Cross(v1, v2)
+			n := st.Normalize(vec)
+			a1 := st.Dot(n, sns[0].Coord, 3)
+			divide(n, a1)
 			stw.EscapeAll()
 		}
 	})
