@@ -1151,6 +1151,7 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int, chain *Chain) (
 	var num int64
 	var err error
 	e := new(Elem)
+	e.Skip = make([]bool, 3)
 	llis := len(lis)
 	for i, word := range lis {
 		switch word {
@@ -1241,6 +1242,8 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int, chain *Chain) (
 			e.Prestress = val
 		case "TYPE":
 			err = e.setEtype(lis[i+1])
+		case "SKIP":
+			err = e.setSkip(lis[i+1])
 		}
 		if err != nil {
 			return nil, err
@@ -1264,6 +1267,9 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int, chain *Chain) (
 		if e.Wrect != nil {
 			el.Wrect = e.Wrect
 		}
+	}
+	for i := 0; i < 3; i++ {
+		el.Skip[i] = e.Skip[i]
 	}
 	el.Frame = frame
 	if _, exist := frame.Elems[el.Num]; !exist {
@@ -4787,7 +4793,7 @@ func (frame *Frame) ExtractArclm(fn string) error {
 			}
 		}
 	}
-	for _, p := range []string{"L", "X", "Y"} {
+	for pi, p := range []string{"L", "X", "Y"} {
 		af := arclm.NewFrame()
 		af.Sects = make([]*arclm.Sect, snum+bnum)
 		arclmsects := make(map[int]int)
@@ -4908,7 +4914,11 @@ func (frame *Frame) ExtractArclm(fn string) error {
 			}
 		}
 		af.Elems = make([]*arclm.Elem, enum)
-		for i, el := range elems {
+		ind := 0
+		for _, el := range elems {
+			if el.Skip[pi] {
+				continue
+			}
 			ae := arclm.NewElem()
 			ae.Num = el.Num
 			ae.Sect = af.Sects[arclmsects[el.Sect.Num]]
@@ -4953,8 +4963,10 @@ func (frame *Frame) ExtractArclm(fn string) error {
 					}
 				}
 			}
-			af.Elems[i] = ae
+			af.Elems[ind] = ae
+			ind++
 		}
+		af.Elems = af.Elems[:ind]
 		frame.Arclms[p] = af
 	}
 	return nil

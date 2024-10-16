@@ -211,6 +211,12 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			oncap = true
 		}
 	}
+	if show.ElemCaption&EC_SKIP != 0 {
+		if elem.IsSkipAny() {
+			ecap.WriteString(fmt.Sprintf("%s\n", elem.SkipString()))
+			oncap = true
+		}
+	}
 	if show.SrcanRate != 0 {
 		val, err := elem.RateMax(show)
 		if err == nil {

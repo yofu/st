@@ -3046,7 +3046,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 	case "elem":
 		if usage {
-			return Usage(":elem [elemcode,sect sectcode,etype,curtain,isgohan,error,reaction,locked,isolated]")
+			return Usage(":elem [elemcode,sect sectcode,etype,curtain,isgohan,error,reaction,locked,isolated,skip]")
 		}
 		stw.Deselect()
 		var f func(*Elem) bool
@@ -3142,6 +3142,10 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 						}
 					}
 					return false
+				}
+			case strings.EqualFold(condition, "skip"):
+				f = func(el *Elem) bool {
+					return el.IsSkipAny()
 				}
 			}
 			if f != nil {
@@ -6090,6 +6094,44 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			n.Coord[2] += d / (l * l) * n.Coord[0] * n.Coord[0]
 		}
 		Snapshot(stw)
+	case "skip":
+		if usage {
+			return Usage(":skip [n,l,x,y,s,[01]{3}]")
+		}
+		if narg < 2 {
+			return NotEnoughArgs(":skip")
+		}
+		lis := make([]bool, 3)
+		pat := regexp.MustCompile("[01]{3}")
+		switch {
+		case strings.EqualFold(args[1], "n"):
+			lis[0] = false
+			lis[1] = false
+			lis[2] = false
+		case strings.EqualFold(args[1], "l"):
+			lis[0] = true
+		case strings.EqualFold(args[1], "x"):
+			lis[1] = true
+		case strings.EqualFold(args[1], "y"):
+			lis[2] = true
+		case strings.EqualFold(args[1], "s"):
+			lis[1] = true
+			lis[2] = true
+		case pat.MatchString(args[1]):
+			for i := 0; i < 3; i++ {
+				switch args[1][i] {
+				case '0':
+					lis[i] = false
+				case '1':
+					lis[i] = true
+				}
+			}
+		}
+		for _, el := range currentelem(stw, exmodech, exmodeend) {
+			for i := 0; i < 3; i++ {
+				el.Skip[i] = lis[i]
+			}
+		}
 	}
 	return nil
 }

@@ -49,6 +49,7 @@ var (
 		"sec/t/c/ode":   complete.MustCompile("'sectcode", nil),
 		"wid/th":        complete.MustCompile("'width", nil),
 		"h/eigh/t/":     complete.MustCompile("'height", nil),
+		"sk/ip":         complete.MustCompile("'skip", nil),
 		"sr/can/col/or": complete.MustCompile("'srcancolor", nil),
 		"sr/can/ra/te":  complete.MustCompile("'srcanrate", nil),
 		"en/ergy":       complete.MustCompile("'energy", nil),
@@ -720,6 +721,12 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			ElemCaptionOff(stw, "EC_HEIGHT")
 		} else {
 			ElemCaptionOn(stw, "EC_HEIGHT")
+		}
+	case "skip":
+		if un {
+			ElemCaptionOff(stw, "EC_SKIP")
+		} else {
+			ElemCaptionOn(stw, "EC_SKIP")
 		}
 	case "srcancolor":
 		if un {

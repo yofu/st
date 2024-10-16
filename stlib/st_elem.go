@@ -61,6 +61,8 @@ type Elem struct {
 	Cmq   []float64
 	Wrect []float64
 
+	Skip []bool
+
 	Rate    map[string][]float64
 	MaxRate []float64
 	Stress  map[string]map[int][]float64
@@ -95,6 +97,7 @@ func NewLineElem(ns []*Node, sect *Sect, etype int) *Elem {
 	el.Enod = ns[:2]
 	el.Sect = sect
 	el.Etype = etype
+	el.Skip = make([]bool, 3)
 	el.Bonds = make([]*Bond, 12)
 	el.Cmq = make([]float64, 12)
 	el.Stress = make(map[string]map[int][]float64)
@@ -121,6 +124,7 @@ func NewPlateElem(ns []*Node, sect *Sect, etype int) *Elem {
 	el.Enod = ns[:el.Enods]
 	el.Sect = sect
 	el.Etype = etype
+	el.Skip = make([]bool, 3)
 	el.Values = make(map[string]float64)
 	el.Children = make([]*Elem, 2)
 	el.Wrect = make([]float64, 2)
@@ -173,6 +177,9 @@ func (elem *Elem) Snapshot(frame *Frame) *Elem {
 				el.Wrect[i] = elem.Wrect[i]
 			}
 		}
+	}
+	for i := 0; i < 3; i++ {
+		el.Skip[i] = elem.Skip[i]
 	}
 	el.Num = elem.Num
 	el.Frame = frame
@@ -359,6 +366,54 @@ func (elem *Elem) setEtype(str string) error {
 	return errors.New("setEtype: Etype not found")
 }
 
+func (elem *Elem) setSkip(str string) error {
+	if len(str) < 3 {
+		return errors.New("setSkip: unknown skip format")
+	}
+	for i := 0; i < 3; i++ {
+		if str[i] == '1' {
+			elem.Skip[i] = true
+		} else {
+			elem.Skip[i] = false
+		}
+	}
+	return nil
+}
+
+func (elem *Elem) IsSkipAt(ind int) bool {
+	return elem.Skip[ind]
+}
+
+func (elem *Elem) IsSkipAny() bool {
+	for i := 0; i < 3; i ++ {
+		if elem.Skip[i] {
+			return true
+		}
+	}
+	return false
+}
+
+func (elem *Elem) IsSkipAll() bool {
+	for i := 0; i < 3; i ++ {
+		if !elem.Skip[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func (elem *Elem) SkipString() string {
+	rtn := make([]string, 3)
+	for i := 0; i < 3; i++ {
+		if elem.Skip[i] {
+			rtn[i] = "1"
+		} else {
+			rtn[i] = "0"
+		}
+	}
+	return strings.Join(rtn , "")
+}
+
 // IsLineElem reports whether the element is line element or not.
 func (elem *Elem) IsLineElem() bool {
 	return elem.Etype <= SBRACE && elem.Enods == 2
@@ -434,6 +489,11 @@ func (elem *Elem) InpString() string {
 		if elem.Prestress != 0.0 {
 			rtn.WriteString(fmt.Sprintf("           PREST %.3f\n", elem.Prestress))
 		}
+		if elem.IsSkipAny() {
+			rtn.WriteString("           SKIP ")
+			rtn.WriteString(elem.SkipString())
+			rtn.WriteString("\n")
+		}
 		return rtn.String()
 	} else {
 		rtn.WriteString(fmt.Sprintf("ELEM %5d ESECT %3d ENODS %d ENOD", elem.Num, elem.Sect.Num, elem.Enods))
@@ -458,6 +518,11 @@ func (elem *Elem) InpString() string {
 		rtn.WriteString(fmt.Sprintf("\n           TYPE %s\n", ETYPES[elem.Etype]))
 		if elem.Wrect != nil && (elem.Wrect[0] != 0.0 || elem.Wrect[1] != 0.0) {
 			rtn.WriteString(fmt.Sprintf("           WRECT %.3f %.3f\n", elem.Wrect[0], elem.Wrect[1]))
+		}
+		if elem.IsSkipAny() {
+			rtn.WriteString("           SKIP ")
+			rtn.WriteString(elem.SkipString())
+			rtn.WriteString("\n")
 		}
 		return rtn.String()
 	}
@@ -1412,6 +1477,9 @@ func (elem *Elem) RectToBrace(nbrace int, rfact float64) []*Elem {
 	rtn := make([]*Elem, nbrace)
 	for i := 0; i < 2; i++ {
 		rtn[i] = NewLineElem([]*Node{elem.Enod[i], elem.Enod[i+2]}, sec, elem.Etype-2)
+		for j := 0; j < 3; j++ {
+			rtn[i].Skip[j] = elem.Skip[j]
+		}
 	}
 	return rtn
 }

@@ -9,8 +9,8 @@ var (
 	NODECAPTIONS    = []string{"NC_NUM", "NC_WEIGHT", "NC_ZCOORD", "NC_DX", "NC_DY", "NC_DZ", "NC_TX", "NC_TY", "NC_TZ", "NC_RX", "NC_RY", "NC_RZ", "NC_MX", "NC_MY", "NC_MZ", "NC_PILE"}
 	NODECAPTIONNAME = []string{"節点番号", "節点重量", "Z座標", "X方向変位", "Y方向変位", "Z方向変位", "X軸回り変形角[rad]", "Y軸回り変形角[rad]", "Z軸回り変形角[rad]",
 		"X方向反力", "Y方向反力", "Z方向反力", "X軸回り反モーメント", "Y軸回り反モーメント", "Z軸回り反モーメント", "杭番号"}
-	ELEMCAPTIONS    = []string{"EC_NUM", "EC_SECT", "EC_RATE_L", "EC_RATE_S", "EC_PREST", "EC_STIFF_X", "EC_STIFF_Y", "EC_DRIFT_X", "EC_DRIFT_Y", "EC_TENSILE_X", "EC_TENSILE_Y", "EC_WIDTH", "EC_HEIGHT", "EC_SIZE"}
-	ELEMCAPTIONNAME = []string{"部材番号", "断面番号", "断面検定比", "断面検定比", "プレストレス", "X方向水平剛性", "Y方向水平剛性", "X方向層間変形角[rad]", "Y方向層間変形角[rad]", "幅", "高さ", "長さ/面積"}
+	ELEMCAPTIONS    = []string{"EC_NUM", "EC_SECT", "EC_RATE_L", "EC_RATE_S", "EC_PREST", "EC_STIFF_X", "EC_STIFF_Y", "EC_DRIFT_X", "EC_DRIFT_Y", "EC_TENSILE_X", "EC_TENSILE_Y", "EC_WIDTH", "EC_HEIGHT", "EC_SIZE", "EC_SKIP"}
+	ELEMCAPTIONNAME = []string{"部材番号", "断面番号", "断面検定比", "断面検定比", "プレストレス", "X方向水平剛性", "Y方向水平剛性", "X方向層間変形角[rad]", "Y方向層間変形角[rad]", "幅", "高さ", "長さ/面積", "スキップ"}
 	SRCANS          = []string{"SRCAN_L", "SRCAN_S", "SRCAN_Q", "SRCAN_M"}
 )
 
@@ -47,6 +47,7 @@ const ( // ElemCaption
 	EC_WIDTH
 	EC_HEIGHT
 	EC_SIZE
+	EC_SKIP
 )
 const (
 	SRCAN_L = 1 << iota
