@@ -4343,6 +4343,26 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					frame.Show.Sect[snum] = true
 				}
 			}
+		case "disp":
+			if usage {
+				return Usage(":copy disp {-format=%.3f}")
+			}
+			format := "%.3f"
+			if f, ok := argdict["FORMAT"]; ok {
+				format = f
+			}
+			var w bytes.Buffer
+			for _, n := range currentnode(stw, exmodech, exmodeend) {
+				w.WriteString(fmt.Sprintf("%d", n.Num))
+				for i := 0; i < 6; i++ {
+					w.WriteString(fmt.Sprintf(" "+format, n.ReturnDisp(frame.Show.Period, i)))
+				}
+				w.WriteString("\n")
+			}
+			err := clipboard.WriteAll(w.String())
+			if err != nil {
+				return err
+			}
 		}
 	case "arraycopy":
 		if narg < 2 {
