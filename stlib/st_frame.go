@@ -165,6 +165,8 @@ type Aiparameter struct {
 	Ci       [][]float64
 	Qi       [][]float64
 	Hi       [][]float64
+	BetaX    []float64
+	BetaY    []float64
 }
 
 // NewAiparameter creates New Aiparameter
@@ -192,6 +194,8 @@ func NewAiparameter() *Aiparameter {
 		a.Qi[i] = make([]float64, 0)
 		a.Hi[i] = make([]float64, 0)
 	}
+	a.BetaX = make([]float64, 0)
+	a.BetaY = make([]float64, 0)
 	return a
 }
 
@@ -244,6 +248,12 @@ func (ai *Aiparameter) Snapshot() *Aiparameter {
 				a.Hi[j][i] = ai.Hi[j][i]
 			}
 		}
+	}
+	a.BetaX = make([]float64, a.Nfloor-1)
+	a.BetaY = make([]float64, a.Nfloor-1)
+	for i := 0; i < a.Nfloor-1; i++ {
+		a.BetaX[i] = ai.BetaX[i]
+		a.BetaY[i] = ai.BetaY[i]
 	}
 	return a
 }
@@ -527,6 +537,8 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 				frame.Ai.Nfloor = int(val)
 			}
 			frame.Ai.Boundary = make([]float64, frame.Ai.Nfloor+1)
+			frame.Ai.BetaX = make([]float64, frame.Ai.Nfloor-1)
+			frame.Ai.BetaY = make([]float64, frame.Ai.Nfloor-1)
 			// for d := 0; d < 2; d++ {
 			// 	frame.Ai.Ci[d] = make([]float64, frame.Ai.Nfloor)
 			// 	frame.Ai.Qi[d] = make([]float64, frame.Ai.Nfloor)
@@ -553,6 +565,34 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 				break
 			}
 			frame.Ai.H0 = val
+		case "BETAX":
+			if frame.Ai.Nfloor == 0 {
+				break
+			}
+			if len(words) <= frame.Ai.Nfloor-1 {
+				return errors.New(fmt.Sprintf("ReadInp: BETAX: not enough boundaries (%d < %d)", len(words)-1, frame.Ai.Nfloor-1))
+			}
+			for i := 0; i < frame.Ai.Nfloor-1; i++ {
+				val, err := strconv.ParseFloat(words[1+i], 64)
+				if err != nil {
+					break
+				}
+				frame.Ai.BetaX[i] = val
+			}
+		case "BETAY":
+			if frame.Ai.Nfloor == 0 {
+				break
+			}
+			if len(words) <= frame.Ai.Nfloor-1 {
+				return errors.New(fmt.Sprintf("ReadInp: BETAY: not enough boundaries (%d < %d)", len(words)-1, frame.Ai.Nfloor-1))
+			}
+			for i := 0; i < frame.Ai.Nfloor-1; i++ {
+				val, err := strconv.ParseFloat(words[1+i], 64)
+				if err != nil {
+					break
+				}
+				frame.Ai.BetaY[i] = val
+			}
 		case "ROUGHNESS":
 			val, err := strconv.ParseInt(words[1], 10, 64)
 			if err == nil {
@@ -5292,7 +5332,11 @@ func (frame *Frame) AiDistribution() (string, string, error) {
 				frame.Ai.Qi[d][0] = frame.Ai.Ci[d][0] * frame.Ai.W[0]
 				facts[d][0] = frame.Ai.Ci[d][0]
 			} else {
-				frame.Ai.Ci[d][i] = frame.Ai.Locate * frame.Ai.Rt * frame.Ai.Ai[i-1] * frame.Ai.Base[d]
+				if d == 0 {
+					frame.Ai.Ci[d][i] = frame.Ai.Locate * frame.Ai.Rt * frame.Ai.Ai[i-1] * frame.Ai.Base[d] * frame.Ai.BetaX[i-1]
+				} else {
+					frame.Ai.Ci[d][i] = frame.Ai.Locate * frame.Ai.Rt * frame.Ai.Ai[i-1] * frame.Ai.Base[d] * frame.Ai.BetaY[i-1]
+				}
 				frame.Ai.Qi[d][i] = frame.Ai.Ci[d][i] * frame.Ai.W[i]
 				frame.Ai.Hi[d][i-1] = frame.Ai.Qi[d][i-1] - frame.Ai.Qi[d][i]
 				if i > 1 {
@@ -5380,6 +5424,19 @@ func (frame *Frame) AiDistribution() (string, string, error) {
 	for d, str := range []string{"X", "Y"} {
 		rtn.WriteString(fmt.Sprintf("\n%s方向", str))
 		tex.WriteString(fmt.Sprintf("\\\\\n%s方向&&&&&", str))
+		rtn.WriteString("\n割増係数       β :           ")
+		tex.WriteString("\\\\\n割増係数& $\beta$ &")
+		if d == 0 {
+			for i := 0; i < size-1; i++ {
+				rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.BetaX[i]))
+				tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.BetaX[i]))
+			}
+		} else {
+			for i := 0; i < size-1; i++ {
+				rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.BetaY[i]))
+				tex.WriteString(fmt.Sprintf(" &%10.3f", frame.Ai.BetaY[i]))
+			}
+		}
 		rtn.WriteString("\n層せん断力係数 Ci :           ")
 		tex.WriteString("\\\\\n層せん断力係数& $C_i$ &")
 		for i := 1; i < size; i++ {
@@ -7121,6 +7178,18 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, wind *Windparameter
 		otp.WriteString("\n")
 	}
 	otp.WriteString(fmt.Sprintf("NOKIHEIGHT %5.3f\n", ai.H0))
+	if ai.Nfloor > 1 {
+		otp.WriteString(fmt.Sprintf("BETAX"))
+		for i := 0; i < ai.Nfloor-1; i++ {
+			otp.WriteString(fmt.Sprintf(" %.3f", ai.BetaX[i]))
+		}
+		otp.WriteString("\n")
+		otp.WriteString(fmt.Sprintf("BETAY"))
+		for i := 0; i < ai.Nfloor-1; i++ {
+			otp.WriteString(fmt.Sprintf(" %.3f", ai.BetaY[i]))
+		}
+		otp.WriteString("\n")
+	}
 	otp.WriteString("\n")
 	otp.WriteString(fmt.Sprintf("ROUGHNESS %d\n", wind.Roughness))
 	otp.WriteString(fmt.Sprintf("VELOCITY  %5.3f\n", wind.Velocity))
