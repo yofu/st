@@ -249,11 +249,13 @@ func (ai *Aiparameter) Snapshot() *Aiparameter {
 			}
 		}
 	}
-	a.BetaX = make([]float64, a.Nfloor-1)
-	a.BetaY = make([]float64, a.Nfloor-1)
-	for i := 0; i < a.Nfloor-1; i++ {
-		a.BetaX[i] = ai.BetaX[i]
-		a.BetaY[i] = ai.BetaY[i]
+	if ai.Nfloor >= 1 {
+		a.BetaX = make([]float64, a.Nfloor-1)
+		a.BetaY = make([]float64, a.Nfloor-1)
+		for i := 0; i < a.Nfloor-1; i++ {
+			a.BetaX[i] = ai.BetaX[i]
+			a.BetaY[i] = ai.BetaY[i]
+		}
 	}
 	return a
 }
@@ -539,6 +541,10 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 			frame.Ai.Boundary = make([]float64, frame.Ai.Nfloor+1)
 			frame.Ai.BetaX = make([]float64, frame.Ai.Nfloor-1)
 			frame.Ai.BetaY = make([]float64, frame.Ai.Nfloor-1)
+			for i := 0; i < frame.Ai.Nfloor-1; i++ {
+				frame.Ai.BetaX[i] = 1.0
+				frame.Ai.BetaY[i] = 1.0
+			}
 			// for d := 0; d < 2; d++ {
 			// 	frame.Ai.Ci[d] = make([]float64, frame.Ai.Nfloor)
 			// 	frame.Ai.Qi[d] = make([]float64, frame.Ai.Nfloor)
