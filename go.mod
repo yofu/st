@@ -3,12 +3,13 @@ module github.com/yofu/st
 go 1.16
 
 require (
-	fyne.io/fyne v1.4.3
 	gioui.org v0.0.0-20220726132227-f7bc744a24bf
 	github.com/ajstarks/svgo v0.0.0-20200725142600-7a3c8b57fecb
 	github.com/andlabs/ui v0.0.0-20200610043537-70a69d6ae31e
 	github.com/atotto/clipboard v0.1.2
+	github.com/go-gl/gl v0.0.0-20190320180904-bf2b1f2f34d7 // indirect
 	github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1 // indirect
+	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200625191551-73d3c3675aa3 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/google/gxui v0.0.0-20151028112939-f85e0a97b3a4
 	github.com/gopherjs/gopherjs v0.0.0-20210202160940-bed99a852dfe // indirect
@@ -28,7 +29,7 @@ require (
 	golang.org/x/image v0.0.0-20210628002857-a66eb6448b8d
 	golang.org/x/mobile v0.0.0-20210208171126-f462b3930c8f
 	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
-	golang.org/x/text v0.3.7
+	golang.org/x/text v0.3.8
 	gopkg.in/fsnotify.v1 v1.4.7
 	honnef.co/go/js/dom v0.0.0-20200509013220-d4405f7ab4d8 // indirect
 )
