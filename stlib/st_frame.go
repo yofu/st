@@ -5431,7 +5431,7 @@ func (frame *Frame) AiDistribution() (string, string, error) {
 		rtn.WriteString(fmt.Sprintf("\n%s方向", str))
 		tex.WriteString(fmt.Sprintf("\\\\\n%s方向&&&&&", str))
 		rtn.WriteString("\n割増係数       β :           ")
-		tex.WriteString("\\\\\n割増係数& $\beta$ &")
+		tex.WriteString("\\\\\n割増係数& $\\beta$ &")
 		if d == 0 {
 			for i := 0; i < size-1; i++ {
 				rtn.WriteString(fmt.Sprintf(" %10.3f", frame.Ai.BetaX[i]))
