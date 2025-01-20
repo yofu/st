@@ -4746,6 +4746,12 @@ func (frame *Frame) SetBoundary(num int, eps float64) error {
 	for i := 0; i < num+1; i++ {
 		frame.Ai.Boundary[i] = bounds[i]
 	}
+	frame.Ai.BetaX = make([]float64, num-1)
+	frame.Ai.BetaY = make([]float64, num-1)
+	for i := 0; i < num-1; i++ {
+		frame.Ai.BetaX[i] = 1.0
+		frame.Ai.BetaY[i] = 1.0
+	}
 	return nil
 }
 
