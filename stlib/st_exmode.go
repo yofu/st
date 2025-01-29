@@ -6063,6 +6063,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if narg < 2 {
 			return NotEnoughArgs(":camber")
 		}
+		if !stw.NodeSelected() {
+			return errors.New(":camber: no selected node")
+		}
 		axis := []bool{true, true, true}
 		if ax, ok := argdict["AXIS"]; ok {
 			for i := 0; i < 3; i++ {
@@ -6089,7 +6092,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return err
 		}
 		factor *= -1.0
-		for _, n := range frame.Nodes {
+		for _, n := range currentnode(stw, exmodech, exmodeend) {
 			for i := 0; i < 3; i++ {
 				if axis[i] {
 					if add {
