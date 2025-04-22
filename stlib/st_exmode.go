@@ -5064,6 +5064,20 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			stw.SetAngle(0.0, 0.0)
 		case "LEFT":
 			stw.SetAngle(0.0, 180.0)
+		case "ORTHO":
+			if !stw.ElemSelected() {
+				return nil
+			}
+			el := stw.SelectedElems()[0]
+			if el.IsLineElem() {
+				d := el.Direction(true)
+				stw.SetAngle(0.0, math.Acos(d[0])*180.0/math.Pi-90.0)
+			} else {
+				n := el.Normal(true)
+				theta := math.Acos(n[0])*180.0/math.Pi + 180.0
+				phi := -math.Acos(n[2])*180.0/math.Pi + 90.0
+				stw.SetAngle(phi, theta)
+			}
 		}
 	case "printrange":
 		if usage {
