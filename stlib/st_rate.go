@@ -297,6 +297,8 @@ var (
 	Mx60_3_4IW = Wood{"Mx60-3-4IW", 0.0596, 0.0439, 0.0596, 0.0150, 15.3, 0.5, 0.5}
 	Mx60_3_4OS = Wood{"Mx60-3-4OS", 0.0826, 0.0612, 0.1173, 0.0150, 53.5, 127.05, 0.5}
 	Mx60_3_4OW = Wood{"Mx60-3-4OW", 0.0596, 0.0439, 0.0120, 0.0150, 3.82, 3.0, 0.5}
+	CLT_S60_7_7_S = Wood{"CLT-S60-7-7-S", 9.25/98.0665, 6.85/98.0665, 9.36/98.0665, 0.9/98.0665, 4260/98.0665, 35.7, 0.5}
+	CLT_S60_7_7_W = Wood{"CLT-S60-7-7-W", 6.94/98.0665, 5.14/98.0665, 3.79/98.0665, 0.9/98.0665, 1730/98.0665, 21.7, 0.5}
 
 	GOHAN = Wood{"GOHAN", 0.0, 0.0, 0.0, 0.012, 45.0, 4.625, 0.55}
 )
@@ -395,6 +397,10 @@ func materialname(name string) (Material, error) {
 		return Mx60_3_4OS, nil
 	case "Mx60-3-4OW":
 		return Mx60_3_4OW, nil
+	case "CLT-S60-7-7-S":
+		return CLT_S60_7_7_S, nil
+	case "CLT-S60-7-7-W":
+		return CLT_S60_7_7_W, nil
 	case "GOHAN":
 		return GOHAN, nil
 	}

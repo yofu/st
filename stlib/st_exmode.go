@@ -1739,7 +1739,10 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			reload = false
 		}
 		if reload {
-			ReadFile(stw, Ce(otp, ".lst"))
+			err := ReadFile(stw, Ce(otp, ".lst"))
+			if err != nil {
+				return err
+			}
 		}
 		if qf, ok := argdict["QFACT"]; ok {
 			val, err := strconv.ParseFloat(qf, 64)
