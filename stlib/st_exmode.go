@@ -1583,6 +1583,39 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		CheckFrame(stw)
 		return Message("CHECKED")
+	case "check_london":
+		if usage {
+			return Usage(":check_london")
+		}
+		linesect := 201
+		platesect := 703
+		lineels := make([]*Elem, len(frame.Elems))
+		plateels := make([]*Elem, len(frame.Elems))
+		lnum := 0
+		pnum := 0
+		for _, el := range frame.Elems {
+			switch el.Sect.Num {
+			case linesect:
+				lineels[lnum] = el
+				lnum++
+			case platesect:
+				plateels[pnum] = el
+				pnum++
+			}
+		}
+		if lnum == 0 || pnum == 0 {
+			return nil
+		}
+		lineelems := lineels[:lnum]
+		plateelems := plateels[:pnum]
+		for _, lel := range lineelems {
+			for _, pel := range plateelems {
+				b, _ := IntersectionLinePlate(lel, pel, EPS)
+				if b {
+					fmt.Printf("ELEM: %d, %d\n", lel.Num, pel.Num)
+				}
+			}
+		}
 	case "nodeduplication":
 		if usage {
 			return Usage(":nodeduplication")
