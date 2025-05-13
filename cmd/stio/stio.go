@@ -12,10 +12,8 @@ import (
 func main() {
 
 	go func() {
-		w := app.NewWindow(
-			app.Title("st"),
-			app.Size(unit.Dp(1000), unit.Dp(1000)),
-		)
+		w := new(app.Window)
+		w.Option(app.Size(unit.Dp(1000), unit.Dp(1000)))
 		stw := stgio.NewWindow(w)
 		if err := stw.Run(w); err != nil {
 			log.Println(err)

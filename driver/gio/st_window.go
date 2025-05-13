@@ -12,15 +12,13 @@ import (
 
 	"gioui.org/app"
 	"gioui.org/f32"
-	"gioui.org/font/gofont"
+	"gioui.org/io/event"
 	"gioui.org/io/key"
 	"gioui.org/io/pointer"
-	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
-
 	"gioui.org/op/clip"
-	// "gioui.org/op/paint"
+	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
 	"github.com/yofu/abbrev"
@@ -80,7 +78,8 @@ func NewWindow(w *app.Window) *Window {
 		CommandLine:   st.NewCommandLine(),
 		Alias:         st.NewAlias(),
 		frame:         st.NewFrame(),
-		Theme:         material.NewTheme(gofont.Collection()),
+		// Theme:         material.NewTheme(gofont.Collection()),
+		Theme:         material.NewTheme(),
 		window:        w,
 		// history:         nil,
 		// currentStrokeParam: &ui.DrawStrokeParams{
@@ -109,21 +108,63 @@ func (stw *Window) QueueRedrawAll() {
 func (stw *Window) Run(w *app.Window) error {
 	st.OpenFile(stw, "C:\\Users\\yofu8\\st\\yamawa\\yamawa02\\yamawa02.inp", true)
 	var ops op.Ops
+	var mousePos f32.Point
+	events := make(chan event.Event)
+	acks := make(chan struct{})
+	go func() {
+		for {
+			ev := w.Event()
+			events <- ev
+			<-acks
+			if _, ok := ev.(app.DestroyEvent); ok {
+				return
+			}
+		}
+	}()
+	mousePresent := false
 	for {
 		select {
 		case <-redrawch:
 			w.Invalidate()
 		case <-closech:
 			return nil
-		case e := <-w.Events():
+		case e := <-events:
 			// detect the type of the event.
 			switch e := e.(type) {
 			default:
 			// this is sent when the application should re-render.
-			case system.FrameEvent:
-				// gtx is used to pass around rendering and event information.
-				gtx := layout.NewContext(&ops, e)
+			case app.FrameEvent:
+				gtx := app.NewContext(&ops, e)
 				stw.context = gtx
+
+				r := image.Rectangle{Max: image.Point{X: gtx.Constraints.Max.X, Y: gtx.Constraints.Max.Y}}
+				area := clip.Rect(r).Push(&ops)
+				event.Op(&ops, &mousePos)
+				area.Pop()
+				for {
+					ev, ok := gtx.Event(pointer.Filter{
+						Target: &mousePos,
+						Kinds:  pointer.Move | pointer.Enter | pointer.Leave,
+					})
+					if !ok {
+						break
+					}
+					switch ev := ev.(type) {
+					case pointer.Event:
+						switch ev.Kind {
+						case pointer.Enter:
+							mousePresent = true
+						case pointer.Leave:
+							mousePresent = false
+						case pointer.Press:
+
+						}
+						mousePos = ev.Position
+					}
+				}
+				if mousePresent {
+					fmt.Println("Mouse Position: (%.2f, %.2f)", mousePos.X, mousePos.Y)
+				}
 
 				stw.Layout(gtx)
 				// render and handle the operations from the UI.
@@ -138,7 +179,7 @@ func (stw *Window) Run(w *app.Window) error {
 				}
 
 			case pointer.Event:
-				switch e.Type {
+				switch e.Kind {
 				case pointer.Press:
 					start = e.Position
 					press = e.Buttons
@@ -178,9 +219,11 @@ func (stw *Window) Run(w *app.Window) error {
 				}
 
 			// this is sent when the application is closed.
-			case system.DestroyEvent:
+			case app.DestroyEvent:
+				acks <- struct{}{}
 				return e.Err
 			}
+			acks <- struct{}{}
 		}
 	}
 
@@ -190,64 +233,6 @@ func (stw *Window) Run(w *app.Window) error {
 func (stw *Window) Layout(gtx layout.Context) layout.Dimensions {
 	th := stw.Theme
 
-	for _, e := range gtx.Events(stw) {
-		switch e := e.(type) {
-		default:
-			fmt.Println(e)
-		case key.Event:
-			fmt.Print(e.Name)
-		case pointer.Event:
-			switch e.Type {
-			case pointer.Press:
-				start = e.Position
-				press = e.Buttons
-				switch press {
-				case pointer.ButtonTertiary:
-					drawall = false
-				}
-			case pointer.Release:
-				end = e.Position
-				drawall = true
-				press = 0
-				stw.QueueRedrawAll()
-			case pointer.Drag:
-				end = e.Position
-				dx := end.X - start.X
-				dy := end.Y - start.Y
-				switch press {
-				case pointer.ButtonTertiary:
-					if e.Modifiers&key.ModShift != 0 {
-						stw.frame.View.Center[0] += float64(dx) * stw.CanvasMoveSpeedX()
-						stw.frame.View.Center[1] += float64(dy) * stw.CanvasMoveSpeedY()
-					} else {
-						stw.frame.View.Angle[0] += float64(dy) * stw.CanvasRotateSpeedY()
-						stw.frame.View.Angle[1] -= float64(dx) * stw.CanvasRotateSpeedX()
-					}
-					stw.QueueRedrawAll()
-				}
-			case pointer.Scroll:
-				end = e.Position
-				if e.Scroll.Y > 0 {
-					stw.Zoom(-1.0, float64(end.X), float64(end.Y))
-				} else {
-					stw.Zoom(1.0, float64(end.X), float64(end.Y))
-				}
-				stw.QueueRedrawAll()
-			}
-		}
-	}
-
-	area := clip.Rect{Max: gtx.Constraints.Max}.Push(gtx.Ops)
-	key.InputOp{
-		Tag: stw,
-		Keys: key.Set("Shift-A"),
-	}.Add(gtx.Ops)
-	pointer.InputOp{
-		Tag: stw,
-		Types: pointer.Press | pointer.Release | pointer.Drag | pointer.Scroll,
-		ScrollBounds: image.Rect(-100,-100,100,100),
-	}.Add(gtx.Ops)
-	area.Pop()
 
 	// inset is used to add padding around the window border.
 	inset := layout.UniformInset(defaultMargin)
@@ -262,12 +247,108 @@ func (stw *Window) Layout(gtx layout.Context) layout.Dimensions {
 				} else {
 					st.DrawFrameNode(stw, stw.frame, stw.frame.Show.ColorMode, false)
 				}
+				layoutSelectionLayer(gtx)
 				return layout.Dimensions{
 					Size: image.Point{X: 2000, Y: 2000},
 				}
 			}),
 		)
 	})
+}
+
+// viewport models a region of a larger space. Offset is the location
+// of the upper-left corner of the view within the larger space. size
+// is the dimensions of the viewport within the larger space.
+type viewport struct {
+	offset f32.Point
+	size   f32.Point
+}
+// subview modifies v to describe a smaller region by zooming into the
+// space described by v using other.
+func (v *viewport) subview(other *viewport) {
+	v.offset.X += other.offset.X * v.size.X
+	v.offset.Y += other.offset.Y * v.size.Y
+	v.size.X *= other.size.X
+	v.size.Y *= other.size.Y
+}
+
+
+var (
+	selected    image.Rectangle
+	selecting   = false
+	view        *viewport
+)
+// ensureSquare returns a copy of the rectangle that has been padded to
+// be square by increasing the maximum coordinate.
+func ensureSquare(r image.Rectangle) image.Rectangle {
+	dx := r.Dx()
+	dy := r.Dy()
+	if dx > dy {
+		r.Max.Y = r.Min.Y + dx
+	} else if dy > dx {
+		r.Max.X = r.Min.X + dy
+	}
+	return r
+}
+
+func layoutSelectionLayer(gtx layout.Context) layout.Dimensions {
+	for {
+		event, ok := gtx.Event(pointer.Filter{
+			Target: &selected,
+			Kinds:  pointer.Press | pointer.Release | pointer.Drag,
+		})
+		if !ok {
+			break
+		}
+		switch event := event.(type) {
+		case pointer.Event:
+			var intPt image.Point
+			intPt.X = int(event.Position.X)
+			intPt.Y = int(event.Position.Y)
+			switch event.Kind {
+			case pointer.Press:
+				selecting = true
+				selected.Min = intPt
+				selected.Max = intPt
+			case pointer.Drag:
+				if intPt.X >= selected.Min.X && intPt.Y >= selected.Min.Y {
+					selected.Max = intPt
+				} else {
+					selected.Min = intPt
+				}
+				selected = ensureSquare(selected)
+			case pointer.Release:
+				selecting = false
+				newView := &viewport{
+					offset: f32.Point{
+						X: float32(selected.Min.X) / float32(gtx.Constraints.Max.X),
+						Y: float32(selected.Min.Y) / float32(gtx.Constraints.Max.Y),
+					},
+					size: f32.Point{
+						X: float32(selected.Dx()) / float32(gtx.Constraints.Max.X),
+						Y: float32(selected.Dy()) / float32(gtx.Constraints.Max.Y),
+					},
+				}
+				if view == nil {
+					view = newView
+				} else {
+					view.subview(newView)
+				}
+			case pointer.Cancel:
+				selecting = false
+				selected = image.Rectangle{}
+			}
+		}
+	}
+	if selecting {
+		paint.FillShape(gtx.Ops, color.NRGBA{R: 255, A: 100}, clip.Rect(selected).Op())
+	}
+	pr := clip.Rect(image.Rectangle{Max: gtx.Constraints.Max}).Push(gtx.Ops)
+	pointer.CursorCrosshair.Add(gtx.Ops)
+	event.Op(gtx.Ops, &selected)
+	pr.Pop()
+
+	return layout.Dimensions{Size: gtx.Constraints.Max}
 }
 
 func (stw *Window) Frame() *st.Frame {
