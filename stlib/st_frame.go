@@ -5435,7 +5435,7 @@ func (frame *Frame) AiDistribution() (string, string, error) {
 	}
 	for d, str := range []string{"X", "Y"} {
 		rtn.WriteString(fmt.Sprintf("\n%s方向", str))
-		tex.WriteString(fmt.Sprintf("\\\\\n%s方向&&&&&", str))
+		tex.WriteString(fmt.Sprintf("\\\\\n%s方向&&&&", str))
 		rtn.WriteString("\n割増係数       β :           ")
 		tex.WriteString("\\\\\n割増係数& $\\beta$ &")
 		if d == 0 {
