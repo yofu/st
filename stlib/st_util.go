@@ -1125,3 +1125,71 @@ func PrincipalAxis(direction []float64, cang float64) ([]float64, []float64, err
 	}
 	return Normalize(strong), Normalize(weak), nil
 }
+
+func IntersectionLinePlate(line, plate *Elem, eps float64) (bool, error) {
+	if !line.IsLineElem() || plate.IsLineElem() {
+		return false, fmt.Errorf("ELEM TYPE error")
+	}
+	check := func(n1, n2, n3, n4, n5 *Node) (bool, error) {
+		v1 := make([]float64, 3)
+		v2 := make([]float64, 3)
+		for i := 0; i < 3; i++ {
+			v1[i] = n2.Coord[i] - n1.Coord[i]
+			v2[i] = n3.Coord[i] - n1.Coord[i]
+		}
+		vec := Cross(v1, v2)
+		n := Normalize(vec)
+		h := Dot(n, n1.Coord, 3)
+		d := Direction(n4, n5, true)
+		l := Distance(n4, n5)
+		dot := Dot(d, n, 3)
+		if dot == 0 {
+			return false, nil
+		}
+		val := Dot(n, n4.Coord, 3)
+		val2 := (h - val)/dot
+		if val2 <= eps || val2 >= l-eps {
+			return false, nil
+		}
+		node := NewNode()
+		for i := 0; i < 3; i++ {
+			node.Coord[i] = n4.Coord[i] + val2*d[i]
+		}
+		d1 := Direction(n1, n2, false)
+		d2 := Direction(n2, node, false)
+		d3 := Direction(n2, n3, false)
+		d4 := Direction(n3, node, false)
+		d5 := Direction(n3, n1, false)
+		d6 := Direction(n1, node, false)
+		c1 := Cross(d1, d2)
+		c2 := Cross(d3, d4)
+		c3 := Cross(d5, d6)
+		dot1 := Dot(c1, c2, 3)
+		dot2 := Dot(c1, c3, 3)
+		if dot1 > 0 && dot2 > 0 {
+			return true, nil
+		} else {
+			return false, nil
+		}
+	}
+	switch plate.Enods {
+	case 3:
+		return check(plate.Enod[0], plate.Enod[1], plate.Enod[2], line.Enod[0], line.Enod[1])
+	case 4:
+		t1, err := check(plate.Enod[0], plate.Enod[1], plate.Enod[2], line.Enod[0], line.Enod[1])
+		if err != nil {
+			return false, err
+		}
+		t2, err := check(plate.Enod[0], plate.Enod[2], plate.Enod[3], line.Enod[0], line.Enod[1])
+		if err != nil {
+			return false, err
+		}
+		if t1 || t2 {
+			return true, nil
+		} else {
+			return false, nil
+		}
+	default:
+		return false, nil
+	}
+}
