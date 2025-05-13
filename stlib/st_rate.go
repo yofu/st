@@ -158,7 +158,7 @@ func (rf Reinforce) Ft(cond *Condition) float64 {
 	switch cond.Period {
 	default:
 		return 0.0
-	case "L":
+	case "L", "ML", "MS":
 		f := rf.Material.Fl
 		if rf.Area > 6.158 { // D>=29
 			if f > 2.0 {
@@ -177,7 +177,7 @@ func (rf Reinforce) Ftw(cond *Condition) float64 {
 	switch cond.Period {
 	default:
 		return 0.0
-	case "L":
+	case "L", "ML", "MS":
 		return 2.0
 	case "X", "Y", "S", "U":
 		return rf.Material.Fs
@@ -642,7 +642,7 @@ func (sc *SColumn) Factor(p string) float64 {
 	switch p {
 	default:
 		return 0.0
-	case "L":
+	case "L", "ML", "MS":
 		return 1.0
 	case "X", "Y", "S":
 		return 1.5
@@ -2742,7 +2742,7 @@ func (sw *SWall) Factor(p string) float64 {
 	switch p {
 	default:
 		return 0.0
-	case "L":
+	case "L", "ML", "MS":
 		return 1.0
 	case "X", "Y", "S":
 		return 1.5
@@ -2872,7 +2872,7 @@ func (hp Hoop) Ftw(cond *Condition) float64 {
 	switch cond.Period {
 	default:
 		return 0.0
-	case "L":
+	case "L", "ML", "MS":
 		return 2.0
 	case "X", "Y", "S", "U":
 		return hp.Material.Fs
@@ -3187,7 +3187,7 @@ func (rc *RCColumn) Factor(p string) float64 {
 	switch p {
 	default:
 		return 0.0
-	case "L":
+	case "L", "ML", "MS":
 		return 1.0
 	case "X", "Y", "S":
 		return 2.0
@@ -3207,7 +3207,7 @@ func (rc *RCColumn) Fs(cond *Condition) float64 {
 	switch cond.Period {
 	default:
 		rtn = 0.0
-	case "L":
+	case "L", "ML", "MS":
 		rtn *= 1.0
 	case "X", "Y", "S":
 		rtn *= 1.5
@@ -3512,9 +3512,9 @@ func (rc *RCColumn) Qa(cond *Condition) float64 {
 	}
 	switch cond.Period {
 	default:
-		fmt.Println("unknown period: %s", cond.Period)
+		fmt.Printf("unknown period: %s\n", cond.Period)
 		return 0.0
-	case "L":
+	case "L", "ML", "MS":
 		return 7 / 8.0 * b * d * alpha * fs // RC規準2018 (15.1)式
 	case "X", "Y", "S":
 		var pw float64
@@ -3704,9 +3704,9 @@ func (rg *RCGirder) Qa(cond *Condition) float64 {
 	}
 	switch cond.Period {
 	default:
-		fmt.Println("unknown period: %s", cond.Period)
+		fmt.Printf("unknown period: %s\n", cond.Period)
 		return 0.0
-	case "L":
+	case "L", "ML", "MS":
 		if pw < 0.002 {
 			// fmt.Printf("shortage in pw: %.6f\n", pw)
 			return 7 / 8.0 * b * d * fs
@@ -3899,7 +3899,7 @@ func (rw *RCWall) Factor(p string) float64 {
 	switch p {
 	default:
 		return 0.0
-	case "L":
+	case "L", "ML", "MS":
 		return 1.0
 	case "X", "Y", "S":
 		return 2.0
@@ -3917,7 +3917,7 @@ func (rw *RCWall) Fs(cond *Condition) float64 {
 	switch cond.Period {
 	default:
 		rtn = 0.0
-	case "L":
+	case "L", "ML", "MS":
 		rtn *= 1.0
 	case "X", "Y", "S":
 		rtn *= 1.5
@@ -3941,7 +3941,10 @@ func (rw *RCWall) Na(cond *Condition) float64 {
 	}
 	Qc = r * rw.Thick * cond.Length * fs
 	switch cond.Period {
-	case "L":
+	default:
+		fmt.Printf("unknown period: %s\n", cond.Period)
+		return 0.0
+	case "L", "ML", "MS":
 		Qa = Qc
 		if cond.Verbose {
 			cond.Buffer.WriteString(fmt.Sprintf("#     l=%.3f\n", cond.Length))
@@ -4161,6 +4164,10 @@ func (wc *WoodColumn) Factor(p string) float64 {
 		return 0.0
 	case "L":
 		return 1.1 / 3.0
+	case "ML":
+		return 1.43 / 3.0
+	case "MS":
+		return 1.6 / 3.0
 	case "X", "Y", "S":
 		return 2.0 / 3.0
 	}
@@ -4379,7 +4386,11 @@ func (ww *WoodWall) Factor(p string) float64 {
 	default:
 		return 0.0
 	case "L":
-		return 1.0
+		return 1.1
+	case "ML":
+		return 1.43
+	case "MS":
+		return 1.6
 	case "X", "Y", "S":
 		return 2.0
 	}
@@ -4390,7 +4401,11 @@ func (ww *WoodWall) Fs(cond *Condition) float64 {
 	default:
 		rtn = 0.0
 	case "L":
-		rtn *= 1.0
+		rtn *= 1.1
+	case "ML":
+		rtn *= 1.43
+	case "MS":
+		rtn *= 1.6
 	case "X", "Y", "S":
 		rtn *= 2.0
 	}
@@ -4458,7 +4473,7 @@ type Condition struct {
 	Bfact       float64
 	Wfact       float64
 	Skipshort   bool
-	Temporary   bool
+	Temporary   string
 }
 
 func NewCondition() *Condition {
@@ -4484,7 +4499,7 @@ func NewCondition() *Condition {
 		Bfact:       1.0,
 		Wfact:       2.0,
 		Skipshort:   false,
-		Temporary:   false,
+		Temporary:   "",
 	}
 }
 

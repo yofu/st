@@ -1720,7 +1720,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		Snapshot(stw)
 	case "srcal":
 		if usage {
-			return Usage(":srcal {-verbose} {-fbold} {-torsion} {-noreload} {-qfact=2.0} {-wfact=2.0} {-bfact=1.0} {-skipshort} {-temporary} {-moeshiro} filename")
+			return Usage(":srcal {-verbose} {-fbold} {-torsion} {-noreload} {-qfact=2.0} {-wfact=2.0} {-bfact=1.0} {-skipshort} {-temporary} {-moeshiro} {-sekisetsu} filename")
 		}
 		var m bytes.Buffer
 		cond := NewCondition()
@@ -1771,12 +1771,17 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		if _, ok := argdict["TEMPORARY"]; ok {
 			m.WriteString("TEMPORARY")
-			cond.Temporary = true
+			cond.Temporary = "S"
 		}
 		if _, ok := argdict["MOESHIRO"]; ok {
 			m.WriteString("MOESHIRO")
 			cond.Skipshort = true
-			cond.Temporary = true
+			cond.Temporary = "S"
+		}
+		if _, ok := argdict["SEKISETSU"]; ok {
+			m.WriteString("SEKISETSU")
+			cond.Skipshort = true
+			cond.Temporary = "ML"
 		}
 		if _, ok := argdict["V"]; ok {
 			argdict["VERBOSE"] = ""

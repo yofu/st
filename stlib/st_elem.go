@@ -805,8 +805,8 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 				otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J  = %12.2f [cm4]\n", rc.J()))
 			}
 		}
-		if elem.Condition.Temporary {
-			elem.Condition.Period = "S"
+		if elem.Condition.Temporary != "" {
+			elem.Condition.Period = elem.Condition.Temporary
 		} else {
 			elem.Condition.Period = "L"
 		}
@@ -943,8 +943,8 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 			tex.WriteString(fmt.Sprintf(" &%8.3f\\\\\n", stress[p]*SI))
 		}
 		otp.WriteString("\n")
-		if elem.Condition.Temporary {
-			elem.Condition.Period = "S"
+		if elem.Condition.Temporary != "" {
+			elem.Condition.Period = elem.Condition.Temporary
 		} else {
 			elem.Condition.Period = "L"
 		}
