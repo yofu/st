@@ -1149,6 +1149,13 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (*No
 			for j := 0; j < 6; j++ {
 				n.Load[j], err = strconv.ParseFloat(lis[i+1+j], 64)
 			}
+		case "PHASE":
+			if llis < i+3 {
+				return nil, 0, errors.New(fmt.Sprintf("ParseNode: PHASE IndexError NODE %d", n.Num))
+			}
+			for j := 0; j < 2; j++ {
+				n.Phase[j], err = strconv.ParseFloat(lis[i+1+j], 64)
+			}
 		case "PCON":
 			if llis < i+2 {
 				return nil, 0, errors.New(fmt.Sprintf("ParseNode: PCON IndexError NODE %d", n.Num))
@@ -4923,11 +4930,11 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				}
 			case "X":
 				if !an.Conf[0] {
-					an.Force[0] += n.Factor[0] * n.Weight[2]
+					an.Force[0] += n.Phase[0] * n.Factor[0] * n.Weight[2]
 				}
 			case "Y":
 				if !an.Conf[1] {
-					an.Force[1] += n.Factor[1] * n.Weight[2]
+					an.Force[1] += n.Phase[1] * n.Factor[1] * n.Weight[2]
 				}
 			}
 			if n.Pile != nil {

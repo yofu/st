@@ -2869,6 +2869,42 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		} else {
 			return NotEnoughArgs(":conf")
 		}
+	case "phase":
+		if usage {
+			return Usage(":phase {-degree} xfactor yfactor")
+		}
+		if !stw.NodeSelected() {
+			return errors.New(":phase no selected node")
+		}
+		if narg < 3 {
+			return NotEnoughArgs(":phase")
+		}
+		degree := false
+		if _, ok := argdict["DEGREE"]; ok {
+			degree = true
+		}
+		xfactor, err := strconv.ParseFloat(args[1], 64)
+		if err != nil {
+			return err
+		}
+		if degree {
+			xfactor = math.Cos(math.Pi/180.0*xfactor)
+		}
+		yfactor, err := strconv.ParseFloat(args[2], 64)
+		if err != nil {
+			return err
+		}
+		if degree {
+			yfactor = math.Cos(math.Pi/180.0*yfactor)
+		}
+		for _, n := range stw.SelectedNodes() {
+			if n == nil {
+				continue
+			}
+			n.Phase[0] = xfactor
+			n.Phase[1] = yfactor
+		}
+		Snapshot(stw)
 	case "pile":
 		if usage {
 			return Usage(":pile pilecode")

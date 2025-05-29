@@ -31,6 +31,7 @@ type Node struct {
 
 	Weight []float64
 	Factor []float64
+	Phase  []float64
 
 	Disp     map[string][]float64
 	Reaction map[string][]float64
@@ -90,6 +91,7 @@ func NewNode() *Node {
 		Load:     make([]float64, 6),
 		Weight:   make([]float64, 3),
 		Factor:   make([]float64, 2),
+		Phase:    []float64{1.0, 1.0},
 		Disp:     make(map[string][]float64),
 		Force:    make(map[string][]float64),
 		Reaction: make(map[string][]float64)}
@@ -103,6 +105,7 @@ func (node *Node) Snapshot(frame *Frame) *Node {
 	n.Frame = frame
 	n.Num = node.Num
 	n.Factor = []float64{node.Factor[0], node.Factor[1]}
+	n.Phase = []float64{node.Phase[0], node.Phase[1]}
 	if node.Pile != nil {
 		n.Pile = frame.Piles[node.Pile.Num]
 	}
@@ -181,6 +184,9 @@ func (node *Node) InpString() string {
 	for i := 0; i < 6; i++ {
 		rtn.WriteString(fmt.Sprintf(" %12.8f", node.Load[i]))
 	}
+	if !(node.Phase[0] == 1.0 && node.Phase[1] == 1.0) {
+		rtn.WriteString(fmt.Sprintf(" PHASE %.1f %.1f", node.Phase[0], node.Phase[1]))
+	}
 	if node.Pile != nil {
 		rtn.WriteString(fmt.Sprintf("  PCON %d", node.Pile.Num))
 	}
@@ -201,6 +207,9 @@ func (node *Node) CopyString(x, y, z float64) string {
 	rtn.WriteString(" VCON  ")
 	for i := 0; i < 6; i++ {
 		rtn.WriteString(fmt.Sprintf(" %12.8f", node.Load[i]))
+	}
+	if !(node.Phase[0] == 1.0 && node.Phase[1] == 1.0) {
+		rtn.WriteString(fmt.Sprintf(" PHASE %.1f %.1f", node.Phase[0], node.Phase[1]))
 	}
 	if node.Pile != nil {
 		rtn.WriteString(fmt.Sprintf("  PCON %d", node.Pile.Num))
