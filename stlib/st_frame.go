@@ -5561,7 +5561,7 @@ func (frame *Frame) WindPressure() (string, string, error) {
 			}
 		}
 		cpe[i] = 0.8 * kz[i]
-		cpi[i] = -0.2
+		cpi[i] = -0.4
 		cf[i] = cpe[i] - cpi[i]
 		var minx, miny, maxx, maxy float64
 		first := true
@@ -5660,14 +5660,14 @@ func (frame *Frame) WindPressure() (string, string, error) {
 		otp.WriteString(fmt.Sprintf(" %10.3f", kz[i]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", kz[i]))
 	}
-	otp.WriteString("\n外圧係数 Cpe                 :")
-	tex.WriteString("\\\\\n外圧係数 & $C_{pe}$")
+	otp.WriteString("\n風上側外圧係数 Cpe1          :")
+	tex.WriteString("\\\\\n風上側外圧係数 & $C_{pe1}$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", cpe[i]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", cpe[i]))
 	}
-	otp.WriteString("\n内圧係数 Cpi                 :")
-	tex.WriteString("\\\\\n内圧係数 & $C_{pi}$")
+	otp.WriteString("\n風下側外圧係数 Cpe2          :")
+	tex.WriteString("\\\\\n風下側外圧係数 & $C_{pe2}$")
 	for i := 0; i < size; i++ {
 		otp.WriteString(fmt.Sprintf(" %10.3f", cpi[i]))
 		tex.WriteString(fmt.Sprintf(" &%10.3f", cpi[i]))
