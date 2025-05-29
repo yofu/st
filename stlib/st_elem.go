@@ -919,15 +919,15 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 			sectstring = fmt.Sprintf("　%d/◯%d", elem.OriginalSection().Num, elem.Sect.Num)
 		}
 		otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
-		otp.WriteString("\n応力       :        N\n")
 		tex.WriteString(fmt.Sprintf("\\multicolumn{11}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
-		tex.WriteString("応力       &      $N$\\\\\n")
 		if alpha != nil {
 			otp.WriteString(fmt.Sprintf(" αx=%.3f αy=%.3f", alpha[0], alpha[1]))
 		}
 		if angle != 0.0 {
 			otp.WriteString(fmt.Sprintf(" θ=%.3f°", angle))
 		}
+		tex.WriteString("応力       &      $N$\\\\\n")
+		otp.WriteString("\n応力       :        N\n")
 		stress := make([]float64, 5)
 		for p, per := range []string{long, x1, x2, y1, y2} {
 			if st, ok := elem.Stress[per]; ok {
