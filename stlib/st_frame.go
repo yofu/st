@@ -86,6 +86,9 @@ type Frame struct {
 	Bonds  map[int]*Bond
 	Chains map[int]*Chain
 
+	NodeSet map[string][]*Node
+	ElemSet map[string][]*Elem
+
 	Arclms map[string]*arclm.Frame
 
 	Eigenvalue map[int]float64
@@ -127,6 +130,8 @@ func NewFrame() *Frame {
 	f.Piles = make(map[int]*Pile)
 	f.Bonds = make(map[int]*Bond)
 	f.Chains = make(map[int]*Chain)
+	f.NodeSet = make(map[string][]*Node)
+	f.ElemSet = make(map[string][]*Elem)
 	f.Arclms = make(map[string]*arclm.Frame)
 	f.Eigenvalue = make(map[int]float64)
 	f.Kijuns = make(map[string]*Kijun)
@@ -375,6 +380,20 @@ func (frame *Frame) Snapshot() *Frame {
 			el.Chain = newc
 		}
 	}
+	for k, v := range frame.NodeSet {
+		nodes := make([]*Node, len(v))
+		for i := 0; i < len(v); i++ {
+			nodes[i] = f.Nodes[v[i].Num]
+		}
+		f.NodeSet[k] = nodes
+	}
+	for k, v := range frame.ElemSet {
+		elems := make([]*Elem, len(v))
+		for i := 0; i < len(v); i++ {
+			elems[i] = f.Elems[v[i].Num]
+		}
+		f.ElemSet[k] = elems
+	}
 	for k, v := range frame.Eigenvalue {
 		f.Eigenvalue[k] = v
 	}
@@ -497,6 +516,39 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
 			tmp = make([]string, 0)
 			chain = NewChain(frame, nil, nil, nil, func(c *Chain) bool { return true }, nil, nil)
+		case "NODESET":
+			fmt.Println(words, len(words))
+			name := words[1]
+			nodes := make([]*Node, len(words)-2)
+			ind := 0
+			for i := 0; i < len(nodes); i++ {
+				nnum, err := strconv.ParseInt(words[2+i], 10, 64)
+				if err != nil {
+					continue
+				}
+				if n, ok := frame.Nodes[int(nnum)]; ok {
+					nodes[i] = n
+					ind++
+				}
+			}
+			nodes = nodes[:ind]
+			frame.AddNodeSet(name, nodes)
+		case "ELEMSET":
+			name := words[1]
+			elems := make([]*Elem, len(words)-2)
+			ind := 0
+			for i := 0; i < len(elems); i++ {
+				enum, err := strconv.ParseInt(words[2+i], 10, 64)
+				if err != nil {
+					continue
+				}
+				if el, ok := frame.Elems[int(enum)]; ok {
+					elems[i] = el
+					ind++
+				}
+			}
+			elems = elems[:ind]
+			frame.AddElemSet(name, elems)
 		case "}":
 			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
 			tmp = make([]string, 0)
@@ -2673,7 +2725,7 @@ func (frame *Frame) WriteInp(fn string) error {
 	sort.Slice(chains, func(i, j int) bool {
 		return chains[i].Elems()[0].Num < chains[j].Elems()[0].Num
 	})
-	return writeinp(fn, frame.Title, frame.View, frame.Ai, frame.Wind, bonds, props, sects, piles, nodes, elems, chains)
+	return writeinp(fn, frame.Title, frame.View, frame.Ai, frame.Wind, bonds, props, sects, piles, nodes, elems, chains, frame.NodeSet, frame.ElemSet)
 }
 
 // WriteOutput writes an output file of analysis.
@@ -3637,6 +3689,14 @@ func (frame *Frame) AddArc(p [][]float64, eps float64) {
 	a := NewArc([]*Node{n1, n2, n3})
 	a.Frame = frame
 	frame.Arcs = append(frame.Arcs, a)
+}
+
+func (frame *Frame) AddNodeSet(name string, nodes []*Node) {
+	frame.NodeSet[name] = nodes
+}
+
+func (frame *Frame) AddElemSet(name string, elems []*Elem) {
+	frame.ElemSet[name] = elems
 }
 
 // NodeInBox returns nodes contained in the box which has n1 and n2 on both ends of its diagonal.
@@ -7160,10 +7220,10 @@ func WriteInp(fn string, view *View, ai *Aiparameter, wind *Windparameter, els [
 	}
 	piles = piles[:inum]
 	sort.Sort(PileByNum{piles})
-	return writeinp(fn, "\"CREATED ORGAN FRAME.\"", view, ai, wind, bonds, props, sects, piles, nodes, elems, nil)
+	return writeinp(fn, "\"CREATED ORGAN FRAME.\"", view, ai, wind, bonds, props, sects, piles, nodes, elems, nil, nil, nil)
 }
 
-func writeinp(fn, title string, view *View, ai *Aiparameter, wind *Windparameter, bonds []*Bond, props []*Prop, sects []*Sect, piles []*Pile, nodes []*Node, elems []*Elem, chains []*Chain) error {
+func writeinp(fn, title string, view *View, ai *Aiparameter, wind *Windparameter, bonds []*Bond, props []*Prop, sects []*Sect, piles []*Pile, nodes []*Node, elems []*Elem, chains []*Chain, nodeset map[string][]*Node, elemset map[string][]*Elem) error {
 	var otp bytes.Buffer
 	inum := len(piles)
 	// Frame
@@ -7256,6 +7316,20 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, wind *Windparameter
 			otp.WriteString(el.InpString())
 		}
 		otp.WriteString("}\n")
+	}
+	for ns, nodes := range nodeset {
+		otp.WriteString(fmt.Sprintf("NODESET %s", ns))
+		for _, n := range nodes {
+			otp.WriteString(fmt.Sprintf(" %d", n.Num))
+		}
+		otp.WriteString("\n")
+	}
+	for els, elems := range elemset {
+		otp.WriteString(fmt.Sprintf("ELEMSET %s", els))
+		for _, el := range elems {
+			otp.WriteString(fmt.Sprintf(" %d", el.Num))
+		}
+		otp.WriteString("\n")
 	}
 	// Write
 	w, err := os.Create(fn)

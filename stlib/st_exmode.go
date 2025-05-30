@@ -2845,6 +2845,35 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				sender[i] = ns[i]
 			}
 		}
+	case "nodeset":
+		if usage {
+			return Usage(":nodeset [create,select]")
+		}
+		if narg < 2 {
+			return NotEnoughArgs(":nodeset")
+		}
+		switch strings.ToUpper(args[1]) {
+		case "CREATE":
+			if narg < 3 {
+				return NotEnoughArgs(":nodeset create")
+			}
+			if !stw.NodeSelected() {
+				return errors.New(":nodeset create no selected node")
+			}
+			frame.AddNodeSet(args[2], stw.SelectedNodes())
+		case "SELECT":
+			if narg < 3 {
+				return NotEnoughArgs(":nodeset select")
+			}
+			stw.DeselectNode()
+			if ns, ok := frame.NodeSet[args[2]]; ok {
+				stw.SelectNode(ns)
+			} else {
+				return fmt.Errorf("nodeset {} is not defined", args[2])
+			}
+		default:
+			return fmt.Errorf(":nodeset {} is not defined", args[1])
+		}
 	case "conf":
 		if usage {
 			return Usage(":conf [0,1]{6}")
