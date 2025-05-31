@@ -909,7 +909,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 	case "writereaction":
 		if usage {
-			return Usage(":writereaction filename direction")
+			return Usage(":writereaction {-confed} {-nodeset=} filename direction")
 		}
 		if narg < 3 {
 			return NotEnoughArgs(":wr")
@@ -920,6 +920,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		if _, ok := argdict["CONFED"]; ok {
 			SelectConfed(stw)
+		}
+		if nname, ok := argdict["NODESET"]; ok {
+			if ns, ok := frame.NodeSet[nname]; ok {
+				stw.SelectNode(ns)
+			} else {
+				return fmt.Errorf("nodeset {} is not defined", nname)
+			}
 		}
 		if !stw.NodeSelected() {
 			return errors.New(":writereaction: no selected node")
