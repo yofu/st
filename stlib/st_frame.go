@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -517,7 +519,6 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 			tmp = make([]string, 0)
 			chain = NewChain(frame, nil, nil, nil, func(c *Chain) bool { return true }, nil, nil)
 		case "NODESET":
-			fmt.Println(words, len(words))
 			name := words[1]
 			nodes := make([]*Node, len(words)-2)
 			ind := 0
@@ -7317,16 +7318,16 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, wind *Windparameter
 		}
 		otp.WriteString("}\n")
 	}
-	for ns, nodes := range nodeset {
+	for _, ns := range slices.Sorted(maps.Keys(nodeset)) {
 		otp.WriteString(fmt.Sprintf("NODESET %s", ns))
-		for _, n := range nodes {
+		for _, n := range nodeset[ns] {
 			otp.WriteString(fmt.Sprintf(" %d", n.Num))
 		}
 		otp.WriteString("\n")
 	}
-	for els, elems := range elemset {
+	for _, els := range slices.Sorted(maps.Keys(elemset)) {
 		otp.WriteString(fmt.Sprintf("ELEMSET %s", els))
-		for _, el := range elems {
+		for _, el := range elemset[els] {
 			otp.WriteString(fmt.Sprintf(" %d", el.Num))
 		}
 		otp.WriteString("\n")
