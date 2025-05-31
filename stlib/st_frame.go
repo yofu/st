@@ -384,17 +384,25 @@ func (frame *Frame) Snapshot() *Frame {
 	}
 	for k, v := range frame.NodeSet {
 		nodes := make([]*Node, len(v))
+		ind := 0
 		for i := 0; i < len(v); i++ {
-			nodes[i] = f.Nodes[v[i].Num]
+			if n, ok := f.Nodes[v[i].Num]; ok {
+				nodes[i] = n
+				ind++
+			}
 		}
-		f.NodeSet[k] = nodes
+		f.NodeSet[k] = nodes[:ind]
 	}
 	for k, v := range frame.ElemSet {
 		elems := make([]*Elem, len(v))
+		ind := 0
 		for i := 0; i < len(v); i++ {
-			elems[i] = f.Elems[v[i].Num]
+			if el, ok := f.Elems[v[i].Num]; ok {
+				elems[i] = el
+				ind++
+			}
 		}
-		f.ElemSet[k] = elems
+		f.ElemSet[k] = elems[:ind]
 	}
 	for k, v := range frame.Eigenvalue {
 		f.Eigenvalue[k] = v
