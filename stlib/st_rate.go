@@ -4264,12 +4264,31 @@ func (wc *WoodColumn) Qa(cond *Condition) float64 {
 		return f * wc.Asx() * wc.multi
 	}
 }
+func (wc *WoodColumn) ShapeFactor(strong bool) float64 {
+	alpha := 1.0/9.0
+	h := wc.Shape.Breadth(!strong)*10
+	var h0 float64
+	switch wc.Wood.name {
+	case "E95-F315", "E105-F345", "E120-F375":
+		h0 = 100
+	case "E95-F270", "E105-F300", "E120-F330":
+		h0 = 300
+	default:
+		return 1.0
+	}
+	if h <= h0 {
+		return 1.0
+	} else {
+		return  math.Pow(h0/h, alpha)
+	}
+}
 func (wc *WoodColumn) Ma(cond *Condition) float64 {
 	f := wc.Fb(cond)
+	shapefactor := wc.ShapeFactor(cond.Strong)
 	if cond.Strong {
-		return f * wc.Zx() * 0.01 * wc.multi // [tfm]
+		return shapefactor * f * wc.Zx() * 0.01 * wc.multi // [tfm]
 	} else {
-		return f * wc.Zy() * 0.01 * wc.multi // [tfm]
+		return shapefactor * f * wc.Zy() * 0.01 * wc.multi // [tfm]
 	}
 }
 func (wc *WoodColumn) Mza(cond *Condition) float64 {
