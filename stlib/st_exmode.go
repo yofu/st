@@ -1909,7 +1909,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		els := stw.SelectedElems()
 		sort.Sort(ElemByNum{els})
 		maxrateelem := make(map[int][]*Elem)
-		var otp,rat bytes.Buffer
+		var otp,tex,rat bytes.Buffer
 		otp.WriteString("断面算定 \"S,RC,SRC\" 長期,短期,終局\n")
 		otp.WriteString("使用ファイル\n")
 		otp.WriteString(fmt.Sprintf("入力データ               =%s\n", frame.DataFileName["L"]))
@@ -1974,6 +1974,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		maxqs := 0.0
 		maxml := 0.0
 		maxms := 0.0
+		maxratestring := make([]string, 0)
 		for _, k := range keys {
 			otp.WriteString(fmt.Sprintf("断面記号: %d %s   As=   0.00[cm2] Ar=   0.00[cm2] Ac=    0.00[cm2] MAX:", k, frame.Sects[k].Allow.TypeString()))
 			els := maxrateelem[k]
@@ -1992,6 +1993,12 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				if els[3].MaxRate[4] > maxms {
 					maxms = els[3].MaxRate[4]
 				}
+				sort.Slice(els, func(i, j int) bool {
+					ri, _ := els[i].RateMax(nil)
+					rj, _ := els[j].RateMax(nil)
+					return ri > rj
+				})
+				maxratestring = append(maxratestring, els[0].SrcalTex)
 			case BRACE, WBRACE, SBRACE:
 				otp.WriteString(fmt.Sprintf("Q/QaL=%.5f Q/QaS=%.5f\n", els[0].MaxRate[0], els[1].MaxRate[1]))
 				if els[0].MaxRate[0] > maxql {
@@ -2000,9 +2007,51 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				if els[1].MaxRate[1] > maxqs {
 					maxqs = els[1].MaxRate[1]
 				}
+				sort.Slice(els, func(i, j int) bool {
+					ri, _ := els[i].RateMax(nil)
+					rj, _ := els[j].RateMax(nil)
+					return ri > rj
+				})
+				e2, _ := els[0].Brother()
+				if e2 == nil {
+					maxratestring = append(maxratestring, els[0].SrcalTex)
+				} else {
+					if els[0].Eldest {
+						maxratestring = append(maxratestring, els[0].SrcalTex)
+						maxratestring = append(maxratestring, e2.SrcalTex)
+					} else {
+						maxratestring = append(maxratestring, e2.SrcalTex)
+						maxratestring = append(maxratestring, els[0].SrcalTex)
+					}
+				}
 			}
 		}
+		for i, str := range maxratestring {
+			if i%2 == 0 {
+				tex.WriteString("\\scalebox{0.9}[1]{\n{\\footnotesize\n\\begin{tabular}{l r r r r r r r r r r} \\hline\\\\\n")
+			}
+			tex.WriteString(str)
+			if i%2 == 1 {
+				tex.WriteString("\\end{tabular}\n}\n}\n\\newpage\n")
+			}
+		}
+		if len(maxratestring)%2 != 0 {
+			tex.WriteString("\\end{tabular}\n}\n}\n\n")
+		}
+		tex.WriteString("\\paragraph{各断面種別の許容,終局曲げ安全率の最大値}\n\n{\\small\n\\begin{tabular}{l l l l l}\\\\\n")
+		for _, k := range keys {
+			tex.WriteString(fmt.Sprintf("断面記号: %d %s & ", k, frame.Sects[k].Allow.TypeString()))
+			els := maxrateelem[k]
+			switch els[0].Etype {
+			case COLUMN, GIRDER:
+				tex.WriteString(fmt.Sprintf("$Q/Q_{aL}$=%.5f & $Q/Q_{aS}$=%.5f & $M/M_{aL}$=%.5f & $M/M_{aS}$=%.5f\\\\\n", els[0].MaxRate[0], els[1].MaxRate[1], els[2].MaxRate[3], els[3].MaxRate[4]))
+			case BRACE, WBRACE, SBRACE:
+				tex.WriteString(fmt.Sprintf("$Q/Q_{aL}$=%.5f & $Q/Q_{aS}$=%.5f\\\\\n", els[0].MaxRate[0], els[1].MaxRate[1]))
+			}
+		}
+		tex.WriteString("\\end{tabular}\n}\n")
 		otp.WriteString(fmt.Sprintf("\n安全率の最大値\n Q/QaL=%7.5f Q/QaS=%7.5f\n M/MaL=%7.5f M/MaS=%7.5f\n", maxql, maxqs, maxml, maxms))
+		tex.WriteString(fmt.Sprintf("\\vspace{10mm}\n\\paragraph{安全率の最大値}\n{\\small\n\\begin{tabular}{l l}\\\\\n $Q/Q_{aL}$=%7.5f & $Q/Q_{aS}$=%7.5f\\\\\n $M/M_{aL}$=%7.5f & $M/M_{aS}$=%7.5f\\\\\n\\end{tabular}\n}\n\\newpage\n", maxql, maxqs, maxml, maxms))
 		otp.WriteString("==========================================================================================================================================================================================================\n各断面種別の入力情報の確認\n\n")
 		otp.WriteString("                              A[cm2]      Ix[cm4]      Iy[cm4]       J[cm4]\n")
 		otp.WriteString("                              t[cm]\n")
@@ -2014,6 +2063,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		otp = AddCR(otp)
 		otp.WriteTo(w)
+		wtex, err := os.Create(filepath.Join(filepath.Dir(frame.Path), "4_3angle.tex"))
+		defer wtex.Close()
+		if err != nil {
+			return err
+		}
+		tex = AddCR(tex)
+		tex.WriteTo(wtex)
 		wrat, err := os.Create(Ce(otpfn, ".rat"))
 		defer wrat.Close()
 		if err != nil {
