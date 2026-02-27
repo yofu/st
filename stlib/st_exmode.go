@@ -792,9 +792,24 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					}
 				}
 			default:
-				err := ReadFile(stw, fn)
-				if err != nil {
-					return err
+				if strings.HasPrefix(t, "@") {
+					pattern := fmt.Sprintf("%s@*.%s",PruneExt(frame.Path), strings.TrimPrefix(t, "@"))
+					files, err := filepath.Glob(pattern)
+					if err != nil {
+						return err
+					}
+					for _, file := range files {
+						err := frame.ReadResult(file, uint(UpdateResult))
+						if err != nil {
+							fmt.Println(err)
+							continue
+						}
+					}
+				} else {
+					err := ReadFile(stw, fn)
+					if err != nil {
+						return err
+					}
 				}
 			}
 			return nil

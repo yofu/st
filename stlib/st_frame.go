@@ -1634,19 +1634,26 @@ func (frame *Frame) ReadData(filename string) error {
 	return nil
 }
 
+func PeriodName(filename string) string {
+	ext := filepath.Ext(filename)
+	if p, ok := PeriodExt[ext]; ok {
+		return p
+	}
+	rtn := strings.ToUpper(ext[1:])
+	steppat := regexp.MustCompile("@[0-9]+")
+	if steppat.MatchString(filename) {
+		rtn += steppat.FindString(filename)
+	}
+	return rtn
+}
+
 // ReadResult reads an output file of analysis.
 func (frame *Frame) ReadResult(filename string, mode uint) error {
 	f, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return err
 	}
-	ext := filepath.Ext(filename)
-	var period string
-	if p, ok := PeriodExt[ext]; ok {
-		period = p
-	} else {
-		period = strings.ToUpper(ext[1:])
-	}
+	period := PeriodName(filename)
 	var lis []string
 	if ok := strings.HasSuffix(string(f), "\r\n"); ok {
 		lis = strings.Split(string(f), "\r\n")
