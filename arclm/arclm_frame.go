@@ -689,7 +689,7 @@ func (frame *Frame) WriteTo(w io.Writer) (int64, error) {
 	var otp bytes.Buffer
 	var rea bytes.Buffer
 	otp.WriteString("\n\n** FORCES OF MEMBER\n\n")
-	otp.WriteString("  NO   KT NODE         N        Q1        Q2        MT        M1        M2\n\n")
+	otp.WriteString("  NO   KT NODE         N        Q1        Q2        MT        M1        M2        PHINGE\n\n")
 	for _, el := range frame.Elems {
 		otp.WriteString(el.OutputStress())
 	}

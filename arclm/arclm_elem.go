@@ -1037,7 +1037,11 @@ func (elem *Elem) OutputStress() string {
 		for j := 0; j < 6; j++ {
 			otp.WriteString(fmt.Sprintf(" %15.12f", elem.Stress[6*i+j]))
 		}
-		otp.WriteString("\n")
+		if elem.Phinge[i] {
+			otp.WriteString(" 1\n")
+		} else {
+			otp.WriteString(" 0\n")
+		}
 	}
 	return otp.String()
 }

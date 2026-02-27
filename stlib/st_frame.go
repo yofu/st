@@ -1680,21 +1680,20 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 		return errors.New("ReadResult: no data")
 	}
 	for { // Reading Elem Stress
-		j := strings.Join([]string{lis[tmpline], lis[tmpline+1]}, " ")
-		tmpline += 2
-		var words []string
-		for _, k := range strings.Split(j, " ") {
-			if k != "" {
-				words = append(words, k)
-			}
-		}
-		if len(words) == 0 {
-			continue
-		}
-		if strings.HasPrefix(strings.Trim(words[0], " "), "**") {
+		line := make([][]string, 2)
+		line[0] = strings.Fields(lis[tmpline])
+		line[1] = strings.Fields(lis[tmpline+1])
+		if len(line[0]) != 0 && strings.HasPrefix(strings.Trim(line[0][0], " "), "**") {
 			break
 		}
-		num, err := strconv.ParseInt(words[0], 10, 64)
+		tmpline += 2
+		if len(line[0]) == 0 || len(line[1]) == 0 {
+			continue
+		}
+		if strings.HasPrefix(strings.Trim(line[0][0], " "), "**") {
+			break
+		}
+		num, err := strconv.ParseInt(line[0][0], 10, 64)
 		if err != nil {
 			return err
 		}
@@ -1707,25 +1706,39 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 			}
 			if mode == UpdateResult {
 				elem.Stress[period] = make(map[int][]float64)
+				elem.Phinge[period] = make(map[int]bool)
 			}
 			var tmp []float64
 			for i := 0; i < 2; i++ {
-				num, err := strconv.ParseInt(words[2+7*i], 10, 64)
+				eind := 0
+				if i == 0 {
+					eind = 2
+				}
+				num, err := strconv.ParseInt(line[i][eind], 10, 64)
 				if err != nil {
 					return err
 				}
+				eind++
 				enod[i] = int(num)
 				tmp = make([]float64, 6)
 				for k := 0; k < 6; k++ {
-					val, err := strconv.ParseFloat(words[3+7*i+k], 64)
+					val, err := strconv.ParseFloat(line[i][eind], 64)
 					if err != nil {
 						return err
 					}
+					eind++
 					tmp[k] = val
+				}
+				ph := false
+				if len(line[i]) > eind {
+					if line[i][eind] == "1" {
+						ph = true
+					}
 				}
 				switch mode {
 				case UpdateResult:
 					elem.Stress[period][int(num)] = tmp
+					elem.Phinge[period][int(num)] = ph
 				case AddResult, AddSearchResult:
 					if elem.Stress[period][int(num)] != nil {
 						for ind := 0; ind < 6; ind++ {
