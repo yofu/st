@@ -252,6 +252,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 	unnamed := make([]string, narg)
 	tmpnarg := 0
 	namedarg := regexp.MustCompile("^ *-{1,2}([a-zA-Z]+)(={0,1})([^ =]*) *$")
+	if len(args) > 0 && strings.EqualFold(strings.TrimPrefix(args[0], ":"), "bclng001") {
+		namedarg = regexp.MustCompile(bucklingNamedArgPattern)
+	}
 	for _, a := range args {
 		if namedarg.MatchString(a) {
 			fs := namedarg.FindStringSubmatch(a)
@@ -6050,7 +6053,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		return ArclmStart(m.String())
 	case "bclng001":
 		if usage {
-			return Usage(":bclng001 {-period=name} {-eps=1e-12} {-noinit} {-mode=1} {-right=10.0} filename")
+			return Usage(":bclng001 {-period=name} {-eps=1e-12} {-noinit} {-mode=1} {-right=10.0} {-diag=directory} {-diag-count=3} {-diag-shift=mu[,mu]} {-diag-only} {-diag-cpusec=60} filename")
 		}
 		var otp string
 		if fn == "" {
@@ -6102,9 +6105,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if af == nil {
 			return fmt.Errorf(":bclng001: frame isn't extracted to period %s", per)
 		}
+		diagnostics, err := arclm.ParseBucklingDiagnostics(argdict, otp)
+		if err != nil {
+			return err
+		}
 		af.Output = stw.HistoryWriter()
 		go func() {
-			err := af.Bclng001(otp, init, nmode, eps, right)
+			err := af.Bclng001WithDiagnostics(otp, init, nmode, eps, right, diagnostics)
 			if err != nil {
 				fmt.Println(err)
 			}

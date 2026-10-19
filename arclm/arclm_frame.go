@@ -1350,8 +1350,38 @@ func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int
 	return nil
 }
 
-// TODO: not accurate for higher order
-func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64, right float64) error { // TODO: speed up
+// bisectBuckling locates the rank-th positive buckling eigenvalue in reciprocal
+// coordinates. It checks KE is positive definite after removing constrained DOFs.
+// The returned factor belongs to the upper bracket, not necessarily to mu:
+// the midpoint can be an exact eigenvalue and therefore singular.
+func bisectBuckling(ke, kg *matrix.COOMatrix, csize int, conf []bool, rank int, eps, right float64, pivot chan int, progress func(float64, int)) (float64, *matrix.SymLDLTFactor, error) {
+	if ke == nil || rank < 1 || rank > ke.Size-csize {
+		return 0, nil, fmt.Errorf("invalid buckling search parameters")
+	}
+	search, err := newBucklingSearch(ke, kg, csize, conf, eps, right, pivot)
+	if err != nil {
+		return 0, nil, err
+	}
+	return search.eigenvalue(rank, progress)
+}
+
+func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64, right float64) error {
+	return frame.Bclng001WithDiagnostics(otp, init, n, eps, right, nil)
+}
+
+// Bclng001WithDiagnostics optionally records profiles and matched-shift legacy
+// comparisons. CompareOnly assembles the real model and skips eigenvalue search.
+func (frame *Frame) Bclng001WithDiagnostics(otp string, init bool, n int, eps float64, right float64, options *BucklingDiagnosticsOptions) (analysisErr error) { // TODO: speed up
+	if n < 1 || eps <= 0 || math.IsNaN(eps) || math.IsInf(eps, 0) || right <= 0 || math.IsNaN(right) || math.IsInf(right, 0) {
+		return fmt.Errorf("invalid buckling search parameters")
+	}
+	d, diagErr := startBucklingDiagnostics(options, frame.Output)
+	if diagErr != nil {
+		return diagErr
+	}
+	if d != nil {
+		defer func() { analysisErr = errors.Join(analysisErr, d.close(analysisErr)) }()
+	}
 	if init {
 		frame.Initialise()
 	}
@@ -1367,7 +1397,11 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64, right fl
 	var gvct, vec []float64
 	var csize int
 	var conf []bool
-	kemtx, gvct, err = frame.KE(1.0)
+	if d == nil {
+		kemtx, gvct, err = frame.KE(1.0)
+	} else {
+		err = d.measure("assemble_ke", "assembly", nil, 0, func(map[string]interface{}) error { kemtx, gvct, err = frame.KE(1.0); return err })
+	}
 	if err != nil {
 		return err
 	}
@@ -1377,7 +1411,11 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64, right fl
 			el.Stress[i] = 0.0
 		}
 	}
-	answers, err = solver.Solve(kemtx, csize, conf, vec)
+	if d == nil {
+		answers, err = solver.Solve(kemtx, csize, conf, vec)
+	} else {
+		err = d.measure("initial_static", "legacy_static", nil, 0, func(map[string]interface{}) error { answers, err = solver.Solve(kemtx, csize, conf, vec); return err })
+	}
 	if err != nil {
 		return err
 	}
@@ -1386,90 +1424,108 @@ func (frame *Frame) Bclng001(otp string, init bool, n int, eps float64, right fl
 	if err != nil {
 		return err
 	}
-	kgmtx, _, err = frame.KG(1.0)
+	if d == nil {
+		kgmtx, _, err = frame.KG(1.0)
+	} else {
+		err = d.measure("assemble_kg", "assembly", nil, 0, func(map[string]interface{}) error { kgmtx, _, err = frame.KG(1.0); return err })
+	}
 	if err != nil {
 		return err
 	}
 	laptime("initial analysis solved")
+	if d != nil {
+		d.log("model", map[string]interface{}{"total_dofs": kemtx.Size, "free_dofs": kemtx.Size - csize, "constrained_dofs": csize, "requested_modes": n, "eps_mu": eps, "right_mu": right})
+		if err := d.explicitShifts(kemtx, kgmtx, csize, conf); err != nil {
+			return err
+		}
+		if options.CompareOnly {
+			fmt.Fprintf(frame.Output, "BCLNG DIAGNOSTICS: comparison-only complete; no eigenvalue/OTP output\n")
+			return nil
+		}
+	}
 	frame.EigenValue = make([]float64, n)
 	frame.EigenVector = make([][]float64, n)
-	EL := 0.0
-	ER := right
-	FB := func(C *matrix.LLSMatrix, vec []float64, size int) []float64 {
-		tmp := make([]float64, size)
-		for j := 0; j < size; j++ {
-			tmp[j] = vec[j]
-		}
-		tmp = C.FELower(tmp)
-		for j := 0; j < size; j++ {
-			tmp[j] /= C.Query(j, j)
-		}
-		return C.BSUpper(tmp)
+	// Validate bounds/operators once. Numerical pivot updates do not trigger
+	// per-DOF GUI work; shift progress below is throttled instead.
+	searchStart := time.Now()
+	search, err := newBucklingSearchDiagnostics(kemtx, kgmtx, csize, conf, eps, right, nil, d)
+	if err != nil {
+		return err
 	}
-	var answer []float64
+	searchDuration := time.Since(searchStart)
+	if search.gershgorin.Available {
+		fmt.Fprintf(frame.Output, "BUCKLING GERSHGORIN: mu=[%.16g, %.16g], search=[%.16g, %.16g]\n", search.gershgorin.Lower, search.gershgorin.Upper, search.lower, search.right)
+		if lower, upper, ok := search.gershgorin.PositiveReciprocalBounds(); ok {
+			fmt.Fprintf(frame.Output, "BUCKLING GERSHGORIN: positive Lambda=[%.16g, %.16g]\n", lower, upper)
+		}
+	} else {
+		fmt.Fprintf(frame.Output, "BUCKLING GERSHGORIN: finite bounds unavailable (%s, rows=%d); using search=[0, %.16g]\n", search.gershgorin.Reason, search.gershgorin.NonDominantRows, search.right)
+	}
+	var vectorDuration time.Duration
+	lastProgress := time.Now()
+	// Cache both KE-orthonormal vectors and their KE products across modes.
+	locked := make([][]float64, 0, n)
+	klocked := make([][]float64, 0, n)
 	for i := 0; i < n; i++ {
 		lap := 0
-		lambda := 0.5 * (EL + ER)
-		lastlambda := lambda
-		var lastvec []float64
-	bclng:
-		for {
-			neg := 0
-			gmtx := kgmtx.AddMat(kemtx, lambda)
-			mtx := gmtx.ToLLS(csize, conf)
-			size := mtx.Size
-			C, err := mtx.LDLT(frame.Pivot)
-			if err != nil {
-				return err
-			}
-			C.DiagUp()
-			// positive definitness can be checked only by checking
-			// diagonal elements of D, where D is a diagonal matrix
-			// obtained by modified Cholesky factorization (LDLT),
-			// according to Sylvester's law of inertia.
-			for j := 0; j < len(vec); j++ {
-				if C.Query(j, j) < 0.0 {
-					neg++
-				}
-				if neg > i {
-					if ER-EL < eps {
-						break bclng
-					}
-					fmt.Fprintf(frame.Output, "LAMBDA<%.14f\n", 1.0/lambda)
-					EL = lambda
-					lambda = 0.5 * (EL + ER)
-					continue bclng
-				}
-			}
-			fmt.Fprintf(frame.Output, "LAMBDA>%.14f\n", 1.0/lambda)
-			ans := make([]float64, len(vec))
-			for j := 0; j < len(vec); j++ {
-				ans[j] = rand.Float64()
-			}
-			answer = FB(C, ans, size)
-			tmp := frame.FillConf(answer)
-			tmp = Normalize(tmp)
-			lastvec = tmp
-			_, _, err = frame.UpdateStressEnergy(tmp)
-			if err != nil {
-				return err
-			}
-			lastlambda = lambda
-			ER = lambda
-			lambda = 0.5 * (EL + ER)
+		searchStart = time.Now()
+		mu, C, err := search.eigenvalue(i+1, func(mu float64, neg int) {
 			lap++
-			frame.Lapch <- lap + 1
-			<-frame.Lapch
+			if time.Since(lastProgress) < 200*time.Millisecond {
+				return
+			}
+			lastProgress = time.Now()
+			if neg > i {
+				fmt.Fprintf(frame.Output, "LAMBDA<%.14f\n", 1.0/mu)
+			} else {
+				fmt.Fprintf(frame.Output, "LAMBDA>%.14f\n", 1.0/mu)
+			}
+			if d == nil {
+				frame.Lapch <- lap + 1
+				<-frame.Lapch
+			} else {
+				d.measure("progress_wait", "ui", nil, i+1, func(map[string]interface{}) error { frame.Lapch <- lap + 1; <-frame.Lapch; return nil })
+			}
+		})
+		searchDuration += time.Since(searchStart)
+		if err != nil {
+			return err
 		}
-		laptime(fmt.Sprintf("\nEIG %d: %.14f", i+1, 1.0/lastlambda))
-		frame.EigenValue[i] = 1.0 / lastlambda
+		vectorStart := time.Now()
+		var answer []float64
+		if d == nil {
+			mu, answer, err = inverseBucklingCSR(search.elastic, search.geometric, C, mu, eps, locked, klocked)
+		} else {
+			mu, answer, err = d.inverse(search, C, mu, eps, locked, klocked, i+1)
+		}
+		vectorDuration += time.Since(vectorStart)
+		if err != nil {
+			return fmt.Errorf("buckling mode %d: %w", i+1, err)
+		}
+		locked = append(locked, answer)
+		klocked = append(klocked, search.elastic.MulV(answer))
+		lastvec := frame.FillConf(answer)
+		_, _, err = frame.UpdateStressEnergy(lastvec)
+		if err != nil {
+			return err
+		}
+		laptime(fmt.Sprintf("\nEIG %d: %.14f", i+1, 1.0/mu))
+		frame.EigenValue[i] = 1.0 / mu
 		frame.EigenVector[i] = lastvec
-		ER = EL
-		EL = 0.0
 		frame.UpdateReaction(kemtx, lastvec)
 		frame.UpdateForm(lastvec)
-		frame.Lapch <- i + 1
-		<-frame.Lapch
+		if d == nil {
+			frame.Lapch <- i + 1
+			<-frame.Lapch
+		} else {
+			if err := d.measure("mode_completion_wait", "ui", nil, i+1, func(map[string]interface{}) error { frame.Lapch <- i + 1; <-frame.Lapch; return nil }); err != nil {
+				return err
+			}
+		}
+	}
+	fmt.Fprintf(frame.Output, "BUCKLING: inertia=%d factors=%d bracket_factors=%d proposals=%d accepted=%d cached=%d search=%.3fs vectors=%.3fs\n", search.inertiaEvaluations, search.solveFactorizations, search.bracketFactorizations, search.refinementAttempts, search.refinementsAccepted, search.cacheHits, searchDuration.Seconds(), vectorDuration.Seconds())
+	if d != nil {
+		d.log("buckling_summary", map[string]interface{}{"inertia_evaluations": search.inertiaEvaluations, "solve_factorizations": search.solveFactorizations, "bracket_factorizations": search.bracketFactorizations, "total_factorizations": search.inertiaEvaluations + search.solveFactorizations + search.bracketFactorizations, "proposals": search.refinementAttempts, "accepted": search.refinementsAccepted, "cache_hits": search.cacheHits, "search_seconds": searchDuration.Seconds(), "vector_seconds": vectorDuration.Seconds()})
 	}
 	if otp == "" {
 		otp = "hogtxt.otp"
