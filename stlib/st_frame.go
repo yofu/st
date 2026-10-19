@@ -2820,7 +2820,7 @@ func (frame *Frame) ZoubunSummary(fn string, period string, cond *arclm.Analysis
 	}
 	var otp bytes.Buffer
 	otp.WriteString(cond.String())
-	otp.WriteString("\n")
+	otp.WriteString(fmt.Sprintf("\nCOMPLETED STEPS: %d\n", frame.Nlap[period]))
 	nlap := frame.Nlap[period]
 	ind := 0
 	switch strings.ToUpper(period) {
@@ -2861,13 +2861,15 @@ func (frame *Frame) ZoubunSummary(fn string, period string, cond *arclm.Analysis
 		otp.WriteString("\n")
 	}
 	w, err := os.Create(fn)
-	defer w.Close()
 	if err != nil {
 		return err
 	}
 	otp = AddCR(otp)
-	otp.WriteTo(w)
-	return nil
+	if _, err := otp.WriteTo(w); err != nil {
+		w.Close()
+		return err
+	}
+	return w.Close()
 }
 
 // ReportZoubunDisp writes an output file which reports displacement data of push-over analysis.

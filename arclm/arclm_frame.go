@@ -8,29 +8,33 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/yofu/st/matrix"
 )
 
 type Frame struct {
-	Sects       []*Sect
-	Nodes       []*Node
-	Elems       []*Elem
-	EigenValue  []float64
-	EigenVector [][]float64
-	Pivot       chan int
-	Lapch       chan int
-	Endch       chan error
-	Output      io.Writer
-	running     bool
-	cancel      context.CancelFunc
+	Sects            []*Sect
+	Nodes            []*Node
+	Elems            []*Elem
+	EigenValue       []float64
+	EigenVector      [][]float64
+	Pivot            chan int
+	Lapch            chan int
+	Endch            chan error
+	Output           io.Writer
+	running          bool
+	cancel           context.CancelFunc
+	runMu            sync.Mutex
+	plasticLoad      float64
+	plasticLoadValid bool
+	loading          *plasticLoadState
 }
 
 func NewFrame() *Frame {
@@ -46,10 +50,14 @@ func NewFrame() *Frame {
 }
 
 type FrameState struct {
-	Conf     [][]bool
-	Disp     [][]float64
-	Reaction [][]float64
-	Stress   [][]float64
+	Conf             [][]bool
+	Disp             [][]float64
+	Reaction         [][]float64
+	Stress           [][]float64
+	plastic          []plasticElementState
+	plasticLoad      float64
+	plasticLoadValid bool
+	loading          *plasticLoadState
 }
 
 func NewFrameState(nnode, nelem int) *FrameState {
@@ -58,6 +66,7 @@ func NewFrameState(nnode, nelem int) *FrameState {
 	fs.Disp = make([][]float64, nnode)
 	fs.Reaction = make([][]float64, nnode)
 	fs.Stress = make([][]float64, nelem)
+	fs.plastic = make([]plasticElementState, nelem)
 	for i := 0; i < nnode; i++ {
 		fs.Conf[i] = make([]bool, 6)
 		fs.Disp[i] = make([]float64, 6)
@@ -70,15 +79,20 @@ func NewFrameState(nnode, nelem int) *FrameState {
 }
 
 func (af *Frame) Running() bool {
+	af.runMu.Lock()
+	defer af.runMu.Unlock()
 	return af.running
 }
 
 func (af *Frame) Stop() error {
-	if af.cancel == nil {
+	af.runMu.Lock()
+	cancel := af.cancel
+	running := af.running
+	af.runMu.Unlock()
+	if !running || cancel == nil {
 		return fmt.Errorf("not running")
 	}
-	af.cancel()
-	af.running = false
+	cancel()
 	return nil
 }
 
@@ -202,6 +216,8 @@ func (frame *Frame) SaveInput(fn string) error {
 }
 
 func (frame *Frame) Initialise() {
+	frame.plasticLoad, frame.plasticLoadValid = 0, false
+	frame.loading = nil
 	for _, n := range frame.Nodes {
 		for i := 0; i < 6; i++ {
 			n.Disp[i] = 0.0
@@ -209,6 +225,7 @@ func (frame *Frame) Initialise() {
 		}
 	}
 	for _, el := range frame.Elems {
+		el.resetPlasticState()
 		for i := 0; i < 12; i++ {
 			el.Stress[i] = el.Cmq[i]
 		}
@@ -221,6 +238,8 @@ func (frame *Frame) SaveState() *FrameState {
 	nnode := len(frame.Nodes)
 	nelem := len(frame.Elems)
 	fs := NewFrameState(nnode, nelem)
+	fs.plasticLoad, fs.plasticLoadValid = frame.plasticLoad, frame.plasticLoadValid
+	fs.loading = copyPlasticLoading(frame.loading)
 	for i, n := range frame.Nodes {
 		for j := 0; j < 6; j++ {
 			fs.Conf[i][j] = n.Conf[j]
@@ -232,11 +251,14 @@ func (frame *Frame) SaveState() *FrameState {
 		for j := 0; j < 12; j++ {
 			fs.Stress[i][j] = el.Stress[j]
 		}
+		fs.plastic[i] = el.savePlasticState()
 	}
 	return fs
 }
 
 func (frame *Frame) RestoreState(fs *FrameState) {
+	frame.plasticLoad, frame.plasticLoadValid = fs.plasticLoad, fs.plasticLoadValid
+	frame.loading = copyPlasticLoading(fs.loading)
 	for i, n := range frame.Nodes {
 		for j := 0; j < 6; j++ {
 			n.Conf[j] = fs.Conf[i][j]
@@ -247,6 +269,10 @@ func (frame *Frame) RestoreState(fs *FrameState) {
 	for i, el := range frame.Elems {
 		for j := 0; j < 12; j++ {
 			el.Stress[j] = fs.Stress[i][j]
+		}
+		// Preserve compatibility with states containing only nodal data/stress.
+		if i < len(fs.plastic) && fs.plastic[i].bonds != nil {
+			el.restorePlasticState(fs.plastic[i])
 		}
 	}
 }
@@ -293,6 +319,10 @@ func (frame *Frame) AssemGlobalVector(safety float64) (int, []bool, []float64, e
 }
 
 func (frame *Frame) AssemGlobalMatrix(matf func(*Elem) ([][]float64, error), vecf func(*Elem, [][]float64, []float64, float64) []float64, safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
+	return frame.assemGlobalMatrix(matf, vecf, safety, false)
+}
+
+func (frame *Frame) assemGlobalMatrix(matf func(*Elem) ([][]float64, error), vecf func(*Elem, [][]float64, []float64, float64) []float64, safety float64, material bool) (*matrix.COOMatrix, []float64, error) {
 	var err error
 	var tmatrix, stiff [][]float64
 	size := 6 * len(frame.Nodes)
@@ -310,9 +340,14 @@ func (frame *Frame) AssemGlobalMatrix(matf func(*Elem) ([][]float64, error), vec
 		if stiff == nil {
 			continue
 		}
-		stiff, err = el.ModifyHinge(stiff)
-		if err != nil {
-			return nil, nil, err
+		connection := el
+		if material {
+			connection = el.plasticConnection()
+		} else {
+			stiff, err = el.ModifyHinge(stiff)
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 		stiff = Transformation(stiff, tmatrix)
 		for n1 := 0; n1 < 2; n1++ {
@@ -329,8 +364,8 @@ func (frame *Frame) AssemGlobalMatrix(matf func(*Elem) ([][]float64, error), vec
 				}
 			}
 		}
-		el.ModifyCMQ()
-		gvct = vecf(el, tmatrix, gvct, safety)
+		connection.ModifyCMQ()
+		gvct = vecf(connection, tmatrix, gvct, safety)
 	}
 	return gmtx, gvct, nil
 }
@@ -360,8 +395,7 @@ func (frame *Frame) KE(safety float64) (*matrix.COOMatrix, []float64, error) { /
 	return frame.AssemGlobalMatrix(matf, vecf, safety)
 }
 
-// TODO: implement
-func (frame *Frame) KP(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
+func (frame *Frame) KP(safety float64) (*matrix.COOMatrix, []float64, error) {
 	matf := func(elem *Elem) ([][]float64, error) {
 		estiff, err := elem.StiffMatrix()
 		if err != nil {
@@ -376,7 +410,7 @@ func (frame *Frame) KP(safety float64) (*matrix.COOMatrix, []float64, error) { /
 	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
 		return elem.AssemCMQ(tmatrix, gvct, safety)
 	}
-	return frame.AssemGlobalMatrix(matf, vecf, safety)
+	return frame.assemGlobalMatrix(matf, vecf, safety, true)
 }
 
 func (frame *Frame) KG(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
@@ -522,139 +556,33 @@ func (frame *Frame) UpdateStressEnergy(vec []float64) ([][]float64, []float64, e
 	return rtn, eng, nil
 }
 
-// TODO: implement
+// UpdateStressPlastic commits element return-mapping responses only after all
+// elements have succeeded, so a local failure cannot partially update the frame.
 func (frame *Frame) UpdateStressPlastic(vec []float64) ([][]float64, error) {
-	rtn := make([][]float64, len(frame.Elems))
-	fc := make([]float64, 6)
-	fu := make([]float64, 6)
-	for enum, el := range frame.Elems {
-		estiff, err := el.StiffMatrix() // TODO: check
-		lambda := make([]float64, 2) // TODO: check
-		dup := make([][]float64, 2)
-		due := make([][]float64, 2)
-		for j := 0; j < 2; j++ {
-			dup[j] = make([]float64, 6)
-			due[j] = make([]float64, 6)
+	if len(vec) != 6*len(frame.Nodes) {
+		return nil, fmt.Errorf("plastic displacement vector has size %d, want %d", len(vec), 6*len(frame.Nodes))
+	}
+	responses := make([]*PlasticResponse, len(frame.Elems))
+	for i, el := range frame.Elems {
+		if !el.IsValid {
+			continue
 		}
-		fe, dfdpe, qe, ae, _ := el.Coefficients(estiff)
 		gdisp := make([]float64, 12)
-		for i := 0; i < 2; i++ {
-			for j := 0; j < 6; j++ {
-				gdisp[6*i+j] = vec[6*el.Enod[i].Index+j]
-			}
+		for end := 0; end < 2; end++ {
+			copy(gdisp[6*end:6*end+6], vec[6*el.Enod[end].Index:6*el.Enod[end].Index+6])
 		}
-		df, err := el.ElemStress(gdisp)
+		r, err := el.TrialPlasticResponse(gdisp)
 		if err != nil {
 			return nil, err
 		}
-		f, _, _, _, _ := el.Coefficients(estiff)
-		for j := 0; j < 6; j++ {
-			fc[j] = 0.5 * (el.Sect.Yield[2*j] + el.Sect.Yield[2*j+1])
-			fu[j] = 0.5 * (el.Sect.Yield[2*j] - el.Sect.Yield[2*j+1])
+		responses[i] = r
+	}
+	rtn := make([][]float64, len(frame.Elems))
+	for i, r := range responses {
+		if r != nil {
+			frame.Elems[i].commitPlasticResponse(r)
+			rtn[i] = r.Increment
 		}
-		switch {
-		case ae[0][0] != 0.0 && ae[1][1] == 0.0: // I=PLASTIC J=ELASTIC
-			for i := 0; i < 12; i++ {
-				if el.Bonds[i].Num == 1 || el.Bonds[i].Num == -2 || el.Bonds[i].Num == -3 {
-					continue
-				}
-				lambda[0] += 1.0 / ae[0][0] * qe[i][0] * gdisp[i] // TODO: check
-			}
-			for j := 0; j < 6; j++ {
-				dup[0][j] = lambda[0] * dfdpe[0][j]
-			}
-		case ae[0][0] == 0.0 && ae[1][1] != 0.0: // I=ELASTIC J=PLASTIC
-			for i := 0; i < 12; i++ {
-				if el.Bonds[i].Num == 1 || el.Bonds[i].Num == -2 || el.Bonds[i].Num == -3 {
-					continue
-				}
-				lambda[1] += 1.0 / ae[1][1] * qe[i][1] * gdisp[i] // TODO: check
-			}
-			for j := 0; j < 6; j++ {
-				dup[1][j] = lambda[1] * dfdpe[1][j]
-			}
-		case ae[0][0] != 0.0 && ae[1][1] != 0.0:
-			for i := 0; i < 12; i++ {
-				if el.Bonds[i].Num == 1 || el.Bonds[i].Num == -2 || el.Bonds[i].Num == -3 {
-					continue
-				}
-				det := ae[0][0]*ae[1][1] - ae[0][1]*ae[1][0]
-				if det == 0.0 {
-					return nil, errors.New(fmt.Sprintf("ELEM %d: matrix singular", el.Num))
-				} else {
-					lambda[0] += 1.0 / det * (ae[1][1]*qe[i][0]*gdisp[i] - ae[0][1]*qe[i][1]*gdisp[i])
-					lambda[1] += 1.0 / det * (-ae[1][0]*qe[i][0]*gdisp[i] + ae[0][0]*qe[i][1]*gdisp[i])
-				}
-			}
-			for j := 0; j < 6; j++ {
-				dup[0][j] = lambda[0] * dfdpe[0][j]
-				dup[1][j] = lambda[1] * dfdpe[1][j]
-			}
-		}
-		if ae[0][0] == 0.0 || ae[1][1] == 0.0 { // I=ELASTIC OR J=ELASTIC
-			if el.IsBrace() {
-				dL := gdisp[6] - gdisp[0]
-				if dL < 0.0 && el.Bonds[0].Num == -2 && ae[0][0] == 0.0 {
-					lambda[0] = -1.0
-				}
-				if dL < 0.0 && el.Bonds[6].Num == -2 && ae[1][1] == 0.0 {
-					lambda[1] = -1.0
-				}
-				if dL >= 0.0 && el.Bonds[0].Num == -3 && ae[0][0] == 0.0 {
-					lambda[0] = -1.0
-				}
-				if dL >= 0.0 && el.Bonds[1].Num == -3 && ae[1][1] == 0.0 {
-					lambda[1] = -1.0
-				}
-			} else if ae[0][0] == 0.0 && fe[0]>=f[0] {
-				lambda[0] = -1.0
-			} else if ae[1][1] == 0.0 && fe[1]>=f[1] {
-				lambda[1] = -1.0
-			}
-		}
-		for i := 0; i < 2; i++ {
-			for j := 0; j < 6; j++ {
-				due[i][j] = gdisp[6*i+j] * dup[i][j]
-			}
-		}
-		for i := 0; i < 2; i++ {
-			// YIELD JUDGEMENT
-			if f[i] >= RADIUS {
-				fmt.Printf("YIELDED: ELEM %d %d %.3f %.3f", el.Num, i, f[i], lambda[i])
-				for j := 0; j < 6; j++ {
-					fmt.Printf(" %.3f/%.3f", el.Stress[6*i+j], fu[j])
-					if el.Bonds[6*i+j].Num == 0 {
-						if el.IsBrace() {
-							if j == 0 {
-								dL := gdisp[6] - gdisp[0]
-								rate := (el.Stress[6*i+j]-math.Pow(-1.0,float64(i))*fc[j])/fu[j]
-								if dL >= 0.0 && ((i==0 && rate<0.0)||(i==1 && rate>0.0)) {
-									el.Bonds[6*i+j].Num = -2 // LONGING
-								} else if dL < 0.0 && ((i==0 && rate>0.0)||(i==1 && rate<0.0)) {
-									el.Bonds[6*i+j].Num = -3 // SHORTING
-								}
-							}
-						} else {
-							el.Bonds[6*i+j].Num = -1 // PLASTIC
-						}
-						el.Phinge[i] = true
-					}
-				}
-				fmt.Printf("\n")
-			} else if lambda[i] < 0.0 { // DISLOAD JUDGEMENT
-				for j := 0; j < 6; j++ {
-					if el.Bonds[6*i+j].Num == -1 {
-						el.Bonds[6*i+j].Num = 0 // ELASTIC
-						el.Phinge[i] = false
-					}
-				}
-				if el.IsBrace() && (el.Bonds[6*i+0].Num == 1 || el.Bonds[6*i+0].Num == -2 || el.Bonds[6*i+0].Num == -3) {
-					el.Bonds[6*i+0].Num = 0
-					el.Phinge[i] = false
-				}
-			}
-		}
-		rtn[enum] = df
 	}
 	return rtn, nil
 }
@@ -751,11 +679,14 @@ type AnalysisCondition struct {
 
 	postprocess func(*Frame, [][]float64, []float64, []float64) (float64, bool)
 
-	nlap  int
-	delta float64
-	start float64
-	max   float64
-	eps   float64
+	nlap     int
+	delta    float64
+	start    float64
+	max      float64
+	eps      float64
+	newton   NewtonOptions
+	startSet bool
+	maxSet   bool
 }
 
 func NewAnalysisCondition() *AnalysisCondition {
@@ -809,9 +740,11 @@ func (cond *AnalysisCondition) SetDelta(d float64) {
 }
 func (cond *AnalysisCondition) SetStart(s float64) {
 	cond.start = s
+	cond.startSet = true
 }
 func (cond *AnalysisCondition) SetMax(m float64) {
 	cond.max = m
+	cond.maxSet = true
 }
 func (cond *AnalysisCondition) SetEps(e float64) {
 	cond.eps = e
@@ -844,12 +777,10 @@ func (cond *AnalysisCondition) NonLinear() bool {
 }
 
 func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCondition) error {
-	frame.running = true
-	frame.cancel = cancel
-	defer func() {
-		frame.running = false
-		cancel()
-	}()
+	if err := frame.beginAnalysis(cancel); err != nil {
+		return err
+	}
+	defer frame.finishAnalysis()
 	if cond.init {
 		frame.Initialise()
 	}
@@ -987,6 +918,7 @@ func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCond
 				}
 				frame.UpdateReaction(gmtx, vec)
 				frame.UpdateForm(vec)
+				frame.recordStaticLoading(cond, total, nans)
 				laptime(fmt.Sprintf("%04d / %04d: TOTAL = %.3f NORM = %.5E", lap+1, cond.nlap, total, rnorm/bnorm))
 				output(cond.otp, nans, lap+1, cond.nlap)
 				frame.Lapch <- lap + 1
@@ -1001,6 +933,7 @@ func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCond
 			}
 			dr := frame.UpdateReaction(gmtx, du)
 			frame.UpdateForm(du)
+			frame.recordStaticLoading(cond, total, 0)
 			delta := cond.delta
 			next := true
 			if cond.postprocess != nil {
@@ -1031,76 +964,12 @@ func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCond
 	return nil
 }
 
-// TODO: implement && merge to StaticAnalysis
-// func (frame *Frame) Arclm101(otp string, init bool, nlap int, dsafety float64) error { // TODO: speed up
+// Arclm101 performs small-displacement material-nonlinear load control with
+// global Newton equilibrium iterations and transactional load-step cutbacks.
 func (frame *Frame) Arclm101(cancel context.CancelFunc, cond *AnalysisCondition) error {
-	init := cond.init
-	otp := cond.otp[0]
-	nlap := cond.nlap
-	dsafety := cond.delta
-	if init {
-		frame.Initialise()
-	}
-	start := time.Now()
-	laptime := func(message string) {
-		end := time.Now()
-		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
-	}
-	solver := LLS(frame, laptime)
-	var err error
-	var answers [][]float64
-	var gmtx *matrix.COOMatrix
-	var gvct, vec []float64
-	var csize int
-	var conf []bool
-	safety := 0.0
-	for lap := 0; lap < nlap; lap++ {
-		safety += dsafety
-		gmtx, gvct, err = frame.KP(dsafety)
-		if err != nil {
-			return err
-		}
-		csize, conf, vec = frame.AssemConf(gvct, dsafety)
-		laptime("Assem")
-		answers, err = solver.Solve(gmtx, csize, conf, vec)
-		if err != nil {
-			return err
-		}
-		tmp := frame.FillConf(answers[0])
-		_, err = frame.UpdateStressPlastic(tmp)
-		if err != nil {
-			return err
-		}
-		frame.UpdateReaction(gmtx, tmp)
-		frame.UpdateForm(tmp)
-		sign := 0.0
-		for i := 0; i < len(vec); i++ {
-			sign += answers[0][i] * vec[i]
-		}
-		laptime(fmt.Sprintf("%04d / %04d: SAFETY = %.3f, SIGN=%.3f", lap+1, nlap, safety, sign))
-		if otp == "" {
-			otp = "hogtxt.otp"
-		}
-		w, err := os.Create(strings.Replace(otp, ".", fmt.Sprintf("@%d.", lap+1), -1))
-		if err != nil {
-			return err
-		}
-		defer w.Close()
-		frame.WriteTo(w)
-		frame.Lapch <- lap + 1
-		<-frame.Lapch
-	}
-	return nil
+	return frame.arclm101Newton(cancel, cond)
 }
 
-// ANALYSIS FOR PILES UNDER LATERAL LOAD
-// E: 70 * α * ξ [tf/m2]
-// A: 3.16 * B^(-0.75) * N * B/100 * L [m2]
-//    α: SAND=80 CLAY=60
-//    ξ: PILE GROUPE COEFFICIENT 1.0
-//    B : PILE DIAMETER[cm]
-//    N : N-VALUE
-//    L : SOIL SPRING PITFCH[m]
 func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) error { // TODO: speed up
 	if init {
 		frame.Initialise()

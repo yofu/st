@@ -254,6 +254,9 @@ type Elem struct {
 	Energyb   float64
 	IsValid   bool
 	CheckFunc func() int
+	// Original bond definitions for components changed by material plasticity.
+	plasticBonds []*Sect
+	material     *plasticMaterialState
 }
 
 func NewElem() *Elem {
@@ -499,15 +502,15 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 	f := make([]float64, 2)
 	f1 := make([]float64, 2)
 	f2 := make([]float64, 2)
-	var v, value, unit float64
-	values := make([]float64, 6)
-	units := make([]float64, 6)
+	var v, value float64
 	dfdp := make([][]float64, 2)
 	for j := 0; j < 6; j++ {
 		fc[j] = 0.5 * (elem.Sect.Yield[2*j] + elem.Sect.Yield[2*j+1])
 		fu[j] = 0.5 * (elem.Sect.Yield[2*j] - elem.Sect.Yield[2*j+1])
 	}
 	for i := 0; i < 2; i++ {
+		values := make([]float64, 6)
+		units := make([]float64, 6)
 		for j := 0; j < 6; j++ {
 			if elem.Bonds[6*i+j].Num == 1 {
 				continue
@@ -532,12 +535,9 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 				values[j] = value
 				f1[i] += math.Pow(value, elem.Sect.Exp)
 			}
-			if v == 0.0 {
-				unit = 0.0
-			} else {
-				unit = v / math.Abs(v)
+			if v != 0.0 {
+				units[j] = math.Copysign(1.0, v)
 			}
-			units[j] = unit
 		}
 		f[i] = math.Pow(math.Pow(f1[i], elem.Sect.Exq/elem.Sect.Exp)+math.Pow(f2[i], elem.Sect.Exq/elem.Sect.Exp), 1.0/elem.Sect.Exq)
 		if f[i] > RADIUS && err[i] == nil {
@@ -545,18 +545,20 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 		}
 		dfdp[i] = make([]float64, 6)
 		for j := 0; j < 6; j++ {
-			if elem.Bonds[6*i+j].Num == 1 {
+			// Use the zero normal at the norm's origin (an elastic state).
+			if elem.Bonds[6*i+j].Num == 1 || values[j] == 0.0 || f[i] == 0.0 {
 				continue
 			}
-			if elem.Sect.Exp == elem.Sect.Exq {
-				dfdp[i][j] = unit / fu[j] * math.Pow(values[j], elem.Sect.Exp-1.0)
-			} else {
-				if j == 1 || j == 2 { // Qx, Qy
-					dfdp[i][j] = unit / fu[j] * math.Pow(f2[i], elem.Sect.Exq/elem.Sect.Exp-1.0) * math.Pow(values[j], elem.Sect.Exp-1.0)
-				} else {
-					dfdp[i][j] = unit / fu[j] * math.Pow(f1[i], elem.Sect.Exq/elem.Sect.Exp-1.0) * math.Pow(values[j], elem.Sect.Exp-1.0)
-				}
+			group := f1[i]
+			if j == 1 || j == 2 { // Qx, Qy
+				group = f2[i]
 			}
+			groupNorm := math.Pow(group, 1.0/elem.Sect.Exp)
+			// Exact derivative of the nested norm, including f^(1-Exq).
+			// Ratios avoid zero times a negative power for an empty group.
+			dfdp[i][j] = units[j] / fu[j] *
+				math.Pow(groupNorm/f[i], elem.Sect.Exq-1.0) *
+				math.Pow(values[j]/groupNorm, elem.Sect.Exp-1.0)
 		}
 	}
 	q := make([][]float64, 12)
@@ -669,67 +671,13 @@ func (elem *Elem) StiffMatrix() ([][]float64, error) {
 	return estiff, nil
 }
 
+// PlasticMatrix returns the algorithmic local material tangent, with input
+// connection springs/releases already condensed. Do not apply ModifyHinge again.
 func (elem *Elem) PlasticMatrix(estiff [][]float64) ([][]float64, error) {
-	_, _, q, a, _ := elem.Coefficients(estiff)
-	p := make([][]float64, 12)
-	for i := 0; i < 12; i++ {
-		p[i] = make([]float64, 12)
+	if elem.material != nil && elem.material.tangent != nil {
+		return copyPlasticMatrix(elem.material.tangent), nil
 	}
-	switch {
-	case a[0][0] != 0.0 && a[1][1] == 0.0: // I=PLASTIC J=ELASTIC
-		for i := 0; i < 12; i++ {
-			if elem.Bonds[i].Num == 1 || elem.Bonds[i].Num == -2 || elem.Bonds[i].Num == -3 {
-				continue
-			}
-			for j := 0; j < 12; j++ {
-				if elem.Bonds[j].Num == 1 || elem.Bonds[j].Num == -2 || elem.Bonds[j].Num == -3 {
-					continue
-				}
-				p[i][j] = -1.0 / a[0][0] * q[i][0] * q[j][0]
-			}
-		}
-	case a[0][0] == 0.0 && a[1][1] != 0.0: // I=ELASTIC J=PLASTIC
-		for i := 0; i < 12; i++ {
-			if elem.Bonds[i].Num == 1 || elem.Bonds[i].Num == -2 || elem.Bonds[i].Num == -3 {
-				continue
-			}
-			for j := 0; j < 12; j++ {
-				if elem.Bonds[j].Num == 1 || elem.Bonds[j].Num == -2 || elem.Bonds[j].Num == -3 {
-					continue
-				}
-				p[i][j] = -1.0 / a[1][1] * q[i][1] * q[j][1]
-			}
-		}
-	case a[0][0] != 0.0 && a[1][1] != 0.0: // I=PLASTIC J=PLASTIC
-		for i := 0; i < 12; i++ {
-			if elem.Bonds[i].Num == 1 || elem.Bonds[i].Num == -2 || elem.Bonds[i].Num == -3 {
-				continue
-			}
-			for j := 0; j < 12; j++ {
-				if elem.Bonds[j].Num == 1 || elem.Bonds[j].Num == -2 || elem.Bonds[j].Num == -3 {
-					continue
-				}
-				det := a[0][0]*a[1][1] - a[0][1]*a[1][0]
-				if det == 0.0 {
-					return nil, errors.New(fmt.Sprintf("ELEM %d: matrix singular", elem.Num))
-				} else {
-					p[i][j] = -1.0 / det * (a[1][1]*q[i][0]*q[j][0] - a[0][1]*q[i][0]*q[j][1] - a[1][0]*q[i][1]*q[j][0] + a[0][0]*q[i][1]*q[j][1])
-				}
-			}
-		}
-	}
-	for i := 0; i < 12; i++ {
-		if elem.Bonds[i].Num == 1 || elem.Bonds[i].Num == -2 || elem.Bonds[i].Num == -3 {
-			continue
-		}
-		for j := 0; j < 12; j++ {
-			if elem.Bonds[j].Num == 1 || elem.Bonds[j].Num == -2 || elem.Bonds[j].Num == -3 {
-				continue
-			}
-			estiff[i][j] += p[i][j]
-		}
-	}
-	return estiff, nil
+	return elem.plasticConnection().ModifyHinge(estiff)
 }
 
 func (elem *Elem) PlasticMatrix2(estiff [][]float64) ([][]float64, error) { // ModifyHingeを参考にした版。valが回転剛性

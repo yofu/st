@@ -5764,80 +5764,19 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		return Usage("DEPRECATED: use :analysis -nlgeom -pp=floor {-z=val} {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
 	case "arclm101":
 		if usage {
-			return Usage(":arclm101 {-period=name} {-eps=val} {-step=nlap;delta;start;max} filename")
+			return Usage(":arclm101 {-period=name} {-nlap=additional_steps} {-delta=increment} {-step=nlap;delta[;start;max]} {-init} {-eps=val} {-wait} [filename]")
 		}
-		cond := arclm.NewAnalysisCondition()
-		if e, ok := argdict["EPS"]; ok {
-			if e != "" {
-				tmp, err := strconv.ParseFloat(e, 64)
-				if err == nil {
-					cond.SetEps(tmp)
-				}
-			}
-		}
-		var otp string
-		var m bytes.Buffer
-		if fn == "" {
-			otp = Ce(frame.Path, ".otp")
-		} else {
-			otp = fn
-		}
+		output := fn
 		if o, ok := argdict["OTP"]; ok {
-			otp = o
+			output = o
 		}
-		cond.SetOutput([]string{otp})
-		eps := 1E-3
-		if s, ok := argdict["EPS"]; ok {
-			tmp, err := strconv.ParseFloat(s, 64)
-			if err == nil {
-				eps = tmp
-			}
-		}
-		per := "L"
-		if p, ok := argdict["PERIOD"]; ok {
-			if p != "" {
-				per = strings.ToUpper(p)
-			}
+		per, af, cond, offset, err := prepareArclm101(frame, argdict, output)
+		if err != nil {
+			return err
 		}
 		pers := []string{per}
-		if s, ok := argdict["STEP"]; ok { // NLAP;DELTA;START;MAX
-			ns := strings.Count(s, ";")
-			if ns < 3 {
-				s += strings.Repeat(";", 3-ns)
-			}
-			lis := strings.Split(s, ";")
-			val, err := strconv.ParseInt(lis[0], 10, 64)
-			if err == nil {
-				cond.SetNlap(int(val))
-			}
-			tmp, err := strconv.ParseFloat(lis[1], 64)
-			if err == nil {
-				cond.SetDelta(tmp)
-			}
-			tmp, err = strconv.ParseFloat(lis[2], 64)
-			if err == nil {
-				cond.SetStart(tmp)
-			}
-			tmp, err = strconv.ParseFloat(lis[3], 64)
-			if err == nil {
-				cond.SetMax(tmp)
-			}
-		}
-		af := frame.Arclms[per]
-		if _, ok := argdict["NOINIT"]; ok {
-			af.RestoreState(frame.Arclms[frame.Show.Period].SaveState())
-			cond.SetInit(false)
-		}
-		m.WriteString(fmt.Sprintf("PERIOD: %s\n", per))
-		m.WriteString(fmt.Sprintf("OUTPUT: %s\n", otp))
-		m.WriteString(fmt.Sprintf("EPS: %.3E", eps))
-		if af == nil {
-			return fmt.Errorf(":arclm101: frame isn't extracted to period %s", per)
-		}
 		af.Output = stw.HistoryWriter()
-		if af.Running() {
-			return fmt.Errorf("analysis is running")
-		}
+		var m bytes.Buffer
 		m.WriteString(fmt.Sprintf("PERIOD      : %s\n", per))
 		m.WriteString(cond.String())
 		wait := false
@@ -5851,8 +5790,8 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			err := af.Arclm101(cancel, cond)
 			af.Endch <- err
 		}()
-		nlap := cond.Nlap()
-		stw.CurrentLap("Calculating...", 0, nlap)
+		nlap := offset + cond.Nlap()
+		stw.CurrentLap("Calculating...", offset, nlap)
 		pivot := make(chan int)
 		end := make(chan int)
 		nodes := make([]*Node, len(frame.Nodes))
@@ -5869,7 +5808,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		pind := 0
 		retval := 0
-		currentlap := 0
+		currentlap := offset
 		go func() {
 		read101:
 			for {
@@ -5885,6 +5824,10 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					nper := fmt.Sprintf("%s@%d", pers[pind], lap)
 					SetPeriod(stw, nper)
 					frame.ReadArclmData(af, nper)
+					frame.Nlap[per] = lap
+					if err := frame.ZoubunSummary(filepath.Join(stw.Cwd(), "summary.txt"), per, cond); err != nil {
+						stw.History(fmt.Sprintf("summary.txt: %v", err))
+					}
 					af.Lapch <- retval
 					stw.CurrentLap("Calculating...", lap, nlap)
 					stw.Redraw()
@@ -5895,7 +5838,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					if err != nil {
 						stw.History(err.Error())
 					} else {
-						stw.CurrentLap("Completed", nlap, nlap)
+						stw.CurrentLap("Completed", currentlap, currentlap)
 					}
 					otps := cond.Output()
 					if len(otps) > pind {
@@ -5903,7 +5846,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					}
 					SetPeriod(stw, fmt.Sprintf("%s@%d", per, currentlap))
 					frame.Nlap[per] = currentlap
-					frame.ZoubunSummary(filepath.Join(stw.Cwd(), "summary.txt"), per, cond)
+					if err := frame.ZoubunSummary(filepath.Join(stw.Cwd(), "summary.txt"), per, cond); err != nil {
+						stw.History(fmt.Sprintf("summary.txt: %v", err))
+					}
 					stw.Redraw()
 					if wait {
 						wch <- 1
