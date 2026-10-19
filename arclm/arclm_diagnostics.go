@@ -87,6 +87,7 @@ type bucklingDiagnosticPlanKey struct {
 }
 
 type bucklingDiagnostics struct {
+	label                    string
 	plans                    map[bucklingDiagnosticPlanKey]*matrix.SymLDLTPlan
 	options                  BucklingDiagnosticsOptions
 	directory                string
@@ -104,6 +105,11 @@ type bucklingDiagnostics struct {
 }
 
 func startBucklingDiagnostics(options *BucklingDiagnosticsOptions, output io.Writer) (*bucklingDiagnostics, error) {
+	return startEigenDiagnostics(options, output, "BCLNG")
+}
+
+func startEigenDiagnostics(options *BucklingDiagnosticsOptions, output io.Writer, label string) (*bucklingDiagnostics, error) {
+
 	if options == nil {
 		return nil, nil
 	}
@@ -121,7 +127,7 @@ func startBucklingDiagnostics(options *BucklingDiagnosticsOptions, output io.Wri
 	if err := os.MkdirAll(options.Directory, 0755); err != nil {
 		return nil, err
 	}
-	directory, err := os.MkdirTemp(options.Directory, "bclng-")
+	directory, err := os.MkdirTemp(options.Directory, strings.ToLower(label)+"-")
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +139,7 @@ func startBucklingDiagnostics(options *BucklingDiagnosticsOptions, output io.Wri
 	if err != nil {
 		return nil, err
 	}
-	d := &bucklingDiagnostics{options: *options, directory: directory, logFile: f, encoder: json.NewEncoder(f), output: output, started: time.Now(), compared: make(map[uint64]bool)}
+	d := &bucklingDiagnostics{label: label, options: *options, directory: directory, logFile: f, encoder: json.NewEncoder(f), output: output, started: time.Now(), compared: make(map[uint64]bool)}
 	if options.CPUProfile {
 		d.cpuFile, err = os.OpenFile(filepath.Join(directory, "cpu.pprof"), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 		if err == nil {
@@ -164,8 +170,8 @@ func startBucklingDiagnostics(options *BucklingDiagnosticsOptions, output io.Wri
 			close(d.profileDone)
 		}(d.options.CPUSeconds)
 	}
-	fmt.Fprintf(output, "BCLNG DIAGNOSTICS: %s\n", directory)
-	d.log("session_begin", map[string]interface{}{"go_version": runtime.Version(), "goos": runtime.GOOS, "goarch": runtime.GOARCH, "gomaxprocs": runtime.GOMAXPROCS(0), "cpu_count": runtime.NumCPU(), "options": options, "memory_scope": "process-wide; includes concurrent work and instrumentation", "cpu_scope": "whole process; use backend/phase/shift pprof labels", "timing_scope": "instrumented; comparisons exclude GUI pivot notifications"})
+	fmt.Fprintf(output, "%s DIAGNOSTICS: %s\n", label, directory)
+	d.log("session_begin", map[string]interface{}{"analysis": label, "go_version": runtime.Version(), "goos": runtime.GOOS, "goarch": runtime.GOARCH, "gomaxprocs": runtime.GOMAXPROCS(0), "cpu_count": runtime.NumCPU(), "options": options, "memory_scope": "process-wide; includes concurrent work and instrumentation", "cpu_scope": "whole process; use backend/phase/shift pprof labels", "timing_scope": "instrumented; comparisons exclude GUI pivot notifications"})
 	if d.failure != nil {
 		d.close(d.failure)
 		return nil, d.failure
@@ -201,9 +207,9 @@ func (d *bucklingDiagnostics) measure(phase, backend string, shift *float64, ran
 		return d.failure
 	}
 	if shift != nil {
-		fmt.Fprintf(d.output, "BCLNG DIAG BEGIN %d %s %s mu=%.17g rank=%d\n", id, phase, backend, *shift, rank)
+		fmt.Fprintf(d.output, "%s DIAG BEGIN %d %s %s mu=%.17g rank=%d\n", d.label, id, phase, backend, *shift, rank)
 	} else {
-		fmt.Fprintf(d.output, "BCLNG DIAG BEGIN %d %s %s\n", id, phase, backend)
+		fmt.Fprintf(d.output, "%s DIAG BEGIN %d %s %s\n", d.label, id, phase, backend)
 	}
 	var before, after runtime.MemStats
 	runtime.ReadMemStats(&before)
@@ -229,7 +235,7 @@ func (d *bucklingDiagnostics) measure(phase, backend string, shift *float64, ran
 		fields["error"] = err.Error()
 	}
 	d.log("operation_end", fields)
-	fmt.Fprintf(d.output, "BCLNG DIAG END %d %s %s wall=%.3fs alloc=%.1fMB gc=%d error=%v\n", id, phase, backend, wall.Seconds(), float64(after.TotalAlloc-before.TotalAlloc)/1e6, after.NumGC-before.NumGC, err)
+	fmt.Fprintf(d.output, "%s DIAG END %d %s %s wall=%.3fs alloc=%.1fMB gc=%d error=%v\n", d.label, id, phase, backend, wall.Seconds(), float64(after.TotalAlloc-before.TotalAlloc)/1e6, after.NumGC-before.NumGC, err)
 	return errors.Join(err, d.failure)
 }
 
