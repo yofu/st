@@ -1987,16 +1987,18 @@ func (stw *Window) SaveCommandHistory() error {
 func (stw *Window) addCommandHistory(str string) {
 	tmp := make([]string, CommandHistorySize)
 	tmp[0] = str
-	ind := 0
-	for i := 0; i < CommandHistorySize-1; i++ {
+	j := 1
+	for i := 0; i < len(stw.comhist); i++ {
+		// 同じコマンドは追加しない
 		if stw.comhist[i] == str {
-			ind++
-			if i+ind >= CommandHistorySize {
-				break
-			}
 			continue
 		}
-		tmp[i+1] = stw.comhist[i+ind]
+		// tmpがいっぱいになったら終了
+		if j >= CommandHistorySize {
+			break
+		}
+		tmp[j] = stw.comhist[i]
+		j++
 	}
 	stw.comhist = tmp
 }

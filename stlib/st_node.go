@@ -265,7 +265,7 @@ func (node *Node) MoveTo(x, y, z float64) {
 }
 
 func (node *Node) MoveToLine(n1, n2 *Node, fixed int) error {
-	if fixed < 0 || fixed > 3 {
+	if fixed < 0 || fixed > 2 {
 		return errors.New("MoveToLine: Index out of range")
 	}
 	d := Direction(n1, n2, false)
@@ -276,6 +276,55 @@ func (node *Node) MoveToLine(n1, n2 *Node, fixed int) error {
 	for i := 0; i < 3; i++ {
 		node.Coord[i] = n1.Coord[i] + k*d[i]
 	}
+	return nil
+}
+
+func (node *Node) MoveToPlane(n1, n2, n3 *Node, move int) error {
+	if move < 0 || move > 2 {
+		return errors.New("MoveToPlane: Index out of range")
+	}
+
+	// n1 -> n2, n1 -> n3 のベクトル
+	v1 := [3]float64{
+		n2.Coord[0] - n1.Coord[0],
+		n2.Coord[1] - n1.Coord[1],
+		n2.Coord[2] - n1.Coord[2],
+	}
+	v2 := [3]float64{
+		n3.Coord[0] - n1.Coord[0],
+		n3.Coord[1] - n1.Coord[1],
+		n3.Coord[2] - n1.Coord[2],
+	}
+
+	// 外積により平面の法線ベクトルを求める
+	normal := [3]float64{
+		v1[1]*v2[2] - v1[2]*v2[1],
+		v1[2]*v2[0] - v1[0]*v2[2],
+		v1[0]*v2[1] - v1[1]*v2[0],
+	}
+
+	// move方向に平面が平行な場合は解けない
+	if math.Abs(normal[move]) < 1.0e-12 {
+		return errors.New("MoveToPlane: Zero Division")
+	}
+
+	// 平面方程式
+	//
+	// normal[0] * (x - n1.x)
+	// + normal[1] * (y - n1.y)
+	// + normal[2] * (z - n1.z) = 0
+	//
+	// から move 成分だけを求める
+
+	sum := 0.0
+	for i := 0; i < 3; i++ {
+		if i != move {
+			sum += normal[i] * (node.Coord[i] - n1.Coord[i])
+		}
+	}
+
+	node.Coord[move] = n1.Coord[move] - sum/normal[move]
+
 	return nil
 }
 
