@@ -33,6 +33,7 @@ type bucklingSearch struct {
 	factorMu           float64
 	diagnostics        *bucklingDiagnostics
 	rank               int
+	check              func() error
 
 	inertiaEvaluations, solveFactorizations, cacheHits             int
 	bracketFactorizations, refinementAttempts, refinementsAccepted int
@@ -43,11 +44,21 @@ func newBucklingSearch(ke, kg *matrix.COOMatrix, csize int, conf []bool, eps, ri
 }
 
 func newBucklingSearchDiagnostics(ke, kg *matrix.COOMatrix, csize int, conf []bool, eps, right float64, pivot chan int, d *bucklingDiagnostics) (*bucklingSearch, error) {
+	return newBucklingSearchChecked(ke, kg, csize, conf, eps, right, pivot, d, nil)
+}
+
+func newBucklingSearchChecked(ke, kg *matrix.COOMatrix, csize int, conf []bool, eps, right float64, pivot chan int, d *bucklingDiagnostics, check func() error) (*bucklingSearch, error) {
+	if check != nil {
+		if err := check(); err != nil {
+			return nil, err
+		}
+	}
 	if ke == nil || kg == nil || ke.Size != kg.Size || eps <= 0 || math.IsNaN(eps) || math.IsInf(eps, 0) || right <= 0 || math.IsNaN(right) || math.IsInf(right, 0) {
 		return nil, fmt.Errorf("invalid buckling search parameters")
 	}
 	s := &bucklingSearch{ke: ke, kg: kg, csize: csize, conf: append([]bool(nil), conf...), eps: eps, right: right, pivot: pivot}
 	s.diagnostics = d
+	s.check = check
 	var positive int
 	var err error
 	if d == nil {
@@ -111,6 +122,11 @@ func newBucklingSearchDiagnostics(ke, kg *matrix.COOMatrix, csize int, conf []bo
 		return nil, err
 	}
 	s.tightenGershgorin()
+	if check != nil {
+		if err := check(); err != nil {
+			return nil, err
+		}
+	}
 	return s, nil
 }
 
@@ -151,6 +167,11 @@ func (s *bucklingSearch) tightenGershgorin() {
 }
 
 func (s *bucklingSearch) count(mu float64) (int, error) {
+	if s.check != nil {
+		if err := s.check(); err != nil {
+			return 0, err
+		}
+	}
 	at := sort.Search(len(s.samples), func(i int) bool { return s.samples[i].mu >= mu })
 	if at < len(s.samples) && s.samples[at].mu == mu {
 		s.cacheHits++
@@ -208,6 +229,11 @@ func (s *bucklingSearch) evaluateCount(mu float64) (int, error) {
 }
 
 func (s *bucklingSearch) eigenvalue(rank int, progress func(float64, int)) (float64, *matrix.SymLDLTFactor, error) {
+	if s.check != nil {
+		if err := s.check(); err != nil {
+			return 0, nil, err
+		}
+	}
 	if rank < 1 || rank > s.elastic.Size {
 		return 0, nil, fmt.Errorf("invalid buckling rank %d", rank)
 	}

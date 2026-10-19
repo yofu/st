@@ -45,6 +45,22 @@ func inverseBucklingCSRProgress(ke, kg *matrix.SymmetricCSR, C *matrix.SymLDLTFa
 // orthogonality metric: KE for buckling and M for finite vibration modes.
 // The RHS remains KE*x, irrespective of the normalization metric.
 func inversePencilCSRProgress(ke, kg, metric *matrix.SymmetricCSR, C *matrix.SymLDLTFactor, target, eps float64, locked, klocked [][]float64, progress func(int, float64, float64)) (float64, []float64, error) {
+	return inversePencilCSRProgressChecked(ke, kg, metric, C, target, eps, locked, klocked, progress, nil)
+}
+
+func inversePencilCSRProgressChecked(ke, kg, metric *matrix.SymmetricCSR, C *matrix.SymLDLTFactor, target, eps float64, locked, klocked [][]float64, progress func(int, float64, float64), check func() error) (float64, []float64, error) {
+	return inversePencilCSRProgressQuality(ke, kg, metric, C, target, eps, locked, klocked, progress, check, nil, bucklingVectorTolerance)
+}
+
+// quality optionally supplies an operator-scaled residual for automatic
+// damping-period estimates on models with very different DOF stiffness scales.
+// Existing buckling/vibration entry points retain their force residual test.
+func inversePencilCSRProgressQuality(ke, kg, metric *matrix.SymmetricCSR, C *matrix.SymLDLTFactor, target, eps float64, locked, klocked [][]float64, progress func(int, float64, float64), check func() error, quality func(float64, []float64, []float64, []float64) (float64, error), residualTolerance float64) (float64, []float64, error) {
+	if check != nil {
+		if err := check(); err != nil {
+			return 0, nil, err
+		}
+	}
 	if ke == nil || kg == nil || metric == nil || metric.Size != ke.Size {
 		return 0, nil, fmt.Errorf("invalid inverse iteration operators or metric")
 	}
@@ -114,6 +130,11 @@ func inversePencilCSRProgress(ke, kg, metric *matrix.SymmetricCSR, C *matrix.Sym
 	residual := math.Inf(1)
 	convergedPasses := 0
 	for iteration := 0; iteration < 100; iteration++ {
+		if check != nil {
+			if err := check(); err != nil {
+				return 0, nil, err
+			}
+		}
 		// (KG + sigma*KE) y = KE*x, with the factor reused each iteration.
 		y, err := C.Solve(kx)
 		if err != nil {
@@ -141,6 +162,12 @@ func inversePencilCSRProgress(ke, kg, metric *matrix.SymmetricCSR, C *matrix.Sym
 			gnorm = math.Hypot(gnorm, gx[j])
 		}
 		residual = rnorm / (gnorm + math.Abs(mu)*knorm)
+		if quality != nil {
+			residual, err = quality(mu, x, kx, gx)
+			if err != nil {
+				return 0, nil, err
+			}
+		}
 		orthogonality := math.Abs(Dot(x, metricX, size) - 1)
 		for _, kq := range klocked {
 			orthogonality = math.Max(orthogonality, math.Abs(Dot(x, kq, size)))
@@ -148,7 +175,7 @@ func inversePencilCSRProgress(ke, kg, metric *matrix.SymmetricCSR, C *matrix.Sym
 		if progress != nil {
 			progress(iteration+1, residual, orthogonality)
 		}
-		if residual <= bucklingVectorTolerance && orthogonality <= bucklingVectorTolerance {
+		if residual <= residualTolerance && orthogonality <= bucklingVectorTolerance {
 			convergedPasses++
 			// A lightly contaminated vector in a tight cluster can leave a
 			// residual floor in the next M-deflated mode. Refine two more

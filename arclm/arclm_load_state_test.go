@@ -32,8 +32,10 @@ func runLinearPreload(t *testing.T, f *Frame) {
 	f.Pivot = make(chan int, 6*len(f.Nodes))
 	f.Lapch = make(chan int)
 	done := make(chan struct{})
-	defer close(done)
+	exited := make(chan struct{})
+	defer func() { close(done); <-exited }()
 	go func() {
+		defer close(exited)
 		for {
 			select {
 			case <-done:

@@ -35,6 +35,7 @@ type Frame struct {
 	plasticLoad      float64
 	plasticLoadValid bool
 	loading          *plasticLoadState
+	transient        *TimeHistoryState
 }
 
 func NewFrame() *Frame {
@@ -58,6 +59,7 @@ type FrameState struct {
 	plasticLoad      float64
 	plasticLoadValid bool
 	loading          *plasticLoadState
+	transient        *TimeHistoryState
 }
 
 func NewFrameState(nnode, nelem int) *FrameState {
@@ -218,6 +220,7 @@ func (frame *Frame) SaveInput(fn string) error {
 func (frame *Frame) Initialise() {
 	frame.plasticLoad, frame.plasticLoadValid = 0, false
 	frame.loading = nil
+	frame.transient = nil
 	for _, n := range frame.Nodes {
 		for i := 0; i < 6; i++ {
 			n.Disp[i] = 0.0
@@ -240,6 +243,7 @@ func (frame *Frame) SaveState() *FrameState {
 	fs := NewFrameState(nnode, nelem)
 	fs.plasticLoad, fs.plasticLoadValid = frame.plasticLoad, frame.plasticLoadValid
 	fs.loading = copyPlasticLoading(frame.loading)
+	fs.transient = copyTimeHistoryState(frame.transient)
 	for i, n := range frame.Nodes {
 		for j := 0; j < 6; j++ {
 			fs.Conf[i][j] = n.Conf[j]
@@ -259,6 +263,7 @@ func (frame *Frame) SaveState() *FrameState {
 func (frame *Frame) RestoreState(fs *FrameState) {
 	frame.plasticLoad, frame.plasticLoadValid = fs.plasticLoad, fs.plasticLoadValid
 	frame.loading = copyPlasticLoading(fs.loading)
+	frame.transient = copyTimeHistoryState(fs.transient)
 	for i, n := range frame.Nodes {
 		for j := 0; j < 6; j++ {
 			n.Conf[j] = fs.Conf[i][j]

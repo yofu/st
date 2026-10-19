@@ -589,6 +589,9 @@ func (frame *Frame) arclm101Newton(cancel context.CancelFunc, cond *AnalysisCond
 		return err
 	}
 	defer frame.finishAnalysis()
+	if cond != nil && !cond.init && frame.transient != nil {
+		return fmt.Errorf("Arclm101: a dynamic state cannot be used as a static continuation; restore the static preload")
+	}
 	a, err := newPlasticNewtonAnalysis(frame, ctx, cond)
 	if err != nil {
 		return err

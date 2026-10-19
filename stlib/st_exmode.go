@@ -5861,6 +5861,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			<-wch
 		}
 		return ArclmStart(m.String())
+	case "timehistory":
+		if usage {
+			return Usage(timeHistoryUsage)
+		}
+		return runTimeHistoryCommand(stw, fn, argdict)
 	case "arclm301":
 		if usage {
 			return Usage(":arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename")
