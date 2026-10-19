@@ -67,6 +67,7 @@ var (
 	MOVEELEM            = &Command{"MOVE", "MOVE ELEM", "move selected elems", moveelem}
 	MOVENODE            = &Command{"MOVE", "MOVE NODE", "move selected nodes", movenode}
 	MOVETOLINE          = &Command{"MOVETOLINE", "MOVE NODE ONTO LINE", "move selected nodes onto the line", movetoline}
+	MOVETOPLANE         = &Command{"MOVETOPLANE", "MOVE NODE ONTO PLANE", "move selected nodes onto the plane", movetoplane}
 	PINCHNODE           = &Command{"NDPC", "PINCH NODE", "pinch nodes", pinchnode}
 	ROTATE              = &Command{"ROTE", "ROTATE", "rotate selected nodes", rotate}
 	MIRROR              = &Command{"MIRR", "MIRROR", "mirror selected elems", mirror}
@@ -158,6 +159,7 @@ func init() {
 	Commands["MOVEELEM"] = MOVEELEM
 	Commands["MOVENODE"] = MOVENODE
 	Commands["MOVETOLINE"] = MOVETOLINE
+	Commands["MOVETOPLANE"] = MOVETOPLANE
 	Commands["PINCHNODE"] = PINCHNODE
 	Commands["ROTATE"] = ROTATE
 	Commands["MIRROR"] = MIRROR
@@ -1343,6 +1345,68 @@ func movetoline(stw *Window) {
 		case 'Z', 'z':
 			fixed = 2
 			stw.addHistory("直線を指定[Zを固定]")
+		}
+	})
+}
+
+// }}}
+
+// MOVETOPLANE// {{{
+func movetoplane(stw *Window) {
+	move := 2
+	ns := make([]*st.Node, 0)
+	if stw.NodeSelected() {
+		for _, n := range stw.SelectedNodes() {
+			if n != nil {
+				ns = append(ns, n)
+			}
+		}
+	}
+	if len(ns) == 0 {
+		stw.addHistory("移動する節点がありません")
+		stw.EscapeAll()
+		return
+	}
+	stw.addHistory("平面を指定[X,Yを固定]")
+	getnnodes(stw, 3, func(num int) {
+		switch num {
+		default:
+			stw.EscapeAll()
+		case 3:
+			sns := stw.SelectedNodes()[:3]
+			for _, n := range ns {
+				n.MoveToPlane(sns[0], sns[1], sns[2], move)
+			}
+			stw.cdcanv.Foreground(cd.CD_WHITE)
+			stw.cdcanv.WriteMode(cd.CD_REPLACE)
+			st.Snapshot(stw)
+			stw.EscapeAll()
+		}
+	})
+	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+		key := iup.KeyState(arg.Key)
+		switch key.Key() {
+		default:
+			stw.DefaultKeyAny(arg)
+		case KEY_BS:
+			val := stw.cline.GetAttribute("VALUE")
+			if val != "" {
+				stw.cline.SetAttribute("VALUE", val[:len(val)-1])
+			}
+		case KEY_DELETE:
+			stw.SelectNode(make([]*st.Node, 2))
+			stw.Redraw()
+		case KEY_ESCAPE:
+			stw.EscapeAll()
+		case 'X', 'x':
+			move = 0
+			stw.addHistory("直線を指定[Y,Zを固定]")
+		case 'Y', 'y':
+			move = 1
+			stw.addHistory("直線を指定[X,Zを固定]")
+		case 'Z', 'z':
+			move = 2
+			stw.addHistory("直線を指定[X,Yを固定]")
 		}
 	})
 }
