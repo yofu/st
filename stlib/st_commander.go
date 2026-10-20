@@ -243,6 +243,10 @@ func (cb *CommandBuffer) EndCommand() {
 }
 
 func ReadPgp(stw Commander, filename string) error {
+	// Drivers may provide UI-specific aliases such as editable templates.
+	if loader, ok := stw.(interface{ ReadPgp(string) error }); ok {
+		return loader.ReadPgp(filename)
+	}
 	aliases := make(map[string]func(Commander) chan bool)
 	f, err := os.Open(filename)
 	if err != nil {

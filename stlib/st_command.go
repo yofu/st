@@ -18,6 +18,19 @@ import (
 var (
 	Commands = map[string]func(Commander) chan bool{
 		"DISTS":              Dists,
+		"DEFORMEDDISTS":      DeformedDists,
+		"MOVETOLINE":         MoveToLine,
+		"MOVETOPLANE":        MoveToPlane,
+		"MEASURE":            CreateMeasure,
+		"KIJUN":              CreateKijun,
+		"AXISTOCANG":         AxisToCang,
+		"ROTATE":             RotateNodes,
+		"SCALE":              ScaleNodes,
+		"SEARCHELEM":         SearchElem,
+		"NODETOELEM":         NodeToElem,
+		"ELEMTONODE":         ElemToNode,
+		"INTERSECT":          Intersect,
+		"FENCE":              Fence,
 		"MATCHPROPERTY":      MatchProperty,
 		"JOINLINEELEM":       JoinLineElem,
 		"ERASE":              Erase,
@@ -47,14 +60,18 @@ var (
 func Select(stw Commander) chan bool {
 	quit := make(chan bool)
 	go func() {
+		scope := commandScope(stw)
+		defer scope.Close()
 		nch := stw.GetNode()
 		elch := stw.GetElem()
 		mch := stw.GetModifier()
 		shift := false
 	sel:
 		for {
+			scope.Wait(nch, elch, mch, quit)
 			select {
 			case n := <-nch:
+				scope.Resume()
 				if n == nil {
 					stw.DeselectNode()
 				} else {
@@ -65,6 +82,7 @@ func Select(stw Commander) chan bool {
 					}
 				}
 			case el := <-elch:
+				scope.Resume()
 				if el == nil {
 					stw.DeselectElem()
 				} else {
@@ -75,8 +93,10 @@ func Select(stw Commander) chan bool {
 					}
 				}
 			case m := <-mch:
+				scope.Resume()
 				shift = m.Shift
 			case <-quit:
+				scope.Resume()
 				stw.EndCommand()
 				break sel
 			}
@@ -88,14 +108,18 @@ func Select(stw Commander) chan bool {
 func onenode(stw Commander, f func(*Node) error) chan bool {
 	quit := make(chan bool)
 	go func() {
+		scope := commandScope(stw)
+		defer scope.Close()
 		nch := stw.GetNode()
 		clickch := stw.GetClick()
 		as := stw.AltSelectNode()
 		stw.SetAltSelectNode(false)
 	onenode:
 		for {
+			scope.Wait(nch, clickch, quit)
 			select {
 			case n := <-nch:
+				scope.Resume()
 				if n != nil {
 					err := f(n)
 					if err != nil {
@@ -104,6 +128,7 @@ func onenode(stw Commander, f func(*Node) error) chan bool {
 					stw.Redraw()
 				}
 			case c := <-clickch:
+				scope.Resume()
 				if c.Button == ButtonRight {
 					stw.SetAltSelectNode(as)
 					stw.Deselect()
@@ -112,6 +137,7 @@ func onenode(stw Commander, f func(*Node) error) chan bool {
 					break onenode
 				}
 			case <-quit:
+				scope.Resume()
 				stw.SetAltSelectNode(as)
 				stw.EndCommand()
 				stw.Redraw()
@@ -138,6 +164,8 @@ func ToggleBond(stw Commander) chan bool {
 func ArrayPolar(stw Commander) chan bool {
 	quit := make(chan bool)
 	go func() {
+		scope := commandScope(stw)
+		defer scope.Close()
 		nch := stw.GetNode()
 		ach := stw.GetAxis()
 		keych := stw.GetKey()
@@ -149,8 +177,10 @@ func ArrayPolar(stw Commander) chan bool {
 		eps := stw.EPS()
 	arraypolar:
 		for {
+			scope.Wait(nch, ach, keych, clickch, quit)
 			select {
 			case n := <-nch:
+				scope.Resume()
 				if n != nil {
 					frame.LocalAxis = &Axis{
 						Frame:  frame,
@@ -165,7 +195,9 @@ func ArrayPolar(stw Commander) chan bool {
 					stw.SetAltSelectNode(as)
 				}
 			case <-ach:
+				scope.Resume()
 			case k := <-keych:
+				scope.Resume()
 				if frame.LocalAxis != nil {
 					if k.Direction == key.DirRelease {
 						switch k.Code {
@@ -199,6 +231,7 @@ func ArrayPolar(stw Commander) chan bool {
 					}
 				}
 			case c := <-clickch:
+				scope.Resume()
 				if c.Button == ButtonRight {
 					frame.LocalAxis = nil
 					stw.SetAltSelectNode(as)
@@ -208,6 +241,7 @@ func ArrayPolar(stw Commander) chan bool {
 					break arraypolar
 				}
 			case <-quit:
+				scope.Resume()
 				frame.LocalAxis = nil
 				stw.SetAltSelectNode(as)
 				stw.EndCommand()
@@ -222,15 +256,20 @@ func ArrayPolar(stw Commander) chan bool {
 func twonodes(stw Commander, f func(*Node, *Node) (bool, error)) chan bool {
 	quit := make(chan bool)
 	go func() {
+		scope := commandScope(stw)
+		defer scope.Close()
 		var n0 *Node
+		stw.DeselectNode()
 		nch := stw.GetNode()
 		clickch := stw.GetClick()
 		as := stw.AltSelectNode()
 		stw.SetAltSelectNode(false)
 	twonodes:
 		for {
+			scope.Wait(nch, clickch, quit)
 			select {
 			case n := <-nch:
+				scope.Resume()
 				if n != nil {
 					if !stw.NodeSelected() {
 						stw.SelectNode([]*Node{n})
@@ -256,6 +295,7 @@ func twonodes(stw Commander, f func(*Node, *Node) (bool, error)) chan bool {
 					}
 				}
 			case c := <-clickch:
+				scope.Resume()
 				if c.Button == ButtonRight {
 					stw.SetAltSelectNode(as)
 					stw.Deselect()
@@ -265,6 +305,7 @@ func twonodes(stw Commander, f func(*Node, *Node) (bool, error)) chan bool {
 					break twonodes
 				}
 			case <-quit:
+				scope.Resume()
 				stw.SetAltSelectNode(as)
 				stw.EndTail()
 				stw.EndCommand()
@@ -317,6 +358,8 @@ func EditPlateElem(stw Commander) chan bool {
 func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 	quit := make(chan bool)
 	go func() {
+		scope := commandScope(stw)
+		defer scope.Close()
 		nodes := make([]*Node, 0)
 		nch := stw.GetNode()
 		clickch := stw.GetClick()
@@ -351,8 +394,10 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 		}
 	multinodes:
 		for {
+			scope.Wait(nch, clickch, keych, wheelch, quit)
 			select {
 			case n := <-nch:
+				scope.Resume()
 				if n != nil {
 					if each {
 						if len(nodes) == 0 {
@@ -374,6 +419,7 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 					}
 				}
 			case c := <-clickch:
+				scope.Resume()
 				switch c.Button {
 				case ButtonRight:
 					if !each {
@@ -396,6 +442,7 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 					}
 				}
 			case k := <-keych:
+				scope.Resume()
 				if k.Direction == key.DirRelease {
 					switch k.Code {
 					case key.CodeA, key.CodeH:
@@ -435,6 +482,7 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 					}
 				}
 			case w := <-wheelch:
+				scope.Resume()
 				if w == WheelUp {
 					diff[dir] += delta
 				} else {
@@ -442,6 +490,7 @@ func multinodes(stw Commander, f func([]*Node) error, each bool) chan bool {
 				}
 				stw.History(fmt.Sprintf("%s=%.3f\r", dir, diff[dir]))
 			case <-quit:
+				scope.Resume()
 				stw.SetAltSelectNode(as)
 				stw.EndTail()
 				stw.EndCommand()
@@ -638,7 +687,7 @@ func DivideAtPlane(stw Commander) chan bool {
 				continue
 			}
 			val := Dot(n, el.Enod[0].Coord, 3)
-			val2 := (h - val)/dot
+			val2 := (h - val) / dot
 			if val2 <= 0 || val2 >= l {
 				continue
 			}
@@ -704,19 +753,24 @@ func multielems(stw Commander, cond func(*Elem) bool, f func([]*Elem) error) cha
 	}
 	quit := make(chan bool)
 	go func() {
+		scope := commandScope(stw)
+		defer scope.Close()
 		elems := make([]*Elem, 0)
 		elch := stw.GetElem()
 		clickch := stw.GetClick()
 	erase:
 		for {
+			scope.Wait(elch, clickch, quit)
 			select {
 			case el := <-elch:
+				scope.Resume()
 				if el != nil && cond(el) {
 					elems = append(elems, el)
 					AddSelection(stw, el)
 					stw.Redraw()
 				}
 			case c := <-clickch:
+				scope.Resume()
 				if c.Button == ButtonRight {
 					if len(elems) > 0 {
 						err := f(elems)
@@ -730,6 +784,7 @@ func multielems(stw Commander, cond func(*Elem) bool, f func([]*Elem) error) cha
 					break erase
 				}
 			case <-quit:
+				scope.Resume()
 				stw.EndCommand()
 				stw.Redraw()
 				break erase
@@ -831,11 +886,15 @@ func HatchPlateElem(stw Commander) chan bool {
 		}
 	}
 	go func() {
+		scope := commandScope(stw)
+		defer scope.Close()
 		clickch := stw.GetClick()
 	hatchplateelem:
 		for {
+			scope.Wait(clickch, quit)
 			select {
 			case c := <-clickch:
+				scope.Resume()
 				switch c.Button {
 				case ButtonLeft:
 					ns, _, err := stw.Frame().BoundedArea(float64(c.X), float64(c.Y), 100)
@@ -860,6 +919,7 @@ func HatchPlateElem(stw Commander) chan bool {
 					break hatchplateelem
 				}
 			case <-quit:
+				scope.Resume()
 				stw.EndCommand()
 				stw.Redraw()
 				break hatchplateelem
@@ -881,18 +941,23 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 		}
 	}
 	go func() {
+		scope := commandScope(stw)
+		defer scope.Close()
 		elch := stw.GetElem()
 		clickch := stw.GetClick()
 		if el0 == nil {
 		trim_elem:
 			for {
+				scope.Wait(elch, clickch, quit)
 				select {
 				case el := <-elch:
+					scope.Resume()
 					if el != nil && cond(el) {
 						el0 = el
 						break trim_elem
 					}
 				case c := <-clickch:
+					scope.Resume()
 					if c.Button == ButtonRight {
 						stw.Deselect()
 						stw.EndCommand()
@@ -900,6 +965,7 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 						return
 					}
 				case <-quit:
+					scope.Resume()
 					stw.EndCommand()
 					stw.Redraw()
 					return
@@ -910,11 +976,19 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 		stw.Redraw()
 	trim_click:
 		for {
+			scope.Wait(clickch, quit)
 			select {
 			case c := <-clickch:
+				scope.Resume()
 				switch c.Button {
 				case ButtonLeft:
-					el := <-elch
+					el, cancelled := receiveCommandElem(scope, elch, quit)
+					if cancelled {
+						exitfunc()
+						stw.EndCommand()
+						stw.Redraw()
+						return
+					}
 					if el == nil || !cond(el) {
 						ErrorMessage(stw, fmt.Errorf("no elem"), ERROR)
 					} else {
@@ -930,6 +1004,7 @@ func onemultielem(stw Commander, cond func(*Elem) bool, f func(Click, *Elem, *El
 					break trim_click
 				}
 			case <-quit:
+				scope.Resume()
 				exitfunc()
 				stw.EndCommand()
 				stw.Redraw()
@@ -1014,6 +1089,8 @@ func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int, map[s
 	}
 	values := make(map[string]float64)
 	go func() {
+		scope := commandScope(stw)
+		defer scope.Close()
 		elch := stw.GetElem()
 		clickch := stw.GetClick()
 		keych := stw.GetKey()
@@ -1021,8 +1098,14 @@ func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int, map[s
 		delta := 1000.0
 		name := ""
 		for {
+			var pick chan *Elem
+			if el0 == nil {
+				pick = elch
+			}
+			scope.Wait(pick, clickch, keych, wheelch, quit)
 			select {
 			case el := <-elch:
+				scope.Resume()
 				if el0 == nil {
 					if el != nil && cond(el) {
 						el0 = el
@@ -1031,6 +1114,7 @@ func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int, map[s
 					}
 				}
 			case c := <-clickch:
+				scope.Resume()
 				switch c.Button {
 				case ButtonLeft:
 					if el0 != nil {
@@ -1051,6 +1135,7 @@ func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int, map[s
 					return
 				}
 			case k := <-keych:
+				scope.Resume()
 				if k.Direction == key.DirRelease {
 					switch k.Code {
 					default:
@@ -1083,6 +1168,7 @@ func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int, map[s
 					}
 				}
 			case w := <-wheelch:
+				scope.Resume()
 				if name != "" {
 					if w == WheelUp {
 						values[name] += delta
@@ -1092,6 +1178,7 @@ func getside(stw Commander, cond func(*Elem) bool, f func(*Elem, int, int, map[s
 					stw.History(fmt.Sprintf("%s=%.3f\r", name, values[name]))
 				}
 			case <-quit:
+				scope.Resume()
 				stw.EndCommand()
 				stw.Redraw()
 				return
@@ -1151,12 +1238,16 @@ func MoveUpDown(stw Commander) chan bool {
 		}
 	}
 	go func() {
+		scope := commandScope(stw)
+		defer scope.Close()
 		clickch := stw.GetClick()
 		wheelch := stw.GetWheel()
 	moveupdown:
 		for {
+			scope.Wait(wheelch, clickch, quit)
 			select {
 			case w := <-wheelch:
+				scope.Resume()
 				var val float64
 				switch w {
 				case WheelUp:
@@ -1171,6 +1262,7 @@ func MoveUpDown(stw Commander) chan bool {
 				}
 				stw.Redraw()
 			case c := <-clickch:
+				scope.Resume()
 				switch c.Button {
 				case ButtonRight:
 					Snapshot(stw)
@@ -1180,6 +1272,7 @@ func MoveUpDown(stw Commander) chan bool {
 					break moveupdown
 				}
 			case <-quit:
+				scope.Resume()
 				stw.EndCommand()
 				stw.Redraw()
 				Snapshot(stw)
@@ -1362,4 +1455,199 @@ func Spline(stw Commander) chan bool {
 		nodes := stw.Frame().ElemToNode(elems...)
 		return createspline("spline.dxf", nodes, d, z, scale, ndiv, original)
 	})
+}
+
+// FenceGesture describes a completed drag in canvas coordinates. Drivers keep
+// pointer capture and transient drawing; selection semantics remain shared.
+type FenceGesture struct {
+	Start, End Position
+	Modifier   Modifier
+}
+
+func (g FenceGesture) ConstrainedEnd() Position {
+	if g.Modifier.Ctrl {
+		return Position{X: g.End.X, Y: g.Start.Y}
+	}
+	return g.End
+}
+
+// SelectElemFence is shared by the channel-based and native IUP adapters.
+func SelectElemFence(stw Selector, g FenceGesture) {
+	end := g.ConstrainedEnd()
+	if g.Start == end {
+		return
+	}
+	els := stw.Frame().FenceLine(float64(g.Start.X), float64(g.Start.Y), float64(end.X), float64(end.Y))
+	MergeSelectElem(stw, els, g.Modifier.Shift)
+	stw.Redraw()
+}
+
+// FenceInput is optional so existing Commander implementations need no changes.
+type FenceInput interface{ GetFenceGesture() chan FenceGesture }
+
+func Fence(stw Commander) chan bool {
+	host, ok := stw.(FenceInput)
+	if !ok {
+		ErrorMessage(stw, fmt.Errorf("FENCE: driver does not support drag input"), ERROR)
+		return nil
+	}
+	quit := make(chan bool)
+	go func() {
+		scope := commandScope(stw)
+		defer scope.Close()
+		dragch := host.GetFenceGesture()
+		clickch := stw.GetClick()
+		stw.History("FENCE: 左ドラッグで選択、Shiftで除外、Ctrlで水平線、Escで中止")
+		for {
+			scope.Wait(dragch, clickch, quit)
+			select {
+			case g := <-dragch:
+				scope.Resume()
+				SelectElemFence(stw, g)
+				stw.EndCommand()
+				return
+			case c := <-clickch:
+				scope.Resume()
+				if c.Button == ButtonRight {
+					stw.EndCommand()
+					return
+				}
+			case <-quit:
+				scope.Resume()
+				stw.EndCommand()
+				stw.Redraw()
+				return
+			}
+		}
+	}()
+	return quit
+}
+
+// IntersectElems applies the IUP INTERSECT operation to the first two distinct
+// selected members and retains the same two resulting members as its selection.
+func IntersectElems(stw Selector, elems []*Elem) error {
+	pair := make([]*Elem, 0, 2)
+	for _, el := range elems {
+		if el == nil || (len(pair) > 0 && pair[0] == el) {
+			continue
+		}
+		pair = append(pair, el)
+		if len(pair) == 2 {
+			break
+		}
+	}
+	if len(pair) < 2 {
+		return fmt.Errorf("INTERSECT: 2部材を指定してください")
+	}
+	for _, el := range pair {
+		if !el.IsLineElem() {
+			return NotLineElem("INTERSECT")
+		}
+		if el.Lock {
+			return fmt.Errorf("INTERSECT: 部材%dはロックされています", el.Num)
+		}
+	}
+	_, created, err := stw.Frame().Intersect(pair[0], pair[1], true, 1, 1, false, false, stw.EPS())
+	if err != nil {
+		return err
+	}
+	stw.Deselect()
+	if len(created) == 4 {
+		stw.SelectElem([]*Elem{created[1], created[3]})
+	}
+	Snapshot(stw)
+	stw.Redraw()
+	return nil
+}
+
+func Intersect(stw Commander) chan bool {
+	apply := func() {
+		if err := IntersectElems(stw, stw.SelectedElems()); err != nil {
+			ErrorMessage(stw, err, ERROR)
+		}
+		stw.EndCommand()
+		stw.Redraw()
+	}
+	selected := 0
+	seen := make(map[*Elem]bool)
+	for _, el := range stw.SelectedElems() {
+		if el != nil && !seen[el] {
+			seen[el] = true
+			selected++
+		}
+	}
+	if selected >= 2 {
+		apply()
+		return nil
+	}
+	quit := make(chan bool)
+	go func() {
+		scope := commandScope(stw)
+		defer scope.Close()
+		elch := stw.GetElem()
+		clickch := stw.GetClick()
+		stw.History("INTERSECT: 2部材を選択し右クリックで交点分割、Escで中止")
+		for {
+			scope.Wait(elch, clickch, quit)
+			select {
+			case el := <-elch:
+				scope.Resume()
+				if el != nil && el.IsLineElem() && !el.Lock {
+					AddSelection(stw, el)
+					stw.Redraw()
+				}
+			case c := <-clickch:
+				scope.Resume()
+				if c.Button == ButtonRight {
+					if len(stw.SelectedElems()) < 2 {
+						stw.History("INTERSECT: 2部材を指定してください")
+						continue
+					}
+					apply()
+					return
+				}
+			case <-quit:
+				scope.Resume()
+				stw.EndCommand()
+				stw.Redraw()
+				return
+			}
+		}
+	}()
+	return quit
+}
+
+func DeformedDists(stw Commander) chan bool {
+	return twonodes(stw, func(a, b *Node) (bool, error) {
+		dx, dy, dz, d := stw.Frame().Distance(a, b)
+		stw.History(fmt.Sprintf("NODE: %d - %d", a.Num, b.Num))
+		stw.History(fmt.Sprintf("DX: %.3f DY: %.3f DZ: %.3f D: %.3f", dx, dy, dz, d))
+		dx, dy, dz, d = stw.Frame().DeformedDistance(a, b)
+		stw.History(fmt.Sprintf("dx: %.3f dy: %.3f dz: %.3f d: %.3f", dx, dy, dz, d))
+		return true, nil
+	})
+}
+func SearchElem(stw Commander) chan bool {
+	if stw.NodeSelected() {
+		stw.SelectElem(stw.Frame().SearchElem(stw.SelectedNodes()...))
+		stw.Redraw()
+		return nil
+	}
+	return runGeometryCommand(stw, func(c *geometryCommand) error {
+		ns, err := c.nodes(1, nil)
+		if err == nil {
+			stw.SelectElem(stw.Frame().SearchElem(ns[0]))
+		}
+		return err
+	})
+}
+func NodeToElem(stw Commander) chan bool {
+	stw.SelectElem(stw.Frame().NodeToElemAll(stw.SelectedNodes()...))
+	stw.Redraw()
+	return nil
+}
+func ElemToNode(stw Commander) chan bool {
+	stw.SelectNode(stw.Frame().ElemToNode(stw.SelectedElems()...))
+	stw.Redraw()
+	return nil
 }

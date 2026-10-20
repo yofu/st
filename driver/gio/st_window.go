@@ -6,40 +6,45 @@ import (
 	"image/color"
 	"io"
 	"math"
-	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"gioui.org/app"
 	"gioui.org/f32"
 	"gioui.org/io/event"
 	"gioui.org/io/key"
 	"gioui.org/io/pointer"
+	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
-	"gioui.org/unit"
+	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"github.com/yofu/abbrev"
 	st "github.com/yofu/st/stlib"
 )
 
 var (
-	closech        = make(chan int)
-	redrawch       = make(chan int)
-	start          f32.Point
-	end            f32.Point
-	press          pointer.Buttons
 	altselectnode  = true
-	drawall        = true
 	tailnodes      []*st.Node
 	showprintrange = false
 	PLATE_OPACITY  = uint8(0x55)
-	defaultMargin  = unit.Dp(10)
 )
 
 type Window struct {
+	nativeOwner      atomic.Uintptr
+	filePicker       func(fileDialogOptions) (string, bool, error)
+	pointerPosition  func() (f32.Point, bool)
+	historyDirectory string
+	historyReadError error
+	recentReadError  error
+	persistenceMu    sync.Mutex
+	recentMu         sync.Mutex
+	ui               *userInterface
 	*st.DrawOption
 	*st.Directory
 	*st.RecentFiles
@@ -49,10 +54,30 @@ type Window struct {
 	*st.CommandBuffer
 	*st.CommandLine
 	*st.Alias
-	frame   *st.Frame
-	Theme   *material.Theme
-	window  *app.Window
-	context layout.Context
+	frame                          *st.Frame
+	Theme                          *material.Theme
+	window                         *app.Window
+	context                        layout.Context
+	canvasSize                     image.Point
+	pointerTag                     struct{}
+	start, end                     f32.Point
+	dragLast                       f32.Point
+	dragID                         pointer.ID
+	canvasEvents                   []event.Event
+	mouse                          mouseState
+	rangeView                      *st.View
+	rangeVisible                   bool
+	fixRotate, fixMove             bool
+	animation                      *viewAnimation
+	viewAnimating                  atomic.Bool
+	commandDraft                   atomic.Pointer[commandDraft]
+	interaction                    atomic.Pointer[interactiveCommand]
+	interactionFocus, commandFocus atomic.Bool
+	press                          pointer.Buttons
+	selected                       image.Rectangle
+	selecting                      bool
+	sceneDirty                     atomic.Bool
+	textAngle                      float64
 	// history         *Dialog
 	currentPen      color.NRGBA
 	currentBrush    color.NRGBA
@@ -68,6 +93,7 @@ type Window struct {
 
 func NewWindow(w *app.Window) *Window {
 	return &Window{
+		ui:            newUserInterface(),
 		DrawOption:    st.NewDrawOption(),
 		Directory:     st.NewDirectory("", ""),
 		RecentFiles:   st.NewRecentFiles(3),
@@ -76,11 +102,11 @@ func NewWindow(w *app.Window) *Window {
 		Selection:     st.NewSelection(),
 		CommandBuffer: st.NewCommandBuffer(),
 		CommandLine:   st.NewCommandLine(),
-		Alias:         st.NewAlias(),
+		Alias:         newWindowAlias(),
 		frame:         st.NewFrame(),
 		// Theme:         material.NewTheme(gofont.Collection()),
-		Theme:         material.NewTheme(),
-		window:        w,
+		Theme:  material.NewTheme(),
+		window: w,
 		// history:         nil,
 		// currentStrokeParam: &ui.DrawStrokeParams{
 		// 	Cap:        ui.DrawLineCapFlat,
@@ -96,259 +122,316 @@ func NewWindow(w *app.Window) *Window {
 		lastfig2command: "",
 		lastcommand:     nil,
 		textBox:         make(map[string]*st.TextBox),
+		textAlignment:   st.SOUTH_WEST,
 		// glasses:         make(map[string]*Glass),
 	}
 }
 
 func (stw *Window) QueueRedrawAll() {
-	stw.window.Invalidate()
-	// redrawch <- 1
+	if stw.window != nil {
+		stw.window.Invalidate()
+	}
 }
 
+// Run owns the Gio event loop. Input is delivered through layout.Context.Event,
+// rather than as top-level Window.Event values.
 func (stw *Window) Run(w *app.Window) error {
-	st.OpenFile(stw, "C:\\Users\\yofu8\\st\\yamawa\\yamawa02\\yamawa02.inp", true)
+	stw.window = w
 	var ops op.Ops
-	var mousePos f32.Point
-	events := make(chan event.Event)
-	acks := make(chan struct{})
-	go func() {
-		for {
-			ev := w.Event()
-			events <- ev
-			<-acks
-			if _, ok := ev.(app.DestroyEvent); ok {
-				return
-			}
-		}
-	}()
-	mousePresent := false
 	for {
-		select {
-		case <-redrawch:
-			w.Invalidate()
-		case <-closech:
-			return nil
-		case e := <-events:
-			// detect the type of the event.
-			switch e := e.(type) {
-			default:
-			// this is sent when the application should re-render.
-			case app.FrameEvent:
-				gtx := app.NewContext(&ops, e)
-				stw.context = gtx
-
-				r := image.Rectangle{Max: image.Point{X: gtx.Constraints.Max.X, Y: gtx.Constraints.Max.Y}}
-				area := clip.Rect(r).Push(&ops)
-				event.Op(&ops, &mousePos)
-				area.Pop()
-				for {
-					ev, ok := gtx.Event(pointer.Filter{
-						Target: &mousePos,
-						Kinds:  pointer.Move | pointer.Enter | pointer.Leave,
-					})
-					if !ok {
-						break
-					}
-					switch ev := ev.(type) {
-					case pointer.Event:
-						switch ev.Kind {
-						case pointer.Enter:
-							mousePresent = true
-						case pointer.Leave:
-							mousePresent = false
-						case pointer.Press:
-
-						}
-						mousePos = ev.Position
-					}
-				}
-				if mousePresent {
-					fmt.Println("Mouse Position: (%.2f, %.2f)", mousePos.X, mousePos.Y)
-				}
-
-				stw.Layout(gtx)
-				// render and handle the operations from the UI.
-				e.Frame(gtx.Ops)
-
-			// handle a global key press.
-			case key.Event:
-				switch e.Name {
-				// when we click escape, let's close the window.
-				case key.NameEscape:
-					return nil
-				}
-
-			case pointer.Event:
-				switch e.Kind {
-				case pointer.Press:
-					start = e.Position
-					press = e.Buttons
-					switch press {
-					case pointer.ButtonTertiary:
-						drawall = false
-					}
-				case pointer.Release:
-					end = e.Position
-					drawall = true
-					press = 0
-					w.Invalidate()
-				case pointer.Move:
-					end = e.Position
-					dx := end.X - start.X
-					dy := end.Y - start.Y
-					switch press {
-					case pointer.ButtonTertiary:
-						fmt.Println(e)
-						if e.Modifiers&key.ModShift != 0 {
-							stw.frame.View.Center[0] += float64(dx) * stw.CanvasMoveSpeedX()
-							stw.frame.View.Center[1] += float64(dy) * stw.CanvasMoveSpeedY()
-						} else {
-							stw.frame.View.Angle[0] += float64(dy) * stw.CanvasRotateSpeedY()
-							stw.frame.View.Angle[1] -= float64(dx) * stw.CanvasRotateSpeedX()
-						}
-						w.Invalidate()
-					}
-				case pointer.Scroll:
-					end = e.Position
-					if e.Scroll.Y > 0 {
-						stw.Zoom(-1.0, float64(end.X), float64(end.Y))
-					} else {
-						stw.Zoom(1.0, float64(end.X), float64(end.Y))
-					}
-					w.Invalidate()
-				}
-
-			// this is sent when the application is closed.
-			case app.DestroyEvent:
-				acks <- struct{}{}
-				return e.Err
+		ev := w.Event()
+		stw.platformWindowEvent(ev)
+		switch e := ev.(type) {
+		case app.DestroyEvent:
+			if s := stw.interaction.Load(); s != nil {
+				s.cancelCommand()
 			}
-			acks <- struct{}{}
+			if err := stw.SaveCommandHistory(""); err != nil {
+				stw.History(err.Error())
+			}
+			stw.ui.close()
+			return e.Err
+		case app.FrameEvent:
+			gtx := app.NewContext(&ops, e)
+			stw.Layout(gtx)
+			e.Frame(gtx.Ops)
 		}
 	}
-
-	return nil
 }
 
-func (stw *Window) Layout(gtx layout.Context) layout.Dimensions {
-	th := stw.Theme
-
-
-	// inset is used to add padding around the window border.
-	inset := layout.UniformInset(defaultMargin)
-	return inset.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-		return layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-			// layout.Rigid(layout.Spacer{Height: th.TextSize}.Layout),
-			layout.Rigid(layout.Spacer{Height: 12}.Layout),
-			layout.Rigid(material.Body1(th, "st").Layout),
-			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-				if drawall {
-					st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, false)
-				} else {
-					st.DrawFrameNode(stw, stw.frame, stw.frame.Show.ColorMode, false)
-				}
-				layoutSelectionLayer(gtx)
-				return layout.Dimensions{
-					Size: image.Point{X: 2000, Y: 2000},
-				}
-			}),
-		)
-	})
-}
-
-// viewport models a region of a larger space. Offset is the location
-// of the upper-left corner of the view within the larger space. size
-// is the dimensions of the viewport within the larger space.
-type viewport struct {
-	offset f32.Point
-	size   f32.Point
-}
-// subview modifies v to describe a smaller region by zooming into the
-// space described by v using other.
-func (v *viewport) subview(other *viewport) {
-	v.offset.X += other.offset.X * v.size.X
-	v.offset.Y += other.offset.Y * v.size.Y
-	v.size.X *= other.size.X
-	v.size.Y *= other.size.Y
-}
-
-
-var (
-	selected    image.Rectangle
-	selecting   = false
-	view        *viewport
-)
-// ensureSquare returns a copy of the rectangle that has been padded to
-// be square by increasing the maximum coordinate.
-func ensureSquare(r image.Rectangle) image.Rectangle {
-	dx := r.Dx()
-	dy := r.Dy()
-	if dx > dy {
-		r.Max.Y = r.Min.Y + dx
-	} else if dy > dx {
-		r.Max.X = r.Min.X + dy
+func (stw *Window) prepareCanvas(gtx layout.Context) {
+	stw.context = gtx
+	previousSize := stw.canvasSize
+	stw.canvasSize = gtx.Constraints.Max
+	if previousSize != stw.canvasSize {
+		if previousSize == (image.Point{}) && stw.animation != nil && stw.animation.owner == stw.frame {
+			// A view requested before the first frame must survive initial sizing.
+			stw.frame.View = stw.animation.to.Copy()
+		}
+		stw.cancelViewAnimation()
+		stw.sceneDirty.Store(true)
 	}
-	return r
+	if previousSize == (image.Point{}) && stw.frame != nil && len(stw.frame.Nodes) > 0 {
+		stw.frame.View = st.CenterView(stw, stw.frame.View.Angle)
+	}
 }
 
-func layoutSelectionLayer(gtx layout.Context) layout.Dimensions {
+// Receive and register input every frame, even while the model worker is busy.
+// Model changes are applied later, with modelMu held by Layout.
+func (stw *Window) collectCanvasInput(gtx layout.Context, bounds image.Rectangle) {
+	// Command replacement can complete without any subsequent pointer event.
+	if stw.ui.fenceOverlay && !stw.fenceCommandActive() {
+		stw.ui.fenceOverlay = false
+		stw.ui.selectionOverlay = false
+	}
+
+	var events []event.Event
 	for {
-		event, ok := gtx.Event(pointer.Filter{
-			Target: &selected,
-			Kinds:  pointer.Press | pointer.Release | pointer.Drag,
-		})
+		ev, ok := gtx.Event(pointer.Filter{
+			Target:  &stw.pointerTag,
+			Kinds:   pointer.Press | pointer.Release | pointer.Move | pointer.Drag | pointer.Scroll | pointer.Cancel,
+			ScrollY: pointer.ScrollRange{Min: -1000000, Max: 1000000},
+		}, key.Filter{Name: key.NameEscape}, key.FocusFilter{Target: &stw.pointerTag})
 		if !ok {
 			break
 		}
-		switch event := event.(type) {
+		switch ev := ev.(type) {
 		case pointer.Event:
-			var intPt image.Point
-			intPt.X = int(event.Position.X)
-			intPt.Y = int(event.Position.Y)
-			switch event.Kind {
-			case pointer.Press:
-				selecting = true
-				selected.Min = intPt
-				selected.Max = intPt
-			case pointer.Drag:
-				if intPt.X >= selected.Min.X && intPt.Y >= selected.Min.Y {
-					selected.Max = intPt
-				} else {
-					selected.Min = intPt
+			// This tag is registered in window coordinates, without a region
+			// transform. Convert to canvas pixels exactly once for every kind.
+			ev.Position = ev.Position.Sub(f32.Pt(float32(bounds.Min.X), float32(bounds.Min.Y)))
+			if ev.Kind == pointer.Press {
+				target := any(&stw.ui.command)
+				if stw.interaction.Load() != nil {
+					target = &stw.pointerTag
 				}
-				selected = ensureSquare(selected)
-			case pointer.Release:
-				selecting = false
-				newView := &viewport{
-					offset: f32.Point{
-						X: float32(selected.Min.X) / float32(gtx.Constraints.Max.X),
-						Y: float32(selected.Min.Y) / float32(gtx.Constraints.Max.Y),
-					},
-					size: f32.Point{
-						X: float32(selected.Dx()) / float32(gtx.Constraints.Max.X),
-						Y: float32(selected.Dy()) / float32(gtx.Constraints.Max.Y),
-					},
+				gtx.Execute(key.FocusCmd{Tag: target})
+				if ev.Buttons&(pointer.ButtonPrimary|pointer.ButtonTertiary|pointer.ButtonSecondary) != 0 {
+					gtx.Execute(pointer.GrabCmd{Tag: &stw.pointerTag, ID: ev.PointerID})
 				}
-				if view == nil {
-					view = newView
-				} else {
-					view.subview(newView)
-				}
-			case pointer.Cancel:
-				selecting = false
-				selected = image.Rectangle{}
+			}
+			events = append(events, ev)
+		default:
+			events = append(events, ev)
+		}
+	}
+	// Reconcile the final mouse sample with the actual client-area cursor.
+	// This avoids a persistent endpoint offset under Windows DPI virtualization.
+	// Press retains its event-time origin; touch/pen also retain event positions.
+	if n := len(events); n > 0 {
+		if e, ok := events[n-1].(pointer.Event); ok && e.Source == pointer.Mouse && (e.Kind == pointer.Drag || e.Kind == pointer.Release) {
+			position, valid := stw.clientPointerPosition()
+			if valid {
+				e.Position = position.Sub(f32.Pt(float32(bounds.Min.X), float32(bounds.Min.Y)))
+				events[n-1] = e
 			}
 		}
 	}
-	if selecting {
-		paint.FillShape(gtx.Ops, color.NRGBA{R: 255, A: 100}, clip.Rect(selected).Op())
+	for _, e := range events {
+		if p, ok := e.(pointer.Event); ok && p.Kind != pointer.Cancel {
+			stw.ui.cursorPosition = p.Position
+		}
+		stw.ui.fenceOverlay = stw.fenceCommandActive()
+		if stw.interaction.Load() == nil || stw.ui.fenceOverlay {
+			stw.ui.updateSelectionOverlay(e)
+		} else {
+			stw.ui.selectionOverlay = false
+		}
+		// Coalesce only consecutive motion with the same pointer/modifiers.
+		if e, ok := e.(pointer.Event); ok && (e.Kind == pointer.Move || e.Kind == pointer.Drag) {
+			if n := len(stw.canvasEvents); n > 0 {
+				if prev, ok := stw.canvasEvents[n-1].(pointer.Event); ok && prev.Kind == e.Kind && prev.Source == e.Source && prev.PointerID == e.PointerID && prev.Buttons == e.Buttons && prev.Modifiers == e.Modifiers {
+					stw.canvasEvents[n-1] = e
+					continue
+				}
+			}
+		}
+		stw.canvasEvents = append(stw.canvasEvents, e)
 	}
-	pr := clip.Rect(image.Rectangle{Max: gtx.Constraints.Max}).Push(gtx.Ops)
+	area := clip.Rect(bounds).Push(gtx.Ops)
 	pointer.CursorCrosshair.Add(gtx.Ops)
-	event.Op(gtx.Ops, &selected)
-	pr.Pop()
+	event.Op(gtx.Ops, &stw.pointerTag)
+	area.Pop()
+}
 
-	return layout.Dimensions{Size: gtx.Constraints.Max}
+func (stw *Window) clientPointerPosition() (f32.Point, bool) {
+	if stw.pointerPosition != nil {
+		return stw.pointerPosition()
+	}
+	return platformPointerPosition(stw.nativeOwner.Load())
+}
+
+func (stw *Window) applyCanvasInput() {
+	for _, ev := range stw.canvasEvents {
+		switch e := ev.(type) {
+		case pointer.Event:
+			stw.handlePointer(e)
+		case key.Event:
+			if e.State == key.Press {
+				stw.cancelCanvasDrag()
+				stw.stopMouseEdit()
+				stw.cancelViewAnimation()
+			}
+		}
+	}
+	clear(stw.canvasEvents)
+	stw.canvasEvents = stw.canvasEvents[:0]
+}
+
+func (stw *Window) canvasInput(gtx layout.Context) {
+	stw.collectCanvasInput(gtx, image.Rectangle{Max: gtx.Constraints.Max})
+	stw.applyCanvasInput()
+}
+
+func (stw *Window) drawCanvas(gtx layout.Context) {
+	stw.context = gtx
+	area := clip.Rect{Max: stw.canvasSize}.Push(gtx.Ops)
+	defer area.Pop()
+	paint.Fill(gtx.Ops, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
+	if stw.frame != nil {
+		// Use the same geometry, deformation and visibility rules during a drag
+		// as before/after it. DrawFrameNode omits parts of the normal drawing.
+		st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, false)
+		stw.drawSelection()
+		stw.drawMouseRange()
+	}
+}
+
+func (stw *Window) layoutCanvas(gtx layout.Context) layout.Dimensions {
+	stw.prepareCanvas(gtx)
+	stw.interactiveKeyboard(gtx)
+	stw.canvasInput(gtx)
+	stw.advanceViewAnimation(gtx.Now)
+	stw.drawCanvas(gtx)
+	stw.drawCanvasOverlay(gtx)
+	stw.scheduleViewAnimation(gtx)
+	return layout.Dimensions{Size: stw.canvasSize}
+}
+
+func (stw *Window) handlePointer(e pointer.Event) {
+	switch e.Kind {
+	case pointer.Press:
+		// Additional buttons or another pointer must not replace the drag origin.
+		if stw.press != 0 {
+			return
+		}
+		stw.cancelViewAnimation()
+		buttons := e.Buttons & (pointer.ButtonPrimary | pointer.ButtonTertiary | pointer.ButtonSecondary)
+		if buttons == 0 {
+			return
+		}
+		stw.start = e.Position
+		stw.end = e.Position
+		stw.dragLast = e.Position
+		stw.dragID = e.PointerID
+		stw.press = buttons
+		if stw.interaction.Load() == nil || buttons&pointer.ButtonTertiary != 0 {
+			stw.beginMouseClick(e, buttons)
+		} else {
+			stw.mouse.double = false
+		}
+		if e.Buttons&pointer.ButtonTertiary == 0 && e.Buttons&pointer.ButtonPrimary != 0 {
+			stw.selecting = true
+			stw.selected = image.Rect(int(e.Position.X), int(e.Position.Y), int(e.Position.X), int(e.Position.Y))
+		}
+	case pointer.Drag:
+		stw.interactivePosition(e.Position)
+		if stw.press != 0 && e.PointerID == stw.dragID {
+			stw.updateCanvasDrag(e.Position, e.Modifiers)
+		}
+	case pointer.Move:
+		stw.interactivePosition(e.Position)
+		if stw.press == 0 {
+			stw.end = e.Position
+		}
+	case pointer.Release:
+		if stw.press == 0 || e.PointerID != stw.dragID {
+			return
+		}
+		stw.updateCanvasDrag(e.Position, e.Modifiers)
+		if e.Buttons&stw.press != 0 {
+			return
+		}
+		handled := stw.interactiveClick(e, stw.press)
+		if stw.selecting && !stw.mouse.double && !handled {
+			if stw.mouse.edit != "" {
+				stw.mouseEditClick()
+			} else {
+				stw.finishSelection(e.Modifiers)
+			}
+			stw.sceneDirty.Store(true)
+		}
+		if !handled {
+			stw.endMouseClick(e, stw.press)
+		}
+		stw.cancelCanvasDrag()
+	case pointer.Cancel:
+		// Cancel has no meaningful Position; keep the last real cursor position.
+		stw.cancelCanvasDrag()
+		stw.mouse.lastTime = 0
+	case pointer.Scroll:
+		if stw.press != 0 {
+			return
+		}
+		stw.cancelViewAnimation()
+		stw.end = e.Position
+		if stw.interactiveWheel(e) {
+			return
+		}
+		if stw.frame != nil && e.Scroll.Y != 0 {
+			stw.sceneDirty.Store(true)
+			factor := 1.0
+			if e.Scroll.Y > 0 {
+				factor = -1
+			}
+			v := stw.frame.View
+			if e.Modifiers&key.ModAlt != 0 {
+				stw.ensureRangeView()
+				v = stw.rangeView
+			}
+			x, y := float64(e.Position.X), float64(e.Position.Y)
+			if e.Modifiers&key.ModCtrl != 0 {
+				x, y = v.Center[0], v.Center[1]
+			}
+			stw.zoomMouseView(v, factor, x, y)
+		}
+	}
+}
+
+func (stw *Window) cancelCanvasDrag() {
+	stw.selecting = false
+	stw.press = 0
+}
+
+func (stw *Window) updateCanvasDrag(position f32.Point, modifiers key.Modifiers) {
+	dx, dy := position.X-stw.dragLast.X, position.Y-stw.dragLast.Y
+	stw.dragLast, stw.end = position, position
+	s := stw.mouse.settings
+	if math.Abs(float64(position.X-stw.start.X)) > float64(s.radius.X) || math.Abs(float64(position.Y-stw.start.Y)) > float64(s.radius.Y) {
+		stw.mouse.moved = true
+	}
+	if stw.mouse.double {
+		return
+	}
+	if stw.press&pointer.ButtonTertiary != 0 && stw.frame != nil {
+		v := stw.frame.View
+		if modifiers&key.ModAlt != 0 {
+			stw.ensureRangeView()
+			v = stw.rangeView
+			stw.rangeVisible = true
+		}
+		if !stw.fixMove && (modifiers&key.ModShift != 0 || stw.fixRotate) {
+			v.Center[0] += float64(dx) * stw.CanvasMoveSpeedX()
+			v.Center[1] += float64(dy) * stw.CanvasMoveSpeedY()
+		} else if !stw.fixRotate {
+			v.Angle[0] += float64(dy) * stw.CanvasRotateSpeedY()
+			v.Angle[1] -= float64(dx) * stw.CanvasRotateSpeedX()
+		}
+		stw.sceneDirty.Store(true)
+	}
+	if stw.selecting {
+		stw.selected = image.Rectangle{Min: image.Pt(int(stw.start.X), int(stw.start.Y)), Max: image.Pt(int(position.X), int(position.Y))}.Canon()
+	}
 }
 
 func (stw *Window) Frame() *st.Frame {
@@ -356,7 +439,9 @@ func (stw *Window) Frame() *st.Frame {
 }
 
 func (stw *Window) SetFrame(frame *st.Frame) {
+	stw.cancelViewAnimation()
 	stw.frame = frame
+	stw.sceneDirty.Store(true)
 }
 
 func (stw *Window) AddTail(n *st.Node) {
@@ -375,7 +460,7 @@ func (stw *Window) TailLine() {
 }
 
 func (stw *Window) CurrentPointerPosition() []int {
-	return []int{int(end.X), int(end.Y)}
+	return []int{int(stw.end.X), int(stw.end.Y)}
 }
 
 func (stw *Window) FeedCommand() {
@@ -390,6 +475,9 @@ func (stw *Window) FeedCommand() {
 }
 
 func (stw *Window) ExecCommand(command string) {
+	stw.cancelViewAnimation()
+	stw.mouse.lastEdit = ""
+	stw.stopMouseEdit()
 	if stw.frame == nil {
 		if strings.HasPrefix(command, ":") {
 			err := st.ExMode(stw, command)
@@ -412,7 +500,7 @@ func (stw *Window) ExecCommand(command string) {
 	default:
 		if c, ok := stw.CommandAlias(strings.ToUpper(command)); ok {
 			stw.lastcommand = c
-			stw.Execute(c(stw))
+			stw.startInteractiveCommand(c)
 		} else {
 			stw.History(fmt.Sprintf("command doesn't exist: %s", command))
 		}
@@ -502,7 +590,60 @@ func (stw *Window) Print() {
 }
 
 func (stw *Window) SaveAS() {
-	st.SaveFile(stw, "hogtxt.inp")
+	if stw.usesNativeFileDialog() {
+		path, selected, err := stw.pickFile("Save As")
+		if err != nil {
+			stw.History(err.Error())
+			return
+		}
+		if selected {
+			stw.applyChosenFile("Save As", path, true)
+		}
+		return
+	}
+	answer := make(chan string, 1)
+	d := &pathDialog{title: "Save As", ed: widget.Editor{SingleLine: true, Submit: true}, focus: true}
+	if stw.frame != nil {
+		d.ed.SetText(stw.frame.Path)
+	}
+	d.apply = func(path string) {
+		select {
+		case answer <- path:
+		default:
+		}
+	}
+	d.cancel = func() {
+		select {
+		case answer <- "":
+		default:
+		}
+	}
+	select {
+	case stw.ui.pathRequests <- d:
+	case <-stw.ui.done:
+		return
+	}
+	stw.QueueRedrawAll()
+	var path string
+	select {
+	case path = <-answer:
+	case <-stw.ui.done:
+		return
+	}
+	if path == "" {
+		return
+	}
+	if filepath.Ext(path) == "" {
+		path += ".inp"
+	}
+	if st.FileExists(path) && !stw.Yn("Save", "上書きしますか？") {
+		return
+	}
+	if err := st.SaveFile(stw, path); err != nil {
+		stw.History(err.Error())
+	} else {
+		st.Rebase(stw, path)
+	}
 }
 
 func (stw *Window) SaveFileSelected(string) error {
@@ -539,9 +680,11 @@ func (stw *Window) ShapeData(sh st.Shape) {
 }
 
 func (stw *Window) ToggleFixRotate() {
+	stw.fixRotate = !stw.fixRotate
 }
 
 func (stw *Window) ToggleFixMove() {
+	stw.fixMove = !stw.fixMove
 }
 
 func (stw *Window) SetShowPrintRange(val bool) {
@@ -554,7 +697,11 @@ func (stw *Window) ToggleShowPrintRange() {
 	st.SetPosition(stw)
 }
 
-func (stw *Window) CurrentLap(string, int, int) {
+func (stw *Window) CurrentLap(message string, step, total int) {
+	stw.ui.mu.Lock()
+	stw.ui.progress = fmt.Sprintf("%s %d / %d", message, step, total)
+	stw.ui.mu.Unlock()
+	stw.QueueRedrawAll()
 }
 
 func (stw *Window) SectionData(sec *st.Sect) {
@@ -594,9 +741,15 @@ func (stw *Window) TextBoxes() []*st.TextBox {
 }
 
 func (stw *Window) SetAngle(phi, theta float64) {
-	view := st.CenterView(stw, []float64{phi, theta})
-	st.Animate(stw, view)
-	stw.Redraw()
+	if stw.frame == nil {
+		return
+	}
+	target := stw.frame.View.Copy()
+	target.Angle = []float64{phi, theta}
+	if len(stw.frame.Nodes) > 0 {
+		target = st.CenterView(stw, target.Angle)
+	}
+	stw.Animate(target)
 }
 
 func (stw *Window) SetPaperSize(name uint) {
@@ -607,7 +760,10 @@ func (stw *Window) PaperSize() uint {
 	return stw.papersize
 }
 
-func (stw *Window) SetPeriod(string) {
+func (stw *Window) SetPeriod(period string) {
+	if stw.frame != nil {
+		stw.frame.Show.Period = period
+	}
 }
 
 func (stw *Window) Pivot() bool {
@@ -629,23 +785,20 @@ func (stw *Window) History(str string) {
 	if str == "" {
 		return
 	}
-	if strings.HasSuffix(str, "\n") {
-		fmt.Printf(str)
-	} else {
-		fmt.Println(str)
+	if !strings.HasSuffix(str, "\n") {
+		str += "\n"
 	}
+	stw.appendLog(str)
 }
 
-func (stw *Window) HistoryWriter() io.Writer {
-	return os.Stdout
+func (stw *Window) HistoryWriter() io.Writer { return windowHistoryWriter{stw} }
+
+func (stw *Window) Yn(title, question string) bool {
+	return stw.ask(title, question, "はい", "いいえ") == 1
 }
 
-func (stw *Window) Yn(string, string) bool {
-	return false
-}
-
-func (stw *Window) Yna(string, string, string) int {
-	return 0
+func (stw *Window) Yna(title, question, another string) int {
+	return stw.ask(title, question, "はい", "いいえ", another)
 }
 
 func (stw *Window) EnableLabel(string) {
@@ -658,7 +811,10 @@ func (stw *Window) SetLabel(k, v string) {
 }
 
 func (stw *Window) GetCanvasSize() (int, int) {
-	return 2000, 2000
+	if stw.canvasSize.X == 0 || stw.canvasSize.Y == 0 {
+		return 1000, 1000
+	}
+	return stw.canvasSize.X, stw.canvasSize.Y
 }
 
 func (stw *Window) Changed(c bool) {
@@ -670,13 +826,13 @@ func (stw *Window) IsChanged() bool {
 }
 
 func (stw *Window) Redraw() {
-	drawall = true
-	redrawch <- 1
+	stw.sceneDirty.Store(true)
+	stw.QueueRedrawAll()
 }
 
 func (stw *Window) RedrawNode() {
-	drawall = false
-	redrawch <- 1
+	// Keep the common Window interface without switching drawing rules.
+	stw.Redraw()
 }
 
 func (stw *Window) EPS() float64 {
@@ -688,8 +844,9 @@ func (stw *Window) SetEPS(float64) {
 
 func (stw *Window) Close(bang bool) {
 	if !bang && stw.changed {
-		stw.History("changes are not saved")
-		return
+		if !stw.Yn("Quit", "変更を保存せず終了しますか？") {
+			return
+		}
 	}
 	err := stw.SaveRecent()
 	if err != nil {
@@ -699,7 +856,9 @@ func (stw *Window) Close(bang bool) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	closech <- 1
+	if stw.window != nil {
+		stw.window.Perform(system.ActionClose)
+	}
 }
 
 // for st.Selector
@@ -716,18 +875,22 @@ func (stw *Window) SetAltSelectNode(a bool) {
 }
 
 func (stw *Window) Zoom(factor float64, x, y float64) float64 {
+	return stw.zoomMouseView(stw.frame.View, factor, x, y)
+}
+
+func (stw *Window) zoomMouseView(view *st.View, factor float64, x, y float64) float64 {
 	val := math.Pow(2.0, factor/stw.CanvasScaleSpeed())
-	stw.frame.View.Center[0] += (val - 1.0) * (stw.frame.View.Center[0] - x)
-	stw.frame.View.Center[1] += (val - 1.0) * (stw.frame.View.Center[1] - y)
-	if stw.frame.View.Perspective {
-		stw.frame.View.Dists[1] *= val
-		if stw.frame.View.Dists[1] < 0.0 {
-			stw.frame.View.Dists[1] = 0.0
+	view.Center[0] += (val - 1.0) * (view.Center[0] - x)
+	view.Center[1] += (val - 1.0) * (view.Center[1] - y)
+	if view.Perspective {
+		view.Dists[1] *= val
+		if view.Dists[1] < 0.0 {
+			view.Dists[1] = 0.0
 		}
 	} else {
-		stw.frame.View.Gfact *= val
-		if stw.frame.View.Gfact < 0.0 {
-			stw.frame.View.Gfact = 0.0
+		view.Gfact *= val
+		if view.Gfact < 0.0 {
+			view.Gfact = 0.0
 		}
 	}
 	return val

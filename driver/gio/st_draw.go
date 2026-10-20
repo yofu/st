@@ -7,8 +7,11 @@ import (
 	"math"
 
 	"gioui.org/f32"
+	"gioui.org/layout"
+	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
+	"gioui.org/widget/material"
 	st "github.com/yofu/st/stlib"
 )
 
@@ -31,7 +34,7 @@ func boundingbox(coords [][]float64) []int {
 			miny = coords[i][1]
 		}
 	}
-	return []int{int(minx-1), int(miny-1), int(maxx+1), int(maxy+1)}
+	return []int{int(math.Floor(minx - 1)), int(math.Floor(miny - 1)), int(math.Ceil(maxx + 1)), int(math.Ceil(maxy + 1))}
 }
 
 func (stw *Window) Line(x1 float64, y1 float64, x2 float64, y2 float64) {
@@ -40,78 +43,139 @@ func (stw *Window) Line(x1 float64, y1 float64, x2 float64, y2 float64) {
 	defer clip.RRect{Rect: bounds, SE: 0, SW: 0, NW: 0, NE: 0}.Push(stw.context.Ops).Pop()
 	var path clip.Path
 	path.Begin(stw.context.Ops)
-	path.Move(f32.Pt(float32(x1), float32(y1)))
+	path.MoveTo(f32.Pt(float32(x1), float32(y1)))
 	path.LineTo(f32.Pt(float32(x2), float32(y2)))
 	paint.FillShape(stw.context.Ops, stw.currentPen,
 		clip.Stroke{
-			Path: path.End(),
+			Path:  path.End(),
 			Width: 1,
-	}.Op())
+		}.Op())
 }
 
 func (stw *Window) Polyline(coords [][]float64) {
+	if len(coords) < 2 {
+		return
+	}
 	bb := boundingbox(coords)
 	bounds := image.Rect(bb[0], bb[1], bb[2], bb[3])
 	defer clip.RRect{Rect: bounds, SE: 0, SW: 0, NW: 0, NE: 0}.Push(stw.context.Ops).Pop()
 	var path clip.Path
 	path.Begin(stw.context.Ops)
-	path.Move(f32.Pt(float32(coords[0][0]), float32(coords[0][1])))
+	path.MoveTo(f32.Pt(float32(coords[0][0]), float32(coords[0][1])))
 	for i := 1; i < len(coords); i++ {
 		path.LineTo(f32.Pt(float32(coords[i][0]), float32(coords[i][1])))
 	}
-	path.LineTo(f32.Pt(float32(coords[0][0]), float32(coords[0][1])))
+	path.Close()
 	paint.FillShape(stw.context.Ops, stw.currentPen,
-	clip.Stroke{
-		Path: path.End(),
-		Width: 1,
-	}.Op())
+		clip.Stroke{
+			Path:  path.End(),
+			Width: 1,
+		}.Op())
 }
 
 func (stw *Window) Polygon(coords [][]float64) {
+	if len(coords) < 3 {
+		return
+	}
 	bb := boundingbox(coords)
 	bounds := image.Rect(bb[0], bb[1], bb[2], bb[3])
 	defer clip.RRect{Rect: bounds, SE: 0, SW: 0, NW: 0, NE: 0}.Push(stw.context.Ops).Pop()
 	var path clip.Path
 	path.Begin(stw.context.Ops)
-	path.Move(f32.Pt(float32(coords[0][0]), float32(coords[0][1])))
+	path.MoveTo(f32.Pt(float32(coords[0][0]), float32(coords[0][1])))
 	for i := 1; i < len(coords); i++ {
 		path.LineTo(f32.Pt(float32(coords[i][0]), float32(coords[i][1])))
 	}
-	path.LineTo(f32.Pt(float32(coords[0][0]), float32(coords[0][1])))
+	path.Close()
 	paint.FillShape(stw.context.Ops, stw.currentBrush,
-	clip.Outline{
-		Path: path.End(),
-	}.Op())
+		clip.Outline{
+			Path: path.End(),
+		}.Op())
 }
 
-func (stw *Window) Circle(x float64, y float64, r float64) {
-	bounds := image.Rect(int(x-r-1), int(y-r-1), int(x+r+1), int(y+r+1))
-	defer clip.RRect{Rect: bounds, SE: 0, SW: 0, NW: 0, NE: 0}.Push(stw.context.Ops).Pop()
-	var path clip.Path
-	path.Begin(stw.context.Ops)
-	path.Move(f32.Pt(float32(x-r/2), float32(y-r/2)))
-	path.Arc(f32.Pt(float32(r/2), float32(r/2)), f32.Pt(float32(r/2), float32(r/2)), 2*math.Pi)
-	paint.FillShape(stw.context.Ops, stw.currentPen,
-	clip.Stroke{
-		Path: path.End(),
-		Width: 1,
-	}.Op())
+// The Drawer circle size is a diameter, matching the IUP/CD driver.
+func circleBounds(x, y, diameter float64) image.Rectangle {
+	r := diameter / 2
+	return image.Rect(int(math.Floor(x-r)), int(math.Floor(y-r)), int(math.Ceil(x+r)), int(math.Ceil(y+r)))
 }
 
-func (stw *Window) FilledCircle(x float64, y float64, r float64) {
-	bounds := image.Rect(int(x-r-1), int(y-r-1), int(x+r+1), int(y+r+1))
-	defer clip.RRect{Rect: bounds, SE: 0, SW: 0, NW: 0, NE: 0}.Push(stw.context.Ops).Pop()
-	var path clip.Path
-	path.Begin(stw.context.Ops)
-	path.Move(f32.Pt(float32(x-r/2), float32(y-r/2)))
-	path.Arc(f32.Pt(float32(r/2), float32(r/2)), f32.Pt(float32(r/2), float32(r/2)), 2*math.Pi)
-	paint.FillShape(stw.context.Ops, stw.currentBrush,
-	clip.Outline{
-		Path: path.End(),
-	}.Op())
+func (stw *Window) Circle(x, y, r float64) {
+	if r <= 0 {
+		return
+	}
+	path := clip.Ellipse(circleBounds(x, y, r)).Path(stw.context.Ops)
+	paint.FillShape(stw.context.Ops, stw.currentPen, clip.Stroke{Path: path, Width: 1}.Op())
+}
+
+func (stw *Window) FilledCircle(x, y, r float64) {
+	if r <= 0 {
+		return
+	}
+	paint.FillShape(stw.context.Ops, stw.currentBrush, clip.Ellipse(circleBounds(x, y, r)).Op(stw.context.Ops))
 }
 
 func (stw *Window) Text(x float64, y float64, txt string) {
+	if txt == "" {
+		return
+	}
+	gtx := stw.context
+	gtx.Constraints = layout.Constraints{Max: image.Pt(100000, 100000)}
+	label := material.Body2(stw.Theme, txt)
+	label.Color = stw.currentPen
+	macro := op.Record(gtx.Ops)
+	dims := label.Layout(gtx)
+	call := macro.Stop()
+	dx, dy := textOffset(stw.textAlignment, dims.Size)
+	transform := op.Affine(f32.Affine2D{}.
+		Rotate(f32.Point{}, float32(-stw.textAngle*math.Pi/180)).
+		Offset(f32.Pt(float32(x), float32(y)))).Push(gtx.Ops)
+	defer transform.Pop()
+	offset := op.Offset(image.Pt(dx, dy)).Push(gtx.Ops)
+	defer offset.Pop()
+	call.Add(gtx.Ops)
+}
+
+// Highlight the selected geometry even though this driver does not yet draw
+// the IUP/CD dotted-line and hatch styles.
+func (stw *Window) drawSelection() {
+	for _, e := range stw.SelectedElems() {
+		if e == nil || e.IsHidden(stw.frame.Show) || len(e.Enod) < 2 {
+			continue
+		}
+		var path clip.Path
+		path.Begin(stw.context.Ops)
+		for i, n := range e.Enod {
+			p := f32.Pt(float32(n.Pcoord[0]), float32(n.Pcoord[1]))
+			if i == 0 {
+				path.MoveTo(p)
+			} else {
+				path.LineTo(p)
+			}
+		}
+		if e.Enods > 2 {
+			path.Close()
+		}
+		paint.FillShape(stw.context.Ops, color.NRGBA{R: 255, G: 120, B: 20, A: 230}, clip.Stroke{Path: path.End(), Width: 3}.Op())
+	}
+}
+
+func textOffset(alignment int, size image.Point) (int, int) {
+	switch alignment {
+	case st.NORTH:
+		return -size.X / 2, 0
+	case st.SOUTH:
+		return -size.X / 2, -size.Y
+	case st.WEST:
+		return 0, -size.Y / 2
+	case st.EAST:
+		return -size.X, -size.Y / 2
+	case st.CENTER:
+		return -size.X / 2, -size.Y / 2
+	case st.SOUTH_EAST:
+		return -size.X, -size.Y
+	default:
+		return 0, -size.Y
+	}
 }
 
 func (stw *Window) Foreground(col int) int {
@@ -126,10 +190,12 @@ func (stw *Window) Foreground(col int) int {
 func (stw *Window) LineStyle(ls int) {
 }
 
-func (stw *Window) TextAlignment(int) {
+func (stw *Window) TextAlignment(alignment int) {
+	stw.textAlignment = alignment
 }
 
-func (stw *Window) TextOrientation(float64) {
+func (stw *Window) TextOrientation(degrees float64) {
+	stw.textAngle = degrees
 }
 
 func (stw *Window) DefaultStyle() {
@@ -179,8 +245,9 @@ func (stw *Window) CanvasPaperSize() (float64, float64, error) {
 	}
 }
 
+// FrameEvent.Frame submits the completed drawing. Scheduling another frame
+// here would make every DrawFrame trigger an endless redraw loop.
 func (stw *Window) Flush() {
-	stw.QueueRedrawAll()
 }
 
 func (stw *Window) CanvasDirection() int {

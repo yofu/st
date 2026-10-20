@@ -410,6 +410,9 @@ func (frame *Frame) Snapshot() *Frame {
 	for _, k := range frame.Kijuns {
 		f.Kijuns[k.Name] = k.Snapshot()
 	}
+	for _, m := range frame.Measures {
+		f.Measures = append(f.Measures, m.Snapshot(f))
+	}
 	f.Maxenum = frame.Maxenum
 	f.Maxnnum = frame.Maxnnum
 	f.Maxsnum = frame.Maxsnum
@@ -2848,12 +2851,12 @@ func (frame *Frame) ZoubunSummary(fn string, period string, cond *arclm.Analysis
 			aveheight[i] /= float64(len(nodes[i]))
 		}
 		for i := 0; i < frame.Ai.Nfloor-1; i++ {
-			storydrift[i] = (avedisp[i+1] - avedisp[i])/(aveheight[i+1]-aveheight[i])
+			storydrift[i] = (avedisp[i+1] - avedisp[i]) / (aveheight[i+1] - aveheight[i])
 			for _, el := range elems[i] {
 				if ind == 0 {
-					shear[i] -= el.VectorStress(nper, 0, XAXIS)*frame.Show.Unit[0]
+					shear[i] -= el.VectorStress(nper, 0, XAXIS) * frame.Show.Unit[0]
 				} else {
-					shear[i] -= el.VectorStress(nper, 0, YAXIS)*frame.Show.Unit[0]
+					shear[i] -= el.VectorStress(nper, 0, YAXIS) * frame.Show.Unit[0]
 				}
 			}
 			otp.WriteString(fmt.Sprintf(" %10.6f %10.6f", storydrift[i], shear[i]))
@@ -3190,8 +3193,8 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 				dstart := make([]float64, 3)
 				dend := make([]float64, 3)
 				for i := 0; i < 3; i++ {
-					dstart[i]= (el.Enod[0].Coord[i] + frame.Show.Dfact*el.Enod[0].ReturnDisp(frame.Show.Period, i))*scale
-					dend[i]= (el.Enod[1].Coord[i] + frame.Show.Dfact*el.Enod[1].ReturnDisp(frame.Show.Period, i))*scale
+					dstart[i] = (el.Enod[0].Coord[i] + frame.Show.Dfact*el.Enod[0].ReturnDisp(frame.Show.Period, i)) * scale
+					dend[i] = (el.Enod[1].Coord[i] + frame.Show.Dfact*el.Enod[1].ReturnDisp(frame.Show.Period, i)) * scale
 				}
 				_, err := d.Line(dstart[0], dstart[1], dstart[2], dend[0], dend[1], dend[2])
 				if err != nil {
@@ -5410,7 +5413,7 @@ func (frame *Frame) AiDistribution() (string, string, error) {
 	for i := 0; i < size; i++ {
 		frame.Ai.Level[i] /= float64(nnum[i])
 		// if frame.Ai.Level[i] > maxheight {
-			// maxheight = frame.Ai.Level[i]
+		// maxheight = frame.Ai.Level[i]
 		// }
 		for j := size - 1; j >= i; j-- {
 			frame.Ai.W[i] += frame.Ai.Wi[j]
@@ -6607,7 +6610,7 @@ func (frame *Frame) OutputTex() error {
 			var tstr string
 			var t float64
 			var err error
-			t, err  = sect.Thick(0)
+			t, err = sect.Thick(0)
 			if err != nil {
 				k, err := sect.Kfact(0)
 				if err != nil {
@@ -6858,7 +6861,7 @@ func (frame *Frame) PickLineElem(x, y, eps float64) *Elem {
 		}
 		if v.IsLineElem() && (math.Min(icoord[0], jcoord[0]) <= x+eps && math.Max(icoord[0], jcoord[0]) >= x-eps) && (math.Min(icoord[1], jcoord[1]) <= y+eps && math.Max(icoord[1], jcoord[1]) >= y-eps) {
 			dist := math.Abs(DotLine(icoord[0], icoord[1], jcoord[0], jcoord[1], x, y))
-			if plen := math.Hypot(icoord[0]-jcoord[0], icoord[1]-jcoord[1]); plen > 1E-12 {
+			if plen := math.Hypot(icoord[0]-jcoord[0], icoord[1]-jcoord[1]); plen > 1e-12 {
 				dist /= plen
 			}
 			if dist < mindist {
@@ -6926,7 +6929,7 @@ func (frame *Frame) PickAxis(x, y, eps float64) (*Axis, int) {
 	for i := 0; i < 3; i++ {
 		if (math.Min(start[0], end[i][0]) <= x+eps && math.Max(start[0], end[i][0]) >= x-eps) && (math.Min(start[1], end[i][1]) <= y+eps && math.Max(start[1], end[i][1]) >= y-eps) {
 			dist := math.Abs(DotLine(start[0], start[1], end[i][0], end[i][1], x, y))
-			if plen := math.Hypot(start[0]-end[i][0], start[1]-end[i][1]); plen > 1E-12 {
+			if plen := math.Hypot(start[0]-end[i][0], start[1]-end[i][1]); plen > 1e-12 {
 				dist /= plen
 			}
 			if dist < mindist {

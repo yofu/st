@@ -650,6 +650,7 @@ func measure(stw *Window) {
 				v = st.XAXIS
 			case "Z":
 				u = st.ZAXIS
+				v = st.Direction(n0, n, true)
 			case "V":
 				v = st.Direction(n0, n, true)
 				u = st.Cross(v, st.ZAXIS)
@@ -1658,7 +1659,7 @@ func divideatplane(stw *Window) {
 				continue
 			}
 			val := st.Dot(n, el.Enod[0].Coord, 3)
-			val2 := (h - val)/dot
+			val2 := (h - val) / dot
 			if val2 <= 0 || val2 >= l {
 				continue
 			}
@@ -3013,33 +3014,11 @@ func divideatelem(stw *Window) {
 // INTERSECT// {{{
 func intersect(stw *Window) {
 	getnelems(stw, 2, func(size int) {
-		els := make([]*st.Elem, 2)
-		num := 0
-		for _, el := range stw.SelectedElems() {
-			if el != nil {
-				els[num] = el
-				num++
-				if num >= 2 {
-					break
-				}
-			}
+		if err := st.IntersectElems(stw, stw.SelectedElems()); err != nil {
+			st.ErrorMessage(stw, err, st.ERROR)
+			stw.Deselect()
 		}
-		if num == 2 {
-			_, els, err := stw.frame.Intersect(els[0], els[1], true, 1, 1, false, false, EPS)
-			if err != nil {
-				st.ErrorMessage(stw, err, st.ERROR)
-				stw.Deselect()
-			} else {
-				stw.Deselect()
-				switch len(els) {
-				case 4:
-					stw.SelectElem([]*st.Elem{els[1], els[3]})
-				}
-				stw.Redraw()
-			}
-			st.Snapshot(stw)
-			stw.EscapeCB()
-		}
+		stw.EscapeCB()
 	})
 }
 

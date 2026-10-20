@@ -499,6 +499,14 @@ func CompleteFileName(str string, percent string, sharp []string) []string {
 			}
 		}
 	}
+	// Placeholder substitution produces one filename, including spaces in a
+	// recent/current model's path. Do not split that expanded filename into words.
+	if contain {
+		if !filepath.IsAbs(str) {
+			str = filepath.Join(filepath.Dir(percent), str)
+		}
+		return []string{filepath.Clean(str)}
+	}
 	lis := strings.Split(str, " ")
 	path := lis[len(lis)-1]
 	if !filepath.IsAbs(path) {

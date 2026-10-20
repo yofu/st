@@ -37,3 +37,12 @@ func (m *Measure) Show() {
 func (m *Measure) IsHidden(show *Show) bool {
 	return m.hide
 }
+
+func (m *Measure) Snapshot(frame *Frame) *Measure {
+	copy := *m
+	copy.Frame = frame
+	copy.Start = append([]float64(nil), m.Start...)
+	copy.End = append([]float64(nil), m.End...)
+	copy.Direction = append([]float64(nil), m.Direction...)
+	return &copy
+}

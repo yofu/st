@@ -2926,8 +2926,8 @@ func (stw *Window) ShapeData(sh st.Shape) {
 		imin := an.Imin()
 		cx := an.Cx()
 		cy := an.Cy()
-		l1 := math.Sqrt(cx*cx+cy*cy)
-		l2 := math.Sqrt(an.H*an.H+an.B*an.B)-l1
+		l1 := math.Sqrt(cx*cx + cy*cy)
+		l2 := math.Sqrt(an.H*an.H+an.B*an.B) - l1
 		l := l1
 		if l2 > l1 {
 			l = l2
@@ -3348,8 +3348,11 @@ func abs(val int) int {
 func (stw *Window) SelectElemFenceStart(arg *iup.MouseButton) {
 	stw.dbuff.UpdateYAxis(&arg.Y)
 	if arg.Pressed == 0 { // Released
-		els := stw.frame.FenceLine(float64(stw.startX), float64(stw.startY), float64(stw.endX), float64(stw.endY))
-		st.MergeSelectElem(stw, els, isShift(arg.Status))
+		st.SelectElemFence(stw, st.FenceGesture{
+			Start:    st.Position{X: stw.startX, Y: stw.startY},
+			End:      st.Position{X: int(arg.X), Y: int(arg.Y)},
+			Modifier: st.Modifier{Shift: isShift(arg.Status), Ctrl: isCtrl(arg.Status)},
+		})
 		stw.cdcanv.Line(stw.startX, stw.startY, stw.endX, stw.endY)
 		stw.cdcanv.WriteMode(cd.CD_REPLACE)
 		stw.Redraw()
