@@ -29,6 +29,10 @@ type Sect struct {
 	Original int
 	Color    int
 	Allow    SectionRate
+
+	// ElasticEnds disables material yielding at Enod[0] and Enod[1].
+	// The zero value preserves yielding at both ends.
+	ElasticEnds [2]bool
 }
 
 type Fig struct {
@@ -78,6 +82,7 @@ func (sect *Sect) Snapshot(frame *Frame) *Sect {
 	}
 	s.Exp = sect.Exp
 	s.Exq = sect.Exq
+	s.ElasticEnds = sect.ElasticEnds
 	for i := 0; i < 3; i++ {
 		s.Lload[i] = sect.Lload[i]
 		s.Perpl[i] = sect.Perpl[i]
@@ -267,6 +272,9 @@ func (sect *Sect) InpString() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("SECT %3d SNAME %s\n", sect.Num, sect.Name))
 	col := IntColor(sect.Color)
+	if option := arclm.FormatYieldEnds(sect.ElasticEnds); option != "" {
+		rtn.WriteString("         " + option + "\n")
+	}
 	if len(sect.Figs) < 1 {
 		rtn.WriteString("         SROLE HOJO\n")
 		rtn.WriteString(fmt.Sprintf("         COLOR %s\n", col))

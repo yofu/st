@@ -20,6 +20,11 @@ type PlasticResponse struct {
 	Tangent          [][]float64
 	Multipliers      [2]float64
 	Yield            [2]float64
+
+	// Weakly active yield surfaces need a loading/unloading direction to
+	// choose a one-sided tangent. These flags are trial data, not history.
+	directional   bool
+	tangentActive [2]bool
 }
 
 type plasticMaterialState struct {
@@ -200,7 +205,17 @@ func (elem *Elem) plasticSystem(y, trial, beta, centers []float64, stiffness [][
 // Solve s = sTrial - K sum(gamma*dG/ds), G<=0, gamma>=0, gamma*G=0.
 // No inverse of the singular 12-DOF elastic beam stiffness is needed.
 func (elem *Elem) returnPlasticForces(trial []float64, k [][]float64) (*PlasticResponse, error) {
-	if elem.Sect.Exp <= 1 || elem.Sect.Exq <= 1 || math.IsNaN(elem.Sect.Exp) || math.IsNaN(elem.Sect.Exq) || math.IsInf(elem.Sect.Exp, 0) || math.IsInf(elem.Sect.Exq, 0) {
+	return elem.returnPlasticForcesDirectional(trial, k, nil)
+}
+
+// direction is a local elastic trial-force rate, used only to select the
+// one-sided tangent at a loading/unloading boundary. It does not add load,
+// displacement or plastic history to the returned response.
+func (elem *Elem) returnPlasticForcesDirectional(trial []float64, k [][]float64, direction []float64) (*PlasticResponse, error) {
+	if direction != nil && len(direction) != 12 {
+		return nil, fmt.Errorf("ELEM %d: plastic direction must have 12 components", elem.Num)
+	}
+	if elem.Sect.ElasticEnds != [2]bool{true, true} && (elem.Sect.Exp <= 1 || elem.Sect.Exq <= 1 || math.IsNaN(elem.Sect.Exp) || math.IsNaN(elem.Sect.Exq) || math.IsInf(elem.Sect.Exp, 0) || math.IsInf(elem.Sect.Exq, 0)) {
 		return nil, fmt.Errorf("ELEM %d: plastic exponents must be finite and greater than one", elem.Num)
 	}
 	scale, centers, t := make([]float64, 12), make([]float64, 12), make([]float64, 12)
@@ -210,6 +225,13 @@ func (elem *Elem) returnPlasticForces(trial []float64, k [][]float64) (*PlasticR
 		j := i % 6
 		width := .5 * (elem.Sect.Yield[2*j] - elem.Sect.Yield[2*j+1])
 		center := .5 * (elem.Sect.Yield[2*j] + elem.Sect.Yield[2*j+1])
+		if elem.Sect.ElasticEnds[i/6] {
+			// Retain a useful force scale, without imposing a capacity at this end.
+			center = 0
+			if !finitePlastic(width) || width <= 0 {
+				width = 1
+			}
+		}
 		if elem.Bonds[i].Num == 1 {
 			width, center = 1, 0
 		}
@@ -237,7 +259,17 @@ func (elem *Elem) returnPlasticForces(trial []float64, k [][]float64) (*PlasticR
 	}
 	// Enumerating two end surfaces also handles redundant constraints such as
 	// pure axial yielding at both ends: a single independent surface suffices.
-	for _, active := range [][]int{nil, {0}, {1}, {0, 1}} {
+	activeSets := [][]int{nil}
+	for end := 0; end < 2; end++ {
+		if elem.Sect.ElasticEnds[end] {
+			continue
+		}
+		n := len(activeSets)
+		for i := 0; i < n; i++ {
+			activeSets = append(activeSets, append(append([]int(nil), activeSets[i]...), end))
+		}
+	}
+	for _, active := range activeSets {
 		y, beta := append([]float64(nil), t...), make([]float64, len(active))
 		converged := false
 		var jac [][]float64
@@ -279,19 +311,31 @@ func (elem *Elem) returnPlasticForces(trial []float64, k [][]float64) (*PlasticR
 			continue
 		}
 		valid := true
+		var endBeta [2]float64
+		for i, end := range active {
+			endBeta[end] = beta[i]
+		}
 		for _, v := range beta {
 			valid = valid && v >= -1e-11
 		}
 		response := &PlasticResponse{Stress: make([]float64, 12), Increment: make([]float64, 12), PlasticIncrement: make([]float64, 12)}
 		for end := 0; end < 2; end++ {
+			if elem.Sect.ElasticEnds[end] {
+				continue
+			}
 			v, _, _ := elem.yieldPotential(y, end, centers)
 			valid = valid && v <= 1e-10 && !math.IsNaN(v)
+			response.directional = response.directional || math.Abs(v) <= 1e-10 && endBeta[end] <= 1e-11
 			response.Yield[end] = math.Pow(math.Max(0, v+math.Pow(RADIUS, elem.Sect.Exq)), 1/elem.Sect.Exq)
 		}
 		if !valid {
 			continue
 		}
+		if response.directional && direction != nil && !elem.admissiblePlasticDirection(y, beta, centers, scale, jac, active, direction) {
+			continue
+		}
 		for a, end := range active {
+			response.tangentActive[end] = true
 			_, g, _ := elem.yieldPotential(y, end, centers)
 			response.Multipliers[end] = math.Max(0, beta[a]) / maxB
 			for i := range g {
@@ -371,7 +415,7 @@ func (elem *Elem) commitPlasticResponse(r *PlasticResponse) {
 	}
 	elem.material.tangent = copyPlasticMatrix(r.Tangent)
 	for end := 0; end < 2; end++ {
-		elem.Phinge[end] = r.Yield[end] >= RADIUS-1e-9
+		elem.Phinge[end] = !elem.Sect.ElasticEnds[end] && r.Yield[end] >= RADIUS-1e-9
 		for j := 0; j < 6; j++ {
 			i := 6*end + j
 			if elem.Bonds[i].Num < 0 {

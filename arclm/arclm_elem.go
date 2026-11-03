@@ -26,6 +26,10 @@ type Sect struct {
 	Exp      float64
 	Exq      float64
 	Original int
+
+	// ElasticEnds disables material yielding at Enod[0] and Enod[1].
+	// The zero value preserves yielding at both ends.
+	ElasticEnds [2]bool
 }
 
 var Rigid = &Sect{
@@ -75,6 +79,7 @@ func (sect *Sect) Snapshot() *Sect {
 	s.Type = sect.Type
 	s.Exp = sect.Exp
 	s.Exq = sect.Exq
+	s.ElasticEnds = sect.ElasticEnds
 	s.Original = sect.Original
 	return s
 }
@@ -89,11 +94,17 @@ func (sect *Sect) InlString() string {
 	}
 	rtn.WriteString(fmt.Sprintf(" %5d", sect.Type))
 	rtn.WriteString(fmt.Sprintf(" %5d", sect.Original))
+	if option := FormatYieldEnds(sect.ElasticEnds); option != "" {
+		rtn.WriteString(" " + option)
+	}
 	rtn.WriteString("\n")
 	return rtn.String()
 }
 
 func ParseArclmSect(words []string) (*Sect, error) {
+	if len(words) < 19 {
+		return nil, fmt.Errorf("ParseArclmSect: expected at least 19 fields")
+	}
 	var val float64
 	var err error
 	s := NewSect()
@@ -132,6 +143,19 @@ func ParseArclmSect(words []string) (*Sect, error) {
 			return s, err
 		}
 		s.Type = int(tp)
+	}
+	for i := 20; i < len(words); i++ {
+		if words[i] != "YIELDEND" {
+			continue
+		}
+		if i+2 >= len(words) {
+			return nil, fmt.Errorf("SECT %d: YIELDEND requires two values", s.Num)
+		}
+		s.ElasticEnds, err = ParseYieldEnds(words[i+1 : i+3])
+		if err != nil {
+			return nil, fmt.Errorf("SECT %d: %w", s.Num, err)
+		}
+		i += 2
 	}
 	return s, nil
 }
@@ -509,6 +533,10 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 		fu[j] = 0.5 * (elem.Sect.Yield[2*j] - elem.Sect.Yield[2*j+1])
 	}
 	for i := 0; i < 2; i++ {
+		dfdp[i] = make([]float64, 6)
+		if elem.Sect.ElasticEnds[i] {
+			continue
+		}
 		values := make([]float64, 6)
 		units := make([]float64, 6)
 		for j := 0; j < 6; j++ {
@@ -543,7 +571,6 @@ func (elem *Elem) Coefficients(estiff [][]float64) ([]float64, [][]float64, [][]
 		if f[i] > RADIUS && err[i] == nil {
 			err[i] = Yielded(elem, i)
 		}
-		dfdp[i] = make([]float64, 6)
 		for j := 0; j < 6; j++ {
 			// Use the zero normal at the norm's origin (an elastic state).
 			if elem.Bonds[6*i+j].Num == 1 || values[j] == 0.0 || f[i] == 0.0 {

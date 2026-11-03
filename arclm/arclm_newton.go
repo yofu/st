@@ -220,7 +220,7 @@ func newPlasticNewtonAnalysis(frame *Frame, ctx context.Context, cond *AnalysisC
 		if elem.Sect == nil || len(elem.Sect.Yield) != 12 || len(elem.Sect.Value) != 4 || len(elem.Enod) != 2 || len(elem.Bonds) != 12 || len(elem.Cmq) != 12 || len(elem.Stress) != 12 || len(elem.Phinge) != 2 {
 			return nil, fmt.Errorf("ELEM %d: invalid section or element data", elem.Num)
 		}
-		if !finitePlastic(elem.Sect.Exp) || !finitePlastic(elem.Sect.Exq) || elem.Sect.Exp <= 1 || elem.Sect.Exq <= 1 {
+		if elem.Sect.ElasticEnds != [2]bool{true, true} && (!finitePlastic(elem.Sect.Exp) || !finitePlastic(elem.Sect.Exq) || elem.Sect.Exp <= 1 || elem.Sect.Exq <= 1) {
 			return nil, fmt.Errorf("ELEM %d: plastic exponents must be finite and greater than one", elem.Num)
 		}
 		for _, bond := range elem.Bonds {
@@ -230,7 +230,7 @@ func newPlasticNewtonAnalysis(frame *Frame, ctx context.Context, cond *AnalysisC
 		}
 		connection := elem.plasticConnection()
 		for i, bond := range connection.Bonds {
-			if bond.Num == 1 {
+			if bond.Num == 1 || elem.Sect.ElasticEnds[i/6] {
 				continue
 			}
 			j := i % 6
@@ -314,6 +314,10 @@ func (a *plasticNewtonAnalysis) external(target float64) []float64 {
 }
 
 func (a *plasticNewtonAnalysis) evaluate(base *FrameState, du []float64, from, target float64) (*plasticNewtonTrial, error) {
+	return a.evaluateDirectional(base, du, from, target, nil)
+}
+
+func (a *plasticNewtonAnalysis) evaluateDirectional(base *FrameState, du []float64, from, target float64, direction []float64) (*plasticNewtonTrial, error) {
 	size := len(a.conf)
 	r := &plasticNewtonTrial{responses: make([]*PlasticResponse, len(a.frame.Elems)), internal: make([]float64, size), residual: make([]float64, size), tangent: matrix.NewCOOMatrix(size)}
 	for _, el := range a.elements {
@@ -329,7 +333,14 @@ func (a *plasticNewtonAnalysis) evaluate(base *FrameState, du []float64, from, t
 		for i := range trial {
 			trial[i] += base.Stress[el.index][i] + (target-from)*el.fixed[i]
 		}
-		response, err := el.connection.returnPlasticForces(trial, el.elastic)
+		var localDirection []float64
+		if direction != nil {
+			for end, node := range el.connection.Enod {
+				copy(g[6*end:6*end+6], direction[6*node.Index:6*node.Index+6])
+			}
+			localDirection = matrix.MatrixVector(el.elastic, matrix.MatrixVector(el.transform, g))
+		}
+		response, err := el.connection.returnPlasticForcesDirectional(trial, el.elastic, localDirection)
 		if err != nil {
 			return nil, err
 		}
@@ -484,7 +495,7 @@ func (a *plasticNewtonAnalysis) step(from, target float64) error {
 			err = fmt.Errorf("Newton iteration limit")
 			break
 		}
-		correction, solveErr := a.solveLinear(r.tangent, r.residual)
+		correction, solveErr := a.solveDirectionalCorrection(base, du, from, target, r)
 		if solveErr != nil {
 			err = solveErr
 			break

@@ -941,6 +941,15 @@ func (frame *Frame) ParseSect(lis []string, overwrite bool) (*Sect, error) {
 		case "EXQ":
 			s.Exq, err = strconv.ParseFloat(lis[i+1], 64)
 			skip = 1
+		case "YIELDEND":
+			if i+2 >= len(lis) {
+				return nil, fmt.Errorf("SECT %d: YIELDEND requires two values", s.Num)
+			}
+			s.ElasticEnds, err = arclm.ParseYieldEnds(lis[i+1 : i+3])
+			if err != nil {
+				return nil, fmt.Errorf("SECT %d: %w", s.Num, err)
+			}
+			skip = 2
 		case "NZMAX":
 			for j := 0; j < 12; j++ {
 				s.Yield[j], err = strconv.ParseFloat(lis[i+1+2*j], 64)
@@ -4962,15 +4971,16 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				E = sec.Figs[0].Prop.ES()
 			}
 			af.Sects[i] = &arclm.Sect{
-				Num:      sec.Num,
-				E:        E,
-				Poi:      sec.Figs[0].Prop.Poi(),
-				Value:    sec.ArclmValue(),
-				Yield:    yield,
-				Type:     sec.Type,
-				Exp:      sec.Exp,
-				Exq:      sec.Exq,
-				Original: sec.Original,
+				Num:         sec.Num,
+				E:           E,
+				Poi:         sec.Figs[0].Prop.Poi(),
+				Value:       sec.ArclmValue(),
+				Yield:       yield,
+				Type:        sec.Type,
+				Exp:         sec.Exp,
+				Exq:         sec.Exq,
+				ElasticEnds: sec.ElasticEnds,
+				Original:    sec.Original,
 			}
 			arclmsects[sec.Num] = i
 		}
