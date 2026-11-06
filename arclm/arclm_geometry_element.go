@@ -5,23 +5,26 @@ import (
 	"math"
 )
 
-// geometryElement separates the linear elastic element law from finite
-// compatibility. The frame follows the chord and the mean of the two end
+// geometryElement separates the reference elastic stiffness from finite
+// compatibility; the optional plastic return uses current physical end forces. The frame follows the chord and the mean of the two end
 // triads after their first axes have been aligned to the chord (Goto, 1983,
 // section 5). Local strains must be small; refine curved/twisted members.
 type geometryElement struct {
-	index   int
-	nodes   [2]int
-	length  float64
-	initial geometryMatrix
-	k       [12][12]float64
-	fixed   [12]float64 // equivalent fixed-end forces in the initial global frame
+	connection *Elem
+	index      int
+	nodes      [2]int
+	length     float64
+	initial    geometryMatrix
+	k          [12][12]float64
+	fixed      [12]float64 // equivalent fixed-end forces in the initial global frame
 }
 type geometryResponse struct {
-	force   [12]float64
-	tangent [12][12]float64
-	axes    geometryMatrix
-	energy  float64
+	force        [12]float64
+	tangent      [12][12]float64
+	axes         geometryMatrix
+	energy       float64
+	material     *PlasticResponse
+	basicPlastic [12]float64
 }
 
 func newGeometryElement(e *Elem, index int) (geometryElement, error) {
@@ -35,7 +38,7 @@ func newGeometryElement(e *Elem, index int) (geometryElement, error) {
 		}
 	}
 	// Always construct the reference stiffness and axes at input coordinates.
-	c := *e
+	c := *e.plasticConnection()
 	c.geometryAxes = nil
 	for i := 0; i < 2; i++ {
 		g.nodes[i] = e.Enod[i].Index
@@ -59,7 +62,7 @@ func newGeometryElement(e *Elem, index int) (geometryElement, error) {
 		return g, err
 	}
 	q := append([]float64(nil), e.Cmq...)
-	for j, b := range e.Bonds {
+	for j, b := range c.Bonds {
 		if b == nil || len(b.Value) != 4 {
 			return g, fmt.Errorf("ELEM %d: nil connection", e.Num)
 		}
@@ -102,10 +105,15 @@ func newGeometryElement(e *Elem, index int) (geometryElement, error) {
 		x := geometryMV(g.initial, geometryVector{q[3*n], q[3*n+1], q[3*n+2]})
 		copy(g.fixed[3*n:3*n+3], x[:])
 	}
+	g.connection = &c
 	return g, nil
 }
 
 func (e *geometryElement) response(nodes []*Node, rotations []geometryMatrix) (*geometryResponse, error) {
+	return e.responseMaterial(nodes, rotations, nil)
+}
+
+func (e *geometryElement) responseMaterial(nodes []*Node, rotations []geometryMatrix, material *geometryMaterialTrial) (*geometryResponse, error) {
 	var end [2]geometryJMatrix
 	var chord geometryJVector
 	for i := 0; i < 3; i++ {
@@ -153,25 +161,29 @@ func (e *geometryElement) response(nodes []*Node, rotations []geometryMatrix) (*
 			b[6*n+3+i] = r[i]
 		}
 	}
+
 	r := &geometryResponse{}
 	var q [12]float64
-	for i := 0; i < 12; i++ {
-		for j := 0; j < 12; j++ {
-			q[i] += e.k[i][j] * b[j].v
-		}
-		r.energy += .5 * b[i].v * q[i]
-	}
-	// p = B^T q, K = B^T k B + sum(q_a * Hessian(b_a)).
-	// The second term is the separated geometric stiffness, including shear,
-	// bending and torsion; it is not the axial-force-only buckling matrix.
 	var kb [12][12]float64
-	for a := 0; a < 12; a++ {
-		for i := 0; i < 12; i++ {
+	if material == nil {
+		for a := 0; a < 12; a++ {
 			for c := 0; c < 12; c++ {
-				kb[a][i] += e.k[a][c] * b[c].d[i]
+				q[a] += e.k[a][c] * b[c].v
+				for i := 0; i < 12; i++ {
+					kb[a][i] += e.k[a][c] * b[c].d[i]
+				}
 			}
+			r.energy += .5 * b[a].v * q[a]
+		}
+	} else {
+		var err error
+		q, kb, err = e.materialResponse(b, frame, material, r)
+		if err != nil {
+			return nil, err
 		}
 	}
+	// The same finite compatibility is used for both the plastic return and
+	// the separated tangent: p=B^T q, dp=B^T dq+sum(q_a Hessian(b_a)).
 	for i := 0; i < 12; i++ {
 		for a := 0; a < 12; a++ {
 			r.force[i] += b[a].d[i] * q[a]

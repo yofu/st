@@ -19,6 +19,10 @@ func prepareArclm101(frame *Frame, args map[string]string, output string) (strin
 		return "", nil, nil, 0, fmt.Errorf(":arclm101: -init and -noinit cannot be combined")
 	}
 	cond.SetInit(init)
+	if _, ok := args["NLGEOM"]; ok {
+		cond.SetNlgeometry(true)
+		cond.SetNlmaterial(true)
+	}
 	display := strings.Split(strings.ToUpper(frame.Show.Period), "@")
 	per := display[0]
 	if p := args["PERIOD"]; p != "" {

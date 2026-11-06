@@ -444,15 +444,13 @@ func TestNewtonRotatedFrameKeepsInputGeometry(t *testing.T) {
 }
 
 func TestNewtonInvalidInputsPreserveState(t *testing.T) {
-	for _, which := range []string{"nil", "geometry", "solver", "tolerance", "max", "capacity"} {
+	for _, which := range []string{"nil", "solver", "tolerance", "max", "capacity"} {
 		t.Run(which, func(t *testing.T) {
 			f := newtonParallelFrame()
 			c := newtonTestCondition(t)
 			switch which {
 			case "nil":
 				c = nil
-			case "geometry":
-				c.SetNlgeometry(true)
 			case "solver":
 				c.SetSolver("CG")
 			case "tolerance":

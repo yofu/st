@@ -20,6 +20,7 @@ type geometryState struct {
 	rotations                         []geometryMatrix
 	axes                              []geometryMatrix
 	factor                            float64
+	material                          bool
 	steps                             int
 	baseNodal, patternNodal           []float64
 	baseFixed, patternFixed, rawFixed [][]float64
@@ -60,7 +61,16 @@ func geometryDefinition(f *Frame) []float64 {
 	for _, e := range f.Elems {
 		r = append(r, float64(e.Num), float64(e.Enod[0].Index), float64(e.Enod[1].Index), e.Cang, e.Sect.E, e.Sect.Poi)
 		r = append(r, e.Sect.Value...)
-		for _, b := range e.Bonds {
+		r = append(r, e.Sect.Exp, e.Sect.Exq)
+		r = append(r, e.Sect.Yield...)
+		for _, disabled := range e.Sect.ElasticEnds {
+			v := 0.
+			if disabled {
+				v = 1
+			}
+			r = append(r, v)
+		}
+		for _, b := range e.plasticConnection().Bonds {
 			r = append(r, float64(b.Num))
 			r = append(r, b.Value...)
 		}
@@ -108,9 +118,6 @@ type geometryTrial struct {
 }
 
 func newGeometryAnalysis(f *Frame, ctx context.Context, c *AnalysisCondition) (*geometryAnalysis, error) {
-	if c.nlmaterial {
-		return nil, fmt.Errorf("StaticAnalysis geometry: combined material nonlinearity is not implemented")
-	}
 	if len(c.extra) > 0 || c.postprocess != nil {
 		return nil, fmt.Errorf("StaticAnalysis geometry: extra RHS and legacy postprocess callbacks are not supported; run separate load stages")
 	}
@@ -179,14 +186,26 @@ func newGeometryAnalysis(f *Frame, ctx context.Context, c *AnalysisCondition) (*
 			}
 		}
 		if !e.IsValid || e.CheckFunc != nil {
-			return nil, fmt.Errorf("ELEM %d: geometric analysis requires fixed elastic element topology", e.Num)
+			return nil, fmt.Errorf("ELEM %d: geometric analysis requires fixed element topology (no removal/restoration callbacks)", e.Num)
 		}
-		if !c.init && e.material != nil {
+		if !c.init && c.nlmaterial && f.geometry == nil && e.material != nil {
+			return nil, fmt.Errorf("ELEM %d: material-only history has no finite-rotation history; restart combined analysis from the elastic preload", e.Num)
+		}
+		if !c.init && !c.nlmaterial && e.material != nil {
 			return nil, fmt.Errorf("ELEM %d: plastic history cannot be used in elastic geometric analysis", e.Num)
 		}
 		el, err := newGeometryElement(e, i)
 		if err != nil {
 			return nil, err
+		}
+		if c.nlmaterial {
+			k := make([][]float64, 12)
+			for i := range k {
+				k[i] = append([]float64(nil), el.k[i][:]...)
+			}
+			if _, err := el.connection.returnPlasticForces(make([]float64, 12), k); err != nil {
+				return nil, err
+			}
 		}
 		a.elements = append(a.elements, el)
 		a.length += el.length
@@ -199,8 +218,19 @@ func newGeometryAnalysis(f *Frame, ctx context.Context, c *AnalysisCondition) (*
 }
 
 func (a *geometryAnalysis) evaluate(factor float64) (*geometryTrial, error) {
+	return a.evaluateDirectional(factor, nil)
+}
+
+func (a *geometryAnalysis) evaluateDirectional(factor float64, direction []float64) (*geometryTrial, error) {
 	n := 6 * len(a.f.Nodes)
 	t := &geometryTrial{internal: make([]float64, n), external: make([]float64, n), residual: make([]float64, n), k: make([]map[int]float64, len(a.free))}
+	var globalDirection []float64
+	if direction != nil {
+		globalDirection = make([]float64, n)
+		for i, j := range a.free {
+			globalDirection[j] = direction[i]
+		}
+	}
 	indices := make([]int, n)
 	for i := range indices {
 		indices[i] = -1
@@ -217,7 +247,21 @@ func (a *geometryAnalysis) evaluate(factor float64) (*geometryTrial, error) {
 			return nil, err
 		}
 		e := &a.elements[m]
-		r, err := e.response(a.f.Nodes, a.state.rotations)
+		var material *geometryMaterialTrial
+		if a.c.nlmaterial {
+			material = &geometryMaterialTrial{history: a.f.Elems[e.index].material}
+			for i := 0; i < 12; i++ {
+				material.fixed[i] = a.state.baseFixed[m][i] + factor*a.state.patternFixed[m][i]
+			}
+			if globalDirection != nil {
+				d := [12]float64{}
+				for i := 0; i < 12; i++ {
+					d[i] = globalDirection[6*e.nodes[i/6]+i%6]
+				}
+				material.direction = &d
+			}
+		}
+		r, err := e.responseMaterial(a.f.Nodes, a.state.rotations, material)
 		if err != nil {
 			return nil, fmt.Errorf("ELEM %d: %w", a.f.Elems[e.index].Num, err)
 		}
@@ -357,6 +401,11 @@ func (a *geometryAnalysis) commit(t *geometryTrial, factor float64) {
 		r := t.responses[m]
 		a.state.axes[m] = r.axes
 		el := a.f.Elems[e.index]
+		if r.material != nil {
+			response := *r.material
+			response.PlasticIncrement = append([]float64(nil), r.basicPlastic[:]...)
+			el.commitPlasticResponse(&response)
+		}
 		for block := 0; block < 4; block++ {
 			var p geometryVector
 			for i := 0; i < 3; i++ {
@@ -411,11 +460,7 @@ func (a *geometryAnalysis) step(from, target float64) error {
 		if iter == a.o.MaxIterations {
 			break
 		}
-		b := make([]float64, len(a.free))
-		for i, j := range a.free {
-			b[i] = t.residual[j]
-		}
-		du, err := geometrySolve(a.ctx, t.k, b)
+		du, err := a.correction(target, t)
 		if err != nil {
 			failure.Cause = err
 			return failure
@@ -489,6 +534,7 @@ func (a *geometryAnalysis) setup() (float64, error) {
 	}
 	s := &geometryState{rotations: make([]geometryMatrix, n), axes: make([]geometryMatrix, len(a.elements)), baseNodal: make([]float64, 6*n), patternNodal: nodal, baseFixed: make([][]float64, len(a.elements)), patternFixed: fixed, rawFixed: raw}
 	s.definition = geometryDefinition(f)
+	s.material = c.nlmaterial
 	for i := range s.rotations {
 		s.rotations[i] = geometryIdentity()
 	}
@@ -504,6 +550,9 @@ func (a *geometryAnalysis) setup() (float64, error) {
 		}
 		old := f.geometry
 		if old != nil {
+			if old.material && !c.nlmaterial {
+				return 0, fmt.Errorf("combined history requires both nlgeom and nlmat for continuation")
+			}
 			if len(old.rotations) != n || len(old.axes) != len(a.elements) || !samePlasticLoadValues(old.definition, s.definition) {
 				return 0, fmt.Errorf("geometric continuation model changed; restore the original model or initialize")
 			}
@@ -591,10 +640,17 @@ func (f *Frame) staticGeometry(cancel context.CancelFunc, c *AnalysisCondition) 
 		f.RestoreState(entry)
 		return err
 	}
-	fmt.Fprintf(a.w, "GEOMETRY: finite compatibility, separated tangent, spatial rotations, pivoted LU; EPS=%g ABS_FORCE_TOL=%g REFERENCE_LENGTH=%g\n", c.eps, a.o.AbsoluteForceTolerance, a.length)
+	fmt.Fprintf(a.w, "GEOMETRY: finite compatibility, separated tangent, spatial rotations, pivoted LU; MATERIAL=%t EPS=%g ABS_FORCE_TOL=%g REFERENCE_LENGTH=%g\n", c.nlmaterial, c.eps, a.o.AbsoluteForceTolerance, a.length)
 	start := from
 	if c.init {
 		start = c.start
+	}
+	if c.geometryIncremental && !c.maxSet {
+		c.max = start + float64(c.nlap)*c.delta
+		if !finitePlastic(c.max) {
+			f.RestoreState(entry)
+			return fmt.Errorf("non-finite combined target load")
+		}
 	}
 	if (c.max-start)*c.delta < 0 {
 		f.RestoreState(entry)
@@ -638,22 +694,29 @@ func (f *Frame) staticGeometry(cancel context.CancelFunc, c *AnalysisCondition) 
 		if len(c.otp) > 0 && c.otp[0] != "" {
 			name = c.otp[0]
 		}
-		if lap < c.nlap && target != c.max {
-			ext := filepath.Ext(name)
-			name = strings.TrimSuffix(name, ext) + fmt.Sprintf("_LAP_%d_%d", lap, c.nlap) + ext
+		if c.geometryIncremental {
+			if err := writePlasticStep(f, name, offset+lap); err != nil {
+				return err
+			}
+		} else {
+			if lap < c.nlap && target != c.max {
+				ext := filepath.Ext(name)
+				name = strings.TrimSuffix(name, ext) + fmt.Sprintf("_LAP_%d_%d", lap, c.nlap) + ext
+			}
+			w, e := os.Create(name)
+			if e != nil {
+				return e
+			}
+			_, e = f.WriteTo(w)
+			ce := w.Close()
+			if e != nil {
+				return e
+			}
+			if ce != nil {
+				return ce
+			}
 		}
-		w, e := os.Create(name)
-		if e != nil {
-			return e
-		}
-		_, e = f.WriteTo(w)
-		ce := w.Close()
-		if e != nil {
-			return e
-		}
-		if ce != nil {
-			return ce
-		}
+
 		fmt.Fprintf(a.w, "GEOMETRY CONVERGED: STEP=%d LOAD=%.12g\n", offset+lap, target)
 		from = target
 		if f.Lapch != nil {

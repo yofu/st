@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -177,5 +178,25 @@ func TestArclm101DifferentPeriodPreservesPreloadAndStartsNewSteps(t *testing.T) 
 	}
 	if d := af.Nodes[1].Disp[0]; d < 1.2-1e-9 || d > 1.2+1e-9 {
 		t.Fatalf("preload was lost: displacement=%g want=1.2", d)
+	}
+}
+
+func TestArclm101CombinedCommandContinuation(t *testing.T) {
+	f := continuationCommandFrame(t)
+	runContinuationCommand(t, f, map[string]string{"INIT": "", "NLGEOM": "", "NLAP": "4", "DELTA": ".5"})
+	if f.Show.Period != "X@4" || math.Abs(f.Arclms["X"].Nodes[1].Disp[0]-.8) > 1e-8 {
+		t.Fatal("combined command lost load factor above one")
+	}
+	runContinuationCommand(t, f, map[string]string{"NLGEOM": "", "NLAP": "4", "DELTA": "-.5"})
+	if f.Show.Period != "X@8" || math.Abs(f.Arclms["X"].Nodes[1].Disp[0]) > 1e-8 {
+		t.Fatal("combined unload/numbering failed")
+	}
+	for _, step := range []int{1, 4, 5, 8} {
+		if _, err := os.Stat(filepath.Join(filepath.Dir(f.Path), fmt.Sprintf("model@%d.otp", step))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(summaryStepRows(t, f)) != 8 {
+		t.Fatal("combined summary rows missing")
 	}
 }

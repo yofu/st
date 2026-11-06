@@ -7,8 +7,10 @@ import (
 	"github.com/yofu/st/matrix"
 )
 
-// PlasticResponse is a trial, small-displacement, associated perfect-plastic
-// response. Forces, plastic deformation increments and tangent use LOCAL axes.
+// PlasticResponse is a trial associated perfect-plastic local-force response.
+// The material-only solver uses fixed local axes. The combined solver maps
+// current physical end forces/flow to and from co-rotating basic variables.
+// Forces, plastic deformation increments and tangent use LOCAL axes.
 // The tangent differentiates Stress with respect to the local displacement
 // increment, with the previously committed element stress held fixed.
 // At loading/unloading switches the map has one-sided derivatives; no unique
@@ -25,6 +27,9 @@ type PlasticResponse struct {
 	// choose a one-sided tangent. These flags are trial data, not history.
 	directional   bool
 	tangentActive [2]bool
+	// Derivatives with respect to an elastic trial force, at fixed K.
+	// Used by the finite-rotation solver, where K itself also changes.
+	stressDerivative, plasticDerivative [][]float64
 }
 
 type plasticMaterialState struct {
@@ -212,6 +217,10 @@ func (elem *Elem) returnPlasticForces(trial []float64, k [][]float64) (*PlasticR
 // one-sided tangent at a loading/unloading boundary. It does not add load,
 // displacement or plastic history to the returned response.
 func (elem *Elem) returnPlasticForcesDirectional(trial []float64, k [][]float64, direction []float64) (*PlasticResponse, error) {
+	return elem.returnPlasticForcesLinearized(trial, k, direction, false)
+}
+
+func (elem *Elem) returnPlasticForcesLinearized(trial []float64, k [][]float64, direction []float64, derivatives bool) (*PlasticResponse, error) {
 	if direction != nil && len(direction) != 12 {
 		return nil, fmt.Errorf("ELEM %d: plastic direction must have 12 components", elem.Num)
 	}
@@ -349,7 +358,13 @@ func (elem *Elem) returnPlasticForcesDirectional(trial []float64, k [][]float64,
 			rhs[i] = make([]float64, 12)
 			if i < 12 {
 				for j := 0; j < 12; j++ {
-					rhs[i][j] = k[i][j] / scale[i]
+					if derivatives {
+						if i == j {
+							rhs[i][j] = 1 / scale[i]
+						}
+					} else {
+						rhs[i][j] = k[i][j] / scale[i]
+					}
 				}
 			}
 		}
@@ -365,6 +380,32 @@ func (elem *Elem) returnPlasticForcesDirectional(trial []float64, k [][]float64,
 				response.Tangent[i][j] = scale[i] * x[i][j]
 			}
 		}
+
+		if derivatives {
+			response.stressDerivative = copyPlasticMatrix(response.Tangent)
+			response.plasticDerivative = make([][]float64, 12)
+			for i := 0; i < 12; i++ {
+				response.plasticDerivative[i] = make([]float64, 12)
+				for j := 0; j < 12; j++ {
+					response.Tangent[i][j] = 0
+					for m := 0; m < 12; m++ {
+						response.Tangent[i][j] += response.stressDerivative[i][m] * k[m][j]
+					}
+				}
+			}
+			for a, end := range active {
+				_, g, h := elem.yieldPotential(y, end, centers)
+				for i := 0; i < 12; i++ {
+					for j := 0; j < 12; j++ {
+						v := x[12+a][j] * g[i]
+						for m := 0; m < 12; m++ {
+							v += beta[a] * h[i][m] * x[m][j]
+						}
+						response.plasticDerivative[i][j] += v / (maxB * scale[i])
+					}
+				}
+			}
+		}
 		return response, nil
 	}
 	return nil, fmt.Errorf("ELEM %d: plastic return did not converge to an admissible state", elem.Num)
@@ -374,6 +415,9 @@ func (elem *Elem) returnPlasticForcesDirectional(trial []float64, k [][]float64,
 // evaluate multiple trial increments from a saved/committed state for Newton
 // iteration or finite-difference verification.
 func (elem *Elem) TrialPlasticResponse(globalIncrement []float64) (*PlasticResponse, error) {
+	if elem.geometryAxes != nil {
+		return nil, fmt.Errorf("ELEM %d: finite-rotation state requires the combined frame solver", elem.Num)
+	}
 	if len(globalIncrement) != 12 {
 		return nil, fmt.Errorf("ELEM %d: plastic displacement increment must have 12 components", elem.Num)
 	}

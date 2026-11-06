@@ -5764,7 +5764,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		return Usage("DEPRECATED: use :analysis -nlgeom -pp=floor {-z=val} {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
 	case "arclm101":
 		if usage {
-			return Usage(":arclm101 {-period=name} {-nlap=additional_steps} {-delta=increment} {-step=nlap;delta[;start;max]} {-init} {-eps=val} {-wait} [filename]")
+			return Usage(":arclm101 {-period=name} {-nlgeom} {-nlap=additional_steps} {-delta=increment} {-step=nlap;delta[;start;max]} {-init} {-eps=val} {-wait} [filename]")
 		}
 		output := fn
 		if o, ok := argdict["OTP"]; ok {

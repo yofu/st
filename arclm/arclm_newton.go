@@ -18,7 +18,8 @@ import (
 // NewtonOptions configures Arclm101 and geometric StaticAnalysis. Zero fields select defaults. EPS from
 // AnalysisCondition is the relative force tolerance. Rotational residuals are
 // divided by ReferenceLength before taking the norm (forces and moments must
-// not be added without a length scale). Arclm101 uses the input geometry; StaticAnalysis with nlgeometry uses finite rotations.
+// not be added without a length scale). The material-only kernel uses input
+// coordinates; nlgeometry selects the finite-rotation kernel.
 type NewtonOptions struct {
 	MaxIterations          int
 	MaxCutbacks            int

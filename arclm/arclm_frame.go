@@ -699,14 +699,15 @@ type AnalysisCondition struct {
 
 	postprocess func(*Frame, [][]float64, []float64, []float64) (float64, bool)
 
-	nlap     int
-	delta    float64
-	start    float64
-	max      float64
-	eps      float64
-	newton   NewtonOptions
-	startSet bool
-	maxSet   bool
+	nlap                int
+	delta               float64
+	start               float64
+	max                 float64
+	eps                 float64
+	newton              NewtonOptions
+	startSet            bool
+	maxSet              bool
+	geometryIncremental bool
 }
 
 func NewAnalysisCondition() *AnalysisCondition {
@@ -993,9 +994,16 @@ func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCond
 	return nil
 }
 
-// Arclm101 performs small-displacement material-nonlinear load control with
-// global Newton equilibrium iterations and transactional load-step cutbacks.
+// Arclm101 performs material-nonlinear load control. With nlgeometry it uses
+// finite rotations and the combined physical-force plastic return; otherwise
+// the original small-displacement material solver is used.
 func (frame *Frame) Arclm101(cancel context.CancelFunc, cond *AnalysisCondition) error {
+	if cond != nil && cond.nlgeometry {
+		c := *cond
+		c.nlmaterial = true
+		c.geometryIncremental = true
+		return frame.staticGeometry(cancel, &c)
+	}
 	return frame.arclm101Newton(cancel, cond)
 }
 
