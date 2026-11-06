@@ -13,10 +13,11 @@ import (
 	"github.com/yofu/st/arclm"
 )
 
-const timeHistoryUsage = ":timehistory wave.csv -rayleigh=zeta1[;zeta2] {-modes=1;3} {-period=L} {-dt=seconds} {-output=prefix} {-nodes=n1,n2} {-save=interval} {-draw=10} {-eps=1e-8} {-wait} (explicit periods: -rayleigh=T1;T2;zeta1[;zeta2])"
+const timeHistoryUsage = ":timehistory wave.csv -rayleigh=zeta1[;zeta2] {-modes=1;3} {-period=L} {-nlgeom} {-dt=seconds} {-output=prefix} {-nodes=n1,n2} {-save=interval} {-draw=10} {-eps=1e-8} {-wait} (explicit periods: -rayleigh=T1;T2;zeta1[;zeta2])"
 
 func prepareTimeHistory(frame *Frame, input string, args map[string]string, cwd string) (*arclm.Frame, arclm.GroundMotion, arclm.TimeHistoryOptions, error) {
 	o := arclm.TimeHistoryOptions{EquilibratePreload: true}
+	_, o.NonlinearGeometry = args["NLGEOM"]
 	if input == "" {
 		return nil, nil, o, fmt.Errorf("%s", timeHistoryUsage)
 	}

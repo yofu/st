@@ -60,6 +60,10 @@ func newTimeHistoryOutput(f *Frame, o TimeHistoryOptions) (*timeHistoryOutput, e
 	header := []string{"step", "time_s", "node"}
 	for _, name := range []string{"u", "v", "a_relative", "a_absolute", "reaction"} {
 		for _, axis := range []string{"x", "y", "z", "rx", "ry", "rz"} {
+			// Distinguish coordinate rates from physical angular rates.
+			if o.NonlinearGeometry && len(axis) == 2 && (name == "v" || name == "a_relative" || name == "a_absolute") {
+				axis = "theta_" + axis[1:]
+			}
 			header = append(header, name+"_"+axis)
 		}
 	}

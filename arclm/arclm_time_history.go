@@ -9,11 +9,15 @@ import (
 	"github.com/yofu/st/matrix"
 )
 
-// TimeHistoryOptions configures a small-displacement, material nonlinear
-// Newmark analysis. Zero Beta/Gamma select 1/4,1/2. Mass is Node.Mass on the
+// TimeHistoryOptions configures material nonlinear Newmark analysis.
+// NonlinearGeometry also enables finite displacement/rotation compatibility. Zero Beta/Gamma select 1/4,1/2. Mass is Node.Mass on the
 // three translational DOFs; optional rotational inertias are in mass*length^2.
 // The existing vibration/static assembly functions are not changed.
 type TimeHistoryOptions struct {
+	// Finite-rotation analysis uses translational lumped masses and zero rotary
+	// inertia. Rayleigh C=alpha*M+eta*K0 stays fixed in displacement/total rotation
+	// vector coordinates, where K0 is the reference elastic stiffness.
+	NonlinearGeometry                    bool
 	AutoRayleigh                         bool   // obtain periods from the same K0 and M used by this run
 	RayleighModes                        [2]int // zero: mode 1 and the next distinct frequency; otherwise explicit ascending ranks
 	Beta, Gamma, TimeStep                float64
@@ -34,8 +38,11 @@ type TimeHistoryOptions struct {
 
 // TimeHistoryState is copied on access and by Frame.SaveState/RestoreState.
 // Velocity/Acceleration are relative to the moving ground; Ground is m/s^2.
+// With NonlinearGeometry, rotational entries are derivatives of the total
+// rotation vector (not spatial angular velocity/acceleration).
 // Work quantities use the model's force/length units (tf*m for the usual model).
 type TimeHistoryState struct {
+	NonlinearGeometry                                   bool
 	RayleighModes                                       [2]int
 	RayleighPeriods                                     [2]float64
 	RayleighAlpha, RayleighEta                          float64
@@ -135,6 +142,7 @@ func RayleighCoefficients(t1, t2, z1, z2 float64) (alpha, eta float64, err error
 
 type timeHistoryAnalysis struct {
 	a          *plasticNewtonAnalysis
+	geometry   *geometryAnalysis
 	opts       TimeHistoryOptions
 	motion     GroundMotion
 	mass       []float64
@@ -161,7 +169,7 @@ func assembleTimeHistoryElastic(a *plasticNewtonAnalysis) *matrix.COOMatrix {
 }
 
 func newTimeHistoryAnalysis(f *Frame, ctx context.Context, motion GroundMotion, o TimeHistoryOptions) (*timeHistoryAnalysis, error) {
-	if f.geometry != nil {
+	if f.geometry != nil && !o.NonlinearGeometry {
 		return nil, fmt.Errorf("time history uses small displacements; restore an initial-geometry static preload")
 	}
 	if err := motion.Validate(); err != nil {
@@ -191,14 +199,21 @@ func newTimeHistoryAnalysis(f *Frame, ctx context.Context, motion GroundMotion, 
 	cond.SetEps(o.RelativeTolerance)
 	cond.SetNewtonOptions(o.Newton)
 	cond.SetSolver(o.Solver)
-	a, err := newPlasticNewtonAnalysis(f, ctx, cond)
+	var a *plasticNewtonAnalysis
+	var geometry *geometryAnalysis
+	var err error
+	if o.NonlinearGeometry {
+		a, geometry, err = newTimeHistoryGeometry(f, ctx, cond, o)
+	} else {
+		a, err = newPlasticNewtonAnalysis(f, ctx, cond)
+	}
 	if err != nil {
 		return nil, err
 	}
 	if f.transient != nil {
 		return nil, fmt.Errorf("time history requires a static preload; start a new independent frame from L")
 	}
-	d := &timeHistoryAnalysis{a: a, opts: o, motion: append(GroundMotion(nil), motion...), mass: make([]float64, len(a.conf)), minStep: o.MinTimeStep}
+	d := &timeHistoryAnalysis{a: a, geometry: geometry, opts: o, motion: append(GroundMotion(nil), motion...), mass: make([]float64, len(a.conf)), minStep: o.MinTimeStep}
 	if err := validateTimeHistoryRayleigh(o); err != nil {
 		return nil, err
 	}
@@ -207,6 +222,8 @@ func newTimeHistoryAnalysis(f *Frame, ctx context.Context, motion GroundMotion, 
 			return nil, fmt.Errorf("invalid base load dimensions")
 		}
 		a.baseNodal = append([]float64(nil), o.BaseLoad...)
+	} else if geometry != nil && (f.geometry != nil || f.loading != nil) {
+		a.baseNodal = append([]float64(nil), geometry.state.baseNodal...)
 	} else if f.loading != nil {
 		a.baseNodal = f.loading.appliedNodal()
 	} else {
@@ -233,6 +250,9 @@ func newTimeHistoryAnalysis(f *Frame, ctx context.Context, motion GroundMotion, 
 		}
 	}
 	a.patternNodal = make([]float64, len(a.conf))
+	if geometry != nil {
+		geometry.state.baseNodal = append([]float64(nil), a.baseNodal...)
+	}
 	if len(o.RotationalInertia) != 0 && len(o.RotationalInertia) != 3*len(f.Nodes) {
 		return nil, fmt.Errorf("invalid rotational inertia dimensions")
 	}
@@ -309,12 +329,18 @@ func (d *timeHistoryAnalysis) kinetic(v []float64) float64 {
 func (d *timeHistoryAnalysis) initial() error {
 	a, f := d.a, d.a.frame
 	if d.opts.EquilibratePreload {
-		if err := a.step(0, 0); err != nil {
+		var err error
+		if d.geometry != nil {
+			err = d.equilibrateGeometry()
+		} else {
+			err = a.step(0, 0)
+		}
+		if err != nil {
 			return fmt.Errorf("time history preload equilibrium: %w", err)
 		}
 	}
 	base := f.SaveState()
-	r, err := a.evaluate(base, make([]float64, len(a.conf)), 0, 0)
+	r, err := d.mechanical(base, make([]float64, len(a.conf)), nil)
 	if err != nil {
 		return err
 	}
@@ -330,7 +356,7 @@ func (d *timeHistoryAnalysis) initial() error {
 			return fmt.Errorf("invalid initial velocity at DOF %d", i)
 		}
 	}
-	fext, p, err := d.external(0)
+	fext, p, err := d.externalMechanical(0, r)
 	if err != nil {
 		return err
 	}
@@ -372,27 +398,19 @@ func (d *timeHistoryAnalysis) initial() error {
 				}
 			}
 		}
-		csr, e := op.ToSymmetricCSR(0, make([]bool, len(v)))
-		if e != nil {
-			return e
-		}
-		rhs := csr.MulV(acc)
+		rhs := op.MulV(0, make([]bool, len(v)), acc)
 		for i := range rhs {
 			rhs[i] = -rhs[i]
 		}
 		if d.eta > 0 {
-			kt, e := r.tangent.ToSymmetricCSR(0, make([]bool, len(v)))
-			if e != nil {
-				return e
-			}
-			kv := kt.MulV(v)
+			kv := r.tangent.MulV(0, make([]bool, len(v)), v)
 			for i := range rhs {
 				rhs[i] -= kv[i] / d.eta
 			}
 		}
 		z := *a
 		z.conf, z.csize = zeroConf, zeroSize
-		az, e := z.solveLinear(op, rhs)
+		az, e := d.solve(&z, op, rhs)
 		if e != nil {
 			return fmt.Errorf("initial massless acceleration: %w", e)
 		}
@@ -413,7 +431,10 @@ func (d *timeHistoryAnalysis) initial() error {
 	if !finitePlastic(initialNorm) || !finitePlastic(tol) || !finitePlastic(d.kinetic(v)) || initialNorm > tol {
 		return fmt.Errorf("invalid initial dynamic equilibrium: residual=%g tolerance=%g", initialNorm, tol)
 	}
-	f.transient = &TimeHistoryState{RayleighModes: d.opts.RayleighModes, RayleighPeriods: [2]float64{d.opts.Period1, d.opts.Period2}, RayleighAlpha: d.alpha, RayleighEta: d.eta, Ground: [2]float64{p.X, p.Y}, Velocity: v, Acceleration: acc, KineticEnergy: d.kinetic(v), Residual: initialNorm, Tolerance: tol}
+	if d.geometry != nil {
+		d.commitGeometry(r)
+	}
+	f.transient = &TimeHistoryState{NonlinearGeometry: d.opts.NonlinearGeometry, RayleighModes: d.opts.RayleighModes, RayleighPeriods: [2]float64{d.opts.Period1, d.opts.Period2}, RayleighAlpha: d.alpha, RayleighEta: d.eta, Ground: [2]float64{p.X, p.Y}, Velocity: v, Acceleration: acc, KineticEnergy: d.kinetic(v), Residual: initialNorm, Tolerance: tol}
 	for i, n := range f.Nodes {
 		for j := 0; j < 6; j++ {
 			q := 6*i + j
@@ -423,23 +444,28 @@ func (d *timeHistoryAnalysis) initial() error {
 			}
 		}
 	}
+	d.physicalReactions(r)
 	f.loading = nil
 	f.plasticLoadValid = false
 	return nil
 }
 
 type timeHistoryTrial struct {
-	material                                  *plasticNewtonTrial
+	material                                  *timeHistoryMechanicalTrial
 	velocity, acceleration, damping, external []float64
 	ground                                    GroundMotionSample
 	norm, tol                                 float64
 }
 
 func (d *timeHistoryAnalysis) evaluate(base *FrameState, old *TimeHistoryState, du []float64, target float64) (*timeHistoryTrial, error) {
+	return d.evaluateDirectional(base, old, du, target, nil)
+}
+
+func (d *timeHistoryAnalysis) evaluateDirectional(base *FrameState, old *TimeHistoryState, du []float64, target float64, direction []float64) (*timeHistoryTrial, error) {
 	a := d.a
 	dt := target - old.Time
 	beta, gamma := d.opts.Beta, d.opts.Gamma
-	r, err := a.evaluate(base, du, 0, 0)
+	r, err := d.mechanical(base, du, direction)
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +477,7 @@ func (d *timeHistoryAnalysis) evaluate(base *FrameState, old *TimeHistoryState, 
 		}
 	}
 	cv := d.cCSR.MulV(v)
-	ext, p, err := d.external(target)
+	ext, p, err := d.externalMechanical(target, r)
 	if err != nil {
 		return nil, err
 	}
@@ -489,13 +515,11 @@ func (d *timeHistoryAnalysis) step(target float64) error {
 			du[i] = dt*old.Velocity[i] + dt*dt*(.5-d.opts.Beta)*old.Acceleration[i]
 		}
 	}
-	var trial *timeHistoryTrial
-	var err error
+	trial, err := d.evaluate(base, old, du, target)
 	for iteration := 0; iteration <= a.options.MaxIterations; iteration++ {
-		if err = a.ctx.Err(); err != nil {
-			return err
+		if e := a.ctx.Err(); e != nil {
+			return e
 		}
-		trial, err = d.evaluate(base, old, du, target)
 		if err != nil {
 			return err
 		}
@@ -511,7 +535,7 @@ func (d *timeHistoryAnalysis) step(target float64) error {
 				k.Add(i, i, m/(d.opts.Beta*dt*dt))
 			}
 		}
-		correction, e := a.solveLinear(k, trial.material.residual)
+		correction, e := d.correction(base, old, du, target, trial, k)
 		if e != nil {
 			return e
 		}
@@ -524,6 +548,7 @@ func (d *timeHistoryAnalysis) step(target float64) error {
 			next, e := d.evaluate(base, old, candidate, target)
 			if e == nil && (next.norm < trial.norm || next.norm <= next.tol) {
 				du = candidate
+				trial = next
 				accepted = true
 				break
 			}
@@ -537,16 +562,22 @@ func (d *timeHistoryAnalysis) step(target float64) error {
 
 func (d *timeHistoryAnalysis) commit(base *FrameState, old *TimeHistoryState, du []float64, target float64, iterations int, r *timeHistoryTrial) error {
 	a, f := d.a, d.a.frame
-	previous, err := a.evaluate(base, make([]float64, len(du)), 0, 0)
+	var previous *timeHistoryMechanicalTrial
+	var err error
+	if d.geometry != nil {
+		previous, err = d.committedMechanical(base)
+	} else {
+		previous, err = d.mechanical(base, make([]float64, len(du)), nil)
+	}
 	if err != nil {
 		return err
 	}
-	ext, _, err := d.external(old.Time)
+	ext, _, err := d.externalMechanical(old.Time, previous)
 	if err != nil {
 		return err
 	}
 	cv := d.cCSR.MulV(old.Velocity)
-	s := &TimeHistoryState{Time: target, Step: old.Step, Substeps: old.Substeps + 1, Iterations: iterations, Ground: [2]float64{r.ground.X, r.ground.Y}, Velocity: r.velocity, Acceleration: r.acceleration, Residual: r.norm, Tolerance: r.tol, KineticEnergy: d.kinetic(r.velocity), InputWork: old.InputWork, InternalWork: old.InternalWork, DampingWork: old.DampingWork}
+	s := &TimeHistoryState{NonlinearGeometry: d.opts.NonlinearGeometry, Time: target, Step: old.Step, Substeps: old.Substeps + 1, Iterations: iterations, Ground: [2]float64{r.ground.X, r.ground.Y}, Velocity: r.velocity, Acceleration: r.acceleration, Residual: r.norm, Tolerance: r.tol, KineticEnergy: d.kinetic(r.velocity), InputWork: old.InputWork, InternalWork: old.InternalWork, DampingWork: old.DampingWork}
 	s.RayleighModes, s.RayleighPeriods, s.RayleighAlpha, s.RayleighEta = old.RayleighModes, old.RayleighPeriods, old.RayleighAlpha, old.RayleighEta
 	for i, x := range du {
 		s.InputWork += .5 * (ext[i] + r.external[i]) * x
@@ -557,6 +588,9 @@ func (d *timeHistoryAnalysis) commit(base *FrameState, old *TimeHistoryState, du
 		if !finitePlastic(v) {
 			return fmt.Errorf("non-finite dynamic energy/work at time %g", target)
 		}
+	}
+	if d.geometry != nil {
+		d.commitGeometry(r.material)
 	}
 	for i, response := range r.material.responses {
 		if response != nil {
@@ -573,6 +607,7 @@ func (d *timeHistoryAnalysis) commit(base *FrameState, old *TimeHistoryState, du
 			}
 		}
 	}
+	d.physicalReactions(r.material)
 	f.transient = s
 	return nil
 }
@@ -628,7 +663,11 @@ func (f *Frame) TimeHistoryNewmark(ctx context.Context, motion GroundMotion, opt
 		return err
 	}
 	defer func() { resultErr = errors.Join(resultErr, out.close()) }()
-	fmt.Fprintf(d.a.writer, "TIMEHISTORY: BETA=%g GAMMA=%g RAYLEIGH_MODES=%v RAYLEIGH_PERIODS=%v RAYLEIGH_ALPHA=%g RAYLEIGH_ETA=%g GEOMETRY=INITIAL MASS=TRANSLATIONAL INPUT=m/s^2\n", d.opts.Beta, d.opts.Gamma, d.opts.RayleighModes, [2]float64{d.opts.Period1, d.opts.Period2}, d.alpha, d.eta)
+	geometryName := "INITIAL"
+	if d.geometry != nil {
+		geometryName = "FINITE_ROTATION_VECTOR; DAMPING=REFERENCE_K0_COORDINATES"
+	}
+	fmt.Fprintf(d.a.writer, "TIMEHISTORY: BETA=%g GAMMA=%g RAYLEIGH_MODES=%v RAYLEIGH_PERIODS=%v RAYLEIGH_ALPHA=%g RAYLEIGH_ETA=%g GEOMETRY=%s MASS=TRANSLATIONAL INPUT=m/s^2\n", d.opts.Beta, d.opts.Gamma, d.opts.RayleighModes, [2]float64{d.opts.Period1, d.opts.Period2}, d.alpha, d.eta, geometryName)
 	emit := func() error {
 		if err := ctx.Err(); err != nil {
 			return err
