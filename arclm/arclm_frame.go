@@ -36,6 +36,7 @@ type Frame struct {
 	plasticLoadValid bool
 	loading          *plasticLoadState
 	transient        *TimeHistoryState
+	geometry         *geometryState
 }
 
 func NewFrame() *Frame {
@@ -55,11 +56,13 @@ type FrameState struct {
 	Disp             [][]float64
 	Reaction         [][]float64
 	Stress           [][]float64
+	Energy           [][2]float64
 	plastic          []plasticElementState
 	plasticLoad      float64
 	plasticLoadValid bool
 	loading          *plasticLoadState
 	transient        *TimeHistoryState
+	geometry         *geometryState
 }
 
 func NewFrameState(nnode, nelem int) *FrameState {
@@ -68,6 +71,7 @@ func NewFrameState(nnode, nelem int) *FrameState {
 	fs.Disp = make([][]float64, nnode)
 	fs.Reaction = make([][]float64, nnode)
 	fs.Stress = make([][]float64, nelem)
+	fs.Energy = make([][2]float64, nelem)
 	fs.plastic = make([]plasticElementState, nelem)
 	for i := 0; i < nnode; i++ {
 		fs.Conf[i] = make([]bool, 6)
@@ -221,6 +225,10 @@ func (frame *Frame) Initialise() {
 	frame.plasticLoad, frame.plasticLoadValid = 0, false
 	frame.loading = nil
 	frame.transient = nil
+	frame.geometry = nil
+	for _, el := range frame.Elems {
+		el.geometryAxes = nil
+	}
 	for _, n := range frame.Nodes {
 		for i := 0; i < 6; i++ {
 			n.Disp[i] = 0.0
@@ -244,6 +252,7 @@ func (frame *Frame) SaveState() *FrameState {
 	fs.plasticLoad, fs.plasticLoadValid = frame.plasticLoad, frame.plasticLoadValid
 	fs.loading = copyPlasticLoading(frame.loading)
 	fs.transient = copyTimeHistoryState(frame.transient)
+	fs.geometry = copyGeometryState(frame.geometry)
 	for i, n := range frame.Nodes {
 		for j := 0; j < 6; j++ {
 			fs.Conf[i][j] = n.Conf[j]
@@ -256,6 +265,7 @@ func (frame *Frame) SaveState() *FrameState {
 			fs.Stress[i][j] = el.Stress[j]
 		}
 		fs.plastic[i] = el.savePlasticState()
+		fs.Energy[i] = [2]float64{el.Energy, el.Energyb}
 	}
 	return fs
 }
@@ -264,6 +274,8 @@ func (frame *Frame) RestoreState(fs *FrameState) {
 	frame.plasticLoad, frame.plasticLoadValid = fs.plasticLoad, fs.plasticLoadValid
 	frame.loading = copyPlasticLoading(fs.loading)
 	frame.transient = copyTimeHistoryState(fs.transient)
+	frame.geometry = copyGeometryState(fs.geometry)
+	frame.restoreGeometryAxes()
 	for i, n := range frame.Nodes {
 		for j := 0; j < 6; j++ {
 			n.Conf[j] = fs.Conf[i][j]
@@ -274,6 +286,9 @@ func (frame *Frame) RestoreState(fs *FrameState) {
 	for i, el := range frame.Elems {
 		for j := 0; j < 12; j++ {
 			el.Stress[j] = fs.Stress[i][j]
+		}
+		if i < len(fs.Energy) {
+			el.Energy, el.Energyb = fs.Energy[i][0], fs.Energy[i][1]
 		}
 		// Preserve compatibility with states containing only nodal data/stress.
 		if i < len(fs.plastic) && fs.plastic[i].bonds != nil {
@@ -782,6 +797,15 @@ func (cond *AnalysisCondition) NonLinear() bool {
 }
 
 func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCondition) error {
+	if cond == nil {
+		return fmt.Errorf("StaticAnalysis: nil condition")
+	}
+	if cond.nlgeometry {
+		return frame.staticGeometry(cancel, cond)
+	}
+	if !cond.init && frame.geometry != nil {
+		return fmt.Errorf("StaticAnalysis: geometric state requires -nlgeom continuation")
+	}
 	if err := frame.beginAnalysis(cancel); err != nil {
 		return err
 	}
@@ -909,7 +933,7 @@ func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCond
 			f := frame.SaveState() // TODO
 			for nans, ans := range answers {
 				frame.RestoreState(f) // TODO
-				if nans >= 1 { // subtract CMQ for extra load
+				if nans >= 1 {        // subtract CMQ for extra load
 					for _, el := range frame.Elems {
 						for i := 0; i < 12; i++ {
 							el.Stress[i] -= el.Cmq[i]

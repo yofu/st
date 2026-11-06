@@ -70,10 +70,10 @@ func (sect *Sect) Snapshot() *Sect {
 	s.Num = sect.Num
 	s.E = sect.E
 	s.Poi = sect.Poi
-	for i := 0; i< 4; i++ {
+	for i := 0; i < 4; i++ {
 		s.Value[i] = sect.Value[i]
 	}
-	for i := 0; i< 12; i++ {
+	for i := 0; i < 12; i++ {
 		s.Yield[i] = sect.Yield[i]
 	}
 	s.Type = sect.Type
@@ -281,6 +281,7 @@ type Elem struct {
 	// Original bond definitions for components changed by material plasticity.
 	plasticBonds []*Sect
 	material     *plasticMaterialState
+	geometryAxes *geometryMatrix
 }
 
 func NewElem() *Elem {
@@ -464,10 +465,10 @@ func (elem *Elem) PrincipalAxis(cang float64) ([]float64, []float64, error) {
 		return strong, weak, errors.New("PrincipalAxis: Length = 0")
 	} else if dl2 == 0 {
 		strong = []float64{-s, c, 0.0}
-		weak = []float64{-c, -s, 0.0}
+		weak = Cross(d, strong)
 	} else if dl2/dl1 < 0.1 {
 		strong = Cross(d, []float64{c, s, 0.0})
-		weak = Cross(d, []float64{-s, c, 0.0})
+		weak = Cross(d, strong)
 	} else {
 		x := Normalize([]float64{-d[1], d[0], 0.0})
 		y := Cross(d, x)
@@ -480,6 +481,11 @@ func (elem *Elem) PrincipalAxis(cang float64) ([]float64, []float64, error) {
 }
 
 func (elem *Elem) SetPrincipalAxis() error {
+	if elem.geometryAxes != nil {
+		elem.Strong = append([]float64(nil), elem.geometryAxes[1][:]...)
+		elem.Weak = append([]float64(nil), elem.geometryAxes[2][:]...)
+		return nil
+	}
 	s, w, err := elem.PrincipalAxis(elem.Cang)
 	if err != nil {
 		return err
@@ -722,7 +728,7 @@ func (elem *Elem) PlasticMatrix2(estiff [][]float64) ([][]float64, error) { // M
 		if elem.Phinge[n] {
 			fmt.Printf("PlasticMatrix2: ELEM %d %d\n", elem.Num, n)
 			for i := 4; i < 6; i++ { // TODO check
-				kk := 6*n+i
+				kk := 6*n + i
 				if estiff[kk][kk] == 0.0 {
 					return nil, errors.New(fmt.Sprintf("PlasticMatrix2: ELEM %d: Matrix Singular", elem.Num))
 				}

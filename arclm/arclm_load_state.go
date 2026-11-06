@@ -84,6 +84,19 @@ func (frame *Frame) recordStaticLoading(cond *AnalysisCondition, factor float64,
 // ContinuationStep returns the last completed step for the current load pattern.
 // A different pattern starts a new stage at step zero.
 func (frame *Frame) ContinuationStep() int {
+	if s := frame.geometry; s != nil {
+		nodal, fixed := frame.loadPatterns()
+		match := samePlasticLoadValues(nodal, s.patternNodal) && len(fixed) == len(s.rawFixed)
+		for i := range fixed {
+			if !match || !samePlasticLoadValues(fixed[i], s.rawFixed[i]) {
+				return 0
+			}
+		}
+		if match {
+			return s.steps
+		}
+		return 0
+	}
 	if frame.loading == nil {
 		return 0
 	}

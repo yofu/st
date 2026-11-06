@@ -161,6 +161,9 @@ func assembleTimeHistoryElastic(a *plasticNewtonAnalysis) *matrix.COOMatrix {
 }
 
 func newTimeHistoryAnalysis(f *Frame, ctx context.Context, motion GroundMotion, o TimeHistoryOptions) (*timeHistoryAnalysis, error) {
+	if f.geometry != nil {
+		return nil, fmt.Errorf("time history uses small displacements; restore an initial-geometry static preload")
+	}
 	if err := motion.Validate(); err != nil {
 		return nil, err
 	}

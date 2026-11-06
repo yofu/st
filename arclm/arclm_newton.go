@@ -15,10 +15,10 @@ import (
 	"github.com/yofu/st/matrix"
 )
 
-// NewtonOptions configures Arclm101. Zero fields select defaults. EPS from
+// NewtonOptions configures Arclm101 and geometric StaticAnalysis. Zero fields select defaults. EPS from
 // AnalysisCondition is the relative force tolerance. Rotational residuals are
 // divided by ReferenceLength before taking the norm (forces and moments must
-// not be added without a length scale). Geometry is fixed at input coordinates.
+// not be added without a length scale). Arclm101 uses the input geometry; StaticAnalysis with nlgeometry uses finite rotations.
 type NewtonOptions struct {
 	MaxIterations          int
 	MaxCutbacks            int
@@ -157,6 +157,9 @@ func newPlasticNewtonAnalysis(frame *Frame, ctx context.Context, cond *AnalysisC
 	if cond == nil || cond.nlap <= 0 || !finitePlastic(cond.delta) || cond.delta == 0 || !finitePlastic(cond.start) || !finitePlastic(cond.max) || !finitePlastic(cond.eps) || cond.eps <= 0 {
 		return nil, fmt.Errorf("Arclm101: invalid load steps or tolerance")
 	}
+	if !cond.init && frame.geometry != nil {
+		return nil, fmt.Errorf("Arclm101: a finite-rotation state cannot be used in a small-displacement material analysis")
+	}
 	if cond.nlgeometry {
 		return nil, fmt.Errorf("Arclm101: geometric nonlinearity is not implemented; material analysis uses the input geometry")
 	}
@@ -229,6 +232,7 @@ func newPlasticNewtonAnalysis(frame *Frame, ctx context.Context, cond *AnalysisC
 			}
 		}
 		connection := elem.plasticConnection()
+		connection.geometryAxes = nil
 		for i, bond := range connection.Bonds {
 			if bond.Num == 1 || elem.Sect.ElasticEnds[i/6] {
 				continue
