@@ -105,11 +105,14 @@ var (
 )
 
 func Fig2Mode(stw Fig2Moder, command string) error {
-	if len(command) == 1 {
-		return NotEnoughArgs("fig2mode")
-	}
 	if command == "'." {
-		return Fig2Mode(stw, stw.LastFig2Command())
+		command = stw.LastFig2Command()
+		if command == "" || command == "'." {
+			return fmt.Errorf("no previous Fig2 command")
+		}
+	}
+	if len(command) < 2 {
+		return NotEnoughArgs("fig2mode")
 	}
 	stw.SetLastFig2Command(command)
 	command = command[1:]
@@ -160,6 +163,9 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 	frame := stw.Frame()
 	EPS := stw.EPS()
 	showhtml := func(fn string) {
+		if browser, ok := stw.(interface{ OpenBrowserArtifact(string, ...string) bool }); ok && browser.OpenBrowserArtifact("fig2-help", fn) {
+			return
+		}
 		f := filepath.Join(tooldir, "fig2/keywords", fn)
 		if FileExists(f) {
 			cmd := exec.Command("cmd", "/C", "start", f)
@@ -206,6 +212,9 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		ErrorMessage(stw, errors.New(fmt.Sprintf("no fig2 keyword: %s", key)), INFO)
 		return nil
 	case "gfact":
+		if len(lis) < 2 {
+			return NotEnoughArgs("GFACT")
+		}
 		val, err := strconv.ParseFloat(lis[1], 64)
 		if err != nil {
 			return err

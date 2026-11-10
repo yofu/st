@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>st モデルエディタ</title>
+  <link rel="stylesheet" href="viewer.css">
+  <script defer src="workspace.js"></script>
+  <script defer src="wasm_exec.js"></script>
+  <script defer src="viewer.js"></script>
+</head>
+<body>
+  <header>
+    <div class="tools" role="toolbar" aria-label="モデル操作">
+      <button id="open" disabled>INPを開く</button>
+      <input id="file" type="file" hidden>
+      <button id="workspace" disabled>作業フォルダ</button>
+      <button id="save" disabled>INPを保存</button>
+      <a id="download" hidden>INPをダウンロード</a>
+      <button data-action="member" aria-pressed="true" disabled>部材</button>
+      <button data-action="node" aria-pressed="false" disabled>節点</button>
+      <button data-action="fit" disabled>全体表示</button>
+      <button data-action="clear" disabled>選択解除</button>
+    </div>
+    <div id="status" role="status" aria-live="polite">ビューアを準備中…</div>
+    <div id="analysis-status">
+      <div id="progress" role="status"></div>
+      <progress id="analysis-meter" aria-label="解析進捗" hidden></progress>
+      <button id="stop-analysis" hidden>解析を停止</button>
+    </div>
+    <div id="selection">1本指で回転・2本指で拡縮と移動・タップで選択</div>
+  </header>
+  <div id="drawing">
+    <main id="giowindow" aria-label="構造モデルの描画領域"></main>
+    <div id="annotations" aria-label="図化注記"></div>
+  </div>
+  <footer>
+    <div id="edit-tools" class="tools" hidden>
+      <button data-action="finish" disabled>確定</button>
+      <button data-action="cancel" disabled>中止</button>
+      <label class="key-label">操作キー <select id="keys" aria-label="対話コマンドの操作キー">
+        <option value="">選ぶ</option><option>X</option><option>Y</option><option>Z</option><option>D</option><option>R</option><option>S</option><option>W</option><option>T</option><option>V</option><option>J</option><option>K</option><option>Enter</option>
+      </select></label>
+    </div>
+    <form id="command-form" class="tools" autocomplete="off">
+      <input id="command" type="text" aria-label="コマンド" placeholder="コマンドを入力" maxlength="1024" enterkeyhint="go" spellcheck="false" autocapitalize="off" disabled>
+      <button id="execute" type="submit" disabled>実行</button>
+      <button id="previous" type="button" aria-label="前のコマンド" disabled>↑</button>
+      <button id="next" type="button" aria-label="次のコマンド" disabled>↓</button>
+      <select id="commands" aria-label="使用できるコマンド" disabled><option value="">コマンド一覧</option></select>
+    </form>
+    <div id="latest" aria-live="polite"></div>
+    <details id="history-panel"><summary>コマンド・操作履歴</summary><pre id="history" tabindex="0"></pre></details>
+  </footer>
+  <dialog id="prompt"><form id="prompt-form">
+    <label for="prompt-value" id="prompt-title"></label>
+    <input id="prompt-value" type="text" enterkeyhint="done" maxlength="256">
+    <div class="tools"><button type="submit">確定</button><button id="prompt-cancel" type="button">取消</button></div>
+  </form></dialog>
+  <dialog id="question-dialog">
+    <strong id="question-title"></strong>
+    <p id="question-message"></p>
+    <div id="question-choices" class="tools"></div>
+  </dialog>
+  <dialog id="workspace-dialog">
+    <div class="tools">
+      <button id="stage">関連ファイルを追加</button>
+      <input id="related-files" type="file" multiple hidden>
+      <button id="refresh-files">一覧を更新</button>
+      <button id="close-workspace">閉じる</button>
+    </div>
+    <p id="workspace-status" role="status"></p>
+    <ul id="workspace-files"></ul>
+  </dialog>
+  <dialog id="text-dialog">
+    <form id="text-form">
+      <label for="artifact-text" id="text-title"></label>
+      <textarea id="artifact-text" rows="12" spellcheck="false"></textarea>
+      <div class="tools"><button type="submit">作業フォルダに保存</button><button id="close-text" type="button">閉じる</button></div>
+      <p id="text-status" role="status"></p>
+    </form>
+  </dialog>
+</body>
+</html>

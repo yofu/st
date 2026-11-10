@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/atotto/clipboard"
 	"github.com/yofu/abbrev"
 	"github.com/yofu/complete"
 	"github.com/yofu/ps"
@@ -83,7 +82,7 @@ var (
 		"setb/oundary":      complete.MustCompile(":setboundary [eps:_]", nil),
 		"fac/ts":            complete.MustCompile(":facts [skipany:_] [skipall:_]", nil),
 		"1459/":             complete.MustCompile(":1459 [sect:_]", nil),
-		"sl/ope":             complete.MustCompile(":slope", nil),
+		"sl/ope":            complete.MustCompile(":slope", nil),
 		"el/em/dis/tance":   complete.MustCompile(":elemdistance", nil),
 		"go/han/l/st":       complete.MustCompile(":gohanlst _ _", nil),
 		"el/em": complete.MustCompile(":elem $TYPE _",
@@ -180,60 +179,50 @@ func ExModeComplete(command string) (string, bool, bool, *complete.Complete) {
 	return rtn, bang, usage, c
 }
 
-func emptyExModech(ch chan interface{}, endch chan int) {
-ex_empty:
-	for {
-		select {
-		case <-time.After(time.Second):
-			break ex_empty
-		case <-endch:
-			break ex_empty
-		case <-ch:
-			continue ex_empty
-		}
-	}
-}
-
 func ExMode(stw ExModer, command string) error {
 	if command == ":." {
-		return ExMode(stw, stw.LastExCommand())
-	}
-	exmodech := make(chan interface{})
-	exmodeend := make(chan int)
-	stw.SetLastExCommand(command)
-	if !strings.Contains(command, "|") {
-		err := exCommand(stw, command, false, exmodech, exmodeend)
-		if err != nil {
-			switch e := err.(type) {
-			case NotRedraw:
-				stw.History(e.Message())
-				return err
-			case Messager:
-				stw.History(e.Message())
-				return nil
-			default:
-				return err
-			}
-		} else {
-			return nil
+		command = stw.LastExCommand()
+		if command == "" || command == ":." {
+			return errors.New("no previous ex command")
 		}
 	}
-	excms := strings.Split(command, "|")
-	defer emptyExModech(exmodech, exmodeend)
-	for _, com := range excms {
-		err := exCommand(stw, com, true, exmodech, exmodeend)
-		if err != nil {
-			if u, ok := err.(Messager); ok {
-				stw.History(u.Message())
+	commands := strings.Split(command, "|")
+	for i, stage := range commands {
+		commands[i] = strings.TrimSpace(stage)
+		if commands[i] == "" {
+			return NotEnoughArgs("exmode")
+		}
+	}
+	stw.SetLastExCommand(command)
+	if len(commands) == 1 {
+		err := exCommand(stw, commands[0], nil, nil)
+		switch e := err.(type) {
+		case NotRedraw:
+			stw.History(e.Message())
+			return err
+		case Messager:
+			stw.History(e.Message())
+			return nil
+		default:
+			return err
+		}
+	}
+	var input []interface{}
+	for _, stage := range commands {
+		var output []interface{}
+		if err := exCommand(stw, stage, input, &output); err != nil {
+			if message, ok := err.(Messager); ok {
+				stw.History(message.Message())
 			} else {
 				return err
 			}
 		}
+		input = output
 	}
 	return nil
 }
 
-func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}, exmodeend chan int) error {
+func exCommand(stw ExModer, command string, input []interface{}, output *[]interface{}) error {
 	if len(command) == 1 {
 		return NotEnoughArgs("exmode")
 	}
@@ -270,6 +259,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 	}
 	args = unnamed[:tmpnarg]
 	narg = tmpnarg
+	if narg == 0 {
+		return NotEnoughArgs("exmode")
+	}
 	var fn string
 	frame := stw.Frame()
 	if narg < 2 {
@@ -286,17 +278,15 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 	}
 	cname, bang, usage, _ := ExModeComplete(args[0])
 	evaluated := true
+	pipe := output != nil
 	var sender []interface{}
-	defer func() {
-		if pipe {
-			go func(ents []interface{}) {
-				for _, e := range ents {
-					exmodech <- e
-				}
-				exmodeend <- 1
-			}(sender)
-		}
-	}()
+	if pipe {
+		defer func() { *output = sender }()
+	}
+	openArtifact := func(action string, paths ...string) bool {
+		browser, ok := stw.(interface{ OpenBrowserArtifact(string, ...string) bool })
+		return ok && browser.OpenBrowserArtifact(action, paths...)
+	}
 	switch cname {
 	default:
 		evaluated = false
@@ -345,7 +335,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":resource filename")
 		}
-		ReadResource(stw, fn)
+		return ReadResource(stw, fn)
 	case "eps":
 		if usage {
 			return Usage(":eps val")
@@ -399,7 +389,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":vim filename")
 		}
-		Vim(fn)
+		if !openArtifact("text", fn) {
+			Vim(fn)
+		}
 	case "explorer":
 		var dir string
 		if narg < 2 {
@@ -407,7 +399,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		} else {
 			dir = args[1]
 		}
-		Explorer(dir)
+		if !openArtifact("workspace", dir) {
+			Explorer(dir)
+		}
 	case "hkyou":
 		if usage {
 			return Usage(":hkyou h b tw tf")
@@ -612,7 +606,6 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":empty")
 		}
-		emptyExModech(exmodech, exmodeend)
 	}
 	if evaluated {
 		return nil
@@ -734,7 +727,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 			Rebase(stw, fn)
 			Snapshot(stw)
-			EditReadme(filepath.Dir(fn))
+			if !openArtifact("text", filepath.Join(filepath.Dir(fn), "readme.txt")) {
+				EditReadme(filepath.Dir(fn))
+			}
 		}
 	case "tag":
 		if usage {
@@ -796,7 +791,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 			default:
 				if strings.HasPrefix(t, "@") {
-					pattern := fmt.Sprintf("%s@*.%s",PruneExt(frame.Path), strings.TrimPrefix(t, "@"))
+					pattern := fmt.Sprintf("%s@*.%s", PruneExt(frame.Path), strings.TrimPrefix(t, "@"))
 					files, err := filepath.Glob(pattern)
 					if err != nil {
 						return err
@@ -1108,6 +1103,14 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		if fn == "" {
 			fn = Ce(frame.Path, ".fig2")
+		}
+		if openArtifact("fig2print", fn) {
+			if err := ReadFig2(stw, fn); err != nil {
+				return err
+			}
+			stw.Redraw()
+			stw.Print()
+			return nil
 		}
 		cmd := exec.Command("fig2", frame.Path, fn)
 		cmd.Stdout = os.Stdout
@@ -1448,9 +1451,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 			}
 			var ns []*Node
-			ns = currentnode(stw, exmodech, exmodeend)
+			ns = currentnode(stw, input)
 			if len(ns) == 0 {
-				els := currentelem(stw, exmodech, exmodeend)
+				els := currentelem(stw, input)
 				if len(els) == 0 {
 					return fmt.Errorf("no nodes or elems selected")
 				}
@@ -1482,9 +1485,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 			}
 			var ns []*Node
-			ns = currentnode(stw, exmodech, exmodeend)
+			ns = currentnode(stw, input)
 			if len(ns) == 0 {
-				els := currentelem(stw, exmodech, exmodeend)
+				els := currentelem(stw, input)
 				if len(els) == 0 {
 					return fmt.Errorf("no nodes or elems selected")
 				}
@@ -1554,9 +1557,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			original = true
 		}
 		var ns []*Node
-		ns = currentnode(stw, exmodech, exmodeend)
+		ns = currentnode(stw, input)
 		if len(ns) == 0 {
-			els := currentelem(stw, exmodech, exmodeend)
+			els := currentelem(stw, input)
 			if len(els) == 0 {
 				return fmt.Errorf("no nodes or elems selected")
 			}
@@ -1703,7 +1706,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 			eps = v
 		}
-		ns := currentnode(stw, exmodech, exmodeend)
+		ns := currentnode(stw, input)
 		if len(ns) < 2 {
 			return fmt.Errorf("not enough nodes selected")
 		}
@@ -1927,7 +1930,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		els := stw.SelectedElems()
 		sort.Sort(ElemByNum{els})
 		maxrateelem := make(map[int][]*Elem)
-		var otp,tex,rat bytes.Buffer
+		var otp, tex, rat bytes.Buffer
 		otp.WriteString("断面算定 \"S,RC,SRC\" 長期,短期,終局\n")
 		otp.WriteString("使用ファイル\n")
 		otp.WriteString(fmt.Sprintf("入力データ               =%s\n", frame.DataFileName["L"]))
@@ -2247,7 +2250,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":kaberyo {-half} {-fc=24} {-alpha=1.155} {-route}")
 		}
-		els := currentelem(stw, exmodech, exmodeend)
+		els := currentelem(stw, input)
 		var m bytes.Buffer
 		var props []int
 		if val, ok := argdict["HALF"]; ok {
@@ -2499,7 +2502,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					}
 				}
 				Q2 := a * Ci * Nl
-				al := Q2/Q
+				al := Q2 / Q
 				fmt.Println(Q, Q2, Ci, Nl, al)
 				if math.Abs(al) < 1.0 {
 					al = 1.0
@@ -2588,7 +2591,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":slope")
 		}
-		els := currentelem(stw, exmodech, exmodeend)
+		els := currentelem(stw, input)
 		if len(els) < 1 {
 			return errors.New(":slope: not enough selected elem")
 		}
@@ -2596,13 +2599,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return errors.New(":slope: not plateelem")
 		}
 		normal := els[0].Normal(true)
-		deg := math.Acos(normal[2])*180.0/math.Pi
+		deg := math.Acos(normal[2]) * 180.0 / math.Pi
 		stw.History(fmt.Sprintf("SLOPE: %.3f[deg]", deg))
 	case "elemdistance":
 		if usage {
 			return Usage(":elemdistance")
 		}
-		els := currentelem(stw, exmodech, exmodeend)
+		els := currentelem(stw, input)
 		if len(els) < 2 {
 			return errors.New(":elemdistance: not enough selected elem")
 		}
@@ -2678,7 +2681,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 			coord[i] = tmp
 		}
-		n, _ := frame.CoordNode(coord[0], coord[1], coord[2], EPS)
+		n, added := frame.CoordNode(coord[0], coord[1], coord[2], EPS)
+		if added {
+			n.Frame = frame
+			Snapshot(stw)
+		}
 		if cm, ok := stw.(Commander); ok {
 			cm.SendNode(n)
 		}
@@ -2712,9 +2719,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				nnums := SplitNums(condition)
 				ns := make([]*Node, len(nnums))
 				nods := 0
-				for i, nnum := range nnums {
+				for _, nnum := range nnums {
 					if n, ok := frame.Nodes[nnum]; ok {
-						ns[i] = n
+						ns[nods] = n
 						nods++
 					}
 				}
@@ -2941,7 +2948,8 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			if !stw.NodeSelected() {
 				return errors.New(":nodeset create no selected node")
 			}
-			frame.AddNodeSet(args[2], stw.SelectedNodes())
+			frame.AddNodeSet(args[2], append([]*Node(nil), stw.SelectedNodes()...))
+			Snapshot(stw)
 		case "SELECT":
 			if narg < 3 {
 				return NotEnoughArgs(":nodeset select")
@@ -2950,35 +2958,35 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			if ns, ok := frame.NodeSet[args[2]]; ok {
 				stw.SelectNode(ns)
 			} else {
-				return fmt.Errorf("nodeset {} is not defined", args[2])
+				return fmt.Errorf("nodeset %s is not defined", args[2])
 			}
 		default:
-			return fmt.Errorf(":nodeset {} is not defined", args[1])
+			return fmt.Errorf(":nodeset %s is not defined", args[1])
 		}
 	case "conf":
 		if usage {
-			return Usage(":conf [0,1]{6}")
+			return Usage(":conf [01_t]{6}")
 		}
-		lis := make([]bool, 6)
-		if len(args[1]) >= 6 {
-			for i := 0; i < 6; i++ {
-				switch args[1][i] {
-				default:
-					lis[i] = false
-				case '0':
-					lis[i] = false
-				case '1':
-					lis[i] = true
-				case '_':
-					continue
+		if narg != 2 || len(args[1]) != 6 || strings.Trim(args[1], "01_t") != "" {
+			return errors.New(":conf: expected six characters from 01_t")
+		}
+		if !stw.NodeSelected() {
+			return errors.New(":conf no selected node")
+		}
+		for _, n := range stw.SelectedNodes() {
+			if n == nil || n.Lock {
+				continue
+			}
+			for i, flag := range args[1] {
+				switch flag {
+				case '0', '1':
+					n.Conf[i] = flag == '1'
 				case 't':
-					lis[i] = !lis[i]
+					n.Conf[i] = !n.Conf[i]
 				}
 			}
-			SetConf(stw, lis)
-		} else {
-			return NotEnoughArgs(":conf")
 		}
+		Snapshot(stw)
 	case "phase":
 		if usage {
 			return Usage(":phase {-degree} xfactor yfactor")
@@ -2998,14 +3006,14 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return err
 		}
 		if degree {
-			xfactor = math.Cos(math.Pi/180.0*xfactor)
+			xfactor = math.Cos(math.Pi / 180.0 * xfactor)
 		}
 		yfactor, err := strconv.ParseFloat(args[2], 64)
 		if err != nil {
 			return err
 		}
 		if degree {
-			yfactor = math.Cos(math.Pi/180.0*yfactor)
+			yfactor = math.Cos(math.Pi / 180.0 * yfactor)
 		}
 		for _, n := range stw.SelectedNodes() {
 			if n == nil {
@@ -3158,6 +3166,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if err != nil {
 			return err
 		}
+		if ind < 0 || ind >= 6 {
+			return errors.New(":pload: position must be 0–5")
+		}
 		val, err := strconv.ParseFloat(args[2], 64)
 		if err != nil {
 			return err
@@ -3166,7 +3177,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			if n == nil {
 				continue
 			}
-			n.Load[int(ind)] = val
+			n.Load[ind] = val
 		}
 		Snapshot(stw)
 	case "cmq":
@@ -3176,7 +3187,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if narg < 2 {
 			return NotEnoughArgs(":cmq")
 		}
-		els := currentelem(stw, exmodech, exmodeend)
+		els := currentelem(stw, input)
 		switch strings.ToUpper(args[1]) {
 		case "ZERO":
 			for _, el := range els {
@@ -3219,7 +3230,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":lock")
 		}
-		els := currentelem(stw, exmodech, exmodeend)
+		els := currentelem(stw, input)
 		for _, el := range els {
 			el.Lock = true
 		}
@@ -3227,7 +3238,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":unlock")
 		}
-		els := currentelem(stw, exmodech, exmodeend)
+		els := currentelem(stw, input)
 		for _, el := range els {
 			el.Lock = false
 		}
@@ -3247,9 +3258,9 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				enums := SplitNums(condition)
 				elems := make([]*Elem, len(enums))
 				els := 0
-				for i, enum := range enums {
+				for _, enum := range enums {
 					if el, ok := frame.Elems[enum]; ok {
-						elems[i] = el
+						elems[els] = el
 						els++
 					}
 				}
@@ -3447,7 +3458,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			if err != nil {
 				return err
 			}
-			if int(ind) > frame.Ai.Nfloor-1 {
+			if ind < 0 || ind >= int64(len(frame.Ai.Boundary)) || int(ind) >= frame.Ai.Nfloor {
 				return errors.New(":fence height: index error")
 			}
 			val = frame.Ai.Boundary[int(ind)]
@@ -3484,41 +3495,33 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 	case "bond":
 		if usage {
-			return Usage(":bond [pin,rigid,[01_t]{6}] [upper,lower,sect sectcode, nonrigid]")
+			return Usage(":bond [pin,rigid,[0-9_t]{6}] [upper,lower,sect sectcode, nonrigid]")
 		}
 		if narg < 2 {
 			return NotEnoughArgs(":bond")
 		}
-		els := currentelem(stw, exmodech, exmodeend)
-		lis := make([]*Bond, 6)
-		pat := regexp.MustCompile("[0-9_t]{6}")
-		switch {
-		case strings.EqualFold(args[1], "pin"):
-			lis[4] = Pin
-			lis[5] = Pin
-		case pat.MatchString(args[1]):
-			for i := 0; i < 6; i++ {
-				switch args[1][i] {
-				default:
-					tmp, err := strconv.ParseInt(string(args[1][i]), 10, 64)
-					if err == nil {
-						if b, ok := frame.Bonds[int(tmp)]; ok {
-							lis[i] = b
-						}
-					}
-				case '0':
-					lis[i] = nil
-				case '1':
-					lis[i] = Pin
-				case '_':
-					continue
-				case 't':
-					if lis[i] == nil {
-						lis[i] = Pin
-					} else {
-						lis[i] = nil
-					}
+		els := currentelem(stw, input)
+		flags := strings.ToLower(args[1])
+		switch flags {
+		case "pin":
+			flags = "000011"
+		case "rigid":
+			flags = "000000"
+		}
+		if len(flags) != 6 || strings.Trim(flags, "0123456789_t") != "" {
+			return errors.New(":bond: expected pin, rigid or six bond codes")
+		}
+		var bonds [6]*Bond
+		for i, code := range flags {
+			switch {
+			case code == '1':
+				bonds[i] = Pin
+			case code >= '2' && code <= '9':
+				bond := frame.Bonds[int(code-'0')]
+				if bond == nil {
+					return fmt.Errorf(":bond: BOND %c doesn't exist", code)
 				}
+				bonds[i] = bond
 			}
 		}
 		f := func(el *Elem, ind int) bool {
@@ -3554,20 +3557,36 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 			}
 		}
+		edited := false
 		for _, el := range els {
-			if !el.IsLineElem() {
+			if el == nil || el.Lock || !el.IsLineElem() {
 				continue
 			}
 			for i := 0; i < 2; i++ {
 				if !f(el, i) {
 					continue
 				}
-				for j := 0; j < 6; j++ {
-					el.Bonds[6*i+j] = lis[j]
+				for j, code := range flags {
+					k := 6*i + j
+					switch code {
+					case '_':
+						continue
+					case 't':
+						if el.Bonds[k] == nil {
+							el.Bonds[k] = Pin
+						} else {
+							el.Bonds[k] = nil
+						}
+					default:
+						el.Bonds[k] = bonds[j]
+					}
+					edited = true
 				}
 			}
 		}
-		Snapshot(stw)
+		if edited {
+			Snapshot(stw)
+		}
 	case "section+":
 		if usage {
 			return Usage(":section+ value")
@@ -3603,7 +3622,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if err != nil {
 			return err
 		}
-		els := currentelem(stw, exmodech, exmodeend)
+		els := currentelem(stw, input)
 		for _, el := range els {
 			if !el.IsLineElem() {
 				continue
@@ -3632,7 +3651,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					}
 				}
 			}
-			els := currentelem(stw, exmodech, exmodeend)
+			els := currentelem(stw, input)
 			var err error
 			for _, el := range els {
 				if el.IsNotEditable(frame.Show) || !el.IsLineElem() {
@@ -3708,7 +3727,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":invert")
 		}
-		els := currentelem(stw, exmodech, exmodeend)
+		els := currentelem(stw, input)
 		for _, el := range els {
 			el.Invert()
 		}
@@ -3759,7 +3778,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if narg < 2 {
 			return NotEnoughArgs(":prestress")
 		}
-		els := currentelem(stw, exmodech, exmodeend)
+		els := currentelem(stw, input)
 		val, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
 			return err
@@ -3778,7 +3797,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if narg < 2 {
 			return NotEnoughArgs(":thermal")
 		}
-		els := currentelem(stw, exmodech, exmodeend)
+		els := currentelem(stw, input)
 		tmp, err := strconv.ParseFloat(args[1], 64)
 		if err != nil {
 			return err
@@ -3811,7 +3830,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":join")
 		}
-		els := currentelem(stw, exmodech, exmodeend)
+		els := currentelem(stw, input)
 		if len(els) < 2 {
 			return errors.New("not enough elems selected")
 		}
@@ -3820,6 +3839,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return err
 		}
 		stw.Deselect()
+		Snapshot(stw)
 	case "divide":
 		if narg < 2 {
 			if usage {
@@ -4087,12 +4107,16 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 				return nil
 			}
-			stw.TextBox("SECTION").Clear()
+			if box := stw.TextBox("SECTION"); box != nil {
+				box.Clear()
+			}
 			return nil
 		}
 		switch {
 		case strings.EqualFold(args[1], "off"):
-			stw.TextBox("SECTION").Clear()
+			if box := stw.TextBox("SECTION"); box != nil {
+				box.Clear()
+			}
 			return nil
 		case strings.EqualFold(args[1], "curtain"):
 			sects := make([]*Sect, len(frame.Sects))
@@ -4131,19 +4155,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			snum := int(tmp)
 			if sec, ok := frame.Sects[snum]; ok {
 				if narg >= 3 && args[2] == "<-" {
-					select {
-					case <-time.After(time.Second):
-						break
-					case al := <-exmodech:
-						if al == nil {
-							break
-						}
-						switch al := al.(type) {
-						case Shape:
-							if sec.HasArea(0) {
-								sec.Figs[0].SetShapeProperty(al)
-								sec.Name = al.Description()
-							}
+					if len(input) > 0 {
+						if shape, ok := input[0].(Shape); ok && sec.HasArea(0) {
+							sec.Figs[0].SetShapeProperty(shape)
+							sec.Name = shape.Description()
+							Snapshot(stw)
 						}
 					}
 				}
@@ -4173,17 +4189,10 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return err
 		}
 		ind := int(tmp) - 1
-		select {
-		case <-time.After(time.Second):
-			break
-		case sec := <-exmodech:
-			if sec == nil {
-				break
-			}
-			if sec, ok := sec.(*Sect); ok {
-				if sec.HasThick(ind) {
-					sec.Figs[ind].Value["THICK"] = val
-				}
+		if len(input) > 0 {
+			if sec, ok := input[0].(*Sect); ok && ind >= 0 && sec.HasThick(ind) {
+				sec.Figs[ind].Value["THICK"] = val
+				Snapshot(stw)
 			}
 		}
 	case "add":
@@ -4205,7 +4214,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					etype = COLUMN
 				case Re_girder.MatchString(et):
 					etype = GIRDER
-				case Re_slab.MatchString(et):
+				case Re_brace.MatchString(et):
 					etype = BRACE
 				case Re_wall.MatchString(et):
 					etype = WALL
@@ -4235,32 +4244,22 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			} else {
 				return errors.New(":add elem: no sectcode selected")
 			}
-			enod := make([]*Node, 0)
-			enods := 0
-		ex_addelem:
-			for {
-				select {
-				case <-time.After(time.Second):
-					break ex_addelem
-				case <-exmodeend:
-					break ex_addelem
-				case ent := <-exmodech:
-					if n, ok := ent.(*Node); ok {
-						enod = append(enod, n)
-						enods++
-					}
-				}
-			}
-			enod = enod[:enods]
+			enod := currentnode(stw, input)
 			switch etype {
 			case COLUMN, GIRDER, BRACE:
-				frame.AddLineElem(-1, enod[:2], sect, etype)
+				if len(enod) != 2 || enod[0] == enod[1] {
+					return errors.New(":add elem: select two distinct nodes for a line")
+				}
+				frame.AddLineElem(-1, enod, sect, etype)
 			case WALL, SLAB:
-				if enods > 4 {
-					enod = enod[:4]
+				if len(enod) < 3 || len(enod) > 4 {
+					return errors.New(":add elem: select three or four nodes for a plate")
 				}
 				frame.AddPlateElem(-1, enod, sect, etype)
+			default:
+				return errors.New(":add elem: unknown element type")
 			}
+			Snapshot(stw)
 		case "edge":
 			if usage {
 				return Usage(":add edge {-sect=code} {-etype=type}")
@@ -4302,7 +4301,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			} else {
 				return errors.New(":add elem: no sectcode selected")
 			}
-			els := currentelem(stw, exmodech, exmodeend)
+			els := currentelem(stw, input)
 			if len(els) == 0 {
 				return fmt.Errorf("no elems selected")
 			}
@@ -4317,7 +4316,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				for i := 0; i < el.Enods; i++ {
 					addedge := true
 					ind1 := i
-					ind2 := i+1
+					ind2 := i + 1
 					if ind2 >= el.Enods {
 						ind2 = 0
 					}
@@ -4352,11 +4351,8 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				return errors.New(fmt.Sprintf(":add sect: SECT %d already exists", snum))
 			}
 			sec := frame.AddSect(snum)
-			select {
-			case <-time.After(time.Second):
-				break
-			case al := <-exmodech:
-				if a, ok := al.(Shape); ok {
+			if len(input) > 0 {
+				if a, ok := input[0].(Shape); ok {
 					sec.Figs = make([]*Fig, 1)
 					f := NewFig()
 					if p, ok := frame.Props[101]; ok {
@@ -4393,7 +4389,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 			}
 		}
-		els := currentelem(stw, exmodech, exmodeend)
+		els := currentelem(stw, input)
 		if len(els) > 0 {
 			en := frame.ElemToNode(els...)
 			var add bool
@@ -4419,6 +4415,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 			n.Move(vec[0], vec[1], vec[2])
 		}
+		Snapshot(stw)
 	case "copy":
 		if narg < 2 {
 			if usage {
@@ -4442,7 +4439,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 				vec[i] = val
 			}
-			for _, el := range currentelem(stw, exmodech, exmodeend) {
+			for _, el := range currentelem(stw, input) {
 				if el.IsNotEditable(frame.Show) {
 					continue
 				}
@@ -4467,7 +4464,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 			period := frame.Show.Period
 			var w bytes.Buffer
-			for _, el := range currentelem(stw, exmodech, exmodeend) {
+			for _, el := range currentelem(stw, input) {
 				w.WriteString(fmt.Sprintf("%d ", el.Num))
 				for i := 0; i < 2; i++ {
 					for j := 0; j < 6; j++ {
@@ -4482,7 +4479,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 				w.WriteString("\n")
 			}
-			err := clipboard.WriteAll(w.String())
+			err := writeSystemClipboard(w.String())
 			if err != nil {
 				return err
 			}
@@ -4495,12 +4492,12 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				format = f
 			}
 			var w bytes.Buffer
-			for _, el := range currentelem(stw, exmodech, exmodeend) {
+			for _, el := range currentelem(stw, input) {
 				w.WriteString(fmt.Sprintf("%d ", el.Num))
 				w.WriteString(fmt.Sprintf(format, el.Amount()))
 				w.WriteString("\n")
 			}
-			err := clipboard.WriteAll(w.String())
+			err := writeSystemClipboard(w.String())
 			if err != nil {
 				return err
 			}
@@ -4519,11 +4516,8 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			if _, ok := frame.Sects[snum]; ok && !bang {
 				return errors.New(fmt.Sprintf(":copy sect: SECT %d already exists", snum))
 			}
-			select {
-			case <-time.After(time.Second):
-				break
-			case s := <-exmodech:
-				if sec, ok := s.(*Sect); ok {
+			if len(input) > 0 {
+				if sec, ok := input[0].(*Sect); ok {
 					as := sec.Snapshot(frame)
 					as.Num = snum
 					frame.Sects[snum] = as
@@ -4539,14 +4533,14 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				format = f
 			}
 			var w bytes.Buffer
-			for _, n := range currentnode(stw, exmodech, exmodeend) {
+			for _, n := range currentnode(stw, input) {
 				w.WriteString(fmt.Sprintf("%d", n.Num))
 				for i := 0; i < 6; i++ {
 					w.WriteString(fmt.Sprintf(" "+format, n.ReturnDisp(frame.Show.Period, i)))
 				}
 				w.WriteString("\n")
 			}
-			err := clipboard.WriteAll(w.String())
+			err := writeSystemClipboard(w.String())
 			if err != nil {
 				return err
 			}
@@ -4580,7 +4574,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 				n[i] = int(nval)
 			}
-			els := currentelem(stw, exmodech, exmodeend)
+			els := currentelem(stw, input)
 			if len(els) == 0 {
 				return fmt.Errorf("no nodes or elems selected")
 			}
@@ -4644,7 +4638,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			if err != nil {
 				return err
 			}
-			els := currentelem(stw, exmodech, exmodeend)
+			els := currentelem(stw, input)
 			if len(els) == 0 {
 				return fmt.Errorf("no nodes or elems selected")
 			}
@@ -4697,18 +4691,26 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 				etype = int(tmp)
 			}
-			if etype != NULL {
-				fs = append(fs, func(el *Elem) {
-					el.Etype = etype
-				})
+			switch etype {
+			case NULL:
+			case COLUMN, GIRDER, BRACE, WALL, SLAB:
+				for _, el := range currentelem(stw, input) {
+					if el.IsLineElem() != (etype == COLUMN || etype == GIRDER || etype == BRACE) {
+						return errors.New(":set: element type and node count are incompatible")
+					}
+				}
+				fs = append(fs, func(el *Elem) { el.Etype = etype })
+			default:
+				return errors.New(":set: unknown element type")
 			}
 		}
 		if len(fs) > 0 {
-			for _, el := range currentelem(stw, exmodech, exmodeend) {
+			for _, el := range currentelem(stw, input) {
 				for _, f := range fs {
 					f(el)
 				}
 			}
+			Snapshot(stw)
 		}
 	case "currentvalue":
 		if usage {
@@ -4970,10 +4972,14 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":erase")
 		}
-		for _, el := range currentelem(stw, exmodech, exmodeend) {
+		els, nodes := currentelem(stw, input), currentnode(stw, input)
+		if len(els) == 0 && len(nodes) == 0 {
+			return errors.New(":erase: no selected elem/node")
+		}
+		for _, el := range els {
 			frame.DeleteElem(el.Num)
 		}
-		for _, n := range currentnode(stw, exmodech, exmodeend) {
+		for _, n := range nodes {
 			frame.DeleteNode(n.Num)
 		}
 		ns := frame.NodeNoReference()
@@ -4994,20 +5000,12 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return Message(fmt.Sprintf("NODES: %d, ELEMS: %d", len(ns), len(els)))
 		}
 		var nnode, nelem int
-	ex_count:
-		for {
-			select {
-			case <-time.After(time.Second):
-				break ex_count
-			case <-exmodeend:
-				break ex_count
-			case ent := <-exmodech:
-				switch ent.(type) {
-				case *Node:
-					nnode++
-				case *Elem:
-					nelem++
-				}
+		for _, ent := range input {
+			switch ent.(type) {
+			case *Node:
+				nnode++
+			case *Elem:
+				nelem++
 			}
 		}
 		return Message(fmt.Sprintf("NODES: %d, ELEMS: %d", nnode, nelem))
@@ -5020,7 +5018,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			deformed = true
 		}
 		sum := 0.0
-		for _, el := range currentelem(stw, exmodech, exmodeend) {
+		for _, el := range currentelem(stw, input) {
 			if el.IsLineElem() {
 				if deformed {
 					sum += el.DeformedLength(frame.Show.Period, 1.0)
@@ -5043,7 +5041,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			deformed = true
 		}
 		sum := 0.0
-		for _, el := range currentelem(stw, exmodech, exmodeend) {
+		for _, el := range currentelem(stw, input) {
 			if !el.IsLineElem() {
 				if deformed {
 					sum += el.DeformedArea(frame.Show.Period, 1.0)
@@ -5061,35 +5059,21 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":show")
 		}
-	ex_show:
-		for {
-			select {
-			case <-time.After(time.Second):
-				break ex_show
-			case <-exmodeend:
-				break ex_show
-			case ent := <-exmodech:
-				if h, ok := ent.(Hider); ok {
-					h.Show()
-				}
-			}
+		for _, el := range currentelem(stw, input) {
+			el.Show()
+		}
+		for _, n := range currentnode(stw, input) {
+			n.Show()
 		}
 	case "hide":
 		if usage {
 			return Usage(":hide")
 		}
-	ex_hide:
-		for {
-			select {
-			case <-time.After(time.Second):
-				break ex_hide
-			case <-exmodeend:
-				break ex_hide
-			case ent := <-exmodech:
-				if h, ok := ent.(Hider); ok {
-					h.Hide()
-				}
-			}
+		for _, el := range currentelem(stw, input) {
+			el.Hide()
+		}
+		for _, n := range currentnode(stw, input) {
+			n.Hide()
 		}
 	case "range":
 		if usage {
@@ -5182,7 +5166,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if n <= 0 || n >= len(frame.Ai.Boundary)-1 {
 			return errors.New(":storey out of boundary")
 		}
-		return ExMode(stw, fmt.Sprintf("height %d %d", n-1, n+1))
+		return exCommand(stw, fmt.Sprintf(":height %d %d", n-1, n+1), nil, nil)
 	case "floor":
 		if usage {
 			return Usage(":floor n")
@@ -5206,7 +5190,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				return errors.New(":floor out of boundary")
 			}
 		}
-		return ExMode(stw, fmt.Sprintf("height %d %d", n-1, n))
+		return exCommand(stw, fmt.Sprintf(":height %d %d", n-1, n), nil, nil)
 	case "height+":
 		NextFloor(stw)
 	case "height-":
@@ -5407,12 +5391,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		nodes := frame.EliminateAllPin()
 		stw.SelectNode(nodes)
 	case "keisansho":
-		frame.OutputTex()
-		// t, err := frame.Elems[1003].OutputRateInformation("L", "X", "X", "Y", "Y")
-		// if err != nil {
-		// 	return err
-		// }
-		// fmt.Println(t)
+		return frame.OutputTex()
 	case "extractarclm":
 		if usage {
 			return Usage(":extractarclm")
@@ -5425,10 +5404,14 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if usage {
 			return Usage(":saveasarclm")
 		}
-		frame.SaveAsArclm("")
+		return frame.SaveAsArclm("")
 	case "all":
-		frame.ExtractArclm(Ce(frame.Path, ".wgt"))
-		frame.SaveAsArclm("")
+		if err := frame.ExtractArclm(Ce(frame.Path, ".wgt")); err != nil {
+			return err
+		}
+		if err := frame.SaveAsArclm(""); err != nil {
+			return err
+		}
 		acond := arclm.NewAnalysisCondition()
 		extra := make([][]float64, 2)
 		for i, eper := range []string{"X", "Y"} {
@@ -5453,6 +5436,8 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		otps := []string{Ce(otp, "otl"), Ce(otp, "ohx"), Ce(otp, "ohy")}
 		acond.SetOutput(otps)
+		af.Output = stw.HistoryWriter()
+		stw.CurrentLap("Calculating...", 0, len(pers))
 		ctx, cancel := context.WithCancel(context.Background())
 		go func() {
 			err := af.StaticAnalysis(cancel, acond)
@@ -5470,8 +5455,12 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				frame.ReadArclmData(af, pers[ind])
 				frame.ResultFileName[pers[ind]] = otps[ind]
 				ind++
+				stw.CurrentLap("Calculating...", ind, len(pers))
 				af.Lapch <- retval
-			case <-af.Endch:
+			case err := <-af.Endch:
+				if err != nil {
+					return err
+				}
 				break ex_all
 			}
 		}
@@ -5677,6 +5666,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}
 		pind := 0
 		go func() {
+			defer workerAnalysisFinished(stw)
 			retval := 0
 		readstatic:
 			for {
@@ -5702,6 +5692,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					}
 					if err != nil {
 						stw.History(err.Error())
+						stw.CurrentLap("Failed", 0, nlap)
 					} else {
 						stw.CurrentLap("Completed", nlap, nlap)
 					}
@@ -5753,7 +5744,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if err != nil {
 			return err
 		}
-		time.Sleep(time.Duration(int(val))*time.Millisecond)
+		time.Sleep(time.Duration(int(val)) * time.Millisecond)
 	case "arclm001":
 		return Usage("DEPRECATED: use :analysis {-period=name} {-all} {-solver=name} {-eps=value} {-noinit} {-wait} filename")
 	case "arclm201":
@@ -5810,6 +5801,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		retval := 0
 		currentlap := offset
 		go func() {
+			defer workerAnalysisFinished(stw)
 		read101:
 			for {
 				select {
@@ -5837,6 +5829,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					}
 					if err != nil {
 						stw.History(err.Error())
+						stw.CurrentLap("Failed", 0, nlap)
 					} else {
 						stw.CurrentLap("Completed", currentlap, currentlap)
 					}
@@ -5885,7 +5878,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			sects = SplitNums(s)
 			m.WriteString(fmt.Sprintf("SOIL SPRING: %v\n", sects))
 		}
-		eps := 1E-3
+		eps := 1e-3
 		if s, ok := argdict["EPS"]; ok {
 			tmp, err := strconv.ParseFloat(s, 64)
 			if err == nil {
@@ -5917,6 +5910,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}()
 		stw.CurrentLap("Calculating...", 0, 0)
 		go func() {
+			defer workerAnalysisFinished(stw)
 		read301:
 			for {
 				select {
@@ -5926,8 +5920,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, 0)
 					stw.Redraw()
-				case <-af.Endch:
-					stw.CurrentLap("Completed", 0, 0)
+				case err := <-af.Endch:
+					if err != nil {
+						stw.History(err.Error())
+						stw.CurrentLap("Failed", 0, 0)
+					} else {
+						stw.CurrentLap("Completed", 0, 0)
+					}
 					stw.Redraw()
 					break read301
 				}
@@ -5948,7 +5947,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		if o, ok := argdict["OTP"]; ok {
 			otp = o
 		}
-		eps := 1E-3
+		eps := 1e-3
 		if s, ok := argdict["EPS"]; ok {
 			tmp, err := strconv.ParseFloat(s, 64)
 			if err == nil {
@@ -5984,6 +5983,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 		}()
 		stw.CurrentLap("Calculating...", 0, 0)
 		go func() {
+			defer workerAnalysisFinished(stw)
 		read401:
 			for {
 				select {
@@ -5993,8 +5993,13 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, 0)
 					stw.Redraw()
-				case <-af.Endch:
-					stw.CurrentLap("Completed", 0, 0)
+				case err := <-af.Endch:
+					if err != nil {
+						stw.History(err.Error())
+						stw.CurrentLap("Failed", 0, 0)
+					} else {
+						stw.CurrentLap("Completed", 0, 0)
+					}
 					stw.Redraw()
 					break read401
 				}
@@ -6067,7 +6072,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 			af.Endch <- err
 		}()
-		stw.CurrentLap("Calculating...", 0, 1)
+		progressTotal := 1
+		if _, worker := stw.(*analysisWorkerWindow); worker {
+			progressTotal = 0 // The number of inertia evaluations is adaptive.
+		}
+		stw.CurrentLap("Calculating...", 0, progressTotal)
 		pivot := make(chan int)
 		end := make(chan int)
 		nodes := make([]*Node, len(frame.Nodes))
@@ -6083,6 +6092,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			stw.Redraw()
 		}
 		go func() {
+			defer workerAnalysisFinished(stw)
 		readb001:
 			for {
 				select {
@@ -6093,15 +6103,20 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				case nlap := <-af.Lapch:
 					frame.ReadArclmData(af, per)
 					af.Lapch <- 1
-					stw.CurrentLap("Calculating...", nlap, 1)
+					stw.CurrentLap("Calculating...", nlap, progressTotal)
 					if stw.Pivot() {
 						end <- 1
 						go stw.DrawPivot(nodes, pivot, end)
 					} else {
 						stw.Redraw()
 					}
-				case <-af.Endch:
-					stw.CurrentLap("Completed", 1, 1)
+				case err := <-af.Endch:
+					if err != nil {
+						stw.History(err.Error())
+						stw.CurrentLap("Failed", 0, 1)
+					} else {
+						stw.CurrentLap("Completed", 1, 1)
+					}
 					stw.Redraw()
 					break readb001
 				}
@@ -6174,7 +6189,11 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			}
 			af.Endch <- err
 		}()
-		stw.CurrentLap("Calculating...", 0, 1)
+		progressTotal := 1
+		if _, worker := stw.(*analysisWorkerWindow); worker {
+			progressTotal = 0 // The number of inertia evaluations is adaptive.
+		}
+		stw.CurrentLap("Calculating...", 0, progressTotal)
 		pivot := make(chan int)
 		end := make(chan int)
 		nodes := make([]*Node, len(frame.Nodes))
@@ -6190,6 +6209,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			stw.Redraw()
 		}
 		go func() {
+			defer workerAnalysisFinished(stw)
 		readb001:
 			for {
 				select {
@@ -6200,15 +6220,20 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				case nlap := <-af.Lapch:
 					frame.ReadArclmData(af, per)
 					af.Lapch <- 1
-					stw.CurrentLap("Calculating...", nlap, 1)
+					stw.CurrentLap("Calculating...", nlap, progressTotal)
 					if stw.Pivot() {
 						end <- 1
 						go stw.DrawPivot(nodes, pivot, end)
 					} else {
 						stw.Redraw()
 					}
-				case <-af.Endch:
-					stw.CurrentLap("Completed", 1, 1)
+				case err := <-af.Endch:
+					if err != nil {
+						stw.History(err.Error())
+						stw.CurrentLap("Failed", 0, 1)
+					} else {
+						stw.CurrentLap("Completed", 1, 1)
+					}
 					stw.Redraw()
 					break readb001
 				}
@@ -6251,7 +6276,7 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 			return err
 		}
 		factor *= -1.0
-		for _, n := range currentnode(stw, exmodech, exmodeend) {
+		for _, n := range currentnode(stw, input) {
 			for i := 0; i < 3; i++ {
 				if axis[i] {
 					if add {
@@ -6309,75 +6334,41 @@ func exCommand(stw ExModer, command string, pipe bool, exmodech chan interface{}
 				}
 			}
 		}
-		for _, el := range currentelem(stw, exmodech, exmodeend) {
+		elems := currentelem(stw, input)
+		for _, el := range elems {
 			for i := 0; i < 3; i++ {
 				el.Skip[i] = lis[i]
 			}
+		}
+		if len(elems) != 0 {
+			Snapshot(stw)
 		}
 	}
 	return nil
 }
 
-func currentelem(stw ExModer, exmodech chan interface{}, exmodeend chan int) []*Elem {
-	var els []*Elem
-	if !stw.ElemSelected() {
-		enum := 0
-		els = make([]*Elem, 0)
-	current:
-		for {
-			select {
-			case <-time.After(time.Second):
-				break current
-			case <-exmodeend:
-				break current
-			case el := <-exmodech:
-				if el == nil {
-					break current
-				}
-				if el, ok := el.(*Elem); ok {
-					els = append(els, el)
-					enum++
-				}
-			}
-		}
-		if enum == 0 {
-			return []*Elem{}
-		}
-		els = els[:enum]
-	} else {
-		els = stw.SelectedElems()
+func currentelem(stw ExModer, input []interface{}) []*Elem {
+	if stw.ElemSelected() {
+		return stw.SelectedElems()
 	}
-	return els
+	var elems []*Elem
+	for _, value := range input {
+		if elem, ok := value.(*Elem); ok && elem != nil {
+			elems = append(elems, elem)
+		}
+	}
+	return elems
 }
 
-func currentnode(stw ExModer, exmodech chan interface{}, exmodeend chan int) []*Node {
-	var ns []*Node
-	if !stw.NodeSelected() {
-		nnum := 0
-		ns = make([]*Node, 0)
-	currentn:
-		for {
-			select {
-			case <-time.After(time.Second):
-				break currentn
-			case <-exmodeend:
-				break currentn
-			case n := <-exmodech:
-				if n == nil {
-					break currentn
-				}
-				if n, ok := n.(*Node); ok {
-					ns = append(ns, n)
-					nnum++
-				}
-			}
-		}
-		if nnum == 0 {
-			return []*Node{}
-		}
-		ns = ns[:nnum]
-	} else {
-		ns = stw.SelectedNodes()
+func currentnode(stw ExModer, input []interface{}) []*Node {
+	if stw.NodeSelected() {
+		return stw.SelectedNodes()
 	}
-	return ns
+	var nodes []*Node
+	for _, value := range input {
+		if node, ok := value.(*Node); ok && node != nil {
+			nodes = append(nodes, node)
+		}
+	}
+	return nodes
 }

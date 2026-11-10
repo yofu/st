@@ -36,6 +36,7 @@ var (
 )
 
 type Window struct {
+	viewer           *modelViewer
 	nativeOwner      atomic.Uintptr
 	filePicker       func(fileDialogOptions) (string, bool, error)
 	pointerPosition  func() (f32.Point, bool)
@@ -152,6 +153,11 @@ func (stw *Window) Run(w *app.Window) error {
 			stw.ui.close()
 			return e.Err
 		case app.FrameEvent:
+			if stw.viewer != nil {
+				// The HTML container already accounts for toolbar and safe areas.
+				// Gio's web insets are relative to the full visual viewport.
+				e.Insets = app.Insets{}
+			}
 			gtx := app.NewContext(&ops, e)
 			stw.Layout(gtx)
 			e.Frame(gtx.Ops)
@@ -200,7 +206,9 @@ func (stw *Window) collectCanvasInput(gtx layout.Context, bounds image.Rectangle
 			// This tag is registered in window coordinates, without a region
 			// transform. Convert to canvas pixels exactly once for every kind.
 			ev.Position = ev.Position.Sub(f32.Pt(float32(bounds.Min.X), float32(bounds.Min.Y)))
-			if ev.Kind == pointer.Press {
+			if ev.Kind == pointer.Press && stw.viewer != nil {
+				gtx.Execute(pointer.GrabCmd{Tag: &stw.pointerTag, ID: ev.PointerID})
+			} else if ev.Kind == pointer.Press {
 				target := any(&stw.ui.command)
 				if stw.interaction.Load() != nil {
 					target = &stw.pointerTag
@@ -232,7 +240,7 @@ func (stw *Window) collectCanvasInput(gtx layout.Context, bounds image.Rectangle
 			stw.ui.cursorPosition = p.Position
 		}
 		stw.ui.fenceOverlay = stw.fenceCommandActive()
-		if stw.interaction.Load() == nil || stw.ui.fenceOverlay {
+		if stw.viewer == nil && (stw.interaction.Load() == nil || stw.ui.fenceOverlay) {
 			stw.ui.updateSelectionOverlay(e)
 		} else {
 			stw.ui.selectionOverlay = false
@@ -265,7 +273,11 @@ func (stw *Window) applyCanvasInput() {
 	for _, ev := range stw.canvasEvents {
 		switch e := ev.(type) {
 		case pointer.Event:
-			stw.handlePointer(e)
+			if stw.viewer != nil {
+				stw.handleViewerPointer(e)
+			} else {
+				stw.handlePointer(e)
+			}
 		case key.Event:
 			if e.State == key.Press {
 				stw.cancelCanvasDrag()
@@ -475,6 +487,13 @@ func (stw *Window) FeedCommand() {
 }
 
 func (stw *Window) ExecCommand(command string) {
+	if stw.viewer != nil && (strings.HasPrefix(command, ":") || strings.HasPrefix(command, "'")) {
+		if err := stw.runViewerCommand(command); err != nil {
+			stw.History(err.Error())
+		}
+		stw.Redraw()
+		return
+	}
 	stw.cancelViewAnimation()
 	stw.mouse.lastEdit = ""
 	stw.stopMouseEdit()
@@ -587,9 +606,16 @@ func (stw *Window) ShowCenter() {
 }
 
 func (stw *Window) Print() {
+	stw.OpenBrowserArtifact("print")
 }
 
 func (stw *Window) SaveAS() {
+	if stw.viewer != nil {
+		if err := stw.saveViewerWorkspaceCopy(); err != nil {
+			stw.History(err.Error())
+		}
+		return
+	}
 	if stw.usesNativeFileDialog() {
 		path, selected, err := stw.pickFile("Save As")
 		if err != nil {
@@ -646,7 +672,11 @@ func (stw *Window) SaveAS() {
 	}
 }
 
-func (stw *Window) SaveFileSelected(string) error {
+func (stw *Window) SaveFileSelected(filename string) error {
+	if stw.viewer != nil {
+		f := stw.frame
+		return st.WriteInp(filename, f.View, f.Ai, f.Wind, stw.SelectedElems())
+	}
 	return nil
 }
 
@@ -705,6 +735,14 @@ func (stw *Window) CurrentLap(message string, step, total int) {
 }
 
 func (stw *Window) SectionData(sec *st.Sect) {
+	if stw.viewer != nil {
+		text := strings.TrimSpace(sec.InpString())
+		box := stw.TextBox("SECTION")
+		box.SetText(strings.Split(text, "\n"))
+		box.Show()
+		stw.History(text)
+		return
+	}
 	// var tb *st.TextBox
 	// if t, tok := stw.textBox["SECTION"]; tok {
 	// 	tb = t
@@ -723,6 +761,9 @@ func (stw *Window) SectionData(sec *st.Sect) {
 }
 
 func (stw *Window) TextBox(name string) *st.TextBox {
+	if stw.viewer != nil {
+		return stw.viewerTextBox(name)
+	}
 	// if _, tok := stw.textBox[name]; !tok {
 	// 	stw.textBox[name] = st.NewTextBox(stw.currentFont)
 	// }
@@ -836,13 +877,30 @@ func (stw *Window) RedrawNode() {
 }
 
 func (stw *Window) EPS() float64 {
+	if stw.viewer != nil && stw.viewer.eps > 0 {
+		return stw.viewer.eps
+	}
 	return 1e-3
 }
 
-func (stw *Window) SetEPS(float64) {
+func (stw *Window) SetEPS(eps float64) {
+	if stw.viewer != nil && eps > 0 {
+		stw.viewer.eps = eps
+	}
 }
 
 func (stw *Window) Close(bang bool) {
+	if stw.viewer != nil {
+		if bang || !stw.changed || stw.Yn("モデルを閉じる", "編集内容を破棄しますか？") {
+			stw.Deselect()
+			stw.SetFrame(st.NewFrame())
+			stw.UndoStack = st.NewUndoStack(10)
+			stw.textBox = make(map[string]*st.TextBox)
+			stw.Changed(false)
+			stw.Redraw()
+		}
+		return
+	}
 	if !bang && stw.changed {
 		if !stw.Yn("Quit", "変更を保存せず終了しますか？") {
 			return

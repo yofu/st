@@ -386,8 +386,11 @@ func (frame *Frame) Snapshot() *Frame {
 		nodes := make([]*Node, len(v))
 		ind := 0
 		for i := 0; i < len(v); i++ {
+			if v[i] == nil {
+				continue
+			}
 			if n, ok := f.Nodes[v[i].Num]; ok {
-				nodes[i] = n
+				nodes[ind] = n
 				ind++
 			}
 		}
@@ -397,8 +400,11 @@ func (frame *Frame) Snapshot() *Frame {
 		elems := make([]*Elem, len(v))
 		ind := 0
 		for i := 0; i < len(v); i++ {
+			if v[i] == nil {
+				continue
+			}
 			if el, ok := f.Elems[v[i].Num]; ok {
-				elems[i] = el
+				elems[ind] = el
 				ind++
 			}
 		}
@@ -420,6 +426,7 @@ func (frame *Frame) Snapshot() *Frame {
 		f.Nlap[k] = v
 	}
 	f.Ai = frame.Ai.Snapshot()
+	f.Wind = frame.Wind.Snapshot()
 	f.Show = frame.Show
 	for k, v := range frame.DataFileName {
 		f.DataFileName[k] = v
@@ -530,6 +537,8 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 			tmp = make([]string, 0)
 			chain = NewChain(frame, nil, nil, nil, func(c *Chain) bool { return true }, nil, nil)
 		case "NODESET":
+			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
+			tmp = nil
 			name := words[1]
 			nodes := make([]*Node, len(words)-2)
 			ind := 0
@@ -539,13 +548,15 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 					continue
 				}
 				if n, ok := frame.Nodes[int(nnum)]; ok {
-					nodes[i] = n
+					nodes[ind] = n
 					ind++
 				}
 			}
 			nodes = nodes[:ind]
 			frame.AddNodeSet(name, nodes)
 		case "ELEMSET":
+			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
+			tmp = nil
 			name := words[1]
 			elems := make([]*Elem, len(words)-2)
 			ind := 0
@@ -555,7 +566,7 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 					continue
 				}
 				if el, ok := frame.Elems[int(enum)]; ok {
-					elems[i] = el
+					elems[ind] = el
 					ind++
 				}
 			}
@@ -2700,6 +2711,16 @@ func (frame *Frame) Filename() (string, string) {
 
 // WriteInp writes an input file for st frame.
 func (frame *Frame) WriteInp(fn string) error {
+	return os.WriteFile(fn, frame.inpBytes(false), 0666)
+}
+
+// InpBytes serializes the model as INP, including sections outside the usual
+// range when they are referenced by an exported member.
+func (frame *Frame) InpBytes() []byte {
+	return frame.inpBytes(true)
+}
+
+func (frame *Frame) inpBytes(includeReferencedSections bool) []byte {
 	var bnum, pnum, snum, inum, nnum, enum, cnum int
 	// Bond
 	bonds := make([]*Bond, len(frame.Bonds))
@@ -2717,8 +2738,16 @@ func (frame *Frame) WriteInp(fn string) error {
 	sort.Sort(PropByNum{props})
 	// Sect
 	sects := make([]*Sect, len(frame.Sects))
+	referenced := make(map[int]bool)
+	if includeReferencedSections {
+		for _, el := range frame.Elems {
+			if el.Etype != WBRACE && el.Etype != SBRACE {
+				referenced[el.Sect.Num] = true
+			}
+		}
+	}
 	for _, sec := range frame.Sects {
-		if sec.Num < 100 || sec.Num > 900 {
+		if (sec.Num < 100 || sec.Num > 900) && !referenced[sec.Num] {
 			continue
 		}
 		sects[snum] = sec
@@ -2766,7 +2795,7 @@ func (frame *Frame) WriteInp(fn string) error {
 	sort.Slice(chains, func(i, j int) bool {
 		return chains[i].Elems()[0].Num < chains[j].Elems()[0].Num
 	})
-	return writeinp(fn, frame.Title, frame.View, frame.Ai, frame.Wind, bonds, props, sects, piles, nodes, elems, chains, frame.NodeSet, frame.ElemSet)
+	return formatInp(frame.Title, frame.View, frame.Ai, frame.Wind, bonds, props, sects, piles, nodes, elems, chains, frame.NodeSet, frame.ElemSet)
 }
 
 // WriteOutput writes an output file of analysis.
@@ -2830,6 +2859,9 @@ func (frame *Frame) ZoubunSummary(fn string, period string, cond *arclm.Analysis
 	if _, ok := frame.Nlap[period]; !ok {
 		return fmt.Errorf("zoubun result not found for period %s", period)
 	}
+	if frame.Ai.Nfloor < 1 {
+		return fmt.Errorf("floor definitions are required for the pushover summary")
+	}
 	var otp bytes.Buffer
 	otp.WriteString(cond.String())
 	otp.WriteString(fmt.Sprintf("\nCOMPLETED STEPS: %d\n", frame.Nlap[period]))
@@ -2853,7 +2885,11 @@ func (frame *Frame) ZoubunSummary(fn string, period string, cond *arclm.Analysis
 		otp.WriteString(fmt.Sprintf("%4d", lap+1))
 		for i := 0; i < frame.Ai.Nfloor; i++ {
 			for _, n := range nodes[i] {
-				avedisp[i] += n.Disp[nper][ind]
+				displacement := n.Disp[nper]
+				if len(displacement) <= ind {
+					return fmt.Errorf("missing displacement at %s for node %d", nper, n.Num)
+				}
+				avedisp[i] += displacement[ind]
 				aveheight[i] += n.Coord[2]
 			}
 			avedisp[i] /= float64(len(nodes[i]))
@@ -4138,6 +4174,9 @@ del_arc:
 	}
 	frame.Arcs = arcs[:i]
 	delete(frame.Nodes, num)
+	for name, nodes := range frame.NodeSet {
+		frame.NodeSet[name] = slices.DeleteFunc(nodes, func(n *Node) bool { return n == nil || n.Num == num })
+	}
 	if frame.Maxnnum == num {
 		frame.Maxnnum--
 	}
@@ -4150,6 +4189,9 @@ func (frame *Frame) DeleteElem(num int) {
 		}
 	}
 	delete(frame.Elems, num)
+	for name, elems := range frame.ElemSet {
+		frame.ElemSet[name] = slices.DeleteFunc(elems, func(el *Elem) bool { return el == nil || el.Num == num })
+	}
 	if frame.Maxenum == num {
 		frame.Maxenum--
 	}
@@ -6969,7 +7011,7 @@ func (frame *Frame) PickNode(x, y, eps float64) *Node {
 			mindist = dist
 			rtn = v
 		} else if dist == mindist {
-			if rtn.DistFromProjection(frame.View) > v.DistFromProjection(frame.View) {
+			if rtn == nil || rtn.DistFromProjection(frame.View) > v.DistFromProjection(frame.View) {
 				rtn = v
 			}
 		}
@@ -7268,6 +7310,10 @@ func WriteInp(fn string, view *View, ai *Aiparameter, wind *Windparameter, els [
 }
 
 func writeinp(fn, title string, view *View, ai *Aiparameter, wind *Windparameter, bonds []*Bond, props []*Prop, sects []*Sect, piles []*Pile, nodes []*Node, elems []*Elem, chains []*Chain, nodeset map[string][]*Node, elemset map[string][]*Elem) error {
+	return os.WriteFile(fn, formatInp(title, view, ai, wind, bonds, props, sects, piles, nodes, elems, chains, nodeset, elemset), 0666)
+}
+
+func formatInp(title string, view *View, ai *Aiparameter, wind *Windparameter, bonds []*Bond, props []*Prop, sects []*Sect, piles []*Pile, nodes []*Node, elems []*Elem, chains []*Chain, nodeset map[string][]*Node, elemset map[string][]*Elem) []byte {
 	var otp bytes.Buffer
 	inum := len(piles)
 	// Frame
@@ -7375,15 +7421,8 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, wind *Windparameter
 		}
 		otp.WriteString("\n")
 	}
-	// Write
-	w, err := os.Create(fn)
-	defer w.Close()
-	if err != nil {
-		return err
-	}
 	otp = AddCR(otp)
-	otp.WriteTo(w)
-	return nil
+	return otp.Bytes()
 }
 
 func WriteOutput(fn string, p string, els []*Elem) error {

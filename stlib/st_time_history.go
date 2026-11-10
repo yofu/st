@@ -214,6 +214,7 @@ func runTimeHistoryCommand(stw ExModer, input string, args map[string]string) er
 	}()
 	waitDone := make(chan struct{})
 	go func() {
+		defer workerAnalysisFinished(stw)
 		defer close(waitDone)
 		lastRead, lastDraw := -1, -1
 		present := func(step int) {
@@ -238,6 +239,7 @@ func runTimeHistoryCommand(stw ExModer, input string, args map[string]string) er
 			}
 			if err != nil {
 				stw.History(err.Error())
+				stw.CurrentLap("Failed", 0, nlap)
 			}
 		}
 		for {
@@ -246,8 +248,11 @@ func runTimeHistoryCommand(stw ExModer, input string, args map[string]string) er
 				// Retain every TH@step result for later navigation, even when
 				// intermediate painting is skipped. Floor outputs are already
 				// written from OnStep while the solver owns the committed state.
-				frame.ReadArclmData(af, fmt.Sprintf("TH@%d", step))
-				frame.Nlap["TH"], lastRead = step, step
+				if _, worker := stw.(*analysisWorkerWindow); !worker {
+					frame.ReadArclmData(af, fmt.Sprintf("TH@%d", step))
+					lastRead = step
+				}
+				frame.Nlap["TH"] = step
 				if drawEvery > 0 && step%drawEvery == 0 {
 					present(step)
 				}

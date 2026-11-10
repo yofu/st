@@ -74,7 +74,11 @@ func (w *Window) startInteractiveCommand(f func(st.Commander) chan bool) {
 		return
 	}
 	go s.pump()
-	w.History("対話入力: 左クリックで指定、右クリックで確定・終了、Escで中止。")
+	if w.viewer != nil {
+		w.History("対話入力: タップで指定。必要に応じて「確定」または「中止」。")
+	} else {
+		w.History("対話入力: 左クリックで指定、右クリックで確定・終了、Escで中止。")
+	}
 	w.QueueRedrawAll()
 }
 
@@ -375,13 +379,19 @@ func (w *Window) interactiveClick(e pointer.Event, button pointer.Buttons) bool 
 		c = st.ClickMiddle(c.X, c.Y)
 	}
 	x, y := float64(e.Position.X), float64(e.Position.Y)
-	n := w.frame.PickNode(x, y, 15)
-	el := w.frame.PickElem(x, y, 5)
+	nodeRadius, elemRadius := 15.0, 5.0
+	preferNodes := (e.Modifiers&key.ModAlt != 0) == s.alt
+	if w.viewer != nil {
+		nodeRadius, elemRadius = 14*w.viewer.scale, 10*w.viewer.scale
+		preferNodes = w.viewer.pickNodes
+	}
+	n := w.frame.PickNode(x, y, nodeRadius)
+	el := w.frame.PickElem(x, y, elemRadius)
 	a, ind := w.frame.PickAxis(x, y, 5)
 	if a != nil {
 		a.Current = ind
 	}
-	s.offer(commandInput{kind: "click", position: e.Position, node: n, elem: el, axis: a, click: c, mod: st.Modifier{Shift: e.Modifiers&key.ModShift != 0, Ctrl: e.Modifiers&key.ModCtrl != 0, Alt: e.Modifiers&key.ModAlt != 0}, preferNodes: (e.Modifiers&key.ModAlt != 0) == s.alt})
+	s.offer(commandInput{kind: "click", position: e.Position, node: n, elem: el, axis: a, click: c, mod: st.Modifier{Shift: e.Modifiers&key.ModShift != 0, Ctrl: e.Modifiers&key.ModCtrl != 0, Alt: e.Modifiers&key.ModAlt != 0}, preferNodes: preferNodes})
 	return true
 }
 

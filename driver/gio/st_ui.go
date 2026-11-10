@@ -137,6 +137,10 @@ func (w *Window) enqueue(job func()) {
 }
 func (w *Window) enqueueInterrupting(job func()) { w.enqueueJob(uiJob{run: job, interrupt: true}) }
 func (w *Window) enqueueJob(job uiJob) {
+	w.tryEnqueueJob(job)
+}
+
+func (w *Window) tryEnqueueJob(job uiJob) bool {
 	u := w.ui
 	u.once.Do(func() {
 		go func() {
@@ -160,11 +164,14 @@ func (w *Window) enqueueJob(job uiJob) {
 	u.pending.Add(1)
 	select {
 	case u.jobs <- job:
+		return true
 	case <-u.done:
 		u.pending.Add(-1)
+		return false
 	default:
 		u.pending.Add(-1)
 		w.History("操作待ちが多いため受け付けられません。少し待って再実行してください。")
+		return false
 	}
 }
 
@@ -295,6 +302,9 @@ func region(gtx layout.Context, r image.Rectangle, draw layout.Widget) layout.Di
 }
 
 func (w *Window) Layout(gtx layout.Context) layout.Dimensions {
+	if w.viewer != nil {
+		return w.layoutModelViewer(gtx)
+	}
 	u := w.ui
 	if u.modal != nil && u.modal.owner != nil && w.interaction.Load() != u.modal.owner {
 		u.modal.cancel()

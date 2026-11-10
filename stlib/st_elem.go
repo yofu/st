@@ -182,6 +182,7 @@ func (elem *Elem) Snapshot(frame *Frame) *Elem {
 		el.Skip[i] = elem.Skip[i]
 	}
 	el.Num = elem.Num
+	el.Prestress = elem.Prestress
 	el.Frame = frame
 	el.hide = elem.hide
 	el.Lock = elem.Lock

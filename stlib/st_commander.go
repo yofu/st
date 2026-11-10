@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/atotto/clipboard"
 	"golang.org/x/mobile/event/key"
 )
 
@@ -319,7 +318,7 @@ func CopyClipboard(stw Commander) error {
 				otp.WriteString(el.InpString())
 			}
 		}
-		err := clipboard.WriteAll(otp.String())
+		err := writeSystemClipboard(otp.String())
 		if err != nil {
 			return err
 		}
@@ -332,7 +331,7 @@ func CopyClipboard(stw Commander) error {
 // TODO: Test
 func PasteClipboard(stw Commander) error {
 	frame := stw.Frame()
-	text, err := clipboard.ReadAll()
+	text, err := readSystemClipboard()
 	if err != nil {
 		return err
 	}

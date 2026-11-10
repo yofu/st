@@ -2,7 +2,9 @@ package st
 
 import (
 	"fmt"
+	"golang.org/x/image/font/gofont/goregular"
 	"path/filepath"
+	"runtime"
 
 	"github.com/signintech/gopdf"
 )
@@ -39,6 +41,9 @@ func NewPDFCanvas(name, style string, width, height float64) (*PDFCanvas, error)
 	})
 	pdf.AddPage()
 	err := pdf.AddTTFFont("IPA明朝", defaultfont)
+	if err != nil && runtime.GOOS == "js" {
+		err = pdf.AddTTFFontData("IPA明朝", goregular.TTF)
+	}
 	if err != nil {
 		return nil, err
 	}
