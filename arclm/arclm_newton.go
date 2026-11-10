@@ -8,6 +8,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -83,6 +84,7 @@ type plasticNewtonAnalysis struct {
 	cond         *AnalysisCondition
 	options      NewtonOptions
 	elements     []plasticAnalysisElement
+	elastic      *matrix.COOMatrix
 	conf         []bool
 	csize        int
 	length       float64
@@ -111,35 +113,8 @@ func plasticElasticLoads(elem *Elem) ([][]float64, []float64, error) {
 		return nil, nil, err
 	}
 	q := append([]float64(nil), elem.Cmq...)
-	for index, bond := range elem.Bonds {
-		if bond.Num == 0 {
-			continue
-		}
-		if k[index][index] == 0 {
-			empty := q[index] == 0
-			for i := 0; i < 12; i++ {
-				empty = empty && k[i][index] == 0 && k[index][i] == 0
-			}
-			if empty {
-				continue
-			} // An axial brace has no bending/torsion column to release.
-			return nil, nil, fmt.Errorf("ELEM %d: zero stiffness at connection %d", elem.Num, index)
-		}
-		k1 := bond.Value[1] * elem.Length() / (4 * elem.Sect.E * elem.Sect.Value[1])
-		k2 := bond.Value[2] * elem.Length() / (4 * elem.Sect.E * elem.Sect.Value[2])
-		old := copyPlasticMatrix(k)
-		force := q[index]
-		for i := 0; i < 12; i++ {
-			spring := k2
-			if i == 2 || i == 4 || i == 8 || i == 10 {
-				spring = k1
-			}
-			factor := old[i][index] / old[index][index] / (1 + spring)
-			q[i] -= factor * force
-			for j := 0; j < 12; j++ {
-				k[i][j] -= factor * old[index][j]
-			}
-		}
+	if err := elem.condenseConnections(k, q); err != nil {
+		return nil, nil, err
 	}
 	for i := range q {
 		if !finitePlastic(q[i]) {
@@ -448,6 +423,41 @@ func (a *plasticNewtonAnalysis) solveLinear(k *matrix.COOMatrix, rhs []float64) 
 	return full, nil
 }
 
+// regularizedCorrection changes only the linearized correction. The trial
+// forces, yield surfaces and equilibrium tolerance are evaluated as usual.
+func (a *plasticNewtonAnalysis) regularizedCorrection(r *plasticNewtonTrial) ([]float64, error) {
+	if a.elastic == nil {
+		k := matrix.NewCOOMatrix(len(a.conf))
+		for _, el := range a.elements {
+			ke := Transformation(el.elastic, el.transform)
+			for i, row := range ke {
+				ii := 6*el.connection.Enod[i/6].Index + i%6
+				for j, v := range row {
+					if v != 0 {
+						jj := 6*el.connection.Enod[j/6].Index + j%6
+						k.Add(ii, jj, v)
+					}
+				}
+			}
+		}
+		// Regularization is for loss of plastic stiffness in an otherwise
+		// stable model. Check the reference stiffness before using it.
+		if _, err := a.solveLinear(k, r.residual); err != nil {
+			return nil, fmt.Errorf("reference elastic stiffness: %w", err)
+		}
+		a.elastic = k
+	}
+	k := r.tangent.Copy()
+	const damping = 1e-4
+	for i, constrained := range a.conf {
+		if !constrained {
+			k.Add(i, i, damping*a.elastic.Query(i, i))
+		}
+	}
+	fmt.Fprintf(a.writer, "ARCLM101 NEWTON REGULARIZATION: ELASTIC_DIAGONAL_FACTOR=%g\n", damping)
+	return a.solveLinear(k, r.residual)
+}
+
 func (a *plasticNewtonAnalysis) commit(base *FrameState, du []float64, target float64, r *plasticNewtonTrial) {
 	for i, response := range r.responses {
 		if response != nil {
@@ -501,27 +511,45 @@ func (a *plasticNewtonAnalysis) step(from, target float64) error {
 			break
 		}
 		correction, solveErr := a.solveDirectionalCorrection(base, du, from, target, r)
-		if solveErr != nil {
-			err = solveErr
-			break
-		}
 		accepted := false
-		for line, scale := 0, 1.0; line < a.options.LineSearchSteps; line, scale = line+1, scale*.5 {
-			next := append([]float64(nil), du...)
-			for i := range next {
-				next[i] += scale * correction[i]
+		for attempt := 0; attempt < 2; attempt++ {
+			if attempt != 0 {
+				if errors.Is(solveErr, context.Canceled) {
+					return solveErr
+				}
+				if !slices.ContainsFunc(r.responses, func(response *PlasticResponse) bool {
+					return response != nil && (response.directional || response.tangentActive[0] || response.tangentActive[1])
+				}) {
+					break
+				}
+				correction, solveErr = a.regularizedCorrection(r)
 			}
-			trial, trialErr := a.evaluate(base, next, from, target)
-			if errors.Is(trialErr, context.Canceled) {
-				return trialErr
+			if solveErr != nil {
+				continue
 			}
-			if trialErr == nil && (trial.norm <= trial.tol || trial.norm < (1-1e-4*scale)*r.norm) {
-				du, r, accepted = next, trial, true
+			for line, scale := 0, 1.0; line < a.options.LineSearchSteps; line, scale = line+1, scale*.5 {
+				next := append([]float64(nil), du...)
+				for i := range next {
+					next[i] += scale * correction[i]
+				}
+				trial, trialErr := a.evaluate(base, next, from, target)
+				if errors.Is(trialErr, context.Canceled) {
+					return trialErr
+				}
+				if trialErr == nil && (trial.norm <= trial.tol || trial.norm < (1-1e-4*scale)*r.norm) {
+					du, r, accepted = next, trial, true
+					break
+				}
+			}
+			if accepted {
 				break
 			}
 		}
 		if !accepted {
-			err = fmt.Errorf("Newton line search failed to reduce the equilibrium residual")
+			err = solveErr
+			if err == nil {
+				err = fmt.Errorf("Newton line search failed to reduce the equilibrium residual")
+			}
 			break
 		}
 	}
@@ -709,12 +737,20 @@ func (frame *Frame) arclm101Newton(cancel context.CancelFunc, cond *AnalysisCond
 	}
 	origin := from
 	offset := frame.ContinuationStep()
-	for lap := 1; lap <= cond.nlap; lap++ {
+	for lap := 1; cond.staticMaterial || lap <= cond.nlap; lap++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		target := origin + float64(lap)*cond.delta
-		if cond.maxSet {
+		if cond.staticMaterial {
+			if from == cond.max {
+				if lap == 1 {
+					return writeStaticResult(frame, staticResultName(output, lap, cond.nlap, true))
+				}
+				break
+			}
+			target = linearTarget(from, cond.delta, cond.max)
+		} else if cond.maxSet {
 			if cond.delta > 0 {
 				target = math.Min(target, cond.max)
 			} else {
@@ -731,7 +767,11 @@ func (frame *Frame) arclm101Newton(cancel context.CancelFunc, cond *AnalysisCond
 			return err
 		}
 		step := offset + lap
-		if err := writePlasticStep(frame, output, step); err != nil {
+		if cond.staticMaterial {
+			if err := writeStaticResult(frame, staticResultName(output, lap, cond.nlap, target == cond.max)); err != nil {
+				return err
+			}
+		} else if err := writePlasticStep(frame, output, step); err != nil {
 			return err
 		}
 		frame.loading.steps = step

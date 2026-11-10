@@ -49,13 +49,13 @@ func inversePencilCSRProgress(ke, kg, metric *matrix.SymmetricCSR, C *matrix.Sym
 }
 
 func inversePencilCSRProgressChecked(ke, kg, metric *matrix.SymmetricCSR, C *matrix.SymLDLTFactor, target, eps float64, locked, klocked [][]float64, progress func(int, float64, float64), check func() error) (float64, []float64, error) {
-	return inversePencilCSRProgressQuality(ke, kg, metric, C, target, eps, locked, klocked, progress, check, nil, bucklingVectorTolerance)
+	return inversePencilCSRProgressQuality(ke, kg, metric, C, target, eps, locked, klocked, progress, check, nil)
 }
 
 // quality optionally supplies an operator-scaled residual for automatic
 // damping-period estimates on models with very different DOF stiffness scales.
-// Existing buckling/vibration entry points retain their force residual test.
-func inversePencilCSRProgressQuality(ke, kg, metric *matrix.SymmetricCSR, C *matrix.SymLDLTFactor, target, eps float64, locked, klocked [][]float64, progress func(int, float64, float64), check func() error, quality func(float64, []float64, []float64, []float64) (float64, error), residualTolerance float64) (float64, []float64, error) {
+// The default quality uses the relative force residual.
+func inversePencilCSRProgressQuality(ke, kg, metric *matrix.SymmetricCSR, C *matrix.SymLDLTFactor, target, eps float64, locked, klocked [][]float64, progress func(int, float64, float64), check func() error, quality func(float64, []float64, []float64, []float64) (float64, float64, error)) (float64, []float64, error) {
 	if check != nil {
 		if err := check(); err != nil {
 			return 0, nil, err
@@ -154,16 +154,11 @@ func inversePencilCSRProgressQuality(ke, kg, metric *matrix.SymmetricCSR, C *mat
 		if mu <= 0 || math.IsNaN(mu) || math.IsInf(mu, 0) {
 			return 0, nil, fmt.Errorf("invalid buckling Rayleigh quotient: %g", mu)
 		}
-		// This is also the relative residual of KE*x + Lambda*KG*x = 0.
-		rnorm, knorm, gnorm := 0.0, 0.0, 0.0
-		for j := range x {
-			rnorm = math.Hypot(rnorm, gx[j]+mu*kx[j])
-			knorm = math.Hypot(knorm, kx[j])
-			gnorm = math.Hypot(gnorm, gx[j])
-		}
-		residual = rnorm / (gnorm + math.Abs(mu)*knorm)
-		if quality != nil {
-			residual, err = quality(mu, x, kx, gx)
+		residualTolerance := bucklingVectorTolerance
+		if quality == nil {
+			residual = pencilForceResidual(mu, kx, gx)
+		} else {
+			residual, residualTolerance, err = quality(mu, x, kx, gx)
 			if err != nil {
 				return 0, nil, err
 			}
@@ -185,7 +180,11 @@ func inversePencilCSRProgressQuality(ke, kg, metric *matrix.SymmetricCSR, C *mat
 				continue
 			}
 			// Deflation must not silently move the answer to a different root.
-			if math.Abs(mu-target) > math.Max(4*eps, 8*bucklingVectorTolerance*math.Abs(target)) {
+			rootTolerance := bucklingVectorTolerance
+			if metric == ke {
+				rootTolerance = residualTolerance
+			}
+			if math.Abs(mu-target) > math.Max(4*eps, 8*rootTolerance*math.Abs(target)) {
 				return 0, nil, fmt.Errorf("buckling inverse iteration converged outside target: %g vs %g", mu, target)
 			}
 			return mu, x, nil
@@ -193,4 +192,94 @@ func inversePencilCSRProgressQuality(ke, kg, metric *matrix.SymmetricCSR, C *mat
 		convergedPasses = 0
 	}
 	return 0, nil, fmt.Errorf("buckling inverse iteration did not converge in 100 iterations (residual %.3g)", residual)
+}
+
+// pencilForceResidual is also the relative residual of KE*x + Lambda*KG*x = 0.
+func pencilForceResidual(mu float64, kx, gx []float64) float64 {
+	rnorm, knorm, gnorm := 0.0, 0.0, 0.0
+	for j := range kx {
+		rnorm = math.Hypot(rnorm, gx[j]+mu*kx[j])
+		knorm = math.Hypot(knorm, kx[j])
+		gnorm = math.Hypot(gnorm, gx[j])
+	}
+	return rnorm / (gnorm + math.Abs(mu)*knorm)
+}
+
+// inverseVector keeps the ordinary force check for well-scaled modes. If
+// force cancellation prevents that check from passing, use the elastic
+// energy norm with its own tolerance and a separate force residual ceiling.
+func (s *bucklingSearch) inverseVector(c *matrix.SymLDLTFactor, target, eps float64, locked, klocked [][]float64, rank int, progress func(int, float64, float64)) (float64, []float64, error) {
+	const forceCeiling = 1e-6
+	const energyTolerance = 1e-8
+	iterations := 0
+	usedEnergy := false
+	quality := func(mu float64, x, kx, gx []float64) (float64, float64, error) {
+		iterations++
+		usedEnergy = false
+		force := pencilForceResidual(mu, kx, gx)
+		if iterations < 4 || !finitePlastic(force) || force <= bucklingVectorTolerance || force > forceCeiling {
+			return force, bucklingVectorTolerance, nil
+		}
+		if s.elasticFactor == nil {
+			factor, err := s.ke.SymmetricLDLT(s.csize, s.conf, nil)
+			if err != nil {
+				return 0, energyTolerance, fmt.Errorf("buckling energy residual factor: %w", err)
+			}
+			s.elasticFactor = factor
+			s.solveFactorizations++
+		}
+		usedEnergy = true
+		energy, err := pencilEnergyResidual(s.elasticFactor, mu, x, kx, gx)
+		if s.diagnostics != nil {
+			s.diagnostics.log("buckling_energy_residual", map[string]interface{}{"rank": rank, "iteration": iterations, "force_residual": force, "energy_residual": energy})
+		}
+		return energy, energyTolerance, err
+	}
+	mu, x, err := inversePencilCSRProgressQuality(s.elastic, s.geometric, s.elastic, c, target, eps, locked, klocked, progress, nil, quality)
+	if err != nil || !usedEnergy {
+		return mu, x, err
+	}
+	// Recheck the rank around the accepted quotient. This guards against a
+	// residual near a different mode when the force check was insufficient.
+	margin := math.Max(4*eps, 8*energyTolerance*mu)
+	if margin >= mu {
+		return 0, nil, fmt.Errorf("buckling mode %d: residual interval reaches zero", rank)
+	}
+	_, below, err := s.countNudged(mu-margin, 0)
+	if err != nil {
+		return 0, nil, err
+	}
+	_, above, err := s.countNudged(mu+margin, math.Inf(1))
+	if err != nil {
+		return 0, nil, err
+	}
+	if below < rank || above >= rank {
+		return 0, nil, fmt.Errorf("buckling mode %d: residual-checked root has inconsistent inertia (%d,%d)", rank, below, above)
+	}
+	return mu, x, nil
+}
+
+// For K>0, sqrt(r^T K^-1 r)/(mu*sqrt(x^T K x)), r=mu*K*x+G*x,
+// is the relative residual of the self-adjoint -K^-1*G problem in the K norm.
+// It bounds the distance to the spectrum in mu and avoids judging massless,
+// very stiff DOFs against tiny inertial forces. The original force residual is
+// still computed and logged, rather than relaxing the existing eigen solver.
+func pencilEnergyResidual(k *matrix.SymLDLTFactor, mu float64, x, kx, gx []float64) (float64, error) {
+	r := make([]float64, len(x))
+	for i := range r {
+		r[i] = gx[i] + mu*kx[i]
+	}
+	z, err := k.Solve(r)
+	if err != nil {
+		return 0, err
+	}
+	energy, norm := Dot(r, z, len(r)), Dot(x, kx, len(x))
+	if energy < 0 || norm <= 0 {
+		return 0, fmt.Errorf("invalid modal energy residual")
+	}
+	value := math.Sqrt(energy/norm) / math.Abs(mu)
+	if !finitePlastic(value) {
+		return 0, fmt.Errorf("non-finite modal energy residual")
+	}
+	return value, nil
 }

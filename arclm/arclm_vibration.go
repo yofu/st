@@ -61,6 +61,7 @@ func (frame *Frame) VibrationalEigenAnalysisWithDiagnostics(otp string, init boo
 	if d != nil {
 		defer func() { analysisErr = errors.Join(analysisErr, d.close(analysisErr)) }()
 	}
+	defer frame.RestoreState(frame.SaveState())
 	if init {
 		frame.Initialise()
 	}
@@ -72,11 +73,20 @@ func (frame *Frame) VibrationalEigenAnalysisWithDiagnostics(otp string, init boo
 		return d.measure(phase, backend, nil, rank, func(map[string]interface{}) error { return fn() })
 	}
 	var k, m *matrix.COOMatrix
-	var load []float64
-	if err = measure("assemble_ke", "assembly", 0, func() error { var e error; k, load, e = frame.KE(1); return e }); err != nil {
+	var elems []linearElement
+	var conf []bool
+	var csize int
+	if err = measure("assemble_ke", "assembly", 0, func() error {
+		var err error
+		elems, err = newLinearElements(frame, false)
+		if err != nil {
+			return err
+		}
+		k, conf, csize = frame.linearSystem(elems, 6*len(frame.Nodes))
+		return nil
+	}); err != nil {
 		return err
 	}
-	csize, conf, _ := frame.AssemConf(load, 1)
 	if err = measure("assemble_mass", "assembly", 0, func() error { m = frame.AssemMassMatrix(); return nil }); err != nil {
 		return err
 	}
@@ -167,11 +177,9 @@ func (frame *Frame) VibrationalEigenAnalysisWithDiagnostics(otp string, init boo
 		massLocked = append(massLocked, mass.MulV(x))
 		full := frame.FillConf(x)
 		frame.EigenValue[i], frame.EigenVector[i] = omega2, full
-		if _, _, e = frame.UpdateStressEnergy(full); e != nil {
-			return e
+		if frame.Lapch != nil {
+			frame.previewEigenMode(elems, nil, conf, full)
 		}
-		frame.UpdateReaction(k, full)
-		frame.UpdateForm(full)
 		fmt.Fprintf(frame.Output, "VIBRATION EIG %d: omega^2=%.14g f=%.14gHz T=%.14gs\n", i+1, omega2, math.Sqrt(omega2)/(2*math.Pi), 2*math.Pi/math.Sqrt(omega2))
 		if d != nil {
 			d.log("vibration_mode", map[string]interface{}{"rank": i + 1, "omega_squared": omega2, "frequency_hz": math.Sqrt(omega2) / (2 * math.Pi), "period_seconds": 2 * math.Pi / math.Sqrt(omega2), "residual": residual, "orthogonality": orthogonality, "metric": "M"})

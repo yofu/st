@@ -915,12 +915,7 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 	for i, j := range []uint{NC_RX, NC_RY, NC_RZ, NC_MX, NC_MY, NC_MZ} {
 		if show.NodeCaption&j != 0 {
 			if node.Conf[i] {
-				var val float64
-				if i == 2 && show.NodeCaption&NC_WEIGHT != 0 {
-					val = node.ReturnReaction(show.Period, i) + node.Weight[1]
-				} else {
-					val = node.ReturnReaction(show.Period, i)
-				}
+				val := node.ReturnReaction(show.Period, i)
 				switch i {
 				case 0, 1, 2:
 					stw.LineStyle(CONTINUOUS)

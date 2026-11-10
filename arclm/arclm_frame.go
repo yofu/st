@@ -9,8 +9,6 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
-	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -37,6 +35,7 @@ type Frame struct {
 	loading          *plasticLoadState
 	transient        *TimeHistoryState
 	geometry         *geometryState
+	staticResultCase int
 }
 
 func NewFrame() *Frame {
@@ -58,6 +57,7 @@ type FrameState struct {
 	Stress           [][]float64
 	Energy           [][2]float64
 	plastic          []plasticElementState
+	valid            []bool
 	plasticLoad      float64
 	plasticLoadValid bool
 	loading          *plasticLoadState
@@ -249,6 +249,7 @@ func (frame *Frame) SaveState() *FrameState {
 	nnode := len(frame.Nodes)
 	nelem := len(frame.Elems)
 	fs := NewFrameState(nnode, nelem)
+	fs.valid = make([]bool, nelem)
 	fs.plasticLoad, fs.plasticLoadValid = frame.plasticLoad, frame.plasticLoadValid
 	fs.loading = copyPlasticLoading(frame.loading)
 	fs.transient = copyTimeHistoryState(frame.transient)
@@ -265,6 +266,7 @@ func (frame *Frame) SaveState() *FrameState {
 			fs.Stress[i][j] = el.Stress[j]
 		}
 		fs.plastic[i] = el.savePlasticState()
+		fs.valid[i] = el.IsValid
 		fs.Energy[i] = [2]float64{el.Energy, el.Energyb}
 	}
 	return fs
@@ -287,6 +289,9 @@ func (frame *Frame) RestoreState(fs *FrameState) {
 		for j := 0; j < 12; j++ {
 			el.Stress[j] = fs.Stress[i][j]
 		}
+		if i < len(fs.valid) {
+			el.IsValid = fs.valid[i]
+		}
 		if i < len(fs.Energy) {
 			el.Energy, el.Energyb = fs.Energy[i][0], fs.Energy[i][1]
 		}
@@ -298,25 +303,21 @@ func (frame *Frame) RestoreState(fs *FrameState) {
 }
 
 func (frame *Frame) CheckSingularNode(e error) error {
-	pat := regexp.MustCompile("^matrix singular: ([0-9]+)/([0-9]+)$")
-	txt := e.Error()
-	if !pat.MatchString(txt) {
+	var singular *matrix.SingularPivotError
+	if !errors.As(e, &singular) {
 		return e
 	}
-	fs := pat.FindStringSubmatch(txt)
-	num, err := strconv.ParseInt(fs[1], 10, 64)
-	if err != nil {
-		return e
-	}
+	dof := singular.Index
+	names := [...]string{"UX", "UY", "UZ", "RX", "RY", "RZ"}
 	for _, n := range frame.Nodes {
-		for i := 0; i < 6; i++ {
-			if !n.Conf[i] {
-				num--
+		for i, fixed := range n.Conf {
+			if fixed {
+				continue
 			}
-			if num == 0 {
-				return fmt.Errorf("matrix singular at NODE %d[%d]\n", n.Num, i)
-				return nil
+			if dof == 0 {
+				return fmt.Errorf("matrix singular at NODE %d[%d] (%s): %w", n.Num, i, names[i], e)
 			}
+			dof--
 		}
 	}
 	return e
@@ -339,7 +340,13 @@ func (frame *Frame) AssemGlobalVector(safety float64) (int, []bool, []float64, e
 }
 
 func (frame *Frame) AssemGlobalMatrix(matf func(*Elem) ([][]float64, error), vecf func(*Elem, [][]float64, []float64, float64) []float64, safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
-	return frame.assemGlobalMatrix(matf, vecf, safety, false)
+	return frame.assemGlobalMatrix(func(el *Elem) ([][]float64, error) {
+		stiff, err := matf(el)
+		if err != nil || stiff == nil {
+			return stiff, err
+		}
+		return el.ModifyHinge(stiff)
+	}, vecf, safety, false)
 }
 
 func (frame *Frame) assemGlobalMatrix(matf func(*Elem) ([][]float64, error), vecf func(*Elem, [][]float64, []float64, float64) []float64, safety float64, material bool) (*matrix.COOMatrix, []float64, error) {
@@ -363,11 +370,6 @@ func (frame *Frame) assemGlobalMatrix(matf func(*Elem) ([][]float64, error), vec
 		connection := el
 		if material {
 			connection = el.plasticConnection()
-		} else {
-			stiff, err = el.ModifyHinge(stiff)
-			if err != nil {
-				return nil, nil, err
-			}
 		}
 		stiff = Transformation(stiff, tmatrix)
 		for n1 := 0; n1 < 2; n1++ {
@@ -390,11 +392,16 @@ func (frame *Frame) assemGlobalMatrix(matf func(*Elem) ([][]float64, error), vec
 	return gmtx, gvct, nil
 }
 
+// AssemMassMatrix assigns the lumped nodal mass to free translations.
+// Rotations stay in the stiffness system with zero mass.
 func (frame *Frame) AssemMassMatrix() *matrix.COOMatrix {
 	size := 6 * len(frame.Nodes)
 	mmtx := matrix.NewCOOMatrix(size)
 	for _, n := range frame.Nodes {
-		for i := 0; i < 6; i++ {
+		if n.Mass == 0 {
+			continue
+		}
+		for i := 0; i < 3; i++ {
 			if n.Conf[i] {
 				continue
 			}
@@ -435,14 +442,14 @@ func (frame *Frame) KP(safety float64) (*matrix.COOMatrix, []float64, error) {
 
 func (frame *Frame) KG(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
 	matf := func(elem *Elem) ([][]float64, error) {
-		return elem.GeoStiffMatrix()
+		return elem.bucklingGeometricStiffness()
 	}
 	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
 		gvct = elem.AssemCMQ(tmatrix, gvct, safety)
 		gvct = elem.ModifyTrueForce(tmatrix, gvct)
 		return gvct
 	}
-	return frame.AssemGlobalMatrix(matf, vecf, safety)
+	return frame.assemGlobalMatrix(matf, vecf, safety, false)
 }
 
 func (frame *Frame) KEKG(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
@@ -689,10 +696,15 @@ func (frame *Frame) WriteBclngTo(w io.Writer) (int64, error) {
 }
 
 type AnalysisCondition struct {
-	init   bool
-	solver string
-	otp    []string
-	extra  [][]float64
+	init                bool
+	solver              string
+	otp                 []string
+	extra               [][]float64
+	extraFrames         []*Frame
+	staticMaterial      bool
+	floorContact        *float64
+	compressionLimit    float64
+	compressionSections map[int]bool
 
 	nlgeometry bool
 	nlmaterial bool
@@ -780,7 +792,7 @@ func (cond *AnalysisCondition) String() string {
 	rtn.WriteString(fmt.Sprintf("OUTPUT FILE : %v\n", cond.otp))
 	rtn.WriteString(fmt.Sprintf("SOLVER      : %s\n", cond.solver))
 	rtn.WriteString(fmt.Sprintf("EPS         : %.3E\n", cond.eps))
-	rtn.WriteString(fmt.Sprintf("EXTRA LOAD  : %d\n", len(cond.extra)))
+	rtn.WriteString(fmt.Sprintf("EXTRA LOAD  : %d\n", len(cond.extra)+len(cond.extraFrames)))
 	rtn.WriteString("NON-LINEAR\n")
 	rtn.WriteString(fmt.Sprintf("  GEOMETRY  : %t\n", cond.nlgeometry))
 	rtn.WriteString(fmt.Sprintf("  MATERIAL  : %t\n", cond.nlmaterial))
@@ -789,7 +801,7 @@ func (cond *AnalysisCondition) String() string {
 	rtn.WriteString(fmt.Sprintf("  DELTA     : %.3f\n", cond.delta))
 	rtn.WriteString(fmt.Sprintf("  START     : %.3f\n", cond.start))
 	rtn.WriteString(fmt.Sprintf("  MAX       : %.3f\n", cond.max))
-	rtn.WriteString(fmt.Sprintf("POST PROCESS: %t", cond.postprocess != nil))
+	rtn.WriteString(fmt.Sprintf("POST PROCESS: %t", cond.hasStaticPost()))
 	return rtn.String()
 }
 
@@ -801,197 +813,21 @@ func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCond
 	if cond == nil {
 		return fmt.Errorf("StaticAnalysis: nil condition")
 	}
+	if cond.NonLinear() && cond.hasStaticPost() {
+		return fmt.Errorf("StaticAnalysis: POST is supported only with the linear element formulation")
+	}
+	if cond.NonLinear() && (len(cond.extra) > 0 || len(cond.extraFrames) > 0) {
+		return fmt.Errorf("StaticAnalysis: extra load cases require linear analysis")
+	}
 	if cond.nlgeometry {
 		return frame.staticGeometry(cancel, cond)
 	}
-	if !cond.init && frame.geometry != nil {
-		return fmt.Errorf("StaticAnalysis: geometric state requires -nlgeom continuation")
+	if cond.nlmaterial {
+		c := *cond
+		c.staticMaterial, c.maxSet = true, true
+		return frame.arclm101Newton(cancel, &c)
 	}
-	if err := frame.beginAnalysis(cancel); err != nil {
-		return err
-	}
-	defer frame.finishAnalysis()
-	if cond.init {
-		frame.Initialise()
-	}
-	start := time.Now()
-	laptime := func(message string) {
-		end := time.Now()
-		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
-	}
-	var solver Solver
-	switch cond.solver {
-	default:
-		solver = LLS(frame, laptime)
-	case "CRS":
-		solver = CRS_CG(cond.eps, laptime)
-	case "LLS":
-		solver = LLS(frame, laptime)
-	case "CG":
-		solver = LLS_CG(cond.eps, laptime)
-	case "PCG":
-		solver = LLS_PCG(cond.eps, laptime)
-	}
-	var err error
-	var gmtx *matrix.COOMatrix
-	var gvct, vec []float64
-	var csize int
-	var conf []bool
-	var answers [][]float64
-	var bnorm, rnorm, sign float64
-	output := func(fns []string, ind int, l, nl int) error {
-		var fn string
-		if fns == nil || len(fns) <= ind {
-			fn = fmt.Sprintf("hogtxt%d.otp", ind)
-		} else {
-			fn = fns[ind]
-		}
-		if l < nl {
-			ext := filepath.Ext(fn)
-			fn = fmt.Sprintf("%s_LAP_%d_%d%s", strings.Replace(fn, ext, "", -1), l, nl, ext)
-		}
-		w, err := os.Create(fn)
-		if err != nil {
-			return err
-		}
-		defer w.Close()
-		frame.WriteTo(w)
-		return nil
-	}
-	lap := 0
-	total := cond.start + cond.delta
-	for {
-		if total > cond.max {
-			total = cond.max
-		}
-		f0 := frame.SaveState()
-		if !cond.nlgeometry || (cond.init && lap == 0) {
-			gmtx, gvct, err = frame.KE(total)
-			if err != nil {
-				return err
-			}
-			csize, conf, vec = frame.AssemConf(gvct, total)
-			if cond.nlgeometry { // subtract CMQ
-				for _, el := range frame.Elems {
-					for i := 0; i < 12; i++ {
-						el.Stress[i] = 0.0
-					}
-				}
-			}
-		} else {
-			gmtx, gvct, err = frame.KEKG(total)
-			if err != nil {
-				return err
-			}
-			csize, conf, vec = frame.AssemConf(gvct, total)
-		}
-		if lap == 0 {
-			bnorm = math.Sqrt(Dot(vec, vec, len(vec)))
-		} else {
-			rnorm = math.Sqrt(Dot(vec, vec, len(vec)))
-		}
-		laptime("ASSEM")
-		if cond.extra != nil && len(cond.extra) > 1 {
-			vecs := make([][]float64, len(cond.extra)+1)
-			vecs[0] = vec
-			for i := 0; i < len(cond.extra); i++ {
-				vecs[i+1] = cond.extra[i]
-			}
-			answers, err = solver.Solve(gmtx, csize, conf, vecs...)
-		} else {
-			answers, err = solver.Solve(gmtx, csize, conf, vec)
-		}
-		if err != nil {
-			return frame.CheckSingularNode(err)
-		}
-		sign = 0.0
-		for i := 0; i < len(vec); i++ {
-			sign += answers[0][i] * vec[i]
-		}
-		if lap == 0 {
-			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
-		} else {
-			laptime(fmt.Sprintf("sylvester's law of inertia: LAP %d %.3f", lap, sign))
-			if sign < 0.0 {
-				output(cond.otp, 0, lap+1, cond.nlap)
-				return errors.New(fmt.Sprintf("sylvester's law of inertia: %.3f", sign))
-			}
-		}
-		if cond.extra != nil {
-			if cond.otp == nil || len(cond.otp) < 1 {
-				cond.otp = make([]string, len(cond.extra)+1)
-				for i := 0; i < len(cond.extra)+1; i++ {
-					cond.otp[i] = fmt.Sprintf("hogtxt_%02d.otp", i)
-				}
-			} else if len(cond.otp) < len(cond.extra)+1 {
-				ext := filepath.Ext(cond.otp[0])
-				for i := 0; i < len(cond.extra)+1-len(cond.otp); i++ {
-					cond.otp = append(cond.otp, fmt.Sprintf("%s_%02d.%s", strings.TrimSuffix(cond.otp[0], ext), i, ext))
-				}
-			}
-		}
-		if lap >= cond.nlap-1 && total >= cond.max {
-			f := frame.SaveState() // TODO
-			for nans, ans := range answers {
-				frame.RestoreState(f) // TODO
-				if nans >= 1 {        // subtract CMQ for extra load
-					for _, el := range frame.Elems {
-						for i := 0; i < 12; i++ {
-							el.Stress[i] -= el.Cmq[i]
-						}
-					}
-				}
-				vec := frame.FillConf(ans)
-				_, err := frame.UpdateStress(vec)
-				if err != nil {
-					return err
-				}
-				frame.UpdateReaction(gmtx, vec)
-				frame.UpdateForm(vec)
-				frame.recordStaticLoading(cond, total, nans)
-				laptime(fmt.Sprintf("%04d / %04d: TOTAL = %.3f NORM = %.5E", lap+1, cond.nlap, total, rnorm/bnorm))
-				output(cond.otp, nans, lap+1, cond.nlap)
-				frame.Lapch <- lap + 1
-				<-frame.Lapch
-			}
-			break
-		} else {
-			du := frame.FillConf(answers[0])
-			df, err := frame.UpdateStress(du)
-			if err != nil {
-				return err
-			}
-			dr := frame.UpdateReaction(gmtx, du)
-			frame.UpdateForm(du)
-			frame.recordStaticLoading(cond, total, 0)
-			delta := cond.delta
-			next := true
-			if cond.postprocess != nil {
-				delta, next = cond.postprocess(frame, df, du, dr)
-			}
-			frame.Lapch <- lap + 1
-			ret := <-frame.Lapch
-			if ret != 0 {
-				output(cond.otp, 0, lap+1, cond.nlap)
-				return fmt.Errorf("analysis cancelled")
-			}
-			if !next {
-				old := total
-				if delta != cond.delta {
-					total += delta - cond.delta
-					cond.delta = delta
-				}
-				laptime(fmt.Sprintf("%04d / %04d: TOTAL = %.3f -> %.3f NORM = %.5E U", lap+1, cond.nlap, old, total, rnorm/bnorm))
-				frame.RestoreState(f0)
-			} else {
-				laptime(fmt.Sprintf("%04d / %04d: TOTAL = %.3f NORM = %.5E", lap+1, cond.nlap, total, rnorm/bnorm))
-				lap++
-				total += cond.delta
-			}
-		}
-	}
-	laptime("End")
-	return nil
+	return frame.staticLinear(cancel, cond)
 }
 
 // Arclm101 performs material-nonlinear load control. With nlgeometry it uses
@@ -1288,6 +1124,7 @@ func (frame *Frame) Bclng001WithDiagnostics(otp string, init bool, n int, eps fl
 	if d != nil {
 		defer func() { analysisErr = errors.Join(analysisErr, d.close(analysisErr)) }()
 	}
+	defer frame.RestoreState(frame.SaveState())
 	if init {
 		frame.Initialise()
 	}
@@ -1296,46 +1133,60 @@ func (frame *Frame) Bclng001WithDiagnostics(otp string, init bool, n int, eps fl
 		end := time.Now()
 		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
 	}
-	solver := LLS(frame, func(string) {})
-	var err error
-	var answers [][]float64
-	var kemtx, kgmtx *matrix.COOMatrix
-	var gvct, vec []float64
-	var csize int
-	var conf []bool
-	if d == nil {
-		kemtx, gvct, err = frame.KE(1.0)
-	} else {
-		err = d.measure("assemble_ke", "assembly", nil, 0, func(map[string]interface{}) error { kemtx, gvct, err = frame.KE(1.0); return err })
+	measure := func(phase, backend string, rank int, fn func() error) error {
+		if d == nil {
+			return fn()
+		}
+		return d.measure(phase, backend, nil, rank, func(map[string]interface{}) error { return fn() })
 	}
-	if err != nil {
-		return err
-	}
-	csize, conf, vec = frame.AssemConf(gvct, 1.0)
-	for _, el := range frame.Elems {
-		for i := 0; i < 12; i++ {
-			el.Stress[i] = 0.0
+	notify := func(lap, rank int, phase string) {
+		if frame.Lapch != nil {
+			measure(phase, "ui", rank, func() error { frame.Lapch <- lap; <-frame.Lapch; return nil })
 		}
 	}
-	if d == nil {
-		answers, err = solver.Solve(kemtx, csize, conf, vec)
-	} else {
-		err = d.measure("initial_static", "legacy_static", nil, 0, func(map[string]interface{}) error { answers, err = solver.Solve(kemtx, csize, conf, vec); return err })
-	}
-	if err != nil {
+	var elems []linearElement
+	var load linearLoads
+	var kemtx, kgmtx *matrix.COOMatrix
+	var geometric [][][]float64
+	var csize int
+	var conf []bool
+	size := 6 * len(frame.Nodes)
+	if err := measure("assemble_ke", "assembly", 0, func() error {
+		var err error
+		elems, err = newLinearElements(frame, false)
+		if err != nil {
+			return err
+		}
+		load, err = frame.linearLoad(frame, false)
+		if err != nil {
+			return err
+		}
+		kemtx, conf, csize = frame.linearSystem(elems, size)
+		return nil
+	}); err != nil {
 		return err
 	}
-	tmp := frame.FillConf(answers[0])
-	_, err = frame.UpdateStress(tmp)
-	if err != nil {
+	if csize == size {
+		return fmt.Errorf("buckling has no free DOFs")
+	}
+	solver := LLS(frame, func(string) {})
+	var u []float64
+	if err := measure("initial_static", "legacy_static", 0, func() error {
+		rhs := frame.linearRHS(elems, load, 1, conf, make([]float64, size))
+		answers, err := solver.Solve(kemtx, csize, conf, rhs)
+		if err != nil {
+			return frame.CheckSingularNode(err)
+		}
+		u = frame.FillConf(answers[0])
+		return nil
+	}); err != nil {
 		return err
 	}
-	if d == nil {
-		kgmtx, _, err = frame.KG(1.0)
-	} else {
-		err = d.measure("assemble_kg", "assembly", nil, 0, func(map[string]interface{}) error { kgmtx, _, err = frame.KG(1.0); return err })
-	}
-	if err != nil {
+	if err := measure("assemble_kg", "assembly", 0, func() error {
+		var err error
+		kgmtx, geometric, err = frame.bucklingPreloadGeometric(elems, load, u)
+		return err
+	}); err != nil {
 		return err
 	}
 	laptime("initial analysis solved")
@@ -1386,12 +1237,7 @@ func (frame *Frame) Bclng001WithDiagnostics(otp string, init bool, n int, eps fl
 			} else {
 				fmt.Fprintf(frame.Output, "LAMBDA>%.14f\n", 1.0/mu)
 			}
-			if d == nil {
-				frame.Lapch <- lap + 1
-				<-frame.Lapch
-			} else {
-				d.measure("progress_wait", "ui", nil, i+1, func(map[string]interface{}) error { frame.Lapch <- lap + 1; <-frame.Lapch; return nil })
-			}
+			notify(lap+1, i+1, "progress_wait")
 		})
 		searchDuration += time.Since(searchStart)
 		if err != nil {
@@ -1400,7 +1246,7 @@ func (frame *Frame) Bclng001WithDiagnostics(otp string, init bool, n int, eps fl
 		vectorStart := time.Now()
 		var answer []float64
 		if d == nil {
-			mu, answer, err = inverseBucklingCSR(search.elastic, search.geometric, C, mu, eps, locked, klocked)
+			mu, answer, err = search.inverseVector(C, mu, eps, locked, klocked, i+1, nil)
 		} else {
 			mu, answer, err = d.inverse(search, C, mu, eps, locked, klocked, i+1)
 		}
@@ -1411,22 +1257,12 @@ func (frame *Frame) Bclng001WithDiagnostics(otp string, init bool, n int, eps fl
 		locked = append(locked, answer)
 		klocked = append(klocked, search.elastic.MulV(answer))
 		lastvec := frame.FillConf(answer)
-		_, _, err = frame.UpdateStressEnergy(lastvec)
-		if err != nil {
-			return err
-		}
 		laptime(fmt.Sprintf("\nEIG %d: %.14f", i+1, 1.0/mu))
 		frame.EigenValue[i] = 1.0 / mu
 		frame.EigenVector[i] = lastvec
-		frame.UpdateReaction(kemtx, lastvec)
-		frame.UpdateForm(lastvec)
-		if d == nil {
-			frame.Lapch <- i + 1
-			<-frame.Lapch
-		} else {
-			if err := d.measure("mode_completion_wait", "ui", nil, i+1, func(map[string]interface{}) error { frame.Lapch <- i + 1; <-frame.Lapch; return nil }); err != nil {
-				return err
-			}
+		if frame.Lapch != nil {
+			frame.previewEigenMode(elems, geometric, conf, lastvec)
+			notify(i+1, i+1, "mode_completion_wait")
 		}
 	}
 	fmt.Fprintf(frame.Output, "BUCKLING: inertia=%d factors=%d bracket_factors=%d proposals=%d accepted=%d cached=%d search=%.3fs vectors=%.3fs\n", search.inertiaEvaluations, search.solveFactorizations, search.bracketFactorizations, search.refinementAttempts, search.refinementsAccepted, search.cacheHits, searchDuration.Seconds(), vectorDuration.Seconds())
@@ -1441,8 +1277,8 @@ func (frame *Frame) Bclng001WithDiagnostics(otp string, init bool, n int, eps fl
 		return err
 	}
 	defer w.Close()
-	frame.WriteBclngTo(w)
-	return nil
+	_, err = frame.WriteBclngTo(w)
+	return err
 }
 
 // VibrationalEigenAnalysis computes ascending omega squared and M-orthonormal

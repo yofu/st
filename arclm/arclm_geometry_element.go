@@ -62,41 +62,8 @@ func newGeometryElement(e *Elem, index int) (geometryElement, error) {
 		return g, err
 	}
 	q := append([]float64(nil), e.Cmq...)
-	for j, b := range c.Bonds {
-		if b == nil || len(b.Value) != 4 {
-			return g, fmt.Errorf("ELEM %d: nil connection", e.Num)
-		}
-		if b.Num == 0 {
-			continue
-		}
-		if j%6 < 3 {
-			return g, fmt.Errorf("ELEM %d: translational connection releases are not supported", e.Num)
-		}
-		spring := 0.0
-		if b.Num != 1 {
-			spring = b.Value[j%6-3]
-			if spring < 0 || !finitePlastic(spring) {
-				return g, fmt.Errorf("ELEM %d: invalid rotational spring", e.Num)
-			}
-		}
-		den := k[j][j] + spring
-		if den == 0 {
-			if q[j] != 0 {
-				return g, fmt.Errorf("ELEM %d: load on a zero-stiffness release", e.Num)
-			}
-			continue
-		}
-		col := [12]float64{}
-		for i := range col {
-			col[i] = k[i][j]
-		}
-		old := q[j]
-		for i := 0; i < 12; i++ {
-			q[i] -= col[i] * old / den
-			for m := 0; m < 12; m++ {
-				k[i][m] -= col[i] * col[m] / den
-			}
-		}
+	if err := c.condenseConnections(k, q); err != nil {
+		return g, err
 	}
 	for i := 0; i < 12; i++ {
 		copy(g.k[i][:], k[i])

@@ -67,13 +67,13 @@ func (state *plasticLoadState) samePattern(nodal []float64, fixed [][]float64) b
 	return true
 }
 
-// Record provenance for the ordinary fresh linear analysis, without changing
-// its numerical solution. Extra RHS and legacy nonlinear/noinit paths do not
-// provide a reliable applied-load history and must not invent one.
+// Keep the actual load pattern and factor for ordinary linear continuation.
+// POST may change the active constraints or elements, so do not use that
+// state as a preload for a different formulation.
 func (frame *Frame) recordStaticLoading(cond *AnalysisCondition, factor float64, rhs int) {
 	frame.loading = nil
 	frame.plasticLoadValid = false
-	if !cond.init || cond.NonLinear() || rhs != 0 {
+	if cond.NonLinear() || cond.hasStaticPost() || rhs != 0 {
 		return
 	}
 	nodal, fixed := frame.loadPatterns()

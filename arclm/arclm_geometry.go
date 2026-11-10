@@ -443,16 +443,21 @@ func (a *geometryAnalysis) step(from, target float64) error {
 		}
 	}()
 	failure := &GeometryConvergenceError{From: from, Target: target, Cause: fmt.Errorf("iteration limit")}
+	trialWarning := false
+	t, err := a.evaluate(target)
+	if err != nil {
+		return err
+	}
 	for iter := 0; iter <= a.o.MaxIterations; iter++ {
-		t, err := a.evaluate(target)
-		if err != nil {
-			return err
-		}
 		failure.Iterations = iter
 		failure.Residual = t.norm
 		failure.Tolerance = t.tol
 		fmt.Fprintf(a.w, "GEOMETRY ITER: LOAD=%.12g ITER=%d RESIDUAL=%.6e TOLERANCE=%.6e\n", target, iter, t.norm, t.tol)
-		if t.norm <= t.tol {
+		converged := t.norm <= t.tol
+		if converged || !trialWarning {
+			trialWarning = a.checkStability(t, from, target, iter, 0, converged, trialWarning)
+		}
+		if converged {
 			a.commit(t, target)
 			success = true
 			return nil
@@ -477,14 +482,37 @@ func (a *geometryAnalysis) step(from, target float64) error {
 		// transient axial residual that the next Newton iteration eliminates.
 		// Backtrack only to stay in the admissible finite-rotation chart; failed
 		// equilibrations are retried with smaller load increments below.
-		for ls := 0; ls < a.o.LineSearchSteps; ls++ {
+		move := func(scale float64) {
 			for i, n := range a.f.Nodes {
 				copy(n.Disp, disp[i])
 				a.state.rotations[i] = rot[i]
 			}
-			a.increment(du, alpha)
+			a.increment(du, scale)
+		}
+		for ls := 0; ls < a.o.LineSearchSteps; ls++ {
+			move(alpha)
 			trial, e := a.evaluate(target)
-			if e == nil && finitePlastic(trial.norm) {
+			if errors.Is(e, context.Canceled) {
+				return e
+			}
+			if e == nil {
+				if !trialWarning && (trial.norm > t.norm || a.largeStabilityCorrection(du, alpha)) {
+					// A jump can cross the unstable region while both Newton
+					// endpoints are stable. Inspect the interior of the update.
+					for _, fraction := range [...]float64{.5, .25, .75} {
+						move(alpha * fraction)
+						interior, err := a.evaluate(target)
+						if errors.Is(err, context.Canceled) {
+							return err
+						}
+						if err == nil && a.checkStability(interior, from, target, iter, fraction, false, false) {
+							trialWarning = true
+							break
+						}
+					}
+					move(alpha)
+				}
+				t = trial
 				accepted = true
 				break
 			}

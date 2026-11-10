@@ -5071,9 +5071,7 @@ func (frame *Frame) ExtractArclm(fn string) error {
 			}
 			switch p {
 			case "L":
-				if !an.Conf[2] {
-					an.Force[2] -= n.Weight[1]
-				}
+				an.Force[2] -= n.Weight[1]
 			case "X":
 				if !an.Conf[0] {
 					an.Force[0] += n.Phase[0] * n.Factor[0] * n.Weight[2]
@@ -5136,14 +5134,15 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				stress = s
 			}
 			if p == "L" {
-				for k, en := range ae.Enod {
-					if !en.Conf[2] {
-						en.Force[2] += el.Cmq[2+6*k]
-					}
-				}
-				for k, en := range el.Enod {
-					if !en.Conf[2] {
-						en.Force[p][2] += el.Cmq[2+6*k]
+				// WeightDistribution adds girder end shears to both Weight and
+				// CMQ. Remove that duplicate from the nodal gravity load, while
+				// preserving any fixed-end forces supplied in the input model.
+				if original := cmqs[el.Num]; original != nil {
+					for k, en := range ae.Enod {
+						dof := 2 + 6*k
+						shear := el.Cmq[dof] - original[dof]
+						en.Force[2] += shear
+						el.Enod[k].Force[p][2] += shear
 					}
 				}
 			}
@@ -5878,6 +5877,44 @@ func (frame *Frame) SaveAsArclm(name string) error {
 		frame.DataFileName[p] = fn
 	}
 	return nil
+}
+
+// saveResultEntry restores a period entry without changing other periods.
+func saveResultEntry[K comparable, V any](data map[K]V, key K) func() {
+	value, exists := data[key]
+	return func() {
+		if exists {
+			data[key] = value
+		} else {
+			delete(data, key)
+		}
+	}
+}
+
+// saveEigenPreview keeps the results already displayed for this period,
+// which may have been loaded independently of the analysis frame.
+func (frame *Frame) saveEigenPreview(af *arclm.Frame, period string) func() {
+	var restore []func()
+	for _, node := range af.Nodes {
+		if n := frame.Nodes[node.Num]; n != nil {
+			restore = append(restore, saveResultEntry(n.Disp, period), saveResultEntry(n.Reaction, period))
+		}
+	}
+	for _, member := range af.Elems {
+		if e := frame.Elems[member.Num]; e != nil {
+			restore = append(restore, saveResultEntry(e.Stress, period), saveResultEntry(e.Phinge, period),
+				saveResultEntry(e.Values, "ENERGY"), saveResultEntry(e.Values, "ENERGYB"))
+			// ReadArclmData updates the nested hinge map in place.
+			delete(e.Phinge, period)
+			locked := e.Lock
+			restore = append(restore, func() { e.Lock = locked })
+		}
+	}
+	return func() {
+		for _, action := range restore {
+			action()
+		}
+	}
 }
 
 func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {

@@ -5413,16 +5413,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			return err
 		}
 		acond := arclm.NewAnalysisCondition()
-		extra := make([][]float64, 2)
-		for i, eper := range []string{"X", "Y"} {
-			eaf := frame.Arclms[eper]
-			_, _, vec, err := eaf.AssemGlobalVector(1.0)
-			if err != nil {
-				return err
-			}
-			extra[i] = vec
-		}
-		acond.SetExtra(extra)
+		acond.SetExtraFrames(frame.Arclms["X"], frame.Arclms["Y"])
 		var otp string
 		if fn == "" {
 			otp = Ce(frame.Path, ".otp")
@@ -5469,7 +5460,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
 	case "analysis":
 		if usage {
-			return Usage(":analysis {-period=name} {-all} {-solver=name} {-eps=value} {-nlgeom} {-nlmat} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
+			return Usage(":analysis {-period=name} {-all} {-solver=name} {-eps=value} {-nlgeom} {-nlmat} {-step=nlap;delta;start;max} {-post=FLOOR|IMCOMP} {-noinit} {-wait} filename")
 		}
 		cond := arclm.NewAnalysisCondition()
 		var otp string
@@ -5535,23 +5526,10 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			if cond.NonLinear() {
 				return fmt.Errorf("\":analysis-all\" cannot be used for non-linear analysis")
 			}
-			extra := make([][]float64, 2)
 			pers = []string{"L", "X", "Y"}
-			otps := []string{Ce(otp, ".otl"), Ce(otp, ".ohx"), Ce(otp, ".ohy")}
+			cond.SetOutput([]string{Ce(otp, ".otl"), Ce(otp, ".ohx"), Ce(otp, ".ohy")})
 			per = "L"
-			for i, eper := range []string{"X", "Y"} {
-				eaf := frame.Arclms[eper]
-				if eaf == nil {
-					return fmt.Errorf(":analysis: frame isn't extracted to period %s", eper)
-				}
-				_, _, vec, err := eaf.AssemGlobalVector(1.0)
-				if err != nil {
-					return err
-				}
-				extra[i] = vec
-			}
-			cond.SetOutput(otps)
-			cond.SetExtra(extra)
+			cond.SetExtraFrames(frame.Arclms["X"], frame.Arclms["Y"])
 		}
 		af := frame.Arclms[per]
 		if af == nil {
@@ -5561,87 +5539,52 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if af.Running() {
 			return fmt.Errorf("analysis is running")
 		}
-		var m, m2 bytes.Buffer
+		var m bytes.Buffer
 		m.WriteString(fmt.Sprintf("PERIOD      : %s\n", per))
 		if pp, ok := argdict["POST"]; ok {
+			if cond.NonLinear() {
+				return fmt.Errorf(":analysis: POST requires the linear element formulation")
+			}
+			if _, all := argdict["ALL"]; all {
+				return fmt.Errorf(":analysis: POST requires separate load cases")
+			}
 			switch strings.ToUpper(pp) {
 			case "FLOOR":
-				zval := 0.002
-				if z, zok := argdict["Z"]; zok {
-					tmp, err := strconv.ParseFloat(z, 64)
-					if err == nil {
-						zval = tmp
+				z := 0.002
+				if value, ok := argdict["Z"]; ok {
+					var err error
+					z, err = strconv.ParseFloat(value, 64)
+					if err != nil || math.IsNaN(z) || math.IsInf(z, 0) {
+						return fmt.Errorf(":analysis: invalid POST=FLOOR elevation %q", value)
 					}
 				}
-				cond.SetPostprocess(func(frame *arclm.Frame, df [][]float64, du []float64, dr []float64) (float64, bool) {
-					delta := 1.0
-					for i, n := range frame.Nodes {
-						current := n.Coord[2] + n.Disp[2]
-						if !n.Conf[2] && current <= zval {
-							if current < 0.0 {
-								tmp := (zval-current)/du[6*i+2] + 1.0
-								if tmp > 0.0 && tmp < delta {
-									delta = tmp
-								}
-							}
-							n.Conf[2] = true
-						} else if n.Conf[2] && n.Reaction[2] < 0.0 {
-							n.Conf[2] = false
-						}
-					}
-					if delta < 0.99 {
-						return delta * cond.Delta(), false
-					} else {
-						return cond.Delta(), true
-					}
-				})
+				cond.SetFloorContact(z)
+				fmt.Fprintf(&m, "POST FLOOR  : z=%g\n", z)
 			case "IMCOMP":
-				comp := 0.0
-				if c, ok := argdict["COMP"]; ok {
-					val, err := strconv.ParseFloat(c, 64)
-					if err == nil {
-						comp = val
+				limit := 0.0
+				if value, ok := argdict["COMP"]; ok {
+					var err error
+					limit, err = strconv.ParseFloat(value, 64)
+					if err != nil || math.IsNaN(limit) || math.IsInf(limit, 0) {
+						return fmt.Errorf(":analysis: invalid POST=IMCOMP compression limit %q", value)
 					}
 				}
-				var sects []int
-				if s, ok := argdict["SECTS"]; ok {
-					sects = SplitNums(s)
+				sections := SplitNums(argdict["SECTS"])
+				if len(sections) == 0 {
+					return fmt.Errorf(":analysis: POST=IMCOMP requires -sects")
 				}
-				m2.WriteString(fmt.Sprintf("\nINCOMPRESSIBLE: %v", sects))
-			incomp:
-				for _, el := range af.Elems {
-					for _, sec := range sects {
-						if el.Sect.Num == sec {
-							el.SetIncompressible(comp)
-							continue incomp
-						}
-					}
-				}
-				cond.SetPostprocess(func(frame *arclm.Frame, df [][]float64, du []float64, dr []float64) (float64, bool) {
-					next := true
-					del := make([]int, 0)
-					res := make([]int, 0)
-					for _, el := range frame.Elems {
-						checked := el.Check()
-						switch checked {
-						case arclm.DELETED:
-							next = false
-							del = append(del, el.Num)
-						case arclm.RESTORED:
-							res = append(res, el.Num)
-						}
-					}
-					return cond.Delta(), next
-				})
+				cond.SetCompressionLimit(limit, sections)
+				fmt.Fprintf(&m, "POST IMCOMP : limit=%g sections=%v\n", limit, sections)
+			default:
+				return fmt.Errorf(":analysis: unknown POST option %q", pp)
 			}
 		}
 		m.WriteString(cond.String())
-		m.WriteString(m2.String())
 		wait := false
-		var wch chan int
+		var wch chan error
 		if _, ok := argdict["WAIT"]; ok {
 			wait = true
-			wch = make(chan int)
+			wch = make(chan error)
 		}
 		ctx, cancel := context.WithCancel(context.Background())
 		go func() {
@@ -5664,7 +5607,6 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		} else {
 			stw.Redraw()
 		}
-		pind := 0
 		go func() {
 			defer workerAnalysisFinished(stw)
 			retval := 0
@@ -5678,11 +5620,11 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 						pivot <- 1
 					}
 				case lap := <-af.Lapch:
-					frame.ReadArclmData(af, pers[pind])
-					pind++
-					if pind == len(pers) {
-						pind = 0
+					index := 0
+					if len(pers) > 1 {
+						index = af.StaticResultCase()
 					}
+					frame.ReadArclmData(af, pers[index])
 					af.Lapch <- retval
 					stw.CurrentLap("Calculating...", lap, nlap)
 					stw.Redraw()
@@ -5696,21 +5638,27 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 					} else {
 						stw.CurrentLap("Completed", nlap, nlap)
 					}
-					otps := cond.Output()
-					if len(otps) > pind {
-						frame.ResultFileName[pers[pind]] = otps[pind]
+					if err == nil {
+						otps := cond.Output()
+						for i, period := range pers {
+							if i < len(otps) {
+								frame.ResultFileName[period] = otps[i]
+							}
+						}
 					}
 					SetPeriod(stw, per)
 					stw.Redraw()
 					if wait {
-						wch <- 1
+						wch <- err
 					}
 					break readstatic
 				}
 			}
 		}()
 		if wait {
-			<-wch
+			if err := <-wch; err != nil {
+				return err
+			}
 		}
 		return ArclmStart(m.String())
 	case "stop":
@@ -6093,6 +6041,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		}
 		go func() {
 			defer workerAnalysisFinished(stw)
+			var restorePreview func()
 		readb001:
 			for {
 				select {
@@ -6101,6 +6050,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 						pivot <- 1
 					}
 				case nlap := <-af.Lapch:
+					if restorePreview == nil {
+						restorePreview = frame.saveEigenPreview(af, per)
+					}
 					frame.ReadArclmData(af, per)
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, progressTotal)
@@ -6111,6 +6063,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 						stw.Redraw()
 					}
 				case err := <-af.Endch:
+					if restorePreview != nil {
+						restorePreview()
+					}
 					if err != nil {
 						stw.History(err.Error())
 						stw.CurrentLap("Failed", 0, 1)
@@ -6210,6 +6165,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		}
 		go func() {
 			defer workerAnalysisFinished(stw)
+			var restorePreview func()
 		readb001:
 			for {
 				select {
@@ -6218,6 +6174,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 						pivot <- 1
 					}
 				case nlap := <-af.Lapch:
+					if restorePreview == nil {
+						restorePreview = frame.saveEigenPreview(af, per)
+					}
 					frame.ReadArclmData(af, per)
 					af.Lapch <- 1
 					stw.CurrentLap("Calculating...", nlap, progressTotal)
@@ -6228,6 +6187,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 						stw.Redraw()
 					}
 				case err := <-af.Endch:
+					if restorePreview != nil {
+						restorePreview()
+					}
 					if err != nil {
 						stw.History(err.Error())
 						stw.CurrentLap("Failed", 0, 1)

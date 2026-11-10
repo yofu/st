@@ -30,6 +30,7 @@ type bucklingSearch struct {
 	pivot              chan int
 	samples            []bucklingInertiaSample
 	factor             *matrix.SymLDLTFactor
+	elasticFactor      *matrix.SymLDLTFactor
 	factorMu           float64
 	diagnostics        *bucklingDiagnostics
 	rank               int

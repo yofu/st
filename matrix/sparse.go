@@ -2,7 +2,7 @@ package matrix
 
 import (
 	"bytes"
-	"errors"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -746,6 +746,9 @@ func (cr *CRSMatrix) CG(vec []float64, eps float64) []float64 {
 		p[i] = vec[i]
 	}
 	bnorm := Dot(vec, vec, size)
+	if bnorm == 0 {
+		return x
+	}
 	lnorm := 0.0
 	rnorm := Dot(r, r, size)
 	for {
@@ -961,13 +964,53 @@ func (ll *LLSMatrix) Add(row, col int, val float64) float64 {
 	}
 }
 
+// SingularPivotError identifies the zero-based index in the reduced system.
+type SingularPivotError struct {
+	Index, Size                        int
+	Pivot, Diagonal, RelativeTolerance float64
+}
+
+func (e *SingularPivotError) Error() string {
+	if e.RelativeTolerance == 0 {
+		return fmt.Sprintf("matrix singular: %d/%d", e.Index, e.Size)
+	}
+	return fmt.Sprintf("matrix singular: %d/%d (pivot=%g, original diagonal=%g, relative tolerance=%g)", e.Index, e.Size, e.Pivot, e.Diagonal, e.RelativeTolerance)
+}
+
 func (ll *LLSMatrix) LDLT(ch chan int) (*LLSMatrix, error) {
+	return ll.ldlt(ch, 0, true)
+}
+
+// LDLTRelative checks each pivot against the original diagonal of that DOF.
+// Per-DOF scaling accommodates different stiffness units and soft supports.
+func (ll *LLSMatrix) LDLTRelative(ch chan int, tolerance float64) (*LLSMatrix, error) {
+	if tolerance <= 0 || !finiteSym(tolerance) {
+		return nil, fmt.Errorf("invalid relative pivot tolerance %g", tolerance)
+	}
+	return ll.ldlt(ch, tolerance, false)
+}
+
+func (ll *LLSMatrix) ldlt(ch chan int, tolerance float64, printProgress bool) (*LLSMatrix, error) {
 	var n *LLSNode
 	size := ll.Size
+	var diagonal []float64
+	if tolerance != 0 {
+		diagonal = make([]float64, size)
+		for i, node := range ll.diag {
+			diagonal[i] = node.value
+		}
+	}
 	for col := 0; col < size; col++ {
 		n = ll.diag[col]
-		if n.value == 0.0 {
-			return nil, errors.New(fmt.Sprintf("matrix singular: %d/%d", col, size))
+		scale := 0.0
+		if diagonal != nil {
+			scale = math.Abs(diagonal[col])
+			if !finiteSym(n.value) || !finiteSym(scale) {
+				return nil, fmt.Errorf("non-finite stiffness pivot at reduced DOF %d", col+1)
+			}
+		}
+		if n.value == 0 || scale != 0 && math.Abs(n.value)/scale <= tolerance {
+			return nil, &SingularPivotError{Index: col, Size: size, Pivot: n.value, Diagonal: scale, RelativeTolerance: tolerance}
 		}
 		w := 1.0 / n.value
 		for {
@@ -1023,7 +1066,7 @@ func (ll *LLSMatrix) LDLT(ch chan int) (*LLSMatrix, error) {
 		}
 		if ch != nil {
 			ch <- col
-		} else {
+		} else if printProgress {
 			fmt.Printf("%d/%d\r", col, size)
 		}
 	}
@@ -1046,10 +1089,24 @@ func (ll *LLSMatrix) Sylvester() (int, int, int) {
 }
 
 func (ll *LLSMatrix) ILDLT() *LLSMatrix {
+	ll.incompleteLDLT(nil)
+	return ll
+}
+
+// A non-nil context selects the checked incomplete factorization used by PCG.
+func (ll *LLSMatrix) incompleteLDLT(ctx context.Context) error {
 	var n *LLSNode
 	size := ll.Size
 	for col := 0; col < size; col++ {
 		n = ll.diag[col]
+		if ctx != nil {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if !positiveFinite(n.value) {
+				return fmt.Errorf("PCG: invalid incomplete LDLT pivot %d: %g", col, n.value)
+			}
+		}
 		w := 1.0 / n.value
 		for {
 			n = n.down
@@ -1094,7 +1151,7 @@ func (ll *LLSMatrix) ILDLT() *LLSMatrix {
 			}
 		}
 	}
-	return ll
+	return nil
 }
 
 func (ll *LLSMatrix) DiagUp() {
@@ -1144,11 +1201,24 @@ func (ll *LLSMatrix) BSUpper(vec []float64) []float64 {
 }
 
 func (ll *LLSMatrix) Solve(ch chan int, vecs ...[]float64) ([][]float64, error) {
-	size := ll.Size
 	C, err := ll.LDLT(ch)
 	if err != nil {
 		return nil, err
 	}
+	return C.solveFactored(vecs), nil
+}
+
+// SolveRelative uses the relative singularity check for linear statics.
+func (ll *LLSMatrix) SolveRelative(ch chan int, tolerance float64, vecs ...[]float64) ([][]float64, error) {
+	C, err := ll.LDLTRelative(ch, tolerance)
+	if err != nil {
+		return nil, err
+	}
+	return C.solveFactored(vecs), nil
+}
+
+func (C *LLSMatrix) solveFactored(vecs [][]float64) [][]float64 {
+	size := C.Size
 	rtn := make([][]float64, len(vecs))
 	C.DiagUp()
 	for v, vec := range vecs {
@@ -1162,7 +1232,7 @@ func (ll *LLSMatrix) Solve(ch chan int, vecs ...[]float64) ([][]float64, error) 
 		}
 		rtn[v] = C.BSUpper(tmp)
 	}
-	return rtn, nil
+	return rtn
 }
 
 func (ll *LLSMatrix) MulV(vec []float64) []float64 {
@@ -1202,6 +1272,9 @@ func (ll *LLSMatrix) CG(vec []float64, eps float64) []float64 {
 		p[i] = vec[i]
 	}
 	bnorm := Dot(vec, vec, size)
+	if bnorm == 0 {
+		return x
+	}
 	lnorm := 0.0
 	rnorm := Dot(r, r, size)
 	for {
@@ -1220,57 +1293,6 @@ func (ll *LLSMatrix) CG(vec []float64, eps float64) []float64 {
 		beta = rnorm / lnorm
 		for i := 0; i < size; i++ {
 			p[i] = r[i] + beta*p[i]
-		}
-	}
-}
-
-// TODO: test
-func (ll *LLSMatrix) PCG(C *LLSMatrix, vec []float64) []float64 {
-	size := ll.Size
-	C = C.ILDLT()
-	C.DiagUp()
-	var mu, nu, alpha, beta float64
-	x := make([]float64, size)
-	r := make([]float64, size)
-	p := make([]float64, size)
-	for i := 0; i < size; i++ {
-		x[i] = 0.0
-		r[i] = vec[i]
-		p[i] = vec[i]
-	}
-	cct := func(mat *LLSMatrix, v []float64) []float64 {
-		v = mat.FELower(v)
-		for i := 0; i < size; i++ {
-			v[i] /= mat.Query(i, i)
-		}
-		v = mat.BSUpper(v)
-		return v
-	}
-	p = cct(C, p)
-	lo := Dot(r, p, size)
-	bnorm := Dot(vec, vec, size)
-	rnorm := Dot(r, r, size)
-	var q []float64
-	for {
-		q = ll.MulV(p)
-		nu = Dot(p, q, size)
-		alpha = rnorm / nu
-		for i := 0; i < size; i++ {
-			x[i] += alpha * p[i]
-			r[i] -= alpha * q[i]
-			q[i] = r[i]
-		}
-		rnorm = Dot(r, r, size)
-		fmt.Printf("%25.18f\n", rnorm/bnorm)
-		if rnorm/bnorm < 1e-16 {
-			return x
-		}
-		q = cct(C, q)
-		mu = Dot(q, r, size)
-		beta = mu / lo
-		lo = mu
-		for i := 0; i < size; i++ {
-			p[i] = q[i] + beta*p[i]
 		}
 	}
 }

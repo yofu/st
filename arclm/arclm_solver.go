@@ -1,6 +1,7 @@
 package arclm
 
 import (
+	"context"
 	"sync"
 
 	"github.com/yofu/st/matrix"
@@ -84,19 +85,21 @@ func LLS_CG(eps float64, laptime func(string)) Solver {
 }
 
 func LLS_PCG(eps float64, laptime func(string)) Solver {
+	return llsPCG(context.Background(), eps, laptime)
+}
+
+func llsPCG(ctx context.Context, eps float64, laptime func(string)) Solver {
 	return Solver{
 		name: "LLS_PCG",
 		solve: func(gmtx *matrix.COOMatrix, csize int, conf []bool, vecs ...[]float64) ([][]float64, error) {
-			mtx := gmtx.ToLLS(csize, conf)
-			C := gmtx.ToLLS(csize, conf)
-			mtx.DiagUp()
-			laptime("ToLLS")
-			answers := make([][]float64, len(vecs))
-			for i, vec := range vecs {
-				answers[i] = mtx.PCG(C, vec)
+			if err := ctx.Err(); err != nil {
+				return nil, err
 			}
+			mtx := gmtx.ToLLS(csize, conf)
+			laptime("ToLLS")
+			answers, err := mtx.PCG(ctx, mtx, eps, max(100, 2*mtx.Size), vecs...)
 			laptime("Solve")
-			return answers, nil
+			return answers, err
 		},
 	}
 }

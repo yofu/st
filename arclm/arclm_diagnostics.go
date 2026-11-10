@@ -400,7 +400,7 @@ func (d *bucklingDiagnostics) inverse(s *bucklingSearch, C *matrix.SymLDLTFactor
 	var x []float64
 	err := d.measure("inverse_iteration", "pivoted_solve", &target, rank, func(fields map[string]interface{}) error {
 		var err error
-		mu, x, err = inverseBucklingCSRProgress(s.elastic, s.geometric, C, target, eps, locked, klocked, func(iteration int, residual, orthogonality float64) {
+		mu, x, err = s.inverseVector(C, target, eps, locked, klocked, rank, func(iteration int, residual, orthogonality float64) {
 			fields["iterations"] = iteration
 			f := map[string]interface{}{"rank": rank, "iteration": iteration}
 			if !math.IsNaN(residual) && !math.IsInf(residual, 0) {

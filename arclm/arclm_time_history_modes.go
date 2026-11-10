@@ -70,31 +70,6 @@ func rayleighVectorFactor(s *bucklingSearch, rank int, startRelative float64) (*
 	return nil, fmt.Errorf("Rayleigh mode %d: no stable inverse-iteration shift within its inertia interval", rank)
 }
 
-// For K>0, sqrt(r^T K^-1 r)/(mu*sqrt(x^T K x)), r=mu*K*x-M*x,
-// is the relative residual of the self-adjoint K^-1*M problem in the K norm.
-// It bounds the distance to the spectrum in mu and avoids judging massless,
-// very stiff DOFs against tiny inertial forces. The original force residual is
-// still computed and logged, rather than relaxing the existing eigen solver.
-func rayleighEnergyResidual(k *matrix.SymLDLTFactor, mu float64, x, kx, gx []float64) (float64, error) {
-	r := make([]float64, len(x))
-	for i := range r {
-		r[i] = gx[i] + mu*kx[i]
-	}
-	z, err := k.Solve(r)
-	if err != nil {
-		return 0, err
-	}
-	energy, norm := Dot(r, z, len(r)), Dot(x, kx, len(x))
-	if energy < 0 || norm <= 0 {
-		return 0, fmt.Errorf("invalid modal energy residual")
-	}
-	value := math.Sqrt(energy/norm) / math.Abs(mu)
-	if !finitePlastic(value) {
-		return 0, fmt.Errorf("non-finite modal energy residual")
-	}
-	return value, nil
-}
-
 func validateTimeHistoryRayleigh(o TimeHistoryOptions) error {
 	if !o.AutoRayleigh {
 		if o.RayleighModes != [2]int{} {
@@ -164,8 +139,9 @@ func (d *timeHistoryAnalysis) resolveRayleighModes() error {
 	if err != nil {
 		return err
 	}
-	quality := func(mu float64, x, kx, gx []float64) (float64, error) {
-		return rayleighEnergyResidual(kFactor, mu, x, kx, gx)
+	quality := func(mu float64, x, kx, gx []float64) (float64, float64, error) {
+		residual, err := pencilEnergyResidual(kFactor, mu, x, kx, gx)
+		return residual, rayleighEnergyTolerance, err
 	}
 	var locked, mLocked [][]float64
 	var muFirst, omegaFirst float64
@@ -207,7 +183,7 @@ func (d *timeHistoryAnalysis) resolveRayleighModes() error {
 			if err != nil {
 				return err
 			}
-			mu, x, e = inversePencilCSRProgressQuality(s.elastic, s.geometric, mass, factor, target, eps, locked, mLocked, nil, a.ctx.Err, quality, rayleighEnergyTolerance)
+			mu, x, e = inversePencilCSRProgressQuality(s.elastic, s.geometric, mass, factor, target, eps, locked, mLocked, nil, a.ctx.Err, quality)
 			if e == nil || a.ctx.Err() != nil {
 				break
 			}
@@ -232,7 +208,7 @@ func (d *timeHistoryAnalysis) resolveRayleighModes() error {
 			nm = math.Hypot(nm, omega2*mx[i])
 		}
 		residual := nr / (nk + nm)
-		energyResidual, e := quality(mu, x, kx, s.geometric.MulV(x))
+		energyResidual, _, e := quality(mu, x, kx, s.geometric.MulV(x))
 		if e != nil {
 			return e
 		}

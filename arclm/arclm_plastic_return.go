@@ -430,8 +430,7 @@ func (elem *Elem) TrialPlasticResponse(globalIncrement []float64) (*PlasticRespo
 	if err != nil {
 		return nil, err
 	}
-	k, err = c.ModifyHinge(k)
-	if err != nil {
+	if err := c.condenseConnections(k, nil); err != nil {
 		return nil, err
 	}
 	u := matrix.MatrixVector(t, globalIncrement)

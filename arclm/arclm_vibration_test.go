@@ -4,7 +4,6 @@ import (
 	"io"
 	"math"
 	"path/filepath"
-	"sort"
 	"testing"
 
 	"github.com/yofu/st/matrix"
@@ -179,56 +178,6 @@ func TestVibrationRejectsInvalidMassAndStiffness(t *testing.T) {
 	}
 }
 
-// An independent dense Jacobi reference is used only on the 6 free DOFs of
-// the assembled cantilever, not as a production solver or large-matrix test.
-func vibrationJacobiReference(k, m *matrix.COOMatrix, conf []bool) []float64 {
-	var free []int
-	for i, f := range conf {
-		if !f {
-			free = append(free, i)
-		}
-	}
-	n := len(free)
-	a := make([][]float64, n)
-	for i, r := range free {
-		a[i] = make([]float64, n)
-		for j, c := range free {
-			a[i][j] = k.Query(r, c) / math.Sqrt(m.Query(r, r)*m.Query(c, c))
-		}
-	}
-	for iter := 0; iter < 100*n*n; iter++ {
-		p, q, max := 0, 0, 0.0
-		for i := 0; i < n; i++ {
-			for j := i + 1; j < n; j++ {
-				if v := math.Abs(a[i][j]); v > max {
-					p, q, max = i, j, v
-				}
-			}
-		}
-		if max < 1e-12 {
-			break
-		}
-		s, c := math.Sincos(.5 * math.Atan2(2*a[p][q], a[q][q]-a[p][p]))
-		ap, aq, off := a[p][p], a[q][q], a[p][q]
-		a[p][p] = c*c*ap - 2*c*s*off + s*s*aq
-		a[q][q] = s*s*ap + 2*c*s*off + c*c*aq
-		a[p][q], a[q][p] = 0, 0
-		for i := 0; i < n; i++ {
-			if i != p && i != q {
-				x, y := a[i][p], a[i][q]
-				a[i][p], a[p][i] = c*x-s*y, c*x-s*y
-				a[i][q], a[q][i] = s*x+c*y, s*x+c*y
-			}
-		}
-	}
-	values := make([]float64, n)
-	for i := range values {
-		values[i] = a[i][i]
-	}
-	sort.Float64s(values)
-	return values
-}
-
 func TestVibrationalEigenAnalysisFrameAndDiagnostics(t *testing.T) {
 	for _, diagnostics := range []bool{false, true} {
 		f := diagnosticCantilever()
@@ -241,7 +190,8 @@ func TestVibrationalEigenAnalysisFrameAndDiagnostics(t *testing.T) {
 		}
 		csize, conf, _ := f.AssemConf(load, 1)
 		m := f.AssemMassMatrix()
-		want := vibrationJacobiReference(k, m, conf)
+		// Unit-length cantilever: axial EA/m and two bending modes 3EI/m.
+		want := []float64{50, 150, 150}
 		dir := t.TempDir()
 		otp := filepath.Join(dir, "vibration.otp")
 		if diagnostics {
@@ -318,4 +268,55 @@ func TestVibration20000RepeatedModes(t *testing.T) {
 		k.Set(i+1, i+1, 5*omega)
 	}
 	vibrationMatrixModes(t, k, m, 0, make([]bool, n), []float64{1, 1, 4, 4})
+}
+
+func TestVibrationTipMassMatchesAutomaticRayleigh(t *testing.T) {
+	const length, young, mass = 3.0, 200.0, 2.0
+	const ix, iy = 1.0, 2.0
+	newColumn := func() *Frame {
+		f := diagnosticCantilever()
+		f.Lapch, f.Pivot = nil, nil
+		tip := f.Nodes[1]
+		tip.Coord[0], tip.Coord[2] = 0, length
+		tip.Mass = mass
+		clear(tip.Force)
+		section := f.Elems[0].Sect
+		section.E = young
+		section.Value = []float64{4, ix, iy, 1}
+		section.ElasticEnds = [2]bool{true, true}
+		return f
+	}
+
+	vibration := newColumn()
+	if err := vibration.VibrationalEigenAnalysis(filepath.Join(t.TempDir(), "tip-mass.otp"), true, 2, 1e-12, 1); err != nil {
+		t.Fatal(err)
+	}
+	transient := newColumn()
+	motion := GroundMotion{{0, 0, 0}, {.02, .1, .2}}
+	opts := TimeHistoryOptions{AutoRayleigh: true, Damping1: .02, Damping2: .02, TimeStep: .01}
+	if err := transient.TimeHistoryNewmark(nil, motion, opts); err != nil {
+		t.Fatal(err)
+	}
+	state := transient.TimeHistoryState()
+	if state.RayleighModes != [2]int{1, 2} {
+		t.Fatalf("auto Rayleigh selected modes %v", state.RayleighModes)
+	}
+	for i, inertia := range []float64{ix, iy} {
+		// A free tip rotation gives the cantilever stiffness 3EI/L^3.
+		want := 2 * math.Pi * math.Sqrt(mass*length*length*length/(3*young*inertia))
+		period := 2 * math.Pi / math.Sqrt(vibration.EigenValue[i])
+		nearNewton(t, "vibration period vs theory", period, want, 1e-10)
+		nearNewton(t, "automatic Rayleigh period vs theory", state.RayleighPeriods[i], want, 1e-10)
+		nearNewton(t, "vibration vs automatic Rayleigh", period, state.RayleighPeriods[i], 1e-10)
+		mode := vibration.EigenVector[i]
+		if math.Hypot(mode[9], mode[10]) == 0 {
+			t.Fatalf("mode %d has no tip bending rotation", i+1)
+		}
+		t.Logf("mode %d: theory %.12g s, vibration %.12g s, Rayleigh %.12g s", i+1, want, period, state.RayleighPeriods[i])
+	}
+
+	m := vibration.AssemMassMatrix()
+	for i, want := range []float64{mass, mass, mass, 0, 0, 0} {
+		nearNewton(t, "tip mass matrix diagonal", m.Query(6+i, 6+i), want, 0)
+	}
 }

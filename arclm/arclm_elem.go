@@ -761,7 +761,7 @@ func (elem *Elem) GeoStiffMatrix() ([][]float64, error) {
 	A := elem.Sect.Value[0]
 	IX := elem.Sect.Value[1]
 	IY := elem.Sect.Value[2]
-	G := -(IX + IY) / A
+	polarRadiusSquared := (IX + IY) / A
 	N := -elem.Stress[0]
 	Qx := elem.Stress[1]
 	Qy := elem.Stress[2]
@@ -795,7 +795,7 @@ func (elem *Elem) GeoStiffMatrix() ([][]float64, error) {
 	estiff[9][2] = estiff[2][9]
 	estiff[2][10] = -estiff[1][5]
 	estiff[10][2] = estiff[2][10]
-	estiff[3][3] = N * G * il
+	estiff[3][3] = N * polarRadiusSquared * il
 	estiff[3][4] = Qx * l / 6.0
 	estiff[4][3] = estiff[3][4]
 	estiff[3][5] = Qy * l / 6.0
@@ -859,12 +859,24 @@ func (elem *Elem) ModifyHinge(estiff [][]float64) ([][]float64, error) {
 			// if elem.Bonds[6*n+i] != Rigid {
 			if elem.Bonds[6*n+i].Num != 0 {
 				kk := 6*n + i
-				if rtn[kk][kk] == 0.0 {
-					return nil, errors.New(fmt.Sprintf("Modifyhinge: ELEM %d: Matrix Singular", elem.Num))
+				bond := elem.Bonds[kk]
+				if rtn[kk][kk] == 0 {
+					// A pin on an already free rotation has nothing to eliminate.
+					uncoupledPin := bond.Num == 1
+					for j := range rtn {
+						uncoupledPin = uncoupledPin && rtn[kk][j] == 0 && rtn[j][kk] == 0
+					}
+					if uncoupledPin {
+						continue
+					}
+					return nil, fmt.Errorf("Modifyhinge: ELEM %d: Matrix Singular", elem.Num)
 				}
-				l := elem.Length()
-				k1 := (elem.Bonds[6*n+i].Value[1] * l) / (4.0 * elem.Sect.E * elem.Sect.Value[1])
-				k2 := (elem.Bonds[6*n+i].Value[2] * l) / (4.0 * elem.Sect.E * elem.Sect.Value[2])
+				var k1, k2 float64
+				if bond.Num != 1 {
+					l := elem.Length()
+					k1 = (bond.Value[1] * l) / (4.0 * elem.Sect.E * elem.Sect.Value[1])
+					k2 = (bond.Value[2] * l) / (4.0 * elem.Sect.E * elem.Sect.Value[2])
+				}
 				for ii := 0; ii < 12; ii++ {
 					for jj := 0; jj < 12; jj++ {
 						if ii == 2 || ii == 4 || ii == 8 || ii == 10 {
@@ -1056,15 +1068,11 @@ func (elem *Elem) BucklingEnergy(gdisp []float64) (float64, error) {
 	if err != nil {
 		return 0.0, err
 	}
-	gstiff, err := elem.GeoStiffMatrix()
+	gstiff, err := elem.bucklingGeometricStiffness()
 	if err != nil {
 		return 0.0, err
 	}
 	estiff, err = elem.ModifyHinge(estiff)
-	if err != nil {
-		return 0.0, err
-	}
-	gstiff, err = elem.ModifyHinge(gstiff)
 	if err != nil {
 		return 0.0, err
 	}
