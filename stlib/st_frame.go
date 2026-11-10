@@ -7540,7 +7540,13 @@ func WriteReaction(fn string, ns []*Node, direction int, unit float64) error {
 				r[i] = 0.0
 			}
 		}
-		otp.WriteString(fmt.Sprintf(" %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f", wgt, r[0], r[1], r[2], wgt+r[0], wgt+r[0]+r[1], wgt+r[0]-r[1], wgt+r[0]+r[2], wgt+r[0]-r[2]))
+		// The vertical long-term reaction already includes the weight carried
+		// at the support. LONG stays the part transmitted by the frame.
+		long, total := r[0], wgt+r[0]
+		if direction == 2 {
+			long, total = r[0]-wgt, r[0]
+		}
+		otp.WriteString(fmt.Sprintf(" %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f", wgt, long, r[1], r[2], total, total+r[1], total-r[1], total+r[2], total-r[2]))
 		if n.Pile != nil {
 			otp.WriteString(fmt.Sprintf(" %4d\n", n.Pile.Num))
 		} else {

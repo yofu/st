@@ -31,6 +31,10 @@ func (e linearElement) localDisplacement(u []float64) []float64 {
 	return matrix.MatrixVector(e.transform, ue[:])
 }
 
+// linearPivotTolerance is the relative pivot below which a linear static
+// stiffness is reported as singular.
+const linearPivotTolerance = 1e-12
+
 type linearLoads struct {
 	nodal []float64
 	fixed [][]float64
@@ -41,6 +45,7 @@ type linearLoads struct {
 func (c *AnalysisCondition) SetExtraFrames(frames ...*Frame) { c.extraFrames = frames }
 
 // SetFloorContact enables unilateral vertical supports at the given elevation.
+// Nodes that start on or below it are supported at their own elevation.
 func (c *AnalysisCondition) SetFloorContact(z float64) { c.floorContact = &z }
 
 // SetCompressionLimit deactivates the given sections above the compressive
@@ -51,6 +56,13 @@ func (c *AnalysisCondition) SetCompressionLimit(limit float64, sections []int) {
 	for _, section := range sections {
 		c.compressionSections[section] = true
 	}
+}
+
+// floorTravel is the vertical displacement at which a node bears on a floor
+// at elevation z. A node that starts on or below the floor is held at its
+// own elevation; it is never lifted to z.
+func floorTravel(z float64, n *Node) float64 {
+	return math.Min(0, z-n.Coord[2])
 }
 
 func (c *AnalysisCondition) hasStaticPost() bool {
@@ -70,6 +82,30 @@ func linearElementGeometry(original *Elem, reference bool) Elem {
 	return e
 }
 
+// newLinearElement builds the condensed local operator of one member.
+func newLinearElement(e *Elem) (linearElement, error) {
+	var el linearElement
+	if length := e.Length0(); length <= 0 || !finitePlastic(length) {
+		return el, fmt.Errorf("ELEM %d: invalid reference length", e.Num)
+	}
+	t, err := e.TransMatrix()
+	if err != nil {
+		return el, err
+	}
+	k, err := e.StiffMatrix()
+	if err != nil {
+		return el, err
+	}
+	if err := e.condenseConnections(k, nil); err != nil {
+		return el, err
+	}
+	el.transform, el.local, el.global = t, k, Transformation(k, t)
+	for j := range el.dofs {
+		el.dofs[j] = 6*e.Enod[j/6].Index + j%6
+	}
+	return el, nil
+}
+
 func newLinearElements(f *Frame, reference bool) ([]linearElement, error) {
 	elems := make([]linearElement, len(f.Elems))
 	for i, original := range f.Elems {
@@ -77,25 +113,11 @@ func newLinearElements(f *Frame, reference bool) ([]linearElement, error) {
 			continue
 		}
 		e := linearElementGeometry(original, reference)
-		if length := e.Length0(); length <= 0 || !finitePlastic(length) {
-			return nil, fmt.Errorf("ELEM %d: invalid reference length", e.Num)
-		}
-		t, err := e.TransMatrix()
+		el, err := newLinearElement(&e)
 		if err != nil {
 			return nil, err
 		}
-		k, err := e.StiffMatrix()
-		if err != nil {
-			return nil, err
-		}
-		if err := e.condenseConnections(k, nil); err != nil {
-			return nil, err
-		}
-		el := &elems[i]
-		el.transform, el.local, el.global = t, k, Transformation(k, t)
-		for j := range el.dofs {
-			el.dofs[j] = 6*e.Enod[j/6].Index + j%6
-		}
+		elems[i] = el
 	}
 	return elems, nil
 }
@@ -366,7 +388,6 @@ func (f *Frame) staticLinear(cancel context.CancelFunc, c *AnalysisCondition) er
 	case "CRS":
 		solver = CRS_CG(c.eps, log)
 	}
-	const pivotTolerance = 1e-12
 	// The direct solver checks its own factorization. Iterative solvers
 	// need a complete pivot check once per set of supports/active elements.
 	stiffnessChecked := false
@@ -393,6 +414,15 @@ func (f *Frame) staticLinear(cancel context.CancelFunc, c *AnalysisCondition) er
 		}
 		return ctx.Err()
 	}
+	if c.floorContact != nil {
+		// Nodes on or below the floor bear on it before any load is applied.
+		// The first solve releases those whose reaction is tensile.
+		for i, n := range f.Nodes {
+			if !initialFloor[i] && n.Coord[2] <= *c.floorContact {
+				n.Conf[2] = true
+			}
+		}
+	}
 	delta := c.delta
 	for lap := 1; ; lap++ {
 		target := linearTarget(from, delta, c.max)
@@ -410,7 +440,7 @@ func (f *Frame) staticLinear(cancel context.CancelFunc, c *AnalysisCondition) er
 			if c.floorContact != nil {
 				for i, n := range f.Nodes {
 					if n.Conf[2] && !initialFloor[i] {
-						prescribed[6*i+2] = *c.floorContact - n.Coord[2]
+						prescribed[6*i+2] = floorTravel(*c.floorContact, n)
 					}
 				}
 			}
@@ -436,11 +466,11 @@ func (f *Frame) staticLinear(cancel context.CancelFunc, c *AnalysisCondition) er
 				if solver.solve == nil {
 					ll := k.ToLLS(csize, conf)
 					log("ToLLS")
-					answers, err = ll.SolveRelative(f.Pivot, pivotTolerance, rhs...)
+					answers, err = ll.SolveRelative(f.Pivot, linearPivotTolerance, rhs...)
 					log("Solve")
 				} else {
 					if !stiffnessChecked {
-						if _, err := k.ToLLS(csize, conf).LDLTRelative(nil, pivotTolerance); err != nil {
+						if _, err := k.ToLLS(csize, conf).LDLTRelative(nil, linearPivotTolerance); err != nil {
 							return f.CheckSingularNode(err)
 						}
 						stiffnessChecked = true
@@ -544,7 +574,7 @@ func (f *Frame) staticPost(c *AnalysisCondition, trial [][]float64, u, reaction 
 				}
 			} else {
 				tol := 1e-10 * math.Max(1, math.Max(math.Abs(z), math.Abs(n.Coord[2])))
-				if n.Coord[2]+u[6*i+2] < z-tol {
+				if u[6*i+2] < floorTravel(z, n)-tol {
 					n.Conf[2] = true
 					changed = true
 				}

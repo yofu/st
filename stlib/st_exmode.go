@@ -5921,9 +5921,13 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			init = false
 			m.WriteString("\nNO INITIALISATION")
 		}
+		// The long-term frame carries the nodal weights as loads at its
+		// supports, so its reactions already include them.
 		wgtdict := make(map[int]float64)
-		for _, n := range frame.Nodes {
-			wgtdict[n.Num] = n.Weight[1]
+		if per != "L" {
+			for _, n := range frame.Nodes {
+				wgtdict[n.Num] = n.Weight[1]
+			}
 		}
 		go func() {
 			err := af.Arclm401(otp, init, eps, wgtdict)

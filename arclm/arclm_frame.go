@@ -843,251 +843,228 @@ func (frame *Frame) Arclm101(cancel context.CancelFunc, cond *AnalysisCondition)
 	return frame.arclm101Newton(cancel, cond)
 }
 
-func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) error { // TODO: speed up
-	if init {
-		frame.Initialise()
-	}
-	start := time.Now()
-	laptime := func(message string) {
-		end := time.Now()
-		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
-	}
-	solver := LLS(frame, laptime)
-	var err error
-	var answers [][]float64
-	var gmtx *matrix.COOMatrix
-	var gvct, vec []float64
-	var norm float64
-	var csize int
-	var conf []bool
-	size := 6 * len(frame.Nodes)
-	dlast := make([]float64, size)
-	dd := make([]float64, size)
-	kpile := func(safety float64, gdisp []float64) (*matrix.COOMatrix, []float64, error) {
-		matf := func(elem *Elem) ([][]float64, error) {
-			for _, sec := range sects {
-				if elem.Sect.Num == sec {
-					ld := 0.0
-					for i := 0; i < 3; i++ {
-						ld += math.Pow((elem.Enod[1].Coord[i] + gdisp[6*elem.Enod[1].Index+i] - elem.Enod[0].Coord[i] - gdisp[6*elem.Enod[0].Index+i]), 2)
-					}
-					y := math.Abs(math.Sqrt(ld)-elem.Length()) * 100
-					if y <= 0.1 {
-						return elem.StiffMatrix()
-					} else {
-						a := elem.Sect.Value[0]
-						elem.Sect.Value[0] = a / math.Sqrt(y) / 3.16
-						stiff, err := elem.StiffMatrix()
-						elem.Sect.Value[0] = a
-						return stiff, err
-					}
-				}
-			}
-			return elem.StiffMatrix()
-		}
-		vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
-			return elem.AssemCMQ(tmatrix, gvct, safety)
-		}
-		return frame.AssemGlobalMatrix(matf, vecf, safety)
-	}
-	kpilestress := func(f *Frame, vec []float64, sects []int) ([][]float64, error) {
-		rtn := make([][]float64, len(f.Elems))
-		for enum, el := range f.Elems {
-			gdisp := make([]float64, 12)
-			for i := 0; i < 2; i++ {
-				for j := 0; j < 6; j++ {
-					gdisp[6*i+j] = vec[6*el.Enod[i].Index+j]
-				}
-			}
-			var df []float64
-			var err error
-			soil := false
-			for _, sec := range sects {
-				if el.Sect.Num == sec {
-					ld := 0.0
-					for i := 0; i < 3; i++ {
-						ld += math.Pow((el.Enod[1].Coord[i] + gdisp[6+i] - el.Enod[0].Coord[i] - gdisp[i]), 2)
-					}
-					y := math.Abs(math.Sqrt(ld)-el.Length()) * 100
-					if y <= 0.1 {
-						df, err = el.ElemStress(gdisp)
-					} else {
-						a := el.Sect.Value[0]
-						el.Sect.Value[0] = a / math.Sqrt(y) / 3.16
-						df, err = el.ElemStress(gdisp)
-						el.Sect.Value[0] = a
-					}
-					soil = true
-				}
-			}
-			if !soil {
-				df, err = el.ElemStress(gdisp)
-			}
-			if err != nil {
-				return nil, err
-			}
-			rtn[enum] = df
-		}
-		return rtn, nil
-	}
-	lap := 0
-	for {
-		f := frame.SaveState()
-		if lap == 0 {
-			gmtx, gvct, err = frame.KE(1.0)
-			csize, conf, vec = frame.AssemConf(gvct, 1.0)
-		} else {
-			gmtx, gvct, err = kpile(1.0, dlast)
-			csize, conf, vec = frame.AssemConf(gvct, 1.0)
-		}
-		if err != nil {
-			return err
-		}
-		laptime("Assem")
-		answers, err = solver.Solve(gmtx, csize, conf, vec)
-		if err != nil {
-			return err
-		}
-		tmp := frame.FillConf(answers[0])
-		_, err = kpilestress(frame, tmp, sects)
-		if err != nil {
-			return err
-		}
-		frame.UpdateReaction(gmtx, tmp)
-		frame.UpdateForm(tmp)
-		for i := 0; i < size; i++ {
-			dd[i] = tmp[i] - dlast[i]
-			dlast[i] = tmp[i]
-		}
-		norm = math.Sqrt(Dot(dd, dd, len(dd)))
-		laptime(fmt.Sprintf("LAP = %d NORM = %.5E", lap+1, norm))
-		if norm < eps {
-			frame.Lapch <- lap + 1
-			break
-		}
-		frame.Lapch <- lap + 1
-		<-frame.Lapch
-		lap++
-		frame.RestoreState(f)
-	}
-	if otp == "" {
-		otp = "hogtxt.otp"
-	}
-	w, err := os.Create(otp)
-	if err != nil {
-		return err
-	}
-	defer w.Close()
-	frame.WriteTo(w)
-	return nil
-}
-
-// TODO: implement
-func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int]float64) error {
-	if init {
-		frame.Initialise()
-	}
-	s := frame.SaveState()
-	start := time.Now()
-	laptime := func(message string) {
-		end := time.Now()
-		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, (end.Sub(start)).Seconds())
-	}
-	solver := LLS(frame, laptime)
-	confed := make([]*Node, len(frame.Nodes))
-	confdata := make([][]bool, len(frame.Nodes))
-	nnum := 0
-	for _, n := range frame.Nodes {
-		if n.Conf[2] {
-			confed[nnum] = n
-			confdata[nnum] = make([]bool, 6)
-			for i := 0; i < 6; i++ {
-				confdata[nnum][i] = n.Conf[i]
-			}
-			nnum++
-			continue
-		}
-	}
-	confed = confed[:nnum]
-	confdata = confdata[:nnum]
-	released := make([]bool, nnum)
-	lap := 0
-	for {
-		frame.Initialise()
-		gmtx, gvct, err := frame.KE(1.0)
-		laptime("ASSEM")
-		if err != nil {
-			return err
-		}
-		csize, conf, vec := frame.AssemConf(gvct, 1.0)
-		laptime("VEC")
-		var answers [][]float64
-		answers, err = solver.Solve(gmtx, csize, conf, vec)
-		if err != nil {
-			return err
-		}
-		ans := frame.FillConf(answers[0])
-		_, err = frame.UpdateStress(ans)
-		if err != nil {
-			return err
-		}
-		frame.UpdateReaction(gmtx, ans)
-		frame.UpdateForm(ans)
-		uplift := 0
-		for i, n := range confed {
-			if n.Num == 711 {
-				fmt.Println("NODE 711: ", n.Conf[2], n.Disp[2])
-			}
-			if n.Conf[2] {
-				wgt := 0.0
-				if v, ok := wgtdict[n.Num]; ok {
-					wgt = v
-				}
-				if n.Num == 711 {
-					fmt.Println(n.Reaction[2], wgt)
-				}
-				if n.Reaction[2]+wgt < 0.0 {
-					uplift++
-					released[i] = true
-					for j := 0; j < 6; j++ {
-						n.Conf[j] = false
-					}
-				}
-			} else {
-				if n.Disp[2] < 0.0 {
-					uplift++
-					released[i] = false
-					for j := 0; j < 6; j++ {
-						n.Conf[j] = confdata[i][j]
-					}
-				}
-			}
-		}
-		if uplift == 0 {
-			break
-		}
-		lap++
-		frame.RestoreState(s)
+// notifyLap publishes a completed LAP and waits for its acknowledgement.
+func (frame *Frame) notifyLap(lap int) {
+	if frame.Lapch != nil {
 		frame.Lapch <- lap
 		<-frame.Lapch
 	}
-	var nodes bytes.Buffer
-	nodes.WriteString(":node")
-	for i := 0; i < nnum; i++ {
-		if released[i] {
-			nodes.WriteString(fmt.Sprintf(" %d", confed[i].Num))
+}
+
+// beginLinearIteration prepares Arclm301/Arclm401. Both solve the full load
+// on the reference geometry at every LAP, so a state saved by a nonlinear
+// solver cannot be continued here.
+func (frame *Frame) beginLinearIteration(name string, init bool) error {
+	if init {
+		frame.Initialise()
+		return nil
+	}
+	if frame.geometry != nil || frame.transient != nil || (frame.loading != nil && frame.loading.steps != 0) {
+		return fmt.Errorf("%s: saved state requires its original nonlinear solver", name)
+	}
+	return nil
+}
+
+// solveLinearIteration solves the full load for the current supports and
+// element operators, and stores displacements, member forces and reactions.
+func (frame *Frame) solveLinearIteration(elems []linearElement, load linearLoads) ([]float64, error) {
+	size := 6 * len(frame.Nodes)
+	k, conf, csize := frame.linearSystem(elems, size)
+	u := make([]float64, size)
+	if csize < size {
+		rhs := frame.linearRHS(elems, load, 1, conf, make([]float64, size))
+		answers, err := k.ToLLS(csize, conf).SolveRelative(frame.Pivot, linearPivotTolerance, rhs)
+		if err != nil {
+			return nil, frame.CheckSingularNode(err)
+		}
+		u = frame.FillConf(answers[0])
+	}
+	for i, v := range u {
+		if !finitePlastic(v) {
+			return nil, fmt.Errorf("non-finite displacement at DOF %d", i)
 		}
 	}
-	fmt.Println(nodes.String())
+	frame.linearResult(elems, load, 1, conf, u)
+	return u, nil
+}
+
+func (frame *Frame) writeLinearIteration(otp string) error {
+	frame.loading = nil
+	frame.plasticLoadValid = false
 	if otp == "" {
 		otp = "hogtxt.otp"
 	}
-	w, err := os.Create(otp)
+	return writeStaticResult(frame, otp)
+}
+
+// soilSpringElement returns the operator of a soil spring whose axial
+// stiffness follows the secant of its current length change y [cm]:
+// the area is A up to y = 0.1 and A/(3.16 sqrt(y)) beyond.
+func soilSpringElement(member *Elem, u []float64) (linearElement, error) {
+	e := linearElementGeometry(member, true)
+	length := e.Length0()
+	deformed := 0.0
+	for i := 0; i < 3; i++ {
+		d := e.Enod[1].Coord[i] + u[6*e.Enod[1].Index+i] - e.Enod[0].Coord[i] - u[6*e.Enod[0].Index+i]
+		deformed += d * d
+	}
+	if y := math.Abs(math.Sqrt(deformed)-length) * 100; y > 0.1 {
+		sect := *e.Sect
+		sect.Value = append([]float64(nil), sect.Value...)
+		sect.Value[0] /= math.Sqrt(y) * 3.16
+		e.Sect = &sect
+	}
+	return newLinearElement(&e)
+}
+
+// Arclm301 solves the full load with nonlinear soil springs. The members of
+// the sections in sects take a secant axial stiffness from the previous
+// LAP's displacement; iteration stops when the displacement change is
+// below eps.
+func (frame *Frame) Arclm301(otp string, init bool, sects []int, eps float64) error {
+	if err := frame.beginLinearIteration("Arclm301", init); err != nil {
+		return err
+	}
+	start := time.Now()
+	laptime := func(message string) {
+		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, time.Since(start).Seconds())
+	}
+	soil := make(map[int]bool, len(sects))
+	for _, sec := range sects {
+		soil[sec] = true
+	}
+	elems, err := newLinearElements(frame, true)
 	if err != nil {
 		return err
 	}
-	defer w.Close()
-	frame.WriteTo(w)
+	load, err := frame.linearLoad(frame, true)
+	if err != nil {
+		return err
+	}
+	const maxLaps = 1000
+	last := make([]float64, 6*len(frame.Nodes))
+	for lap := 1; ; lap++ {
+		if lap > maxLaps {
+			return fmt.Errorf("Arclm301: soil springs did not converge in %d LAPs", maxLaps)
+		}
+		if lap > 1 {
+			for i, member := range frame.Elems {
+				if member.IsValid && soil[member.Sect.Num] {
+					if elems[i], err = soilSpringElement(member, last); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		laptime("Assem")
+		u, err := frame.solveLinearIteration(elems, load)
+		if err != nil {
+			return err
+		}
+		norm := 0.0
+		for i, v := range u {
+			norm = math.Hypot(norm, v-last[i])
+		}
+		last = u
+		laptime(fmt.Sprintf("LAP = %d NORM = %.5E", lap, norm))
+		frame.notifyLap(lap)
+		if norm < eps {
+			break
+		}
+	}
+	return frame.writeLinearIteration(otp)
+}
+
+// Arclm401 solves the full load with supports that cannot carry vertical
+// tension. A support whose vertical reaction is tensile is released in all
+// six directions; a released support that moves below its own elevation is
+// restored. The result is written with the settled support set, and the
+// frame's own supports are restored on return.
+//
+// wgtdict gives, by node number, a downward load that acts on the support
+// but is not among the frame's nodal loads. It is added to the vertical
+// reaction for the tension test only. Reactions already include the nodal
+// loads applied at supports, so those must not be listed again.
+func (frame *Frame) Arclm401(otp string, init bool, eps float64, wgtdict map[int]float64) error {
+	if err := frame.beginLinearIteration("Arclm401", init); err != nil {
+		return err
+	}
+	start := time.Now()
+	laptime := func(message string) {
+		fmt.Fprintf(frame.Output, "%s: %fsec\n", message, time.Since(start).Seconds())
+	}
+	type support struct {
+		node     *Node
+		conf     [6]bool
+		released bool
+	}
+	var supports []*support
+	for _, n := range frame.Nodes {
+		if n.Conf[2] {
+			s := &support{node: n}
+			copy(s.conf[:], n.Conf)
+			supports = append(supports, s)
+		}
+	}
+	defer func() {
+		for _, s := range supports {
+			copy(s.node.Conf, s.conf[:])
+		}
+	}()
+	elems, err := newLinearElements(frame, true)
+	if err != nil {
+		return err
+	}
+	load, err := frame.linearLoad(frame, true)
+	if err != nil {
+		return err
+	}
+	maxLaps := 2*len(supports) + 10
+	for lap := 1; ; lap++ {
+		if lap > maxLaps {
+			return fmt.Errorf("Arclm401: supports did not settle in %d LAPs", maxLaps)
+		}
+		u, err := frame.solveLinearIteration(elems, load)
+		if err != nil {
+			return fmt.Errorf("Arclm401: LAP %d: %w", lap, err)
+		}
+		scale := 0.0
+		for _, v := range u {
+			scale = math.Max(scale, math.Abs(v))
+		}
+		changed := 0
+		for _, s := range supports {
+			n := s.node
+			if !s.released {
+				reaction := n.Reaction[2] + wgtdict[n.Num]
+				if reaction < -1e-10*math.Max(1, math.Abs(n.Reaction[2])) {
+					s.released = true
+					clear(n.Conf)
+					changed++
+				}
+			} else if n.Disp[2] < -1e-10*scale {
+				s.released = false
+				copy(n.Conf, s.conf[:])
+				changed++
+			}
+		}
+		laptime(fmt.Sprintf("LAP = %d CHANGED SUPPORTS = %d", lap, changed))
+		frame.notifyLap(lap)
+		if changed == 0 {
+			break
+		}
+	}
+	var nodes bytes.Buffer
+	nodes.WriteString(":node")
+	for _, s := range supports {
+		if s.released {
+			fmt.Fprintf(&nodes, " %d", s.node.Num)
+		}
+	}
+	fmt.Fprintln(frame.Output, nodes.String())
+	if err := frame.writeLinearIteration(otp); err != nil {
+		return err
+	}
 	laptime("End")
 	return nil
 }

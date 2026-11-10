@@ -3614,9 +3614,7 @@ func sumreaction(stw *Window) {
 			if n == nil {
 				continue
 			}
-			for i := 0; i < 5; i++ {
-				val[i] += n.Weight[1]
-			}
+			// The long-term reaction already includes the weight at the support.
 			if rea, ok := n.Reaction["L"]; ok {
 				for i := 0; i < 5; i++ {
 					val[i] += rea[2]
@@ -3714,7 +3712,8 @@ func uplift(stw *Window) {
 				continue
 			}
 			for _, p := range periods {
-				val := n.Weight[1] + n.ReturnReaction(p, 2)
+				// The long-term reaction already includes the weight at the support.
+				val := n.ReturnReaction(p, 2)
 				fmt.Printf("NODE %d VAL %.3f\n", n.Num, val)
 				if val < 0.0 {
 					st.AddSelection(stw, n)
