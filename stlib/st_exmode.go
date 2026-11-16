@@ -264,7 +264,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 	}
 	var fn string
 	frame := stw.Frame()
-	if narg < 2 {
+	if _, skip := stw.(interface{ SkipExFilenameCompletion() }); narg < 2 || skip {
 		fn = ""
 	} else {
 		if frame == nil {

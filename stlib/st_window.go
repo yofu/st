@@ -157,16 +157,22 @@ func OpenFile(stw Window, filename string, readrcfile bool) error {
 		}
 		newframe.SetFocus(nil)
 	}
-	stw.SetFrame(newframe)
-	frame = stw.Frame()
 	if s != nil {
-		frame.Show = s
-		for snum := range frame.Sects {
-			if _, ok := frame.Show.Sect[snum]; !ok {
-				frame.Show.Sect[snum] = true
+		newframe.Show = s
+		for snum := range newframe.Sects {
+			if _, ok := s.Sect[snum]; !ok {
+				s.Sect[snum] = true
 			}
 		}
 	}
+	OpenPreparedFrame(stw, newframe, fn, readrcfile)
+	return nil
+}
+
+// OpenPreparedFrame installs a model that has already been parsed and checked.
+func OpenPreparedFrame(stw Window, frame *Frame, fn string, readrcfile bool) {
+	stw.SetFrame(frame)
+	frame.Show.Frame = frame
 	SetPosition(stw)
 	stw.History(fmt.Sprintf("OPEN: %s", fn))
 	frame.Home = stw.Home()
@@ -181,7 +187,6 @@ func OpenFile(stw Window, filename string, readrcfile bool) error {
 			ReadResource(stw, rcfn)
 		}
 	}
-	return nil
 }
 
 func Rebase(stw Window, fn string) {

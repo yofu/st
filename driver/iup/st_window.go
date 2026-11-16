@@ -39,7 +39,7 @@ var (
 	comhistpos         int
 	prevkey            int
 	clineinput         string
-	logf               os.File
+	logf               *os.File
 	logger             *log.Logger
 	watcher            *fsnotify.Watcher
 	passwatcher        bool
@@ -241,8 +241,10 @@ type Window struct { // {{{
 	Selected []*iup.Handle
 	Props    []*iup.Handle
 
-	InpModified bool
-	changed     bool
+	liveAnalysis  *liveAnalysisView
+	guiConnection *guiConnection
+	InpModified   bool
+	changed       bool
 
 	comhist []string
 
@@ -1628,6 +1630,8 @@ func (stw *Window) Close(force bool) {
 			return
 		}
 	}
+	stw.stopGUIConnection()
+	stw.stopLiveAnalysis()
 	stw.SaveCommandHistory()
 	stw.SaveRecent()
 	iup.ExitLoop()
@@ -2073,6 +2077,16 @@ func (stw *Window) execCommand(com *Command) {
 }
 
 func (stw *Window) ExecCommand(al string) {
+	command, arg, _ := strings.Cut(strings.TrimSpace(al), " ")
+	if strings.EqualFold(command, ":mcpconnect") {
+		st.ErrorMessage(stw, stw.guiConnectionCommand(arg), st.ERROR)
+		return
+	}
+	if strings.EqualFold(command, ":mcplive") {
+		st.ErrorMessage(stw, stw.liveAnalysisCommand(arg), st.ERROR)
+		stw.Redraw()
+		return
+	}
 	if stw.frame == nil {
 		if strings.HasPrefix(al, ":") {
 			err := st.ExMode(stw, al)
@@ -3470,16 +3484,16 @@ func (stw *Window) SelectElemFenceMotion(arg *iup.MouseMotion) {
 //     return mb.arg.Y
 // }
 
-// func (stw *Window) TailLine(x, y int, arg MouseButtonMotion) {
-//     // if first == 1 {
-//     //     first = 0
-//     // } else {
-//     stw.cdcanv.Line(x, y, stw.endX, stw.endY)
-//     // }
-//     stw.cdcanv.Line(x, y, arg.GetX(), arg.GetY())
-//     stw.endX = arg.GetX(); stw.endY = arg.GetY()
-//     fmt.Printf("TAIL: %d %d %d %d %d %d\n", int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), arg.GetX(), arg.GetY(), stw.endX, stw.endY)
-// }
+//	func (stw *Window) TailLine(x, y int, arg MouseButtonMotion) {
+//	    // if first == 1 {
+//	    //     first = 0
+//	    // } else {
+//	    stw.cdcanv.Line(x, y, stw.endX, stw.endY)
+//	    // }
+//	    stw.cdcanv.Line(x, y, arg.GetX(), arg.GetY())
+//	    stw.endX = arg.GetX(); stw.endY = arg.GetY()
+//	    fmt.Printf("TAIL: %d %d %d %d %d %d\n", int(stw.selectNode[0].Pcoord[0]), int(stw.selectNode[0].Pcoord[1]), arg.GetX(), arg.GetY(), stw.endX, stw.endY)
+//	}
 func (stw *Window) TailLine(x, y int, arg *iup.MouseMotion) {
 	if first == 1 {
 		first = 0
@@ -5968,17 +5982,23 @@ func (stw *Window) ReadPgp(filename string) error {
 }
 
 func StartLogging() {
-	logf, err := os.OpenFile(LOGFILE, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
+	file, err := os.OpenFile(LOGFILE, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		fmt.Println(err.Error())
+		logger = log.New(io.Discard, "", log.LstdFlags)
+		return
 	}
+	logf = file
 	logger = log.New(logf, "", log.LstdFlags)
 	logger.Println("session started")
 }
 
 func StopLogging() {
 	logger.Println("session closed")
-	logf.Close()
+	if logf != nil {
+		logf.Close()
+		logf = nil
+	}
 }
 
 // Initialize
