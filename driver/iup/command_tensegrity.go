@@ -2,8 +2,6 @@ package stgui
 
 import (
 	"fmt"
-	"math"
-	"sort"
 	"strconv"
 	"time"
 
@@ -128,63 +126,12 @@ func tensegrityconnected(stw *Window) {
 		return
 	}
 	tensegrity(stw, func(cs, ts, sz int) {
-		var tmpelems []*st.Elem
-		var num int
-		var el0 *st.Elem
 		for _, el := range stw.SelectedElems() {
 			if el != nil {
-				el0 = el
-				break
+				stw.SelectElem(st.TensegrityConnected(stw.frame, el, cs, ts))
+				stw.Redraw()
+				return
 			}
-		}
-		if el0 != nil {
-			switch el0.Sect.Num {
-			case cs:
-			loopcs:
-				for _, el := range stw.frame.Elems {
-					if el.Sect.Num != cs {
-						continue
-					}
-					for i := 0; i < 2; i++ {
-						n1 := el0.Enod[i]
-						for j := 0; j < 2; j++ {
-							n2 := el.Enod[j]
-							els := stw.frame.NodeToElemAll(n1, n2)
-							if len(els) >= 1 {
-								tmpelems = append(tmpelems, el)
-								num++
-								continue loopcs
-							}
-						}
-					}
-				}
-			case ts:
-				found := []bool{false, false}
-				for _, el := range stw.frame.Elems {
-					if el.Sect.Num != cs {
-						continue
-					}
-				loopts:
-					for _, en := range el.Enod {
-						for i, n := range el0.Enod {
-							if found[i] {
-								continue
-							}
-							if en == n {
-								tmpelems = append(tmpelems, el)
-								found[i] = true
-								num++
-								break loopts
-							}
-						}
-					}
-					if num == 2 {
-						break
-					}
-				}
-			}
-			stw.SelectElem(tmpelems[:num])
-			stw.Redraw()
 		}
 	}, 201, 211, 0)
 }
@@ -194,27 +141,21 @@ func tensegrityadd(stw *Window) {
 		return
 	}
 	tensegrity(stw, func(cs, ts, sz int) {
-		var tmpelems []*st.Elem
-		var num int
-		for _, el := range stw.SelectedElems() {
-			if el == nil {
-				continue
-			}
-			if el.Sect.Num == cs {
-				for i := 0; i < 2; i++ {
-					for _, n := range el.BetweenNode(i, sz) {
-						tmpelems = append(tmpelems, st.NewLineElem([]*st.Node{el.Enod[i], n}, stw.frame.Sects[ts], st.COLUMN))
-						num++
-					}
-				}
-			}
+		if sz < 0 {
+			return
 		}
-		stw.SelectElem(tmpelems[:num])
+		candidates, err := st.TensegrityAddCandidates(stw.frame, stw.SelectedElems(), cs, ts, sz)
+		if err != nil {
+			st.ErrorMessage(stw, err, st.ERROR)
+			return
+		}
+		stw.SelectElem(candidates)
 		stw.Redraw()
-		if stw.Yn("TENSEGRITY ADD", "部材を追加しますか?") {
-			for _, el := range tmpelems[:num] {
+		if len(candidates) > 0 && stw.Yn("TENSEGRITY ADD", "部材を追加しますか?") {
+			for _, el := range candidates {
 				stw.frame.AddElem(-1, el)
 			}
+			st.Snapshot(stw)
 		}
 		stw.EscapeAll()
 	}, 201, 211, 2)
@@ -225,52 +166,18 @@ func tensegritydelete(stw *Window) {
 		return
 	}
 	tensegrity(stw, func(cs, ts, sz int) {
-		del := false
-		stw.SelectElem(make([]*st.Elem, 0))
-		for _, n := range stw.SelectedNodes() {
-			var tens []*st.Elem
-			var tnum int
-			for _, el := range stw.frame.SearchElem(n) {
-				if el.Sect.Num == ts {
-					tens = append(tens, el)
-					tnum++
-				}
-			}
-			if tnum > sz {
-				del = true
-				elems := make(map[float64]*st.Elem, tnum)
-				sortedelems := make([]*st.Elem, tnum)
-				var keys []float64
-				for _, el := range tens[:tnum] {
-					val := math.Abs(el.N("L", 0) * 1.5)
-					// fmt.Printf("ELEM: %4d PERIOD: L   N= %.3f\n", el.Num, val)
-					for _, per := range []string{"+X", "-X", "+Y", "-Y"} {
-						tmp := math.Abs(el.N(fmt.Sprintf("L%s", per), 0))
-						// fmt.Printf("           PERIOD: L%s N= %.3f\n", per, tmp)
-						if tmp < val {
-							val = tmp
-						}
-					}
-					elems[val] = el
-				}
-				for k := range elems {
-					keys = append(keys, k)
-				}
-				sort.Float64s(keys)
-				for i, k := range keys {
-					sortedelems[i] = elems[k]
-				}
-				for _, el := range sortedelems[:tnum-sz] { // valが小さいものを削除
-					// for _, el := range sortedelems[sz:] { // valが大きいものを削除
-					st.AddSelection(stw, el)
-				}
-			}
+		if sz < 0 {
+			return
 		}
+		candidates, err := st.TensegrityDeleteCandidates(stw.frame, stw.SelectedNodes(), ts, sz)
+		if err != nil {
+			st.ErrorMessage(stw, err, st.ERROR)
+			return
+		}
+		stw.SelectElem(candidates)
 		stw.Redraw()
-		if del && stw.Yn("TENSEGRITY DELETE", "部材を削除しますか?") {
+		if len(candidates) > 0 && stw.Yn("TENSEGRITY DELETE", "部材を削除しますか?") {
 			stw.DeleteSelected()
-		} else {
-			fmt.Println("No Relevant Elems")
 		}
 		stw.EscapeCB()
 	}, 201, 211, 6)

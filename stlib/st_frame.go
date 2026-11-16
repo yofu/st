@@ -500,28 +500,38 @@ func (frame *Frame) ReadInp(filename string, coord []float64, angle float64, ove
 	}
 	defer f.Close()
 	s := bufio.NewScanner(f)
-	return frame.readInp(s, filename, coord, angle, overwrite)
+	return frame.readInp(s, filename, coord, angle, overwrite, true)
 }
 
 // ReadInpString reads an input string for st frame.
 func (frame *Frame) ReadInpString(str string, filename string, coord []float64, angle float64, overwrite bool) error {
 	scanner := bufio.NewScanner(strings.NewReader(str))
-	return frame.readInp(scanner, filename, coord, angle, overwrite)
+	return frame.readInp(scanner, filename, coord, angle, overwrite, true)
 }
 
-// ReadInp reads an input file for st frame.
-func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []float64, angle float64, overwrite bool) error {
+// ReadInpSnapshot parses supplied INP data without loading ambient configuration files.
+func (frame *Frame) ReadInpSnapshot(data []byte, filename string) error {
+	return frame.readInp(bufio.NewScanner(bytes.NewReader(data)), filename, nil, 0, false, false)
+}
+
+func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []float64, angle float64, overwrite, readConfigure bool) error {
 	tmp := make([]string, 0)
 	nodemap := make(map[int]int)
 	if len(coord) < 3 {
 		coord = []float64{0.0, 0.0, 0.0}
 	}
 	var chain *Chain
+	var annotations []string
 	err := ParseScanner(scanner, func(words []string) error {
 		var err error
 		first := words[0]
 		if strings.HasPrefix(first, "\"") {
 			frame.Title = strings.Join(words, " ")
+			return nil
+		} else if first == modelRecordPrefix {
+			if len(words) >= 3 {
+				annotations = append(annotations, strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(scanner.Text()), modelRecordPrefix)))
+			}
 			return nil
 		} else if strings.HasPrefix(first, "#") {
 			return nil
@@ -722,6 +732,11 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 			el.Chain = chain
 		}
 	}
+	for _, annotation := range annotations {
+		if err := frame.readModelRecord(annotation, nodemap, coord, angle); err != nil {
+			return err
+		}
+	}
 	frame.Name = filepath.Base(filename)
 	frame.Project = ProjectName(filename)
 	path, err := filepath.Abs(filename)
@@ -729,6 +744,9 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 		frame.Path = filename
 	} else {
 		frame.Path = path
+	}
+	if !readConfigure {
+		return nil
 	}
 	conffn := Ce(filename, ".conf")
 	prjconf := Ce(strings.Replace(filename, frame.Name, frame.Project, 1), ".conf")
@@ -1391,8 +1409,12 @@ func (frame *Frame) ParseElem(lis []string, nodemap map[int]int, chain *Chain) (
 		el = NewLineElem(e.Enod, e.Sect, e.Etype)
 		el.Num = e.Num
 		el.Cang = e.Cang
-		el.Cmq = e.Cmq
-		el.Bonds = e.Bonds
+		if e.Cmq != nil {
+			el.Cmq = e.Cmq
+		}
+		if e.Bonds != nil {
+			el.Bonds = e.Bonds
+		}
 		el.Prestress = e.Prestress
 		el.SetPrincipalAxis()
 		if chain != nil {
@@ -1658,7 +1680,7 @@ func (frame *Frame) ReadData(filename string) error {
 }
 
 func PeriodName(filename string) string {
-	ext := filepath.Ext(filename)
+	ext := strings.ToLower(filepath.Ext(filename))
 	if p, ok := PeriodExt[ext]; ok {
 		return p
 	}
@@ -1676,6 +1698,10 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 	if err != nil {
 		return err
 	}
+	return frame.readResultData(filename, f, mode, false)
+}
+
+func (frame *Frame) readResultData(filename string, f []byte, mode uint, validateModel bool) error {
 	period := PeriodName(filename)
 	var lis []string
 	if ok := strings.HasSuffix(string(f), "\r\n"); ok {
@@ -1796,7 +1822,7 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 						}
 					}
 				}
-			} else {
+			} else if !validateModel {
 				fmt.Printf("ELEM %d not found\n", enum)
 			}
 		}
@@ -1853,6 +1879,8 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 					node.Disp[period][ind] += tmp[ind]
 				}
 			}
+		} else if validateModel {
+			return fmt.Errorf("static result contains unknown node %d", nnum)
 		} else {
 			fmt.Printf("NODE %d not found\n", nnum)
 		}
@@ -1903,6 +1931,8 @@ func (frame *Frame) ReadResult(filename string, mode uint) error {
 			case AddResult, AddSearchResult:
 				node.Reaction[period][ind-1] += val
 			}
+		} else if validateModel {
+			return fmt.Errorf("static result contains unknown node %d", nnum)
 		} else {
 			fmt.Printf("NODE %d not found\n", nnum)
 		}
@@ -2197,8 +2227,21 @@ func (frame *Frame) ParseZoubunForm(lis [][]string, period string) error {
 
 // ReadLst reads an input file for section list.
 func (frame *Frame) ReadLst(filename string) error {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return frame.readLst(bufio.NewScanner(f), filename)
+}
+
+func (frame *Frame) ReadLstString(contents, filename string) error {
+	return frame.readLst(bufio.NewScanner(strings.NewReader(contents)), filename)
+}
+
+func (frame *Frame) readLst(scanner *bufio.Scanner, filename string) error {
 	tmp := make([][]string, 0)
-	err := ParseFile(filename, func(words []string) error {
+	err := ParseScanner(scanner, func(words []string) error {
 		var err error
 		first := strings.ToUpper(words[0])
 		if strings.HasPrefix(first, "#") {
@@ -2711,16 +2754,21 @@ func (frame *Frame) Filename() (string, string) {
 
 // WriteInp writes an input file for st frame.
 func (frame *Frame) WriteInp(fn string) error {
-	return os.WriteFile(fn, frame.inpBytes(false), 0666)
+	return os.WriteFile(fn, append(frame.inpBytes(false, false), frame.modelRecords()...), 0666)
 }
 
 // InpBytes serializes the model as INP, including sections outside the usual
 // range when they are referenced by an exported member.
 func (frame *Frame) InpBytes() []byte {
-	return frame.inpBytes(true)
+	return frame.inpBytes(true, false)
 }
 
-func (frame *Frame) inpBytes(includeReferencedSections bool) []byte {
+// EditableInpBytes includes unused definitions and editable annotations.
+func (frame *Frame) EditableInpBytes() []byte {
+	return append(frame.inpBytes(true, true), frame.modelRecords()...)
+}
+
+func (frame *Frame) inpBytes(includeReferencedSections, allSections bool) []byte {
 	var bnum, pnum, snum, inum, nnum, enum, cnum int
 	// Bond
 	bonds := make([]*Bond, len(frame.Bonds))
@@ -2747,7 +2795,7 @@ func (frame *Frame) inpBytes(includeReferencedSections bool) []byte {
 		}
 	}
 	for _, sec := range frame.Sects {
-		if (sec.Num < 100 || sec.Num > 900) && !referenced[sec.Num] {
+		if !allSections && (sec.Num < 100 || sec.Num > 900) && !referenced[sec.Num] {
 			continue
 		}
 		sects[snum] = sec
@@ -2775,7 +2823,7 @@ func (frame *Frame) inpBytes(includeReferencedSections bool) []byte {
 	// Elem
 	elems := make([]*Elem, len(frame.Elems))
 	for _, el := range frame.Elems {
-		if el.Etype == WBRACE || el.Etype == SBRACE {
+		if !allSections && (el.Etype == WBRACE || el.Etype == SBRACE) {
 			continue
 		}
 		if el.Chain == nil {
@@ -4907,6 +4955,21 @@ func (frame *Frame) SetBoundary(num int, eps float64) error {
 	return nil
 }
 
+// AddAnalysisBraces converts braced panels to the line members used by analysis.
+func (frame *Frame) AddAnalysisBraces() {
+	for _, el := range SortedElem(frame.Elems, func(e *Elem) float64 { return float64(e.Num) }) {
+		if !el.IsLineElem() {
+			brs := el.RectToBrace(2, 1.0)
+			if brs != nil {
+				for _, br := range brs {
+					frame.AddElem(-1, br)
+					el.Adopt(br)
+				}
+			}
+		}
+	}
+}
+
 func (frame *Frame) ExtractArclm(fn string) error {
 	cmqs := make(map[int][]float64)
 	for _, el := range frame.Elems {
@@ -4935,17 +4998,7 @@ func (frame *Frame) ExtractArclm(fn string) error {
 	if err != nil {
 		return err
 	}
-	for _, el := range SortedElem(frame.Elems, func(e *Elem) float64 { return float64(e.Num) }) {
-		if !el.IsLineElem() {
-			brs := el.RectToBrace(2, 1.0)
-			if brs != nil {
-				for _, br := range brs {
-					frame.AddElem(-1, br)
-					el.Adopt(br)
-				}
-			}
-		}
-	}
+	frame.AddAnalysisBraces()
 	sects := make([]*Sect, 0)
 	snum := 0
 	for _, sect := range frame.Sects {
