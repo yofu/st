@@ -180,11 +180,7 @@ func inversePencilCSRProgressQuality(ke, kg, metric *matrix.SymmetricCSR, C *mat
 				continue
 			}
 			// Deflation must not silently move the answer to a different root.
-			rootTolerance := bucklingVectorTolerance
-			if metric == ke {
-				rootTolerance = residualTolerance
-			}
-			if math.Abs(mu-target) > math.Max(4*eps, 8*rootTolerance*math.Abs(target)) {
+			if math.Abs(mu-target) > math.Max(4*eps, 8*residualTolerance*math.Abs(target)) {
 				return 0, nil, fmt.Errorf("buckling inverse iteration converged outside target: %g vs %g", mu, target)
 			}
 			return mu, x, nil

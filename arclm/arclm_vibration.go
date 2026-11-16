@@ -113,6 +113,7 @@ func (frame *Frame) VibrationalEigenAnalysisWithDiagnostics(otp string, init boo
 	}
 	searchTime := time.Since(searchStarted)
 	var vectorTime time.Duration
+	var elasticFactor *matrix.SymLDLTFactor
 	frame.EigenValue = make([]float64, n)
 	frame.EigenVector = make([][]float64, n)
 	locked, massLocked := make([][]float64, 0, n), make([][]float64, 0, n)
@@ -144,7 +145,34 @@ func (frame *Frame) VibrationalEigenAnalysisWithDiagnostics(otp string, init boo
 		var residual, orthogonality float64
 		refine := func(fields map[string]interface{}) error {
 			var e error
-			mu, x, e = inversePencilCSRProgress(s.elastic, s.geometric, mass, factor, mu, eps, locked, massLocked, func(iteration int, r, o float64) {
+			target := mu
+			iterations := 0
+			usedEnergy := false
+			quality := func(mu float64, x, kx, gx []float64) (float64, float64, error) {
+				iterations++
+				usedEnergy = false
+				force := pencilForceResidual(mu, kx, gx)
+				if iterations < 4 || force <= bucklingVectorTolerance || force > 1e-5 || !finitePlastic(force) {
+					return force, bucklingVectorTolerance, nil
+				}
+				if elasticFactor == nil {
+					elasticFactor, e = k.SymmetricLDLT(csize, conf, nil)
+					if e != nil {
+						return 0, 0, e
+					}
+					s.solveFactorizations++
+				}
+				usedEnergy = true
+				energy, err := pencilEnergyResidual(elasticFactor, mu, x, kx, gx)
+				if fields != nil {
+					fields["force_residual"] = force
+					if finitePlastic(energy) {
+						fields["energy_residual"] = energy
+					}
+				}
+				return energy, rayleighEnergyTolerance, err
+			}
+			mu, x, e = inversePencilCSRProgressQuality(s.elastic, s.geometric, mass, factor, target, eps, locked, massLocked, func(iteration int, r, o float64) {
 				residual, orthogonality = r, o
 				if fields != nil {
 					fields["iterations"] = iteration
@@ -156,8 +184,26 @@ func (frame *Frame) VibrationalEigenAnalysisWithDiagnostics(otp string, init boo
 					}
 					fields["metric"] = "M"
 				}
-			})
-			return e
+			}, nil, quality)
+			if e != nil || !usedEnergy {
+				return e
+			}
+			margin := math.Max(4*eps, 8*rayleighEnergyTolerance*mu)
+			if margin >= mu {
+				return fmt.Errorf("vibration residual interval reaches zero")
+			}
+			_, below, err := s.countNudged(mu-margin, 0)
+			if err != nil {
+				return err
+			}
+			_, above, err := s.countNudged(mu+margin, math.Inf(1))
+			if err != nil {
+				return err
+			}
+			if below < i+1 || above >= i+1 {
+				return fmt.Errorf("vibration root has inconsistent inertia (%d,%d)", below, above)
+			}
+			return nil
 		}
 		if d == nil {
 			e = refine(nil)
