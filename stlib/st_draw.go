@@ -81,9 +81,18 @@ func GetClipCoord(stw Drawer) (float64, float64, float64, float64) {
 }
 
 func DrawElem(stw Drawer, elem *Elem, show *Show) {
+	defer fig2SetTextSize(stw, show.Fig2Font["ELEM"])()
 	var ecap bytes.Buffer
 	var oncap bool
-	if show.ElemCaption&EC_NUM != 0 {
+	if v := show.fig2ElemValues[elem.Num]; v != "" {
+		ecap.WriteString(v)
+		oncap = true
+	}
+	if v, ok := fig2JointRate(elem, show.fig2JointPeriod); ok {
+		ecap.WriteString(fmt.Sprintf(show.Formats["RATE"], v) + "\n")
+		oncap = true
+	}
+	if show.ElemCaption&EC_NUM != 0 && (!show.Fig2ElemCodeMax || show.Fig2Max[elem.Num]) {
 		ecap.WriteString(fmt.Sprintf("%d\n", elem.Num))
 		oncap = true
 	}
@@ -95,12 +104,25 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 		}
 		oncap = true
 	}
+	if show.Fig2RelativeDisp > 0 && elem.IsLineElem() {
+		axis := show.Fig2RelativeDisp - 1
+		v := (elem.Enod[1].ReturnDisp(show.Period, axis) - elem.Enod[0].ReturnDisp(show.Period, axis)) * 100
+		ecap.WriteString(fmt.Sprintf(show.Formats["DISP"], v) + "\n")
+		oncap = true
+	}
 	if show.ElemCaption&EC_SIZE != 0 {
 		if elem.IsLineElem() {
 			ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Length()))
 		} else {
 			ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Area()))
 		}
+		oncap = true
+	}
+	if show.Fig2Size == "length" && elem.IsLineElem() {
+		ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Length()*show.Unit[1]))
+		oncap = true
+	} else if show.Fig2Size == "area" && !elem.IsLineElem() {
+		ecap.WriteString(fmt.Sprintf("%.3f\n", elem.Area()*show.Unit[1]*show.Unit[1]))
 		oncap = true
 	}
 	if show.ElemCaption&EC_WIDTH != 0 {
@@ -239,11 +261,15 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			stw.Line(icoord[0], icoord[1], jcoord[0], jcoord[1])
 			// Deformation
 			if show.PlotState&PLOT_DEFORMED != 0 {
-				stw.LineStyle(DOTTED)
-				col := stw.Foreground(show.DeformationColor)
-				stw.Line(elem.Enod[0].Dcoord[0], elem.Enod[0].Dcoord[1], elem.Enod[1].Dcoord[0], elem.Enod[1].Dcoord[1])
-				stw.LineStyle(CONTINUOUS)
-				stw.Foreground(col)
+				if styled, ok := stw.(interface {
+					Fig2DeformationLine([]float64, []float64) bool
+				}); !ok || !styled.Fig2DeformationLine(elem.Enod[0].Dcoord, elem.Enod[1].Dcoord) {
+					stw.LineStyle(DOTTED)
+					col := stw.Foreground(show.DeformationColor)
+					stw.Line(elem.Enod[0].Dcoord[0], elem.Enod[0].Dcoord[1], elem.Enod[1].Dcoord[0], elem.Enod[1].Dcoord[1])
+					stw.LineStyle(CONTINUOUS)
+					stw.Foreground(col)
+				}
 			}
 		} else {
 			icoord = elem.Enod[0].Dcoord
@@ -264,7 +290,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 					textpos[k] += 0.5*icoord[k] + 0.5*jcoord[k]
 				}
 			}
-			stw.Text(textpos[0], textpos[1], strings.TrimSuffix(ecap.String(), "\n"))
+			drawFig2Caption(stw, show, "ELEM", textpos[0], textpos[1], strings.TrimSuffix(ecap.String(), "\n"))
 		}
 		pd := elem.PDirection(true)
 		if show.Bond {
@@ -324,18 +350,30 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			flag = f
 		}
 		if flag != 0 {
+			spec, ok := show.Fig2Stress[elem.Sect.Num]
+			if !ok {
+				spec = show.Fig2Stress[elem.Etype]
+			}
 			sttext := make([]bytes.Buffer, 2)
 			for i, st := range []uint{STRESS_NZ, STRESS_QX, STRESS_QY, STRESS_MZ, STRESS_MX, STRESS_MY} {
 				if flag&st != 0 {
+					period, side := show.Period, uint8(3)
+					if spec[i].period != "" {
+						period, side = spec[i].period, spec[i].side
+					}
+					var values [2]bytes.Buffer
 					switch i {
 					case 0:
-						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)*show.Unit[0]))
+						if spec[i].period != "" && side == 2 {
+							values[1].WriteString(fmt.Sprintf(show.Formats["STRESS"], elem.ReturnStress(period, 1, i)*show.Unit[0]) + "\n")
+						}
+						values[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(period, 0, i)*show.Unit[0]))
 					case 1, 2:
-						vali := elem.ReturnStress(show.Period, 0, i) * show.Unit[0]
-						valj := elem.ReturnStress(show.Period, 1, i) * show.Unit[0]
+						vali := elem.ReturnStress(period, 0, i) * show.Unit[0]
+						valj := elem.ReturnStress(period, 1, i) * show.Unit[0]
 						if !show.NoShearValue {
-							sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), vali))
-							sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), valj))
+							values[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), vali))
+							values[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), valj))
 						}
 						if show.ShearArrow {
 							arrow := 0.3
@@ -364,15 +402,17 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 							}
 						}
 					case 3:
-						sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)*show.Unit[0]*show.Unit[1]))
-						sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i)*show.Unit[0]*show.Unit[1]))
+						values[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(period, 0, i)*show.Unit[0]*show.Unit[1]))
+						values[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(period, 1, i)*show.Unit[0]*show.Unit[1]))
 					case 4, 5:
 						if !show.NoMomentValue {
-							sttext[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 0, i)*show.Unit[0]*show.Unit[1]))
-							sttext[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(show.Period, 1, i)*show.Unit[0]*show.Unit[1]))
+							values[0].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(period, 0, i)*show.Unit[0]*show.Unit[1]))
+							values[1].WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["STRESS"]), elem.ReturnStress(period, 1, i)*show.Unit[0]*show.Unit[1]))
 						}
 						if show.MomentFigure {
-							mcoord := elem.MomentCoord(show, i)
+							stressShow := *show
+							stressShow.Period = period
+							mcoord := elem.MomentCoord(&stressShow, i)
 							stw.Foreground(show.MomentColor)
 							coords := make([][]float64, len(mcoord)+2)
 							coords[0] = []float64{icoord[0], icoord[1]}
@@ -380,7 +420,14 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 								coords[i+1] = elem.Frame.View.ProjectCoord(c)
 							}
 							coords[len(mcoord)+1] = []float64{jcoord[0], jcoord[1]}
-							stw.Polyline(coords)
+							if styled, ok := stw.(interface{ Fig2MomentLine([][]float64) bool }); !ok || !styled.Fig2MomentLine(coords) {
+								stw.Polyline(coords)
+							}
+						}
+					}
+					for end := range values {
+						if side&(1<<uint(end)) != 0 {
+							sttext[end].WriteString(values[end].String())
 						}
 					}
 				}
@@ -392,19 +439,24 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 					for k := 0; k < 2; k++ {
 						stpos[k] += (-0.5*math.Abs(float64(-j))+0.75)*icoord[k] + (-0.5*math.Abs(float64(1-j))+0.75)*jcoord[k]
 					}
-					if j == 0 {
+					if j == 0 && !(show.Fig2Document && flag == STRESS_NZ) {
 						stw.TextAlignment(SOUTH)
 					} else {
 						stw.TextAlignment(NORTH)
 					}
 					deg := math.Atan2(pd[1], pd[0]) * 180.0 / math.Pi
+					if show.Fig2Document {
+						// A member parallel to the line of sight can project
+						// to one point. Its end labels still have values.
+						deg = math.Atan2(jcoord[1]-icoord[1], jcoord[0]-icoord[0]) * 180 / math.Pi
+					}
 					if deg > 90.0 {
 						deg -= 180.0
 					} else if deg < -90.0 {
 						deg += 180.0
 					}
 					stw.TextOrientation(deg)
-					stw.Text(stpos[0], stpos[1], tex[:len(tex)-1])
+					drawFig2StressText(stw, stpos[0], stpos[1], tex[:len(tex)-1])
 					stw.TextAlignment(show.DefaultTextAlignment)
 					stw.TextOrientation(0.0)
 				}
@@ -443,7 +495,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			}
 		}
 		if elem.Etype == WBRACE || elem.Etype == SBRACE {
-			if elem.Eldest {
+			if elem.Eldest && elem.Parent != nil {
 				if elem.Parent.Wrect != nil && (elem.Parent.Wrect[0] != 0.0 || elem.Parent.Wrect[1] != 0.0) {
 					DrawWrect(stw, elem.Parent, show)
 				}
@@ -507,7 +559,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			for k := 0; k < 2; k++ {
 				textpos[k] /= float64(elem.Enods)
 			}
-			stw.Text(textpos[0], textpos[1], strings.TrimSuffix(ecap.String(), "\n"))
+			drawFig2Caption(stw, show, "ELEM", textpos[0], textpos[1], strings.TrimSuffix(ecap.String(), "\n"))
 		}
 		// Stress
 		var flag uint
@@ -557,7 +609,7 @@ func DrawElem(stw Drawer, elem *Elem, show *Show) {
 			if tex := sttext.String(); tex != "" {
 				stw.Foreground(show.StressTextColor)
 				tcoord := elem.Frame.View.ProjectCoord(elem.MidPoint())
-				stw.Text(tcoord[0], tcoord[1], tex)
+				drawFig2StressText(stw, tcoord[0], tcoord[1], strings.TrimSuffix(tex, "\n"))
 			}
 		}
 		if elem.Wrect != nil && (elem.Wrect[0] != 0.0 || elem.Wrect[1] != 0.0) {
@@ -653,6 +705,17 @@ func DrawGlobalAxis(stw Drawer, frame *Frame, color uint) {
 		Current: -1,
 	}
 	DrawAxis(stw, axis, color)
+	if frame.Show.Fig2Document {
+		stw.Foreground(BLACK)
+		for i, end := range axis.Direction {
+			p := frame.View.ProjectCoord(end)
+			stw.Text(p[0], p[1], string("XYZ"[i]))
+		}
+		if !frame.Show.Fig2NoZero {
+			p := frame.View.ProjectCoord(axis.Origin)
+			stw.Text(p[0], p[1], "0")
+		}
+	}
 }
 
 func DrawElementAxis(stw Drawer, elem *Elem, show *Show) {
@@ -678,6 +741,36 @@ func DrawElementAxis(stw Drawer, elem *Elem, show *Show) {
 }
 
 func DrawWrect(stw Drawer, elem *Elem, show *Show) {
+	if show.Fig2Wrect == "" {
+		return
+	}
+	points := elem.WrectCoord()
+	if len(points) == 0 {
+		return
+	}
+	view := elem.Frame.View
+	coords := make([][]float64, len(points)+1)
+	for i, p := range points {
+		coords[i] = view.ProjectCoord(p)
+	}
+	coords[len(points)] = coords[0]
+	stw.LineStyle(DASHED)
+	// Draw individual edges so that the configured dash pattern applies.
+	for i := 1; i < len(coords); i++ {
+		stw.Line(coords[i-1][0], coords[i-1][1], coords[i][0], coords[i][1])
+	}
+	stw.LineStyle(CONTINUOUS)
+	label := show.Fig2Wrect
+	if label == "ON" {
+		return
+	}
+	if strings.EqualFold(label, "value") {
+		label = "W{width:.1f}×L{height:.1f}"
+	}
+	w, h := elem.Wrect[0]*100, elem.Wrect[1]*100
+	label = strings.NewReplacer("{width:.1f}", fmt.Sprintf("%.1f", w), "{height:.1f}", fmt.Sprintf("%.1f", h), "{width}", fmt.Sprint(w), "{height}", fmt.Sprint(h)).Replace(label)
+	p := view.ProjectCoord(elem.MidPoint())
+	stw.Text(p[0], p[1], label)
 }
 
 func DrawElemArrow(stw Drawer, elem *Elem, vector []float64, size float64, str string) {
@@ -790,6 +883,9 @@ func DrawKijun(stw Drawer, k *Kijun, show *Show) {
 	stw.LineStyle(DASH_DOT)
 	stw.Line(k.Pstart[0], k.Pstart[1], k.Pend[0], k.Pend[1])
 	stw.LineStyle(CONTINUOUS)
+	if show.Fig2KijunNoHead {
+		return
+	}
 	switch {
 	default:
 		stw.TextAlignment(CENTER)
@@ -821,6 +917,7 @@ func DrawKijun(stw Drawer, k *Kijun, show *Show) {
 }
 
 func DrawMeasure(stw Drawer, m *Measure, show *Show) {
+	defer fig2SetTextSize(stw, show.Fig2Font["MEASURE"])()
 	n1 := make([]float64, 3)
 	n2 := make([]float64, 3)
 	n3 := make([]float64, 3)
@@ -881,10 +978,19 @@ func DrawText(stw Drawer, t *TextBox) {
 }
 
 func DrawNode(stw Drawer, node *Node, show *Show) {
+	defer fig2SetTextSize(stw, show.Fig2Font["NODE"])()
 	// Caption
 	var ncap bytes.Buffer
 	var oncap bool
-	if show.NodeCaption&NC_NUM != 0 {
+	if v := show.fig2NodeValues[node.Num]; v != "" {
+		ncap.WriteString(v)
+		oncap = true
+	}
+	if v, ok := show.fig2WeldValues[node.Num]; ok {
+		ncap.WriteString(fmt.Sprintf("%.4f\n", v))
+		oncap = true
+	}
+	if show.NodeCaption&NC_NUM != 0 && showFig2NodeCode(node, show.Fig2NodeCode) {
 		ncap.WriteString(fmt.Sprintf("%d\n", node.Num))
 		oncap = true
 	}
@@ -894,17 +1000,21 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 			oncap = true
 		}
 	}
-	for i, j := range []uint{NC_DX, NC_DY, NC_DZ, NC_TX, NC_TY, NC_TZ} {
-		if show.NodeCaption&j != 0 {
-			if !node.Conf[i] {
-				if i < 3 {
-					ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["DISP"]), node.ReturnDisp(show.Period, i)*100.0))
-				} else {
-					ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["THETA"]), node.ReturnDisp(show.Period, i)))
-				}
-				oncap = true
-			}
+	for i, caption := range []uint{NC_DX, NC_DY, NC_DZ, NC_TX, NC_TY, NC_TZ} {
+		if show.NodeCaption&caption == 0 || (node.Conf[i] && !show.Fig2Document) {
+			continue
 		}
+		value := node.ReturnDisp(show.Period, i)
+		if show.Fig2Document {
+			value *= show.Unit[1]
+		}
+		format := show.Formats["THETA"]
+		if i < 3 {
+			value *= fig2DispFactor(show)
+			format = show.Formats["DISP"]
+		}
+		ncap.WriteString(fmt.Sprintf(format, value) + "\n")
+		oncap = true
 	}
 	var coord []float64
 	if show.PlotState&PLOT_UNDEFORMED != 0 {
@@ -922,7 +1032,7 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 					val *= show.Unit[0]
 					ncap.WriteString(fmt.Sprintf(fmt.Sprintf("%s\n", show.Formats["REACTION"]), val))
 					arrow := 0.3
-					var rcoord []float64
+					rcoord := make([]float64, 3)
 					if show.PlotState&PLOT_UNDEFORMED != 0 {
 						rcoord = []float64{node.Coord[0], node.Coord[1], node.Coord[2]}
 					} else {
@@ -947,6 +1057,30 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 			}
 		}
 	}
+	for _, spec := range show.Fig2NodalValues {
+		value, ok := fig2NodeValue(node, spec)
+		if !ok || value == 0 {
+			continue
+		}
+		value *= show.Unit[0]
+		if spec.axis >= 3 {
+			value *= show.Unit[1]
+		}
+		ncap.WriteString(fmt.Sprintf(show.Formats["REACTION"], value) + "\n")
+		oncap = true
+		if spec.axis < 3 && value != 0 && spec.scale != 0 {
+			pos := append([]float64(nil), node.Coord...)
+			if show.PlotState&PLOT_UNDEFORMED == 0 {
+				for i := range pos {
+					pos[i] += node.ReturnDisp(show.Period, i) * show.Dfact
+				}
+			}
+			pos[spec.axis] += value * spec.scale
+			p := node.Frame.View.ProjectCoord(pos)
+			stw.LineStyle(CONTINUOUS)
+			Arrow(stw, coord[0], coord[1], p[0], p[1], 0.3, deg10)
+		}
+	}
 	if show.NodeCaption&NC_ZCOORD != 0 {
 		ncap.WriteString(fmt.Sprintf("%.3f\n", node.Coord[2]))
 		oncap = true
@@ -958,19 +1092,38 @@ func DrawNode(stw Drawer, node *Node, show *Show) {
 		}
 	}
 	if oncap {
-		stw.Text(coord[0], coord[1], strings.TrimSuffix(ncap.String(), "\n"))
+		caption := strings.TrimSuffix(ncap.String(), "\n")
+		numerical := show.NodeCaption&(NC_DX|NC_DY|NC_DZ|NC_TX|NC_TY|NC_TZ|NC_RX|NC_RY|NC_RZ|NC_MX|NC_MY|NC_MZ) != 0 || len(show.Fig2NodalValues) > 0
+		if show.Fig2Document && numerical {
+			stw.TextAlignment(NORTH)
+			drawFig2StressText(stw, coord[0], coord[1], caption)
+			stw.TextAlignment(show.DefaultTextAlignment)
+		} else {
+			drawFig2Caption(stw, show, "NODE", coord[0], coord[1], caption)
+		}
 	}
 	if show.PointedLoad {
 		v := make([]float64, 3)
 		drawpload := false
 		for i := 0; i < 3; i++ {
-			if node.Load[i] != 0.0 {
+			if node.Load[i] != 0.0 && (show.Fig2LoadAxes == 0 || show.Fig2LoadAxes&(1<<uint(i)) != 0) {
 				drawpload = true
+				v[i] = show.Pfact * node.Load[i]
 			}
-			v[i] = show.Pfact * node.Load[i]
 		}
 		if drawpload {
-			DrawNodeArrow(stw, node, v)
+			if !show.Fig2LoadNoArrow {
+				DrawNodeArrow(stw, node, v)
+			}
+			if show.Fig2LoadAxes != 0 {
+				var values []string
+				for i, x := range v {
+					if x != 0 {
+						values = append(values, fmt.Sprintf("%c %s", "XYZ"[i], fmt.Sprintf(show.Formats["REACTION"], node.Load[i]*show.Unit[0])))
+					}
+				}
+				stw.Text(coord[0], coord[1], strings.Join(values, " "))
+			}
 		}
 	}
 	if show.NodeNormal {
@@ -1125,15 +1278,24 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 			if k.IsHidden(show) {
 				continue
 			}
-			k.Pstart = frame.View.ProjectCoord(k.Start)
-			k.Pend = frame.View.ProjectCoord(k.End)
+			start, end := k.Start, k.End
+			if z := show.Fig2KijunOffset; z != 0 {
+				start = []float64{k.Start[0], k.Start[1], k.Start[2] + z}
+				end = []float64{k.End[0], k.End[1], k.End[2] + z}
+			}
+			k.Pstart = frame.View.ProjectCoord(start)
+			k.Pend = frame.View.ProjectCoord(end)
 			DrawKijun(stw, k, show)
 		}
 	}
 	if show.Measure {
 		stw.TextAlignment(SOUTH)
 		stw.Foreground(show.MeasureColor)
-		for _, m := range frame.Measures {
+		measures := frame.Measures
+		if show.Fig2Document {
+			measures = show.Fig2Measures
+		}
+		for _, m := range measures {
 			if m.IsHidden(show) {
 				continue
 			}
@@ -1150,7 +1312,7 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 		if n.IsHidden(show) {
 			continue
 		}
-		if color == ECOLOR_BLACK {
+		if color == ECOLOR_BLACK || (show.Fig2Document && color == ECOLOR_BLACKSECT) {
 			stw.Foreground(BLACK)
 		} else {
 			if n.Lock {
@@ -1171,6 +1333,15 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 				if j == n {
 					stw.SelectNodeStyle()
 					break
+				}
+			}
+		}
+		if len(show.Fig2PenOrder) > 0 {
+			for _, name := range show.Fig2PenOrder {
+				p := show.Fig2Pens[name]
+				if p.nodes[n.Num] {
+					drawFig2Pen(stw, p)
+					stw.Circle(n.Pcoord[0], n.Pcoord[1], 1.2)
 				}
 			}
 		}
@@ -1245,7 +1416,7 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 					if err != nil {
 						stw.Foreground(DARK_GRAY)
 					} else {
-						stw.Foreground(Rainbow(val, RateBoundary))
+						stw.Foreground(Rainbow(val, fig2RateBoundary(show)))
 					}
 				case ECOLOR_N:
 					if el.N(frame.Show.Period, 0) >= 0.0 {
@@ -1281,6 +1452,21 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 						stw.Foreground(Rainbow(val, EnergyBoundary))
 					}
 				}
+			}
+			if show.Fig2Max[el.Num] {
+				drawFig2Pen(stw, show.Fig2MaxPen)
+			}
+			for _, name := range show.Fig2PenOrder {
+				p := show.Fig2Pens[name]
+				if p.elems[el.Num] {
+					drawFig2Pen(stw, p)
+				}
+			}
+			if v, ok := show.fig2RainbowValues[el.Num]; ok {
+				drawFig2Pen(stw, fig2Pen{width: 0.2, color: Rainbow(v, fig2RateBoundary(show))})
+			}
+			if v, ok := fig2JointRate(el, show.fig2JointPeriod); ok && color == ECOLOR_RATE {
+				stw.Foreground(Rainbow(v, RateBoundary))
 			}
 			DrawElem(stw, el, show)
 		}
@@ -1318,7 +1504,7 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 				if err != nil {
 					stw.Foreground(DARK_GRAY)
 				} else {
-					stw.Foreground(Rainbow(val, RateBoundary))
+					stw.Foreground(Rainbow(val, fig2RateBoundary(show)))
 				}
 			case ECOLOR_N:
 				if el.N(frame.Show.Period, 0) >= 0.0 {
@@ -1340,11 +1526,11 @@ func DrawFrame(stw Drawer, frame *Frame, color uint, flush bool) {
 	show.NoMomentValue = nomv
 	show.NoShearValue = nosv
 	stw.DefaultStyle()
-	if frame.Fes != nil {
-		// DrawEccentric(stw, frame, show)
+	if frame.Fes != nil && len(show.Fig2Eccentric) > 0 {
+		drawFig2Eccentric(stw, frame)
 	}
 	if stw.ShowPrintRange() {
-		if color == ECOLOR_BLACK {
+		if color == ECOLOR_BLACK || (show.Fig2Document && color == ECOLOR_BLACKSECT) {
 			stw.Foreground(BLACK)
 		} else {
 			stw.Foreground(GRAY)
@@ -1437,6 +1623,21 @@ func DrawFrameNode(stw Drawer, frame *Frame, color uint, flush bool) {
 			} else {
 				stw.Foreground(GREEN)
 			}
+			if show.Fig2Max[el.Num] {
+				drawFig2Pen(stw, show.Fig2MaxPen)
+			}
+			for _, name := range show.Fig2PenOrder {
+				p := show.Fig2Pens[name]
+				if p.elems[el.Num] {
+					drawFig2Pen(stw, p)
+				}
+			}
+			if v, ok := show.fig2RainbowValues[el.Num]; ok {
+				drawFig2Pen(stw, fig2Pen{width: 0.2, color: Rainbow(v, fig2RateBoundary(show))})
+			}
+			if v, ok := fig2JointRate(el, show.fig2JointPeriod); ok && color == ECOLOR_RATE {
+				stw.Foreground(Rainbow(v, RateBoundary))
+			}
 			DrawElem(stw, el, show)
 		}
 		show.NoMomentValue = nomv
@@ -1503,4 +1704,18 @@ func DrawLegend(stw Drawer, show *Show) {
 		stw.Text(ox-2*sz, oy+d*sz, "安全率の凡例")
 		stw.TextAlignment(show.DefaultTextAlignment)
 	}
+}
+
+func drawFig2StressText(stw Drawer, x, y float64, text string) {
+	if queue, ok := stw.(interface {
+		QueueFig2Stress(float64, float64, string) bool
+	}); ok {
+		if lines := strings.Split(text, "\n"); len(lines) > 0 && queue.QueueFig2Stress(x, y, lines[0]) {
+			for _, line := range lines[1:] {
+				queue.QueueFig2Stress(x, y, line)
+			}
+			return
+		}
+	}
+	stw.Text(x, y, text)
 }

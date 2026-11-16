@@ -1071,6 +1071,11 @@ func PeriodValue(period string, f func(string, float64) float64) float64 {
 	if period == "" {
 		return 0.0
 	}
+	if !strings.ContainsAny(period, "+- ") {
+		// A single stored value needs no addition, which would turn
+		// a recorded negative zero into positive zero.
+		return f(period, 1)
+	}
 	sign := 1.0
 	sum := 0.0
 	tmp := ""
@@ -1147,7 +1152,7 @@ func IntersectionLinePlate(line, plate *Elem, eps float64) (bool, error) {
 			return false, nil
 		}
 		val := Dot(n, n4.Coord, 3)
-		val2 := (h - val)/dot
+		val2 := (h - val) / dot
 		if val2 <= eps || val2 >= l-eps {
 			return false, nil
 		}

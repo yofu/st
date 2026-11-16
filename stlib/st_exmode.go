@@ -63,6 +63,7 @@ var (
 		"w/ei/g/htcopy": complete.MustCompile(":weightcopy [si:]", nil),
 		"har/dcopy":     complete.MustCompile(":hardcopy", nil),
 		"fi/g2":         complete.MustCompile(":fig2", nil),
+		"fig2pd/f":      complete.MustCompile(":fig2pdf", nil),
 		"f/ig2/p/rint":  complete.MustCompile(":fig2print", nil),
 		"dxf/": complete.MustCompile(":dxf [dimension:$DNUM] [scale:_]",
 			map[string][]string{
@@ -1091,12 +1092,56 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		stw.Print()
 	case "fig2":
 		if usage {
-			return Usage(":fig2 filename")
+			return Usage(":fig2 [filename [page [view]]]")
 		}
-		err := ReadFig2(stw, fn)
-		if err != nil {
+		if narg >= 2 && fn == "" {
+			fn = args[1]
+			if !filepath.IsAbs(fn) {
+				fn = filepath.Join(stw.Cwd(), fn)
+			}
+		}
+		page, viewport := 1, 1
+		var err error
+		if narg >= 3 {
+			page, err = strconv.Atoi(args[2])
+			if err != nil {
+				return err
+			}
+		}
+		if narg >= 4 {
+			viewport, err = strconv.Atoi(args[3])
+			if err != nil {
+				return err
+			}
+		}
+		return ReadFig2View(stw, fn, page, viewport)
+	case "fig2pdf":
+		if usage || narg > 3 {
+			return Usage(":fig2pdf [fig2-file [pdf-file]]")
+		}
+		if narg >= 2 && fn == "" {
+			fn = args[1]
+			if !filepath.IsAbs(fn) {
+				fn = filepath.Join(stw.Cwd(), fn)
+			}
+		}
+		if frame == nil {
+			return fmt.Errorf("fig2pdf requires an open model")
+		}
+		if fn == "" {
+			fn = Ce(frame.Path, ".fig2")
+		}
+		output := PruneExt(fn) + "_go.pdf"
+		if narg == 3 {
+			output = args[2]
+			if !filepath.IsAbs(output) {
+				output = filepath.Join(stw.Cwd(), output)
+			}
+		}
+		if err := WriteFig2PDF(frame, fn, output); err != nil {
 			return err
 		}
+		stw.History("WRITE PDF: " + output)
 	case "fig2print":
 		if usage {
 			return Usage(":fig2print")

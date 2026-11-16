@@ -73,11 +73,12 @@ var (
 
 // Frame : Analysis Frame
 type Frame struct {
-	Title   string
-	Name    string
-	Project string
-	Path    string
-	Home    string
+	fig2JointRates fig2JointRates
+	Title          string
+	Name           string
+	Project        string
+	Path           string
+	Home           string
 
 	View   *View
 	Nodes  map[int]*Node
@@ -208,63 +209,27 @@ func NewAiparameter() *Aiparameter {
 
 // Snapshot takes a Snapshot of Aiparameter
 func (ai *Aiparameter) Snapshot() *Aiparameter {
-	a := NewAiparameter()
-	a.Base = make([]float64, 2)
-	for i := 0; i < 2; i++ {
-		a.Base[i] = ai.Base[i]
+	a := *ai
+	a.Base = slices.Clone(ai.Base)
+	a.Boundary = slices.Clone(ai.Boundary)
+	a.Level = slices.Clone(ai.Level)
+	a.Wi = slices.Clone(ai.Wi)
+	a.W = slices.Clone(ai.W)
+	a.Ai = slices.Clone(ai.Ai)
+	a.Ci = cloneFloorDirections(ai.Ci)
+	a.Qi = cloneFloorDirections(ai.Qi)
+	a.Hi = cloneFloorDirections(ai.Hi)
+	a.BetaX = slices.Clone(ai.BetaX)
+	a.BetaY = slices.Clone(ai.BetaY)
+	return &a
+}
+
+func cloneFloorDirections(values [][]float64) [][]float64 {
+	clone := slices.Clone(values)
+	for i, row := range values {
+		clone[i] = slices.Clone(row)
 	}
-	a.Locate = ai.Locate
-	a.Tfact = ai.Tfact
-	a.Gperiod = ai.Gperiod
-	a.H0 = ai.H0
-	a.T = ai.T
-	a.Rt = ai.Rt
-	a.Nfloor = ai.Nfloor
-	if ai.Nfloor > 0 {
-		a.Boundary = make([]float64, a.Nfloor+1)
-		for i := 0; i < a.Nfloor+1; i++ {
-			a.Boundary[i] = ai.Boundary[i]
-		}
-	} else {
-		a.Boundary = make([]float64, 0)
-	}
-	a.Ci = make([][]float64, 2)
-	a.Qi = make([][]float64, 2)
-	a.Hi = make([][]float64, 2)
-	if len(ai.Level) > 0 {
-		a.Level = make([]float64, a.Nfloor)
-		a.Wi = make([]float64, a.Nfloor)
-		a.W = make([]float64, a.Nfloor)
-		a.Ai = make([]float64, a.Nfloor-1)
-		for i := 0; i < a.Nfloor; i++ {
-			a.Level[i] = ai.Level[i]
-			a.Wi[i] = ai.Wi[i]
-			a.W[i] = ai.W[i]
-			if i == a.Nfloor-1 {
-				continue
-			}
-			a.Ai[i] = ai.Ai[i]
-		}
-		for j := 0; j < 2; j++ {
-			a.Ci[j] = make([]float64, a.Nfloor)
-			a.Qi[j] = make([]float64, a.Nfloor)
-			a.Hi[j] = make([]float64, a.Nfloor)
-			for i := 0; i < a.Nfloor; i++ {
-				a.Ci[j][i] = ai.Ci[j][i]
-				a.Qi[j][i] = ai.Qi[j][i]
-				a.Hi[j][i] = ai.Hi[j][i]
-			}
-		}
-	}
-	if ai.Nfloor >= 1 {
-		a.BetaX = make([]float64, a.Nfloor-1)
-		a.BetaY = make([]float64, a.Nfloor-1)
-		for i := 0; i < a.Nfloor-1; i++ {
-			a.BetaX[i] = ai.BetaX[i]
-			a.BetaY[i] = ai.BetaY[i]
-		}
-	}
-	return a
+	return clone
 }
 
 type Windparameter struct {
@@ -7185,7 +7150,8 @@ func (frame *Frame) BoundedArea(x, y float64, maxdepth int) ([]*Node, []*Elem, e
 }
 
 // direction: 0 -> origin=bottomleft, x=[1,0], y=[0,1]
-//            1 -> origin=topleft,    x=[1,0], y=[0,-1]
+//
+//	1 -> origin=topleft,    x=[1,0], y=[0,-1]
 func (view *View) Set(direction int) {
 	a0 := view.Angle[0] * math.Pi / 180 // phi
 	a1 := view.Angle[1] * math.Pi / 180 // theta

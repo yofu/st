@@ -304,6 +304,14 @@ func (stw *Window) drawCanvas(gtx layout.Context) {
 		// Use the same geometry, deformation and visibility rules during a drag
 		// as before/after it. DrawFrameNode omits parts of the normal drawing.
 		st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, false)
+		if stw.viewer == nil {
+			stw.Foreground(stw.frame.Show.CanvasFontColor)
+			for _, box := range stw.TextBoxes() {
+				if !box.IsHidden(stw.frame.Show) {
+					st.DrawText(stw, box)
+				}
+			}
+		}
 		stw.drawSelection()
 		stw.drawMouseRange()
 	}
@@ -768,7 +776,7 @@ func (stw *Window) TextBox(name string) *st.TextBox {
 	// 	stw.textBox[name] = st.NewTextBox(stw.currentFont)
 	// }
 	// return stw.textBox[name]
-	return nil
+	return stw.viewerTextBox(name)
 }
 
 func (stw *Window) TextBoxes() []*st.TextBox {

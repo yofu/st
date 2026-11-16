@@ -312,43 +312,7 @@ func ReadAll(stw Window) {
 }
 
 func ReadFig2(stw Window, filename string) error {
-	if _, ok := stw.(Fig2Moder); !ok {
-		return fmt.Errorf("Window doesn't implement Fig2Moder")
-	}
-	frame := stw.Frame()
-	fw := stw.(Fig2Moder)
-	if frame == nil {
-		return fmt.Errorf("ReadFig2: no frame opened")
-	}
-	tmp := make([][]string, 0)
-	var err error
-	err = ParseFile(filename, func(words []string) error {
-		var err error
-		first := strings.ToUpper(words[0])
-		if strings.HasPrefix(first, "#") {
-			return nil
-		}
-		switch first {
-		default:
-			tmp = append(tmp, words)
-		case "PAGE", "FIGURE":
-			err = ParseFig2(fw, tmp)
-			tmp = [][]string{words}
-		}
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-	err = ParseFig2(fw, tmp)
-	if err != nil {
-		return err
-	}
-	stw.Redraw()
-	return nil
+	return ReadFig2View(stw, filename, 1, 1)
 }
 
 func ParseFig2(stw Fig2Moder, lis [][]string) error {
@@ -367,19 +331,8 @@ func ParseFig2(stw Fig2Moder, lis [][]string) error {
 }
 
 func ParseFig2Page(stw Fig2Moder, lis [][]string) error {
-	for _, txt := range lis {
-		if len(txt) < 1 {
-			continue
-		}
-		var un bool
-		if strings.HasPrefix(txt[0], "!") {
-			un = true
-			txt[0] = txt[0][1:]
-		} else {
-			un = false
-		}
-		err := Fig2Keyword(stw, txt, un)
-		if err != nil {
+	for _, args := range lis {
+		if err := applyFig2Words(stw, args); err != nil {
 			return err
 		}
 	}
@@ -1238,6 +1191,7 @@ func ShowAll(stw Window) {
 	if frame == nil {
 		return
 	}
+	frame.Show.Fig2Nodes, frame.Show.Fig2Elems = nil, nil
 	for _, el := range frame.Elems {
 		el.Show()
 	}

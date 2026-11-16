@@ -98,7 +98,39 @@ const (
 )
 
 type Show struct {
-	Frame *Frame
+	fig2Variables                  map[string]any
+	fig2RainbowValues              map[int]float64
+	fig2ElemValues, fig2NodeValues map[int]string
+	fig2WeldValues                 map[int]float64
+	fig2ValueLabels                []string
+	fig2JointPeriod                string
+	Fig2Eccentric                  []int
+	Fig2Stress                     map[int][6]fig2StressValue
+	Fig2Font                       map[string]int
+	Fig2Anchors                    map[string]fig2Anchor
+	Fig2PressureAreas              map[int]float64
+	Fig2Pens                       map[string]fig2Pen
+	Fig2PenOrder                   []string
+	Fig2Dots                       map[string][]float64
+	Fig2Max                        map[int]bool
+	Fig2MaxPen                     fig2Pen
+	Fig2ElemCodeMax                bool
+	Fig2Wrect                      string
+	Fig2DispFactor                 float64
+	Fig2RelativeDisp               int
+	Fig2LoadAxes                   uint8
+	Fig2LoadNoArrow                bool
+	Fig2Rainbow                    []float64
+	Fig2TextAnchors                map[string][]string
+	Fig2Boxes                      map[string]bool
+	Fig2Document                   bool
+	Fig2Measures                   []*Measure
+	Fig2Nodes, Fig2Elems           map[int]bool
+	Fig2NodeCode, Fig2Size         string
+	Fig2NodalValues                []fig2NodalValue
+	Fig2NoZero, Fig2KijunNoHead    bool
+	Fig2KijunOffset                float64
+	Frame                          *Frame
 
 	Unit     []float64
 	UnitName []string
@@ -138,9 +170,9 @@ type Show struct {
 	PlotState int
 	Dfact     float64
 
-	PointedLoad bool
+	PointedLoad       bool
 	PerpendicularLoad bool
-	Pfact       float64
+	Pfact             float64
 
 	Rfact float64
 
@@ -171,7 +203,7 @@ type Show struct {
 
 	Select bool
 
-	Grey bool
+	Grey      bool
 	GreyColor int
 
 	Sect  map[int]bool

@@ -152,6 +152,10 @@ var viewerFig2Commands = strings.Fields(`
 	period++ period-- perpl perspective pilecode pload position prestress qfact rfact sectcode
 	section section+ section- sheararrow size skip srcancolor srcanrate stiff stress tensile
 	text title unit viewpoint weight width x y z zcoord
+	anchor area axialcolor circle color digit doc dot elemlayer fence+ fence- floor font force
+	header hinge kijunmove label length max maxpen nocolour nodata nodelayer nozero on pen
+	phinge plane plane+ pressure pressurearea rainbow rate rdisp read read! reaction shift
+	storey story textbox timestamp wrect x- xmeasure y- ymeasure yieldratio z- zmeasure
 `)
 
 func (w *Window) runViewerExMode(command string) (err error) {

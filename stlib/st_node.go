@@ -153,6 +153,9 @@ func (node *Node) Show() {
 }
 
 func (node *Node) IsHidden(show *Show) bool {
+	if allowed, ok := show.Fig2Nodes[node.Num]; ok && !allowed {
+		return true
+	}
 	if node.hide {
 		return true
 	}

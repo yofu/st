@@ -386,7 +386,7 @@ func (elem *Elem) IsSkipAt(ind int) bool {
 }
 
 func (elem *Elem) IsSkipAny() bool {
-	for i := 0; i < 3; i ++ {
+	for i := 0; i < 3; i++ {
 		if elem.Skip[i] {
 			return true
 		}
@@ -395,7 +395,7 @@ func (elem *Elem) IsSkipAny() bool {
 }
 
 func (elem *Elem) IsSkipAll() bool {
-	for i := 0; i < 3; i ++ {
+	for i := 0; i < 3; i++ {
 		if !elem.Skip[i] {
 			return false
 		}
@@ -412,7 +412,7 @@ func (elem *Elem) SkipString() string {
 			rtn[i] = "0"
 		}
 	}
-	return strings.Join(rtn , "")
+	return strings.Join(rtn, "")
 }
 
 // IsLineElem reports whether the element is line element or not.
@@ -429,6 +429,9 @@ func (elem *Elem) Show() {
 }
 
 func (elem *Elem) IsHidden(show *Show) bool {
+	if allowed, ok := show.Fig2Elems[elem.Num]; ok && !allowed {
+		return true
+	}
 	if elem.hide {
 		return true
 	}
@@ -615,7 +618,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 	}
 	calc1angle := func(allow SectionRate, cond *Condition, st1, st2, st3, fact []float64, sign float64, angle float64, direction int) ([]float64, error) {
 		stress := make([]float64, 12)
-		theta := math.Pi/180.0 * angle
+		theta := math.Pi / 180.0 * angle
 		if st2 != nil {
 			for i := 0; i < 2; i++ {
 				for j := 0; j < 6; j++ {
@@ -648,7 +651,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 		return rate, nil
 	}
 	calc2angle := func(allow SectionRate, cond *Condition, n1, n2, n3, fact, sign float64, angle float64, direction int) (float64, error) {
-		theta := math.Pi/180.0 * angle
+		theta := math.Pi / 180.0 * angle
 		stress := 0.0
 		if direction == 0 {
 			stress = n1 + sign*fact*(n2*math.Cos(theta)+n3*math.Sin(theta))
@@ -762,20 +765,20 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 				otp.WriteString(fmt.Sprintf("#     一様ねじり定数      J   = %10.4f [cm4]\n", sh.J()))
 				otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
 				otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
-				case *SGirder:
-					sh := al.(*SGirder).Shape
-					otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
-					otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
-					otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
-					otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
-					otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
-					otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
-					if an, ok := sh.(ANGLE); ok {
-						otp.WriteString(fmt.Sprintf("#                         Imin= %10.4f [cm4]\n", an.Imin()))
-					}
-					otp.WriteString(fmt.Sprintf("#     一様ねじり定数      J   = %10.4f [cm4]\n", sh.J()))
-					otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
-					otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+			case *SGirder:
+				sh := al.(*SGirder).Shape
+				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
+				otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+				otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+				otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+				otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+				otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+				if an, ok := sh.(ANGLE); ok {
+					otp.WriteString(fmt.Sprintf("#                         Imin= %10.4f [cm4]\n", an.Imin()))
+				}
+				otp.WriteString(fmt.Sprintf("#     一様ねじり定数      J   = %10.4f [cm4]\n", sh.J()))
+				otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+				otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
 			case *WoodColumn:
 				sh := al.(*WoodColumn).Shape
 				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
@@ -787,17 +790,17 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 				otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J   = %10.4f [cm4]\n", sh.J()))
 				otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
 				otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
-				case *WoodGirder:
-					sh := al.(*WoodGirder).Shape
-					otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
-					otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
-					otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
-					otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
-					otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
-					otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
-					otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J   = %10.4f [cm4]\n", sh.J()))
-					otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
-					otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+			case *WoodGirder:
+				sh := al.(*WoodGirder).Shape
+				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
+				otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+				otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+				otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+				otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+				otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+				otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J   = %10.4f [cm4]\n", sh.J()))
+				otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+				otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
 			case *RCGirder:
 				rc := al.(*RCGirder)
 				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
@@ -817,14 +820,14 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 		rate, err = calc1(al, elem.Condition, stress[0], nil, nil, 1.0)
 		if isrc {
 			if elem.Condition.RCTorsion {
-				qlrate = maxrate(rate[1]+rate[3], rate[2]+rate[3], rate[7]+rate[3], rate[8]+rate[3]) // TODO: use T1,T2 if T1,T2>T3
+				qlrate = maxrate(rate[1]+rate[3], rate[2]+rate[3], rate[7]+rate[3], rate[8]+rate[3])   // TODO: use T1,T2 if T1,T2>T3
 				mlrate = maxrate(rate[4]+rate[3], rate[5]+rate[3], rate[10]+rate[3], rate[11]+rate[3]) // TODO: use T3 if T1,T2<T3
 			} else {
 				qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
 				mlrate = maxrate(rate[4], rate[5], rate[10], rate[11])
 			}
 		} else {
-				qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
+			qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
 			if rate[0] >= 1.0 {
 				mlrate = 10.0
 			} else {
@@ -911,7 +914,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 		if isrc && fact < 2.0 {
 			fact = 2.0
 		}
-		elem.Condition.Width = elem.Width() * 100.0 // [cm]
+		elem.Condition.Width = elem.Width() * 100.0   // [cm]
 		elem.Condition.Height = elem.Height() * 100.0 // [cm]
 		otp.WriteString(strings.Repeat("-", 202))
 		var sectstring string
@@ -1439,7 +1442,7 @@ func (elem *Elem) RectToBrace(nbrace int, rfact float64) []*Elem {
 	if t, ok := elem.Sect.Figs[0].Value["THICK"]; ok {
 		thick = t
 	} else if k, ok := elem.Sect.Figs[0].Value["KFACT"]; ok {
-		thick = k * 0.2*150/GOHAN.G()/1e4
+		thick = k * 0.2 * 150 / GOHAN.G() / 1e4
 	} else {
 		return nil
 	}

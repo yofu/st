@@ -172,6 +172,12 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			cmd.Start()
 		}
 	}
+	if frame == nil {
+		return errors.New("Fig2 requires an open model")
+	}
+	if handled, err := extraFig2Keyword(stw, strings.ToLower(lis[0]), lis[1:], un); handled {
+		return err
+	}
 	key, usage, _ := Fig2KeywordComplete(strings.ToLower(lis[0]))
 	switch key {
 	default:
@@ -209,7 +215,10 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			}
 			return nil
 		}
-		ErrorMessage(stw, errors.New(fmt.Sprintf("no fig2 keyword: %s", key)), INFO)
+		if frame.Show.Fig2Document {
+			return fmt.Errorf("unknown Fig2 keyword %s", lis[0])
+		}
+		ErrorMessage(stw, fmt.Errorf("no fig2 keyword: %s", key), INFO)
 		return nil
 	case "gfact":
 		if len(lis) < 2 {
@@ -229,6 +238,9 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		case "CENTER", "CENTRE":
 			frame.SetFocus(nil)
 		case "NODE":
+			if len(lis) < 3 {
+				return NotEnoughArgs("FOCUS")
+			}
 			val, err := strconv.ParseInt(lis[2], 10, 64)
 			if err != nil {
 				return err
@@ -240,6 +252,9 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			frame.View.Center[0] = float64(w) * 0.5
 			frame.View.Center[1] = float64(h) * 0.5
 		case "ELEM":
+			if len(lis) < 3 {
+				return NotEnoughArgs("FOCUS")
+			}
 			val, err := strconv.ParseInt(lis[2], 10, 64)
 			if err != nil {
 				return err
@@ -591,7 +606,7 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			if abbrev.For("k/ijun", strings.ToLower(lis[1])) { // measure kijun x1 x2 offset dotsize rotate overwrite
 				if k1, ok := frame.Kijuns[strings.ToLower(lis[2])]; ok {
 					if k2, ok := frame.Kijuns[strings.ToLower(lis[3])]; ok {
-						m := frame.AddMeasure(k1.Start, k2.Start, k1.Direction())
+						m := addFig2Measure(frame, k1.Start, k2.Start, k1.Direction())
 						m.Text = fmt.Sprintf("%.0f", k1.Distance(k2)*1000)
 						if len(lis) < 5 {
 							return nil
@@ -655,7 +670,7 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 						default:
 							return errors.New("unknown direction")
 						}
-						m := frame.AddMeasure(n1.Coord, n2.Coord, u)
+						m := addFig2Measure(frame, n1.Coord, n2.Coord, u)
 						m.Text = fmt.Sprintf("%.0f", VectorDistance(n1, n2, v)*1000)
 						if len(lis) < 5 {
 							return nil
@@ -1356,6 +1371,9 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			stw.TextBox("INPUTFILE").Hide()
 		} else {
 			in, _ := frame.Filename()
+			if frame.Show.Fig2Document {
+				in = filepath.Base(in)
+			}
 			stw.TextBox("INPUTFILE").SetText([]string{fmt.Sprintf("Input  : %s", ToUtf8string(in))})
 			stw.TextBox("INPUTFILE").Show()
 		}
@@ -1365,6 +1383,9 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 			stw.TextBox("OUTPUTFILE").Hide()
 		} else {
 			_, out := frame.Filename()
+			if frame.Show.Fig2Document && out != "" {
+				out = filepath.Base(out)
+			}
 			stw.TextBox("OUTPUTFILE").SetText([]string{fmt.Sprintf("Output : %s", ToUtf8string(out))})
 			stw.TextBox("OUTPUTFILE").Show()
 		}
