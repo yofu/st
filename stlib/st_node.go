@@ -29,9 +29,12 @@ type Node struct {
 	Load  []float64
 	Force map[string][]float64
 
-	Weight []float64
-	Factor []float64
-	Phase  []float64
+	// ManualWeight is added to the distributed element weight for floor,
+	// column/beam and seismic loads, in that order.
+	ManualWeight [3]float64
+	Weight       []float64
+	Factor       []float64
+	Phase        []float64
 
 	Disp     map[string][]float64
 	Reaction map[string][]float64
@@ -111,6 +114,7 @@ func (node *Node) Snapshot(frame *Frame) *Node {
 	}
 	n.hide = node.hide
 	n.Lock = node.Lock
+	n.ManualWeight = node.ManualWeight
 	for i := 0; i < 3; i++ {
 		n.Coord[i] = node.Coord[i]
 		n.Weight[i] = node.Weight[i]
@@ -174,27 +178,7 @@ func (node *Node) IsNotEditable(show *Show) bool {
 }
 
 func (node *Node) InpString() string {
-	var rtn bytes.Buffer
-	rtn.WriteString(fmt.Sprintf("NODE %4d  CORD %7.3f %7.3f %7.3f  ICON ", node.Num, node.Coord[0], node.Coord[1], node.Coord[2]))
-	for i := 0; i < 6; i++ {
-		if node.Conf[i] {
-			rtn.WriteString("1 ")
-		} else {
-			rtn.WriteString("0 ")
-		}
-	}
-	rtn.WriteString(" VCON  ")
-	for i := 0; i < 6; i++ {
-		rtn.WriteString(fmt.Sprintf(" %12.8f", node.Load[i]))
-	}
-	if !(node.Phase[0] == 1.0 && node.Phase[1] == 1.0) {
-		rtn.WriteString(fmt.Sprintf(" PHASE %.1f %.1f", node.Phase[0], node.Phase[1]))
-	}
-	if node.Pile != nil {
-		rtn.WriteString(fmt.Sprintf("  PCON %d", node.Pile.Num))
-	}
-	rtn.WriteString("\n")
-	return rtn.String()
+	return node.CopyString(0, 0, 0)
 }
 
 func (node *Node) CopyString(x, y, z float64) string {
@@ -216,6 +200,9 @@ func (node *Node) CopyString(x, y, z float64) string {
 	}
 	if node.Pile != nil {
 		rtn.WriteString(fmt.Sprintf("  PCON %d", node.Pile.Num))
+	}
+	if w := node.ManualWeight; w != [3]float64{} {
+		fmt.Fprintf(&rtn, " MANUALWEIGHT %g %g %g", w[0], w[1], w[2])
 	}
 	rtn.WriteString("\n")
 	return rtn.String()

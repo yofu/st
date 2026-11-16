@@ -1216,6 +1216,18 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (*No
 			for j := 0; j < 6; j++ {
 				n.Load[j], err = strconv.ParseFloat(lis[i+1+j], 64)
 			}
+		case "MANUALWEIGHT":
+			if llis < i+4 {
+				return nil, 0, fmt.Errorf("ParseNode: MANUALWEIGHT requires three values (NODE %d)", n.Num)
+			}
+			for j := range n.ManualWeight {
+				value, err := strconv.ParseFloat(lis[i+1+j], 64)
+				if err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
+					return nil, 0, fmt.Errorf("ParseNode: invalid MANUALWEIGHT value %q (NODE %d)", lis[i+1+j], n.Num)
+				}
+				n.ManualWeight[j] = value
+			}
+			copy(n.Weight, n.ManualWeight[:])
 		case "PHASE":
 			if llis < i+3 {
 				return nil, 0, errors.New(fmt.Sprintf("ParseNode: PHASE IndexError NODE %d", n.Num))
@@ -4947,9 +4959,7 @@ func (frame *Frame) ExtractArclm(fn string) error {
 	}
 	defer func() {
 		for _, n := range frame.Nodes {
-			for i := 0; i < 3; i++ {
-				n.Weight[i] = 0.0
-			}
+			copy(n.Weight, n.ManualWeight[:])
 		}
 		for _, el := range frame.Elems {
 			if el.IsLineElem() && el.Etype <= TRUSS {
@@ -5202,6 +5212,8 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	nodes := make([]*Node, len(frame.Nodes))
 	nnum := 0
 	for _, n := range frame.Nodes {
+		// Start from input weights, discarding any previous distribution or report.
+		copy(n.Weight, n.ManualWeight[:])
 		nodes[nnum] = n
 		nnum++
 	}

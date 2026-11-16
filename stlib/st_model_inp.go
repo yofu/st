@@ -14,7 +14,7 @@ const modelRecordPrefix = "#STMODEL"
 
 type modelLock struct {
 	ID     int
-	Weight []float64 `json:",omitempty"`
+	Weight []float64 `json:",omitempty"` // Legacy cached weight, read for display only.
 	Locked bool      `json:",omitempty"`
 }
 
@@ -33,15 +33,8 @@ func (frame *Frame) modelRecords() string {
 	}
 	for _, id := range slices.Sorted(maps.Keys(frame.Nodes)) {
 		n := frame.Nodes[id]
-		var weight []float64
-		for _, v := range n.Weight {
-			if v != 0 {
-				weight = n.Weight
-				break
-			}
-		}
-		if n.Lock || weight != nil {
-			write("NODE", modelLock{ID: id, Weight: weight, Locked: n.Lock})
+		if n.Lock {
+			write("NODE", modelLock{ID: id, Locked: true})
 		}
 	}
 	for _, id := range slices.Sorted(maps.Keys(frame.Elems)) {
@@ -99,7 +92,7 @@ func (frame *Frame) readModelRecord(text string, nodemap map[int]int, coord []fl
 			if n := frame.Nodes[nodemap[r.ID]]; n != nil {
 				n.Lock = r.Locked
 				if len(r.Weight) == 3 {
-					n.Weight = r.Weight
+					copy(n.Weight, r.Weight)
 				}
 			}
 		} else if el := frame.Elems[r.ID]; el != nil && angle == 0 && slices.Equal(coord, []float64{0, 0, 0}) {
