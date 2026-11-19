@@ -15,7 +15,7 @@ require (
 	github.com/signintech/gopdf v0.10.4
 	github.com/yofu/abbrev v0.0.0-20150827131102-a4f84ab279d3
 	github.com/yofu/complete v0.0.0-20160907024332-deca8e98be10
-	github.com/yofu/dxf v0.0.0-20190710012328-5a6d1e83f16c
+	github.com/yofu/dxf v0.0.0-20261114161146-b17aa67668c3
 	github.com/yofu/go-iup v0.0.0-20210219022104-ea9e2731834f
 	github.com/yofu/ps v0.0.0-20160628011709-3a690efc3eee
 	github.com/yofu/unit v0.0.0-20161121054805-9ae92caf5dc5
