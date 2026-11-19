@@ -378,8 +378,8 @@ func (frame *Frame) Snapshot() *Frame {
 	for k, v := range frame.Eigenvalue {
 		f.Eigenvalue[k] = v
 	}
-	for _, k := range frame.Kijuns {
-		f.Kijuns[k.Name] = k.Snapshot()
+	for key, k := range frame.Kijuns {
+		f.Kijuns[key] = k.Snapshot()
 	}
 	for _, m := range frame.Measures {
 		f.Measures = append(f.Measures, m.Snapshot(f))
@@ -3307,13 +3307,21 @@ func (frame *Frame) WriteDxf3D(filename string, scale float64) error {
 
 // WriteDxfCrosssection writes a dxf file of crosssection
 func (frame *Frame) WriteDxfCrosssection(filename string, axis int, min, max float64, side int, scale float64, textheight float64, axissize float64) error {
+	d, err := frame.buildDxfCrosssection(axis, min, max, side, scale, textheight, axissize, true)
+	if err != nil {
+		return err
+	}
+	return d.SaveAs(filename)
+}
+
+func (frame *Frame) buildDxfCrosssection(axis int, min, max float64, side int, scale, textheight, axissize float64, legacy bool) (*drawing.Drawing, error) {
 	if side != 0 && side != 1 {
-		return fmt.Errorf("unknown side")
+		return nil, fmt.Errorf("unknown side")
 	}
 	var x, y, kx, ky int
 	switch axis {
 	default:
-		return fmt.Errorf("unknown axis")
+		return nil, fmt.Errorf("unknown axis")
 	case 0:
 		x = 1
 		y = 2
@@ -3338,27 +3346,29 @@ func (frame *Frame) WriteDxfCrosssection(filename string, axis int, min, max flo
 	d.AddLayer("KIJUN", dxfcolor.Red, MCDASH6, false)
 	d.AddLayer("AXIS", dxf.DefaultColor, dxf.DefaultLineType, false)
 	d.AddLayer("MOJI", dxf.DefaultColor, dxf.DefaultLineType, false)
-dxfkijun:
-	for _, k := range frame.Kijuns {
-		switch axis {
-		case 0, 1:
-			if k.Start[1-axis] != k.End[1-axis] {
-				continue dxfkijun
+	if legacy {
+	dxfkijun:
+		for _, k := range frame.Kijuns {
+			switch axis {
+			case 0, 1:
+				if k.Start[1-axis] != k.End[1-axis] {
+					continue dxfkijun
+				}
+			case 2:
+				if k.Start[2] != 0.0 || k.End[2] != 0.0 {
+					continue dxfkijun
+				}
 			}
-		case 2:
-			if k.Start[2] != 0.0 || k.End[2] != 0.0 {
-				continue dxfkijun
-			}
+			d.Layer("KIJUN", true)
+			l, _ := d.Line(k.Start[kx]*scale, k.Start[ky]*scale, 0.0, k.End[kx]*scale, k.End[ky]*scale, 0.0)
+			l.SetLtscale(2.0)
+			d.Layer("AXIS", true)
+			direction := k.Direction()
+			d.Circle(k.Start[kx]*scale-direction[kx]*axissize, k.Start[ky]*scale-direction[ky]*axissize, 0.0, axissize)
+			d.Layer("MOJI", true)
+			t, _ := d.Text(k.Name, k.Start[kx]*scale-direction[kx]*axissize, k.Start[ky]*scale-direction[ky]*axissize, 0.0, textheight)
+			t.Anchor(dxfentity.CENTER_CENTER)
 		}
-		d.Layer("KIJUN", true)
-		l, _ := d.Line(k.Start[kx]*scale, k.Start[ky]*scale, 0.0, k.End[kx]*scale, k.End[ky]*scale, 0.0)
-		l.SetLtscale(2.0)
-		d.Layer("AXIS", true)
-		direction := k.Direction()
-		d.Circle(k.Start[kx]*scale-direction[kx]*axissize, k.Start[ky]*scale-direction[ky]*axissize, 0.0, axissize)
-		d.Layer("MOJI", true)
-		t, _ := d.Text(k.Name, k.Start[kx]*scale-direction[kx]*axissize, k.Start[ky]*scale-direction[ky]*axissize, 0.0, textheight)
-		t.Anchor(dxfentity.CENTER_CENTER)
 	}
 	setlayer := func(et int) {
 		lname := "0"
@@ -3405,7 +3415,14 @@ dxfkijun:
 		if !el.IsLineElem() || el.Etype == WBRACE || el.Etype == SBRACE {
 			continue
 		}
-		if min <= el.Enod[0].Coord[axis] && el.Enod[1].Coord[axis] <= max {
+		inRange := min <= el.Enod[0].Coord[axis] && el.Enod[1].Coord[axis] <= max
+		if !legacy {
+			inRange = true
+			for _, n := range el.Enod {
+				inRange = inRange && min <= n.Coord[axis] && n.Coord[axis] <= max
+			}
+		}
+		if inRange {
 			if el.Chain != nil && el.Chain.IsStraight(1e-2) { // TODO: curved Chain
 				chains[el.Chain.Num()] = el.Chain
 				continue
@@ -3501,13 +3518,28 @@ dxfkijun:
 			el.Strong = s
 			el.Weak = w
 		}
-		err := frame.DrawDxfSection(d, el, []float64{el.Enod[0].Coord[x], el.Enod[0].Coord[y], 0.0}, scale)
+		position := []float64{el.Enod[0].Coord[x], el.Enod[0].Coord[y], 0.0}
+		sectionElem := el
+		if !legacy {
+			// Intersect the cut plane, then draw in the output XY plane. Using
+			// the original 3D beam direction as CIRCLE's extrusion would turn
+			// reinforcing bars into edge-on circles in an elevation drawing.
+			a, b := el.Enod[0].Coord, el.Enod[1].Coord
+			t := ([]float64{min, max}[side] - a[axis]) / (b[axis] - a[axis])
+			position[0], position[1] = a[x]+t*(b[x]-a[x]), a[y]+t*(b[y]-a[y])
+			copyElem := *el
+			n0, n1 := *el.Enod[0], *el.Enod[1]
+			n0.Coord, n1.Coord = []float64{0, 0, 0}, []float64{0, 0, 1}
+			copyElem.Enod = []*Node{&n0, &n1}
+			sectionElem = &copyElem
+		}
+		err := frame.DrawDxfSection(d, sectionElem, position, scale)
 		if err == nil {
 			settextlayer(el.Etype)
 			name := frame.Sects[el.Sect.Num].Allow.Name()
 			textcoord := []float64{
-				el.Enod[0].Coord[x]*scale + textheight,
-				el.Enod[0].Coord[y]*scale + textheight,
+				position[0]*scale + textheight,
+				position[1]*scale + textheight,
 			}
 			d.Text(name, textcoord[0], textcoord[1], 0.0, textheight)
 		}
@@ -3516,7 +3548,7 @@ dxfkijun:
 			el.Weak[i] = ow[i]
 		}
 	}
-	return d.SaveAs(filename)
+	return d, nil
 }
 
 // WriteDxfPlan writes a dxf file of plan

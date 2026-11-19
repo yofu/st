@@ -1248,7 +1248,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		}
 	case "plan":
 		if usage {
-			return Usage(":plan filename {-floor=1} {-scale=1000} {-height=250} {-axissize=300}")
+			return Usage(":plan filename {-floor=1} {-scale=1000} {-height=250} {-axissize=300} {-dim}")
 		}
 		floor := 1
 		scale := 1000.0
@@ -1285,13 +1285,18 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if fn == "" {
 			return fmt.Errorf("no file name")
 		}
-		err := frame.WriteDxfPlan(fn, floor, scale, textheight, axissize)
+		var err error
+		if _, dimensions := argdict["DIM"]; dimensions {
+			err = frame.WriteDxfPlanDimensions(fn, floor, scale, textheight, axissize)
+		} else {
+			err = frame.WriteDxfPlan(fn, floor, scale, textheight, axissize)
+		}
 		if err != nil {
 			return err
 		}
 	case "jiku":
 		if usage {
-			return Usage(":jiku filename {-name=} {-side=1} {-scale=1000} {-height=250} {-axissize=300}")
+			return Usage(":jiku filename {-name=} {-side=1} {-scale=1000} {-height=250} {-axissize=300} {-dim}")
 		}
 		name := ""
 		axis := 0
@@ -1307,17 +1312,30 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if name == "" {
 			return fmt.Errorf("kijun name is required")
 		}
-		if k, ok := frame.Kijuns[strings.ToLower(name)]; ok {
-			d := k.Direction()
-			if d[0] < d[1] {
-				axis = 0
-			} else {
-				axis = 1
+		if _, dimensions := argdict["DIM"]; dimensions {
+			r, err := frame.dimensionFrame()
+			if err != nil {
+				return err
 			}
-			min = k.Start[axis] - 0.1
-			max = k.Start[axis] + 0.1
+			var coordinate float64
+			axis, coordinate, err = r.resolveDxfJiku(name)
+			if err != nil {
+				return err
+			}
+			min, max = coordinate-.1, coordinate+.1
 		} else {
-			return fmt.Errorf("kijun %s doesn't exist", name)
+			if k, ok := frame.Kijuns[strings.ToLower(name)]; ok {
+				d := k.Direction()
+				if d[0] < d[1] {
+					axis = 0
+				} else {
+					axis = 1
+				}
+				min = k.Start[axis] - 0.1
+				max = k.Start[axis] + 0.1
+			} else {
+				return fmt.Errorf("kijun %s doesn't exist", name)
+			}
 		}
 		if s, ok := argdict["SIDE"]; ok {
 			val, err := strconv.ParseInt(s, 10, 64)
@@ -1350,13 +1368,18 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if fn == "" {
 			return fmt.Errorf("no file name")
 		}
-		err := frame.WriteDxfCrosssection(fn, axis, min, max, side, scale, textheight, axissize)
+		var err error
+		if _, dimensions := argdict["DIM"]; dimensions {
+			err = frame.WriteDxfCrosssectionDimensions(fn, axis, min, max, side, scale, textheight, axissize)
+		} else {
+			err = frame.WriteDxfCrosssection(fn, axis, min, max, side, scale, textheight, axissize)
+		}
 		if err != nil {
 			return err
 		}
 	case "crosssection":
 		if usage {
-			return Usage(":crosssection filename {-axis=2} {-min=-1.0} {-max=1.0} {-side=1} {-scale=1000} {-height=250} {-axissize=300}")
+			return Usage(":crosssection filename {-axis=2} {-min=-1.0} {-max=1.0} {-side=1} {-scale=1000} {-height=250} {-axissize=300} {-dim}")
 		}
 		axis := 2
 		min := -1.0
@@ -1417,7 +1440,12 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if fn == "" {
 			return fmt.Errorf("no file name")
 		}
-		err := frame.WriteDxfCrosssection(fn, axis, min, max, side, scale, textheight, axissize)
+		var err error
+		if _, dimensions := argdict["DIM"]; dimensions {
+			err = frame.WriteDxfCrosssectionDimensions(fn, axis, min, max, side, scale, textheight, axissize)
+		} else {
+			err = frame.WriteDxfCrosssection(fn, axis, min, max, side, scale, textheight, axissize)
+		}
 		if err != nil {
 			return err
 		}
