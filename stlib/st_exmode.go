@@ -5516,7 +5516,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		}
 	case "analysis":
 		if usage {
-			return Usage(":analysis {-period=name} {-all} {-solver=name} {-eps=value} {-nlgeom} {-nlmat} {-step=nlap;delta;start;max} {-post=FLOOR|IMCOMP} {-noinit} {-wait} filename")
+			return Usage(":analysis {-period=name} {-all} {-solver=name} {-eps=value} {-nlgeom} {-nlmat} {-step=nlap;delta;start;max} {-arc -ds=length -dsmin=length -dsmax=length -arcscale=length -arcnode=id} {-post=FLOOR|IMCOMP} {-noinit} {-wait} filename")
 		}
 		cond := arclm.NewAnalysisCondition()
 		var otp string
@@ -5586,6 +5586,32 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			cond.SetOutput([]string{Ce(otp, ".otl"), Ce(otp, ".ohx"), Ce(otp, ".ohy")})
 			per = "L"
 			cond.SetExtraFrames(frame.Arclms["X"], frame.Arclms["Y"])
+		}
+		if _, arc := argdict["ARC"]; arc {
+			if _, all := argdict["ALL"]; all {
+				return fmt.Errorf(":analysis: arc length requires one load case")
+			}
+			opts := arclm.ArcLengthOptions{}
+			for _, item := range []struct {
+				key string
+				dst *float64
+			}{{"DS", &opts.Step}, {"DSMIN", &opts.MinStep}, {"DSMAX", &opts.MaxStep}, {"ARCSCALE", &opts.LoadScale}} {
+				if v, ok := argdict[item.key]; ok {
+					x, err := strconv.ParseFloat(v, 64)
+					if err != nil || math.IsNaN(x) || math.IsInf(x, 0) || x <= 0 {
+						return fmt.Errorf(":analysis: invalid -%s=%q", strings.ToLower(item.key), v)
+					}
+					*item.dst = x
+				}
+			}
+			if v, ok := argdict["ARCNODE"]; ok {
+				n, err := strconv.Atoi(v)
+				if err != nil || n <= 0 {
+					return fmt.Errorf(":analysis: invalid arc monitor node")
+				}
+				opts.MonitorNode = n
+			}
+			cond.SetArcLength(opts)
 		}
 		af := frame.Arclms[per]
 		if af == nil {

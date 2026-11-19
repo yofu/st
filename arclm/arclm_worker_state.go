@@ -53,6 +53,7 @@ type geometryWire struct {
 	BaseNodal, PatternNodal           []float64
 	BaseFixed, PatternFixed, RawFixed [][]float64
 	Definition                        []float64
+	ArcDirection                      []float64
 }
 
 // EncodeWorkerFrame records a completed solver state without channels or callbacks.
@@ -119,7 +120,7 @@ func EncodeWorkerFrame(out io.Writer, frame *Frame) error {
 		data.Loading = &loadingWire{s.steps, s.factor, s.nodalPattern, s.baseNodal, s.fixedPattern}
 	}
 	if s := frame.geometry; s != nil {
-		data.Geometry = &geometryWire{s.rotations, s.axes, s.factor, s.material, s.steps, s.baseNodal, s.patternNodal, s.baseFixed, s.patternFixed, s.rawFixed, s.definition}
+		data.Geometry = &geometryWire{s.rotations, s.axes, s.factor, s.material, s.steps, s.baseNodal, s.patternNodal, s.baseFixed, s.patternFixed, s.rawFixed, s.definition, s.arcDirection}
 	}
 	return gob.NewEncoder(out).Encode(data)
 }
@@ -142,7 +143,7 @@ func DecodeWorkerFrame(in io.Reader) (*Frame, error) {
 		f.loading = &plasticLoadState{steps: s.Steps, factor: s.Factor, nodalPattern: s.Nodal, baseNodal: s.Base, fixedPattern: s.Fixed}
 	}
 	if s := data.Geometry; s != nil {
-		f.geometry = &geometryState{s.Rotations, s.Axes, s.Factor, s.Material, s.Steps, s.BaseNodal, s.PatternNodal, s.BaseFixed, s.PatternFixed, s.RawFixed, s.Definition}
+		f.geometry = &geometryState{s.Rotations, s.Axes, s.Factor, s.Material, s.Steps, s.BaseNodal, s.PatternNodal, s.BaseFixed, s.PatternFixed, s.RawFixed, s.Definition, s.ArcDirection}
 	}
 	section := func(index int) *Sect {
 		if index < 0 {

@@ -720,6 +720,7 @@ type AnalysisCondition struct {
 	startSet            bool
 	maxSet              bool
 	geometryIncremental bool
+	arcLength           *ArcLengthOptions
 }
 
 func NewAnalysisCondition() *AnalysisCondition {
@@ -801,6 +802,10 @@ func (cond *AnalysisCondition) String() string {
 	rtn.WriteString(fmt.Sprintf("  DELTA     : %.3f\n", cond.delta))
 	rtn.WriteString(fmt.Sprintf("  START     : %.3f\n", cond.start))
 	rtn.WriteString(fmt.Sprintf("  MAX       : %.3f\n", cond.max))
+	if cond.arcLength != nil {
+		rtn.WriteString(fmt.Sprintf("ARC LENGTH  : normal-plane DS=%g MIN=%g MAX=%g LOAD_SCALE=%g MONITOR=%d\n", cond.arcLength.Step, cond.arcLength.MinStep, cond.arcLength.MaxStep, cond.arcLength.LoadScale, cond.arcLength.MonitorNode))
+		rtn.WriteString("  NLAP is accepted arc steps; DELTA and MAX are not load-control limits.\n")
+	}
 	rtn.WriteString(fmt.Sprintf("POST PROCESS: %t", cond.hasStaticPost()))
 	return rtn.String()
 }
@@ -820,6 +825,9 @@ func (frame *Frame) StaticAnalysis(cancel context.CancelFunc, cond *AnalysisCond
 		return fmt.Errorf("StaticAnalysis: extra load cases require linear analysis")
 	}
 	if cond.nlgeometry {
+		if cond.arcLength != nil {
+			return frame.staticArcLength(cancel, cond)
+		}
 		return frame.staticGeometry(cancel, cond)
 	}
 	if cond.nlmaterial {

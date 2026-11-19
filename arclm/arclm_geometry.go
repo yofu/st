@@ -25,6 +25,7 @@ type geometryState struct {
 	baseNodal, patternNodal           []float64
 	baseFixed, patternFixed, rawFixed [][]float64
 	definition                        []float64
+	arcDirection                      []float64
 }
 
 func copyGeometryState(s *geometryState) *geometryState {
@@ -40,6 +41,7 @@ func copyGeometryState(s *geometryState) *geometryState {
 	r.patternFixed = copyPlasticMatrix(s.patternFixed)
 	r.rawFixed = copyPlasticMatrix(s.rawFixed)
 	r.definition = append([]float64(nil), s.definition...)
+	r.arcDirection = append([]float64(nil), s.arcDirection...)
 	return &r
 }
 
@@ -396,6 +398,9 @@ func (a *geometryAnalysis) increment(du []float64, alpha float64) {
 	}
 }
 func (a *geometryAnalysis) commit(t *geometryTrial, factor float64) {
+	if a.c.arcLength == nil {
+		a.state.arcDirection = nil
+	}
 	a.state.factor = factor
 	for m, e := range a.elements {
 		r := t.responses[m]
@@ -591,6 +596,7 @@ func (a *geometryAnalysis) setup() (float64, error) {
 			}
 			if match {
 				s.factor = old.factor
+				s.arcDirection = append([]float64(nil), old.arcDirection...)
 				s.steps = old.steps
 				s.baseNodal = append([]float64(nil), old.baseNodal...)
 				s.baseFixed = copyPlasticMatrix(old.baseFixed)
