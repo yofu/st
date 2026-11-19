@@ -19,12 +19,13 @@ type geometryElement struct {
 	fixed      [12]float64 // equivalent fixed-end forces in the initial global frame
 }
 type geometryResponse struct {
-	force        [12]float64
-	tangent      [12][12]float64
-	axes         geometryMatrix
-	energy       float64
-	material     *PlasticResponse
-	basicPlastic [12]float64
+	force          [12]float64
+	tangent        [12][12]float64
+	axes           geometryMatrix
+	energy         float64
+	material       *PlasticResponse
+	basicPlastic   [12]float64
+	loadDerivative [12]float64 // d(internal force)/d(load factor), at fixed displacement
 }
 
 func newGeometryElement(e *Elem, index int) (geometryElement, error) {
@@ -181,7 +182,7 @@ func (e *geometryElement) responseMaterial(nodes []*Node, rotations []geometryMa
 		}
 	}
 	for i := range r.force {
-		if !finitePlastic(r.force[i]) {
+		if !finitePlastic(r.force[i]) || !finitePlastic(r.loadDerivative[i]) {
 			return nil, fmt.Errorf("non-finite element response")
 		}
 		for _, v := range r.tangent[i] {

@@ -45,6 +45,50 @@ func continuationCommandFrame(t *testing.T) *Frame {
 	return f
 }
 
+func TestArclm101ArcCommandContinuationAndSummary(t *testing.T) {
+	f := continuationCommandFrame(t)
+	runContinuationCommand(t, f, map[string]string{"INIT": "", "ARC": "", "NLAP": "4", "DS": ".005", "ARCSCALE": ".01", "ARCNODE": "2"})
+	if f.Show.Period != "X@4" {
+		t.Fatal(f.Show.Period)
+	}
+	firstPath := filepath.Join(filepath.Dir(f.Path), "model@1.otp")
+	before, err := os.ReadFile(firstPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	curvePath := filepath.Join(filepath.Dir(f.Path), "model.otp.arc.txt")
+	curve, err := os.ReadFile(curvePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runContinuationCommand(t, f, map[string]string{"ARC": "", "NLAP": "3", "DS": ".005", "ARCSCALE": ".01", "ARCNODE": "2"})
+	if f.Show.Period != "X@7" || len(summaryStepRows(t, f)) != 7 {
+		t.Fatal("lost arc step numbering or summary")
+	}
+	after, err := os.ReadFile(firstPath)
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatal("arc restart overwrote the first step", err)
+	}
+	after, err = os.ReadFile(curvePath)
+	if err != nil || !bytes.HasPrefix(after, curve) {
+		t.Fatal("arc restart overwrote curve history", err)
+	}
+	if _, err = os.Stat(filepath.Join(filepath.Dir(f.Path), "model@7.otp")); err != nil {
+		t.Fatal(err)
+	}
+	state := f.Arclms["X"].SaveState()
+	for _, bad := range []map[string]string{
+		{"ARC": "", "DS": "-1"}, {"ARC": "", "DS": "NaN"}, {"ARC": "", "ARCNODE": "0"},
+	} {
+		if _, _, _, _, err := prepareArclm101(f, bad, ""); err == nil {
+			t.Fatal("accepted invalid arc options", bad)
+		}
+		if !reflect.DeepEqual(state, f.Arclms["X"].SaveState()) {
+			t.Fatal("invalid options changed analysis state")
+		}
+	}
+}
+
 // Mirrors the command's per-step handshake: results and summary must be saved
 // before acknowledging the solver, so it cannot mutate the next step's state.
 func runContinuationCommand(t *testing.T, f *Frame, args map[string]string) {

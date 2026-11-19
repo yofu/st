@@ -11,7 +11,8 @@ import (
 	"sync"
 )
 
-// ArcLengthOptions selects elastic finite-rotation pseudo-arclength continuation.
+// ArcLengthOptions selects finite-rotation pseudo-arclength continuation,
+// with the associated plastic return when material nonlinearity is enabled.
 // The metric is sum(dTranslation^2)+LoadScale^2*dLambda^2. Rotations are
 // solved in the equilibrium equations but excluded from this length metric.
 // Step lengths and LoadScale use the model's length unit. Zero values select
@@ -80,6 +81,56 @@ func (a *geometryAnalysis) arcLoadPattern() []float64 {
 	return p
 }
 
+// arcCorrection solves the bordered equations with a load column consistent
+// with the plastic return. At a weak yield boundary, select loading/unloading
+// using BOTH the displacement and load-factor directions of that solution.
+// All active-set evaluations refer to the last committed material history.
+func (a *geometryAnalysis) arcCorrection(factor float64, trial *geometryTrial, p, normal, weights, force []float64, constraint float64) ([]float64, error) {
+	current := trial
+	for pass := 0; pass < a.o.MaxIterations; pass++ {
+		load := append([]float64(nil), p...)
+		full := make([]float64, 6*len(a.f.Nodes))
+		for m, e := range a.elements {
+			for i, v := range current.responses[m].loadDerivative {
+				full[6*e.nodes[i/6]+i%6] += v
+			}
+		}
+		for i, j := range a.free {
+			load[i] -= full[j]
+		}
+		d, err := arcSystem(a.ctx, current, load, normal, weights, force, constraint)
+		if err != nil {
+			return nil, err
+		}
+		weak := false
+		for _, r := range current.responses {
+			if r.material != nil && r.material.directional {
+				weak = true
+				break
+			}
+		}
+		if !weak {
+			return d, nil
+		}
+		next, err := a.evaluateLoadDirectional(factor, d[:len(p)], d[len(p)])
+		if err != nil {
+			return nil, err
+		}
+		changed := false
+		for i, r := range current.responses {
+			if r.material != nil && r.material.tangentActive != next.responses[i].material.tangentActive {
+				changed = true
+				break
+			}
+		}
+		if !changed {
+			return d, nil
+		}
+		current = next
+	}
+	return nil, fmt.Errorf("arc length: loading/unloading tangent selection did not stabilize")
+}
+
 func (a *geometryAnalysis) arcCoordinates(factor float64) []float64 {
 	q := make([]float64, len(a.free)+1)
 	for i, j := range a.free {
@@ -107,7 +158,7 @@ func (a *geometryAnalysis) arcStep(from, ds float64, previous, weights, p []floa
 	}
 	n := len(p)
 	zero := make([]float64, n)
-	tangent, err := arcSystem(a.ctx, t, p, previous, weights, zero, 1)
+	tangent, err := a.arcCorrection(from, t, p, previous, weights, zero, 1)
 	if err != nil {
 		return point, nil, err
 	}
@@ -157,7 +208,7 @@ func (a *geometryAnalysis) arcStep(from, ds float64, previous, weights, p []floa
 		for i, j := range a.free {
 			res[i] = t.residual[j]
 		}
-		d, solveErr := arcSystem(a.ctx, t, p, tangent, weights, res, -g)
+		d, solveErr := a.arcCorrection(factor, t, p, tangent, weights, res, -g)
 		if solveErr != nil {
 			return point, nil, solveErr
 		}
@@ -171,9 +222,6 @@ func (a *geometryAnalysis) arcStep(from, ds float64, previous, weights, p []floa
 }
 
 func (f *Frame) staticArcLength(cancel context.CancelFunc, c *AnalysisCondition) error {
-	if c.nlmaterial {
-		return fmt.Errorf("arc length: material nonlinearity is not yet supported")
-	}
 	o := *c.arcLength
 	for _, v := range []float64{o.Step, o.MinStep, o.MaxStep, o.LoadScale} {
 		if !finitePlastic(v) || v < 0 {
@@ -236,9 +284,18 @@ func (f *Frame) staticArcLength(cancel context.CancelFunc, c *AnalysisCondition)
 			return err
 		}
 		from = c.start
-	} else if err = a.step(from, from); err != nil {
-		f.RestoreState(entry)
-		return err
+	} else {
+		// A saved plastic equilibrium needs validation, not a second commit of
+		// the same return map. Recommitting can change boundary tangents/flags
+		// and add roundoff-sized plastic increments before a failed new step.
+		trial, e := a.evaluate(from)
+		if e == nil && (c.init || f.geometry == nil || f.geometry.material != c.nlmaterial || trial.norm > trial.tol) {
+			e = a.step(from, from)
+		}
+		if e != nil {
+			f.RestoreState(entry)
+			return e
+		}
 	}
 	weights := make([]float64, len(a.free)+1)
 	for i, j := range a.free {
@@ -323,8 +380,13 @@ func (f *Frame) staticArcLength(cancel context.CancelFunc, c *AnalysisCondition)
 		if _, err = fmt.Fprintf(curve, "%d\t%.15g\t%.15g\t%.15g\t%.15g\t%.9g\t%d\t%.9g\t%.9g\t%.9g\t%d\t%d\t%d\n", step, from, disp[0], disp[1], disp[2], ds, point.Iterations, point.Residual, point.Tolerance, point.Constraint, inertia.positive, inertia.zero, inertia.negative); err != nil {
 			return err
 		}
-		name := strings.TrimSuffix(output, filepath.Ext(output)) + fmt.Sprintf("_ARC_%d", step) + filepath.Ext(output)
-		if err = writeStaticResult(f, name); err != nil {
+		if c.geometryIncremental {
+			err = writePlasticStep(f, output, step)
+		} else {
+			name := strings.TrimSuffix(output, filepath.Ext(output)) + fmt.Sprintf("_ARC_%d", step) + filepath.Ext(output)
+			err = writeStaticResult(f, name)
+		}
+		if err != nil {
 			return err
 		}
 		fmt.Fprintf(a.w, "ARC CONVERGED: STEP=%d LOAD=%.12g DS=%.6g ITER=%d RESIDUAL=%.6g ARC=%.3g\n", step, from, ds, point.Iterations, point.Residual, point.Constraint)

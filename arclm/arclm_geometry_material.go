@@ -7,9 +7,11 @@ import "fmt"
 // surfaces, however, use actual current local end forces (including CMQ),
 // not the generalized forces conjugate to chord extension/end rotations.
 type geometryMaterialTrial struct {
-	history   *plasticMaterialState
-	fixed     [12]float64  // total, current load level, initial GLOBAL dead forces
-	direction *[12]float64 // spatial correction, for one-sided yield tangents
+	history       *plasticMaterialState
+	fixed         [12]float64  // total, current load level, initial GLOBAL dead forces
+	direction     *[12]float64 // spatial correction, for one-sided yield tangents
+	fixedRate     [12]float64  // reference GLOBAL CMQ pattern
+	loadDirection float64      // correction to the unknown load factor
 }
 
 func geometrySpatialB(b geometryJet, i, j int) float64 {
@@ -112,9 +114,16 @@ func (e *geometryElement) materialResponse(b [12]geometryJet, axes geometryJMatr
 		return
 	}
 	loadDerivative := rhs(response.PlasticIncrement)
+	var fixedRate [12]float64
+	for i := 0; i < 12; i++ {
+		for j := 0; j < 3; j++ {
+			fixedRate[i] += axes[i%3][j].v * m.fixedRate[3*(i/3)+j]
+		}
+	}
 	if m.direction != nil && response.directional {
 		d := make([]float64, 12)
 		for i := 0; i < 12; i++ {
+			d[i] = fixedRate[i] * m.loadDirection
 			for j := 0; j < 12; j++ {
 				d[i] += loadDerivative[i][j] * m.direction[j]
 			}
@@ -154,6 +163,27 @@ func (e *geometryElement) materialResponse(b [12]geometryJet, axes geometryJMatr
 		r.energy += .5 * (b[a].v - history[a] - r.basicPlastic[a]) * q[a]
 	}
 	r.material = response
+	// At fixed configuration only CMQ changes the elastic trial forces.
+	// Differentiate its plastic return and transform the basic force rate back
+	// to spatial forces. The residual load column is P - this derivative.
+	var flowRate, basicRate [12]float64
+	for i := 0; i < 12; i++ {
+		for j := 0; j < 12; j++ {
+			flowRate[i] += response.plasticDerivative[i][j] * fixedRate[j]
+		}
+	}
+	for a := 0; a < 12; a++ {
+		for j := 0; j < 12; j++ {
+			for i := 0; i < 12; i++ {
+				basicRate[a] -= e.k[a][j] * c[i][j] * flowRate[i]
+			}
+		}
+	}
+	for i := 0; i < 12; i++ {
+		for a := 0; a < 12; a++ {
+			r.loadDerivative[i] += b[a].d[i] * basicRate[a]
+		}
+	}
 	return
 }
 

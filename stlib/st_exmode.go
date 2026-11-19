@@ -5591,25 +5591,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			if _, all := argdict["ALL"]; all {
 				return fmt.Errorf(":analysis: arc length requires one load case")
 			}
-			opts := arclm.ArcLengthOptions{}
-			for _, item := range []struct {
-				key string
-				dst *float64
-			}{{"DS", &opts.Step}, {"DSMIN", &opts.MinStep}, {"DSMAX", &opts.MaxStep}, {"ARCSCALE", &opts.LoadScale}} {
-				if v, ok := argdict[item.key]; ok {
-					x, err := strconv.ParseFloat(v, 64)
-					if err != nil || math.IsNaN(x) || math.IsInf(x, 0) || x <= 0 {
-						return fmt.Errorf(":analysis: invalid -%s=%q", strings.ToLower(item.key), v)
-					}
-					*item.dst = x
-				}
-			}
-			if v, ok := argdict["ARCNODE"]; ok {
-				n, err := strconv.Atoi(v)
-				if err != nil || n <= 0 {
-					return fmt.Errorf(":analysis: invalid arc monitor node")
-				}
-				opts.MonitorNode = n
+			opts, _, err := parseArcLengthOptions(argdict)
+			if err != nil {
+				return fmt.Errorf(":analysis: %w", err)
 			}
 			cond.SetArcLength(opts)
 		}
@@ -5785,7 +5769,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		return Usage("DEPRECATED: use :analysis -nlgeom -pp=floor {-z=val} {-period=name} {-solver=name} {-eps=value} {-step=nlap;delta;start;max} {-noinit} {-wait} filename")
 	case "arclm101":
 		if usage {
-			return Usage(":arclm101 {-period=name} {-nlgeom} {-nlap=additional_steps} {-delta=increment} {-step=nlap;delta[;start;max]} {-init} {-eps=val} {-wait} [filename]")
+			return Usage(":arclm101 {-period=name} {-nlgeom} {-arc -ds=length -dsmin=length -dsmax=length -arcscale=length -arcnode=id} {-nlap=additional_steps} {-delta=increment} {-step=nlap;delta[;start;max]} {-init} {-eps=val} {-wait} [filename]")
 		}
 		output := fn
 		if o, ok := argdict["OTP"]; ok {

@@ -846,6 +846,9 @@ func (frame *Frame) Arclm101(cancel context.CancelFunc, cond *AnalysisCondition)
 		c := *cond
 		c.nlmaterial = true
 		c.geometryIncremental = true
+		if c.arcLength != nil {
+			return frame.staticArcLength(cancel, &c)
+		}
 		return frame.staticGeometry(cancel, &c)
 	}
 	return frame.arclm101Newton(cancel, cond)

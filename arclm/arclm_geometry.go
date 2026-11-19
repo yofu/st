@@ -224,6 +224,12 @@ func (a *geometryAnalysis) evaluate(factor float64) (*geometryTrial, error) {
 }
 
 func (a *geometryAnalysis) evaluateDirectional(factor float64, direction []float64) (*geometryTrial, error) {
+	return a.evaluateLoadDirectional(factor, direction, 0)
+}
+
+// loadDirection participates in the one-sided yield tangent when CMQ varies
+// with the unknown load factor, as required by the bordered arc-length solve.
+func (a *geometryAnalysis) evaluateLoadDirectional(factor float64, direction []float64, loadDirection float64) (*geometryTrial, error) {
 	n := 6 * len(a.f.Nodes)
 	t := &geometryTrial{internal: make([]float64, n), external: make([]float64, n), residual: make([]float64, n), k: make([]map[int]float64, len(a.free))}
 	var globalDirection []float64
@@ -254,7 +260,9 @@ func (a *geometryAnalysis) evaluateDirectional(factor float64, direction []float
 			material = &geometryMaterialTrial{history: a.f.Elems[e.index].material}
 			for i := 0; i < 12; i++ {
 				material.fixed[i] = a.state.baseFixed[m][i] + factor*a.state.patternFixed[m][i]
+				material.fixedRate[i] = a.state.patternFixed[m][i]
 			}
+			material.loadDirection = loadDirection
 			if globalDirection != nil {
 				d := [12]float64{}
 				for i := 0; i < 12; i++ {
@@ -590,6 +598,7 @@ func (a *geometryAnalysis) setup() (float64, error) {
 				return 0, fmt.Errorf("geometric continuation model changed; restore the original model or initialize")
 			}
 			s.rotations = append([]geometryMatrix(nil), old.rotations...)
+			s.axes = append([]geometryMatrix(nil), old.axes...)
 			match := samePlasticLoadValues(nodal, old.patternNodal) && len(raw) == len(old.rawFixed)
 			for m := range raw {
 				match = match && samePlasticLoadValues(raw[m], old.rawFixed[m])

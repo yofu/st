@@ -23,6 +23,12 @@ func prepareArclm101(frame *Frame, args map[string]string, output string) (strin
 		cond.SetNlgeometry(true)
 		cond.SetNlmaterial(true)
 	}
+	if opts, arc, err := parseArcLengthOptions(args); err != nil {
+		return "", nil, nil, 0, fmt.Errorf(":arclm101: %w", err)
+	} else if arc {
+		cond.SetArcLength(opts)
+		cond.SetNlmaterial(true)
+	}
 	display := strings.Split(strings.ToUpper(frame.Show.Period), "@")
 	per := display[0]
 	if p := args["PERIOD"]; p != "" {
@@ -102,4 +108,34 @@ func prepareArclm101(frame *Frame, args map[string]string, output string) (strin
 	}
 	cond.SetOutput([]string{output})
 	return per, af, cond, offset, nil
+}
+
+// Shared by :analysis and :arclm101. Validate before restoring any GUI state.
+func parseArcLengthOptions(args map[string]string) (arclm.ArcLengthOptions, bool, error) {
+	var opts arclm.ArcLengthOptions
+	if _, arc := args["ARC"]; !arc {
+		return opts, false, nil
+	}
+	for _, item := range []struct {
+		key string
+		dst *float64
+	}{
+		{"DS", &opts.Step}, {"DSMIN", &opts.MinStep}, {"DSMAX", &opts.MaxStep}, {"ARCSCALE", &opts.LoadScale},
+	} {
+		if v, ok := args[item.key]; ok {
+			x, err := strconv.ParseFloat(v, 64)
+			if err != nil || math.IsNaN(x) || math.IsInf(x, 0) || x <= 0 {
+				return opts, true, fmt.Errorf("invalid -%s=%q", strings.ToLower(item.key), v)
+			}
+			*item.dst = x
+		}
+	}
+	if v, ok := args["ARCNODE"]; ok {
+		n, err := strconv.Atoi(v)
+		if err != nil || n <= 0 {
+			return opts, true, fmt.Errorf("invalid arc monitor node")
+		}
+		opts.MonitorNode = n
+	}
+	return opts, true, nil
 }
