@@ -184,6 +184,30 @@ WindowsのSTで `:mcpconnect` を実行し、履歴に表示された接続IDを
 
 ## 図化ファイルを作る
 
+DXFの図枠付き図面と断面リストは、以下の専用ツールでも作成できます。
+
+- `query_dxf_sections`: 現在の断面形状・材料・配筋・使用階・不足情報を照会します。寸法と座標はmmです。
+- `preview_dxf_drawings`: 図面を作成して、ページ構成・縮尺・配置・警告と`draft_id`を返します。この段階では出力ファイルを保存しません。
+- `save_dxf_drawings`: 確認したドラフトをルート内の新規`.dxf`に保存します。既存ファイルは上書きしません。
+
+未保存のGUIモデルを使う場合は、先に`gui_get_model`を実行します。モデルやLSTを変更した後は再プレビューが必要です。編集中の提案を図面化する場合は、照会・プレビューに現在の`proposal_id`を指定できます。
+
+```json
+{"options":{"title":"構造図","paper":"A3","views":[{"kind":"plan","floor":3},{"kind":"elevation","grid":"Y2"},{"kind":"elevation","grid":"X1"}],"sections":true,"section_columns":3,"section_rows":2}}
+```
+
+上記を`preview_dxf_drawings`に渡し、返されたIDを指定して保存します。
+
+```json
+{"draft_id":1,"path":"nakano_sheets.dxf"}
+```
+
+用紙は`A3`・`A4`（横）、`A3P`・`A4P`（縦）です。`scale`省略/0は図ごとの自動縮尺、正値はモデル図の固定縮尺です。`columns`/`rows`で伏図・軸組図、`section_columns`/`section_rows`で断面カードの配置を指定します。`section_ids`で断面を絞れます。`font`はCADにあるフォント名（既定`msgothic.ttc`）を指定します。
+
+通り・階レベルは現在のモデル内の定義を優先し、なければ同名`.kjn`をルート内で読みます。明示する場合は`kjn_path`を指定します。サーバールート外へはアクセスしません。RC/S柱・梁・鋼製ブレースの断面図に対応し、壁床など未対応の断面図や定義不足は警告・プレースホルダーになります。保存後の再読み込み、ページ・ビューポート・寸法参照の検証を回帰テストに含めています。実モデルの出力は、別途ezdxfによる監査でも確認しています。
+
+GUIの`:drawings sheets.dxf -plans=3 -grids=Y2,X1 -sections`、`:dxfsections sections.dxf`も同じ作図処理を使用します。
+
 `list_fig2` でルート内の既存 .fig2 を探し、`read_fig2` で日本語のタイトルや作図指示を確認できます。モデルを開く前でも呼び出せます。パスは MCP の `-root` からの相対パスです。
 
 `preview_fig2` で既存の図化ファイルをひな形にし、特定の文字列を置換する例です。

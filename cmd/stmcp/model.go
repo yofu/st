@@ -65,6 +65,8 @@ type modelSession struct {
 	nextJob           uint64
 	fig2              *fig2Draft
 	nextFig2          uint64
+	drawingDraft      *dxfDrawingDraft
+	nextDrawing       uint64
 	guiID             string
 	guiNodes          []int
 	guiElems          []int
@@ -410,6 +412,9 @@ func patchINP(data []byte, edits map[recordKey]map[string][]string) ([]byte, err
 }
 
 func (s *modelSession) call(name string, raw json.RawMessage) (any, error) {
+	if name == "query_dxf_sections" || name == "preview_dxf_drawings" || name == "save_dxf_drawings" {
+		return s.dxfDrawingTool(name, raw)
+	}
 	switch name {
 	case "list_fig2", "read_fig2", "save_fig2_as", "save_model_as", "save_lst_as", "overwrite_model", "start_static_analysis", "start_time_history", "gui_show_result":
 		if err := s.requireRoot(); err != nil {
