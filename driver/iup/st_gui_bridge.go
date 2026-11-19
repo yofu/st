@@ -34,6 +34,9 @@ func (stw *Window) guiConnectionCommand(arg string) error {
 	if strings.TrimSpace(arg) != "" {
 		return fmt.Errorf("use :mcpconnect or :mcpconnect off")
 	}
+	if err := stw.ensureMCPHTTP(); err != nil {
+		return err
+	}
 	stw.stopGUIConnection()
 	var key [16]byte
 	if _, err := rand.Read(key[:]); err != nil {

@@ -259,4 +259,17 @@ stmcp.exe -root "G:/マイドライブ/st" -http 127.0.0.1:17831 -token-file "C:
 }
 ```
 
-任意の実行ファイル名では `-http-config` に設定ファイルを指定できます。サーバーはループバックIPに限定して待ち受け、Bearer認証とHost・Origin検証を行います。HTTPセッションごとに編集中モデルを保持し、GUIとの接続は既存の `:mcpconnect` のIDを使います。Windows起動後はこのサーバーをデスクトップから起動してから接続してください。
+任意の実行ファイル名では `-http-config` に設定ファイルを指定できます。サーバーはループバックIPに限定して待ち受け、Bearer認証とHost・Origin検証を行います。HTTPセッションごとに編集中モデルを保持し、GUIとの接続は既存の `:mcpconnect` のIDを使います。下記の自動起動設定により、STの `:mcpconnect` から起動できます。
+
+
+## :mcpconnect 時のHTTPサーバー自動起動
+
+STの起動時にはHTTPサーバーを起動せず、`:mcpconnect` 実行時にのみ起動します。
+`st.exe` と同じフォルダーに `stmcp-http.exe` と `stmcp-http.json` を置いてください。
+別の場所の設定は環境変数 `ST_MCP_HTTP_CONFIG` にJSONの絶対パスを指定します（実行ファイルはそのJSONと同じフォルダー）。
+設定ファイルがない従来のSTDIO構成では自動起動しません。
+
+既に認証可能なST MCPサーバーが起動している場合は再利用します。
+Windowsの名前付きミューテックスで起動処理を直列化し、複数STからの同時実行でも二重起動を防止します。
+別サービスや異なる認証設定でポートが使われている場合はエラーを表示します。
+`:mcpconnect off` やSTの終了では共有HTTPサーバーを終了しません。
