@@ -321,7 +321,7 @@ func (frame *Frame) Snapshot() *Frame {
 	f.Project = frame.Project
 	f.Path = frame.Path
 	f.Home = frame.Home
-	f.View = frame.View
+	f.View = frame.View.Copy()
 	for _, p := range frame.Props {
 		f.Props[p.Num] = p.Snapshot()
 	}
@@ -384,6 +384,18 @@ func (frame *Frame) Snapshot() *Frame {
 	for _, m := range frame.Measures {
 		f.Measures = append(f.Measures, m.Snapshot(f))
 	}
+	for _, arc := range frame.Arcs {
+		copy := *arc
+		copy.Frame = f
+		copy.Enod = make([]*Node, len(arc.Enod))
+		for i, n := range arc.Enod {
+			copy.Enod[i] = f.Nodes[n.Num]
+		}
+		copy.Center = append([]float64(nil), arc.Center...)
+		copy.Direction = append([]float64(nil), arc.Direction...)
+		copy.Pcenter = append([]float64(nil), arc.Pcenter...)
+		f.Arcs = append(f.Arcs, &copy)
+	}
 	f.Maxenum = frame.Maxenum
 	f.Maxnnum = frame.Maxnnum
 	f.Maxsnum = frame.Maxsnum
@@ -392,7 +404,8 @@ func (frame *Frame) Snapshot() *Frame {
 	}
 	f.Ai = frame.Ai.Snapshot()
 	f.Wind = frame.Wind.Snapshot()
-	f.Show = frame.Show
+	f.Show = frame.Show.Copy()
+	f.Show.Frame = f
 	for k, v := range frame.DataFileName {
 		f.DataFileName[k] = v
 	}

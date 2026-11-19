@@ -431,6 +431,9 @@ func (s *modelSession) withEditFile(path string, f func(string) error) error {
 	return f(tmp.Name())
 }
 func (s *modelSession) readEditInput(path string) ([]byte, error) {
+	if err := s.requireRoot(); err != nil {
+		return nil, err
+	}
 	if !filepath.IsLocal(path) {
 		return nil, fmt.Errorf("expected a path within the server root")
 	}

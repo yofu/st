@@ -19,7 +19,11 @@ import (
 	st "github.com/yofu/st/stlib"
 )
 
-func TestMCPStaticResultOnIUP(t *testing.T) {
+func TestMCPStaticResultOnIUP(t *testing.T) { testMCPOnIUP(t, false) }
+
+func TestMCPLiveEditingOnIUP(t *testing.T) { testMCPOnIUP(t, true) }
+
+func testMCPOnIUP(t *testing.T, liveEditing bool) {
 	exe, input := os.Getenv("ST_MCP_EXE"), os.Getenv("ST_MCP_NAKANO_INP")
 	if exe == "" || input == "" {
 		t.Skip("set ST_MCP_EXE and ST_MCP_NAKANO_INP for the Windows IUP integration test")
@@ -51,6 +55,24 @@ func TestMCPStaticResultOnIUP(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer w.stopGUIConnection()
+	if liveEditing {
+		f := st.NewFrame()
+		if err := f.ReadInpSnapshot(model, filepath.Join(dir, "model.inp")); err != nil {
+			t.Fatal(err)
+		}
+		if data, err := os.ReadFile("model.lst"); err == nil {
+			if err := f.ReadLstString(string(data), filepath.Join(dir, "model.lst")); err != nil {
+				t.Fatal(err)
+			}
+		}
+		// Model a GUI edit that has not been saved or added to undo yet.
+		f.Nodes[131].Coord[0] += .123456789
+		f.Sects[201].Allow.SetName("UNSAVED_SECTION")
+		w.SetFrame(f)
+		w.Changed(true)
+		w.SelectNode([]*st.Node{f.Nodes[131]})
+		w.SelectElem([]*st.Elem{f.Elems[1001]})
+	}
 	history := w.hist.GetAttribute("VALUE")
 	_, suffix, ok := strings.Cut(history, "MCP GUI connection ID: ")
 	if !ok || len(suffix) < 32 {
@@ -61,7 +83,13 @@ func TestMCPStaticResultOnIUP(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
 	defer cancel()
 	result := make(chan error, 1)
-	go func() { result <- exerciseMCPStaticGUI(ctx, exe, dir, id) }()
+	go func() {
+		if liveEditing {
+			result <- exerciseMCPLiveGUI(ctx, exe, dir, id)
+		} else {
+			result <- exerciseMCPStaticGUI(ctx, exe, dir, id)
+		}
+	}()
 	for {
 		select {
 		case err := <-result:
@@ -69,6 +97,29 @@ func TestMCPStaticResultOnIUP(t *testing.T) {
 				t.Fatal(err)
 			}
 			f := w.Frame()
+			if liveEditing {
+				if f.Sects[201].Allow.Name() != "UNSAVED_SECTION" || f.Show.SrcanRate != 15 || f.Show.ColorMode != st.ECOLOR_RATE {
+					t.Fatal("native commands lost unsaved LST or rate diagram state")
+				}
+				t.Log("native :srcal, 'srcanrate and 'srcancolor completed with unsaved geometry, loads and LST; .rat output verified")
+				if !w.IsChanged() || f.Show.PlotState&st.PLOT_DEFORMED == 0 || f.Show.Dfact != 75 || f.Show.Stress[st.COLUMN]&1 == 0 || len(w.SelectedNodes()) != 1 || w.SelectedNodes()[0] != f.Nodes[131] {
+					t.Fatal("live edit/undo lost display settings, dirty state or selection")
+				}
+				// An intervening GUI edit must reject the stale expected revision.
+				baseline := f.GUIRevision()
+				digest, baselineINP := f.GUIModelDigest(), f.GUIInpBytes()
+				f.Nodes[131].Load[0] += 1
+				reply := w.handleGUIRequest(st.GUIRequest{Action: "undo", Revision: baseline})
+				if reply.Error == "" || f.Nodes[131].Load[0] == 0 {
+					t.Fatal("stale GUI revision was accepted")
+				}
+				reply = w.handleGUIRequest(st.GUIRequest{Action: "apply", BasePath: f.Path, BaseDigest: digest, INP: baselineINP})
+				if reply.Error == "" {
+					t.Fatal("stale proposal overwrote intervening GUI edit")
+				}
+				t.Logf("real IUP unsaved edit, selection, MCP edit, display, undo/redo and revision conflict verified (%d nodes, %d members)", len(f.Nodes), len(f.Elems))
+				return
+			}
 			n := f.Nodes[131]
 			if n == nil || math.Abs(n.ReturnDisp("L", 2)) < 1e-6 || n.Pcoord[1] == n.Dcoord[1] {
 				t.Fatal("IUP did not project the loaded deformation")

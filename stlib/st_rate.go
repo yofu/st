@@ -2715,14 +2715,7 @@ func (sw *SWall) Num() int {
 func (sw *SWall) TypeString() string {
 	return "Ｓ　壁　"
 }
-func (sw *SWall) Snapshot() SectionRate {
-	r := NewSWall(sw.num, sw.Shape, sw.Steel)
-	r.name = sw.name
-	for i := 0; i < 2; i++ {
-		r.Wrect[i] = sw.Wrect[i]
-	}
-	return sw
-}
+
 func (sw *SWall) String() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("CODE %3d S WALL %57s\n", sw.num, fmt.Sprintf("\"%s\"", sw.name)))
@@ -3158,23 +3151,7 @@ func (rc *RCColumn) Num() int {
 func (rc *RCColumn) TypeString() string {
 	return "ＲＣ柱　"
 }
-func (rc *RCColumn) Snapshot() SectionRate {
-	r := NewRCColumn(rc.num)
-	r.Concrete = rc.Concrete
-	r.CShape = rc.CShape
-	r.name = rc.name
-	r.Nreins = rc.Nreins
-	r.Reins = make([]Reinforce, r.Nreins)
-	for i, rf := range rc.Reins {
-		r.Reins[i] = rf
-	}
-	r.Hoops = rc.Hoops
-	for i := 0; i < 2; i++ {
-		r.XFace[i] = rc.XFace[i]
-		r.YFace[i] = rc.YFace[i]
-	}
-	return r
-}
+
 func (rc *RCColumn) Name() string {
 	return rc.name
 }
@@ -3852,17 +3829,7 @@ func (rw *RCWall) Num() int {
 func (rw *RCWall) TypeString() string {
 	return "ＲＣ壁　"
 }
-func (rw *RCWall) Snapshot() SectionRate {
-	r := NewRCWall(rw.num)
-	r.name = rw.name
-	r.Thick = rw.Thick
-	for i := 0; i < 2; i++ {
-		r.Wrect[i] = rw.Wrect[i]
-		r.XFace[i] = rw.XFace[i]
-		r.YFace[i] = rw.YFace[i]
-	}
-	return rw
-}
+
 func (rw *RCWall) String() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("CODE %3d RC %s %58s\n", rw.num, rw.Etype, fmt.Sprintf("\"%s\"", rw.name)))
@@ -4368,16 +4335,7 @@ func (ww *WoodWall) Num() int {
 func (ww *WoodWall) TypeString() string {
 	return "木　壁　"
 }
-func (ww *WoodWall) Snapshot() SectionRate {
-	r := NewWoodWall(ww.num)
-	r.name = ww.name
-	r.Thick = ww.Thick
-	r.Kfact = ww.Kfact
-	for i := 0; i < 2; i++ {
-		r.Wrect[i] = ww.Wrect[i]
-	}
-	return ww
-}
+
 func (ww *WoodWall) String() string {
 	var rtn bytes.Buffer
 	rtn.WriteString(fmt.Sprintf("CODE %3d WOOD %s %56s\n", ww.num, ww.Etype, fmt.Sprintf("\"%s\"", ww.name)))

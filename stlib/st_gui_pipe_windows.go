@@ -161,7 +161,7 @@ func ExchangeGUI(ctx context.Context, id string, q GUIRequest) (GUIResponse, err
 	if err = json.NewEncoder(pipe).Encode(q); err != nil {
 		return result, err
 	}
-	if err = json.NewDecoder(io.LimitReader(pipe, 16<<20)).Decode(&result); err != nil {
+	if err = json.NewDecoder(io.LimitReader(pipe, 180<<20)).Decode(&result); err != nil {
 		return result, err
 	}
 	if result.Error != "" {

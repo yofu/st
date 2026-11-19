@@ -85,7 +85,7 @@ func (s *modelSession) startTimeHistory(o timeHistoryRequest) (any, error) {
 	if !filepath.IsLocal(o.OutputDir) || filepath.Clean(o.OutputDir) == "." {
 		return nil, fmt.Errorf("output_dir must name a new directory within the model root")
 	}
-	path, err := filepath.Abs(filepath.Join(s.root.Name(), o.OutputDir))
+	path, err := filepath.Abs(filepath.Join(s.modelRootPath(), o.OutputDir))
 	if err != nil {
 		return nil, err
 	}

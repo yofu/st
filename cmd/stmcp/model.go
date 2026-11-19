@@ -51,19 +51,24 @@ type change struct {
 }
 
 type modelSession struct {
-	root      *os.Root
-	parsePath string
-	frame     *st.Frame
-	source    string
-	raw       []byte
-	lst       []byte
-	lstPath   string
-	pending   *proposal
-	next      uint64
-	analysis  *analysisJob
-	nextJob   uint64
-	fig2      *fig2Draft
-	nextFig2  uint64
+	root              *os.Root
+	rootPath          string
+	parsePath         string
+	frame             *st.Frame
+	source            string
+	raw               []byte
+	lst               []byte
+	lstPath           string
+	pending           *proposal
+	next              uint64
+	analysis          *analysisJob
+	nextJob           uint64
+	fig2              *fig2Draft
+	nextFig2          uint64
+	guiID             string
+	guiNodes          []int
+	guiElems          []int
+	guiCommandVersion uint64
 }
 
 func readModel(data []byte, path string) (frame *st.Frame, err error) {
@@ -88,6 +93,9 @@ func inpPath(path string) (string, error) {
 func (s *modelSession) open(path string) (any, error) { return s.openPair(path, "") }
 
 func (s *modelSession) openPair(path, lstPath string) (any, error) {
+	if err := s.requireRoot(); err != nil {
+		return nil, err
+	}
 	path, err := inpPath(path)
 	if err != nil {
 		return nil, err
@@ -134,6 +142,7 @@ func (s *modelSession) openPair(path, lstPath string) (any, error) {
 		}
 	}
 	s.frame, s.source, s.raw, s.pending = frame, path, data, nil
+	s.guiID, s.guiNodes, s.guiElems = "", nil, nil
 	s.lst, s.lstPath = lst, lstPath
 	result := map[string]any{"path": path, "nodes": len(frame.Nodes), "elements": len(frame.Elems), "sections": len(frame.Sects)}
 	if lst != nil {
@@ -402,6 +411,13 @@ func patchINP(data []byte, edits map[recordKey]map[string][]string) ([]byte, err
 
 func (s *modelSession) call(name string, raw json.RawMessage) (any, error) {
 	switch name {
+	case "list_fig2", "read_fig2", "save_fig2_as", "save_model_as", "save_lst_as", "overwrite_model", "start_static_analysis", "start_time_history", "gui_show_result":
+		if err := s.requireRoot(); err != nil {
+			return nil, err
+		}
+	}
+
+	switch name {
 	case "list_fig2", "read_fig2", "preview_fig2", "save_fig2_as":
 		return s.fig2Tool(name, raw)
 	case "list_model_editors":
@@ -409,7 +425,7 @@ func (s *modelSession) call(name string, raw json.RawMessage) (any, error) {
 			return nil, err
 		}
 		return listModelEditors(), nil
-	case "gui_status", "gui_select", "gui_follow_analysis", "gui_show_result":
+	case "gui_status", "gui_select", "gui_follow_analysis", "gui_show_result", "gui_get_model", "gui_display", "gui_undo", "gui_redo", "gui_execute_commands", "gui_command_status":
 		return s.guiTool(name, raw)
 	case "start_analysis_comparison", "start_static_analysis", "analysis_status", "cancel_analysis", "analysis_results":
 		return s.analysisTool(name, raw)

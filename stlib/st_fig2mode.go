@@ -218,8 +218,7 @@ func Fig2Keyword(stw Fig2Moder, lis []string, un bool) error {
 		if frame.Show.Fig2Document {
 			return fmt.Errorf("unknown Fig2 keyword %s", lis[0])
 		}
-		ErrorMessage(stw, fmt.Errorf("no fig2 keyword: %s", key), INFO)
-		return nil
+		return fmt.Errorf("no fig2 keyword: %s", key)
 	case "gfact":
 		if len(lis) < 2 {
 			return NotEnoughArgs("GFACT")

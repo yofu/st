@@ -82,14 +82,16 @@ func (s *modelSession) startStaticAnalysis(o staticAnalysisOptions) (any, error)
 			return nil, fmt.Errorf("job already running")
 		}
 	}
-	if err := s.verifyOriginal(saveFile{path: s.source, original: s.raw}); err != nil {
-		return nil, err
+	if s.guiID == "" {
+		if err := s.verifyOriginal(saveFile{path: s.source, original: s.raw}); err != nil {
+			return nil, err
+		}
 	}
 	exe, err := os.Executable()
 	if err != nil {
 		return nil, err
 	}
-	path, err := filepath.Abs(filepath.Join(s.root.Name(), s.source))
+	path, err := filepath.Abs(filepath.Join(s.modelRootPath(), s.source))
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +139,9 @@ func (s *staticAnalysisOutput) save(dir string, result *staticAnalysisResult) er
 }
 
 func (s *modelSession) staticGUIRequest(path, modelPath string, digest [32]byte, axes []string) (st.GUIRequest, error) {
+	if err := s.requireRoot(); err != nil {
+		return st.GUIRequest{}, err
+	}
 	if !filepath.IsLocal(path) {
 		return st.GUIRequest{}, fmt.Errorf("result path must be within the server root")
 	}
@@ -165,7 +170,7 @@ func (s *modelSession) staticGUIRequest(path, modelPath string, digest [32]byte,
 	if len(data) > maxBytes {
 		return st.GUIRequest{}, fmt.Errorf("result file exceeds %d bytes", maxBytes)
 	}
-	abs, err := filepath.Abs(filepath.Join(s.root.Name(), path))
+	abs, err := filepath.Abs(filepath.Join(s.modelRootPath(), path))
 	if err != nil {
 		return st.GUIRequest{}, err
 	}

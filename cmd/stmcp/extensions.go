@@ -22,7 +22,7 @@ var extendedCatalog = []tool{
 	{"gui_show_result", "Load an existing static result from the server root into the matching open IUP model and display deformation and displacement captions. The default axis is Z; an empty array disables captions.", json.RawMessage(`{"type":"object","required":["connection_id","path"],"properties":{"connection_id":{"type":"string"},"path":{"type":"string","minLength":1},"displacement_axes":{"type":"array","items":{"enum":["X","Y","Z"]},"maxItems":3,"uniqueItems":true}},"additionalProperties":false}`)},
 	{"gui_status", "Inspect the active model and selection in the paired IUP instance. Obtain a connection ID in ST using :mcpconnect.", json.RawMessage(guiConnectionSchema)},
 	{"gui_select", "Replace specified selections in the paired IUP instance; an empty array clears that selection.", json.RawMessage(`{"type":"object","required":["connection_id"],"properties":{"connection_id":{"type":"string"},"node_ids":{"type":"array","items":{"type":"integer","minimum":1},"uniqueItems":true},"element_ids":{"type":"array","items":{"type":"integer","minimum":1},"uniqueItems":true}},"additionalProperties":false}`)},
-	{"gui_apply_proposal", "Apply the reviewed proposal to the active IUP instance and redraw. The active model must match the baseline and have no unsaved edits.", json.RawMessage(`{"type":"object","required":["connection_id","proposal_id"],"properties":{"connection_id":{"type":"string"},"proposal_id":{"type":"integer","minimum":1}},"additionalProperties":false}`)},
+	{"gui_apply_proposal", "Apply the reviewed proposal to the active IUP instance and redraw. Use gui_get_model for unsaved GUI edits. Reject intervening model changes and add the edit to GUI undo history.", json.RawMessage(`{"type":"object","required":["connection_id","proposal_id"],"properties":{"connection_id":{"type":"string"},"proposal_id":{"type":"integer","minimum":1}},"additionalProperties":false}`)},
 	{"gui_follow_analysis", "Display a completed saved static result or follow an incremental live preview in the paired IUP instance. Static results default to Z displacement captions.", json.RawMessage(`{"type":"object","required":["connection_id","job_id"],"properties":{"connection_id":{"type":"string"},"job_id":{"type":"integer","minimum":1},"displacement_axes":{"type":"array","items":{"enum":["X","Y","Z"]},"maxItems":3,"uniqueItems":true}},"additionalProperties":false}`)},
 }
 
@@ -65,19 +65,34 @@ func (s *modelSession) extensionTool(name string, raw json.RawMessage) (any, err
 
 func (s *modelSession) guiTool(name string, raw json.RawMessage) (any, error) {
 	var a struct {
-		ID       string   `json:"connection_id"`
-		Proposal uint64   `json:"proposal_id"`
-		Job      uint64   `json:"job_id"`
-		Nodes    *[]int   `json:"node_ids"`
-		Elems    *[]int   `json:"element_ids"`
-		Path     string   `json:"path"`
-		Axes     []string `json:"displacement_axes"`
+		ID       string         `json:"connection_id"`
+		Proposal uint64         `json:"proposal_id"`
+		Job      uint64         `json:"job_id"`
+		Nodes    *[]int         `json:"node_ids"`
+		Elems    *[]int         `json:"element_ids"`
+		Path     string         `json:"path"`
+		Axes     []string       `json:"displacement_axes"`
+		Display  *st.GUIDisplay `json:"display"`
+		Revision string         `json:"revision"`
+		Commands []string       `json:"commands"`
 	}
 	if err := decode(raw, &a); err != nil {
 		return nil, err
 	}
 	var q st.GUIRequest
 	switch name {
+	case "gui_execute_commands":
+		q.Action, q.Commands, q.Revision = "commands", a.Commands, a.Revision
+	case "gui_command_status":
+		q.Action, q.CommandJobID = "command_status", a.Job
+	case "gui_get_model":
+		q.Action = "snapshot"
+	case "gui_display", "gui_undo", "gui_redo":
+		q.Action = map[string]string{"gui_display": "display", "gui_undo": "undo", "gui_redo": "redo"}[name]
+		q.Display, q.Revision = a.Display, a.Revision
+		if q.Revision == "" && s.guiID == a.ID && s.frame != nil {
+			q.Revision = s.frame.GUIRevision()
+		}
 	case "gui_status":
 		q.Action = "status"
 	case "gui_select":
@@ -89,7 +104,7 @@ func (s *modelSession) guiTool(name string, raw json.RawMessage) (any, error) {
 		if s.frame == nil {
 			return nil, fmt.Errorf("open an INP model first")
 		}
-		path, err := filepath.Abs(filepath.Join(s.root.Name(), s.source))
+		path, err := filepath.Abs(filepath.Join(s.modelRootPath(), s.source))
 		if err != nil {
 			return nil, err
 		}
@@ -131,15 +146,17 @@ func (s *modelSession) guiTool(name string, raw json.RawMessage) (any, error) {
 		if s.pending == nil || s.pending.ID != a.Proposal {
 			return nil, fmt.Errorf("provide the current proposal_id")
 		}
-		if err := s.verifyOriginal(saveFile{path: s.source, original: s.raw}); err != nil {
-			return nil, err
-		}
-		if s.lst != nil {
-			if err := s.verifyOriginal(saveFile{path: s.lstPath, original: s.lst}); err != nil {
+		if s.guiID != a.ID {
+			if err := s.verifyOriginal(saveFile{path: s.source, original: s.raw}); err != nil {
 				return nil, err
 			}
+			if s.lst != nil {
+				if err := s.verifyOriginal(saveFile{path: s.lstPath, original: s.lst}); err != nil {
+					return nil, err
+				}
+			}
 		}
-		path, err := filepath.Abs(filepath.Join(s.root.Name(), s.source))
+		path, err := filepath.Abs(filepath.Join(s.modelRootPath(), s.source))
 		if err != nil {
 			return nil, err
 		}
@@ -147,7 +164,27 @@ func (s *modelSession) guiTool(name string, raw json.RawMessage) (any, error) {
 	default:
 		return nil, fmt.Errorf("unknown GUI tool")
 	}
-	return exchangeGUI(a.ID, q)
+	reply, err := exchangeGUI(a.ID, q)
+	if err != nil {
+		return nil, err
+	}
+	if reply.Snapshot != nil {
+		alreadyImported := name == "gui_command_status" && reply.CommandJob != nil && s.guiID == a.ID && reply.CommandJob.Completion <= s.guiCommandVersion
+		if !alreadyImported {
+			if err := s.importGUI(a.ID, reply); err != nil {
+				if name != "gui_command_status" {
+					return nil, err
+				}
+				reply.SyncError = err.Error()
+			} else if name == "gui_command_status" && reply.CommandJob != nil {
+				s.guiCommandVersion = reply.CommandJob.Completion
+			}
+		}
+		reply.Snapshot = nil
+	} else if s.guiID == a.ID && reply.Path != "" {
+		s.guiNodes, s.guiElems = reply.Nodes, reply.Elements
+	}
+	return reply, nil
 }
 
 func exchangeGUI(id string, q st.GUIRequest) (st.GUIResponse, error) {
@@ -163,13 +200,13 @@ func (s *modelSession) openInGUI(path, lstPath, connection string) (any, error) 
 	if err != nil {
 		return nil, err
 	}
-	abs, err := filepath.Abs(filepath.Join(s.root.Name(), candidate.source))
+	abs, err := filepath.Abs(filepath.Join(s.modelRootPath(), candidate.source))
 	if err != nil {
 		return nil, err
 	}
 	lstName := ""
 	if candidate.lst != nil {
-		lstName, err = filepath.Abs(filepath.Join(s.root.Name(), candidate.lstPath))
+		lstName, err = filepath.Abs(filepath.Join(s.modelRootPath(), candidate.lstPath))
 		if err != nil {
 			return nil, err
 		}

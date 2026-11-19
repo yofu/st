@@ -359,6 +359,9 @@ func workerAnalysisFinished(stw ExModer) {
 	if w, ok := stw.(*analysisWorkerWindow); ok {
 		close(w.done)
 	}
+	if w, ok := stw.(interface{ AnalysisFinished() }); ok {
+		w.AnalysisFinished()
+	}
 }
 
 // RunWorkerAnalysis runs one transaction. A failed job returns no model update.

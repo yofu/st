@@ -105,6 +105,18 @@ func (s *modelSession) previewGUI(args guiEditArgs) (_ any, err error) {
 	}
 	before := editorINP(frame)
 	w := &editWindow{frame: frame, selection: st.NewSelection()}
+	if s.guiID != "" {
+		for _, id := range s.guiNodes {
+			if n := frame.Nodes[id]; n != nil {
+				w.SelectNode(append(w.SelectedNodes(), n))
+			}
+		}
+		for _, id := range s.guiElems {
+			if e := frame.Elems[id]; e != nil {
+				w.SelectElem(append(w.SelectedElems(), e))
+			}
+		}
+	}
 	trackHistory := slices.ContainsFunc(args.Commands, func(c guiEdit) bool {
 		return strings.EqualFold(strings.TrimSpace(c.Command), "UNDO") || strings.EqualFold(strings.TrimSpace(c.Command), "REDO")
 	})

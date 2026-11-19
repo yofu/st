@@ -92,7 +92,7 @@ func (sect *Sect) Snapshot(frame *Frame) *Sect {
 	}
 	s.Type = sect.Type
 	s.Color = sect.Color
-	if s.Allow != nil {
+	if sect.Allow != nil {
 		s.Allow = sect.Allow.Snapshot()
 	}
 	return s
@@ -270,7 +270,9 @@ func (sect *Sect) SplitName() (string, string) {
 
 func (sect *Sect) InpString() string {
 	var rtn bytes.Buffer
-	rtn.WriteString(fmt.Sprintf("SECT %3d SNAME %s\n", sect.Num, sect.Name))
+	fmt.Fprintf(&rtn, "SECT %3d", sect.Num)
+	if sect.Name != "" { fmt.Fprintf(&rtn, " SNAME %s", sect.Name) }
+	rtn.WriteByte('\n')
 	col := IntColor(sect.Color)
 	if option := arclm.FormatYieldEnds(sect.ElasticEnds); option != "" {
 		rtn.WriteString("         " + option + "\n")

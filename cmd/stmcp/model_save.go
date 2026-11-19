@@ -37,6 +37,9 @@ func writeNew(root *os.Root, path string, data []byte) error {
 }
 
 func (s *modelSession) verifyOriginal(file saveFile) error {
+	if err := s.requireRoot(); err != nil {
+		return err
+	}
 	f, err := s.root.Open(file.path)
 	if os.IsNotExist(err) && file.original == nil {
 		return nil
@@ -58,7 +61,7 @@ func (s *modelSession) verifyOriginal(file saveFile) error {
 // Paths are opened through os.Root; reject symlinks before the final rename,
 // which Go 1.24 exposes only outside os.Root.
 func (s *modelSession) renameModelFile(from, to string) error {
-	abs, err := filepath.Abs(s.root.Name())
+	abs, err := filepath.Abs(s.modelRootPath())
 	if err != nil {
 		return err
 	}
@@ -87,6 +90,9 @@ func (s *modelSession) renameModelFile(from, to string) error {
 }
 
 func (s *modelSession) saveFiles(id uint64, path string, overwrite bool) (any, error) {
+	if err := s.requireRoot(); err != nil {
+		return nil, err
+	}
 	p := s.pending
 	if p == nil || p.ID != id {
 		return nil, fmt.Errorf("preview the changes and use the current proposal_id")

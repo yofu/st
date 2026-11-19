@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 )
 
 type tool struct {
@@ -69,12 +70,37 @@ func decode(raw json.RawMessage, dst any) error {
 func main() {
 	dir := flag.String("root", ".", "directory containing models available to the MCP client")
 	worker := flag.String("analysis-worker", "", "internal analysis worker directory")
+	address := flag.String("http", "", "loopback HTTP listen address, for example 127.0.0.1:17831")
+	tokenFile := flag.String("token-file", "", "file containing the local HTTP bearer token")
+	config := flag.String("http-config", "", "JSON file containing root, address and token_file")
 	flag.Parse()
 	// ST's interactive parser may write diagnostics to os.Stdout.
 	protocol := os.Stdout
 	os.Stdout = os.Stderr
 	if *worker != "" {
 		analysisWorkerMain(*worker, protocol)
+		return
+	}
+	if *config == "" && len(os.Args) == 1 && strings.EqualFold(filepath.Base(os.Args[0]), "stmcp-http.exe") {
+		*config = filepath.Join(filepath.Dir(os.Args[0]), "stmcp-http.json")
+	}
+	if *config != "" {
+		data, err := os.ReadFile(*config)
+		var options httpConfig
+		if err == nil {
+			err = json.Unmarshal(data, &options)
+		}
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "stmcp HTTP configuration:", err)
+			os.Exit(1)
+		}
+		*dir, *address, *tokenFile = options.Root, options.Address, options.TokenFile
+	}
+	if *address != "" {
+		if err := serveMCPHTTP(*dir, *address, *tokenFile); err != nil {
+			fmt.Fprintln(os.Stderr, "stmcp HTTP:", err)
+			os.Exit(1)
+		}
 		return
 	}
 	if err := run(*dir, os.Stdin, protocol); err != nil {
@@ -84,11 +110,15 @@ func main() {
 }
 
 func run(dir string, in io.Reader, out io.Writer) error {
-	root, err := os.OpenRoot(dir)
+	rootPath, err := filepath.Abs(dir)
 	if err != nil {
 		return err
 	}
-	defer root.Close()
+	root, rootErr := os.OpenRoot(rootPath)
+	if rootErr != nil {
+		fmt.Fprintf(os.Stderr, "stmcp: direct model-root access unavailable (%v); MCP remains available; use the desktop HTTP server for this root\n", rootErr)
+	}
+
 	scratch, err := os.MkdirTemp("", "stmcp-parser-")
 	if err != nil {
 		return err
@@ -96,8 +126,13 @@ func run(dir string, in io.Reader, out io.Writer) error {
 	defer os.Remove(scratch)
 	// The parser checks for ambient .conf sidecars by filename. Give it a
 	// private placeholder path so only the requested INP feeds the model.
-	session := modelSession{root: root, parsePath: filepath.Join(scratch, "model.inp")}
+	session := modelSession{root: root, rootPath: rootPath, parsePath: filepath.Join(scratch, "model.inp")}
 	defer session.closeAnalysis()
+	defer func() {
+		if session.root != nil {
+			session.root.Close()
+		}
+	}()
 	scanner := bufio.NewScanner(in)
 	scanner.Buffer(make([]byte, 4096), 1<<20)
 	writer := json.NewEncoder(out)

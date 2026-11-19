@@ -2,9 +2,12 @@ package st
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"maps"
 	"math"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -19,25 +22,100 @@ type GUIRequest struct {
 	ResultPath          string
 	ResultData          []byte
 	DisplacementAxes    []string
+	Display             *GUIDisplay
+	Revision            string
+	Commands            []string
+	CommandJobID        uint64
+}
+
+type GUICommandStatus struct {
+	Completion uint64 `json:"completion_version,omitempty"`
+	ID         uint64 `json:"job_id"`
+	State      string `json:"state"`
+	Completed  int    `json:"completed_commands"`
+	Total      int    `json:"total_commands"`
+	Command    string `json:"command,omitempty"`
+	History    string `json:"history,omitempty"`
+	Progress   string `json:"progress,omitempty"`
+	Step       int    `json:"step,omitempty"`
+	Steps      int    `json:"steps,omitempty"`
+	Error      string `json:"error,omitempty"`
+}
+
+// GUIDisplay contains only display settings, never model editing commands.
+type GUIDisplay struct {
+	Period           string       `json:"period,omitempty"`
+	Deformation      *bool        `json:"deformation,omitempty"`
+	DeformationScale *float64     `json:"deformation_scale,omitempty"`
+	DisplacementAxes *[]string    `json:"displacement_axes,omitempty"`
+	Stress           *[]GUIStress `json:"stress,omitempty"`
+	Angles           []float64    `json:"angles,omitempty"`
+	Focus            []float64    `json:"focus,omitempty"`
+}
+
+type GUIStress struct {
+	Type      string `json:"type"`
+	Component string `json:"component"`
+}
+
+type GUIModelSnapshot struct {
+	INP     []byte `json:"inp"`
+	LST     []byte `json:"lst,omitempty"`
+	LSTPath string `json:"lst_path,omitempty"`
 }
 
 type GUIResponse struct {
-	Period           string   `json:"period,omitempty"`
-	ResultPath       string   `json:"result_path,omitempty"`
-	Deformation      bool     `json:"deformation"`
-	DisplacementAxes []string `json:"displacement_axes"`
-	Path             string   `json:"path"`
-	Changed          bool     `json:"changed"`
-	Nodes            []int    `json:"node_ids"`
-	Elements         []int    `json:"element_ids"`
-	Error            string   `json:"error,omitempty"`
+	Period           string            `json:"period,omitempty"`
+	ResultPath       string            `json:"result_path,omitempty"`
+	Deformation      bool              `json:"deformation"`
+	DisplacementAxes []string          `json:"displacement_axes"`
+	Path             string            `json:"path"`
+	Changed          bool              `json:"changed"`
+	Nodes            []int             `json:"node_ids"`
+	Elements         []int             `json:"element_ids"`
+	Error            string            `json:"error,omitempty"`
+	Revision         string            `json:"revision,omitempty"`
+	Snapshot         *GUIModelSnapshot `json:"snapshot,omitempty"`
+	Display          *GUIDisplay       `json:"display,omitempty"`
+	CommandJob       *GUICommandStatus `json:"command_job,omitempty"`
+	RatedElements    int               `json:"rated_elements"`
+	SrcanRate        uint              `json:"srcan_rate"`
+	SyncError        string            `json:"sync_error,omitempty"`
 }
 
 // GUIModelDigest excludes camera and screenshot state.
 func (f *Frame) GUIModelDigest() [32]byte {
 	copy := *f
 	copy.View = NewView()
-	return sha256.Sum256(copy.EditableInpBytes())
+	return sha256.Sum256(append(copy.GUIInpBytes(), copy.GUILstBytes()...))
+}
+
+func (f *Frame) GUIRevision() string {
+	digest := f.GUIModelDigest()
+	return hex.EncodeToString(digest[:])
+}
+
+// GUILstBytes serializes the current definitions, including unsaved LST edits.
+func (f *Frame) GUILstBytes() []byte {
+	var out strings.Builder
+	for _, id := range slices.Sorted(maps.Keys(f.Sects)) {
+		if a := f.Sects[id].Allow; a != nil {
+			// Legacy LST readers retain surrounding quotes in names. Normalize
+			// the textual representation so repeated snapshots stay identical.
+			for _, line := range strings.Split(a.String(), "\n") {
+				if strings.TrimSpace(line) == "" {
+					continue
+				}
+				head, tail, quoted := strings.Cut(line, "\"")
+				out.WriteString(strings.Join(strings.Fields(head), " "))
+				if quoted {
+					fmt.Fprintf(&out, " \"%s\"", strings.Trim(strings.TrimSpace(tail), "\""))
+				}
+				out.WriteByte('\n')
+			}
+		}
+	}
+	return []byte(out.String())
 }
 
 func StaticResultPeriod(path string) string {

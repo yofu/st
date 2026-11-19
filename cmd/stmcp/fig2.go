@@ -63,6 +63,9 @@ func fig2Path(path string) (string, error) {
 }
 
 func (s *modelSession) readFig2(path string) ([]byte, error) {
+	if err := s.requireRoot(); err != nil {
+		return nil, err
+	}
 	name, err := fig2Path(path)
 	if err != nil {
 		return nil, err

@@ -73,3 +73,15 @@ func (u *UndoStack) PushUndo(frame *Frame) {
 	u.stack = tmp
 	u.position = 0
 }
+
+// CaptureUndoBaseline retains edits that have not yet been snapshotted without
+// duplicating the current entry on every MCP transaction.
+func (u *UndoStack) CaptureUndoBaseline(frame *Frame) {
+	if !u.enabled {
+		return
+	}
+	current := u.stack[u.position]
+	if current == nil || current.GUIModelDigest() != frame.GUIModelDigest() {
+		u.PushUndo(frame)
+	}
+}

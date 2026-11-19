@@ -616,7 +616,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 	}
 	switch cname {
 	default:
-		return Message(fmt.Sprintf("no exmode command: %s", cname))
+		return fmt.Errorf("no exmode command: %s", cname)
 	case "agc":
 		if len(frame.Arcs) == 0 {
 			return nil
@@ -1840,7 +1840,10 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		} else {
 			otp = fn
 		}
-		reload := true
+		reload := !useCurrentModelInputs(stw)
+		if _, ok := argdict["RELOAD"]; ok {
+			reload = true
+		}
 		if _, ok := argdict["NORELOAD"]; ok {
 			reload = false
 		}
@@ -1900,7 +1903,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			m.WriteString("TORSION")
 			cond.RCTorsion = true
 		}
-		frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
+		if err := frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond); err != nil {
+			return err
+		}
 		return Message(m.String())
 	case "srcalangle":
 		if usage {
@@ -1953,7 +1958,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if _, ok := argdict["VERBOSE"]; ok {
 			cond.Verbose = true
 		}
-		reload := true
+		reload := !useCurrentModelInputs(stw)
 		if _, ok := argdict["NORELOAD"]; ok {
 			reload = false
 		}
@@ -2489,7 +2494,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		} else {
 			otpfn = fn
 		}
-		reload := true
+		reload := !useCurrentModelInputs(stw)
 		if _, ok := argdict["NORELOAD"]; ok {
 			reload = false
 		}
@@ -5500,9 +5505,15 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 				break ex_all
 			}
 		}
-		ReadFile(stw, Ce(frame.Path, ".lst"))
+		if !useCurrentModelInputs(stw) {
+			if err := ReadFile(stw, Ce(frame.Path, ".lst")); err != nil {
+				return err
+			}
+		}
 		cond := NewCondition()
-		frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond)
+		if err := frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond); err != nil {
+			return err
+		}
 	case "analysis":
 		if usage {
 			return Usage(":analysis {-period=name} {-all} {-solver=name} {-eps=value} {-nlgeom} {-nlmat} {-step=nlap;delta;start;max} {-post=FLOOR|IMCOMP} {-noinit} {-wait} filename")
@@ -6382,4 +6393,10 @@ func currentnode(stw ExModer, input []interface{}) []*Node {
 		}
 	}
 	return nodes
+}
+
+// Optional for command hosts that execute the active, unsaved GUI model.
+func useCurrentModelInputs(stw ExModer) bool {
+	w, ok := stw.(interface{ UseCurrentModelInputs() bool })
+	return ok && w.UseCurrentModelInputs()
 }

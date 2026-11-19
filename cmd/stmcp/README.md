@@ -167,8 +167,19 @@ WindowsのSTで `:mcpconnect` を実行し、履歴に表示された接続IDを
 
 - `gui_status` に connection_id を渡して、開いているモデルと選択を確認します。
 - `gui_select` に connection_id と節点・部材番号を渡して、画面上の選択を変更します。
-- `gui_apply_proposal` に connection_id と確認済みの proposal_id を渡すと、GUIのモデルをその場で更新します。開いているモデルが提案の基準と異なるか、未保存の変更があるとエラーを返します。画面に適用した変更をディスクへ保存する場合は、MCPの保存ツールを使います。
+- `gui_apply_proposal` に connection_id と確認済みの proposal_id を渡すと、GUIのモデルをその場で更新します。`gui_get_model` で取り込んだ未保存モデルにも適用できます。取り込み後にGUI側でモデルが変わった場合はエラーを返すので、再取得して提案を作り直してください。適用後はMCPの基準モデルも更新されます。ディスクへの保存はGUIの保存操作で行えます。
 - `gui_follow_analysis` に connection_id と job_id を渡すと、そのジョブの途中表示を開始します。GUIに未保存の変更がある場合は、先に作業ファイルを保存して開き直してください。
+- `gui_get_model` に connection_id を渡すと、起動中のGUIの未保存モデル・LST定義・節点と部材の選択をMCPの編集基準として取り込みます。先に `open_model` を呼ぶ必要はありません。モデルのパスはMCPの `-root` 内に置いてください。新しい取得は保留中の提案を破棄します。
+- 取り込み後は `query_nodes`、`query_elements`、`query_lst` で照会し、`preview_edits` または `preview_gui_edits` で編集を作成して `gui_apply_proposal` で画面に反映します。`preview_gui_edits` で節点・部材番号を省略すると、取得したGUIの選択を使用します。選択をGUIで変更した場合は `gui_get_model` か `gui_status` で更新します。
+- `gui_undo` と `gui_redo` に connection_id を渡すと、GUIの既存Undo履歴を使って一操作を戻す・やり直すことができます。GUI操作とMCP操作が同じ履歴に入り、MCP側の基準と選択も更新します。
+- `gui_display` は荷重ケース、変形、倍率、変位値、応力成分、視点を即時変更します。省略した項目は保持し、`stress:[]` と `displacement_axes:[]` は各表示を解除します。編集のUndo時も現在の表示設定を維持します。例は下記のとおりです。
+
+```json
+{"connection_id":"接続ID","display":{"period":"L","deformation":true,"deformation_scale":100,"displacement_axes":["Z"],"stress":[{"type":"COLUMN","component":"MY"},{"type":"GIRDER","component":"MY"}],"angles":[20,30],"focus":[0,0,3]}}
+```
+
+`gui_get_model` と状態応答は `revision` を返します。取り込み後の編集適用・Undo・表示変更ではモデルの一致を照合します。必要に応じて `gui_display`、`gui_undo`、`gui_redo` の `revision` に期待する値を明示できます。解析実行中のモデル取得・編集・Undoは、解析が完了してから行ってください。新しい機能を使うには `st.exe` と `stmcp.exe` の両方を再ビルドして再起動します。
+
 - `:mcpconnect off` で接続を終了します。起動中の接続IDは、同じPCで操作を許可するCodexにだけ渡してください。
 
 ## 図化ファイルを作る
@@ -193,3 +204,59 @@ WindowsのSTで `:mcpconnect` を実行し、履歴に表示された接続IDを
 複数図の組版や繰り返しを使う場合は、Fig2の命令を `content` に直接指定するか、既存ひな形の `for/endfor`、`multiple`、`figure_h` などを流用できます。指定した共通設定と各ページは、保存前に内容を確認できます。`figure_directives` は記述上の図化指示数で、繰り返し展開や組版後のPDFページ数とは異なります。
 
 `save_fig2_as` に `{"path":"nakano02_07_model_mcp.fig2","draft_id":1}` のように渡して、Windowsの日本語版 Fig2 に対応する CP932 形式で別名保存します。PDF出力は従来どおり、図化ファイルと入力モデルを指定して `fig2.exe nakano02_07.inp nakano02_07_model_mcp.fig2` を実行します。応力図などで参照する解析結果や通り芯ファイルは、従来の図化時と同じ場所に用意します。
+
+
+## 未保存のGUIモデルでex・Fig2コマンドを実行する
+
+`gui_execute_commands` は起動中IUPのモデル・解析結果・LST定義・選択状態に対して、通常のex・Fig2パーサーを実行します。先頭が `:` のexと、先頭が `'` のFig2を同じ配列に指定できます。編集プレビュー用のコマンド一覧による制限はありません。GUIのファイル操作、外部アプリ起動、ダイアログも通常の挙動になります。
+
+断面算定と検定比図の例です。必要なL・X・Yの解析結果をGUIに読み込むか、先に解析を行ってから呼び出します。
+
+```json
+{"connection_id":"接続ID","commands":[":srcal","'srcanrate","'srcancolor"]}
+```
+
+ツールは `command_job.job_id` を返します。そのIDを `gui_command_status` に渡し、`command_job.state` が `completed` または `failed` になるまで確認します。
+
+```json
+{"connection_id":"接続ID","job_id":1}
+```
+
+`completed_commands` は完了したコマンド数です。`command`、`progress`、`step`、`steps`、`history`、`error` で進行状況とエラーを確認できます。ログは直近64 KiBを保持します。解析コマンドは終了後に次のコマンドへ進みます。実行中の解析を止めるには、別の `gui_execute_commands` から `commands:[":stop L"]` のように指定します。
+
+未保存モデルの荷重生成から断面算定までを実行する例です。
+
+```json
+{"connection_id":"接続ID","commands":[":extractarclm %<.wgt",":analysis -all %<.otl",":srcal","'srcanrate"]}
+```
+
+MCPからの `:srcal` はGUI内の現在のLST定義を使用します。ディスクのLSTへ明示的に切り替える場合は `:srcal -reload`、または `:read sections.lst` を指定します。通常のGUI操作から実行した `:srcal` は既存の読み込み規則を使います。
+
+完了時にはMCPの入力モデルと選択も同期します。`rated_elements` は検定比を持つ部材数、`srcan_rate` はGUIの表示フラグです。途中で失敗した場合、それ以前に完了したコマンドの結果はGUIに残ります。モデルの競合を照合するには、`gui_get_model` で取得した `revision` を実行時に指定してください。`sync_error` があればジョブ結果を確認し、モデルのパスをサーバールート内にしてから再取得してください。過去のジョブを再照会しても、同期済みの基準モデルは巻き戻しません。
+
+新版の `st.exe` と `stmcp.exe` を使用し、MCP接続も再起動して新しいツール一覧を読み込みます。
+
+
+## Googleドライブなどの仮想ドライブとCodexのAppContainer
+
+WindowsでCodexからSTDIOサーバーを起動すると、AppContainer内のプロセスになる場合があります。この環境では仮想Gドライブのファイルアクセスが拒否され、名前付きパイプもデスクトップのSTとは異なる名前空間になることがあります。モデルルートを開けなかった場合も、サーバーは初期化とツール一覧を返し、ファイル操作時に具体的なエラーを返します。
+
+Gドライブをそのまま使う場合は、通常のデスクトップユーザーとしてMCPのローカルHTTPサーバーを起動します。モデル・LST・解析結果は指定したGドライブ上で読み書きします。起動例は次のとおりです。
+
+```powershell
+stmcp.exe -root "G:/マイドライブ/st" -http 127.0.0.1:17831 -token-file "C:/path/stmcp-http.token"
+```
+
+トークンファイルには32文字以上のランダムな値を保存し、Codexの `mcp_servers.st.url` に `http://127.0.0.1:17831/mcp`、`http_headers.Authorization` に `Bearer ` に続けて同じ値を指定します。既存の `command` と `args` はHTTP設定へ置き換えます。設定後にCodexのMCP接続を再起動してください。
+
+コンソールを出さずに起動する場合は、同じソースを `-ldflags '-H=windowsgui'` で `stmcp-http.exe` としてビルドします。引数なしで起動すると、同じフォルダーの `stmcp-http.json` から下記の設定を読みます。
+
+```json
+{
+  "root": "G:/マイドライブ/st",
+  "address": "127.0.0.1:17831",
+  "token_file": "C:/path/stmcp-http.token"
+}
+```
+
+任意の実行ファイル名では `-http-config` に設定ファイルを指定できます。サーバーはループバックIPに限定して待ち受け、Bearer認証とHost・Origin検証を行います。HTTPセッションごとに編集中モデルを保持し、GUIとの接続は既存の `:mcpconnect` のIDを使います。Windows起動後はこのサーバーをデスクトップから起動してから接続してください。

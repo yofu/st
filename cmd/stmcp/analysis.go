@@ -193,7 +193,10 @@ func (s *modelSession) startAnalysis(o analysisOptions) (any, error) {
 	var preview *liveAnalysisOutput
 	var previewPath string
 	if o.PreviewDir != "" {
-		previewPath, err = filepath.Abs(filepath.Join(s.root.Name(), o.PreviewDir))
+		if err = s.requireRoot(); err != nil {
+			return nil, err
+		}
+		previewPath, err = filepath.Abs(filepath.Join(s.modelRootPath(), o.PreviewDir))
 		if err != nil {
 			return nil, err
 		}
