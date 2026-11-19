@@ -71,6 +71,8 @@ var (
 			}),
 		"plan/":             complete.MustCompile(":plan [floor:_]", nil),
 		"jiku/":             complete.MustCompile(":jiku [name:_]", nil),
+		"drawings/":         complete.MustCompile(":drawings %g [plans:_] [grids:_] [sections:] [paper:_]", nil),
+		"dxfsections/":      complete.MustCompile(":dxfsections %g [sect:_] [paper:_]", nil),
 		"crosssec/tion":     complete.MustCompile(":crosssection [axis:_] [min:_] [max:_]", nil),
 		"fe/nce":            complete.MustCompile(":fence", nil),
 		"no/de":             complete.MustCompile(":node", nil),
@@ -1245,6 +1247,25 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		}
 		if err != nil {
 			return err
+		}
+	case "drawings", "dxfsections":
+		if usage {
+			return Usage(dxfDocumentUsage + "; :dxfsections filename exports the section list only")
+		}
+		if fn == "" {
+			return fmt.Errorf("no file name")
+		}
+		opts, err := parseDXFDocumentOptions(argdict, cname == "dxfsections")
+		if err != nil {
+			return err
+		}
+		report, err := frame.WriteDXFDocument(fn, opts)
+		if err != nil {
+			return err
+		}
+		stw.History(fmt.Sprintf("DXF: %d sheets, %d section definitions, %d warnings", report.Pages, len(report.Sections), len(report.Warnings)))
+		for _, warning := range report.Warnings {
+			stw.History(warning)
 		}
 	case "plan":
 		if usage {
