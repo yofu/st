@@ -1,11 +1,11 @@
 package st
 
 import (
-	"fmt"
+	"encoding/json"
 	"math"
 	"sort"
-	"strings"
 
+	"github.com/yofu/dxf"
 	"github.com/yofu/dxf/drawing"
 	"github.com/yofu/dxf/entity"
 )
@@ -165,7 +165,7 @@ func (f *Frame) prepareDXFStrokes(axis int, min, max float64, x, y int) []dxfMem
 					continue
 				}
 				q, qe := members[other[0]], other[1]
-				if q.Sect.Num != e.Sect.Num || q.Etype != e.Etype || !dxfRigidEnd(q, qe) {
+				if q.Sect.Num != e.Sect.Num || q.Etype != e.Etype || !f.dxfSettingsMergeCompatible(e, q) || !dxfRigidEnd(q, qe) {
 					continue
 				}
 				dot := 0.
@@ -756,7 +756,7 @@ func dxfStrokePieces(s dxfMemberStroke) [][]dxfXY {
 
 func (f *Frame) drawDXFJoinedMembers(d *drawing.Drawing, axis int, min, max float64, side int, x, y int, scale, textheight float64, setLayer, setTextLayer func(int)) error {
 	strokes := f.prepareDXFStrokes(axis, min, max, x, y)
-	f.jointDXFStrokes(strokes, axis, []float64{min, max}[side], x, y, .2*textheight/scale)
+	f.jointDXFStrokes(strokes, axis, []float64{min, max}[side], x, y, .5*f.dxfPlotScale(textheight)/scale)
 	for _, s := range strokes {
 		pieces := dxfStrokePieces(s)
 		if len(pieces) == 0 {
@@ -778,13 +778,7 @@ func (f *Frame) drawDXFJoinedMembers(d *drawing.Drawing, axis int, min, max floa
 				}
 			}
 		}
-		name := strings.TrimSpace(strings.Split(s.sect.Name, ":")[0])
-		if s.sect.Allow != nil && s.sect.Allow.Name() != "" {
-			name = s.sect.Allow.Name()
-		}
-		if name == "" {
-			name = fmt.Sprintf("S%d", s.sect.Num)
-		}
+		name := f.dxfMemberSymbol(f.Elems[s.id])
 		// Use the longest exposed outer rail, with text outside the member.
 		mid := xyMul(xyAdd(s.a, s.b), .5)
 		longest := -1.
@@ -807,6 +801,13 @@ func (f *Frame) drawDXFJoinedMembers(d *drawing.Drawing, axis int, min, max floa
 		mid = xyAdd(mid, xyMul(s.n, .5*textheight/scale))
 
 		setTextLayer(s.etype)
+		if offset := f.resolvedDXFMember(f.Elems[s.id]).LabelOffsetPaperMM; offset != nil {
+			paperOffset := f.dxfPaperOffset(*offset)
+			mid = xyAdd(mid, dxfXY{paperOffset[0] * f.dxfPlotScale(textheight) / scale, paperOffset[1] * f.dxfPlotScale(textheight) / scale})
+			if _, err := d.Layer("DRAWING_FIXED_LABELS", true); err != nil {
+				d.AddLayer("DRAWING_FIXED_LABELS", dxf.DefaultColor, dxf.DefaultLineType, true)
+			}
+		}
 		t, err := d.Text(name, mid[0]*scale, mid[1]*scale, 0, textheight)
 		if err != nil {
 			return err
@@ -815,4 +816,17 @@ func (f *Frame) drawDXFJoinedMembers(d *drawing.Drawing, axis int, min, max floa
 		t.Rotation = math.Atan2(s.u[1], s.u[0]) * 180 / math.Pi
 	}
 	return nil
+}
+
+// Per-member label/note differences must survive geometric aggregation.
+func (f *Frame) dxfSettingsMergeCompatible(a, b *Elem) bool {
+	if f.drawingSettings == nil {
+		return true
+	}
+	x, y := f.resolvedDXFMember(a), f.resolvedDXFMember(b)
+	x.Expected = nil
+	y.Expected = nil
+	p, _ := json.Marshal(x)
+	q, _ := json.Marshal(y)
+	return string(p) == string(q)
 }

@@ -71,6 +71,8 @@ var (
 			}),
 		"plan/":             complete.MustCompile(":plan [floor:_]", nil),
 		"jiku/":             complete.MustCompile(":jiku [name:_]", nil),
+		"drawinginit/":      complete.MustCompile(":drawinginit %g", nil),
+		"drawingcheck/":     complete.MustCompile(":drawingcheck %g", nil),
 		"drawings/":         complete.MustCompile(":drawings %g [plans:_] [grids:_] [sections:] [paper:_]", nil),
 		"dxfsections/":      complete.MustCompile(":dxfsections %g [sect:_] [paper:_]", nil),
 		"crosssec/tion":     complete.MustCompile(":crosssection [axis:_] [min:_] [max:_]", nil),
@@ -1248,6 +1250,44 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if err != nil {
 			return err
 		}
+	case "drawinginit", "drawingcheck":
+		if usage {
+			return Usage(":drawinginit [model.drawing.json]; :drawingcheck [model.drawing.json]")
+		}
+		r, err := frame.dimensionFrame()
+		if err != nil {
+			return err
+		}
+		var settings *DXFDrawingSettings
+		if cname == "drawinginit" {
+			if fn == "" {
+				if frame.Path == "" {
+					return fmt.Errorf("no model path; specify a settings filename")
+				}
+				fn = DXFDrawingSettingsPath(frame.Path)
+			}
+			settings = r.DefaultDXFDrawingSettings()
+			if err = WriteNewDXFDrawingSettings(fn, settings); err != nil {
+				return err
+			}
+			stw.History("図面設定を作成しました: " + fn)
+		} else {
+			settings, err = r.loadDXFDrawingSettings(fn)
+			if err != nil {
+				return err
+			}
+			if settings == nil {
+				settings = r.DefaultDXFDrawingSettings()
+			}
+		}
+		report := r.CheckDXFDrawingSettings(settings)
+		for _, i := range report.Issues {
+			stw.History(fmt.Sprintf("[%s/%s] 部材:%d 断面:%d %s", i.Severity, i.Code, i.Element, i.Section, i.Message))
+		}
+		stw.History(fmt.Sprintf("図面設定: %d部材、%d項目", len(report.Members), len(report.Issues)))
+		if report.HasErrors() {
+			return fmt.Errorf("%s", firstDXFDrawingError(report))
+		}
 	case "drawings", "dxfsections":
 		if usage {
 			return Usage(dxfDocumentUsage + "; :dxfsections filename exports the section list only")
@@ -1258,6 +1298,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		opts, err := parseDXFDocumentOptions(argdict, cname == "dxfsections")
 		if err != nil {
 			return err
+		}
+		if opts.SettingsPath != "" && !filepath.IsAbs(opts.SettingsPath) {
+			opts.SettingsPath = filepath.Join(stw.Cwd(), opts.SettingsPath)
 		}
 		report, err := frame.WriteDXFDocument(fn, opts)
 		if err != nil {

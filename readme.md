@@ -67,6 +67,33 @@ Connections use shared input node IDs: projection-only crossings are not
 joined. These operations change the drawing only, not model connectivity.
 Unsupported/area-only shapes retain centerlines without an invented width.
 
+### Persistent drawing settings and consistency checks
+
+`:drawinginit` creates `<model>.drawing.json` without overwriting existing
+manual adjustments. `:drawingcheck` reports unresolved model/settings data.
+`:drawings`, `:dxfsections` and dimensioned plan/elevation exports load the
+same-basename settings automatically; `:drawings -settings=file.drawing.json`
+selects another profile. Settings preserve reviewed FL/GL, supplementary
+grids, section/member symbols, paper-space label offsets and anchored notes.
+Member overrides inherit section defaults and can record original node/section
+IDs to detect stale assignments. Geometric offsets/top levels are currently
+stored and checked; their footprint rendering belongs to implementation stage 3.
+
+See [drawing settings documentation](docs/dxf-drawing-settings.md) for units,
+examples, limitations, and the MCP query/preview/save workflow.
+
+### Drafting style and title blocks
+
+Dimensioned exports and sheet documents use a monochrome structural profile:
+0.35 mm columns, 0.25 mm beams, 0.13 mm dashed braces and centerline grids,
+Japanese TrueType text, and configurable paper-mm dimensions. Persist `style`
+and `sheet` in `.drawing.json` to reuse lineweights, fonts, title metadata,
+revision history, numbering, and per-view rotations. Right-side title blocks
+reserve their own region before choosing scales. `:drawings -rotate=90` or
+MCP view `rotation` overrides stored rotations for a particular export.
+
+See [drafting configuration](docs/dxf-drafting.md) for the full JSON example.
+
 ### Sheet layouts and section schedules
 
 ```text

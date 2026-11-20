@@ -171,7 +171,7 @@ func TestDXFDocumentLayoutDimensionsAndPagination(t *testing.T) {
 		t.Fatalf("wrong pagination %+v", report)
 	}
 	for i, p := range report.Placements {
-		if p.Scale <= 0 || p.PaperBox[0] < 10 || p.PaperBox[2] > 410 || p.PaperBox[1] < 35 || p.PaperBox[3] > 287 {
+		if p.Scale <= 0 || p.PaperBox[0] < report.Sheets[p.Page-1].ContentBox[0] || p.PaperBox[2] > report.Sheets[p.Page-1].ContentBox[2] || p.PaperBox[1] < report.Sheets[p.Page-1].ContentBox[1] || p.PaperBox[3] > report.Sheets[p.Page-1].ContentBox[3] {
 			t.Fatal("placement outside sheet", p)
 		}
 		for _, q := range report.Placements[:i] {

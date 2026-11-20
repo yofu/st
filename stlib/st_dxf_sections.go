@@ -38,7 +38,7 @@ func dxfShapeMM(shape Shape) string {
 	parts := strings.Fields(shape.String())
 	for i := 1; i < len(parts); i++ {
 		if n, e := strconv.ParseFloat(parts[i], 64); e == nil {
-			parts[i] = strconv.FormatFloat(n*10, 'f', -1, 64)
+			parts[i] = strings.TrimRight(strings.TrimRight(strconv.FormatFloat(math.Round(n*1e7)/1e6, 'f', 6, 64), "0"), ".")
 		}
 	}
 	if len(parts) > 1 {
@@ -83,9 +83,23 @@ func (f *Frame) DXFSections(ids []int) ([]DXFSection, error) {
 		if r.Symbol == "" {
 			r.Symbol = fmt.Sprintf("S%d", id)
 		}
+		if f.drawingSettings != nil {
+			if m := f.drawingSettings.Sections[id]; m.Symbol != nil {
+				r.Symbol = *m.Symbol
+			}
+		}
 		floorSet := map[string]bool{}
 		floorOrder := map[string]float64{}
 		for _, e := range use[id] {
+			if m := f.resolvedDXFMember(e); m.Level != nil {
+				floorSet[*m.Level] = true
+				for _, l := range levels {
+					if strings.EqualFold(l.name, *m.Level) {
+						floorOrder[*m.Level] = l.value
+					}
+				}
+				continue
+			}
 			lo, hi := math.Inf(1), math.Inf(-1)
 			for _, n := range e.Enod {
 				lo = math.Min(lo, n.Coord[2])

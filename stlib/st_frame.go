@@ -73,12 +73,16 @@ var (
 
 // Frame : Analysis Frame
 type Frame struct {
-	fig2JointRates fig2JointRates
-	Title          string
-	Name           string
-	Project        string
-	Path           string
-	Home           string
+	fig2JointRates   fig2JointRates
+	drawingSettings  *DXFDrawingSettings
+	drawingView      string
+	drawingPlotScale float64
+	drawingRotation  int
+	Title            string
+	Name             string
+	Project          string
+	Path             string
+	Home             string
 
 	View   *View
 	Nodes  map[int]*Node
@@ -316,6 +320,10 @@ func (v *View) Copy() *View {
 // Snapshot takes a Snapshot of Frame
 func (frame *Frame) Snapshot() *Frame {
 	f := NewFrame()
+	f.drawingSettings = cloneDXFDrawingSettings(frame.drawingSettings)
+	f.drawingView = frame.drawingView
+	f.drawingPlotScale = frame.drawingPlotScale
+	f.drawingRotation = frame.drawingRotation
 	f.Title = frame.Title
 	f.Name = frame.Name
 	f.Project = frame.Project
@@ -3343,6 +3351,9 @@ func (frame *Frame) buildDxfCrosssection(axis int, min, max float64, side int, s
 	MCDASH6, _ := d.AddLineType("MCDASH6", "MiniCad+ Generated", 3.175, -1.058075, 0.352692, -0.705771)
 	SIMPLEX, _ := d.AddStyle("SIMPLEX", "simplex.shx", "bigfont.shx", true)
 	SIMPLEX.WidthFactor = 0.75
+	if frame.drawingSettings != nil {
+		d.AddStyle("ST_DRAWING", frame.dxfDraftingStyle().Font, "", true)
+	}
 	d.AddLayer("KIJUN", dxfcolor.Red, MCDASH6, false)
 	d.AddLayer("AXIS", dxf.DefaultColor, dxf.DefaultLineType, false)
 	d.AddLayer("MOJI", dxf.DefaultColor, dxf.DefaultLineType, false)
@@ -3454,7 +3465,7 @@ func (frame *Frame) buildDxfCrosssection(axis int, min, max float64, side int, s
 		err := frame.DrawDxfSection(d, sectionElem, position, scale)
 		if err == nil {
 			settextlayer(el.Etype)
-			name := frame.Sects[el.Sect.Num].Allow.Name()
+			name := frame.dxfMemberSymbol(el)
 			textcoord := []float64{
 				position[0]*scale + textheight,
 				position[1]*scale + textheight,

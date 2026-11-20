@@ -6,10 +6,10 @@ import (
 	"strings"
 )
 
-const dxfDocumentUsage = ":drawings filename {-plans=1,2} {-grids=X1,Y2} {-sections} {-sect=101,201} {-paper=A3|A4|A3P|A4P} {-scale=auto|100} {-columns=1} {-rows=1} {-sectioncolumns=3} {-sectionrows=2} {-title=text}"
+const dxfDocumentUsage = ":drawings filename {-plans=1,2} {-grids=X1,Y2} {-sections} {-sect=101,201} {-paper=A3|A4|A3P|A4P} {-scale=auto|100} {-columns=1} {-rows=1} {-sectioncolumns=3} {-sectionrows=2} {-title=text} {-settings=model.drawing.json} {-rotate=0|90|180|270}"
 
 func parseDXFDocumentOptions(args map[string]string, sectionsOnly bool) (DXFDocumentOptions, error) {
-	o := DXFDocumentOptions{Title: args["TITLE"], Font: args["FONT"], Paper: strings.ToUpper(args["PAPER"]), Sections: sectionsOnly}
+	o := DXFDocumentOptions{Title: args["TITLE"], Font: args["FONT"], Paper: strings.ToUpper(args["PAPER"]), Sections: sectionsOnly, SettingsPath: args["SETTINGS"]}
 	if _, ok := args["SECTIONS"]; ok {
 		o.Sections = true
 	}
@@ -54,6 +54,15 @@ func parseDXFDocumentOptions(args map[string]string, sectionsOnly bool) (DXFDocu
 				return o, fmt.Errorf("invalid GRIDS")
 			}
 			o.Views = append(o.Views, DXFViewSpec{Kind: "elevation", Grid: name})
+		}
+	}
+	if text, ok := args["ROTATE"]; ok {
+		n, err := strconv.Atoi(text)
+		if err != nil || (n != 0 && n != 90 && n != 180 && n != 270) {
+			return o, fmt.Errorf("invalid ROTATE")
+		}
+		for i := range o.Views {
+			o.Views[i].Rotation = dxfPtr(n)
 		}
 	}
 	if !o.Sections && len(o.Views) == 0 {

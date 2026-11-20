@@ -81,6 +81,16 @@ func (f *Frame) dxfGrids(axis int) []dxfDatum {
 }
 
 func (f *Frame) dxfLevels() []dxfDatum {
+	if f.drawingSettings != nil && (len(f.drawingSettings.Levels) > 0 || f.drawingSettings.GroundLevelMM != nil) {
+		var configured []dxfDatum
+		if z := f.drawingSettings.GroundLevelMM; z != nil {
+			configured = append(configured, dxfDatum{*z / 1000, "GL"})
+		}
+		for _, l := range f.drawingSettings.Levels {
+			configured = append(configured, dxfDatum{l.ElevationMM / 1000, l.Name})
+		}
+		return mergeDXFDatums(configured)
+	}
 	minZ, maxZ := math.Inf(1), math.Inf(-1)
 	for _, n := range f.Nodes {
 		minZ = math.Min(minZ, n.Coord[2])
@@ -155,7 +165,25 @@ func (f *Frame) WriteDxfCrosssectionDimensions(path string, axis int, min, max f
 	if err != nil {
 		return err
 	}
-	d, err := r.buildDxfCrosssection(axis, min, max, side, scale, textheight, axissize, false)
+	if r.drawingSettings == nil {
+		cfg, err := r.loadDXFDrawingSettings("")
+		if err != nil {
+			return err
+		}
+		if cfg != nil {
+			if _, err = r.applyDXFDrawingSettings(cfg); err != nil {
+				return err
+			}
+		}
+	}
+	drafting := r.dxfDraftingStyle()
+	plotScale := textheight / 2.5
+	r.drawingPlotScale = plotScale
+	if r.drawingSettings == nil {
+		r.drawingSettings = &DXFDrawingSettings{Version: 1}
+	}
+	r.drawingSettings.Style = drafting
+	d, err := r.buildDxfCrosssection(axis, min, max, side, scale, drafting.TextHeightMM*plotScale, axissize, false)
 	if err != nil {
 		return err
 	}
@@ -189,8 +217,8 @@ func (f *Frame) WriteDxfCrosssectionDimensions(path string, axis int, min, max f
 	if err != nil {
 		return err
 	}
-	style.TextHeight, style.ArrowSize, style.TextGap = textheight, .65*textheight, .3*textheight
-	style.ExtOffset, style.ExtExtend, style.Decimals = .4*textheight, .6*textheight, 0
+	style.TextHeight, style.ArrowSize, style.TextGap = drafting.Dimension.TextHeightMM*plotScale, drafting.Dimension.ArrowSizeMM*plotScale, drafting.Dimension.TextGapMM*plotScale
+	style.ExtOffset, style.ExtExtend, style.Decimals = drafting.Dimension.ExtOffsetMM*plotScale, drafting.Dimension.ExtExtendMM*plotScale, *drafting.Dimension.Decimals
 	var horizontal, vertical []dxfDatum
 	if axis == 2 {
 		horizontal, vertical = r.dxfGrids(0), r.dxfGrids(1)
@@ -214,7 +242,7 @@ func (f *Frame) WriteDxfCrosssectionDimensions(path string, axis int, min, max f
 		if _, err := d.Layer("GRID_TEXT", true); err != nil {
 			return err
 		}
-		t, err := d.Text(name, x, y, 0, textheight)
+		t, err := d.Text(name, x, y, 0, drafting.GridTextHeightMM*plotScale)
 		if err != nil {
 			return err
 		}
@@ -288,6 +316,14 @@ func (f *Frame) WriteDxfCrosssectionDimensions(path string, axis int, min, max f
 			return err
 		}
 	}
+	x, y := 0, 1
+	if axis != 2 {
+		x, y = 1-axis, 2
+	}
+	if err = r.drawDXFAnnotationsInRange(d, r.dxfDrawingViewKey(axis, min, max), axis, min, max, x, y, plotScale); err != nil {
+		return err
+	}
+	applyDXFDraftingEntities(d, drafting, plotScale)
 	d.SetExt()
 	return d.SaveAs(path)
 }

@@ -17,10 +17,11 @@ import (
 )
 
 type DXFViewSpec struct {
-	Kind  string `json:"kind"` // plan or elevation
-	Floor int    `json:"floor,omitempty"`
-	Grid  string `json:"grid,omitempty"`
-	Title string `json:"title,omitempty"`
+	Kind     string `json:"kind"` // plan or elevation
+	Floor    int    `json:"floor,omitempty"`
+	Grid     string `json:"grid,omitempty"`
+	Title    string `json:"title,omitempty"`
+	Rotation *int   `json:"rotation,omitempty"`
 }
 type DXFDocumentOptions struct {
 	Title          string        `json:"title,omitempty"`
@@ -35,7 +36,9 @@ type DXFDocumentOptions struct {
 	SectionColumns int           `json:"section_columns,omitempty"`
 	SectionRows    int           `json:"section_rows,omitempty"`
 	// DisableSidecar is used by scoped file hosts which load KJN through os.Root.
-	DisableSidecar bool `json:"-"`
+	DisableSidecar bool                `json:"-"`
+	Settings       *DXFDrawingSettings `json:"settings,omitempty"`
+	SettingsPath   string              `json:"-"`
 }
 type DXFPlacement struct {
 	Page     int        `json:"page"`
@@ -46,13 +49,18 @@ type DXFPlacement struct {
 	Scale    float64    `json:"scale"`
 	PaperBox [4]float64 `json:"paper_box_mm"`
 	ModelBox [4]float64 `json:"model_box_mm"`
+	Rotation int        `json:"rotation,omitempty"`
 }
 type DXFDocumentReport struct {
-	Pages      int            `json:"pages"`
-	Paper      string         `json:"paper"`
-	Placements []DXFPlacement `json:"placements"`
-	Sections   []DXFSection   `json:"sections,omitempty"`
-	Warnings   []string       `json:"warnings,omitempty"`
+	Pages         int               `json:"pages"`
+	Paper         string            `json:"paper"`
+	Placements    []DXFPlacement    `json:"placements"`
+	Sections      []DXFSection      `json:"sections,omitempty"`
+	Warnings      []string          `json:"warnings,omitempty"`
+	DrawingIssues []DXFDrawingIssue `json:"drawing_issues,omitempty"`
+	Drafting      *DXFDraftingStyle `json:"drafting"`
+	SheetTemplate *DXFSheetTemplate `json:"sheet_template"`
+	Sheets        []DXFSheetReport  `json:"sheets"`
 }
 
 func paperSize(name string) (float64, float64, error) {
@@ -113,8 +121,12 @@ func dxfWrapped(s string, maxUnits int) []string {
 	return out
 }
 
-func buildSectionCard(r DXFSection, scale, width, height float64, font string) (*drawing.Drawing, error) {
+func buildSectionCard(r DXFSection, scale, width, height float64, font string, styles ...*DXFDraftingStyle) (*drawing.Drawing, error) {
 	d := dxf.NewDrawing()
+	drafting := DefaultDXFDraftingStyle()
+	if len(styles) > 0 {
+		drafting = styles[0]
+	}
 	if font == "" {
 		font = "msgothic.ttc"
 	}
@@ -135,9 +147,9 @@ func buildSectionCard(r DXFSection, scale, width, height float64, font string) (
 	}
 	y := height - 5
 	for _, s := range texts {
-		for _, line := range dxfWrapped(s, int((width-8)/1.5)) {
-			d.Text(line, 4*scale, y*scale, 0, 2.5*scale)
-			y -= 4
+		for _, line := range sheetTextLines(s, width-4, drafting.TextHeightMM, drafting.TextWidthFactor) {
+			d.Text(line, 4*scale, y*scale, 0, drafting.TextHeightMM*scale)
+			y -= drafting.TextHeightMM * 1.6
 		}
 	}
 	availableH := y - 7
@@ -193,19 +205,57 @@ func buildSectionCard(r DXFSection, scale, width, height float64, font string) (
 		d.Layer("SECTION_CARD", true)
 		d.Text("断面図なし（定義不足/未対応）", 4*scale, 10*scale, 0, 2.5*scale)
 	}
+	applyDXFDraftingEntities(d, drafting, scale)
+	if bounds, err := dxfBounds(d.Entities()); err != nil {
+		return nil, err
+	} else if bounds[0] < -1e-6 || bounds[1] < -1e-6 || bounds[2] > width*scale+1e-6 || bounds[3] > height*scale+1e-6 {
+		return nil, fmt.Errorf("section %d: metadata exceeds its card", r.ID)
+	}
 	return d, nil
 }
 
 // BuildDXFDocument composes model-space view blocks and paper-space sheets.
 // Geometry stays in mm; only viewports set plot scale. No source model edits.
 func (f *Frame) BuildDXFDocument(o DXFDocumentOptions) (*drawing.Drawing, *DXFDocumentReport, error) {
+	if o.SettingsPath != "" && (o.Settings != nil || o.DisableSidecar) {
+		return nil, nil, fmt.Errorf("choose explicit settings or an allowed settings path")
+	}
+
+	settings := o.Settings
+	var err error
+	if settings == nil && !o.DisableSidecar {
+		settings, err = f.loadDXFDrawingSettings(o.SettingsPath)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	var draftingInput *DXFDraftingStyle
+	var sheetInput *DXFSheetTemplate
+	if settings != nil {
+		draftingInput = settings.Style
+		sheetInput = settings.Sheet
+	}
+	drafting, err := ResolveDXFDraftingStyle(draftingInput)
+	if err != nil {
+		return nil, nil, err
+	}
+	sheet, err := ResolveDXFSheetTemplate(sheetInput)
+	if err != nil {
+		return nil, nil, err
+	}
 	if o.Font == "" {
-		o.Font = "msgothic.ttc"
+		o.Font = drafting.Font
+	} else {
+		drafting.Font = o.Font
 	}
 	if o.Paper == "" {
-		o.Paper = "A3"
+		o.Paper = sheet.Paper
 	}
 	o.Paper = strings.ToUpper(o.Paper)
+	sheet.Paper = o.Paper
+	if o.Title != "" {
+		sheet.Project = o.Title
+	}
 	w, h, err := paperSize(o.Paper)
 	if err != nil {
 		return nil, nil, err
@@ -246,6 +296,22 @@ func (f *Frame) BuildDXFDocument(o DXFDocumentOptions) (*drawing.Drawing, *DXFDo
 			return nil, nil, err
 		}
 	}
+	var settingsReport *DXFDrawingCheckReport
+	if settings != nil {
+		settingsReport, err = r.applyDXFDrawingSettings(settings)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	if r.drawingSettings == nil {
+		r.drawingSettings = &DXFDrawingSettings{Version: 1}
+	}
+	r.drawingSettings.Style = drafting
+	contentBox, _, err := sheet.boxes(w, h)
+	if err != nil {
+		return nil, nil, err
+	}
+	contentW, contentH := contentBox[2]-contentBox[0], contentBox[3]-contentBox[1]
 	// Downstream rendering must use only these already-resolved in-memory grids.
 	r.Path = ""
 	// Floor/grid specifications, not a temporary GUI display filter, define
@@ -260,7 +326,15 @@ func (f *Frame) BuildDXFDocument(o DXFDocumentOptions) (*drawing.Drawing, *DXFDo
 	r.Show.Xrange = []float64{math.Inf(-1), math.Inf(1)}
 	r.Show.Yrange = []float64{math.Inf(-1), math.Inf(1)}
 	r.Show.Zrange = []float64{math.Inf(-1), math.Inf(1)}
-	report := &DXFDocumentReport{Paper: o.Paper}
+	report := &DXFDocumentReport{Paper: o.Paper, Drafting: drafting, SheetTemplate: sheet}
+	if settingsReport != nil {
+		report.DrawingIssues = settingsReport.Issues
+		for _, i := range settingsReport.Issues {
+			if !o.Sections || i.Code != "section_data" && i.Code != "inp_lst_mismatch" {
+				report.Warnings = append(report.Warnings, i.Message)
+			}
+		}
+	}
 	if o.Sections {
 		report.Sections, err = r.DXFSections(o.SectionIDs)
 		if err != nil {
@@ -310,31 +384,20 @@ func (f *Frame) BuildDXFDocument(o DXFDocumentOptions) (*drawing.Drawing, *DXFDo
 		l.LimMin = []float64{0, 0}
 		l.LimMax = []float64{w, h}
 		l.PageSetup(w, h, object.PLOT_MILLIMETERS, [4]float64{0, 0, 0, 0}, 0, 1, "")
+		l.PlotSettings.Flags |= 128      // print entity/layer lineweights
+		l.PlotSettings.Flags &^= 32 | 64 // no CTB override or scaling of lineweights
+		l.PlotSettings.StyleSheet = ""
 		if e := d.UseLayout(name); e != nil {
 			return "", e
 		}
-		d.Layer("SHEET_FRAME", true)
-		d.LwPolyline(true, []float64{10, 10}, []float64{w - 10, 10}, []float64{w - 10, h - 10}, []float64{10, h - 10})
-		d.Line(10, 30, 0, w-10, 30, 0)
-		d.Layer("SHEET_TEXT", true)
-		title := o.Title
-		if title == "" {
-			title = "構造図"
-		}
-		for i, line := range dxfWrapped(title, int((w-80)/2.1)) {
-			if i > 1 {
-				return "", fmt.Errorf("sheet title is too long")
-			}
-			d.Text(line, 14, 23-float64(i)*5, 0, 3.5)
-		}
-		d.Text(fmt.Sprintf("%s  %d", o.Paper, page), w-48, 16, 0, 3)
+
 		return name, nil
 	}
-	place := func(src *drawing.Drawing, name, title, kind string, section, slot, cols, rows int, scale float64, box [4]float64) error {
-		cellW := (w - 20 - 5*float64(cols-1)) / float64(cols)
-		cellH := (h - 45 - 5*float64(rows-1)) / float64(rows)
-		x := 10 + float64(slot%cols)*(cellW+5)
-		y := h - 10 - float64(slot/cols+1)*cellH - float64(slot/cols)*5
+	place := func(src *drawing.Drawing, name, title, kind string, section, slot, cols, rows int, scale float64, box [4]float64, rotation int) error {
+		cellW := (contentW - 5*float64(cols-1)) / float64(cols)
+		cellH := (contentH - 5*float64(rows-1)) / float64(rows)
+		x := contentBox[0] + float64(slot%cols)*(cellW+5)
+		y := contentBox[3] - float64(slot/cols+1)*cellH - float64(slot/cols)*5
 		viewW, viewH := cellW-4, cellH-12
 		index := len(report.Placements) + 1
 		// Anonymous dimension block names are local to each source drawing.
@@ -366,6 +429,21 @@ func (f *Frame) BuildDXFDocument(o DXFDocumentOptions) (*drawing.Drawing, *DXFDo
 				}
 			}
 		}
+		if style, e := src.Style("ST_DRAWING", false); e == nil {
+			style.FontName = o.Font
+			style.BigFontName = ""
+		}
+		// Paper-space viewports perform linetype scaling (PSLTSCALE=1).
+		// Source single-view DXFs have already encoded their print scale in
+		// group 48; reset it here to prevent scaling the pattern twice.
+		for _, e := range src.Entities() {
+			e.SetLtscale(1)
+		}
+		for _, b := range src.Blocks() {
+			for _, e := range b.Entities {
+				e.SetLtscale(1)
+			}
+		}
 		d.ModelSpace()
 		blockName := fmt.Sprintf("ST_VIEW_%03d", index)
 		if _, e := d.BeginBlock(blockName, 0, 0, 0); e != nil {
@@ -377,6 +455,9 @@ func (f *Frame) BuildDXFDocument(o DXFDocumentOptions) (*drawing.Drawing, *DXFDo
 		if e := d.EndBlock(); e != nil {
 			return e
 		}
+		// A model-space INSERT must be on a plotting layer. Inheriting the
+		// preceding paper-space viewport layer can hide the entire block at print.
+		d.Layer("0", true)
 		if _, e := d.Insert(blockName, modelX, 0, 0); e != nil {
 			return e
 		}
@@ -395,21 +476,41 @@ func (f *Frame) BuildDXFDocument(o DXFDocumentOptions) (*drawing.Drawing, *DXFDo
 			return e
 		}
 		v.Flags |= 16384 // lock scale/position
-		report.Placements = append(report.Placements, DXFPlacement{page, name, title, kind, section, scale, [4]float64{x, y, x + cellW, y + cellH}, box})
+		if rotation != 0 {
+			v.ViewTarget = []float64{modelX + (box[0]+box[2])/2, (box[1] + box[3]) / 2, 0}
+			v.ViewCenter = []float64{0, 0}
+			v.TwistAngle = -float64(rotation)
+		}
+		report.Placements = append(report.Placements, DXFPlacement{page, name, title, kind, section, scale, [4]float64{x, y, x + cellW, y + cellH}, box, rotation})
 		// Keep adjacent view geometry outside all of this viewport's field of view.
-		modelX += math.Max(box[2]-box[0], viewW*scale) + math.Max(viewW*scale, 100000)
+		extent := math.Max(viewW, viewH) * scale
+		modelX += math.Max(box[2]-box[0], extent) + math.Max(extent, 100000)
 		return nil
 	}
 	var name string
 	for i, spec := range o.Views {
+		rotation := 0
+		key := spec.Kind + ":" + spec.Grid
+		if spec.Kind == "plan" {
+			key = fmt.Sprintf("plan:%d", spec.Floor)
+		}
+		if v, ok := sheet.ViewRotations[strings.ToLower(key)]; ok {
+			rotation = v
+		}
+		if spec.Rotation != nil {
+			rotation = *spec.Rotation
+		}
+		if rotation != 0 && rotation != 90 && rotation != 180 && rotation != 270 {
+			return nil, nil, fmt.Errorf("view rotation must be 0,90,180 or 270")
+		}
 		if i%(o.Columns*o.Rows) == 0 {
 			name, err = newPage()
 			if err != nil {
 				return nil, nil, err
 			}
 		}
-		cellW := (w - 20 - 5*float64(o.Columns-1)) / float64(o.Columns)
-		cellH := (h - 45 - 5*float64(o.Rows-1)) / float64(o.Rows)
+		cellW := (contentW - 5*float64(o.Columns-1)) / float64(o.Columns)
+		cellH := (contentH - 5*float64(o.Rows-1)) / float64(o.Rows)
 		scales := []float64{10, 20, 25, 50, 75, 100, 150, 200, 250, 500, 1000}
 		if o.Scale > 0 {
 			scales = []float64{o.Scale}
@@ -419,6 +520,11 @@ func (f *Frame) BuildDXFDocument(o DXFDocumentOptions) (*drawing.Drawing, *DXFDo
 		chosen := 0.
 		unresolved := 0
 		title := spec.Title
+		r.drawingRotation = rotation
+		r.drawingView = spec.Kind + ":" + spec.Grid
+		if spec.Kind == "plan" {
+			r.drawingView = fmt.Sprintf("plan:%d", spec.Floor)
+		}
 		for _, s := range scales {
 			p := filepath.Join(tmp, "view.dxf")
 			switch spec.Kind {
@@ -451,7 +557,11 @@ func (f *Frame) BuildDXFDocument(o DXFDocumentOptions) (*drawing.Drawing, *DXFDo
 			if err != nil {
 				return nil, nil, err
 			}
-			if (box[2]-box[0])/s <= cellW-6 && (box[3]-box[1])/s <= cellH-14 {
+			viewWidth, viewHeight := box[2]-box[0], box[3]-box[1]
+			if rotation%180 != 0 {
+				viewWidth, viewHeight = viewHeight, viewWidth
+			}
+			if viewWidth/s <= cellW-6 && viewHeight/s <= cellH-14 {
 				chosen = s
 				break
 			}
@@ -462,7 +572,7 @@ func (f *Frame) BuildDXFDocument(o DXFDocumentOptions) (*drawing.Drawing, *DXFDo
 		if unresolved > 0 {
 			report.Warnings = append(report.Warnings, fmt.Sprintf("%s: %d件の部材符号の重なりを解消できませんでした", title, unresolved))
 		}
-		if err = place(src, name, title, spec.Kind, 0, i%(o.Columns*o.Rows), o.Columns, o.Rows, chosen, box); err != nil {
+		if err = place(src, name, title, spec.Kind, 0, i%(o.Columns*o.Rows), o.Columns, o.Rows, chosen, box, rotation); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -473,12 +583,12 @@ func (f *Frame) BuildDXFDocument(o DXFDocumentOptions) (*drawing.Drawing, *DXFDo
 				return nil, nil, err
 			}
 		}
-		cw := (w - 20 - 5*float64(o.SectionColumns-1)) / float64(o.SectionColumns)
-		ch := (h - 45 - 5*float64(o.SectionRows-1)) / float64(o.SectionRows)
+		cw := (contentW - 5*float64(o.SectionColumns-1)) / float64(o.SectionColumns)
+		ch := (contentH - 5*float64(o.SectionRows-1)) / float64(o.SectionRows)
 		var src *drawing.Drawing
 		chosen := 0.
 		for _, s := range []float64{10, 20, 25, 50, 75, 100} {
-			src, err = buildSectionCard(section, s, cw-6, ch-14, o.Font)
+			src, err = buildSectionCard(section, s, cw-6, ch-14, o.Font, drafting)
 			if err == nil {
 				chosen = s
 				break
@@ -491,8 +601,34 @@ func (f *Frame) BuildDXFDocument(o DXFDocumentOptions) (*drawing.Drawing, *DXFDo
 		if e != nil {
 			return nil, nil, e
 		}
-		if err = place(src, name, section.Symbol, "section", section.ID, i%(o.SectionColumns*o.SectionRows), o.SectionColumns, o.SectionRows, chosen, box); err != nil {
+		if err = place(src, name, section.Symbol, "section", section.ID, i%(o.SectionColumns*o.SectionRows), o.SectionColumns, o.SectionRows, chosen, box, 0); err != nil {
 			return nil, nil, err
+		}
+	}
+	seenNumbers := map[string]bool{}
+	for p := 1; p <= page; p++ {
+		if err = d.UseLayout(fmt.Sprintf("S%03d", p)); err != nil {
+			return nil, nil, err
+		}
+		metadata, e := drawDXFSheet(d, sheet, drafting, w, h, p, o.Title, report.Placements)
+		if e != nil {
+			return nil, nil, e
+		}
+		if seenNumbers[metadata.Number] {
+			return nil, nil, fmt.Errorf("duplicate sheet number %s", metadata.Number)
+		}
+		seenNumbers[metadata.Number] = true
+		report.Sheets = append(report.Sheets, metadata)
+	}
+	for p := range sheet.Pages {
+		if p > page {
+			report.Warnings = append(report.Warnings, fmt.Sprintf("図枠のページ指定 %d は出力ページ数 %d を超えています", p, page))
+		}
+	}
+	applyDXFDraftingLayers(d, drafting)
+	for i, p := range d.Header().Extra {
+		if p[0] == "9" && p[1] == "$PSLTSCALE" {
+			d.Header().Extra[i+1] = [2]string{"70", "1"}
 		}
 	}
 	report.Pages = page
