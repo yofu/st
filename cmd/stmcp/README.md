@@ -297,3 +297,19 @@ STの起動時にはHTTPサーバーを起動せず、`:mcpconnect` 実行時に
 Windowsの名前付きミューテックスで起動処理を直列化し、複数STからの同時実行でも二重起動を防止します。
 別サービスや異なる認証設定でポートが使われている場合はエラーを表示します。
 `:mcpconnect off` やSTの終了では共有HTTPサーバーを終了しません。
+
+### 図面設定の保存と再利用
+
+`query_dxf_settings` → `preview_dxf_settings` → `save_dxf_settings` で、
+`.drawing.json` の初期生成・変更前後の確認・保存ができます。
+断面共通設定に部材ごとの符号・注記・用紙上の文字位置等を上書きできます。
+新しい部材指定は断面・節点の記録を自動付与し、既存設定の対象不一致は拒否します。
+設定保存は既存ファイルをバックアップし、レビュー後の変更を検出します。
+`query_dxf_sections` と `preview_dxf_drawings` は同名設定を自動で読みます。
+別名設定はルート内の `settings_path` で指定できます。
+詳細は [図面設定仕様](../../docs/dxf-drawing-settings.md) を参照してください。
+
+図面設定の `style` と `sheet` には製図スタイル・右側タイトル欄・改訂履歴・
+図番・表示回転を保存できます。`preview_dxf_drawings.options.views[].rotation`
+で個別に上書きでき、レポートの `sheets` で作図領域とタイトル欄を確認できます。
+詳細は [製図スタイルと図枠](../../docs/dxf-drafting.md) を参照してください。

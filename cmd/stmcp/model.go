@@ -66,6 +66,8 @@ type modelSession struct {
 	fig2              *fig2Draft
 	nextFig2          uint64
 	drawingDraft      *dxfDrawingDraft
+	settingsDraft     *drawingSettingsDraft
+	nextSettings      uint64
 	nextDrawing       uint64
 	guiID             string
 	guiNodes          []int
@@ -412,6 +414,9 @@ func patchINP(data []byte, edits map[recordKey]map[string][]string) ([]byte, err
 }
 
 func (s *modelSession) call(name string, raw json.RawMessage) (any, error) {
+	if name == "query_dxf_settings" || name == "preview_dxf_settings" || name == "save_dxf_settings" {
+		return s.drawingSettingsTool(name, raw)
+	}
 	if name == "query_dxf_sections" || name == "preview_dxf_drawings" || name == "save_dxf_drawings" {
 		return s.dxfDrawingTool(name, raw)
 	}

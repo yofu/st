@@ -17,15 +17,15 @@ import (
 const dxfOptionsSchema = `{"type":"object","properties":{
 "title":{"type":"string"},"font":{"type":"string"},"paper":{"enum":["A3","A4","A3P","A4P"]},"scale":{"type":"number","minimum":0,"maximum":10000},
 "columns":{"type":"integer","minimum":1,"maximum":4},"rows":{"type":"integer","minimum":1,"maximum":4},
-"views":{"type":"array","maxItems":100,"items":{"type":"object","required":["kind"],"properties":{"kind":{"enum":["plan","elevation"]},"floor":{"type":"integer","minimum":1},"grid":{"type":"string"},"title":{"type":"string"}},"additionalProperties":false}},
+"views":{"type":"array","maxItems":100,"items":{"type":"object","required":["kind"],"properties":{"kind":{"enum":["plan","elevation"]},"floor":{"type":"integer","minimum":1},"grid":{"type":"string"},"title":{"type":"string"},"rotation":{"type":"integer","enum":[0,90,180,270]}},"additionalProperties":false}},
 "sections":{"type":"boolean"},"section_ids":{"type":"array","maxItems":500,"items":{"type":"integer","minimum":1}},
-"section_columns":{"type":"integer","minimum":1,"maximum":4},"section_rows":{"type":"integer","minimum":1,"maximum":4}
+"settings":{"type":"object"},"section_columns":{"type":"integer","minimum":1,"maximum":4},"section_rows":{"type":"integer","minimum":1,"maximum":4}
 },"additionalProperties":false}`
 
 func init() {
 	catalog = append(catalog,
-		tool{"query_dxf_sections", "Inspect the current model's section schedule in mm, including current unsaved LST geometry/rebar, use floors and missing-data warnings. Call gui_get_model first to import an unsaved GUI model. Optional kjn_path is root-relative; default is the source INP basename with .kjn.", json.RawMessage(`{"type":"object","properties":{"section_ids":{"type":"array","items":{"type":"integer","minimum":1},"maxItems":500},"kjn_path":{"type":"string"},"proposal_id":{"type":"integer","minimum":1}},"additionalProperties":false}`)},
-		tool{"preview_dxf_drawings", "Build a reviewable DXF draft from the current model, or a reviewed proposal. Options select floor plans, named X/Y-grid elevations, RC/S section cards, paper size, automatic/fixed view scale and paginated layouts. Returns draft_id, exact placements/scales and warnings. Does not save output files or edit INP/LST.", json.RawMessage(`{"type":"object","required":["options"],"properties":{"options":` + dxfOptionsSchema + `,"kjn_path":{"type":"string"},"proposal_id":{"type":"integer","minimum":1}},"additionalProperties":false}`)},
+		tool{"query_dxf_sections", "Inspect the current model's section schedule in mm, including current unsaved LST geometry/rebar, use floors and missing-data warnings. Call gui_get_model first to import an unsaved GUI model. Optional kjn_path is root-relative; default is the source INP basename with .kjn.", json.RawMessage(`{"type":"object","properties":{"section_ids":{"type":"array","items":{"type":"integer","minimum":1},"maxItems":500},"settings_path":{"type":"string"},"kjn_path":{"type":"string"},"proposal_id":{"type":"integer","minimum":1}},"additionalProperties":false}`)},
+		tool{"preview_dxf_drawings", "Build a reviewable DXF draft from the current model, or a reviewed proposal. Options select floor plans, named X/Y-grid elevations, RC/S section cards, paper size, automatic/fixed view scale and paginated layouts. Returns draft_id, exact placements/scales and warnings. Does not save output files or edit INP/LST.", json.RawMessage(`{"type":"object","required":["options"],"properties":{"options":` + dxfOptionsSchema + `,"settings_path":{"type":"string"},"kjn_path":{"type":"string"},"proposal_id":{"type":"integer","minimum":1}},"additionalProperties":false}`)},
 		tool{"save_dxf_drawings", "Save the latest reviewed DXF draft to a new root-relative .dxf. Never overwrites; rejects a changed model/proposal since preview.", json.RawMessage(`{"type":"object","required":["draft_id","path"],"properties":{"draft_id":{"type":"integer","minimum":1},"path":{"type":"string"}},"additionalProperties":false}`)},
 	)
 }
@@ -37,6 +37,10 @@ type dxfDrawingDraft struct {
 	revision, source, guiID   string
 	proposal                  uint64
 	proposalData, proposalLst []byte
+	settingsPath              string
+	settingsData              []byte
+	drawingRevision, kjn      string
+	inputRoot                 *os.Root
 }
 
 func (s *modelSession) drawingFrame(kjn string, proposalID uint64) (*st.Frame, error) {
@@ -133,6 +137,22 @@ func (s *modelSession) dxfDrawingTool(name string, raw json.RawMessage) (any, er
 		if d.proposal != 0 && (s.pending == nil || s.pending.ID != d.proposal || !bytes.Equal(s.pending.data, d.proposalData) || !bytes.Equal(s.proposedLst(s.pending), d.proposalLst)) {
 			return nil, fmt.Errorf("proposal changed since drawing preview; preview again")
 		}
+		if d.drawingRevision != "" {
+			sourceSession := *s
+			sourceSession.root = d.inputRoot
+			original, err := sourceSession.drawingFrame(d.kjn, d.proposal)
+			if err != nil {
+				return nil, fmt.Errorf("drawing source changed; preview again: %w", err)
+			}
+			if original.DXFDrawingRevision() != d.drawingRevision {
+				return nil, fmt.Errorf("model/KJN changed since drawing preview; preview again")
+			}
+		}
+		if d.settingsPath != "" {
+			if err := s.verifyOriginal(saveFile{path: d.settingsPath, original: d.settingsData}); err != nil {
+				return nil, err
+			}
+		}
 		if !filepath.IsLocal(a.Path) || !strings.EqualFold(filepath.Ext(a.Path), ".dxf") {
 			return nil, fmt.Errorf("expected a root-relative .dxf path")
 		}
@@ -145,31 +165,34 @@ func (s *modelSession) dxfDrawingTool(name string, raw json.RawMessage) (any, er
 		return map[string]any{"path": filepath.Clean(a.Path), "bytes": len(d.data), "report": d.report}, nil
 	}
 	var a struct {
-		Options  st.DXFDocumentOptions `json:"options"`
-		IDs      []int                 `json:"section_ids"`
-		KJN      string                `json:"kjn_path"`
-		Proposal uint64                `json:"proposal_id"`
+		Options      st.DXFDocumentOptions `json:"options"`
+		IDs          []int                 `json:"section_ids"`
+		SettingsPath string                `json:"settings_path"`
+		KJN          string                `json:"kjn_path"`
+		Proposal     uint64                `json:"proposal_id"`
 	}
 	if name == "query_dxf_sections" {
 		var q struct {
-			IDs      []int  `json:"section_ids"`
-			KJN      string `json:"kjn_path"`
-			Proposal uint64 `json:"proposal_id"`
+			IDs          []int  `json:"section_ids"`
+			SettingsPath string `json:"settings_path"`
+			KJN          string `json:"kjn_path"`
+			Proposal     uint64 `json:"proposal_id"`
 		}
 		if err := decode(raw, &q); err != nil {
 			return nil, err
 		}
-		a.IDs, a.KJN, a.Proposal = q.IDs, q.KJN, q.Proposal
+		a.IDs, a.KJN, a.Proposal, a.SettingsPath = q.IDs, q.KJN, q.Proposal, q.SettingsPath
 	} else {
 		var p struct {
-			Options  st.DXFDocumentOptions `json:"options"`
-			KJN      string                `json:"kjn_path"`
-			Proposal uint64                `json:"proposal_id"`
+			Options      st.DXFDocumentOptions `json:"options"`
+			SettingsPath string                `json:"settings_path"`
+			KJN          string                `json:"kjn_path"`
+			Proposal     uint64                `json:"proposal_id"`
 		}
 		if err := decode(raw, &p); err != nil {
 			return nil, err
 		}
-		a.Options, a.KJN, a.Proposal = p.Options, p.KJN, p.Proposal
+		a.Options, a.KJN, a.Proposal, a.SettingsPath = p.Options, p.KJN, p.Proposal, p.SettingsPath
 	}
 	if len(a.IDs) > 500 {
 		return nil, fmt.Errorf("too many section IDs")
@@ -178,7 +201,27 @@ func (s *modelSession) dxfDrawingTool(name string, raw json.RawMessage) (any, er
 	if err != nil {
 		return nil, err
 	}
+	settingsPath := ""
+	var settingsData []byte
+	if a.Options.Settings == nil {
+		settingsPath, err = drawingSettingsPath(a.SettingsPath, s.source)
+		if err != nil {
+			return nil, err
+		}
+		a.Options.Settings, settingsData, err = s.readDrawingSettings(settingsPath, a.SettingsPath != "")
+		if err != nil {
+			return nil, err
+		}
+	} else if a.SettingsPath != "" {
+		return nil, fmt.Errorf("choose settings or settings_path")
+	}
 	if name == "query_dxf_sections" {
+		if a.Options.Settings != nil {
+			f, _, err = f.WithDXFDrawingSettings(a.Options.Settings)
+			if err != nil {
+				return nil, err
+			}
+		}
 		records, err := f.DXFSections(a.IDs)
 		if err != nil {
 			return nil, err
@@ -195,7 +238,7 @@ func (s *modelSession) dxfDrawingTool(name string, raw json.RawMessage) (any, er
 		return nil, err
 	}
 	s.nextDrawing++
-	draft := &dxfDrawingDraft{id: s.nextDrawing, data: out.Bytes(), report: report, revision: s.frame.GUIRevision(), source: s.source, guiID: s.guiID, proposal: a.Proposal}
+	draft := &dxfDrawingDraft{id: s.nextDrawing, data: out.Bytes(), report: report, revision: s.frame.GUIRevision(), source: s.source, guiID: s.guiID, proposal: a.Proposal, settingsPath: settingsPath, settingsData: settingsData, drawingRevision: f.DXFDrawingRevision(), kjn: a.KJN, inputRoot: s.root}
 	if a.Proposal != 0 {
 		draft.proposalData = append([]byte(nil), s.pending.data...)
 		draft.proposalLst = append([]byte(nil), s.proposedLst(s.pending)...)
