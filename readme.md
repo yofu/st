@@ -26,7 +26,8 @@ go test -vet=off ./stlib -run '^TestDXF' -v
 ### Dimensioned plans and elevations
 
 Add `-dim` to use editable DXF dimensions, grid lines, story levels and
-member symbols. Existing output without `-dim` keeps its previous behavior.
+member symbols. The joint-outline processing below also applies to output
+without `-dim`.
 
 ```text
 :plan plan.dxf -floor=3 -dim
@@ -48,6 +49,23 @@ levels from representative horizontal beams, plus the model base/top.
 Check inferred levels before using the drawings as design documents.
 The `-name` elevation selector supports grids parallel to X or Y; slanted
 grids are rejected rather than silently projected onto the wrong axis.
+
+### Member outlines at joints
+
+Plans and elevations, including `:drawings` and MCP sheet exports, join
+straight members with the same section, type and projected section width
+into a single outline and symbol. Both ends at the shared node must be
+rigid; a pin, finite rotational spring or section change keeps the joint.
+Intermediate node connections are retained for trimming intersecting members.
+
+Pin ends stop short of the connected member's outside envelope. The gap is
+`0.2 * text height` in drawing units (0.5 mm on paper for the default sheet
+text height of 2.5 mm). Rigid ends follow the host outline; corners of two
+rigid members of the same type are mitered. Through members take precedence,
+then columns, beams, and braces. Rotated section envelopes are respected.
+Connections use shared input node IDs: projection-only crossings are not
+joined. These operations change the drawing only, not model connectivity.
+Unsupported/area-only shapes retain centerlines without an invented width.
 
 ### Sheet layouts and section schedules
 
