@@ -73,7 +73,7 @@ func gravity(stw *Window) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
@@ -127,7 +127,7 @@ func gravity(stw *Window) {
 			}
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -194,7 +194,7 @@ func smooth(stw *Window) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
@@ -224,7 +224,7 @@ func smooth(stw *Window) {
 			}
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -314,7 +314,7 @@ func hanging(stw *Window) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:

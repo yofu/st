@@ -232,7 +232,7 @@ func getcoord(stw *Window, f func(x, y, z float64)) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
@@ -272,7 +272,7 @@ func getcoord(stw *Window, f func(x, y, z float64)) {
 			}
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -334,7 +334,7 @@ func get1node(stw *Window, f func(n *st.Node)) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
@@ -374,7 +374,7 @@ func get1node(stw *Window, f func(n *st.Node)) {
 			}
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -466,7 +466,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
@@ -541,7 +541,7 @@ func get2nodes(stw *Window, f func(n *st.Node), fdel func()) {
 			}
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -663,7 +663,7 @@ func measure(stw *Window) {
 			m.Text = fmt.Sprintf("%.0f", st.VectorDistance(n0, n, v)*1000)
 			stw.EscapeAll()
 		}
-		stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+		stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 			key := iup.KeyState(arg.Key)
 			switch key.Key() {
 			default:
@@ -758,7 +758,7 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
@@ -837,7 +837,7 @@ func getnnodes(stw *Window, maxnum int, f func(int)) {
 			}
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -955,7 +955,7 @@ func searchelem(stw *Window) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -972,7 +972,7 @@ func searchelem(stw *Window) {
 			stw.EscapeAll()
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
@@ -1073,7 +1073,7 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
@@ -1146,7 +1146,7 @@ func getvector(stw *Window, f func(x, y, z float64)) {
 			}
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -1322,7 +1322,7 @@ func movetoline(stw *Window) {
 			stw.SelectNode(make([]*st.Node, 2))
 			stw.Redraw()
 		})
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -1384,7 +1384,7 @@ func movetoplane(stw *Window) {
 			stw.EscapeAll()
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -1420,7 +1420,7 @@ func pinchnode(stw *Window) {
 	movefunc := func(node *st.Node, dx, dy float64, arg *iup.MouseButton) {
 		node.Coord[2] += dy * 0.01
 	}
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		stw.dbuff.UpdateYAxis(&arg.Y)
 		switch arg.Button {
 		case BUTTON_LEFT:
@@ -1513,7 +1513,7 @@ func rotate(stw *Window) {
 					}
 					st.Snapshot(stw)
 				}
-				stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+				stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 					key := iup.KeyState(arg.Key)
 					switch key.Key() {
 					default:
@@ -1796,7 +1796,7 @@ func weightcopy(stw *Window) {
 
 // READPGP// {{{
 func readpgp(stw *Window) {
-	if name, ok := iup.GetOpenFile(stw.Cwd(), "*.pgp"); ok {
+	if name, ok := stw.commandFile(stw.Cwd(), "*.pgp", false); ok {
 		err := stw.ReadPgp(name)
 		if err != nil {
 			stw.addHistory("ReadPgp: Cannot Read st.pgp")
@@ -1811,7 +1811,7 @@ func readpgp(stw *Window) {
 
 // INSERT// {{{
 func insert(stw *Window) {
-	if name, ok := iup.GetOpenFile("", ""); ok {
+	if name, ok := stw.commandFile("", "", false); ok {
 		get1node(stw, func(n *st.Node) {
 			// TODO: 角度を指定
 			err := stw.frame.ReadInp(name, n.Coord, 0.0, false)
@@ -1843,7 +1843,7 @@ func setfocus(stw *Window) {
 func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) bool, exitfunc func()) {
 	stw.SelectElem(make([]*st.Elem, 1))
 	selected := false
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
@@ -1895,7 +1895,7 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 			}
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -1914,7 +1914,7 @@ func get1elem(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 func get1side(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) bool, exitfunc func()) {
 	stw.SelectElem(make([]*st.Elem, 1))
 	selected := false
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
@@ -1966,7 +1966,7 @@ func get1side(stw *Window, f func(*st.Elem, int, int), condition func(*st.Elem) 
 			}
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -2039,7 +2039,7 @@ func axistocang(stw *Window) {
 		}
 	}
 	getvector(stw, axisfunc)
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -2348,7 +2348,7 @@ func selectnode(stw *Window) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -2436,7 +2436,7 @@ func selectelem(stw *Window) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -2483,7 +2483,7 @@ func selectsect(stw *Window) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -2514,7 +2514,7 @@ func hidesection(stw *Window) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -2781,7 +2781,7 @@ func nodesort(stw *Window) {
 		st.Snapshot(stw)
 		stw.Redraw()
 	}
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -2819,7 +2819,7 @@ func extractarclm(stw *Window) {
 			saved = false
 		}
 	case 3:
-		name, ok = iup.GetSaveFile("", "")
+		name, ok = stw.commandFile("", "", true)
 		if ok {
 			err = stw.frame.SaveAsArclm(name)
 			if err != nil {
@@ -2843,7 +2843,7 @@ func extractarclm(stw *Window) {
 // FENCE// {{{
 func fence(stw *Window) {
 	iup.SetFocus(stw.canv)
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
@@ -3259,7 +3259,7 @@ func hatchplateelem(stw *Window) {
 		}
 		st.Snapshot(stw)
 	}
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
@@ -3411,7 +3411,7 @@ func addplateall(stw *Window) {
 		stw.addHistory(buf.String())
 		stw.EscapeCB()
 	}
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -3638,7 +3638,7 @@ func sumreaction(stw *Window) {
 		}
 		stw.addHistory(result.String())
 	}
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			stw.dbuff.UpdateYAxis(&arg.Y)
 			switch arg.Button {
@@ -3666,7 +3666,7 @@ func sumreaction(stw *Window) {
 			}
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -3728,7 +3728,7 @@ func uplift(stw *Window) {
 		}
 		stw.EscapeCB()
 	}
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -3926,7 +3926,7 @@ func getnelems(stw *Window, size int, f func(int)) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
@@ -3960,7 +3960,7 @@ func getnelems(stw *Window, size int, f func(int)) {
 			}
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:

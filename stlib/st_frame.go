@@ -6096,6 +6096,9 @@ func (frame *Frame) ReadArclmData(af *arclm.Frame, per string) {
 
 // SectionRate
 func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 string, sign float64, cond *Condition) error {
+	return frame.sectionRateCalculation(fn, long, x1, x2, y1, y2, sign, cond, nil)
+}
+func (frame *Frame) sectionRateCalculation(fn string, long, x1, x2, y1, y2 string, sign float64, cond *Condition, written func(string)) error {
 	var enum int
 	elems := make([]*Elem, len(frame.Elems))
 	for _, el := range frame.Elems {
@@ -6255,34 +6258,20 @@ func (frame *Frame) SectionRateCalculation(fn string, long, x1, x2, y1, y2 strin
 	otp.WriteString("                              A[cm2]      Ix[cm4]      Iy[cm4]       J[cm4]\n")
 	otp.WriteString("                              t[cm]\n")
 	otp.WriteString(frame.CheckLst(keys))
-	w, err := os.Create(Ce(fn, ".tst"))
-	defer w.Close()
-	if err != nil {
-		return err
+	for _, file := range []struct {
+		path string
+		data bytes.Buffer
+	}{
+		{Ce(fn, ".tst"), otp}, {filepath.Join(filepath.Dir(frame.Path), "4_3.tex"), tex}, {Ce(fn, ".rat"), rat}, {Ce(fn, ".rlt"), rlt},
+	} {
+		data := AddCR(file.data)
+		if err := os.WriteFile(file.path, data.Bytes(), 0666); err != nil {
+			return err
+		}
+		if written != nil {
+			written(file.path)
+		}
 	}
-	otp = AddCR(otp)
-	otp.WriteTo(w)
-	wtex, err := os.Create(filepath.Join(filepath.Dir(frame.Path), "4_3.tex"))
-	defer wtex.Close()
-	if err != nil {
-		return err
-	}
-	tex = AddCR(tex)
-	tex.WriteTo(wtex)
-	wrat, err := os.Create(Ce(fn, ".rat"))
-	defer wrat.Close()
-	if err != nil {
-		return err
-	}
-	rat = AddCR(rat)
-	rat.WriteTo(wrat)
-	wrlt, err := os.Create(Ce(fn, ".rlt"))
-	defer wrlt.Close()
-	if err != nil {
-		return err
-	}
-	rlt = AddCR(rlt)
-	rlt.WriteTo(wrlt)
 	return nil
 }
 

@@ -231,9 +231,13 @@ type Window struct { // {{{
 	endX   int
 	endY   int
 
-	lastcommand     *Command
-	lastexcommand   string
-	lastfig2command string
+	commandContext            *guiCommandWindow
+	canvasKey                 func(*iup.CommonKeyAny)
+	canvasButton              func(*iup.MouseButton)
+	canvasInput, customButton bool
+	lastcommand               *Command
+	lastexcommand             string
+	lastfig2command           string
 
 	Labels map[string]*iup.Handle
 
@@ -490,7 +494,7 @@ func NewWindow(homedir string) *Window { // {{{
 				iup.Item(
 					iup.Attr("TITLE", "Read Pgp"),
 					func(arg *iup.ItemAction) {
-						if name, ok := iup.GetOpenFile(stw.Cwd(), "*.pgp"); ok {
+						if name, ok := stw.commandFile(stw.Cwd(), "*.pgp", false); ok {
 							err := stw.ReadPgp(name)
 							if err != nil {
 								stw.addHistory("ReadPgp: Cannot Read st.pgp")
@@ -1336,10 +1340,10 @@ func (stw *Window) New() {
 
 // Open// {{{
 func (stw *Window) Open() {
-	if name, ok := iup.GetOpenFile(stw.Cwd(), "*.inp"); ok {
+	if name, ok := stw.commandFile(stw.Cwd(), "*.inp", false); ok {
 		err := st.OpenFile(stw, name, true)
 		if err != nil {
-			fmt.Println(err)
+			st.ErrorMessage(stw, err, st.ERROR)
 		}
 		stw.Redraw()
 	}
@@ -1517,7 +1521,7 @@ func (stw *Window) SearchInp() {
 	dlg = iup.Dialog(iup.Vbox(basedir, result, text))
 	dlg.SetAttribute("TITLE", "Search Inp")
 	dlg.SetAttribute("PARENTDIALOG", "mainwindow")
-	dlg.Popup(iup.CENTER, iup.CENTER)
+	stw.popup(dlg)
 	iup.SetFocus(text)
 }
 
@@ -1526,7 +1530,7 @@ func (stw *Window) Insert() {
 }
 
 func (stw *Window) OpenDxf() {
-	if name, ok := iup.GetOpenFile(stw.Cwd(), "*.dxf"); ok {
+	if name, ok := stw.commandFile(stw.Cwd(), "*.dxf", false); ok {
 		err := st.OpenFile(stw, name, true)
 		if err != nil {
 			fmt.Println(err)
@@ -1582,7 +1586,7 @@ func (stw *Window) Save() {
 
 func (stw *Window) SaveAS() {
 	var err error
-	if name, ok := iup.GetSaveFile(filepath.Dir(stw.frame.Path), "*.inp"); ok {
+	if name, ok := stw.commandFile(filepath.Dir(stw.frame.Path), "*.inp", true); ok {
 		fn := st.Ce(name, ".inp")
 		err = st.SaveFile(stw, fn)
 		if err == nil && fn != stw.frame.Path {
@@ -1640,7 +1644,7 @@ func (stw *Window) Close(force bool) {
 // Read// {{{
 func (stw *Window) Read() {
 	if stw.frame != nil {
-		if name, ok := iup.GetOpenFile("", ""); ok {
+		if name, ok := stw.commandFile("", "", false); ok {
 			err := st.ReadFile(stw, name)
 			if err != nil {
 				st.ErrorMessage(stw, err, st.ERROR)
@@ -1890,7 +1894,7 @@ func (stw *Window) ShowAbout() {
 	} else {
 		dlg.SetAttribute("VALUE", fmt.Sprintf("VERSION: %s\n%s\n\nNAME\t: -\nPROJECT\t: -\nPATH\t: -", stw.Version, stw.Modified))
 	}
-	dlg.Popup(iup.CENTER, iup.CENTER)
+	stw.popup(dlg)
 }
 
 // }}}
@@ -1901,7 +1905,7 @@ func (stw *Window) SetFont(mode int) {
 
 	dlg.SetAttribute("VALUE", stw.cline.GetAttribute("FONT"))
 	dlg.SetAttribute("COLOR", stw.cline.GetAttribute("FGCOLOR"))
-	dlg.Popup(iup.CENTER, iup.CENTER)
+	stw.popup(dlg)
 
 	if dlg.GetInt("STATUS") == 1 {
 		switch mode {
@@ -2050,6 +2054,25 @@ func (stw *Window) NextSideBarTab() {
 }
 
 func (stw *Window) addHistory(str string) {
+	if w := stw.commandContext; w != nil {
+		_, _ = w.Write([]byte(str + "\n"))
+	}
+	stw.appendHistory(str)
+}
+func (stw *Window) FileWritten(path string) {
+	if w := stw.commandContext; w != nil {
+		w.FileWritten(path)
+	}
+}
+func (stw *Window) CommandError(err error) {
+	if w := stw.commandContext; w != nil {
+		w.runner.mu.Lock()
+		defer w.runner.mu.Unlock()
+		w.job.failed = true
+		w.job.status.Error = err.Error()
+	}
+}
+func (stw *Window) appendHistory(str string) {
 	if str == "" {
 		return
 	}
@@ -2076,6 +2099,16 @@ func (stw *Window) execCommand(com *Command) {
 	com.Exec(stw)
 }
 
+func (stw *Window) nativeCommand(al string) *Command {
+	key := strings.ToUpper(strings.TrimSpace(al))
+	if key == "." {
+		return stw.lastcommand
+	}
+	if cmd := aliases[key]; cmd != nil {
+		return cmd
+	}
+	return Commands[key]
+}
 func (stw *Window) ExecCommand(al string) {
 	command, arg, _ := strings.Cut(strings.TrimSpace(al), " ")
 	if strings.EqualFold(command, ":mcpconnect") {
@@ -2105,14 +2138,14 @@ func (stw *Window) ExecCommand(al string) {
 		if stw.lastcommand != nil {
 			stw.execCommand(stw.lastcommand)
 		}
-	} else if value, ok := aliases[alu]; ok {
-		stw.execCommand(value)
-	} else if value, ok := Commands[alu]; ok {
+	} else if value := stw.nativeCommand(alu); value != nil {
 		stw.execCommand(value)
 	} else {
 		switch {
 		default:
-			stw.addHistory(fmt.Sprintf("command doesn't exist: %s", al))
+			if !stw.axisRangeCommand(alu) {
+				stw.addHistory(fmt.Sprintf("command doesn't exist: %s", al))
+			}
 		case strings.HasPrefix(al, ":"):
 			err := st.ExMode(stw, al)
 			if err != nil {
@@ -2127,85 +2160,7 @@ func (stw *Window) ExecCommand(al string) {
 			if err != nil {
 				st.ErrorMessage(stw, err, st.ERROR)
 			}
-		case axrn_minmax.MatchString(alu):
-			var axis int
-			fs := axrn_minmax.FindStringSubmatch(alu)
-			min, _ := strconv.ParseFloat(fs[1], 64)
-			max, _ := strconv.ParseFloat(fs[3], 64)
-			tmp := strings.ToUpper(fs[2])
-			for i, val := range []string{"X", "Y", "Z"} {
-				if tmp == val {
-					axis = i
-					break
-				}
-			}
-			stw.AxisRange(axis, min, max, false)
-			stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s <= %.3f", min, tmp, max))
-		case axrn_min1.MatchString(alu):
-			var axis int
-			fs := axrn_min1.FindStringSubmatch(alu)
-			min, _ := strconv.ParseFloat(fs[1], 64)
-			tmp := strings.ToUpper(fs[2])
-			for i, val := range []string{"X", "Y", "Z"} {
-				if tmp == val {
-					axis = i
-					break
-				}
-			}
-			stw.AxisRange(axis, min, 1000.0, false)
-			stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s", min, tmp))
-		case axrn_min2.MatchString(alu):
-			var axis int
-			fs := axrn_min2.FindStringSubmatch(alu)
-			min, _ := strconv.ParseFloat(fs[2], 64)
-			tmp := strings.ToUpper(fs[1])
-			for i, val := range []string{"X", "Y", "Z"} {
-				if tmp == val {
-					axis = i
-					break
-				}
-			}
-			stw.AxisRange(axis, min, 1000.0, false)
-			stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s", min, tmp))
-		case axrn_max1.MatchString(alu):
-			var axis int
-			fs := axrn_max1.FindStringSubmatch(alu)
-			max, _ := strconv.ParseFloat(fs[1], 64)
-			tmp := strings.ToUpper(fs[2])
-			for i, val := range []string{"X", "Y", "Z"} {
-				if tmp == val {
-					axis = i
-					break
-				}
-			}
-			stw.AxisRange(axis, -100.0, max, false)
-			stw.addHistory(fmt.Sprintf("AxisRange: %s <= %.3f", tmp, max))
-		case axrn_max2.MatchString(alu):
-			var axis int
-			fs := axrn_max2.FindStringSubmatch(alu)
-			max, _ := strconv.ParseFloat(fs[2], 64)
-			tmp := strings.ToUpper(fs[1])
-			for i, val := range []string{"X", "Y", "Z"} {
-				if tmp == val {
-					axis = i
-					break
-				}
-			}
-			stw.AxisRange(axis, -100.0, max, false)
-			stw.addHistory(fmt.Sprintf("AxisRange: %s <= %.3f", tmp, max))
-		case axrn_eq.MatchString(alu):
-			var axis int
-			fs := axrn_eq.FindStringSubmatch(alu)
-			val, _ := strconv.ParseFloat(fs[2], 64)
-			tmp := strings.ToUpper(fs[1])
-			for i, val := range []string{"X", "Y", "Z"} {
-				if tmp == val {
-					axis = i
-					break
-				}
-			}
-			stw.AxisRange(axis, val, val, false)
-			stw.addHistory(fmt.Sprintf("AxisRange: %s = %.3f", tmp, val))
+
 		}
 	}
 	if redraw {
@@ -2215,6 +2170,93 @@ func (stw *Window) ExecCommand(al string) {
 		stw.FocusCanv()
 	}
 	return
+}
+
+func (stw *Window) axisRangeCommand(alu string) bool {
+	switch {
+	case axrn_minmax.MatchString(alu):
+		var axis int
+		fs := axrn_minmax.FindStringSubmatch(alu)
+		min, _ := strconv.ParseFloat(fs[1], 64)
+		max, _ := strconv.ParseFloat(fs[3], 64)
+		tmp := strings.ToUpper(fs[2])
+		for i, val := range []string{"X", "Y", "Z"} {
+			if tmp == val {
+				axis = i
+				break
+			}
+		}
+		stw.AxisRange(axis, min, max, false)
+		stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s <= %.3f", min, tmp, max))
+	case axrn_min1.MatchString(alu):
+		var axis int
+		fs := axrn_min1.FindStringSubmatch(alu)
+		min, _ := strconv.ParseFloat(fs[1], 64)
+		tmp := strings.ToUpper(fs[2])
+		for i, val := range []string{"X", "Y", "Z"} {
+			if tmp == val {
+				axis = i
+				break
+			}
+		}
+		stw.AxisRange(axis, min, 1000.0, false)
+		stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s", min, tmp))
+	case axrn_min2.MatchString(alu):
+		var axis int
+		fs := axrn_min2.FindStringSubmatch(alu)
+		min, _ := strconv.ParseFloat(fs[2], 64)
+		tmp := strings.ToUpper(fs[1])
+		for i, val := range []string{"X", "Y", "Z"} {
+			if tmp == val {
+				axis = i
+				break
+			}
+		}
+		stw.AxisRange(axis, min, 1000.0, false)
+		stw.addHistory(fmt.Sprintf("AxisRange: %.3f <= %s", min, tmp))
+	case axrn_max1.MatchString(alu):
+		var axis int
+		fs := axrn_max1.FindStringSubmatch(alu)
+		max, _ := strconv.ParseFloat(fs[1], 64)
+		tmp := strings.ToUpper(fs[2])
+		for i, val := range []string{"X", "Y", "Z"} {
+			if tmp == val {
+				axis = i
+				break
+			}
+		}
+		stw.AxisRange(axis, -100.0, max, false)
+		stw.addHistory(fmt.Sprintf("AxisRange: %s <= %.3f", tmp, max))
+	case axrn_max2.MatchString(alu):
+		var axis int
+		fs := axrn_max2.FindStringSubmatch(alu)
+		max, _ := strconv.ParseFloat(fs[2], 64)
+		tmp := strings.ToUpper(fs[1])
+		for i, val := range []string{"X", "Y", "Z"} {
+			if tmp == val {
+				axis = i
+				break
+			}
+		}
+		stw.AxisRange(axis, -100.0, max, false)
+		stw.addHistory(fmt.Sprintf("AxisRange: %s <= %.3f", tmp, max))
+	case axrn_eq.MatchString(alu):
+		var axis int
+		fs := axrn_eq.FindStringSubmatch(alu)
+		val, _ := strconv.ParseFloat(fs[2], 64)
+		tmp := strings.ToUpper(fs[1])
+		for i, val := range []string{"X", "Y", "Z"} {
+			if tmp == val {
+				axis = i
+				break
+			}
+		}
+		stw.AxisRange(axis, val, val, false)
+		stw.addHistory(fmt.Sprintf("AxisRange: %s = %.3f", tmp, val))
+	default:
+		return false
+	}
+	return true
 }
 
 func (stw *Window) CompleteFileName(str string) string {
@@ -3545,6 +3587,10 @@ func (stw *Window) TailPolygon(ns []*st.Node, arg *iup.MouseMotion) {
 
 // Query// {{{
 func (stw *Window) Yn(title, question string) bool {
+	if w := stw.commandContext; w != nil {
+		in, err := w.prompt(title+" "+question, "choice")
+		return err == nil && in.Text == "1"
+	}
 	ans := iup.Alarm(title, question, "はい", "いいえ", "キャンセル")
 	switch ans {
 	default:
@@ -3557,11 +3603,26 @@ func (stw *Window) Yn(title, question string) bool {
 }
 
 func (stw *Window) Yna(title, question, another string) int {
+	if w := stw.commandContext; w != nil {
+		in, err := w.prompt(title+" "+question+" (1: Yes, 2: No, 3: "+another+")", "choice")
+		if err != nil {
+			return 0
+		}
+		v, _ := strconv.Atoi(in.Text)
+		return v
+	}
 	ans := iup.Alarm(title, question, "はい", "いいえ", another)
 	return ans
 }
 
 func (stw *Window) Query(question string) (rtn string, err error) {
+	if w := stw.commandContext; w != nil {
+		in, err := w.prompt(question, "text")
+		if err != nil {
+			return "", err
+		}
+		return in.Text, nil
+	}
 	var ans string
 	var er error
 	func(title string, ans *string, er *error) {
@@ -3602,7 +3663,7 @@ func (stw *Window) Query(question string) (rtn string, err error) {
 		})
 		dlg = iup.Dialog(iup.Hbox(label, text))
 		dlg.SetAttribute("TITLE", title)
-		dlg.Popup(iup.CENTER, iup.CENTER)
+		stw.popup(dlg)
 	}(question, &ans, &er)
 	return ans, er
 }
@@ -3622,6 +3683,13 @@ func (stw *Window) QueryList(question string) (rtn []string, err error) {
 }
 
 func (stw *Window) QueryCoord(title string) (x, y, z float64, err error) {
+	if w := stw.commandContext; w != nil {
+		in, err := w.prompt(title, "point")
+		if err != nil {
+			return 0, 0, 0, err
+		}
+		return in.Point[0], in.Point[1], in.Point[2], nil
+	}
 	var xx, yy, zz float64
 	var er error
 	func(title string, x, y, z *float64, er *error) {
@@ -3671,7 +3739,7 @@ func (stw *Window) QueryCoord(title string) (x, y, z float64, err error) {
 		)
 		dlg.SetAttribute("TITLE", title)
 		dlg.Map()
-		dlg.Popup(iup.CENTER, iup.CENTER)
+		stw.popup(dlg)
 	}(title, &xx, &yy, &zz, &er)
 	return xx, yy, zz, er
 }
@@ -3680,7 +3748,7 @@ func (stw *Window) QueryCoord(title string) (x, y, z float64, err error) {
 
 // Default CallBack// {{{
 func (stw *Window) CB_MouseButton() {
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:
@@ -4137,7 +4205,7 @@ func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 }
 
 func (stw *Window) CB_CommonKeyAny() {
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		stw.DefaultKeyAny(arg)
 	})
 }
@@ -4802,7 +4870,7 @@ func (stw *Window) ColorDialog() (int, error) {
 		colordlg.SetAttribute("DIALOGFRAME", "YES")
 		colordlg.SetAttribute("PARENTDIALOG", "sectiondialog")
 		colordlg.Map()
-		colordlg.Popup(iup.CENTER, iup.CENTER)
+		stw.popup(colordlg)
 	}(&rtn, &err)
 	return rtn, err
 }
@@ -5759,6 +5827,8 @@ func (stw *Window) EscapeCB() {
 	stw.CB_MouseMotion()
 	stw.CB_CanvasWheel()
 	stw.CB_CommonKeyAny()
+	stw.canvasInput = false
+	stw.customButton = false
 	if stw.frame != nil {
 		stw.Redraw()
 	}
@@ -5898,7 +5968,10 @@ func (stw *Window) SetDefaultPgp() {
 	aliases["EPS"] = SETEPS
 }
 
+var pgpExpansions = map[*Command]func() string{}
+
 func (stw *Window) ReadPgp(filename string) error {
+	clear(pgpExpansions)
 	aliases = make(map[string]*Command, 0)
 	f, err := os.Open(filename)
 	if err != nil {
@@ -5922,57 +5995,35 @@ func (stw *Window) ReadPgp(filename string) error {
 		}
 		if value, ok := Commands[strings.ToUpper(words[1])]; ok {
 			aliases[strings.ToUpper(words[0])] = value
-		} else if strings.HasPrefix(words[1], ":") {
-			command := strings.Join(words[1:], " ")
-			if strings.Contains(command, "_") {
-				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					pos := strings.Index(command, "_")
-					iup.SetFocus(stw.cline)
-					stw.cline.SetAttribute("VALUE", strings.Replace(command, "_", "", -1))
-					stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", pos))
-				}}
-			} else if strings.Contains(command, "@") {
-				pat := regexp.MustCompile("@[0-9-]*")
-				str := pat.FindString(command)
-				var tmp int64
-				tmp, err := strconv.ParseInt(str[1:], 10, 64)
-				if err != nil {
-					tmp = 0
+		} else if strings.HasPrefix(words[1], ":") || strings.HasPrefix(words[1], "'") {
+			template := strings.Join(words[1:], " ")
+			expand := func() string { return template }
+			if strings.HasPrefix(template, ":") && !strings.Contains(template, "_") {
+				if marker := regexp.MustCompile(`@[0-9-]*`).FindString(template); marker != "" {
+					count, _ := strconv.Atoi(marker[1:])
+					expand = func() string { line := strings.Replace(template, marker, strconv.Itoa(count), 1); count++; return line }
 				}
-				val := int(tmp)
-				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					currentcommand := strings.Replace(command, str, fmt.Sprintf("%d", val), -1)
-					err := st.ExMode(stw, currentcommand)
-					if err != nil {
-						st.ErrorMessage(stw, err, st.ERROR)
-					}
-					val++
-				}}
-			} else {
-				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					err := st.ExMode(stw, command)
-					if err != nil {
-						st.ErrorMessage(stw, err, st.ERROR)
-					}
-				}}
 			}
-		} else if strings.HasPrefix(words[1], "'") {
-			command := strings.Join(words[1:], " ")
-			if strings.Contains(command, "_") {
-				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					pos := strings.Index(command, "_")
+			cmd := &Command{call: func(stw *Window) {
+				line := expand()
+				if pos := strings.IndexByte(line, '_'); pos >= 0 {
 					iup.SetFocus(stw.cline)
-					stw.cline.SetAttribute("VALUE", strings.Replace(command, "_", "", -1))
-					stw.cline.SetAttribute("CARETPOS", fmt.Sprintf("%d", pos))
-				}}
-			} else {
-				aliases[strings.ToUpper(words[0])] = &Command{"", "", "", func(stw *Window) {
-					err := st.Fig2Mode(stw, command)
-					if err != nil {
-						st.ErrorMessage(stw, err, st.ERROR)
-					}
-				}}
-			}
+					stw.cline.SetAttribute("VALUE", strings.ReplaceAll(line, "_", ""))
+					stw.cline.SetAttribute("CARETPOS", strconv.Itoa(pos))
+					return
+				}
+				var err error
+				if strings.HasPrefix(line, ":") {
+					err = st.ExMode(stw, line)
+				} else {
+					err = st.Fig2Mode(stw, line)
+				}
+				if err != nil {
+					st.ErrorMessage(stw, err, st.ERROR)
+				}
+			}}
+			pgpExpansions[cmd] = expand
+			aliases[strings.ToUpper(words[0])] = cmd
 		}
 	}
 	if err := s.Err(); err != nil {

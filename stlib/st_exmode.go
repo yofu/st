@@ -216,6 +216,16 @@ func ExMode(stw ExModer, command string) error {
 	for _, stage := range commands {
 		var output []interface{}
 		if err := exCommand(stw, stage, input, &output); err != nil {
+			if _, started := err.(ArclmStart); started {
+				if w, ok := stw.(interface{ WaitCommandAnalysis() error }); ok {
+					stw.History(err.Error())
+					if e := w.WaitCommandAnalysis(); e != nil {
+						return e
+					}
+					input = output
+					continue
+				}
+			}
 			if message, ok := err.(Messager); ok {
 				stw.History(message.Message())
 			} else {
@@ -875,6 +885,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 				return err
 			}
 		case t == "pgp":
+			if native, ok := stw.(interface{ ReadPgp(string) error }); ok {
+				return native.ReadPgp(fn)
+			}
 			if cw, ok := stw.(Commander); ok {
 				err := ReadPgp(cw, fn)
 				if err != nil {
@@ -925,6 +938,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if err != nil {
 			return err
 		}
+		reportCommandFile(stw, fn)
 	case "writereaction":
 		if usage {
 			return Usage(":writereaction {-confed} {-nodeset=} filename direction")
@@ -1250,6 +1264,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if err != nil {
 			return err
 		}
+		reportCommandFile(stw, Ce(fn, ".dxf"))
 	case "drawinginit", "drawingcheck":
 		if usage {
 			return Usage(":drawinginit [model.drawing.json]; :drawingcheck [model.drawing.json]")
@@ -1358,6 +1373,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if err != nil {
 			return err
 		}
+		reportCommandFile(stw, fn)
 	case "jiku":
 		if usage {
 			return Usage(":jiku filename {-name=} {-side=1} {-scale=1000} {-height=250} {-axissize=300} {-dim}")
@@ -1995,7 +2011,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			m.WriteString("TORSION")
 			cond.RCTorsion = true
 		}
-		if err := frame.SectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond); err != nil {
+		if err := frame.sectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond, func(path string) { reportCommandFile(stw, path) }); err != nil {
 			return err
 		}
 		return Message(m.String())
@@ -5541,7 +5557,11 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if fn == "" {
 			fn = "hogtxt.wgt"
 		}
-		return frame.ExtractArclm(fn)
+		if err := frame.ExtractArclm(fn); err != nil {
+			return err
+		}
+		reportCommandFile(stw, fn)
+		return nil
 	case "saveasarclm":
 		if usage {
 			return Usage(":saveasarclm")
@@ -5745,6 +5765,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			wch = make(chan error)
 		}
 		ctx, cancel := context.WithCancel(context.Background())
+		bindAnalysisStop(stw, af)
 		go func() {
 			err := af.StaticAnalysis(cancel, cond)
 			af.Endch <- err
@@ -5801,6 +5822,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 						for i, period := range pers {
 							if i < len(otps) {
 								frame.ResultFileName[period] = otps[i]
+								reportCommandFile(stw, otps[i])
 							}
 						}
 					}
@@ -5883,6 +5905,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			wch = make(chan int)
 		}
 		ctx, cancel := context.WithCancel(context.Background())
+		bindAnalysisStop(stw, af)
 		go func() {
 			err := af.Arclm101(cancel, cond)
 			af.Endch <- err
@@ -5942,6 +5965,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 					otps := cond.Output()
 					if len(otps) > pind {
 						frame.ResultFileName[pers[pind]] = otps[pind]
+						if err == nil {
+							reportCommandFile(stw, otps[pind])
+						}
 					}
 					SetPeriod(stw, fmt.Sprintf("%s@%d", per, currentlap))
 					frame.Nlap[per] = currentlap
@@ -6232,6 +6258,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 						stw.History(err.Error())
 						stw.CurrentLap("Failed", 0, 1)
 					} else {
+						if sink, ok := stw.(interface{ AnalysisOutput(GUIAnalysisOutput) }); ok && (diagnostics == nil || !diagnostics.CompareOnly) {
+							sink.AnalysisOutput(GUIAnalysisOutput{BeforeRead: frame.eigenReadVersion, Kind: "buckling", Period: per, Path: otp, Eigenvalues: append([]float64(nil), af.EigenValue...)})
+						}
 						stw.CurrentLap("Completed", 1, 1)
 					}
 					stw.Redraw()
@@ -6356,6 +6385,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 						stw.History(err.Error())
 						stw.CurrentLap("Failed", 0, 1)
 					} else {
+						if sink, ok := stw.(interface{ AnalysisOutput(GUIAnalysisOutput) }); ok && (diagnostics == nil || !diagnostics.CompareOnly) {
+							sink.AnalysisOutput(GUIAnalysisOutput{BeforeRead: frame.eigenReadVersion, Kind: "vibration", Period: per, Path: otp, Eigenvalues: append([]float64(nil), af.EigenValue...)})
+						}
 						stw.CurrentLap("Completed", 1, 1)
 					}
 					stw.Redraw()

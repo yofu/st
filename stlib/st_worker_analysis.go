@@ -355,6 +355,12 @@ func (w *analysisWorkerWindow) CurrentLap(message string, step, total int) {
 	w.report(message, step, total)
 }
 
+func bindAnalysisStop(stw ExModer, af *arclm.Frame) {
+	if w, ok := stw.(interface{ BindAnalysisStop(func() error) }); ok {
+		w.BindAnalysisStop(af.Stop)
+	}
+}
+
 func workerAnalysisFinished(stw ExModer) {
 	if w, ok := stw.(*analysisWorkerWindow); ok {
 		close(w.done)

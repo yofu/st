@@ -49,7 +49,7 @@ func tensegrity(stw *Window, f func(cs, ts, sz int), csect, tsect, size int) {
 		}
 		stw.cline.SetAttribute("VALUE", "")
 	}
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
@@ -85,7 +85,7 @@ func tensegrity(stw *Window, f func(cs, ts, sz int), csect, tsect, size int) {
 			stw.EscapeAll()
 		}
 	})
-	stw.canv.SetCallback(func(arg *iup.MouseButton) {
+	stw.setCanvasInput(func(arg *iup.MouseButton) {
 		if stw.frame != nil {
 			switch arg.Button {
 			case BUTTON_LEFT:

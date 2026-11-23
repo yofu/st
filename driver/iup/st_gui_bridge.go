@@ -48,8 +48,14 @@ func (stw *Window) guiConnectionCommand(arg string) error {
 	ready := make(chan error, 1)
 	commands := &guiCommandRunner{jobs: make(map[uint64]*guiCommandJob)}
 	go st.RunGUIPipe(ctx, id, func(q st.GUIRequest) st.GUIResponse {
+		if q.Action == "cancel_commands" {
+			return commands.cancel(q.CommandJobID)
+		}
+		if q.Action == "command_input" {
+			return commands.input(q.CommandJobID, q.Input)
+		}
 		if q.Action == "command_status" {
-			return commands.response(q.CommandJobID)
+			return commands.response(q.CommandJobID, q.KnownCompletion, q.CompactStatus)
 		}
 		deadline, stop := context.WithTimeout(ctx, 15*time.Second)
 		defer stop()
@@ -125,13 +131,43 @@ func (stw *Window) handleGUIRequest(q st.GUIRequest) (result st.GUIResponse) {
 	if stw.guiCommandsBusy() && q.Action != "status" && q.Action != "commands" {
 		return fail(fmt.Errorf("a GUI command job is running; check gui_command_status before changing the model"))
 	}
-	if q.Revision != "" && (f == nil || f.GUIRevision() != q.Revision) {
+	var checked string
+	if q.Revision != "" && f != nil {
+		checked = f.GUIRevision()
+	}
+	if q.Revision != "" && checked != q.Revision {
 		return fail(fmt.Errorf("GUI model changed since the snapshot; call gui_get_model and review the edit again"))
 	}
 	switch q.Action {
+	case "command_search":
+		for name := range Commands {
+			if strings.Contains(strings.ToLower(name), strings.ToLower(q.Search)) {
+				result.Matches = append(result.Matches, name)
+			}
+		}
+		for name := range aliases {
+			if strings.Contains(strings.ToLower(name), strings.ToLower(q.Search)) {
+				result.Matches = append(result.Matches, name)
+			}
+		}
+		for _, name := range []string{":mcpconnect", ":mcplive"} {
+			if strings.Contains(name, strings.ToLower(q.Search)) {
+				result.Matches = append(result.Matches, name)
+			}
+		}
+		return result
+	case "readback":
+		if f == nil || q.Readback == nil {
+			return fail(fmt.Errorf("missing model or readback request"))
+		}
+		data, err := f.ReadGUIResults(*q.Readback)
+		if err != nil {
+			return fail(err)
+		}
+		result.Readback = data
 	case "status":
 	case "commands":
-		return stw.startGUICommands(q)
+		return stw.startGUICommands(q, checked)
 	case "snapshot":
 		if f == nil {
 			return fail(fmt.Errorf("no model is open"))
@@ -262,35 +298,87 @@ func (stw *Window) handleGUIRequest(q st.GUIRequest) (result st.GUIResponse) {
 			return fail(err)
 		}
 		stw.Redraw()
-	case "apply":
-		if f == nil || !strings.EqualFold(filepath.Clean(f.Path), filepath.Clean(q.BasePath)) || f.GUIModelDigest() != q.BaseDigest {
-			return fail(fmt.Errorf("GUI model differs from the proposal baseline; call gui_get_model and review the edit again"))
+	case "construct", "apply_delta", "apply":
+		construct := q.Action == "construct"
+		if construct && q.Construction == nil {
+			return fail(fmt.Errorf("missing construction"))
 		}
-		parsed := st.NewFrame()
-		if err := parsed.ReadInpSnapshot(q.INP, f.Path); err != nil {
-			return fail(err)
+		if f == nil || !construct && !strings.EqualFold(filepath.Clean(f.Path), filepath.Clean(q.BasePath)) {
+			return fail(fmt.Errorf("GUI model differs from the proposal baseline; call gui_get_model"))
 		}
-		if len(q.LST) > 0 {
-			if err := parsed.ReadLstString(string(q.LST), f.LstFileName); err != nil {
+		delta := q.Action == "apply_delta"
+		target := f
+		if delta {
+			if q.Revision == "" {
+				return fail(fmt.Errorf("delta requires a baseline revision"))
+			}
+		} else if !construct {
+			base := f.GUIModelDigest()
+			if base != q.BaseDigest {
+				return fail(fmt.Errorf("GUI model differs from the proposal baseline; call gui_get_model and review the edit again"))
+			}
+			checked = hex.EncodeToString(base[:])
+		}
+		if (!delta && !construct) || f.NeedsFullGUIApply() {
+			inp, lst := q.INP, q.LST
+			if delta || construct {
+				inp, lst = f.GUIInpBytes(), f.GUILstBytes()
+			}
+			target = st.NewFrame()
+			if err := target.ReadInpSnapshot(inp, f.Path); err != nil {
+				return fail(err)
+			}
+			if len(lst) > 0 {
+				if err := target.ReadLstString(string(lst), f.LstFileName); err != nil {
+					return fail(err)
+				}
+			}
+			target.Path, target.Name, target.Project, target.LstFileName = f.Path, f.Name, f.Project, f.LstFileName
+			target.Home = f.Home
+			target.View = f.View.Copy()
+			target.Show = f.Show.Copy()
+			target.Show.Frame = target
+			target.Show.Dfact = f.Show.Dfact
+			for id := range target.Sects {
+				if _, ok := target.Show.Sect[id]; !ok {
+					target.Show.Sect[id] = true
+				}
+			}
+		}
+		if delta {
+			if err := target.ValidateGUIEdits(q.Edits); err != nil {
 				return fail(err)
 			}
 		}
-		parsed.Home = f.Home
-		parsed.View = f.View.Copy()
-		parsed.Show = f.Show.Copy()
-		parsed.Show.Frame = parsed
-		parsed.Show.Dfact = f.Show.Dfact
-		for id := range parsed.Sects {
-			if _, ok := parsed.Show.Sect[id]; !ok {
-				parsed.Show.Sect[id] = true
+		capture := func() {
+			if checked == "" {
+				stw.CaptureUndoBaseline(f)
+			} else {
+				stw.CaptureUndoBaselineRevision(f, checked)
 			}
 		}
+		if construct {
+			receipt, err := target.Construct(*q.Construction, capture)
+			if err != nil {
+				return fail(err)
+			}
+			result.Construction = receipt
+		} else {
+			capture()
+		}
 		stw.stopLiveAnalysis()
-		// Capture the actual baseline, including any unsnapshotted GUI edits.
-		stw.CaptureUndoBaseline(f)
-		stw.replaceGUIFrame(parsed)
+		if delta {
+			target.ApplyValidatedGUIEdits(q.Edits)
+			result.InputView = target.View.Copy()
+		}
+		if target != f {
+			stw.replaceGUIFrame(target)
+			f = target
+		} else {
+			stw.LinkTextValue()
+			stw.Redraw()
+		}
 		st.Snapshot(stw)
-		f = parsed
 	default:
 		return fail(fmt.Errorf("unknown GUI action"))
 	}
@@ -301,9 +389,26 @@ func (stw *Window) handleGUIRequest(q st.GUIRequest) (result st.GUIResponse) {
 				result.RatedElements++
 			}
 		}
-		result.Revision = f.GUIRevision()
-		if q.Action == "snapshot" || q.Action == "apply" || q.Action == "undo" || q.Action == "redo" {
-			result.Snapshot = &st.GUIModelSnapshot{INP: f.GUIInpBytes(), LST: f.GUILstBytes(), LSTPath: f.LstFileName}
+		switch {
+		case q.Action == "snapshot" && q.KnownRevision != "" && strings.EqualFold(q.KnownPath, f.Path):
+			result.Revision = checked
+			if result.Revision == "" {
+				result.Revision = f.GUIRevision()
+			}
+			if result.Revision == q.KnownRevision {
+				result.InputView = f.View.Copy()
+			} else {
+				result.Snapshot, result.Revision = f.GUIInputSnapshot()
+				result.DeltaSupported = true
+			}
+		case q.Action == "construct" || q.Action == "snapshot" || q.Action == "apply" || q.Action == "undo" || q.Action == "redo":
+			result.DeltaSupported = true
+			result.Snapshot, result.Revision = f.GUIInputSnapshot()
+		case q.OmitRevision && (q.Action == "status" || q.Action == "select"):
+		case q.Action == "display" && checked != "":
+			result.Revision = checked
+		default:
+			result.Revision = f.GUIRevision()
 		}
 		result.Path = f.Path
 		result.Period = f.Show.Period

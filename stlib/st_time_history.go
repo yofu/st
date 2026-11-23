@@ -207,6 +207,7 @@ func runTimeHistoryCommand(stw ExModer, input string, args map[string]string) er
 	}
 	stw.CurrentLap("Time history...", 0, nlap)
 	done := make(chan error, 1)
+	bindAnalysisStop(stw, af)
 	go func() {
 		err := af.TimeHistoryNewmark(context.Background(), motion, o)
 		err = errors.Join(err, floors.Close())

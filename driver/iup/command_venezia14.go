@@ -128,7 +128,7 @@ func ven14cutter(stw *Window) {
 
 func ven14surface(stw *Window) {
 	if stw.frame != nil {
-		if name, ok := iup.GetSaveFile("", ""); ok {
+		if name, ok := stw.commandFile("", "", true); ok {
 			var result bytes.Buffer
 			var nkeys []int
 			result.WriteString(fmt.Sprintf("_SrfPtGrid\n_KeepPoint\n11\n%d\n", len(stw.frame.Nodes)/11))
@@ -155,7 +155,7 @@ func ven14normal(stw *Window) {
 	// stw.Show.NodeNormal = true
 	stw.frame.Show.ElemNormal = true
 	stw.Redraw()
-	stw.canv.SetCallback(func(arg *iup.CommonKeyAny) {
+	stw.setCanvasInput(func(arg *iup.CommonKeyAny) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:

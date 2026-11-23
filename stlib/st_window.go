@@ -66,6 +66,11 @@ func ErrorMessage(stw Window, err error, level int) {
 	}
 	var otp string
 	if level >= ERROR {
+		if sink, ok := stw.(interface{ CommandError(error) }); ok {
+			if _, message := err.(Messager); !message {
+				sink.CommandError(err)
+			}
+		}
 		_, file, line, _ := runtime.Caller(1)
 		otp = fmt.Sprintf("%s:%d: [%s]: %s", filepath.Base(file), line, LOGLEVEL[level], err.Error())
 	} else {
@@ -239,6 +244,7 @@ func SaveFile(stw Window, filename string) error {
 	if err != nil {
 		return err
 	}
+	reportCommandFile(stw, filename)
 	ErrorMessage(stw, fmt.Errorf("SAVE: %s", filename), INFO)
 	stw.Changed(false)
 	return nil
