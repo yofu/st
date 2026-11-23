@@ -22,6 +22,13 @@ func TestGUISnapshotRetainsInputsAndIndependentUndo(t *testing.T) {
 	rc.CShape = CRect{Left: -15, Right: 15, Upper: 30, Lower: -30}
 	rc.Concrete = FC24
 	rc.Hoops.Ps = []float64{.001, .002}
+	f.View.Focus = []float64{1.234, -3.555, 100}
+	f.View.Angle = []float64{30, -42}
+	f.View.Gfact = 4.63
+	snap, revision := f.GUIInputSnapshot()
+	if revision != f.GUIRevision() || !reflect.DeepEqual(snap.INP, f.GUIInpBytes()) || !reflect.DeepEqual(snap.LST, f.GUILstBytes()) {
+		t.Fatal("snapshot changed canonical digest or camera")
+	}
 	before := f.GUIRevision()
 	clone := f.Snapshot()
 	if len(clone.Arcs) != 1 || clone.Arcs[0].Enod[0] != clone.Nodes[n.Num] || reflect.TypeOf(clone.Sects[201].Allow) != reflect.TypeOf(sec.Allow) {
@@ -101,5 +108,23 @@ func TestGUIInputOmitsDerivedAnalysisBraces(t *testing.T) {
 	}
 	if reopened.Sects[902].Name != "" {
 		t.Fatal("empty section name consumed the following keyword")
+	}
+}
+
+func TestINPCoordinateIndexOnImport(t *testing.T) {
+	f := NewFrame()
+	// Seed an existing frame, merge across negative and positive cell boundaries,
+	// and retain nodes just outside the radius (including diagonal offsets).
+	f.AddNode(-.00021, 0, 0)
+	inp := "NODE 10 CORD -0.00019 0 0\nNODE 11 CORD 0.00019 0 0\nNODE 12 CORD 0.00021 0 0\nNODE 13 CORD 0.00028 0.00009 0\nNODE 14 CORD 0 1 0\nNODE 15 CORD 0.0001 1 0\nELEM 16 ESECT 101 ENODS 2 ENOD 12 15 TYPE COLUMN\n"
+	if err := f.ReadInpSnapshot([]byte(inp), "grid.inp"); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.Nodes) != 4 || f.Nodes[10] != nil || f.Nodes[12] != nil || f.Nodes[13] == nil || f.Nodes[15] != nil || f.Elems[16].Enod[0] != f.Nodes[11] || f.Elems[16].Enod[1] != f.Nodes[14] {
+		t.Fatalf("incorrect node merge or element endpoints")
+	}
+	f.Nodes[11].Coord[0] = 20
+	if err := f.ReadInpSnapshot([]byte("NODE 17 CORD 0.00019 0 0\n"), "grid.inp"); err != nil || f.Nodes[17] == nil {
+		t.Fatalf("second import used stale coordinates: %v", err)
 	}
 }

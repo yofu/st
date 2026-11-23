@@ -80,8 +80,16 @@ func (u *UndoStack) CaptureUndoBaseline(frame *Frame) {
 	if !u.enabled {
 		return
 	}
+	u.CaptureUndoBaselineRevision(frame, frame.GUIRevision())
+}
+
+// CaptureUndoBaselineRevision accepts the digest just verified on the GUI thread.
+func (u *UndoStack) CaptureUndoBaselineRevision(frame *Frame, revision string) {
+	if !u.enabled {
+		return
+	}
 	current := u.stack[u.position]
-	if current == nil || current.GUIModelDigest() != frame.GUIModelDigest() {
+	if current == nil || current.GUIRevision() != revision {
 		u.PushUndo(frame)
 	}
 }

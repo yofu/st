@@ -8,6 +8,13 @@ import (
 
 // GUIInpBytes exports model inputs at round-trip precision for live editing.
 func (frame *Frame) GUIInpBytes() []byte {
+	inp, _, _ := frame.guiInpBytes()
+	return inp
+}
+
+// Return the camera record byte range as well, so a snapshot and its
+// camera-independent digest can share the expensive model serialization.
+func (frame *Frame) guiInpBytes() ([]byte, int, int) {
 	// Analysis braces are derived from their wall/slab parents. Exporting them
 	// as additional input members would double their stiffness after reopening.
 	input := *frame
@@ -30,6 +37,7 @@ func (frame *Frame) GUIInpBytes() []byte {
 	lines := strings.SplitAfter(string(input.EditableInpBytes()), "\n")
 	kind, id := "HEADER", 0
 	fig := -1
+	firstCamera, afterCamera := 0, 0
 	for i, line := range lines {
 		words := strings.Fields(line)
 		if len(words) == 0 {
@@ -45,6 +53,12 @@ func (frame *Frame) GUIInpBytes() []byte {
 		}
 		switch kind {
 		case "HEADER":
+			switch words[0] {
+			case "GFACT":
+				firstCamera = i
+			case "DISTS":
+				afterCamera = i + 1
+			}
 			ai, wind := frame.Ai, frame.Wind
 			lines[i] = exactFields(line, map[string][]float64{
 				"BASE": ai.Base, "LOCATE": {ai.Locate}, "TFACT": {ai.Tfact}, "GPERIOD": {ai.Gperiod},
@@ -89,7 +103,15 @@ func (frame *Frame) GUIInpBytes() []byte {
 			lines[i] = exactFields(line, map[string][]float64{"CANG": {e.Cang}, "CMQ": e.Cmq, "PREST": {e.Prestress}, "WRECT": e.Wrect})
 		}
 	}
-	return []byte(strings.Join(lines, ""))
+	var start, end int
+	for _, line := range lines[:firstCamera] {
+		start += len(line)
+	}
+	end = start
+	for _, line := range lines[firstCamera:afterCamera] {
+		end += len(line)
+	}
+	return []byte(strings.Join(lines, "")), start, end
 }
 
 func exactFields(data string, values map[string][]float64) string {

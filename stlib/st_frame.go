@@ -504,6 +504,10 @@ func (frame *Frame) ReadInpSnapshot(data []byte, filename string) error {
 }
 
 func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []float64, angle float64, overwrite, readConfigure bool) error {
+	cells := make(inpNodeCells)
+	for _, n := range frame.Nodes {
+		cells.add(n)
+	}
 	tmp := make([]string, 0)
 	nodemap := make(map[int]int)
 	if len(coord) < 3 {
@@ -529,14 +533,14 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 		default:
 			tmp = append(tmp, words...)
 		case "PROP", "SECT", "PILE", "BOND", "NODE", "ELEM":
-			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
+			nodemap, err = frame.parseInp(tmp, coord, angle, nodemap, overwrite, chain, cells)
 			tmp = words
 		case "CHAIN":
-			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
+			nodemap, err = frame.parseInp(tmp, coord, angle, nodemap, overwrite, chain, cells)
 			tmp = make([]string, 0)
 			chain = NewChain(frame, nil, nil, nil, func(c *Chain) bool { return true }, nil, nil)
 		case "NODESET":
-			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
+			nodemap, err = frame.parseInp(tmp, coord, angle, nodemap, overwrite, chain, cells)
 			tmp = nil
 			name := words[1]
 			nodes := make([]*Node, len(words)-2)
@@ -554,7 +558,7 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 			nodes = nodes[:ind]
 			frame.AddNodeSet(name, nodes)
 		case "ELEMSET":
-			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
+			nodemap, err = frame.parseInp(tmp, coord, angle, nodemap, overwrite, chain, cells)
 			tmp = nil
 			name := words[1]
 			elems := make([]*Elem, len(words)-2)
@@ -572,7 +576,7 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 			elems = elems[:ind]
 			frame.AddElemSet(name, elems)
 		case "}":
-			nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
+			nodemap, err = frame.parseInp(tmp, coord, angle, nodemap, overwrite, chain, cells)
 			tmp = make([]string, 0)
 			if chain != nil && chain.Size() > 0 {
 				frame.Chains[chain.Elems()[0].Num] = chain
@@ -711,7 +715,7 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 	if err != nil {
 		return err
 	}
-	nodemap, err = frame.ParseInp(tmp, coord, angle, nodemap, overwrite, chain)
+	nodemap, err = frame.parseInp(tmp, coord, angle, nodemap, overwrite, chain, cells)
 	if err != nil {
 		return err
 	}
@@ -757,6 +761,10 @@ func (frame *Frame) readInp(scanner *bufio.Scanner, filename string, coord []flo
 
 // ParseInp parses a list of strings and switches to each parsing function according to the first string.
 func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodemap map[int]int, overwrite bool, chain *Chain) (map[int]int, error) {
+	return frame.parseInp(lis, coord, angle, nodemap, overwrite, chain, nil)
+}
+
+func (frame *Frame) parseInp(lis []string, coord []float64, angle float64, nodemap map[int]int, overwrite bool, chain *Chain, cells inpNodeCells) (map[int]int, error) {
 	var err error
 	var def int
 	var node *Node
@@ -768,7 +776,7 @@ func (frame *Frame) ParseInp(lis []string, coord []float64, angle float64, nodem
 	case "ELEM":
 		_, err = frame.ParseElem(lis, nodemap, chain)
 	case "NODE":
-		node, def, err = frame.ParseNode(lis, coord, angle)
+		node, def, err = frame.parseNode(lis, coord, angle, cells)
 		if err == nil {
 			nodemap[def] = node.Num
 		}
@@ -1205,6 +1213,10 @@ func (sect *Sect) ParseFig(frame *Frame, figmap map[string][]string) error {
 
 // ParseNode parses NODE information.
 func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (*Node, int, error) {
+	return frame.parseNode(lis, coord, angle, nil)
+}
+
+func (frame *Frame) parseNode(lis []string, coord []float64, angle float64, cells inpNodeCells) (*Node, int, error) {
 	var num int64
 	var err error
 	n := NewNode()
@@ -1280,26 +1292,28 @@ func (frame *Frame) ParseNode(lis []string, coord []float64, angle float64) (*No
 	}
 	c := RotateVector(n.Coord, coord, []float64{0.0, 0.0, 1.0}, angle)
 	n.Coord = c
-	newnode := frame.SearchNode(c[0], c[1], c[2])
-	if newnode == nil {
-		if _, exist := frame.Nodes[n.Num]; exist {
-			frame.Maxnnum++
-			old := n.Num
-			n.Num = frame.Maxnnum
-			frame.Nodes[n.Num] = n
-			n.Frame = frame
-			return n, old, nil
-		} else {
-			if n.Num > frame.Maxnnum {
-				frame.Maxnnum = n.Num
-			}
-			frame.Nodes[n.Num] = n
-			n.Frame = frame
-			return n, n.Num, nil
-		}
+	var existing *Node
+	if cells == nil {
+		existing = frame.SearchNode(c[0], c[1], c[2])
 	} else {
-		return newnode, n.Num, nil
+		existing = cells.find(c)
 	}
+	if existing != nil {
+		return existing, n.Num, nil
+	}
+	inputID := n.Num
+	if frame.Nodes[inputID] != nil {
+		frame.Maxnnum++
+		n.Num = frame.Maxnnum
+	} else if n.Num > frame.Maxnnum {
+		frame.Maxnnum = n.Num
+	}
+	frame.Nodes[n.Num] = n
+	n.Frame = frame
+	if cells != nil {
+		cells.add(n)
+	}
+	return n, inputID, nil
 }
 
 // ParseElem parses ELEM information.
@@ -3763,10 +3777,50 @@ func (frame *Frame) AddNode(x, y, z float64) *Node {
 	return node
 }
 
+// A read-local index avoids stale coordinates after interactive model edits.
+const inpNodeTolerance = 1e-4
+
+type inpNodeCells map[[3]int64][]*Node
+
+func inpCell(c []float64) [3]int64 {
+	var cell [3]int64
+	for i := range cell {
+		cell[i] = int64(math.Floor(c[i] / (2 * inpNodeTolerance)))
+	}
+	return cell
+}
+
+func (cells inpNodeCells) add(n *Node) {
+	cell := inpCell(n.Coord)
+	cells[cell] = append(cells[cell], n)
+}
+
+func sameInpCoord(x, y, z float64, n *Node) bool {
+	dx, dy, dz := x-n.Coord[0], y-n.Coord[1], z-n.Coord[2]
+	return dx*dx+dy*dy+dz*dz <= inpNodeTolerance*inpNodeTolerance
+}
+
+func (cells inpNodeCells) find(c []float64) *Node {
+	cell := inpCell(c)
+	var match *Node
+	for dx := int64(-1); dx <= 1; dx++ {
+		for dy := int64(-1); dy <= 1; dy++ {
+			for dz := int64(-1); dz <= 1; dz++ {
+				for _, n := range cells[[3]int64{cell[0] + dx, cell[1] + dy, cell[2] + dz}] {
+					if sameInpCoord(c[0], c[1], c[2], n) && (match == nil || n.Num < match.Num) {
+						match = n
+					}
+				}
+			}
+		}
+	}
+	return match
+}
+
 // SearchNode searches NODE at (x, y, z).
 func (frame *Frame) SearchNode(x, y, z float64) *Node {
 	for _, n := range frame.Nodes {
-		if math.Sqrt(math.Pow(x-n.Coord[0], 2)+math.Pow(y-n.Coord[1], 2)+math.Pow(z-n.Coord[2], 2)) <= 1e-4 {
+		if sameInpCoord(x, y, z, n) {
 			return n
 		}
 	}
@@ -7434,6 +7488,11 @@ func writeinp(fn, title string, view *View, ai *Aiparameter, wind *Windparameter
 	return os.WriteFile(fn, formatInp(title, view, ai, wind, bonds, props, sects, piles, nodes, elems, chains, nodeset, elemset), 0666)
 }
 
+func inpCamera(v *View) string {
+	return fmt.Sprintf("GFACT %.1f\nFOCUS %.1f %.1f %.1f\nANGLE %.1f %.1f\nDISTS %.1f %.1f\n",
+		v.Gfact, v.Focus[0], v.Focus[1], v.Focus[2], v.Angle[0], v.Angle[1], v.Dists[0], v.Dists[1])
+}
+
 func formatInp(title string, view *View, ai *Aiparameter, wind *Windparameter, bonds []*Bond, props []*Prop, sects []*Sect, piles []*Pile, nodes []*Node, elems []*Elem, chains []*Chain, nodeset map[string][]*Node, elemset map[string][]*Elem) []byte {
 	var otp bytes.Buffer
 	inum := len(piles)
@@ -7485,10 +7544,8 @@ func formatInp(title string, view *View, ai *Aiparameter, wind *Windparameter, b
 	otp.WriteString(fmt.Sprintf("VELOCITY  %5.3f\n", wind.Velocity))
 	otp.WriteString(fmt.Sprintf("WFACT     %5.3f\n", wind.Factor))
 	otp.WriteString("\n")
-	otp.WriteString(fmt.Sprintf("GFACT %.1f\n", view.Gfact))
-	otp.WriteString(fmt.Sprintf("FOCUS %.1f %.1f %.1f\n", view.Focus[0], view.Focus[1], view.Focus[2]))
-	otp.WriteString(fmt.Sprintf("ANGLE %.1f %.1f\n", view.Angle[0], view.Angle[1]))
-	otp.WriteString(fmt.Sprintf("DISTS %.1f %.1f\n\n", view.Dists[0], view.Dists[1]))
+	otp.WriteString(inpCamera(view))
+	otp.WriteString("\n")
 	// Bond
 	for _, b := range bonds {
 		otp.WriteString(b.InpString())
