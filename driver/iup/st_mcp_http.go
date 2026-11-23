@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -23,6 +24,8 @@ type mcpHTTPLaunchConfig struct {
 
 type mcpHTTPStarter func(executable, config string) (<-chan error, error)
 
+var errOldWorkflowCatalog = errors.New("workflow readback, retry or interactive input unavailable")
+
 // Optional configuration keeps existing STDIO-only installations working.
 func (stw *Window) ensureMCPHTTP() error {
 	configPath := os.Getenv("ST_MCP_HTTP_CONFIG")
@@ -40,13 +43,17 @@ func (stw *Window) ensureMCPHTTP() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 	started, err := ensureMCPHTTPServer(ctx, configPath, startMCPHTTPProcess)
+	if errors.Is(err, errOldWorkflowCatalog) {
+		stw.History("MCP HTTP: " + err.Error())
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("MCP HTTP: %w", err)
 	}
 	if started {
-		stw.History("MCP HTTP server started")
+		stw.History("MCP HTTP server started (workflow readback and interactive input available)")
 	} else {
-		stw.History("MCP HTTP server already running")
+		stw.History("MCP HTTP server already running (workflow readback and interactive input available)")
 	}
 	return nil
 }
@@ -176,9 +183,50 @@ func probeMCPHTTP(ctx context.Context, address, token string) (bool, error) {
 		closeRequest, _ := http.NewRequestWithContext(ctx, http.MethodDelete, "http://"+address+"/mcp", nil)
 		closeRequest.Header.Set("Authorization", "Bearer "+token)
 		closeRequest.Header.Set("Mcp-Session-Id", session)
-		if closed, err := client.Do(closeRequest); err == nil {
-			closed.Body.Close()
+		defer func() {
+			if closed, err := client.Do(closeRequest); err == nil {
+				closed.Body.Close()
+			}
+		}()
+		list, err := http.NewRequestWithContext(ctx, http.MethodPost, request.URL.String(), strings.NewReader(`{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}`))
+		if err != nil {
+			return false, err
 		}
+		list.Header = request.Header.Clone()
+		list.Header.Set("Mcp-Session-Id", session)
+		res, err := client.Do(list)
+		if err != nil {
+			return false, fmt.Errorf("check MCP tool catalog: %w", err)
+		}
+		defer res.Body.Close()
+		var catalog struct {
+			Result struct {
+				Tools []struct {
+					Name        string
+					InputSchema struct{ Properties map[string]json.RawMessage }
+				}
+			}
+		}
+		if res.StatusCode != http.StatusOK {
+			return false, fmt.Errorf("MCP tools/list returned %s", res.Status)
+		}
+		if err := json.NewDecoder(io.LimitReader(res.Body, 1<<20)).Decode(&catalog); err != nil {
+			return false, err
+		}
+		var workflow, input bool
+		for _, t := range catalog.Result.Tools {
+			switch t.Name {
+			case "run_model_workflow":
+				p := t.InputSchema.Properties
+				workflow = p["construct"] != nil && p["readback"] != nil && p["request_id"] != nil
+			case "model_workflow_input":
+				input = true
+			}
+		}
+		if workflow && input {
+			return true, nil
+		}
+		return false, fmt.Errorf("%s is serving an older MCP tool catalog (%w); restart stmcp-http.exe with the updated binary and reconnect the MCP client", address, errOldWorkflowCatalog)
 	}
-	return true, nil
+	return false, fmt.Errorf("ST MCP HTTP initialize did not return a session ID")
 }

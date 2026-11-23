@@ -3,6 +3,7 @@ package stgui
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -97,6 +98,30 @@ func TestMCPHTTPConcurrentStartupAndReuse(t *testing.T) {
 	started, err := ensureMCPHTTPServer(ctx, config, start)
 	if err != nil || started || starts.Load() != 1 {
 		t.Fatalf("reuse: started=%v count=%d error=%v", started, starts.Load(), err)
+	}
+}
+
+func TestMCPHTTPReportsOlderCatalog(t *testing.T) {
+	var closed atomic.Bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodDelete {
+			closed.Store(true)
+			return
+		}
+		var q struct{ Method string }
+		json.NewDecoder(r.Body).Decode(&q)
+		w.Header().Set("Mcp-Session-Id", "probe")
+		if q.Method == "tools/list" {
+			w.Write([]byte(`{"result":{"tools":[{"name":"run_model_workflow","inputSchema":{"properties":{"commands":{},"construct":{}}}}]}}`))
+			return
+		}
+		w.Write([]byte(`{"result":{"serverInfo":{"name":"stmcp"}}}`))
+	}))
+	defer srv.Close()
+	config := writeHTTPLaunchTestConfig(t, strings.TrimPrefix(srv.URL, "http://"))
+	started, err := ensureMCPHTTPServer(context.Background(), config, func(string, string) (<-chan error, error) { t.Fatal("launched duplicate"); return nil, nil })
+	if started || !errors.Is(err, errOldWorkflowCatalog) || !closed.Load() {
+		t.Fatalf("old catalog: started %v, error %v, closed %v", started, err, closed.Load())
 	}
 }
 
