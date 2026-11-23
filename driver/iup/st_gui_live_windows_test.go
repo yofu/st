@@ -188,13 +188,37 @@ func exerciseMCPLiveGUI(ctx context.Context, exe, root, id string) error {
 	if !view.Changed || !view.Deformation {
 		return fmt.Errorf("analysis display lost the unsaved edit state")
 	}
+	var original struct {
+		Static struct {
+			Nodes []struct{ Displacement [6]float64 }
+		}
+	}
+	if err := tool("analysis_results", map[string]any{"job_id": job.ID}, &original); err != nil {
+		return err
+	}
+	if len(original.Static.Nodes) != 1 {
+		return fmt.Errorf("missing baseline static displacement")
+	}
+	if err := exerciseModelWorkflow(ctx, root, original.Static.Nodes[0].Displacement[2], tool); err != nil {
+		return err
+	}
+	if err := tool("gui_display", map[string]any{"display": display}, nil); err != nil {
+		return err
+	}
 	runCommands := func(commands []string, wantState string) (st.GUIResponse, error) {
 		var response st.GUIResponse
-		if err := tool("gui_execute_commands", map[string]any{"connection_id": id, "commands": commands}, &response); err != nil {
+		batch := map[string]any{"commands": commands}
+		if wantState == "failed" {
+			batch["wait_ms"] = 5000
+		}
+		if err := tool("gui_execute_commands", batch, &response); err != nil {
 			return response, err
 		}
 		if response.CommandJob == nil {
 			return response, fmt.Errorf("missing command job")
+		}
+		if wantState == "failed" && response.CommandJob.State == "running" {
+			return response, fmt.Errorf("bounded wait did not return the failed command")
 		}
 		jobID := response.CommandJob.ID
 		for response.CommandJob.State == "running" {
@@ -244,5 +268,5 @@ func exerciseMCPLiveGUI(ctx context.Context, exe, root, id string) error {
 	if info, err := os.Stat(root + "/model.rat"); err != nil || info.Size() == 0 {
 		return fmt.Errorf("section checking did not write rat: %v", err)
 	}
-	return nil
+	return exerciseWorkflowHTTP(ctx, exe, root, id, false)
 }

@@ -30,19 +30,14 @@ type elemInfo struct {
 	Nodes   []int  `json:"nodes"`
 }
 
-type edit struct {
-	Node    int       `json:"node"`
-	Element int       `json:"element"`
-	Section *int      `json:"section"`
-	Fixed   []bool    `json:"fixed"`
-	Load    []float64 `json:"load"`
-}
+type edit = st.GUIEdit
 
 type proposal struct {
 	ID      uint64   `json:"proposal_id"`
 	Changes []change `json:"changes"`
 	data    []byte
 	lst     []byte
+	edits   []edit
 }
 
 type change struct {
@@ -70,9 +65,15 @@ type modelSession struct {
 	nextSettings      uint64
 	nextDrawing       uint64
 	guiID             string
+	pairedGUI         string // Explicitly paired window, independent of the imported model.
+	workflow          *modelWorkflow
+	workflows         map[uint64]*modelWorkflow
+	requests          map[string]workflowKey
 	guiNodes          []int
 	guiElems          []int
 	guiCommandVersion uint64
+	guiRevision       string
+	guiDelta          bool
 }
 
 func readModel(data []byte, path string) (frame *st.Frame, err error) {
@@ -147,6 +148,7 @@ func (s *modelSession) openPair(path, lstPath string) (any, error) {
 	}
 	s.frame, s.source, s.raw, s.pending = frame, path, data, nil
 	s.guiID, s.guiNodes, s.guiElems = "", nil, nil
+	s.guiDelta, s.guiRevision = false, ""
 	s.lst, s.lstPath = lst, lstPath
 	result := map[string]any{"path": path, "nodes": len(frame.Nodes), "elements": len(frame.Elems), "sections": len(frame.Sects)}
 	if lst != nil {
@@ -207,27 +209,17 @@ func query[T any, V any](items map[int]T, q idQuery, view func(T) V) (any, error
 }
 
 func (s *modelSession) preview(edits []edit) (*proposal, error) {
-	if len(edits) == 0 || len(edits) > 100 {
-		return nil, fmt.Errorf("specify 1 to 100 edits")
+	if err := s.frame.ValidateGUIEdits(edits); err != nil {
+		return nil, err
 	}
 	replacements := make(map[recordKey]map[string][]string)
-	result := &proposal{}
-	for i, edit := range edits {
-		if (edit.Node > 0) == (edit.Element > 0) || edit.Node < 0 || edit.Element < 0 {
-			return nil, fmt.Errorf("edit %d requires exactly one positive node or element ID", i+1)
-		}
+	result := &proposal{edits: edits}
+	for _, edit := range edits {
 		fields := make(map[string][]string)
 		key := recordKey{"NODE", edit.Node}
 		if edit.Element > 0 {
 			key = recordKey{"ELEM", edit.Element}
 			member := s.frame.Elems[edit.Element]
-			if member == nil || edit.Section == nil || edit.Fixed != nil || edit.Load != nil {
-				return nil, fmt.Errorf("element edit requires an existing element and a section number")
-			}
-			section := s.frame.Sects[*edit.Section]
-			if section == nil || (member.IsLineElem() && !section.HasArea(0)) || (!member.IsLineElem() && !section.HasThick(0)) {
-				return nil, fmt.Errorf("section %d is missing or incompatible with element %d", *edit.Section, edit.Element)
-			}
 			before := elementView(member)
 			after := before
 			after.Section = *edit.Section
@@ -235,15 +227,13 @@ func (s *modelSession) preview(edits []edit) (*proposal, error) {
 			fields["ESECT"] = []string{strconv.Itoa(after.Section)}
 		} else {
 			node := s.frame.Nodes[edit.Node]
-			if node == nil || edit.Section != nil || (edit.Fixed == nil && edit.Load == nil) {
-				return nil, fmt.Errorf("node edit requires an existing node and fixed and/or load")
-			}
 			before := nodeView(node)
+			// The live delta path updates the imported node in place after review.
+			before.Coordinates = slices.Clone(before.Coordinates)
+			before.Fixed = slices.Clone(before.Fixed)
+			before.Load = slices.Clone(before.Load)
 			after := before
 			if edit.Fixed != nil {
-				if len(edit.Fixed) != 6 {
-					return nil, fmt.Errorf("fixed must contain six booleans")
-				}
 				after.Fixed = edit.Fixed
 				fields["ICON"] = make([]string, 6)
 				for j, fixed := range edit.Fixed {
@@ -254,9 +244,6 @@ func (s *modelSession) preview(edits []edit) (*proposal, error) {
 				}
 			}
 			if edit.Load != nil {
-				if len(edit.Load) != 6 {
-					return nil, fmt.Errorf("load must contain six numbers")
-				}
 				after.Load = edit.Load
 				fields["VCON"] = make([]string, 6)
 				for j, load := range edit.Load {
@@ -265,30 +252,31 @@ func (s *modelSession) preview(edits []edit) (*proposal, error) {
 			}
 			result.Changes = append(result.Changes, change{before, after})
 		}
-		if replacements[key] != nil {
-			return nil, fmt.Errorf("duplicate edit for %s %d", key.kind, key.id)
-		}
 		replacements[key] = fields
 	}
 	data, err := patchINP(s.raw, replacements)
 	if err != nil {
 		return nil, err
 	}
-	parsed, err := readModel(data, s.parsePath)
-	if err != nil {
-		return nil, fmt.Errorf("read edited INP: %w", err)
-	}
-	for _, c := range result.Changes {
-		switch after := c.After.(type) {
-		case nodeInfo:
-			n := parsed.Nodes[after.ID]
-			if n == nil || !slices.Equal(n.Conf, after.Fixed) || !slices.Equal(n.Load, after.Load) {
-				return nil, fmt.Errorf("edited node %d did not round-trip", after.ID)
-			}
-		case elemInfo:
-			e := parsed.Elems[after.ID]
-			if e == nil || e.Sect.Num != after.Section {
-				return nil, fmt.Errorf("edited element %d did not round-trip", after.ID)
+	// Imported GUI snapshots are canonical and were checked on import. Disk inputs
+	// may contain duplicate or remapped IDs: verify the exact edited bytes.
+	if !s.guiDelta {
+		parsed, err := readModel(data, s.parsePath)
+		if err != nil {
+			return nil, fmt.Errorf("read edited INP: %w", err)
+		}
+		for _, c := range result.Changes {
+			switch after := c.After.(type) {
+			case nodeInfo:
+				n := parsed.Nodes[after.ID]
+				if n == nil || !slices.Equal(n.Conf, after.Fixed) || !slices.Equal(n.Load, after.Load) {
+					return nil, fmt.Errorf("edited node %d did not round-trip", after.ID)
+				}
+			case elemInfo:
+				e := parsed.Elems[after.ID]
+				if e == nil || e.Sect.Num != after.Section {
+					return nil, fmt.Errorf("edited element %d did not round-trip", after.ID)
+				}
 			}
 		}
 	}
@@ -313,6 +301,16 @@ type token struct {
 type replacement struct {
 	start, end int
 	text       string
+}
+
+// line starts at the next nonblank byte. Only tokenize full records for the
+// IDs being changed; large INPs have thousands of unrelated records.
+func splitINPField(line []byte) (word, rest []byte) {
+	i := bytes.IndexAny(line, " \t")
+	if i < 0 {
+		return line, nil
+	}
+	return line[:i], bytes.TrimLeft(line[i:], " \t")
 }
 
 // Preserve all source bytes outside edited tokens, including comments, numeric
@@ -361,36 +359,38 @@ func patchINP(data []byte, edits map[recordKey]map[string][]string) ([]byte, err
 			n = len(data) - offset
 		}
 		line := bytes.TrimRight(data[offset:offset+n], "\r")
-		var words []token
-		for i := 0; i < len(line); {
-			if line[i] == ' ' {
-				i++
-				continue
-			}
-			j := i
-			for j < len(line) && line[j] != ' ' {
-				j++
-			}
-			words = append(words, token{offset + i, offset + j, string(line[i:j])})
-			i = j
-		}
+		start := offset
 		offset += n + 1
-		if len(words) == 0 || strings.HasPrefix(words[0].value, "#") || strings.HasPrefix(words[0].value, "\"") {
+		trimmed := bytes.TrimLeft(line, " \t")
+		start += len(line) - len(trimmed)
+		line = trimmed
+		head, tail := splitINPField(line)
+		if len(head) == 0 || head[0] == '#' || head[0] == '"' {
 			continue
 		}
-		switch words[0].value {
+		switch string(head) {
 		case "NODE", "ELEM", "PROP", "SECT", "PILE", "BOND", "CHAIN", "NODESET", "ELEMSET", "}":
 			if err := flush(); err != nil {
 				return nil, err
 			}
 			key, record = recordKey{}, nil
-			if len(words) >= 2 && (words[0].value == "NODE" || words[0].value == "ELEM") {
-				id, _ := strconv.Atoi(words[1].value)
-				key = recordKey{words[0].value, id}
+			if string(head) == "NODE" || string(head) == "ELEM" {
+				idWord, _ := splitINPField(tail)
+				id, _ := strconv.Atoi(string(idWord))
+				key = recordKey{string(head), id}
 			}
 		}
-		if edits[key] != nil {
-			record = append(record, words...)
+		if edits[key] == nil {
+			continue
+		}
+		for len(line) > 0 {
+			word, rest := splitINPField(line)
+			if len(word) == 0 {
+				break
+			}
+			record = append(record, token{start, start + len(word), string(word)})
+			start += len(line) - len(rest)
+			line = rest
 		}
 	}
 	if err := flush(); err != nil {
@@ -414,6 +414,19 @@ func patchINP(data []byte, edits map[recordKey]map[string][]string) ([]byte, err
 }
 
 func (s *modelSession) call(name string, raw json.RawMessage) (any, error) {
+	switch name {
+	case "run_model_workflow":
+		return s.startWorkflow(raw)
+	case "model_workflow_status", "cancel_model_workflow", "model_workflow_input":
+		return s.workflowControl(name, raw)
+	}
+	if s.workflow != nil {
+		select {
+		case <-s.workflow.done:
+		default:
+			return nil, fmt.Errorf("workflow %d is active; use model_workflow_status or cancel_model_workflow", s.workflow.id)
+		}
+	}
 	if name == "query_dxf_settings" || name == "preview_dxf_settings" || name == "save_dxf_settings" {
 		return s.drawingSettingsTool(name, raw)
 	}
@@ -431,8 +444,31 @@ func (s *modelSession) call(name string, raw json.RawMessage) (any, error) {
 	case "list_fig2", "read_fig2", "preview_fig2", "save_fig2_as":
 		return s.fig2Tool(name, raw)
 	case "list_model_editors":
-		if err := decode(raw, &struct{}{}); err != nil {
+		var a struct {
+			Search     *string `json:"search"`
+			Connection string  `json:"connection_id"`
+		}
+		if err := decode(raw, &a); err != nil {
 			return nil, err
+		}
+		if a.Search != nil {
+			results, err := searchModelCommands(*a.Search)
+			if err != nil {
+				return nil, err
+			}
+			id := a.Connection
+			if id == "" {
+				id = s.pairedGUI
+			}
+			if id != "" {
+				reply, err := exchangeGUI(id, st.GUIRequest{Action: "command_search", Search: *a.Search})
+				if err != nil && reply.Error != "unknown GUI action" {
+					return nil, err
+				}
+				slices.Sort(reply.Matches)
+				results["gui_commands"] = slices.Compact(reply.Matches)
+			}
+			return results, nil
 		}
 		return listModelEditors(), nil
 	case "gui_status", "gui_select", "gui_follow_analysis", "gui_show_result", "gui_get_model", "gui_display", "gui_undo", "gui_redo", "gui_execute_commands", "gui_command_status":
@@ -476,7 +512,11 @@ func (s *modelSession) call(name string, raw json.RawMessage) (any, error) {
 						name = decoded
 					}
 				}
-				return map[string]any{"id": sec.Num, "name": name, "line": sec.HasArea(0), "plate": sec.HasThick(0)}
+				info := map[string]any{"id": sec.Num, "name": name, "line": sec.HasArea(0), "plate": sec.HasThick(0)}
+				if sec.HasThick(0) {
+					info["plate_loads"] = plateLoads(sec)
+				}
+				return info
 			})
 		}
 	case "query_lst", "preview_lst_edits", "preview_rc_column", "save_lst_as", "overwrite_model", "gui_apply_proposal", "start_time_history":

@@ -91,10 +91,7 @@ func (s *modelSession) startStaticAnalysis(o staticAnalysisOptions) (any, error)
 	if err != nil {
 		return nil, err
 	}
-	path, err := filepath.Abs(filepath.Join(s.modelRootPath(), s.source))
-	if err != nil {
-		return nil, err
-	}
+	path := s.guiModelPath()
 	output := &staticAnalysisOutput{root: s.root, path: o.ResultPath, modelPath: path, modelDigest: s.frame.GUIModelDigest()}
 	request := analysisRequest{
 		Options:      analysisOptions{Analysis: "static", Period: o.Period, NodeIDs: o.NodeIDs},

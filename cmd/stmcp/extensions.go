@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"slices"
+	"strings"
 	"time"
 
 	st "github.com/yofu/st/stlib"
@@ -19,14 +21,15 @@ var extendedCatalog = []tool{
 	{"overwrite_model", "Replace the opened source INP and any changed LST using the reviewed proposal, refuse externally changed source files, and return backup paths.", json.RawMessage(`{"type":"object","required":["proposal_id"],"properties":{"proposal_id":{"type":"integer","minimum":1}},"additionalProperties":false}`)},
 	{"start_time_history", "Run nonlinear Newmark time history with L preload, automatic Rayleigh damping and a ground motion CSV, using the current model or a proposal. Returns an analysis job ID and the new output directory.", json.RawMessage(`{"type":"object","required":["wave","output_dir","damping_ratio"],"properties":{"proposal_id":{"type":"integer","minimum":1},"wave":{"type":"string"},"output_dir":{"type":"string"},"damping_ratio":{"type":"number","minimum":0},"rayleigh_modes":{"type":"array","minItems":2,"maxItems":2,"items":{"type":"integer","minimum":1,"maximum":100}},"dt":{"type":"number","exclusiveMinimum":0},"node_ids":{"type":"array","maxItems":200,"uniqueItems":true,"items":{"type":"integer","minimum":1}},"nlgeom":{"type":"boolean"},"preview_every":{"type":"integer","minimum":1,"maximum":10000}},"additionalProperties":false}`)},
 	{"start_static_analysis", "Run one linear static analysis of the opened INP asynchronously. Save the full result at a new relative path (.otl for L, .ohx for X, .ohy for Y). After completion gui_follow_analysis can display it in IUP.", json.RawMessage(`{"type":"object","required":["result_path"],"properties":{"period":{"enum":["L","X","Y"],"default":"L"},"result_path":{"type":"string","minLength":1},"node_ids":{"type":"array","items":{"type":"integer","minimum":1},"maxItems":200,"uniqueItems":true}},"additionalProperties":false}`)},
-	{"gui_show_result", "Load an existing static result from the server root into the matching open IUP model and display deformation and displacement captions. The default axis is Z; an empty array disables captions.", json.RawMessage(`{"type":"object","required":["connection_id","path"],"properties":{"connection_id":{"type":"string"},"path":{"type":"string","minLength":1},"displacement_axes":{"type":"array","items":{"enum":["X","Y","Z"]},"maxItems":3,"uniqueItems":true}},"additionalProperties":false}`)},
-	{"gui_status", "Inspect the active model and selection in the paired IUP instance. Obtain a connection ID in ST using :mcpconnect.", json.RawMessage(guiConnectionSchema)},
-	{"gui_select", "Replace specified selections in the paired IUP instance; an empty array clears that selection.", json.RawMessage(`{"type":"object","required":["connection_id"],"properties":{"connection_id":{"type":"string"},"node_ids":{"type":"array","items":{"type":"integer","minimum":1},"uniqueItems":true},"element_ids":{"type":"array","items":{"type":"integer","minimum":1},"uniqueItems":true}},"additionalProperties":false}`)},
-	{"gui_apply_proposal", "Apply the reviewed proposal to the active IUP instance and redraw. Use gui_get_model for unsaved GUI edits. Reject intervening model changes and add the edit to GUI undo history.", json.RawMessage(`{"type":"object","required":["connection_id","proposal_id"],"properties":{"connection_id":{"type":"string"},"proposal_id":{"type":"integer","minimum":1}},"additionalProperties":false}`)},
-	{"gui_follow_analysis", "Display a completed saved static result or follow an incremental live preview in the paired IUP instance. Static results default to Z displacement captions.", json.RawMessage(`{"type":"object","required":["connection_id","job_id"],"properties":{"connection_id":{"type":"string"},"job_id":{"type":"integer","minimum":1},"displacement_axes":{"type":"array","items":{"enum":["X","Y","Z"]},"maxItems":3,"uniqueItems":true}},"additionalProperties":false}`)},
+	{"gui_show_result", "Load an existing static result from the server root into the matching open IUP model and display deformation and displacement captions. The default axis is Z; an empty array disables captions.", json.RawMessage(`{"type":"object","required":["path"],"properties":{"connection_id":{"type":"string"},"path":{"type":"string","minLength":1},"displacement_axes":{"type":"array","items":{"enum":["X","Y","Z"]},"maxItems":3,"uniqueItems":true}},"additionalProperties":false}`)},
+	{"gui_status", "Inspect the active model and selection in the paired IUP instance. Obtain a connection ID in ST using :mcpconnect.", json.RawMessage(guiStatusSchema)},
+	{"gui_select", "Replace specified selections in the paired IUP instance; an empty array clears that selection.", json.RawMessage(`{"type":"object","properties":{"connection_id":{"type":"string"},"node_ids":{"type":"array","items":{"type":"integer","minimum":1},"uniqueItems":true},"element_ids":{"type":"array","items":{"type":"integer","minimum":1},"uniqueItems":true},"include_revision":{"type":"boolean"}},"additionalProperties":false}`)},
+	{"gui_apply_proposal", "Apply the reviewed proposal to the active IUP instance and redraw. Use gui_get_model for unsaved GUI edits. Reject intervening model changes and add the edit to GUI undo history.", json.RawMessage(`{"type":"object","required":["proposal_id"],"properties":{"connection_id":{"type":"string"},"proposal_id":{"type":"integer","minimum":1}},"additionalProperties":false}`)},
+	{"gui_follow_analysis", "Display a completed saved static result or follow an incremental live preview in the paired IUP instance. Static results default to Z displacement captions.", json.RawMessage(`{"type":"object","required":["job_id"],"properties":{"connection_id":{"type":"string"},"job_id":{"type":"integer","minimum":1},"displacement_axes":{"type":"array","items":{"enum":["X","Y","Z"]},"maxItems":3,"uniqueItems":true}},"additionalProperties":false}`)},
 }
 
-const guiConnectionSchema = `{"type":"object","required":["connection_id"],"properties":{"connection_id":{"type":"string"}},"additionalProperties":false}`
+const guiStatusSchema = `{"type":"object","properties":{"connection_id":{"type":"string"},"include_revision":{"type":"boolean","description":"Set false for a quick display/selection poll."}},"additionalProperties":false}`
+const guiConnectionSchema = `{"type":"object","properties":{"connection_id":{"type":"string"}},"additionalProperties":false}`
 
 func init() {
 	catalog = append(catalog, extendedCatalog...)
@@ -65,34 +68,72 @@ func (s *modelSession) extensionTool(name string, raw json.RawMessage) (any, err
 
 func (s *modelSession) guiTool(name string, raw json.RawMessage) (any, error) {
 	var a struct {
-		ID       string         `json:"connection_id"`
-		Proposal uint64         `json:"proposal_id"`
-		Job      uint64         `json:"job_id"`
-		Nodes    *[]int         `json:"node_ids"`
-		Elems    *[]int         `json:"element_ids"`
-		Path     string         `json:"path"`
-		Axes     []string       `json:"displacement_axes"`
-		Display  *st.GUIDisplay `json:"display"`
-		Revision string         `json:"revision"`
-		Commands []string       `json:"commands"`
+		Readback        *st.GUIReadback       `json:"readback"`
+		Construct       *workflowConstruction `json:"construct"`
+		Wait            *int                  `json:"wait_ms"`
+		IncludeRevision *bool                 `json:"include_revision"`
+		ID              string                `json:"connection_id"`
+		Proposal        uint64                `json:"proposal_id"`
+		Job             uint64                `json:"job_id"`
+		Nodes           *[]int                `json:"node_ids"`
+		Elems           *[]int                `json:"element_ids"`
+		Path            string                `json:"path"`
+		Axes            []string              `json:"displacement_axes"`
+		Display         *st.GUIDisplay        `json:"display"`
+		Revision        string                `json:"revision"`
+		Commands        []string              `json:"commands"`
 	}
 	if err := decode(raw, &a); err != nil {
 		return nil, err
 	}
+	if a.ID == "" {
+		a.ID = s.pairedGUI
+	}
+	if a.ID == "" {
+		return nil, fmt.Errorf("supply the connection_id shown by :mcpconnect for the first GUI operation in this session")
+	}
+	wait, err := workflowWait(a.Wait, 0)
+	if err != nil {
+		return nil, err
+	}
 	var q st.GUIRequest
+	if name == "gui_workflow_command_status" {
+		name = "gui_command_status"
+		q.CompactStatus = true
+	}
 	switch name {
+	case "gui_construct":
+		if a.Construct == nil {
+			return nil, fmt.Errorf("missing construct")
+		}
+		q.Action, q.Construction, q.Revision = "construct", &a.Construct.GUIConstruction, a.Revision
 	case "gui_execute_commands":
 		q.Action, q.Commands, q.Revision = "commands", a.Commands, a.Revision
+		if s.guiID == a.ID && s.guiRevision != "" {
+			q.KnownPath = s.guiModelPath()
+			q.KnownRevision = s.guiRevision
+		}
 	case "gui_command_status":
+		if s.guiID == a.ID {
+			q.KnownCompletion = s.guiCommandVersion
+		}
 		q.Action, q.CommandJobID = "command_status", a.Job
-	case "gui_get_model":
-		q.Action = "snapshot"
+	case "gui_sync_model", "gui_get_model":
+		q.Action, q.Revision = "snapshot", a.Revision
+		if name == "gui_sync_model" && s.guiID == a.ID && s.guiRevision != "" {
+			q.KnownRevision, q.KnownPath = s.guiRevision, s.guiModelPath()
+		}
 	case "gui_display", "gui_undo", "gui_redo":
 		q.Action = map[string]string{"gui_display": "display", "gui_undo": "undo", "gui_redo": "redo"}[name]
 		q.Display, q.Revision = a.Display, a.Revision
 		if q.Revision == "" && s.guiID == a.ID && s.frame != nil {
-			q.Revision = s.frame.GUIRevision()
+			q.Revision = s.guiRevision
+			if q.Revision == "" {
+				q.Revision = s.frame.GUIRevision()
+			}
 		}
+	case "gui_readback":
+		q.Action, q.Revision, q.Readback = "readback", a.Revision, a.Readback
 	case "gui_status":
 		q.Action = "status"
 	case "gui_select":
@@ -104,10 +145,7 @@ func (s *modelSession) guiTool(name string, raw json.RawMessage) (any, error) {
 		if s.frame == nil {
 			return nil, fmt.Errorf("open an INP model first")
 		}
-		path, err := filepath.Abs(filepath.Join(s.modelRootPath(), s.source))
-		if err != nil {
-			return nil, err
-		}
+		path := s.guiModelPath()
 		q, err = s.staticGUIRequest(a.Path, path, s.frame.GUIModelDigest(), a.Axes)
 		if err != nil {
 			return nil, err
@@ -156,33 +194,102 @@ func (s *modelSession) guiTool(name string, raw json.RawMessage) (any, error) {
 				}
 			}
 		}
-		path, err := filepath.Abs(filepath.Join(s.modelRootPath(), s.source))
-		if err != nil {
-			return nil, err
+		path := s.guiModelPath()
+		if s.guiID == a.ID && s.guiDelta && s.guiRevision != "" && len(s.pending.edits) > 0 {
+			q = st.GUIRequest{Action: "apply_delta", Revision: s.guiRevision, BasePath: path, Edits: s.pending.edits}
+			break
 		}
 		q = st.GUIRequest{Action: "apply", BasePath: path, BaseDigest: s.frame.GUIModelDigest(), INP: s.pending.data, LST: s.proposedLst(s.pending)}
 	default:
 		return nil, fmt.Errorf("unknown GUI tool")
 	}
-	reply, err := exchangeGUI(a.ID, q)
+	if name == "gui_apply_proposal" && a.Revision != "" {
+		if q.Revision != "" && q.Revision != a.Revision {
+			return nil, fmt.Errorf("proposal revision differs from requested revision")
+		}
+		q.Revision = a.Revision
+	}
+	q.OmitRevision = a.IncludeRevision != nil && !*a.IncludeRevision
+	var reply st.GUIResponse
+	if name == "gui_construct" && a.Construct.hasSurfaces() {
+		// An older window can silently ignore new fields in a construct payload.
+		// Apply these records through the version-checked snapshot protocol.
+		reply, err = s.constructFromSnapshot(a.ID, q, a.Construct)
+	} else {
+		reply, err = exchangeGUI(a.ID, q)
+		if name == "gui_construct" && err != nil && reply.Error == "unknown GUI action" {
+			reply, err = s.constructFromSnapshot(a.ID, q, a.Construct)
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
-	if reply.Snapshot != nil {
-		alreadyImported := name == "gui_command_status" && reply.CommandJob != nil && s.guiID == a.ID && reply.CommandJob.Completion <= s.guiCommandVersion
-		if !alreadyImported {
-			if err := s.importGUI(a.ID, reply); err != nil {
-				if name != "gui_command_status" {
-					return nil, err
-				}
+	s.pairedGUI = a.ID
+	if name == "gui_execute_commands" && wait > 0 && reply.CommandJob != nil {
+		statusArgs, _ := json.Marshal(map[string]any{"connection_id": a.ID, "job_id": reply.CommandJob.ID})
+		end := time.Now().Add(wait)
+		for reply.CommandJob != nil && reply.CommandJob.State == "running" && time.Now().Before(end) {
+			time.Sleep(min(60*time.Millisecond, time.Until(end)))
+			value, err := s.guiTool("gui_command_status", statusArgs)
+			if err != nil {
 				reply.SyncError = err.Error()
-			} else if name == "gui_command_status" && reply.CommandJob != nil {
-				s.guiCommandVersion = reply.CommandJob.Completion
+				break
 			}
+			reply = value.(st.GUIResponse)
+		}
+		return reply, nil
+	}
+	if q.Action == "apply_delta" {
+		if reply.InputView == nil || reply.Revision == "" {
+			return nil, fmt.Errorf("missing edit receipt; call gui_get_model")
+		}
+		s.frame.ApplyValidatedGUIEdits(q.Edits)
+		s.raw = s.pending.data
+		s.pending = nil
+		s.guiRevision = reply.Revision
+	}
+	if name == "gui_command_status" && reply.CommandJob != nil && reply.CommandJob.Completion != 0 {
+		if s.guiID == a.ID && reply.CommandJob.Completion <= s.guiCommandVersion {
+			reply.Snapshot, reply.InputView = nil, nil
+			return reply, nil
+		}
+		if reply.Snapshot == nil && reply.Revision != "" && (s.guiID != a.ID || s.guiRevision != reply.Revision || !strings.EqualFold(s.guiModelPath(), reply.Path)) {
+			// A different client or a later manual edit can make even a display-only
+			// job's starting model differ from the model this session has imported.
+			fresh, e := exchangeGUI(a.ID, st.GUIRequest{Action: "snapshot"})
+			if e == nil {
+				e = s.importGUI(a.ID, fresh)
+			}
+			if e != nil {
+				reply.SyncError = e.Error()
+				return reply, nil
+			}
+			s.guiCommandVersion = reply.CommandJob.Completion
+			reply.InputView = nil
+			return reply, nil
+		}
+	}
+	if reply.Snapshot != nil {
+		if err := s.importGUI(a.ID, reply); err != nil {
+			if name != "gui_command_status" && name != "gui_construct" {
+				return nil, err
+			}
+			reply.SyncError = err.Error()
 		}
 		reply.Snapshot = nil
-	} else if s.guiID == a.ID && reply.Path != "" {
+	} else if s.guiID == a.ID && (reply.Path != "" || reply.Revision != "") {
 		s.guiNodes, s.guiElems = reply.Nodes, reply.Elements
+	}
+	if after := reply.InputView; after != nil && s.guiID == a.ID {
+		before := s.frame.View
+		s.frame.View = after
+		if before.Gfact != after.Gfact || !slices.Equal(before.Focus, after.Focus) || !slices.Equal(before.Angle, after.Angle) || !slices.Equal(before.Dists, after.Dists) {
+			s.raw = s.frame.GUIInpBytes()
+		}
+		reply.InputView = nil
+	}
+	if name == "gui_command_status" && reply.CommandJob != nil && reply.CommandJob.Completion != 0 && reply.SyncError == "" && s.guiID == a.ID {
+		s.guiCommandVersion = reply.CommandJob.Completion
 	}
 	return reply, nil
 }
@@ -216,6 +323,7 @@ func (s *modelSession) openInGUI(path, lstPath, connection string) (any, error) 
 	if err != nil {
 		return nil, err
 	}
+	candidate.pairedGUI = connection
 	*s = candidate
 	result := opened.(map[string]any)
 	result["gui"] = reply

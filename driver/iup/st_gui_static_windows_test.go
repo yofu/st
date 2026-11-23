@@ -19,11 +19,15 @@ import (
 	st "github.com/yofu/st/stlib"
 )
 
-func TestMCPStaticResultOnIUP(t *testing.T) { testMCPOnIUP(t, false) }
+func TestMCPBucklingWorkflowOnIUP(t *testing.T) { testMCPOnIUP(t, "buckling") }
 
-func TestMCPLiveEditingOnIUP(t *testing.T) { testMCPOnIUP(t, true) }
+func TestMCPStaticResultOnIUP(t *testing.T) { testMCPOnIUP(t, "static") }
 
-func testMCPOnIUP(t *testing.T, liveEditing bool) {
+func TestMCPLiveEditingOnIUP(t *testing.T)      { testMCPOnIUP(t, "live") }
+func TestMCPGridConstructionOnIUP(t *testing.T) { testMCPOnIUP(t, "construct") }
+
+func testMCPOnIUP(t *testing.T, mode string) {
+	liveEditing := mode == "live"
 	exe, input := os.Getenv("ST_MCP_EXE"), os.Getenv("ST_MCP_NAKANO_INP")
 	if exe == "" || input == "" {
 		t.Skip("set ST_MCP_EXE and ST_MCP_NAKANO_INP for the Windows IUP integration test")
@@ -55,6 +59,14 @@ func testMCPOnIUP(t *testing.T, liveEditing bool) {
 		t.Fatal(err)
 	}
 	defer w.stopGUIConnection()
+	if mode == "buckling" {
+		if err := os.WriteFile("test.pgp", []byte("TESTNODE SELECTNODE\nTESTOPEN OPEN\n"), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := w.ReadPgp("test.pgp"); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if liveEditing {
 		f := st.NewFrame()
 		if err := f.ReadInpSnapshot(model, filepath.Join(dir, "model.inp")); err != nil {
@@ -72,6 +84,8 @@ func testMCPOnIUP(t *testing.T, liveEditing bool) {
 		w.Changed(true)
 		w.SelectNode([]*st.Node{f.Nodes[131]})
 		w.SelectElem([]*st.Elem{f.Elems[1001]})
+		testGUIEditBatch(t, w)
+
 	}
 	history := w.hist.GetAttribute("VALUE")
 	_, suffix, ok := strings.Cut(history, "MCP GUI connection ID: ")
@@ -84,10 +98,12 @@ func testMCPOnIUP(t *testing.T, liveEditing bool) {
 	defer cancel()
 	result := make(chan error, 1)
 	go func() {
-		if liveEditing {
+		if mode == "construct" {
+			result <- exerciseWorkflowHTTP(ctx, exe, dir, id, true)
+		} else if liveEditing {
 			result <- exerciseMCPLiveGUI(ctx, exe, dir, id)
 		} else {
-			result <- exerciseMCPStaticGUI(ctx, exe, dir, id)
+			result <- exerciseMCPStaticGUI(ctx, exe, dir, id, mode)
 		}
 	}()
 	for {
@@ -97,6 +113,23 @@ func testMCPOnIUP(t *testing.T, liveEditing bool) {
 				t.Fatal(err)
 			}
 			f := w.Frame()
+			if mode == "buckling" {
+				if f.Show.Period != "B1" || f.Eigenvalue[0] <= 0 || f.Show.PlotState&st.PLOT_DEFORMED == 0 {
+					t.Fatal("IUP final frame missing mode")
+				}
+				for _, n := range f.Nodes {
+					if len(n.Dcoord) >= 2 && (n.Pcoord[0] != n.Dcoord[0] || n.Pcoord[1] != n.Dcoord[1]) {
+						return
+					}
+				}
+				t.Fatal("no projected node moved in B1")
+			}
+			if mode == "construct" {
+				if len(f.Nodes) != 121 || len(f.Elems) != 220 || f.Sects[501].Figs[0].Prop.Material.Name() != "SN400" {
+					t.Fatal("live frame differs from construction receipt")
+				}
+				return
+			}
 			if liveEditing {
 				if f.Sects[201].Allow.Name() != "UNSAVED_SECTION" || f.Show.SrcanRate != 15 || f.Show.ColorMode != st.ECOLOR_RATE {
 					t.Fatal("native commands lost unsaved LST or rate diagram state")
@@ -135,7 +168,7 @@ func testMCPOnIUP(t *testing.T, liveEditing bool) {
 	}
 }
 
-func exerciseMCPStaticGUI(ctx context.Context, exe, root, id string) error {
+func exerciseMCPStaticGUI(ctx context.Context, exe, root, id, mode string) error {
 	cmd := exec.CommandContext(ctx, exe, "-root", root)
 	in, err := cmd.StdinPipe()
 	if err != nil {
@@ -196,6 +229,9 @@ func exerciseMCPStaticGUI(ctx context.Context, exe, root, id string) error {
 	}
 	if filepath.Base(opened.GUI.Path) != "model.inp" || opened.GUI.Changed {
 		return fmt.Errorf("unexpected IUP open response: %+v", opened.GUI)
+	}
+	if mode == "buckling" {
+		return exerciseBucklingWorkflow(ctx, tool)
 	}
 	var job struct {
 		ID    uint64 `json:"job_id"`
@@ -278,4 +314,54 @@ func exerciseMCPStaticGUI(ctx context.Context, exe, root, id string) error {
 		return fmt.Errorf("saved .otl is empty")
 	}
 	return nil
+}
+
+// Exercise the wire-level delta contract on the same unsaved model as the MCP
+// client, including the no-partial-edit and stale-baseline paths.
+func testGUIEditBatch(t *testing.T, w *Window) {
+	t.Helper()
+	f := w.Frame()
+	rev := f.GUIRevision()
+	n, el := f.Nodes[131], f.Elems[1001]
+	var sid int
+	for id, section := range f.Sects {
+		if id != el.Sect.Num && section.HasArea(0) {
+			sid = id
+			break
+		}
+	}
+	if sid == 0 {
+		t.Fatal("need a second compatible section")
+	}
+	fixed := append([]bool(nil), n.Conf...)
+	fixed[0] = !fixed[0]
+	load := []float64{1, 2, 3, 4, 5, 6}
+	q := st.GUIRequest{Action: "apply_delta", Revision: rev, BasePath: f.Path, Edits: []st.GUIEdit{{Node: n.Num, Load: load, Fixed: fixed}, {Element: -1, Section: &sid}}}
+	if r := w.handleGUIRequest(q); r.Error == "" || f.GUIRevision() != rev {
+		t.Fatal("invalid batch changed the model")
+	}
+	q.Edits[1].Element = el.Num
+	r := w.handleGUIRequest(q)
+	if r.Error != "" || r.Snapshot != nil || r.InputView == nil || r.Revision == rev || w.Frame().Nodes[131].Load[3] != 4 || w.Frame().Nodes[131].Conf[0] != fixed[0] || w.Frame().Elems[1001].Sect.Num != sid {
+		t.Fatalf("delta receipt or values incorrect: %+v", r)
+	}
+	if stale := w.handleGUIRequest(q); stale.Error == "" {
+		t.Fatal("stale delta accepted")
+	}
+	if undo := w.handleGUIRequest(st.GUIRequest{Action: "undo", Revision: r.Revision}); undo.Error != "" || undo.Revision != rev {
+		t.Fatalf("one undo did not restore the entire batch: %s", undo.Error)
+	}
+	if poll := w.handleGUIRequest(st.GUIRequest{Action: "status", OmitRevision: true}); poll.Revision != "" || len(poll.Nodes) != 1 || poll.Nodes[0] != 131 {
+		t.Fatal("lightweight selection poll failed")
+	}
+	// A completed analysis may leave data that does not participate in the
+	// input revision. Applying a delta must discard those results as before.
+	w.Frame().Nodes[131].Disp["L"] = make([]float64, 6)
+	if rr := w.handleGUIRequest(q); rr.Error != "" || rr.Snapshot != nil || len(w.Frame().Nodes[131].Disp) != 0 || rr.Revision != r.Revision {
+		t.Fatal("delta on analyzed model retained results or changed the edited input", rr.Error)
+	}
+	if rr := w.handleGUIRequest(st.GUIRequest{Action: "undo", Revision: r.Revision}); rr.Error != "" || rr.Revision != rev {
+		t.Fatal("analyzed model undo", rr.Error)
+	}
+
 }

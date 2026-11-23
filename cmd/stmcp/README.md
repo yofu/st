@@ -180,6 +180,8 @@ WindowsのSTで `:mcpconnect` を実行し、履歴に表示された接続IDを
 
 `gui_get_model` と状態応答は `revision` を返します。取り込み後の編集適用・Undo・表示変更ではモデルの一致を照合します。必要に応じて `gui_display`、`gui_undo`、`gui_redo` の `revision` に期待する値を明示できます。解析実行中のモデル取得・編集・Undoは、解析が完了してから行ってください。新しい機能を使うには `st.exe` と `stmcp.exe` の両方を再ビルドして再起動します。
 
+`gui_get_model` の後は、節点荷重・拘束・部材断面の変更を `preview_edits` に最大100件まとめると、`gui_apply_proposal` が差分を一括で反映します。GUIの手編集でモデルが変わったときは適用を拒否し、成功した一括編集は1回のUndoで戻せます。表示や選択だけを照会する場合は `gui_status` または `gui_select` に `"include_revision": false` を渡すと、モデル全体のハッシュ計算を省きます。
+
 - `:mcpconnect off` で接続を終了します。起動中の接続IDは、同じPCで操作を許可するCodexにだけ渡してください。
 
 ## 図化ファイルを作る
@@ -230,6 +232,83 @@ GUIの`:drawings sheets.dxf -plans=3 -grids=Y2,X1 -sections`、`:dxfsections sec
 `save_fig2_as` に `{"path":"nakano02_07_model_mcp.fig2","draft_id":1}` のように渡して、Windowsの日本語版 Fig2 に対応する CP932 形式で別名保存します。PDF出力は従来どおり、図化ファイルと入力モデルを指定して `fig2.exe nakano02_07.inp nakano02_07_model_mcp.fig2` を実行します。応力図などで参照する解析結果や通り芯ファイルは、従来の図化時と同じ場所に用意します。
 
 
+## 編集中のモデルに材料・断面・節点・線材をまとめて追加する
+
+`run_model_workflow.construct` はIUPのモデルに直接追加します。たとえば次の1回の呼び出しで、SN400のH形鋼を使ったXYグリッドを作成し、平面表示と別名保存まで実行できます。
+
+```json
+{
+  "connection_id": "初回に渡す接続ID",
+  "construct": {
+    "properties": [{"id": 101, "material": "SN400"}],
+    "sections": [{"id": 501, "property": 101, "name": "H-200x200x8x12", "shape": "HKYOU", "dimensions_mm": [200, 200, 8, 12]}],
+    "grid": {"cells": [10, 10, 0], "pitch_m": [1, 1, 0], "section": 501, "type": "GIRDER"}
+  },
+  "commands": ["'angle 90 -90", "'fit"],
+  "save_copy": "xy_grid_SN400.inp",
+  "wait_ms": 5000
+}
+```
+
+任意形状は `nodes: [{"id": 11, "xyz_m": [0,0,0]}]` と `elements: [{"id": 1001, "nodes": [11,12], "section": 501, "type": "BRACE"}]` の形式で指定します。参照する節点・断面・材料は今回追加するものと既存のものを混在させられます。格子の原点は `origin_m`、最初の番号は `first_node` と `first_element` で指定できます。省略時は原点がXYZとも0、番号はモデルの次の空き番号からです。規則格子の節点や部材を1件ずつチャットで列挙する必要はありません。
+
+新規断面の形状はHKYOU・HWEAK・RPIPE（高さ、幅、ウェブ厚、フランジ厚）、CPIPE（外径、厚さ）、PLATE（高さ、幅）をmmで指定します。新規PROPはSTの登録材料名を使い、重量・剛性倍率は1です。各節点の座標と部材長はmです。重複番号、重なる節点・線材、無効な参照は追加前に検出されます。1回分の追加はIUPでまとめてUndoできます。
+
+応答の `construction` に追加件数・全体件数・種類別と方向別の部材数・最短／最長部材長・参照断面の形状寸法とPROP材質が入ります。`save_copy` は任意で、サーバールート内の新しい相対パスに現在の入力と対応するLSTを保存します。GUIでは編集中のモデルを引き続き操作できます。後続の保存だけが失敗した場合、作成済みのモデルには `save_copy` 単独で再試行できます。
+
+`:mcpconnect` は設定先HTTPサーバーの `tools/list` を確認します。古いサーバーが動いている場合はIUPの履歴に表示されます。新版のHTTPサーバーを起動してMCPクライアントを再接続してください。起動中の旧IUPでは、パスのあるモデルに対してスナップショットとリビジョン照合で一括作成できます。無題モデルの直接作成は新版のIUPで利用できます。
+
+## チャットから編集・解析・表示をまとめて実行する
+
+通常のモデル操作ではCodexがSTのMCPツールを直接呼び出します。別の編集操作を探す場合は `list_model_editors` に `{"search":"plate"}` のような検索語を渡せます。対話コマンドは `editor_commands`、ex・Fig2は `commands`、解析には `static_analysis` や専用のジョブツールを使います。サーバーの初期化応答にもこの選び方を記載し、未対応の操作は不足する機能を報告するよう案内しています。
+
+既存のXYグリッドに床を張る場合は、次の引数を1回の `run_model_workflow` に渡します。面の四隅は対象平面内の線材の接続から取得します。節点番号の列挙は不要です。
+
+```json
+{
+  "connection_id": "STの接続ID",
+  "construct": {
+    "plate_sections": [
+      {"id": 711, "dead_load_kgf_m2": 100, "lload_tf_m2": [0.065, 0.045, 0.035]}
+    ],
+    "panel_grid": {"plane": "XY", "coordinate_m": 0, "section": 711, "type": "SLAB", "expected_cells": 100}
+  }
+}
+```
+
+`dead_load_kgf_m2` は断面の固定荷重の合計です。材質や厚さを指定せずに新しい断面を定義すると、比重1・弾性係数0の荷重用PROPと等価厚さを使って保存します。上の例は固定荷重0.100 tf/m²と独立した3つのLLOADを持ちます。既存の板断面ではその構造層を保持し、荷重用の層で差額を調整します。既存層の自重を下回る指定はエラーになります。固定荷重とLLOADは `query_sections` でも個別に照会できます。
+
+`panel_grid` は指定平面内の軸方向の線材4辺で閉じた矩形を対象とし、XY・YZ・ZX平面で使えます。`expected_cells` を指定すると件数の不一致で編集全体を取り消します。個別の三角形・凸四角形には、たとえば `"plates":[{"nodes":[11,12,14],"type":"WALL","section":801}]` のように外周順の節点を指定します。断面の変更と面の追加はGUIの1回のUndoで取り消せます。適用した面積は `construction.added_plate_area_m2`、固定・積載荷重は `construction.plate_loads` に断面番号ごとに入ります。
+
+CodexからはSTのMCPツール `run_model_workflow` を直接呼び出します。Fig2コマンドはJSON文字列として渡せます。STが新版のツールを公開していても、更新前から開いているチャットが古い一覧を保持している場合があります。その場合はCodex側のMCP接続を再読み込みし、ツール一覧に `run_model_workflow` と `model_workflow_status` があることを確認します。接続を更新したら最初の呼び出しに同じSTウインドウの接続IDを渡します。
+
+`state: "completed"` のときは、依頼した数値を応答から照合して完了できます。作成時にはGUIから受け取ったモデルの全体件数と `construction.total` をMCP内部で照合します。`construction_revision` と `gui.revision` が同じなら、作成時の件数・部材長・断面・材質は最終モデルにも対応します。後続の編集でリビジョンが変わった場合や、依頼した項目が応答に含まれない場合は、該当する節点・部材などを個別に照会します。最終表示は `gui.display`、指定節点の静的解析結果は `static.nodes` で確認できます。
+
+応答を見失ったときは、同じMCPセッションで `model_workflow_status` に `{}` を渡すと、直近のワークフローの状態・結果が戻ります。複数の依頼を区別する場合は `workflow_id` を指定します。再接続すると以前のセッションの結果は取得できないため、GUI上で依頼に関係する箇所を確認します。停止操作には対象の `workflow_id` が必要です。
+
+IUPで `:mcpconnect` を実行し、表示された接続IDを初回の `run_model_workflow` または `gui_status` に渡します。同じMCPセッションでは以後のGUI操作でIDを省略できます。HTTPでは同じ `Mcp-Session-Id` を使います。別のウインドウに切り替えるときはその接続IDを明示します。
+
+たとえば「節点131の荷重ベクトルを変更し、長期の変形図とZ変位を表示して」と指示した場合、以下を1回の `run_model_workflow` に渡せます。静的解析の出力先にはサーバールートからの相対パスで新しいファイル名を指定します。
+
+```json
+{
+  "connection_id": "初回に渡す接続ID",
+  "edits": [{"node": 131, "load": [1, 2, -2, 0, 0, 0]}],
+  "static_analysis": {"period": "L", "result_path": "edited_L.otl", "node_ids": [131]},
+  "display": {"deformation_scale": 75, "displacement_axes": ["Z"]}
+}
+```
+
+実行順は編集、ネイティブコマンド、静的解析と結果表示、表示設定です。必要な項目だけを渡せます。
+
+- 編集には `edits`、現在のGUI選択や対話入力を使う `editor_commands`（`preview_gui_edits.commands` と同形式）、または確認済みの `proposal_id` を指定します。適用時にGUIのモデルと照合します。結果には変更件数と先頭10件の差分が入ります。
+- `commands` はex・Fig2の配列です。IUPで必要な準備ができていれば、増分解析と図化を同じ配列に並べられます。解析中はIUPの通常のステップ表示が動き、解析完了時に後続コマンドが進みます。
+- `static_analysis` は未保存のモデルから解析し、保存した結果と表示対象のモデルを照合して変形図を表示します。指定節点の変位と反力は応答の `static.nodes` に入ります。
+- `wait_ms` は最初の応答までの完了待ちで、既定1500、範囲0～5000です。時間内に終われば最終結果を返します。長い処理は `workflow_id` を返して自動で進みます。状態確認は `model_workflow_status`、停止は `cancel_model_workflow` に同じIDを渡します。どちらも `wait_ms` を指定できます。セッション内では直近のワークフローを参照できます。
+- 停止時は後続の処理を取り消し、実行中の静的解析・Arclm101・時刻歴解析に停止要求を送ります。停止機能を持たないネイティブコマンドやモーダルダイアログの実行中は、そのコマンドが戻るまで待ちます。失敗・停止時も完了済みの編集や結果ファイルは残ります。`stages`、`command_job.completed_commands`、`error` で到達点を確認できます。
+
+`mcp_received_at` と `mcp_reply_at` はMCP側の受付と応答準備の時刻です。`stages` には処理ごとの開始・終了時刻、`command_job.timing` にはIUPの各コマンドの開始・終了時刻と描画回数・累計描画時間（ミリ秒）が入ります。チャット入力から最初のツール呼び出しまで、および最終返信までを測る場合は、クライアント側の時刻と突き合わせます。
+
 ## 未保存のGUIモデルでex・Fig2コマンドを実行する
 
 `gui_execute_commands` は起動中IUPのモデル・解析結果・LST定義・選択状態に対して、通常のex・Fig2パーサーを実行します。先頭が `:` のexと、先頭が `'` のFig2を同じ配列に指定できます。編集プレビュー用のコマンド一覧による制限はありません。GUIのファイル操作、外部アプリ起動、ダイアログも通常の挙動になります。
@@ -240,7 +319,7 @@ GUIの`:drawings sheets.dxf -plans=3 -grids=Y2,X1 -sections`、`:dxfsections sec
 {"connection_id":"接続ID","commands":[":srcal","'srcanrate","'srcancolor"]}
 ```
 
-ツールは `command_job.job_id` を返します。そのIDを `gui_command_status` に渡し、`command_job.state` が `completed` または `failed` になるまで確認します。
+既定ではツールはすぐに `command_job.job_id` を返します。短い操作は `wait_ms`（最大5000）を渡して完了結果を同時に取得できます。応答が `running` の場合はそのIDを `gui_command_status` に渡します。
 
 ```json
 {"connection_id":"接続ID","job_id":1}
@@ -313,3 +392,28 @@ Windowsの名前付きミューテックスで起動処理を直列化し、複�
 図番・表示回転を保存できます。`preview_dxf_drawings.options.views[].rotation`
 で個別に上書きでき、レポートの `sheets` で作図領域とタイトル欄を確認できます。
 詳細は [製図スタイルと図枠](../../docs/dxf-drafting.md) を参照してください。
+
+### 起動中のIUPでコマンド・解析・表示を一度に実行する
+
+`list_model_editors` の `search` でex・Fig2の構文を検索できます。接続済みのセッション、または `connection_id` を指定した検索では、IUPが読み込んだPGPエイリアスとGUIのコマンド名も対象になります。現在のGUIモデルを解析して表示するときは `run_model_workflow.commands` にGUIで入力する順にコマンドを書きます。変更前後のモデルを両方計算する場合は `start_analysis_comparison` を使います。
+
+次の例は名前の付いたモデルで長期荷重に対する座屈一次モードを計算します。初回は `connection_id` も指定してください。`%<_buckling.otp` と `%<_buckling.wgt` はモデルと同じ場所に作成・更新されます。
+
+```json
+{
+  "request_id": "buckling-L-01",
+  "commands": [
+    ":extractarclm %<_buckling.wgt",
+    ":bclng001 -period=L -mode=1 -right=100 %<_buckling.otp",
+    ":read buckling %<_buckling.otp",
+    "'deformation B1"
+  ],
+  "readback": {"period": "B1", "require_deformation": true, "files": ["%<_buckling.otp"]}
+}
+```
+
+- `command_job.timing[].analysis.eigenvalues` にソルバの倍精度値、`gui.readback.file_eigenvalue` にファイルの印字精度での値が入ります。`readback.node_ids` で節点ごとの6成分も取得できます。同じジョブで固有値を求めた場合、モードの読み込み世代・ファイル・固有値・非ゼロ変位を照合します。表示と選択は `gui.display`、`gui.node_ids`、`gui.element_ids` に記録します。
+- `running` の間は `model_workflow_status` に同じ `workflow_id` を指定します。`include_history: true` で末尾64 KiBまでのログを取得できます。完了後の照会は保存済みの結果を返します。同じMCPセッション内の直近32件が対象です。`request_id` を再送すると同じジョブを返し、内容の異なる再利用や保持期限を過ぎた要求はエラーになります。新しい計算には別のIDを指定します。
+- `waiting_for_input` では `command_job.prompt` を読み、`model_workflow_input` に `{"workflow_id": 2, "input": {"prompt_id": 1, "kind": "node", "id": 131}}` のように返します。ファイルは `kind: "file"` と `text` にパス、座標は `kind: "point"` と `point: [x,y,z]` を渡します。確認ダイアログは `choice` の `text` にボタン番号を渡します。利用できる種類は各プロンプトの `kinds` で確認できます。中止は `cancel_model_workflow` です。色やフォントなどネイティブの専用ダイアログでは、待機中の種類が空配列になります。IUP画面でそのダイアログを閉じると続行します。
+
+新しいex・Fig2の分岐を追加したら `go generate ./stlib` で検索一覧を更新してください。`go test ./stlib/internal/commandcatalog` で実装との差分を検出します。

@@ -210,6 +210,7 @@ func (s *modelSession) saveFiles(id uint64, path string, overwrite bool) (any, e
 		}
 	}
 	result["backups"] = backups
+	s.guiRevision, s.guiDelta = "", false
 	s.frame, s.raw, s.lst, s.lstPath, s.pending = next, p.data, lst, lstPath, nil
 	return result, nil
 }

@@ -25,7 +25,7 @@ const querySchema = `{"type":"object","properties":{"ids":{"type":"array","items
 const jobSchema = `{"type":"object","required":["job_id"],"properties":{"job_id":{"type":"integer","minimum":1}},"additionalProperties":false}`
 
 var catalog = []tool{
-	{"list_model_editors", "List available interactive, legacy GUI and model editing ex commands.", json.RawMessage(`{"type":"object","additionalProperties":false}`)},
+	{"list_model_editors", "List model editors. Supply search to find matching ST editor names and native ex/Fig2 syntax and connected IUP names/PGP aliases without inspecting source files. Native commands run via run_model_workflow.commands or gui_execute_commands.", json.RawMessage(`{"type":"object","properties":{"search":{"type":"string","minLength":1},"connection_id":{"type":"string"}},"additionalProperties":false}`)},
 	{"preview_gui_edits", "Run ordered GUI model editing commands on a private copy of the current model or pending proposal. Provide selections by ID and interactive inputs in GUI order. Returns before/after INP records and a proposal ID for save or analysis.", json.RawMessage(guiEditSchema)},
 	{"start_analysis_comparison", "Start an asynchronous comparison of the current model and pending proposal using linear static, vibration, buckling (Bclng001), or material nonlinear static analysis (Arclm101). Both runs linear static and vibration. Arclm101 requires node_ids, steps and increment, with optional preload_l for X/Y. Set preview_dir to publish converged edited-model steps for the IUP display.", json.RawMessage(`{"type":"object","required":["proposal_id"],"properties":{"proposal_id":{"type":"integer","minimum":1},"analysis":{"enum":["static","vibration","both","buckling","arclm101"]},"period":{"enum":["L","X","Y"]},"node_ids":{"type":"array","items":{"type":"integer","minimum":1},"maxItems":200,"uniqueItems":true},"modes":{"type":"integer","minimum":1,"maximum":100},"steps":{"type":"integer","minimum":1,"maximum":10000},"increment":{"type":"number"},"preload_l":{"type":"boolean"},"preview_dir":{"type":"string","minLength":1},"preview_every":{"type":"integer","minimum":1,"maximum":10000}},"additionalProperties":false}`)},
 	{"analysis_status", "Return the selected job state, current before or after phase, progress detail and elapsed seconds.", json.RawMessage(jobSchema)},
@@ -34,7 +34,7 @@ var catalog = []tool{
 	{"open_model", "Open an existing INP model by a path relative to the configured root. Replaces the current session model and clears its pending proposal.", json.RawMessage(pathSchema)},
 	{"query_nodes", "List nodes by ID or by ascending ID page. Coordinates are X/Y/Z in m. Fixed and load vectors follow X,Y,Z,RX,RY,RZ. Load uses the input model's tf and tf*m units.", json.RawMessage(querySchema)},
 	{"query_elements", "List elements by ID or by ascending ID page, with element type, section number, and connectivity.", json.RawMessage(querySchema)},
-	{"query_sections", "List available sections by ID or by ascending ID page, with name and line or plate compatibility.", json.RawMessage(querySchema)},
+	{"query_sections", "List sections by ID or by ascending ID page, including name, line/plate compatibility and actual plate dead load (kgf/m2) and LLOAD (tf/m2).", json.RawMessage(querySchema)},
 	{"preview_edits", "Return all before/after values and a proposal ID. An element edit reassigns an existing section. A node edit replaces the entire fixed and/or load vector. No file is written.", json.RawMessage(`{"type":"object","required":["edits"],"properties":{"edits":{"type":"array","minItems":1,"maxItems":100,"items":{"type":"object","properties":{"node":{"type":"integer","minimum":1},"element":{"type":"integer","minimum":1},"section":{"type":"integer","minimum":1},"fixed":{"type":"array","minItems":6,"maxItems":6,"items":{"type":"boolean"}},"load":{"type":"array","minItems":6,"maxItems":6,"items":{"type":"number"}}},"additionalProperties":false}}},"additionalProperties":false}`)},
 	{"save_model_as", "Save the current reviewed proposal to a new root-relative .inp file. An existing file is never replaced.", json.RawMessage(`{"type":"object","required":["proposal_id","path"],"properties":{"proposal_id":{"type":"integer","minimum":1},"path":{"type":"string"}},"additionalProperties":false}`)},
 }
@@ -127,12 +127,14 @@ func run(dir string, in io.Reader, out io.Writer) error {
 	// The parser checks for ambient .conf sidecars by filename. Give it a
 	// private placeholder path so only the requested INP feeds the model.
 	session := modelSession{root: root, rootPath: rootPath, parsePath: filepath.Join(scratch, "model.inp")}
-	defer session.closeAnalysis()
+
 	defer func() {
 		if session.root != nil {
 			session.root.Close()
 		}
 	}()
+	defer session.closeAnalysis()
+	defer session.closeWorkflow()
 	scanner := bufio.NewScanner(in)
 	scanner.Buffer(make([]byte, 4096), 1<<20)
 	writer := json.NewEncoder(out)
@@ -189,7 +191,12 @@ func run(dir string, in io.Reader, out io.Writer) error {
 			if !slices.Contains([]string{"2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"}, version) {
 				version = "2025-11-25"
 			}
-			result = map[string]any{"protocolVersion": version, "capabilities": map[string]any{"tools": map[string]any{}}, "serverInfo": map[string]string{"name": "stmcp", "version": "0.1.0"}}
+			result = map[string]any{
+				"protocolVersion": version,
+				"capabilities":    map[string]any{"tools": map[string]any{}},
+				"serverInfo":      map[string]string{"name": "stmcp", "version": "0.5.0"},
+				"instructions":    "For ST model operations and analyses use native MCP tools directly. Prefer run_model_workflow with the connection_id from :mcpconnect. Batch construct, edits, editor_commands, ex/Fig2 commands, static_analysis and display. For slabs on an existing grid use construct.panel_grid and construct.plate_sections. Use list_model_editors(search) for other commands, commands for single live analyses and display (including buckling and vibration); start_analysis_comparison only for requested before/after comparisons. Use request_id on retries, model_workflow_status for results and model_workflow_input for waiting_for_input. If an operation cannot be expressed with these tools, report the missing capability instead of switching to PowerShell, shell, scripted HTTP or direct model file edits. On completion compare the receipt with the request: construction facts apply to construction_revision, gui.revision and gui.display to the final window. Query only missing or conflicting facts. Recover a lost reply or running job with model_workflow_status in the same session.",
+			}
 		case version == "":
 			code, message = -32000, "Initialize the MCP session first"
 		case req.Method == "tools/list":

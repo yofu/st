@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 func (s *modelSession) modelRootPath() string {
@@ -10,6 +11,13 @@ func (s *modelSession) modelRootPath() string {
 		return s.root.Name()
 	}
 	return s.rootPath
+}
+
+func (s *modelSession) guiModelPath() string {
+	if s.source == "" {
+		return ""
+	}
+	return filepath.Join(s.modelRootPath(), s.source)
 }
 
 // GUI requests operate on the active desktop model without opening its files
