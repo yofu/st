@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"text/template"
 
 	"github.com/mattn/natural"
@@ -98,7 +99,8 @@ type Frame struct {
 
 	Arclms map[string]*arclm.Frame
 
-	Eigenvalue map[int]float64
+	eigenReadVersion uint64
+	Eigenvalue       map[int]float64
 
 	Kijuns   map[string]*Kijun
 	Measures []*Measure
@@ -383,6 +385,7 @@ func (frame *Frame) Snapshot() *Frame {
 		}
 		f.ElemSet[k] = elems[:ind]
 	}
+	f.eigenReadVersion = frame.eigenReadVersion
 	for k, v := range frame.Eigenvalue {
 		f.Eigenvalue[k] = v
 	}
@@ -1939,63 +1942,139 @@ func (frame *Frame) readResultData(filename string, f []byte, mode uint, validat
 	return nil
 }
 
-// ReadBuckling reads an output file of bucling analysis.
+var eigenReadSequence atomic.Uint64
+
+// ReadBuckling stages the entire file before replacing the displayed modes.
 func (frame *Frame) ReadBuckling(filename string) error {
-	tmp := make([][]string, 0)
-	err := ParseFile(filename, func(words []string) error {
-		var err error
-		first := strings.ToUpper(words[0])
-		if strings.HasPrefix(first, "#") {
-			return nil
-		}
-		switch first {
-		default:
-			tmp = append(tmp, words)
-		case "EIGEN":
-			err = frame.ParseEigen(tmp)
-			tmp = [][]string{words}
-		}
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	err = frame.ParseEigen(tmp)
+	f, err := os.Open(filename)
 	if err != nil {
 		return err
+	}
+	defer f.Close()
+	modes := map[int]*bucklingMode{}
+	var mode *bucklingMode
+	sc := bufio.NewScanner(f)
+	for line := 1; sc.Scan(); line++ {
+		row := strings.Fields(sc.Text())
+		if len(row) == 0 {
+			continue
+		}
+		switch strings.ToUpper(row[0]) {
+		case "EIGEN":
+			mode, err = parseEigenHeader(row)
+			if err == nil {
+				if modes[mode.rank] != nil {
+					return fmt.Errorf("%s:%d: repeated mode %d", filename, line, mode.rank)
+				}
+				modes[mode.rank] = mode
+			}
+		case "NODE:":
+			err = frame.parseEigenNode(mode, row)
+		}
+		if err != nil {
+			return fmt.Errorf("%s:%d: %w", filename, line, err)
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return err
+	}
+	if len(modes) == 0 {
+		return fmt.Errorf("%s: no buckling modes", filename)
+	}
+	for _, m := range modes {
+		if len(m.disp) == 0 {
+			return fmt.Errorf("%s: mode %d has no displacements", filename, m.rank)
+		}
+	}
+	for index := range frame.Eigenvalue {
+		period := fmt.Sprintf("B%d", index+1)
+		for _, n := range frame.Nodes {
+			delete(n.Disp, period)
+		}
+		delete(frame.ResultFileName, period)
+	}
+	frame.eigenReadVersion = eigenReadSequence.Add(1)
+	clear(frame.Eigenvalue)
+	for _, m := range modes {
+		period := frame.installEigen(m)
+		frame.ResultFileName[period] = filename
 	}
 	return nil
 }
 
-// ParseEigen parses eigenvalues and eigenvectors.
-func (frame *Frame) ParseEigen(lis [][]string) (err error) {
-	if strings.ToUpper(lis[0][0]) == "EIGEN" {
-		eig := strings.Split(lis[0][2], "=")
-		eigmode, err := strconv.ParseInt(eig[0], 10, 64)
-		if err != nil {
-			return err
+type bucklingMode struct {
+	rank  int
+	value float64
+	disp  map[int][]float64
+}
+
+func parseEigenHeader(row []string) (*bucklingMode, error) {
+	if len(row) < 3 || !strings.EqualFold(row[0], "EIGEN") || !strings.EqualFold(row[1], "VALUE") {
+		return nil, fmt.Errorf("invalid eigenvalue header %q", row)
+	}
+	left, right, ok := strings.Cut(strings.Join(row[2:], " "), "=")
+	rank, err := strconv.Atoi(strings.TrimSpace(left))
+	if !ok || err != nil || rank < 1 {
+		return nil, fmt.Errorf("invalid mode in %q", row)
+	}
+	value, err := strconv.ParseFloat(strings.TrimSpace(right), 64)
+	if err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
+		return nil, fmt.Errorf("invalid eigenvalue in %q", row)
+	}
+	return &bucklingMode{rank, value, map[int][]float64{}}, nil
+}
+
+func (frame *Frame) parseEigenNode(m *bucklingMode, l []string) error {
+	if m == nil || len(l) != 9 || !strings.EqualFold(l[2], "{dU}=") {
+		return fmt.Errorf("invalid mode displacement %q", l)
+	}
+	id, err := strconv.Atoi(l[1])
+	if err != nil || frame.Nodes[id] == nil || m.disp[id] != nil {
+		return fmt.Errorf("unknown or repeated mode node %q", l[1])
+	}
+	d := make([]float64, 6)
+	for i, s := range l[3:] {
+		d[i], err = strconv.ParseFloat(s, 64)
+		if err != nil || math.IsNaN(d[i]) || math.IsInf(d[i], 0) {
+			return fmt.Errorf("invalid displacement %q for node %d", s, id)
 		}
-		eigval, err := strconv.ParseFloat(eig[1], 64)
-		frame.Eigenvalue[int(eigmode-1)] = eigval
-		period := fmt.Sprintf("B%d", eigmode)
-		for _, l := range lis[1:] {
-			if strings.ToUpper(l[0]) == "NODE:" {
-				nnum, err := strconv.ParseInt(l[1], 10, 64)
-				if err != nil {
-					return err
-				}
-				disp := make([]float64, 6)
-				for i := 0; i < 6; i++ {
-					val, err := strconv.ParseFloat(l[3+i], 64)
-					if err != nil {
-						return err
-					}
-					disp[i] = val
-				}
-				frame.Nodes[int(nnum)].Disp[period] = disp
+	}
+	m.disp[id] = d
+	return nil
+}
+
+func (frame *Frame) installEigen(m *bucklingMode) string {
+	period := fmt.Sprintf("B%d", m.rank)
+	frame.Eigenvalue[m.rank-1] = m.value
+	for _, n := range frame.Nodes {
+		delete(n.Disp, period)
+	}
+	for id, d := range m.disp {
+		frame.Nodes[id].Disp[period] = d
+	}
+	return period
+}
+
+// ParseEigen parses a single mode without publishing partial displacements.
+func (frame *Frame) ParseEigen(rows [][]string) error {
+	if len(rows) == 0 {
+		return fmt.Errorf("empty eigenmode")
+	}
+	m, err := parseEigenHeader(rows[0])
+	if err != nil {
+		return err
+	}
+	for _, row := range rows[1:] {
+		if len(row) > 0 && strings.EqualFold(row[0], "NODE:") {
+			if err := frame.parseEigenNode(m, row); err != nil {
+				return err
 			}
 		}
 	}
+	if len(m.disp) == 0 {
+		return fmt.Errorf("mode %d has no displacements", m.rank)
+	}
+	frame.installEigen(m)
 	return nil
 }
 
