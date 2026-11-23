@@ -61,7 +61,46 @@ func listModelEditors() any {
 		}
 	}
 	slices.Sort(shared)
-	return map[string]any{"interactive": shared, "additional": legacyEditors, "ex": modelExCommands, "project": projectEditors}
+	return map[string]any{"native_syntax": st.NativeCommandSyntax(), "interactive": shared, "additional": legacyEditors, "ex": modelExCommands, "project": projectEditors}
+}
+
+func searchModelCommands(search string) (map[string][]string, error) {
+	search = strings.ToLower(strings.TrimSpace(search))
+	if search == "" {
+		return nil, fmt.Errorf("supply a command name or substring")
+	}
+	results := map[string][]string{}
+	add := func(group, name, syntax string) {
+		if strings.Contains(strings.ToLower(name), search) {
+			results[group] = append(results[group], syntax)
+		}
+	}
+	for name := range st.Commands {
+		if sharedEditor(name) {
+			add("editor_commands", name, name)
+		}
+	}
+	for _, name := range legacyEditors {
+		add("editor_commands", name, name)
+	}
+	for _, name := range modelExCommands {
+		add("editor_commands", ":"+name, ":"+name)
+	}
+	for _, name := range projectEditors {
+		add("editor_commands", name, name)
+	}
+	for name, syntax := range st.NativeCommandSyntax() {
+		group := "ex"
+		if strings.HasPrefix(name, "'") {
+			group = "fig2"
+		}
+		add(group, name, syntax)
+	}
+	for group, matches := range results {
+		slices.Sort(matches)
+		results[group] = slices.Compact(matches)
+	}
+	return results, nil
 }
 
 func selectIDs[T comparable](ids []int, items map[int]T, kind string) ([]T, error) {

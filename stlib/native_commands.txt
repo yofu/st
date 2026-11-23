@@ -1,0 +1,317 @@
+'alias
+'anchor
+'angle
+'anonymous
+'arc
+'area
+'axialcolor
+'axialcolour
+'axonometric
+'blank
+'circle
+'cmqline
+'color
+'colour
+'conf
+'data
+'deformation
+'deformed
+'dfact
+'digit
+'disp
+'dists
+'doc
+'dot
+'draw
+'drift
+'eaxis
+'eccentric
+'ef
+'elem
+'elem+
+'elem-
+'elemcode
+'elemlayer
+'energy
+'enormal
+'ev
+'eval
+'fence
+'fence+
+'fence-
+'fit
+'floor
+'focus
+'font
+'force
+'gaxis
+'gfact
+'gray
+'grey
+'header
+'height
+'hinge
+'inputfile
+'kijun
+'kijunmove
+'label
+'length
+'max
+'maxpen
+'measure
+'mfact
+'momentfigure
+'ncolor
+'ncolour
+'nf
+'noaxis
+'nocaption
+'nocolor
+'nocolour
+'nodata
+'nodecode
+'nodelayer
+'nolegend
+'nomomentvalue
+'noshearvalue
+'nozero
+'nv
+'on
+'outputfile
+'pagetitle
+'pen
+'period
+'period++
+'period--
+'perpl
+'perspective
+'phinge
+'pilecode
+'plane
+'plane+
+'pload
+'position
+'pressure
+'pressurearea
+'prestress
+'qfact
+'rainbow
+'rate
+'rdisp
+'reaction
+'read
+'read!
+'rf
+'rfact
+'sectcode
+'section
+'section+
+'section-
+'sheararrow
+'shift
+'size
+'skip
+'srcancolor
+'srcanjoint
+'srcanrate
+'stiff
+'storey
+'story
+'stress
+'tensile
+'text
+'textbox
+'timestamp
+'title
+'unit
+'viewpoint
+'weight
+'welding
+'width
+'wrect
+'x
+'x-
+'xmeasure
+'y
+'y-
+'yieldratio
+'ymeasure
+'z
+'z-
+'zcoord
+'zmeasure
+:#
+:1459	:1459 [-sect= ]
+:593_2_3
+:add	:add sect sectcode
+:agc
+:all
+:alt
+:amountlst	:amountlst propcode
+:amountprop	:amountprop propcode
+:analysis	:analysis {-period=name} {-all} {-solver=name} {-eps=value} {-nlgeom} {-nlmat} {-step=nlap;delta;start;max} {-arc -ds=length -dsmin=length -dsmax=length -arcscale=length -arcnode=id} {-post=FLOOR|IMCOMP} {-noinit} {-wait} filename
+:angle	:angle h b tw tf
+:animatespeed	:animatespeed val
+:arclm001
+:arclm101	:arclm101 {-period=name} {-nlgeom} {-arc -ds=length -dsmin=length -dsmax=length -arcscale=length -arcnode=id} {-nlap=additional_steps} {-delta=increment} {-step=nlap;delta[;start;max]} {-init} {-eps=val} {-wait} [filename]
+:arclm201
+:arclm202
+:arclm203
+:arclm301	:arclm301 {-period=name} {-sects=val} {-eps=val} {-noinit} filename
+:arclm401	:arclm401 {-period=name} {-eps=val} {-noinit} filename
+:area	:area [-deformed]
+:arraycopy	:arraycopy polar nnum axis dtheta(deg) n
+:average	:average {-abs}
+:axis2cang	:axis2cang n1 n2 [strong,weak]
+:bclng001	:bclng001 {-period=name} {-eps=1e-12} {-noinit} {-mode=1} {-right=10.0} {-diag=directory} {-diag-count=3} {-diag-shift=mu[,mu]} {-diag-only} {-diag-cpusec=60} filename
+:bond	:bond [pin,rigid,[0-9_t]{6}] [upper,lower,sect sectcode, nonrigid]
+:camber	:camber [axis] [add] period factor
+:cang	:cang val
+:check
+:check_london
+:checkout	:checkout name
+:ckyou	:ckyou h b tw tf
+:cmq	:cmq [period, zero, value]
+:color	:color [n,sect,rate,white,mono,strong]
+:conf	:conf [01_t]{6}
+:coord	:coord x y z
+:copy	:copy disp {-format=%.3f}
+:count
+:cpipe	:cpipe d t
+:cross	:cross h b tw tf h b tw tf
+:crosssection	:crosssection filename {-axis=2} {-min=-1.0} {-max=1.0} {-side=1} {-scale=1000} {-height=250} {-axissize=300} {-dim}
+:currentvalue	:currentvalue {-abs}
+:cweak	:cweak h b tw tf
+:divide	:divide length l
+:dividearc	:dividearc n ndiv
+:drawingcheck
+:drawinginit	:drawinginit [model.drawing.json]; :drawingcheck [model.drawing.json]
+:drawings
+:dxf	:dxf filename {-dimension=2,3} {-scale=val}
+:dxfsections
+:edit	:edit filename {-u=.strc}
+:elem	:elem [elemcode,sect sectcode,etype,curtain,isgohan,error,reaction,locked,isolated,skip]
+:elemdistance
+:elemduplication	:elemduplication {-ignoresect=code}
+:elimallpin
+:empty
+:eps	:eps val
+:erase
+:explorer
+:extractarclm
+:facts	:facts {-skipany=code} {-skipall=code} {-skiproof} {-period=X,Y} {-abs=false}
+:factsbysect	:factsbysect {-node=code} {-sect=code} {-period=X,Y}
+:fence	:fence axis coord {-plate}
+:fig2	:fig2 [filename [page [view]]]
+:fig2pdf	:fig2pdf [fig2-file [pdf-file]]
+:fig2print
+:filter	:filter condition
+:fitscale	:fitscale val
+:fixmove
+:fixrotate
+:floor	:floor n
+:gohanlst	:gohanlst factor sectcode...
+:hardcopy
+:height	:height f1 f2
+:height+
+:height-
+:hide
+:hkyou	:hkyou h b tw tf
+:hweak	:hweak h b tw tf
+:increment	:increment {times:1}
+:insert	:insert filename angle(deg)
+:intersectall
+:invert
+:jiku	:jiku filename {-name=} {-side=1} {-scale=1000} {-height=250} {-axissize=300} {-dim}
+:join
+:kaberyo	:kaberyo {-half} {-fc=24} {-alpha=1.155} {-route}
+:keisansho
+:kunst
+:length	:length [-deformed]
+:lock
+:max	:max {-abs}
+:mergenode	:mergenode {-eps=1e-4}
+:min	:min {-abs}
+:mkdir	:mkdir dirname
+:mono
+:move	:move x y z
+:nminteraction	:nminteraction sectcode
+:node
+:nodeduplication
+:nodenoreference
+:nodeset	:nodeset [create,select]
+:nodesort	:nodesort [x,y,z,0,1,2]
+:noundo
+:object
+:paper	:paper [a3tate,a3yoko,a4tate,a4yoko]
+:parabola
+:pdf	:pdf filename
+:pdiv
+:phase	:phase {-degree} xfactor yfactor
+:pile	:pile pilecode
+:plan	:plan filename {-floor=1} {-scale=1000} {-height=250} {-axissize=300} {-dim}
+:plate	:plate h b
+:plateweight	:plateweight fn
+:pload	:pload position value
+:png	:png filename
+:postscript	:postscript {-size=a4tate} filename
+:prestress	:prestress value
+:printrange	:printrange [on,true,yes/off,false,no] [a3tate,a3yoko,a4tate,a4yoko]
+:procs	:procs numcpu
+:propsect	:propsect filename
+:quit
+:range	:range [x,y,z] min max
+:reaction
+:read	:read {type} filename
+:redraw
+:resource	:resource filename
+:resultant
+:rpipe	:rpipe h b tw tf
+:save	:save filename {-u=.strc}
+:saveasarclm
+:scale	:scale factor cx cy cz
+:section	:section sectcode {-nodisp}
+:section+	:section+ value
+:sectionlist	:sectionlist {-scale=0.025}
+:set	:set {-sect=} {-etype=}
+:setangle	:setangle phi theta
+:setboundary	:setboundary nfloor
+:setcang	:setcang [plate -enum=]
+:show
+:skip	:skip [n,l,x,y,s,[01]{3}]
+:sleep	:sleep millisecond
+:slope
+:spline	:spline {-d=1} {-z=2} {-scale=1000.0} {-n=4} {-original} filename
+:srcal	:srcal {-verbose} {-fbold} {-torsion} {-noreload} {-qfact=2.0} {-wfact=2.0} {-bfact=1.0} {-skipshort} {-temporary} {-moeshiro} {-sekisetsu} filename
+:srcalangle	:srcalangle {-angle=0[deg]} {-fact=1.0}
+:stop	:stop period
+:storey	:storey n
+:story
+:sum	:sum {-abs}
+:suspicious
+:svg	:svg {-size=a4tate} filename
+:tag	:tag name
+:tex	:tex filename
+:thermal	:thermal tmp[℃]
+:thick	:thick nfig val
+:timehistory
+:tkyou	:tkyou h b tw tf
+:tweak	:tweak h b tw tf
+:unchain
+:undo
+:unlock
+:vibeig	:vibeig {-period=name} {-eps=1e-12} {-noinit} {-mode=1} {-right=10.0} {-diag=directory} {-diag-count=3} {-diag-shift=mu[,mu]} {-diag-only} {-diag-cpusec=60} filename
+:view	:view [top,front,back,right,left]
+:vim	:vim filename
+:weightcopy	:weightcopy {-dir=} {-si}
+:write
+:writefig2
+:writekijun	:writekijun filename
+:writelst
+:writeoutput	:writeoutput filename period
+:writereaction	:writereaction {-confed} {-nodeset=} filename direction
+:xscale	:xscale factor coord
+:yscale	:yscale factor coord
+:zoubundisp	:zoubundisp period direction
+:zoubunreaction	:zoubunreaction period direction
+:zscale	:zscale factor coord
