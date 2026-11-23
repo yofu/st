@@ -23,13 +23,15 @@ func TestMCPBucklingWorkflowOnIUP(t *testing.T) { testMCPOnIUP(t, "buckling") }
 
 func TestMCPStaticResultOnIUP(t *testing.T) { testMCPOnIUP(t, "static") }
 
+func TestNativeAnalysisWaitOnIUP(t *testing.T) { testMCPOnIUP(t, "wait") }
+
 func TestMCPLiveEditingOnIUP(t *testing.T)      { testMCPOnIUP(t, "live") }
 func TestMCPGridConstructionOnIUP(t *testing.T) { testMCPOnIUP(t, "construct") }
 
 func testMCPOnIUP(t *testing.T, mode string) {
 	liveEditing := mode == "live"
 	exe, input := os.Getenv("ST_MCP_EXE"), os.Getenv("ST_MCP_NAKANO_INP")
-	if exe == "" || input == "" {
+	if input == "" || (exe == "" && mode != "wait") {
 		t.Skip("set ST_MCP_EXE and ST_MCP_NAKANO_INP for the Windows IUP integration test")
 	}
 	model, err := os.ReadFile(input)
@@ -55,6 +57,10 @@ func testMCPOnIUP(t *testing.T, mode string) {
 	w := NewWindow(dir)
 	defer StopLogging()
 	defer w.Dlg.Destroy()
+	if mode == "wait" {
+		testNativeAnalysisWait(t, w, dir)
+		return
+	}
 	if err := w.guiConnectionCommand(""); err != nil {
 		t.Fatal(err)
 	}

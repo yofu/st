@@ -152,14 +152,10 @@ func (stw *Window) advanceGUICommands() {
 		r.mu.Unlock()
 		return
 	}
-	// Native modal dialogs may pump IUP timer events recursively.
-	if j.executing {
-		r.mu.Unlock()
-		return
-	}
-	if j.waiting && !j.finished {
-		// A request may arrive just before the solver registers its cancel function.
-		if j.cancelRequested && j.stopAnalysis != nil {
+	// A native dialog or -wait command may dispatch this timer recursively.
+	// Retry early stop requests without starting the same command again.
+	if j.executing || (j.waiting && !j.finished) {
+		if j.cancelRequested && !j.finished && j.stopAnalysis != nil {
 			_ = j.stopAnalysis()
 		}
 		r.mu.Unlock()

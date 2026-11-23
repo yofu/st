@@ -5758,12 +5758,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			}
 		}
 		m.WriteString(cond.String())
-		wait := false
-		var wch chan error
-		if _, ok := argdict["WAIT"]; ok {
-			wait = true
-			wch = make(chan error)
-		}
+		_, wait := argdict["WAIT"]
 		ctx, cancel := context.WithCancel(context.Background())
 		bindAnalysisStop(stw, af)
 		go func() {
@@ -5772,73 +5767,33 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		}()
 		nlap := cond.Nlap()
 		stw.CurrentLap("Calculating...", 0, nlap)
-		pivot := make(chan int)
-		end := make(chan int)
-		nodes := make([]*Node, len(frame.Nodes))
-		i := 0
-		for _, n := range frame.Nodes {
-			nodes[i] = n
-			i++
-		}
-		sort.Sort(NodeByNum{nodes})
-		if stw.Pivot() {
-			go stw.DrawPivot(nodes, pivot, end)
-		} else {
-			stw.Redraw()
-		}
-		go func() {
-			defer workerAnalysisFinished(stw)
-			retval := 0
-		readstatic:
-			for {
-				select {
-				case <-ctx.Done():
-					retval = 1
-				case <-af.Pivot:
-					if stw.Pivot() {
-						pivot <- 1
+		err := monitorStaticAnalysis(stw, wait, ctx, af, nlap, func(lap int) {
+			index := 0
+			if len(pers) > 1 {
+				index = af.StaticResultCase()
+			}
+			frame.ReadArclmData(af, pers[index])
+		}, func(err error) {
+			if err != nil {
+				stw.History(err.Error())
+				stw.CurrentLap("Failed", 0, nlap)
+			} else {
+				stw.CurrentLap("Completed", nlap, nlap)
+			}
+			if err == nil {
+				otps := cond.Output()
+				for i, period := range pers {
+					if i < len(otps) {
+						frame.ResultFileName[period] = otps[i]
+						reportCommandFile(stw, otps[i])
 					}
-				case lap := <-af.Lapch:
-					index := 0
-					if len(pers) > 1 {
-						index = af.StaticResultCase()
-					}
-					frame.ReadArclmData(af, pers[index])
-					af.Lapch <- retval
-					stw.CurrentLap("Calculating...", lap, nlap)
-					stw.Redraw()
-				case err := <-af.Endch:
-					if stw.Pivot() {
-						end <- 1
-					}
-					if err != nil {
-						stw.History(err.Error())
-						stw.CurrentLap("Failed", 0, nlap)
-					} else {
-						stw.CurrentLap("Completed", nlap, nlap)
-					}
-					if err == nil {
-						otps := cond.Output()
-						for i, period := range pers {
-							if i < len(otps) {
-								frame.ResultFileName[period] = otps[i]
-								reportCommandFile(stw, otps[i])
-							}
-						}
-					}
-					SetPeriod(stw, per)
-					stw.Redraw()
-					if wait {
-						wch <- err
-					}
-					break readstatic
 				}
 			}
-		}()
-		if wait {
-			if err := <-wch; err != nil {
-				return err
-			}
+			SetPeriod(stw, per)
+			stw.Redraw()
+		})
+		if err != nil {
+			return err
 		}
 		return ArclmStart(m.String())
 	case "stop":
@@ -5893,17 +5848,11 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if err != nil {
 			return err
 		}
-		pers := []string{per}
 		af.Output = stw.HistoryWriter()
 		var m bytes.Buffer
 		m.WriteString(fmt.Sprintf("PERIOD      : %s\n", per))
 		m.WriteString(cond.String())
-		wait := false
-		var wch chan int
-		if _, ok := argdict["WAIT"]; ok {
-			wait = true
-			wch = make(chan int)
-		}
+		_, wait := argdict["WAIT"]
 		ctx, cancel := context.WithCancel(context.Background())
 		bindAnalysisStop(stw, af)
 		go func() {
@@ -5912,79 +5861,37 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		}()
 		nlap := offset + cond.Nlap()
 		stw.CurrentLap("Calculating...", offset, nlap)
-		pivot := make(chan int)
-		end := make(chan int)
-		nodes := make([]*Node, len(frame.Nodes))
-		i := 0
-		for _, n := range frame.Nodes {
-			nodes[i] = n
-			i++
-		}
-		sort.Sort(NodeByNum{nodes})
-		if stw.Pivot() {
-			go stw.DrawPivot(nodes, pivot, end)
-		} else {
-			stw.Redraw()
-		}
-		pind := 0
-		retval := 0
 		currentlap := offset
-		go func() {
-			defer workerAnalysisFinished(stw)
-		read101:
-			for {
-				select {
-				case <-ctx.Done():
-					retval = 1
-				case <-af.Pivot:
-					if stw.Pivot() {
-						pivot <- 1
-					}
-				case lap := <-af.Lapch:
-					currentlap = lap
-					nper := fmt.Sprintf("%s@%d", pers[pind], lap)
-					SetPeriod(stw, nper)
-					frame.ReadArclmData(af, nper)
-					frame.Nlap[per] = lap
-					if err := frame.ZoubunSummary(filepath.Join(stw.Cwd(), "summary.txt"), per, cond); err != nil {
-						stw.History(fmt.Sprintf("summary.txt: %v", err))
-					}
-					af.Lapch <- retval
-					stw.CurrentLap("Calculating...", lap, nlap)
-					stw.Redraw()
-				case err := <-af.Endch:
-					if stw.Pivot() {
-						end <- 1
-					}
-					if err != nil {
-						stw.History(err.Error())
-						stw.CurrentLap("Failed", 0, nlap)
-					} else {
-						stw.CurrentLap("Completed", currentlap, currentlap)
-					}
-					otps := cond.Output()
-					if len(otps) > pind {
-						frame.ResultFileName[pers[pind]] = otps[pind]
-						if err == nil {
-							reportCommandFile(stw, otps[pind])
-						}
-					}
-					SetPeriod(stw, fmt.Sprintf("%s@%d", per, currentlap))
-					frame.Nlap[per] = currentlap
-					if err := frame.ZoubunSummary(filepath.Join(stw.Cwd(), "summary.txt"), per, cond); err != nil {
-						stw.History(fmt.Sprintf("summary.txt: %v", err))
-					}
-					stw.Redraw()
-					if wait {
-						wch <- 1
-					}
-					break read101
+		monitorStaticAnalysis(stw, wait, ctx, af, nlap, func(lap int) {
+			currentlap = lap
+			nper := fmt.Sprintf("%s@%d", per, lap)
+			SetPeriod(stw, nper)
+			frame.ReadArclmData(af, nper)
+			frame.Nlap[per] = lap
+			if err := frame.ZoubunSummary(filepath.Join(stw.Cwd(), "summary.txt"), per, cond); err != nil {
+				stw.History(fmt.Sprintf("summary.txt: %v", err))
+			}
+		}, func(err error) {
+			if err != nil {
+				stw.History(err.Error())
+				stw.CurrentLap("Failed", 0, nlap)
+			} else {
+				stw.CurrentLap("Completed", currentlap, currentlap)
+			}
+			otps := cond.Output()
+			if len(otps) > 0 {
+				frame.ResultFileName[per] = otps[0]
+				if err == nil {
+					reportCommandFile(stw, otps[0])
 				}
 			}
-		}()
-		if wait {
-			<-wch
-		}
+			SetPeriod(stw, fmt.Sprintf("%s@%d", per, currentlap))
+			frame.Nlap[per] = currentlap
+			if err := frame.ZoubunSummary(filepath.Join(stw.Cwd(), "summary.txt"), per, cond); err != nil {
+				stw.History(fmt.Sprintf("summary.txt: %v", err))
+			}
+			stw.Redraw()
+		})
 		return ArclmStart(m.String())
 	case "timehistory":
 		if usage {

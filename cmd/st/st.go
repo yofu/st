@@ -19,6 +19,9 @@ const (
 )
 
 func main() {
+	// The same native thread must own the IUP windows and dispatch their events.
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 	runtime.GOMAXPROCS(4)
 	iup.Open()
 	defer iup.Close()

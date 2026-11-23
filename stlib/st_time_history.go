@@ -213,10 +213,8 @@ func runTimeHistoryCommand(stw ExModer, input string, args map[string]string) er
 		err = errors.Join(err, floors.Close())
 		done <- err
 	}()
-	waitDone := make(chan struct{})
-	go func() {
-		defer workerAnalysisFinished(stw)
-		defer close(waitDone)
+	_, wait := args["WAIT"]
+	monitorAnalysis(stw, wait, func(events analysisEventPump) error {
 		lastRead, lastDraw := -1, -1
 		present := func(step int) {
 			SetPeriod(stw, fmt.Sprintf("TH@%d", step))
@@ -245,6 +243,8 @@ func runTimeHistoryCommand(stw ExModer, input string, args map[string]string) er
 		}
 		for {
 			select {
+			case <-events.tick:
+				events.pump()
 			case step := <-af.Lapch:
 				// Retain every TH@step result for later navigation, even when
 				// intermediate painting is skipped. Floor outputs are already
@@ -262,17 +262,14 @@ func runTimeHistoryCommand(stw ExModer, input string, args map[string]string) er
 				case af.Lapch <- 0:
 				case err := <-done:
 					finish(err)
-					return
+					return err
 				}
 			case err := <-done:
 				finish(err)
-				return
+				return err
 			}
 		}
-	}()
-	if _, wait := args["WAIT"]; wait {
-		<-waitDone
-	}
+	})
 	per := "L"
 	if p := args["PERIOD"]; p != "" {
 		per = strings.ToUpper(p)

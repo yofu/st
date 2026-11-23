@@ -2564,24 +2564,37 @@ func (stw *Window) DrawTexts(canv *cd.Canvas, black bool) {
 	}
 }
 
-func (stw *Window) DrawPivot(nodes []*st.Node, pivot, end chan int) {
+func (stw *Window) PumpAnalysisEvents() {
+	iup.LoopStep()
+}
+
+func (stw *Window) BeginAnalysisPivots(nodes []*st.Node) func() {
 	stw.RedrawNode()
 	stw.DrawTexts(stw.cdcanv, false)
 	stw.cdcanv.Foreground(pivotColor)
 	ind := 0
 	nnum := 0
+	return func() {
+		ind++
+		if ind == 6 {
+			if nnum < len(nodes) {
+				stw.currentCanvas = stw.cdcanv
+				st.DrawNodeNum(stw, nodes[nnum], stw.Frame().Show)
+				nnum++
+			}
+			ind = 0
+		}
+	}
+}
+
+func (stw *Window) DrawPivot(nodes []*st.Node, pivot, end chan int) {
+	next := stw.BeginAnalysisPivots(nodes)
 	for {
 		select {
 		case <-end:
 			return
 		case <-pivot:
-			ind++
-			if ind >= 6 {
-				stw.currentCanvas = stw.cdcanv
-				st.DrawNodeNum(stw, nodes[nnum], stw.Frame().Show)
-				nnum++
-				ind = 0
-			}
+			next()
 		}
 	}
 }
