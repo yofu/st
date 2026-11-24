@@ -6,6 +6,7 @@ import (
 	"maps"
 	"math"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -66,5 +67,91 @@ func TestNativeCommandLookup(t *testing.T) {
 		if err != nil || len(got[tt.group]) == 0 {
 			t.Fatalf("%s: %v %v", tt.query, got, err)
 		}
+	}
+}
+
+func TestUpdateSectionsSyncsINPAndLST(t *testing.T) {
+	f := st.NewFrame()
+	if _, err := f.Construct(st.GUIConstruction{
+		Properties: []st.BuildProperty{{ID: 101, Material: "SN400"}},
+		Sections:   []st.BuildSection{{ID: 501, Name: "G51", Property: 101, Shape: "HKYOU", Dimensions: []float64{500, 200, 10, 16}}},
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
+	origLST := []byte("CODE 501 S GIRDER \"G51\"\nHKYOU 50.0 20.0 1.00 1.6 SN400 \"H-500x200x10x16(KYOU)[mm]\"\nXFACE 0.0 0.0 \"FACE LENGTH Mx\"\nYFACE 0.0 0.0 \"FACE LENGTH My\"\n")
+	if err := readLst(f, origLST, "test.lst"); err != nil {
+		t.Fatal(err)
+	}
+	var q workflowConstruction
+	if err := json.Unmarshal([]byte(`{"update_sections":[{"id":501,"shape":"HKYOU","dimensions_mm":[200,200,8,12]}]}`), &q); err != nil {
+		t.Fatal(err)
+	}
+	r, updatedLST, err := q.onPrivateFrameWithLST(f, origLST, "test.lst")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.UpdatedSections != 1 || !slices.Equal(r.SyncedLST, []int{501}) {
+		t.Fatalf("unexpected receipt: %+v", r)
+	}
+	if got := f.Sects[501].Figs[0].Shape.String(); !strings.Contains(got, "20.0") || !strings.Contains(got, "0.80") || !strings.Contains(got, "1.2") {
+		t.Fatalf("INP section shape not updated: %q", got)
+	}
+	lstStr := string(updatedLST)
+	if !strings.Contains(lstStr, "HKYOU 20.0 20.0 0.80 1.2 SN400 \"H-200x200x8x12(KYOU)[mm]\"") || !strings.Contains(lstStr, "XFACE 0.0 0.0") {
+		t.Fatalf("LST was not synced properly:\n%s", lstStr)
+	}
+	if f.Sects[501].Allow == nil || !strings.Contains(f.Sects[501].Allow.String(), "20.0") {
+		t.Fatalf("frame Allow not reloaded: %v", f.Sects[501].Allow)
+	}
+	// Non-steel LST block: implicit sync skips, explicit sync_lst:true rejects.
+	rcLST := []byte("CODE 501 RC GIRDER \"G51\"\nCRECT -20.0 -30.0 30.0 20.0 FC24\n")
+	if _, _, err := q.onPrivateFrameWithLST(f, rcLST, "rc.lst"); err != nil {
+		t.Fatalf("implicit sync should skip non-steel LST: %v", err)
+	}
+	syncTrue := true
+	q.UpdateSections[0].SyncLST = &syncTrue
+	if _, _, err := q.onPrivateFrameWithLST(f, rcLST, "rc.lst"); err == nil {
+		t.Fatal("explicit sync_lst=true accepted non-steel LST")
+	}
+}
+
+func TestGridPanelGridAndUpdateNodesInOneConstruct(t *testing.T) {
+	f := st.NewFrame()
+	if _, err := f.Construct(st.GUIConstruction{
+		Properties: []st.BuildProperty{{ID: 101, Material: "SN400"}},
+		Sections:   []st.BuildSection{{ID: 501, Name: "G51", Property: 101, Shape: "HKYOU", Dimensions: []float64{200, 200, 8, 12}}},
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
+	var q workflowConstruction
+	raw := `{
+		"grid":{"origin_m":[0,0,0],"cells":[2,2,0],"pitch_m":[1,1,0],"first_node":101,"first_element":101,"type":"GIRDER","section":501},
+		"plate_sections":[{"id":711,"dead_load_kgf_m2":300,"lload_tf_m2":[0.06,0.04,0.03]}],
+		"panel_grid":{"plane":"XY","coordinate_m":0,"section":711,"type":"SLAB","expected_cells":4},
+		"update_nodes":[
+			{"id":102,"xyz_m":[1,0,0.2]},
+			{"id":104,"xyz_m":[0,1,0.2]},
+			{"id":105,"xyz_m":[1,1,0.5]},
+			{"id":106,"xyz_m":[2,1,0.2]},
+			{"id":108,"xyz_m":[1,2,0.2]}
+		]
+	}`
+	if err := json.Unmarshal([]byte(raw), &q); err != nil {
+		t.Fatal(err)
+	}
+	r, err := q.onPrivateFrame(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.UpdatedNodes != 5 || r.Total.Nodes != 9 || r.Total.Elements != 16 || math.Abs(f.Nodes[105].Coord[2]-0.5) > 1e-9 {
+		t.Fatalf("unexpected combined dome construct result: %+v z=%v", r, f.Nodes[105].Coord)
+	}
+	if r.PlateArea[711] <= 4.0 {
+		t.Fatalf("expected curved slab area > 4.0 m2, got %v", r.PlateArea[711])
+	}
+	// Coincident node move must fail.
+	bad := workflowConstruction{UpdateNodes: []st.BuildNode{{ID: 105, XYZ: []float64{0, 0, 0}}}}
+	if _, err := bad.onPrivateFrame(f); err == nil {
+		t.Fatal("accepted update_nodes moving onto an existing node")
 	}
 }

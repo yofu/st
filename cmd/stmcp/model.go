@@ -74,6 +74,7 @@ type modelSession struct {
 	guiCommandVersion uint64
 	guiRevision       string
 	guiDelta          bool
+	guiCommands       map[string][]string
 }
 
 func readModel(data []byte, path string) (frame *st.Frame, err error) {
@@ -461,12 +462,11 @@ func (s *modelSession) call(name string, raw json.RawMessage) (any, error) {
 				id = s.pairedGUI
 			}
 			if id != "" {
-				reply, err := exchangeGUI(id, st.GUIRequest{Action: "command_search", Search: *a.Search})
-				if err != nil && reply.Error != "unknown GUI action" {
+				matches, err := s.searchGUICommands(id, *a.Search)
+				if err != nil {
 					return nil, err
 				}
-				slices.Sort(reply.Matches)
-				results["gui_commands"] = slices.Compact(reply.Matches)
+				results["gui_commands"] = matches
 			}
 			return results, nil
 		}
@@ -546,4 +546,32 @@ func (s *modelSession) call(name string, raw json.RawMessage) (any, error) {
 		return s.save(args.ID, args.Path)
 	}
 	return nil, fmt.Errorf("unknown tool %s", name)
+}
+
+func (s *modelSession) searchGUICommands(id, query string) ([]string, error) {
+	if s.guiCommands == nil {
+		s.guiCommands = make(map[string][]string)
+	}
+	all, cached := s.guiCommands[id]
+	if !cached {
+		reply, err := exchangeGUI(id, st.GUIRequest{Action: "command_search", Search: ""})
+		if err != nil {
+			if reply.Error == "unknown GUI action" {
+				s.guiCommands[id] = nil
+				return nil, nil
+			}
+			return nil, err
+		}
+		slices.Sort(reply.Matches)
+		all = slices.Compact(reply.Matches)
+		s.guiCommands[id] = all
+	}
+	needle := strings.ToLower(query)
+	var matched []string
+	for _, name := range all {
+		if strings.Contains(strings.ToLower(name), needle) {
+			matched = append(matched, name)
+		}
+	}
+	return matched, nil
 }

@@ -17,6 +17,7 @@ type staticAnalysisOptions struct {
 	Period     string `json:"period"`
 	ResultPath string `json:"result_path"`
 	NodeIDs    []int  `json:"node_ids"`
+	Overwrite  bool   `json:"overwrite,omitempty"`
 }
 
 type staticNodeResult struct {
@@ -32,6 +33,7 @@ type staticAnalysisResult struct {
 type staticAnalysisOutput struct {
 	root         *os.Root
 	path         string
+	overwrite    bool
 	modelPath    string
 	modelDigest  [32]byte
 	resultDigest [32]byte
@@ -53,8 +55,13 @@ func (s *modelSession) startStaticAnalysis(o staticAnalysisOptions) (any, error)
 		return nil, fmt.Errorf("result_path must be a relative %s path within the server root", ext)
 	}
 	o.ResultPath = filepath.Clean(o.ResultPath)
-	if _, err := s.root.Lstat(o.ResultPath); err == nil {
-		return nil, fmt.Errorf("result_path already exists: %s", o.ResultPath)
+	if info, err := s.root.Lstat(o.ResultPath); err == nil {
+		if !o.Overwrite {
+			return nil, fmt.Errorf("result_path already exists: %s", o.ResultPath)
+		}
+		if !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("cannot overwrite non-regular file: %s", o.ResultPath)
+		}
 	} else if !os.IsNotExist(err) {
 		return nil, err
 	}
@@ -92,7 +99,7 @@ func (s *modelSession) startStaticAnalysis(o staticAnalysisOptions) (any, error)
 		return nil, err
 	}
 	path := s.guiModelPath()
-	output := &staticAnalysisOutput{root: s.root, path: o.ResultPath, modelPath: path, modelDigest: s.frame.GUIModelDigest()}
+	output := &staticAnalysisOutput{root: s.root, path: o.ResultPath, overwrite: o.Overwrite, modelPath: path, modelDigest: s.frame.GUIModelDigest()}
 	request := analysisRequest{
 		Options:      analysisOptions{Analysis: "static", Period: o.Period, NodeIDs: o.NodeIDs},
 		After:        s.raw,
@@ -127,7 +134,11 @@ func (s *staticAnalysisOutput) save(dir string, result *staticAnalysisResult) er
 	if err != nil {
 		return fmt.Errorf("read static result: %w", err)
 	}
-	if err := writeNew(s.root, s.path, data); err != nil {
+	saveFn := writeNew
+	if s.overwrite {
+		saveFn = writeOverwrite
+	}
+	if err := saveFn(s.root, s.path, data); err != nil {
 		return fmt.Errorf("save static result: %w", err)
 	}
 	s.resultDigest = sha256.Sum256(data)

@@ -36,6 +36,25 @@ func writeNew(root *os.Root, path string, data []byte) error {
 	return err
 }
 
+func writeOverwrite(root *os.Root, path string, data []byte) error {
+	if info, err := root.Lstat(path); err == nil {
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("cannot overwrite non-regular file: %s", path)
+		}
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	f, err := root.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(data)
+	if err == nil {
+		err = f.Sync()
+	}
+	return errors.Join(err, f.Close())
+}
+
 func (s *modelSession) verifyOriginal(file saveFile) error {
 	if err := s.requireRoot(); err != nil {
 		return err

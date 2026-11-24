@@ -834,6 +834,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if filepath.Dir(fn) == "." {
 			fn = filepath.Join(stw.Cwd(), fn)
 		}
+		fn = resolveExistingFile(stw, fn, args[2])
 		switch {
 		case abbrev.For("d/ata", t):
 			err := frame.ReadData(fn)
@@ -919,6 +920,10 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if usage {
 			return Usage(":propsect filename")
 		}
+		if narg < 2 {
+			return NotEnoughArgs(":propsect")
+		}
+		fn = resolveExistingFile(stw, fn, args[1])
 		err := frame.AddPropAndSect(fn, true)
 		Snapshot(stw)
 		if err != nil {
@@ -5731,9 +5736,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			}
 			cond.SetArcLength(opts)
 		}
-		af := frame.Arclms[per]
-		if af == nil {
-			return fmt.Errorf(":analysis: frame isn't extracted to period %s", per)
+		af, err := ensureArclmExtracted(stw, frame, ":analysis", per)
+		if err != nil {
+			return err
 		}
 		af.Output = stw.HistoryWriter()
 		if af.Running() {
@@ -5789,7 +5794,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		}()
 		nlap := cond.Nlap()
 		stw.CurrentLap("Calculating...", 0, nlap)
-		err := monitorStaticAnalysis(stw, wait, ctx, af, nlap, func(lap int) {
+		err = monitorStaticAnalysis(stw, wait, ctx, af, nlap, func(lap int) {
 			index := 0
 			if len(pers) > 1 {
 				index = af.StaticResultCase()
@@ -6121,9 +6126,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			init = false
 			m.WriteString("\nNO INITIALISATION")
 		}
-		af := frame.Arclms[per]
-		if af == nil {
-			return fmt.Errorf(":bclng001: frame isn't extracted to period %s", per)
+		af, err := ensureArclmExtracted(stw, frame, ":bclng001", per)
+		if err != nil {
+			return err
 		}
 		diagnostics, err := arclm.ParseBucklingDiagnostics(argdict, otp)
 		if err != nil {
@@ -6248,9 +6253,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			init = false
 			m.WriteString("\nNO INITIALISATION")
 		}
-		af := frame.Arclms[per]
-		if af == nil {
-			return fmt.Errorf(":vibeig: frame isn't extracted to period %s", per)
+		af, err := ensureArclmExtracted(stw, frame, ":vibeig", per)
+		if err != nil {
+			return err
 		}
 		diagnostics, err := arclm.ParseBucklingDiagnostics(argdict, otp)
 		if err != nil {
@@ -6462,4 +6467,51 @@ func currentnode(stw ExModer, input []interface{}) []*Node {
 func useCurrentModelInputs(stw ExModer) bool {
 	w, ok := stw.(interface{ UseCurrentModelInputs() bool })
 	return ok && w.UseCurrentModelInputs()
+}
+
+func resolveExistingFile(stw ExModer, fn, rawArg string) string {
+	if fn != "" && FileExists(fn) {
+		return fn
+	}
+	if rawArg != "" {
+		if sfn, err := stw.SearchFile(rawArg); err == nil && sfn != "" && FileExists(sfn) {
+			return sfn
+		}
+		if stdir != "" {
+			if candidate := filepath.Join(stdir, rawArg); FileExists(candidate) {
+				return candidate
+			}
+		}
+	}
+	return fn
+}
+
+func ensureArclmExtracted(stw ExModer, frame *Frame, cmd, per string) (*arclm.Frame, error) {
+	if af := frame.Arclms[per]; af != nil {
+		return af, nil
+	}
+	if per == "L" && frame.Ai.Nfloor == 0 && len(frame.Ai.Boundary) == 0 && len(frame.Nodes) > 0 {
+		if err := frame.SetBoundary(1, 0.001); err != nil {
+			return nil, fmt.Errorf("%s: boundary setup: %w", cmd, err)
+		}
+	}
+	wgt := "hogtxt.wgt"
+	if frame.Path != "" {
+		wgt = Ce(frame.Path, ".wgt")
+	} else if dir := stw.Cwd(); dir != "" {
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			wgt = filepath.Join(dir, "hogtxt.wgt")
+		} else {
+			wgt = filepath.Join(os.TempDir(), "st_hogtxt.wgt")
+		}
+	}
+	if err := frame.ExtractArclm(wgt); err != nil {
+		return nil, fmt.Errorf("%s: auto-extractarclm: %w", cmd, err)
+	}
+	reportCommandFile(stw, wgt)
+	af := frame.Arclms[per]
+	if af == nil {
+		return nil, fmt.Errorf("%s: frame isn't extracted to period %s", cmd, per)
+	}
+	return af, nil
 }

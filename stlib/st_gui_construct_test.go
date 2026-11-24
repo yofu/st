@@ -1,6 +1,8 @@
 package st
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 )
@@ -45,5 +47,51 @@ func TestConstructExplicitAndRejectPartialEdits(t *testing.T) {
 	r, err = f.Construct(GUIConstruction{Grid: &BuildGrid{Origin: []float64{10, 0, 0}, Cells: []int{0, 0, 2}, Pitch: []float64{0, 0, 3}, Type: "COLUMN", Section: 21}}, nil)
 	if err != nil || r.Directions["Z"] != 2 || r.Added.Nodes != 3 || r.MinLength != 3 || r.Total.Elements != 3 || !slices.Equal(f.Nodes[703].Coord, []float64{10, 0, 6}) {
 		t.Fatalf("extension: %+v %v", r, err)
+	}
+}
+
+type autoExtractTestWindow struct {
+	ExModer
+	cwd   string
+	found string
+}
+
+func (w autoExtractTestWindow) Cwd() string { return w.cwd }
+func (w autoExtractTestWindow) SearchFile(fn string) (string, error) {
+	if w.found != "" {
+		return w.found, nil
+	}
+	return "", os.ErrNotExist
+}
+
+func TestResolveExistingFileAndAutoExtractArclm(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "unique_mcp_resolve_test.inp")
+	if err := os.WriteFile(target, []byte("END\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	w := autoExtractTestWindow{cwd: dir, found: target}
+	got := resolveExistingFile(w, filepath.Join(dir, "missing.inp"), "unique_mcp_resolve_test.inp")
+	if got != target {
+		t.Fatalf("resolveExistingFile = %q, want %q", got, target)
+	}
+
+	f := NewFrame()
+	if _, err := f.Construct(GUIConstruction{
+		Properties: []BuildProperty{{101, "SN400"}},
+		Sections:   []BuildSection{{501, "G51", 101, "HKYOU", []float64{200, 200, 8, 12}}},
+		Grid:       &BuildGrid{Origin: []float64{0, 0, 0}, Cells: []int{1, 1, 0}, Pitch: []float64{2, 2, 0}, FirstNode: 101, FirstElement: 101, Type: "GIRDER", Section: 501},
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []int{101, 102, 103, 104} {
+		copy(f.Nodes[id].Conf, []bool{true, true, true, false, false, false})
+	}
+	af, err := ensureArclmExtracted(w, f, ":bclng001", "L")
+	if err != nil || af == nil {
+		t.Fatalf("ensureArclmExtracted failed: af=%v err=%v", af, err)
+	}
+	if f.Ai.Nfloor != 1 || len(f.Ai.Boundary) != 2 {
+		t.Fatalf("expected auto-configured 1-floor boundary, got Nfloor=%d Boundary=%v", f.Ai.Nfloor, f.Ai.Boundary)
 	}
 }

@@ -6,15 +6,27 @@ import (
 	"math"
 	"slices"
 	"strconv"
+	"strings"
 
 	st "github.com/yofu/st/stlib"
 )
 
 type workflowConstruction struct {
 	st.GUIConstruction
-	PlateSections []plateSectionRequest `json:"plate_sections,omitzero"`
-	Plates        []st.BuildElement     `json:"plates,omitzero"`
-	PanelGrid     *panelGrid            `json:"panel_grid,omitempty"`
+	UpdateSections []updateSectionRequest `json:"update_sections,omitzero"`
+	UpdateNodes    []st.BuildNode         `json:"update_nodes,omitzero"`
+	PlateSections  []plateSectionRequest  `json:"plate_sections,omitzero"`
+	Plates         []st.BuildElement      `json:"plates,omitzero"`
+	PanelGrid      *panelGrid             `json:"panel_grid,omitempty"`
+}
+
+type updateSectionRequest struct {
+	ID         int       `json:"id"`
+	Name       string    `json:"name,omitempty"`
+	Property   *int      `json:"property,omitempty"`
+	Shape      string    `json:"shape"`
+	Dimensions []float64 `json:"dimensions_mm"`
+	SyncLST    *bool     `json:"sync_lst,omitempty"`
 }
 
 type plateSectionRequest struct {
@@ -35,33 +47,69 @@ func (q workflowConstruction) hasSurfaces() bool {
 	return q.PlateSections != nil || q.Plates != nil || q.PanelGrid != nil
 }
 
+func (q workflowConstruction) usesSnapshot() bool {
+	return q.hasSurfaces() || len(q.UpdateSections) > 0 || len(q.UpdateNodes) > 0
+}
+
 // The caller owns this private GUI snapshot. Only a successful batch can
 // reach the IUP revision-checked apply and create an Undo entry.
 func (q workflowConstruction) onPrivateFrame(f *st.Frame) (*st.ConstructionReceipt, error) {
+	r, _, err := q.onPrivateFrameWithLST(f, nil, "")
+	return r, err
+}
+
+func (q workflowConstruction) onPrivateFrameWithLST(f *st.Frame, lst []byte, lstPath string) (*st.ConstructionReceipt, []byte, error) {
 	base := q.GUIConstruction
-	if !q.hasSurfaces() {
-		return f.Construct(base, nil)
+	if !q.usesSnapshot() {
+		r, err := f.Construct(base, nil)
+		return r, lst, err
 	}
 	if q.Plates != nil && len(q.Plates) == 0 || q.PlateSections != nil && len(q.PlateSections) == 0 {
-		return nil, fmt.Errorf("plates and plate_sections must be non-empty when supplied")
+		return nil, nil, fmt.Errorf("plates and plate_sections must be non-empty when supplied")
+	}
+	if len(q.UpdateSections) > 1000 {
+		return nil, nil, fmt.Errorf("too many update_sections in one construction")
+	}
+	if len(q.UpdateNodes) > 100000 {
+		return nil, nil, fmt.Errorf("too many update_nodes in one construction")
 	}
 	beforeProps, beforeSects, beforeNodes, beforeElems := len(f.Props), len(f.Sects), len(f.Nodes), len(f.Elems)
-	r := &st.ConstructionReceipt{MemberTypes: make(map[string]int)}
+	r := &st.ConstructionReceipt{
+		MemberTypes: make(map[string]int),
+		Sections:    make(map[int][]st.ConstructedFig),
+		Properties:  make(map[int]string),
+	}
 	if base.Grid != nil || len(base.Nodes)+len(base.Elements)+len(base.Sections)+len(base.Properties) > 0 {
 		var err error
 		r, err = f.Construct(base, nil)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+		if r.Sections == nil {
+			r.Sections = make(map[int][]st.ConstructedFig)
+		}
+		if r.Properties == nil {
+			r.Properties = make(map[int]string)
 		}
 	}
-	r.PlateSections = make(map[int]st.PlateLoadReceipt)
+	updatedLST := lst
+	if len(q.UpdateSections) > 0 {
+		var err error
+		updatedLST, err = applySectionUpdates(f, q.UpdateSections, lst, lstPath, r)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	if len(q.PlateSections) > 0 || len(q.Plates) > 0 || q.PanelGrid != nil {
+		r.PlateSections = make(map[int]st.PlateLoadReceipt)
+	}
 	for _, p := range q.PlateSections {
 		if _, ok := r.PlateSections[p.ID]; ok {
-			return nil, fmt.Errorf("duplicate plate section request %d", p.ID)
+			return nil, nil, fmt.Errorf("duplicate plate section request %d", p.ID)
 		}
 		s, err := p.apply(f)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		r.PlateSections[p.ID] = plateLoads(s)
 	}
@@ -69,14 +117,17 @@ func (q workflowConstruction) onPrivateFrame(f *st.Frame) (*st.ConstructionRecei
 	if q.PanelGrid != nil {
 		generated, err := q.PanelGrid.cells(f)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		plates = append(slices.Clone(plates), generated...)
 	}
 	if len(plates) > 100000 {
-		return nil, fmt.Errorf("too many plates in one construction")
+		return nil, nil, fmt.Errorf("too many plates in one construction")
 	}
-	r.PlateArea = make(map[int]float64)
+	var addedPlates []*st.Elem
+	if len(plates) > 0 {
+		r.PlateArea = make(map[int]float64)
+	}
 	faces := make(map[[4]int]int)
 	for id, e := range f.Elems {
 		f.Maxenum = max(f.Maxenum, id)
@@ -91,48 +142,256 @@ func (q workflowConstruction) onPrivateFrame(f *st.Frame) (*st.ConstructionRecei
 		et := slices.Index(st.ETYPES, in.Type)
 		sec := f.Sects[in.Section]
 		if et != st.SLAB && et != st.WALL || sec == nil || !sec.HasThick(0) {
-			return nil, fmt.Errorf("plate requires WALL or SLAB and a plate section, got %s SECT %d", in.Type, in.Section)
+			return nil, nil, fmt.Errorf("plate requires WALL or SLAB and a plate section, got %s SECT %d", in.Type, in.Section)
 		}
 		if len(in.Nodes) < 3 || len(in.Nodes) > 4 || in.ID < 0 || f.Elems[in.ID] != nil {
-			return nil, fmt.Errorf("invalid or occupied plate ID %d or invalid number of corners", in.ID)
+			return nil, nil, fmt.Errorf("invalid or occupied plate ID %d or invalid number of corners", in.ID)
 		}
 		ns := make([]*st.Node, len(in.Nodes))
 		for j, id := range in.Nodes {
 			ns[j] = f.Nodes[id]
 			if ns[j] == nil {
-				return nil, fmt.Errorf("plate references unknown NODE %d", id)
+				return nil, nil, fmt.Errorf("plate references unknown NODE %d", id)
 			}
 		}
 		key := faceKey(ns)
 		if id, ok := faces[key]; ok {
-			return nil, fmt.Errorf("face %v already occupied by ELEM %d", in.Nodes, id)
+			return nil, nil, fmt.Errorf("face %v already occupied by ELEM %d", in.Nodes, id)
 		}
 		e := st.NewPlateElem(ns, sec, et)
 		if ok, err := e.IsValidElem(); !ok {
-			return nil, err
+			return nil, nil, err
 		}
 		if len(ns) == 4 && !convexPlate(ns) {
-			return nil, fmt.Errorf("plate corners must be in convex perimeter order: %v", in.Nodes)
+			return nil, nil, fmt.Errorf("plate corners must be in convex perimeter order: %v", in.Nodes)
 		}
 		id := in.ID
 		if id == 0 {
 			if f.Maxenum == math.MaxInt {
-				return nil, fmt.Errorf("plate numbering overflow")
+				return nil, nil, fmt.Errorf("plate numbering overflow")
 			}
 			f.Maxenum++
 			id = f.Maxenum
 		}
 		f.AddElem(id, e)
 		faces[key] = id
+		addedPlates = append(addedPlates, e)
 		r.MemberTypes[in.Type]++
-		r.PlateArea[sec.Num] += e.Area()
 		if _, ok := r.PlateSections[sec.Num]; !ok {
 			r.PlateSections[sec.Num] = plateLoads(sec)
 		}
 	}
+	if len(q.UpdateNodes) > 0 {
+		if err := applyNodeUpdates(f, q.UpdateNodes, r); err != nil {
+			return nil, nil, err
+		}
+	}
+	for _, e := range addedPlates {
+		r.PlateArea[e.Sect.Num] += e.Area()
+	}
+	if len(r.Sections) == 0 {
+		r.Sections = nil
+	}
+	if len(r.Properties) == 0 {
+		r.Properties = nil
+	}
 	r.Total = st.ConstructionCounts{Properties: len(f.Props), Sections: len(f.Sects), Nodes: len(f.Nodes), Elements: len(f.Elems)}
 	r.Added = st.ConstructionCounts{Properties: r.Total.Properties - beforeProps, Sections: r.Total.Sections - beforeSects, Nodes: r.Total.Nodes - beforeNodes, Elements: r.Total.Elements - beforeElems}
-	return r, nil
+	return r, updatedLST, nil
+}
+
+func applySectionUpdates(f *st.Frame, updates []updateSectionRequest, lst []byte, lstPath string, r *st.ConstructionReceipt) ([]byte, error) {
+	seen := make(map[int]bool, len(updates))
+	blocksByID := make(map[int]string)
+	for _, b := range lstBlocks(lst) {
+		if b.id > 0 {
+			blocksByID[b.id] = b.text
+		}
+	}
+	var lstEdits []lstEdit
+	for _, u := range updates {
+		if u.ID <= 0 {
+			return nil, fmt.Errorf("invalid section ID %d", u.ID)
+		}
+		if seen[u.ID] {
+			return nil, fmt.Errorf("duplicate update_sections entry for SECT %d", u.ID)
+		}
+		seen[u.ID] = true
+		sec := f.Sects[u.ID]
+		if sec == nil || !sec.HasArea(0) || len(sec.Figs) == 0 {
+			return nil, fmt.Errorf("SECT %d does not exist or is not a line section", u.ID)
+		}
+		sh, err := (st.BuildSection{ID: u.ID, Shape: u.Shape, Dimensions: u.Dimensions}).ModelShape()
+		if err != nil {
+			return nil, fmt.Errorf("SECT %d: %w", u.ID, err)
+		}
+		if u.Property != nil {
+			prop := f.Props[*u.Property]
+			if prop == nil {
+				return nil, fmt.Errorf("SECT %d: unknown PROP %d", u.ID, *u.Property)
+			}
+			sec.Figs[0].Prop = prop
+		}
+		sec.Figs[0].SetShapeProperty(sh)
+		name := u.Name
+		if name == "" {
+			name = sh.Description()
+		}
+		if len(strings.Fields(name)) != 1 || strings.TrimSpace(name) != name {
+			return nil, fmt.Errorf("SECT %d name must be one INP token", u.ID)
+		}
+		sec.Name = name
+		figs, props := st.ConstructedFigs(sec)
+		r.Sections[u.ID] = figs
+		for pid, mat := range props {
+			r.Properties[pid] = mat
+		}
+		r.UpdatedSections++
+
+		syncLST := u.SyncLST == nil || *u.SyncLST
+		explicitSync := u.SyncLST != nil && *u.SyncLST
+		if !syncLST {
+			continue
+		}
+		if len(lst) == 0 {
+			if explicitSync {
+				return nil, fmt.Errorf("SECT %d: sync_lst requested but no LST is loaded", u.ID)
+			}
+			continue
+		}
+		blockText, exists := blocksByID[u.ID]
+		if !exists {
+			if explicitSync {
+				return nil, fmt.Errorf("SECT %d: no CODE block in loaded LST", u.ID)
+			}
+			continue
+		}
+		overrideMat := ""
+		if u.Property != nil && sec.Figs[0].Prop != nil && sec.Figs[0].Prop.Material != nil {
+			overrideMat = sec.Figs[0].Prop.Material.Name()
+		}
+		newBlock, synced, err := syncSteelLSTBlock(u.ID, blockText, sh, overrideMat, explicitSync)
+		if err != nil {
+			return nil, err
+		}
+		if synced {
+			lstEdits = append(lstEdits, lstEdit{Section: u.ID, Definition: newBlock})
+			r.SyncedLST = append(r.SyncedLST, u.ID)
+		}
+	}
+	if len(lstEdits) == 0 {
+		return lst, nil
+	}
+	updatedLST, _, err := amendLst(lst, lstEdits, f)
+	if err != nil {
+		return nil, err
+	}
+	if err := readLst(f, updatedLST, lstPath); err != nil {
+		return nil, err
+	}
+	slices.Sort(r.SyncedLST)
+	return updatedLST, nil
+}
+
+func syncSteelLSTBlock(id int, rawBlock string, sh st.Shape, overrideMaterial string, explicit bool) (string, bool, error) {
+	decoded := lstText(rawBlock)
+	lines := strings.Split(strings.ReplaceAll(decoded, "\r\n", "\n"), "\n")
+	headerIdx, shapeIdx := -1, -1
+	for i, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		if headerIdx < 0 {
+			headerIdx = i
+		} else {
+			shapeIdx = i
+			break
+		}
+	}
+	if headerIdx < 0 || shapeIdx < 0 {
+		if explicit {
+			return "", false, fmt.Errorf("SECT %d: malformed LST CODE block", id)
+		}
+		return "", false, nil
+	}
+	headerFields := strings.Fields(lines[headerIdx])
+	if len(headerFields) < 4 || !strings.EqualFold(headerFields[0], "CODE") {
+		if explicit {
+			return "", false, fmt.Errorf("SECT %d: malformed LST CODE header", id)
+		}
+		return "", false, nil
+	}
+	if !strings.EqualFold(headerFields[2], "S") {
+		if explicit {
+			return "", false, fmt.Errorf("SECT %d: LST block is %s, not steel (S); use preview_lst_edits", id, headerFields[2])
+		}
+		return "", false, nil
+	}
+	shapeFields := strings.Fields(lines[shapeIdx])
+	_, size, err := st.ParseShape(shapeFields)
+	if err != nil || len(shapeFields) <= 1+size {
+		if explicit {
+			return "", false, fmt.Errorf("SECT %d: cannot parse existing LST shape line", id)
+		}
+		return "", false, nil
+	}
+	material := shapeFields[1+size]
+	if overrideMaterial != "" {
+		material = overrideMaterial
+	}
+	lines[shapeIdx] = fmt.Sprintf("%s %s \"%s\"", strings.Join(strings.Fields(sh.String()), " "), material, sh.Description())
+	return strings.TrimSpace(strings.Join(lines, "\n")), true, nil
+}
+
+func applyNodeUpdates(f *st.Frame, updates []st.BuildNode, r *st.ConstructionReceipt) error {
+	moved := make(map[int]bool, len(updates))
+	for _, in := range updates {
+		if in.ID <= 0 || len(in.XYZ) != 3 {
+			return fmt.Errorf("invalid update_nodes entry for NODE %d", in.ID)
+		}
+		if moved[in.ID] {
+			return fmt.Errorf("duplicate update_nodes entry for NODE %d", in.ID)
+		}
+		node := f.Nodes[in.ID]
+		if node == nil {
+			return fmt.Errorf("update_nodes references unknown NODE %d", in.ID)
+		}
+		for _, v := range in.XYZ {
+			if math.IsInf(v, 0) || math.IsNaN(v) {
+				return fmt.Errorf("NODE %d has nonfinite coordinates", in.ID)
+			}
+		}
+		copy(node.Coord, in.XYZ)
+		moved[in.ID] = true
+	}
+	if err := f.ValidateNodePositions(); err != nil {
+		return err
+	}
+	for _, e := range f.Elems {
+		touched := false
+		for _, n := range e.Enod {
+			if n != nil && moved[n.Num] {
+				touched = true
+				break
+			}
+		}
+		if !touched {
+			continue
+		}
+		if e.IsLineElem() {
+			length := e.Length()
+			if !(length > 0) || math.IsInf(length, 0) {
+				return fmt.Errorf("ELEM %d has invalid length after node update", e.Num)
+			}
+		} else {
+			area := e.Area()
+			if !(area > 0) || math.IsInf(area, 0) || math.IsNaN(area) {
+				return fmt.Errorf("ELEM %d has invalid area after node update", e.Num)
+			}
+		}
+	}
+	r.UpdatedNodes = len(updates)
+	return nil
 }
 
 func faceKey(ns []*st.Node) [4]int {

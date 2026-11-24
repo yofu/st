@@ -44,11 +44,11 @@ func (s *modelSession) constructFromSnapshot(id string, q st.GUIRequest, build *
 		return base, err
 	}
 	digest := temp.frame.GUIModelDigest()
-	receipt, err := build.onPrivateFrame(temp.frame)
+	receipt, updatedLST, err := build.onPrivateFrameWithLST(temp.frame, base.Snapshot.LST, temp.lstPath)
 	if err != nil {
 		return st.GUIResponse{}, err
 	}
-	reply, err := exchangeGUI(id, st.GUIRequest{Action: "apply", BasePath: base.Path, Revision: base.Revision, BaseDigest: digest, INP: temp.frame.GUIInpBytes(), LST: base.Snapshot.LST})
+	reply, err := exchangeGUI(id, st.GUIRequest{Action: "apply", BasePath: base.Path, Revision: base.Revision, BaseDigest: digest, INP: temp.frame.GUIInpBytes(), LST: updatedLST})
 	if err != nil {
 		return reply, err
 	}

@@ -50,7 +50,9 @@ func init() {
 	}
 	wait := json.RawMessage(`{"type":"integer","minimum":0,"maximum":5000}`)
 	properties["wait_ms"] = wait
-	properties["commands"] = json.RawMessage(`{"type":"array","minItems":1,"maxItems":100,"items":{"type":"string","minLength":1},"description":"Native ST command lines, including interactive IUP names and PGP aliases. One command per entry."}`)
+	properties["pre_commands"] = json.RawMessage(`{"type":"array","minItems":1,"maxItems":100,"items":{"type":"string","minLength":1},"description":"Native ST command lines run before construct and edits (for example :propsect or :read list before building a grid). One command per entry."}`)
+	properties["commands"] = json.RawMessage(`{"type":"array","minItems":1,"maxItems":100,"items":{"type":"string","minLength":1},"description":"Native ST command lines, including interactive IUP names and PGP aliases, run after construct/edits and before static_analysis. One command per entry."}`)
+	properties["post_commands"] = json.RawMessage(`{"type":"array","minItems":1,"maxItems":100,"items":{"type":"string","minLength":1},"description":"Native ST command lines run after static_analysis and show_result, before display (for example :srcal, 'srcanrate, 'srcancolor). One command per entry."}`)
 	properties["request_id"] = json.RawMessage(`{"type":"string","minLength":1,"maxLength":128,"description":"Reuse on retry in the same MCP session to get the original workflow."}`)
 	properties["readback"] = json.RawMessage(`{"type":"object","properties":{"files":{"type":"array","maxItems":100,"items":{"type":"string","minLength":1}},"period":{"type":"string"},"node_ids":{"type":"array","maxItems":200,"items":{"type":"integer","minimum":1}},"require_deformation":{"type":"boolean"}},"additionalProperties":false}`)
 	properties["construct"] = json.RawMessage(constructionSchema)
@@ -72,7 +74,7 @@ func init() {
 		panic(err)
 	}
 	catalog = append(catalog,
-		tool{"run_model_workflow", "Use this native MCP tool for live ST model operations instead of shell scripts. Use commands for a calculation and display on the current GUI model. start_analysis_comparison runs two models and is for explicit before/after comparisons. Search native syntax with list_model_editors(search). Batch construct, edits/editor_commands/proposal_id, commands, static_analysis, display, save_copy or readback. To cover an existing grid with slabs use construct.panel_grid and construct.plate_sections in one call. Supply connection_id on first use. Answer from the completed receipt (construction counts, dimensions, loads, area, first_changes, static.nodes, gui.display). Query only missing facts. On running use model_workflow_status. Default wait_ms=1500; 0 returns immediately.", input},
+		tool{"run_model_workflow", "Use this native MCP tool for live ST model operations instead of shell scripts. Batch pre_commands (before construct, e.g. :propsect/:read list), construct (grid, panel_grid, plate_sections, update_sections with INP+LST sync, update_nodes for 3D surfaces), edits/editor_commands/proposal_id, commands (e.g. :bclng001/:vibeig), static_analysis (supports overwrite:true and auto-sets 1-floor boundary for L), post_commands (after static_analysis, e.g. :srcal/'srcanrate/'srcancolor), display, save_copy or readback in one call. start_analysis_comparison is only for explicit before/after comparisons. Supply connection_id on first use. Answer from the completed receipt. On running use model_workflow_status. Default wait_ms=1500; 0 returns immediately.", input},
 		tool{"model_workflow_status", "Read the workflow receipt without re-executing any step or reading the GUI. Omit workflow_id to recover the most recent receipt in this MCP session. With an ID, only return that workflow. Optionally wait up to wait_ms.", status},
 		tool{"model_workflow_input", "Answer the current prompt on the same workflow. Use the prompt_id and workflow_id from waiting_for_input.", json.RawMessage(workflowInputSchema)},
 		tool{"cancel_model_workflow", "Cancel remaining steps of the specified workflow and request cancellation of its active solver where supported. Completed changes remain visible.", cancel},
@@ -88,19 +90,21 @@ type workflowKey struct {
 }
 
 type workflowRequest struct {
-	RequestID  string                 `json:"request_id"`
-	Readback   *st.GUIReadback        `json:"readback"`
-	SaveCopy   string                 `json:"save_copy"`
-	Construct  *workflowConstruction  `json:"construct"`
-	Connection string                 `json:"connection_id"`
-	Revision   string                 `json:"revision"`
-	Edits      []edit                 `json:"edits"`
-	Editors    []guiEdit              `json:"editor_commands"`
-	Proposal   uint64                 `json:"proposal_id"`
-	Commands   []string               `json:"commands"`
-	Static     *staticAnalysisOptions `json:"static_analysis"`
-	Display    *st.GUIDisplay         `json:"display"`
-	Wait       *int                   `json:"wait_ms"`
+	RequestID    string                 `json:"request_id"`
+	Readback     *st.GUIReadback        `json:"readback"`
+	SaveCopy     string                 `json:"save_copy"`
+	PreCommands  []string               `json:"pre_commands"`
+	Construct    *workflowConstruction  `json:"construct"`
+	Connection   string                 `json:"connection_id"`
+	Revision     string                 `json:"revision"`
+	Edits        []edit                 `json:"edits"`
+	Editors      []guiEdit              `json:"editor_commands"`
+	Proposal     uint64                 `json:"proposal_id"`
+	Commands     []string               `json:"commands"`
+	Static       *staticAnalysisOptions `json:"static_analysis"`
+	PostCommands []string               `json:"post_commands"`
+	Display      *st.GUIDisplay         `json:"display"`
+	Wait         *int                   `json:"wait_ms"`
 }
 
 type workflowStage struct {
@@ -224,25 +228,32 @@ func (s *modelSession) startWorkflow(raw json.RawMessage) (any, error) {
 	if a.Editors != nil && (len(a.Editors) == 0 || len(a.Editors) > 100 || a.Edits != nil || a.Proposal != 0) {
 		return nil, fmt.Errorf("provide 1 to 100 editor_commands or a separate edits/proposal_id request")
 	}
-	if a.Commands != nil && (len(a.Commands) == 0 || len(a.Commands) > 100) {
-		return nil, fmt.Errorf("provide 1 to 100 commands")
-	}
-	for _, command := range a.Commands {
-		c := strings.TrimSpace(command)
-		if c == "" {
-			return nil, fmt.Errorf("empty native command")
+	for _, batch := range []struct {
+		name string
+		cmds []string
+	}{{"pre_commands", a.PreCommands}, {"commands", a.Commands}, {"post_commands", a.PostCommands}} {
+		if batch.cmds == nil {
+			continue
+		}
+		if len(batch.cmds) == 0 || len(batch.cmds) > 100 {
+			return nil, fmt.Errorf("provide 1 to 100 %s", batch.name)
+		}
+		for _, command := range batch.cmds {
+			if strings.TrimSpace(command) == "" {
+				return nil, fmt.Errorf("empty native command in %s", batch.name)
+			}
 		}
 	}
-	if a.Construct != nil && a.Proposal != 0 {
-		return nil, fmt.Errorf("apply a reviewed proposal before constructing against its result")
+	if (a.Construct != nil || len(a.PreCommands) > 0) && a.Proposal != 0 {
+		return nil, fmt.Errorf("apply a reviewed proposal before constructing or running pre_commands against its result")
 	}
 	if a.SaveCopy != "" {
 		if _, err := inpPath(a.SaveCopy); err != nil {
 			return nil, err
 		}
 	}
-	if a.Readback == nil && a.SaveCopy == "" && a.Construct == nil && len(a.Edits)+len(a.Editors)+len(a.Commands) == 0 && a.Proposal == 0 && a.Static == nil && a.Display == nil {
-		return nil, fmt.Errorf("provide edits, proposal_id, commands, static_analysis or display")
+	if a.Readback == nil && a.SaveCopy == "" && a.Construct == nil && len(a.PreCommands)+len(a.Edits)+len(a.Editors)+len(a.Commands)+len(a.PostCommands) == 0 && a.Proposal == 0 && a.Static == nil && a.Display == nil {
+		return nil, fmt.Errorf("provide pre_commands, construct, edits, proposal_id, commands, static_analysis, post_commands or display")
 	}
 	if a.Proposal != 0 && (s.pending == nil || a.Proposal != s.pending.ID) {
 		return nil, fmt.Errorf("provide the current proposal_id")
@@ -444,6 +455,86 @@ func (s *modelSession) executeWorkflow(ctx context.Context, w *modelWorkflow, a 
 		return reply, nil
 	}
 	revision := a.Revision
+	runCommandBatch := func(stageName string, cmds []string, requireModel bool) error {
+		w.mu.Lock()
+		var priorTiming []st.GUICommandTiming
+		if w.result.Commands != nil && len(w.result.Commands.Timing) > 0 {
+			priorTiming = slices.Clone(w.result.Commands.Timing)
+		}
+		w.mu.Unlock()
+		mergeTiming := func() {
+			if len(priorTiming) == 0 {
+				return
+			}
+			w.mu.Lock()
+			if w.result.Commands != nil {
+				merged := *w.result.Commands
+				merged.Timing = append(slices.Clone(priorTiming), merged.Timing...)
+				w.result.Commands = &merged
+			}
+			w.mu.Unlock()
+		}
+		return w.stage(ctx, stageName, func() error {
+			started, err := gui("gui_execute_commands", map[string]any{"commands": cmds, "revision": revision})
+			mergeTiming()
+			if err != nil {
+				return err
+			}
+			if started.CommandJob == nil {
+				return fmt.Errorf("GUI did not return a command job")
+			}
+			id := started.CommandJob.ID
+			ticker := time.NewTicker(15 * time.Millisecond)
+			defer ticker.Stop()
+			stop := ctx.Done()
+			for {
+				select {
+				case <-w.closing:
+					// A native modal operation can outlive an MCP transport. Leave
+					// the GUI responsible for suppressing the remaining commands.
+					_, err := exchangeGUI(a.Connection, st.GUIRequest{Action: "cancel_commands", CommandJobID: id})
+					if err != nil {
+						return err
+					}
+					return context.Canceled
+				case <-stop:
+					stop = nil
+					if _, err := exchangeGUI(a.Connection, st.GUIRequest{Action: "cancel_commands", CommandJobID: id}); err != nil {
+						return fmt.Errorf("cancel GUI job %d: %w", id, err)
+					}
+				case <-ticker.C:
+				}
+				reply, err := gui("gui_workflow_command_status", map[string]any{"job_id": id})
+				mergeTiming()
+				if err != nil {
+					return err
+				}
+				job := reply.CommandJob
+				if job == nil || job.ID != id {
+					return fmt.Errorf("missing response for GUI command job %d", id)
+				}
+				switch job.State {
+				case "running", "waiting_for_input":
+					continue
+				case "completed":
+					if requireModel && reply.Revision == "" {
+						return fmt.Errorf("no GUI model after the command batch")
+					}
+					revision = reply.Revision
+					return nil
+				case "cancelled":
+					return context.Canceled
+				default:
+					return fmt.Errorf("command %q after %d completed commands: %s", job.Command, job.Completed, job.Error)
+				}
+			}
+		})
+	}
+	if len(a.PreCommands) > 0 {
+		if err := runCommandBatch("pre_commands", a.PreCommands, a.Construct != nil || a.Static != nil); err != nil {
+			return err
+		}
+	}
 	if a.Construct != nil {
 		err := w.stage(ctx, "construct", func() error {
 			reply, err := gui("gui_construct", map[string]any{"construct": a.Construct, "revision": revision})
@@ -521,60 +612,7 @@ func (s *modelSession) executeWorkflow(ctx context.Context, w *modelWorkflow, a 
 		}
 	}
 	if len(a.Commands) > 0 {
-		err := w.stage(ctx, "commands", func() error {
-			started, err := gui("gui_execute_commands", map[string]any{"commands": a.Commands, "revision": revision})
-			if err != nil {
-				return err
-			}
-			if started.CommandJob == nil {
-				return fmt.Errorf("GUI did not return a command job")
-			}
-			id := started.CommandJob.ID
-			ticker := time.NewTicker(60 * time.Millisecond)
-			defer ticker.Stop()
-			stop := ctx.Done()
-			for {
-				select {
-				case <-w.closing:
-					// A native modal operation can outlive an MCP transport. Leave
-					// the GUI responsible for suppressing the remaining commands.
-					_, err := exchangeGUI(a.Connection, st.GUIRequest{Action: "cancel_commands", CommandJobID: id})
-					if err != nil {
-						return err
-					}
-					return context.Canceled
-				case <-stop:
-					stop = nil
-					if _, err := exchangeGUI(a.Connection, st.GUIRequest{Action: "cancel_commands", CommandJobID: id}); err != nil {
-						return fmt.Errorf("cancel GUI job %d: %w", id, err)
-					}
-				case <-ticker.C:
-				}
-				reply, err := gui("gui_workflow_command_status", map[string]any{"job_id": id})
-				if err != nil {
-					return err
-				}
-				job := reply.CommandJob
-				if job == nil || job.ID != id {
-					return fmt.Errorf("missing response for GUI command job %d", id)
-				}
-				switch job.State {
-				case "running", "waiting_for_input":
-					continue
-				case "completed":
-					if a.Static != nil && reply.Revision == "" {
-						return fmt.Errorf("no GUI model after the command batch")
-					}
-					revision = reply.Revision
-					return nil
-				case "cancelled":
-					return context.Canceled
-				default:
-					return fmt.Errorf("command %q after %d completed commands: %s", job.Command, job.Completed, job.Error)
-				}
-			}
-		})
-		if err != nil {
+		if err := runCommandBatch("commands", a.Commands, a.Static != nil); err != nil {
 			return err
 		}
 	}
@@ -590,7 +628,7 @@ func (s *modelSession) executeWorkflow(ctx context.Context, w *modelWorkflow, a 
 				return err
 			}
 			j := s.analysis
-			tick := time.NewTicker(100 * time.Millisecond)
+			tick := time.NewTicker(20 * time.Millisecond)
 			defer tick.Stop()
 			for {
 				j.mu.Lock()
@@ -635,6 +673,11 @@ func (s *modelSession) executeWorkflow(ctx context.Context, w *modelWorkflow, a 
 			return err
 		})
 		if err != nil {
+			return err
+		}
+	}
+	if len(a.PostCommands) > 0 {
+		if err := runCommandBatch("post_commands", a.PostCommands, false); err != nil {
 			return err
 		}
 	}

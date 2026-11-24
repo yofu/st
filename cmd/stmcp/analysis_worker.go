@@ -60,6 +60,11 @@ func runAnalysisWorker(dir string, in io.Reader, out io.Writer) (err error) {
 			return fmt.Errorf("%s: %w", side, err)
 		}
 		phase("extracting_loads_and_mass")
+		if o.Period == "L" && f.Ai.Nfloor == 0 && len(f.Ai.Boundary) == 0 && len(f.Nodes) > 0 {
+			if err := f.SetBoundary(1, 0.001); err != nil {
+				return fmt.Errorf("%s boundary setup: %w", side, err)
+			}
+		}
 		if err := f.ExtractArclm(filepath.Join(dir, "model.wgt")); err != nil {
 			return fmt.Errorf("%s load and mass extraction: %w", side, err)
 		}

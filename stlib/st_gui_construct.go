@@ -60,16 +60,19 @@ type ConstructedFig struct {
 	Dimensions []float64 `json:"dimensions_mm,omitempty"`
 }
 type ConstructionReceipt struct {
-	PlateSections map[int]PlateLoadReceipt `json:"plate_loads,omitempty"`
-	PlateArea     map[int]float64          `json:"added_plate_area_m2,omitempty"`
-	Added         ConstructionCounts       `json:"added"`
-	Total         ConstructionCounts       `json:"total"`
-	MemberTypes   map[string]int           `json:"member_types"`
-	Directions    map[string]int           `json:"directions"`
-	MinLength     float64                  `json:"min_length_m,omitempty"`
-	MaxLength     float64                  `json:"max_length_m,omitempty"`
-	Sections      map[int][]ConstructedFig `json:"section_figures"`
-	Properties    map[int]string           `json:"materials"`
+	PlateSections   map[int]PlateLoadReceipt `json:"plate_loads,omitempty"`
+	PlateArea       map[int]float64          `json:"added_plate_area_m2,omitempty"`
+	Added           ConstructionCounts       `json:"added"`
+	Total           ConstructionCounts       `json:"total"`
+	UpdatedNodes    int                      `json:"updated_nodes,omitempty"`
+	UpdatedSections int                      `json:"updated_sections,omitempty"`
+	SyncedLST       []int                    `json:"synced_lst,omitempty"`
+	MemberTypes     map[string]int           `json:"member_types"`
+	Directions      map[string]int           `json:"directions"`
+	MinLength       float64                  `json:"min_length_m,omitempty"`
+	MaxLength       float64                  `json:"max_length_m,omitempty"`
+	Sections        map[int][]ConstructedFig `json:"section_figures"`
+	Properties      map[int]string           `json:"materials"`
 }
 
 type PlateLoadReceipt struct {
@@ -120,6 +123,59 @@ func (g BuildGrid) expand(q *GUIConstruction, firstNode, firstElem int) error {
 			}
 		}
 		q.Nodes = append(q.Nodes, BuildNode{firstNode + i, xyz[:]})
+	}
+	return nil
+}
+
+// ModelShape validates and parses a construction section shape (dimensions in mm).
+func (s BuildSection) ModelShape() (Shape, error) {
+	return s.modelShape()
+}
+
+// ConstructedFigs summarizes a section's figures in MCP receipt format.
+func ConstructedFigs(sec *Sect) ([]ConstructedFig, map[int]string) {
+	if sec == nil {
+		return nil, nil
+	}
+	figs := make([]ConstructedFig, 0, len(sec.Figs))
+	props := make(map[int]string, len(sec.Figs))
+	for _, fig := range sec.Figs {
+		p := fig.Prop
+		material := p.Name
+		if p.Material != nil {
+			material = p.Material.Name()
+		}
+		r := ConstructedFig{Property: p.Num, Material: material}
+		if fig.Shape != nil {
+			r.Shape = fig.Shape.String()
+		}
+		switch sh := fig.Shape.(type) {
+		case HKYOU:
+			r.Dimensions = []float64{10 * sh.H, 10 * sh.B, 10 * sh.Tw, 10 * sh.Tf}
+		case HWEAK:
+			r.Dimensions = []float64{10 * sh.H, 10 * sh.B, 10 * sh.Tw, 10 * sh.Tf}
+		case RPIPE:
+			r.Dimensions = []float64{10 * sh.H, 10 * sh.B, 10 * sh.Tw, 10 * sh.Tf}
+		case CPIPE:
+			r.Dimensions = []float64{10 * sh.D, 10 * sh.T}
+		case PLATE:
+			r.Dimensions = []float64{10 * sh.H, 10 * sh.B}
+		}
+		figs = append(figs, r)
+		props[p.Num] = material
+	}
+	return figs, props
+}
+
+// ValidateNodePositions rejects any two nodes within inpNodeTolerance.
+func (f *Frame) ValidateNodePositions() error {
+	cells := make(inpNodeCells, len(f.Nodes))
+	for _, id := range slices.Sorted(maps.Keys(f.Nodes)) {
+		n := f.Nodes[id]
+		if other := cells.find(n.Coord); other != nil {
+			return fmt.Errorf("NODE %d coincides with NODE %d", n.Num, other.Num)
+		}
+		cells.add(n)
 	}
 	return nil
 }

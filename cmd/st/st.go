@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"runtime"
 	"runtime/debug"
 
@@ -18,6 +19,26 @@ const (
 	HOGAN    = "C:/Users/yofu8/st"
 )
 
+func defaultHome() string {
+	candidates := []string{os.Getenv("STDIR")}
+	if userHome, err := os.UserHomeDir(); err == nil && userHome != "" {
+		candidates = append(candidates, filepath.Join(userHome, "st"))
+	}
+	candidates = append(candidates, HOME)
+	if cwd, err := os.Getwd(); err == nil && cwd != "" {
+		candidates = append(candidates, cwd)
+	}
+	for _, dir := range candidates {
+		if dir == "" {
+			continue
+		}
+		if info, err := os.Stat(dir); err == nil && info.IsDir() {
+			return dir
+		}
+	}
+	return HOME
+}
+
 func main() {
 	// The same native thread must own the IUP windows and dispatch their events.
 	runtime.LockOSThread()
@@ -25,7 +46,7 @@ func main() {
 	runtime.GOMAXPROCS(4)
 	iup.Open()
 	defer iup.Close()
-	sw := stgui.NewWindow(HOME)
+	sw := stgui.NewWindow(defaultHome())
 	if len(os.Args) >= 2 {
 		if _, err := os.Stat(os.Args[1]); err == nil {
 			st.OpenFile(sw, os.Args[1], true)
