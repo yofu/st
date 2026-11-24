@@ -959,7 +959,7 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			if ns, ok := frame.NodeSet[nname]; ok {
 				stw.SelectNode(ns)
 			} else {
-				return fmt.Errorf("nodeset {} is not defined", nname)
+				return fmt.Errorf("nodeset %s is not defined", nname)
 			}
 		}
 		if !stw.NodeSelected() {

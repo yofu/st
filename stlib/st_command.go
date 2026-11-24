@@ -701,6 +701,25 @@ func DivideAtPlane(stw Commander) chan bool {
 	}, false)
 }
 
+// DeflectionRatio formats |effective deflection| / horizontal span for the
+// NOTICE1459 report (integer denominator) and history (one decimal place).
+// Both lengths must use the same unit; effective deflection includes alpha.
+func DeflectionRatio(span, deflection float64) (report, history string) {
+	if !(span > 0) || math.IsInf(span, 0) || math.IsNaN(deflection) || math.IsInf(deflection, 0) {
+		return "算定不可", "算定不可"
+	}
+	if deflection == 0 {
+		return "0", "0"
+	}
+	denominator := span / math.Abs(deflection)
+	if denominator < 1 || math.IsInf(denominator, 1) {
+		// An integer reciprocal would give 1/0 or an infinite denominator.
+		ratio := fmt.Sprintf("%g", math.Abs(deflection)/span)
+		return ratio, ratio
+	}
+	return fmt.Sprintf("1/%.0f", math.Floor(denominator)), fmt.Sprintf("1/%.1f", denominator)
+}
+
 func Notice1459(stw Commander) chan bool {
 	return multinodes(stw, func(ns []*Node) error {
 		if len(ns) < 2 {
@@ -724,8 +743,7 @@ func Notice1459(stw Commander) chan bool {
 				length += math.Pow(ns[1].Coord[i]-ns[0].Coord[i], 2)
 			}
 			length = math.Sqrt(length) * 100
-			otp.WriteString(fmt.Sprintf("梁G1(部材  、断面  、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - %.3f = %.3f [cm]\n長さL= %.1f [cm]\n変形増大係数α= 1\nα×δ/L=1×%.3f/ %.3f = 1/%d\n", ns[1].Num, ds[1], ds[0], delta, length, delta, length, math.Abs(length/delta)))
-			writeSystemClipboard(otp.String())
+			fmt.Fprintf(&otp, "梁G1(部材  、断面  、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - %.3f = %.3f [cm]\n", ns[1].Num, ds[1], ds[0], delta)
 		case 3:
 			delta = ds[1] - 0.5*(ds[0]+ds[2])
 			stw.History(fmt.Sprintf("Disp: %.3f - (%.3f + %.3f)/2 [cm]", ds[1], ds[0], ds[2]))
@@ -733,13 +751,13 @@ func Notice1459(stw Commander) chan bool {
 				length += math.Pow(ns[2].Coord[i]-ns[0].Coord[i], 2)
 			}
 			length = math.Sqrt(length) * 100
-			otp.WriteString(fmt.Sprintf("梁G1(部材  、断面  、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - (%.3f + %.3f)/2 = %.3f [cm]\n長さL= %.1f [cm]\n変形増大係数α= 1\nα×δ/L=1×%.3f/ %.3f = 1/%d\n", ns[1].Num, ds[1], ds[0], ds[2], delta, length, delta, length, math.Abs(length/delta)))
-			writeSystemClipboard(otp.String())
+			fmt.Fprintf(&otp, "梁G1(部材  、断面  、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - (%.3f + %.3f)/2 = %.3f [cm]\n", ns[1].Num, ds[1], ds[0], ds[2], delta)
 		}
-		if delta != 0.0 {
-			stw.History(fmt.Sprintf("Distance: %.3f[cm]", length))
-			stw.History(fmt.Sprintf("Slope: 1/%.1f", math.Abs(length/delta)))
-		}
+		ratio, slope := DeflectionRatio(length, delta)
+		fmt.Fprintf(&otp, "長さL= %.1f [cm]\n変形増大係数α= 1\nα×|δ|/L=1×%.3f/ %.3f = %s\n", length, math.Abs(delta), length, ratio)
+		writeSystemClipboard(otp.String())
+		stw.History(fmt.Sprintf("Distance: %.3f[cm]", length))
+		stw.History("Slope: " + slope)
 		return nil
 	}, false)
 }

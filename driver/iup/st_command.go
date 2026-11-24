@@ -3753,84 +3753,51 @@ func uplift(stw *Window) {
 // NOTICE1459// {{{
 func notice1459(stw *Window) {
 	getnnodes(stw, 3, func(num int) {
-		var delta float64
-		ds := make([]float64, num)
-		sns := stw.SelectedNodes()
-		for i := 0; i < num; i++ {
-			ds[i] = -sns[i].ReturnDisp(stw.frame.Show.Period, 2) * 100
-		}
-		var length float64
-		var otp bytes.Buffer
-		sname := "G1"
-		alpha := 1.0
-		switch num {
-		default:
-			stw.EscapeAll()
-			return
-		case 2:
-			delta = ds[1] - ds[0]
-			stw.addHistory(fmt.Sprintf("Disp: %.3f - %.3f [cm]", ds[1], ds[0]))
-			for i := 0; i < 2; i++ {
-				length += math.Pow(sns[1].Coord[i]-sns[0].Coord[i], 2)
-			}
-			length = math.Sqrt(length) * 100
-			var enum, snum int
-			for _, el := range stw.frame.SearchElem(sns[0], sns[1]) {
-				if el.Etype == st.GIRDER {
-					enum = el.Num
-					snum = el.Sect.Num
-					sname = el.Sect.Name
-					break
-				}
-			}
-			if _, ok := stw.frame.Sects[snum]; ok {
-				switch {
-				case stw.frame.Sects[snum].IsRc(1e-3):
-					alpha = 8.0
-				}
-			}
-			otp.WriteString(fmt.Sprintf("梁%s(部材 %d 、断面 %d 、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - %.3f = %.3f [cm]\n長さL= %.1f [cm]\n変形増大係数α= %.0f\nα×δ/L=%.0f×%.3f/ %.3f = 1/%d\n", sname, enum, snum, sns[1].Num, ds[1], ds[0], delta, length, alpha, alpha, delta, length, math.Abs(length/(alpha*delta))))
-			clipboard.WriteAll(otp.String())
-		case 3:
-			delta = ds[1] - 0.5*(ds[0]+ds[2])
-			stw.addHistory(fmt.Sprintf("Disp: %.3f - (%.3f + %.3f)/2 [cm]", ds[1], ds[0], ds[2]))
-			for i := 0; i < 2; i++ {
-				length += math.Pow(sns[2].Coord[i]-sns[0].Coord[i], 2)
-			}
-			length = math.Sqrt(length) * 100
-			var enum1, enum2, snum int
-			for _, el := range stw.frame.SearchElem(sns[0], sns[1]) {
-				if el.Etype == st.GIRDER {
-					enum1 = el.Num
-					snum = el.Sect.Num
-					sname = el.Sect.Name
-					break
-				}
-			}
-			for _, el := range stw.frame.SearchElem(sns[1], sns[2]) {
-				if el.Etype == st.GIRDER {
-					enum2 = el.Num
-					snum = el.Sect.Num
-					sname = el.Sect.Name
-					break
-				}
-			}
-			if _, ok := stw.frame.Sects[snum]; ok {
-				switch {
-				case stw.frame.Sects[snum].IsRc(1e-3):
-					alpha = 8.0
-				}
-			}
-			otp.WriteString(fmt.Sprintf("梁%s(部材 %d, %d 、断面 %d 、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %.3f - (%.3f + %.3f)/2 = %.3f [cm]\n長さL= %.1f [cm]\n変形増大係数α= %.0f\nα×δ/L=%.0f×%.3f/ %.1f = 1/%d\n", sname, enum1, enum2, snum, sns[1].Num, ds[1], ds[0], ds[2], delta, length, alpha, alpha, delta, length, int(math.Abs(length/(alpha*delta)))))
-			clipboard.WriteAll(otp.String())
-		}
-		if delta != 0.0 {
-			stw.addHistory(fmt.Sprintf("Distance: %.3f[cm]", length))
-			stw.addHistory(fmt.Sprintf("Alpha: %.0f", alpha))
-			stw.addHistory(fmt.Sprintf("Slope: 1/%.1f", math.Abs(length/(alpha*delta))))
+		if num == 2 || num == 3 {
+			clipboard.WriteAll(notice1459Report(stw.frame, stw.SelectedNodes()[:num], stw.addHistory))
 		}
 		stw.EscapeAll()
 	})
+}
+
+// notice1459Report takes the two or three nodes in pick order.
+func notice1459Report(frame *st.Frame, nodes []*st.Node, history func(string)) string {
+	ds := make([]float64, len(nodes))
+	for i, n := range nodes {
+		ds[i] = -n.ReturnDisp(frame.Show.Period, 2) * 100
+	}
+	delta := ds[1] - ds[0]
+	expr := fmt.Sprintf("%.3f - %.3f", ds[1], ds[0])
+	if len(ds) == 3 {
+		delta = ds[1] - .5*(ds[0]+ds[2])
+		expr = fmt.Sprintf("%.3f - (%.3f + %.3f)/2", ds[1], ds[0], ds[2])
+	}
+	first, last := nodes[0], nodes[len(nodes)-1]
+	length := math.Hypot(last.Coord[0]-first.Coord[0], last.Coord[1]-first.Coord[1]) * 100
+	sname := "G1"
+	var snum int
+	members := make([]string, len(nodes)-1)
+	for i := range members {
+		enum := 0
+		for _, el := range frame.SearchElem(nodes[i], nodes[i+1]) {
+			if el.Etype == st.GIRDER {
+				enum, snum, sname = el.Num, el.Sect.Num, el.Sect.Name
+				break
+			}
+		}
+		members[i] = strconv.Itoa(enum)
+	}
+	alpha := 1.0
+	if sec := frame.Sects[snum]; sec != nil && sec.IsRc(1e-3) {
+		alpha = 8
+	}
+	ratio, slope := st.DeflectionRatio(length, alpha*delta)
+	history("Disp: " + expr + " [cm]")
+	history(fmt.Sprintf("Distance: %.3f[cm]", length))
+	history(fmt.Sprintf("Alpha: %.0f", alpha))
+	history("Slope: " + slope)
+	return fmt.Sprintf("梁%s(部材 %s 、断面 %d 、節点 %d)\nFL 、X通りY通り\n最大たわみ　δ= %s = %.3f [cm]\n長さL= %.1f [cm]\n変形増大係数α= %.0f\nα×|δ|/L=%.0f×%.3f/ %.3f = %s\n",
+		sname, strings.Join(members, ", "), snum, nodes[1].Num, expr, delta, length, alpha, alpha, math.Abs(delta), length, ratio)
 }
 
 // }}}

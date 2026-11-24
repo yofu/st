@@ -4264,20 +4264,20 @@ func (frame *Frame) Connected(n *Node) []*Node {
 	return rtn
 }
 
-// TODO: check if this func works as intended
 func (frame *Frame) SearchBraceSect(f *Fig, t int, orig int) *Sect {
+	var found *Sect
 	for _, sec := range frame.Sects {
-		if sec.Num <= 900 {
+		if sec.Num <= 900 || (found != nil && sec.Num >= found.Num) || len(sec.Figs) == 0 {
 			continue
 		}
-		if (sec.Type == t) && (sec.Figs[0].Prop == f.Prop) &&
+		if sec.Type == t && sec.Figs[0].Prop == f.Prop &&
 			(sec.Original == orig) &&
 			(sec.Figs[0].Value["AREA"] == f.Value["AREA"]) &&
 			(sec.Figs[0].Value["IXX"] == 0.0) && (sec.Figs[0].Value["IYY"] == 0.0) {
-			return sec
+			found = sec
 		}
 	}
-	return nil
+	return found
 }
 
 func (frame *Frame) DeleteNode(num int) {
@@ -5041,25 +5041,120 @@ func (frame *Frame) SetBoundary(num int, eps float64) error {
 	return nil
 }
 
-// AddAnalysisBraces converts braced panels to the line members used by analysis.
+// AddAnalysisBraces reconciles generated elements with the current wall/slab
+// diagonals. Member numbers also identify the braces in analysis result files.
 func (frame *Frame) AddAnalysisBraces() {
-	for _, el := range SortedElem(frame.Elems, func(e *Elem) float64 { return float64(e.Num) }) {
-		if !el.IsLineElem() {
-			brs := el.RectToBrace(2, 1.0)
-			if brs != nil {
-				for _, br := range brs {
-					frame.AddElem(-1, br)
-					el.Adopt(br)
-				}
+	type diagonal struct{ owner, lo, hi int }
+	key := func(owner int, brace *Elem) diagonal {
+		a, b := brace.Enod[0].Num, brace.Enod[1].Num
+		return diagonal{owner, min(a, b), max(a, b)}
+	}
+	elems := SortedElem(frame.Elems, func(e *Elem) float64 { return float64(e.Num) })
+	previous := make(map[diagonal]*Elem)
+	unowned := make(map[diagonal][]int)
+	stale := make(map[int]bool)
+	for _, e := range elems {
+		frame.Maxenum = max(frame.Maxenum, e.Num)
+		if e.Etype != WBRACE && e.Etype != SBRACE {
+			continue
+		}
+		if e.Parent != nil {
+			k := key(e.Parent.Num, e)
+			if previous[k] == nil {
+				previous[k] = e
+			}
+			stale[e.Num] = true
+		} else if e.Sect.Type == e.Etype && e.Sect.Original != 0 && e.Sect.Original != e.Sect.Num {
+			k := key(e.Sect.Num, e)
+			unowned[k] = append(unowned[k], e.Num)
+		}
+	}
+	// Older extractions could insert extra braces after Adopt failed. Remove
+	// only copies of an actual panel diagonal; standalone input members survive.
+	markCopies := func(k diagonal) {
+		for _, id := range unowned[k] {
+			stale[id] = true
+		}
+		delete(unowned, k)
+	}
+	if len(unowned) != 0 {
+		for _, old := range previous {
+			markCopies(key(old.Sect.Num, old))
+		}
+	}
+	for id := range frame.Sects {
+		frame.Maxsnum = max(frame.Maxsnum, id)
+	}
+	for _, panel := range elems {
+		if panel.Etype != WALL && panel.Etype != SLAB {
+			continue
+		}
+		clear(panel.Children)
+		for _, brace := range panel.RectToBrace(2, 1.0) {
+			markCopies(key(brace.Sect.Num, brace))
+			k := key(panel.Num, brace)
+			old := previous[k]
+			if old == nil {
+				frame.AddElem(-1, brace)
+			} else {
+				delete(previous, k)
+				delete(stale, old.Num)
+				brace = frame.refreshAnalysisBrace(old, brace)
+			}
+			panel.Adopt(brace)
+		}
+	}
+	for _, e := range elems {
+		if stale[e.Num] {
+			frame.DeleteElem(e.Num)
+		}
+	}
+	// A generated section can be shared by many panels. Remove it only
+	// after every live element has received its final section.
+	used := make(map[int]bool)
+	for _, e := range frame.Elems {
+		used[e.Sect.Num] = true
+	}
+	for _, id := range slices.Sorted(maps.Keys(frame.Sects)) {
+		s := frame.Sects[id]
+		if !used[id] && s.Original != 0 && s.Original != id && (s.Type == WBRACE || s.Type == SBRACE) {
+			frame.DeleteSect(id)
+			delete(frame.Show.Sect, id)
+		}
+	}
+}
+
+func (frame *Frame) refreshAnalysisBrace(old, next *Elem) *Elem {
+	if old.Frame == frame && old.Sect == next.Sect && old.Etype == next.Etype && slices.Equal(old.Enod, next.Enod) {
+		copy(old.Skip, next.Skip)
+		old.SetPrincipalAxis()
+		return old
+	}
+	// Results stored on the old section or ordered endpoints cannot seed
+	// the replacement. Preserve local selection and element-set pointers.
+	next.Frame, next.Num = frame, old.Num
+	next.hide, next.Lock = old.hide, old.Lock
+	if old.Frame == frame {
+		next.Chain = old.Chain
+		*old = *next
+		return old
+	}
+	// Older undo snapshots can reference a brace owned by another frame.
+	frame.Elems[next.Num] = next
+	for _, members := range frame.ElemSet {
+		for i, e := range members {
+			if e == old {
+				members[i] = next
 			}
 		}
 	}
+	return next
 }
 
 func (frame *Frame) ExtractArclm(fn string) error {
 	cmqs := make(map[int][]float64)
 	for _, el := range frame.Elems {
-		if el.IsLineElem() {
+		if el.IsLineElem() && el.Etype <= TRUSS {
 			cmqs[el.Num] = make([]float64, 12)
 			for i := 0; i < 12; i++ {
 				cmqs[el.Num][i] = el.Cmq[i]
@@ -5336,13 +5431,14 @@ func (frame *Frame) WeightDistribution(fn string) error {
 	}
 	sort.Sort(ElemByNum{elems})
 	for _, el := range elems {
+		if el.Etype == WBRACE || el.Etype == SBRACE {
+			continue // the parent panel already supplies its weight and quantity
+		}
 		err := el.Distribute()
 		if err != nil {
 			return err
 		}
-		if el.Etype != WBRACE || el.Etype != SBRACE {
-			amount[el.Sect.Num] += el.Amount()
-		}
+		amount[el.Sect.Num] += el.Amount()
 	}
 	aistr, aistrtex, err := frame.AiDistribution()
 	if err != nil {
@@ -6974,9 +7070,8 @@ func (frame *Frame) OutputTex() error {
 	}
 	defer w51.Close()
 	tex51 = AddCR(tex51)
-	tex51.WriteTo(w51)
-	return nil
-	return nil
+	_, err = tex51.WriteTo(w51)
+	return err
 }
 
 func (view *View) SetVectorAngle(vec []float64) error {
