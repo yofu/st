@@ -65,6 +65,8 @@ type ConstructionReceipt struct {
 	Added           ConstructionCounts       `json:"added"`
 	Total           ConstructionCounts       `json:"total"`
 	UpdatedNodes    int                      `json:"updated_nodes,omitempty"`
+	BoundsMin       []float64                `json:"bounds_min_m,omitempty"`
+	BoundsMax       []float64                `json:"bounds_max_m,omitempty"`
 	UpdatedSections int                      `json:"updated_sections,omitempty"`
 	SyncedLST       []int                    `json:"synced_lst,omitempty"`
 	MemberTypes     map[string]int           `json:"member_types"`

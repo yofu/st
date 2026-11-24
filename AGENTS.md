@@ -13,10 +13,10 @@
 - モデルファイル直接編集や PowerShell スクリプトによる外部書き換えは行わず、ネイティブ MCP ツールのみを使う。
 
 ## 3. 最頻出の落とし穴（厳守）
-- **単位系の違い**: `construct`（`nodes`, `grid`, `update_nodes` は **m**、`sections`/`update_sections.dimensions_mm` は **mm**）、ST ネイティブコマンド（`:hkyou` 等）と `.lst` は **cm**、`edits.load` は **tf / tf·m**。
+- **単位系の違い**: `construct`（`nodes`, `grid`, `transform_nodes`, `update_nodes_file`, `update_nodes` は **m**、`sections`/`update_sections.dimensions_mm` は **mm**）、ST ネイティブコマンド（`:hkyou` 等）と `.lst` は **cm**、`edits.load` は **tf / tf·m**。
 - **未保存モデルのパス**: 未保存状態での相対パス指定は存在しない既定パスを参照する場合があるため、`:propsect` / `:read` / `:save!` / `:writelst` には `$st/...`（環境変数 `STDIR`）またはフルパスを使う。
 - **既存断面の変更**: 新規断面は `construct.sections`、既存断面は `construct.update_sections`（INP と鉄骨 LST を 1 回で同期更新）を使う。`update_sections` 非対応の旧サーバーの場合は INP（`:hkyou ... | :section <ID> <-` 等）と LST（`preview_lst_edits`）の両方を更新する。
-- **任意 3D 形状の構築・変形**: ドーム・アーチ・シェル・空間トラス等は、最初から 3D 座標の `construct.nodes` + `elements` + `plates` で一括生成するか、`construct.grid` + `panel_grid` + `update_nodes` を 1 回の `construct` にまとめて実行する。
+- **任意 3D 形状の構築・変形**: 数式で書ける大量節点の変形は `query_nodes` + 大量 `update_nodes` ではなく `construct.transform_nodes`（式ベース一括変換）を優先し、`grid` + `panel_grid` と 1 回の `construct` にまとめる。数式で表せない外部座標群は `construct.update_nodes_file`（`.csv`/`.json`/`.jsonl`）、少数の個別座標は `construct.update_nodes` を使う。
 - **ワークフロー一括バッチ**: `pre_commands`（`construct` 前、例 `:propsect` / `:read list`）と `post_commands`（`static_analysis` 後、例 `:srcal` / `'srcanrate` / `'srcancolor`）を活用し、可能な限り 1 回の `run_model_workflow` で完結させる。
 - **新規モデル解析・座屈/振動解析**: 最新版では長期 `L` の層境界および未抽出時の `:extractarclm` は自動補完されるが、地震解析（`X`/`Y`）では `:setboundary <階数>` を明示し、モデル変更後の座屈・振動解析では `:extractarclm` を明示すると確実。
 - **保存時のダイアログ抑止**: 上書き確認ダイアログを避けるため `:save! <path>.inp` を使い、仮定断面リスト変更時は `:writelst <path>.lst` も併せて保存する。

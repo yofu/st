@@ -13,11 +13,14 @@ import (
 
 type workflowConstruction struct {
 	st.GUIConstruction
-	UpdateSections []updateSectionRequest `json:"update_sections,omitzero"`
-	UpdateNodes    []st.BuildNode         `json:"update_nodes,omitzero"`
-	PlateSections  []plateSectionRequest  `json:"plate_sections,omitzero"`
-	Plates         []st.BuildElement      `json:"plates,omitzero"`
-	PanelGrid      *panelGrid             `json:"panel_grid,omitempty"`
+	UpdateSections  []updateSectionRequest `json:"update_sections,omitzero"`
+	TransformNodes  []st.NodeTransform     `json:"transform_nodes,omitzero"`
+	UpdateNodes     []st.BuildNode         `json:"update_nodes,omitzero"`
+	UpdateNodesFile string                 `json:"update_nodes_file,omitempty"`
+	fileUpdateNodes []st.BuildNode         `json:"-"`
+	PlateSections   []plateSectionRequest  `json:"plate_sections,omitzero"`
+	Plates          []st.BuildElement      `json:"plates,omitzero"`
+	PanelGrid       *panelGrid             `json:"panel_grid,omitempty"`
 }
 
 type updateSectionRequest struct {
@@ -48,7 +51,7 @@ func (q workflowConstruction) hasSurfaces() bool {
 }
 
 func (q workflowConstruction) usesSnapshot() bool {
-	return q.hasSurfaces() || len(q.UpdateSections) > 0 || len(q.UpdateNodes) > 0
+	return q.hasSurfaces() || len(q.UpdateSections) > 0 || len(q.TransformNodes) > 0 || len(q.UpdateNodes) > 0 || q.UpdateNodesFile != "" || len(q.fileUpdateNodes) > 0
 }
 
 // The caller owns this private GUI snapshot. Only a successful batch can
@@ -70,8 +73,11 @@ func (q workflowConstruction) onPrivateFrameWithLST(f *st.Frame, lst []byte, lst
 	if len(q.UpdateSections) > 1000 {
 		return nil, nil, fmt.Errorf("too many update_sections in one construction")
 	}
-	if len(q.UpdateNodes) > 100000 {
+	if len(q.UpdateNodes) > 100000 || len(q.fileUpdateNodes) > 100000 {
 		return nil, nil, fmt.Errorf("too many update_nodes in one construction")
+	}
+	if q.TransformNodes != nil && len(q.TransformNodes) == 0 {
+		return nil, nil, fmt.Errorf("transform_nodes must be non-empty when supplied")
 	}
 	beforeProps, beforeSects, beforeNodes, beforeElems := len(f.Props), len(f.Sects), len(f.Nodes), len(f.Elems)
 	r := &st.ConstructionReceipt{
@@ -181,10 +187,32 @@ func (q workflowConstruction) onPrivateFrameWithLST(f *st.Frame, lst []byte, lst
 			r.PlateSections[sec.Num] = plateLoads(sec)
 		}
 	}
-	if len(q.UpdateNodes) > 0 {
-		if err := applyNodeUpdates(f, q.UpdateNodes, r); err != nil {
+	allMoved := make(map[int]bool)
+	if len(q.TransformNodes) > 0 {
+		moved, err := f.ApplyNodeTransforms(q.TransformNodes)
+		if err != nil {
 			return nil, nil, err
 		}
+		for id := range moved {
+			allMoved[id] = true
+		}
+	}
+	if len(q.fileUpdateNodes) > 0 {
+		if err := applyNodeUpdates(f, q.fileUpdateNodes, allMoved); err != nil {
+			return nil, nil, err
+		}
+	}
+	if len(q.UpdateNodes) > 0 {
+		if err := applyNodeUpdates(f, q.UpdateNodes, allMoved); err != nil {
+			return nil, nil, err
+		}
+	}
+	if len(allMoved) > 0 {
+		if err := f.ValidateMovedNodes(allMoved); err != nil {
+			return nil, nil, err
+		}
+		r.UpdatedNodes = len(allMoved)
+		r.BoundsMin, r.BoundsMax = f.NodeBounds()
 	}
 	for _, e := range addedPlates {
 		r.PlateArea[e.Sect.Num] += e.Area()
@@ -343,13 +371,13 @@ func syncSteelLSTBlock(id int, rawBlock string, sh st.Shape, overrideMaterial st
 	return strings.TrimSpace(strings.Join(lines, "\n")), true, nil
 }
 
-func applyNodeUpdates(f *st.Frame, updates []st.BuildNode, r *st.ConstructionReceipt) error {
-	moved := make(map[int]bool, len(updates))
+func applyNodeUpdates(f *st.Frame, updates []st.BuildNode, allMoved map[int]bool) error {
+	seen := make(map[int]bool, len(updates))
 	for _, in := range updates {
 		if in.ID <= 0 || len(in.XYZ) != 3 {
 			return fmt.Errorf("invalid update_nodes entry for NODE %d", in.ID)
 		}
-		if moved[in.ID] {
+		if seen[in.ID] {
 			return fmt.Errorf("duplicate update_nodes entry for NODE %d", in.ID)
 		}
 		node := f.Nodes[in.ID]
@@ -362,35 +390,9 @@ func applyNodeUpdates(f *st.Frame, updates []st.BuildNode, r *st.ConstructionRec
 			}
 		}
 		copy(node.Coord, in.XYZ)
-		moved[in.ID] = true
+		seen[in.ID] = true
+		allMoved[in.ID] = true
 	}
-	if err := f.ValidateNodePositions(); err != nil {
-		return err
-	}
-	for _, e := range f.Elems {
-		touched := false
-		for _, n := range e.Enod {
-			if n != nil && moved[n.Num] {
-				touched = true
-				break
-			}
-		}
-		if !touched {
-			continue
-		}
-		if e.IsLineElem() {
-			length := e.Length()
-			if !(length > 0) || math.IsInf(length, 0) {
-				return fmt.Errorf("ELEM %d has invalid length after node update", e.Num)
-			}
-		} else {
-			area := e.Area()
-			if !(area > 0) || math.IsInf(area, 0) || math.IsNaN(area) {
-				return fmt.Errorf("ELEM %d has invalid area after node update", e.Num)
-			}
-		}
-	}
-	r.UpdatedNodes = len(updates)
 	return nil
 }
 

@@ -52,7 +52,7 @@ description: >-
 
 ```text
  1. pre_commands       (construct 前のネイティブコマンド、例: :propsect / :read list)
- 2. construct          (新規 PROP/SECT/NODE/ELEM/grid + update_sections(INP+LST同期) + plate_sections/panel_grid/plates + update_nodes)
+ 2. construct          (新規 PROP/SECT/NODE/ELEM/grid + update_sections(INP+LST同期) + plate_sections/panel_grid/plates + transform_nodes + update_nodes_file + update_nodes)
  3. read_gui           (construct 無しで edits / editor_commands / static_analysis がある場合に自動同期)
  4. edit               (edits または editor_commands または proposal_id を適用)
  5. commands           (解析前のネイティブコマンド、例: :setboundary / :extractarclm / :bclng001 / :vibeig)
@@ -98,14 +98,21 @@ description: >-
 #### A. 軸平行グリッド + 面材（平面・立体ラーメン等）
 - 直交線材は `construct.grid`（例：10×10 マス・1m ピッチ XY グリッドは `cells: [10, 10, 0]`, `pitch_m: [1, 1, 0]`）。
 - 既存グリッドへの面材張りは `construct.panel_grid`（`plane: "XY"|"YZ"|"ZX"`, `coordinate_m`, `expected_cells`, `section`, `type: "SLAB"|"WALL"`）。
-- `construct.grid` + `construct.panel_grid` + `construct.plate_sections` + `construct.update_nodes` は **1 回の `construct` に同梱可能**（`panel_grid` が平面上で生成された直後に `update_nodes` が 3D 曲面へ一括移動する）。
+- `construct.grid` + `construct.panel_grid` + `construct.plate_sections` + `construct.transform_nodes`（または `update_nodes_file` / `update_nodes`）は **1 回の `construct` に同梱可能**（`panel_grid` が平面上で生成された直後に `transform_nodes` 等が 3D 曲面へ一括移動する）。
 
 #### B. 任意 3D 形状（ドーム・アーチ・HP シェル・空間トラス・ラチス等）
-- **原則（新規構築）**: 最初から 3D 座標を計算し、`construct.nodes` + `construct.elements` + `construct.plates` で 1 回に一括投入するか、`grid` + `panel_grid` + `update_nodes` で一括生成・変形する（最大 100,000 要素/節点）。
-- **既存モデルを後から任意曲面へ変形する場合**:
-  1. `gui_get_model` → `query_nodes(limit: 200)` で節点 ID・座標を取得。
-  2. `run_model_workflow` の `construct.update_nodes: [{"id": ..., "xyz_m": [x, y, z]}, ...]` で最大 100,000 節点を **1 回の呼出で原子的に移動**する（非対称形状でも 100 件上限に当たらない）。
-  3. 球面・放物面等で基準高さが未指定の場合は「四隅（または支持点）を Z=0 とする上向き凸」を既定とし、基準を回答に明記する。
+- **最優先（数式で記述できる変形）**: `construct.transform_nodes` を使う。`gui_get_model` / `query_nodes` による事前読出も大量 JSON 展開も不要で、1 回のワークフローで数万節点を数ミリ秒で一括変形できる（`id`, `x`, `y`, `z`, 対象範囲 `xmin..zmax`/`cx..cz`, モデル全体 `model_xmin..model_cz`, `pi`, `e`, `params` と数学関数 `sqrt`/`sin`/`cos`/`atan2`/`hypot`/`clamp` 等・三項演算子 `a if cond else b` に対応、`where` によるフィルタや複数ステージ順次適用も可能）：
+  ```json
+  "transform_nodes": [
+    {
+      "params": { "R": 30 },
+      "z": "sqrt(R**2 - (x - cx)**2 - (y - cy)**2) - sqrt(R**2 - (xmax - cx)**2 - (ymax - cy)**2)"
+    }
+  ]
+  ```
+- **非数式の大量座標（外部点群・最適化結果等）**: サーバールート相対の `.csv`（`id,x,y,z`、ヘッダー任意）/ `.json` / `.jsonl` を `construct.update_nodes_file` で一括読込する（最大 100,000 点）。
+- **少数の個別座標調整**: `construct.update_nodes: [{"id": ..., "xyz_m": [x, y, z]}, ...]`（`transform_nodes` / `update_nodes_file` の後に適用されるため併用可）。
+- 球面・放物面等で基準高さが未指定の場合は「四隅（または支持点）を Z=0 とする上向き凸」を既定とし、基準を回答に明記する。
 
 ### 3.4 既存断面の変更 + 再解析 + 再断面算定（1 回で完結）
 `construct.update_sections` は既存線材断面（INP `SECT`）と鉄骨 LST（`CODE <id> S ...`）を **1 回のワークフローで同期更新**する（`sync_lst` は既定 `true`、`XFACE`/`YFACE` 等は保持）。さらに `static_analysis` と `post_commands` を同梱して再解析・再算定・検定比図表示まで **1 往復で完結**できる：

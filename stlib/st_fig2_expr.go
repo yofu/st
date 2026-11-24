@@ -474,7 +474,10 @@ func fig2Index(v, key any) (any, error) {
 
 func fig2Builtin(name string) (fig2Callable, bool) {
 	switch name {
-	case "abs", "sqrt", "min", "max", "len", "sum", "round", "int", "float", "str":
+	case "abs", "sqrt", "min", "max", "len", "sum", "round", "int", "float", "str",
+		"sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+		"sinh", "cosh", "tanh", "exp", "log", "log10",
+		"floor", "ceil", "hypot", "pow", "radians", "degrees", "sign", "clamp":
 	default:
 		return nil, false
 	}
@@ -532,29 +535,172 @@ func fig2Builtin(name string) (fig2Callable, bool) {
 			}
 		}
 		if ok && len(args) == 1 {
+			var res float64
+			handled := true
 			switch name {
 			case "abs":
-				return math.Abs(n), nil
+				res = math.Abs(n)
 			case "sqrt":
-				if n >= 0 {
-					return math.Sqrt(n), nil
+				if n < 0 {
+					return nil, fmt.Errorf("sqrt domain error: %g", n)
 				}
+				res = math.Sqrt(n)
 			case "int":
-				return math.Trunc(n), nil
+				res = math.Trunc(n)
 			case "float":
-				return n, nil
+				res = n
 			case "round":
-				return math.RoundToEven(n), nil
+				res = math.RoundToEven(n)
+			case "sin":
+				res = math.Sin(n)
+			case "cos":
+				res = math.Cos(n)
+			case "tan":
+				res = math.Tan(n)
+			case "asin":
+				if n < -1 || n > 1 {
+					return nil, fmt.Errorf("asin domain error: %g", n)
+				}
+				res = math.Asin(n)
+			case "acos":
+				if n < -1 || n > 1 {
+					return nil, fmt.Errorf("acos domain error: %g", n)
+				}
+				res = math.Acos(n)
+			case "atan":
+				res = math.Atan(n)
+			case "sinh":
+				res = math.Sinh(n)
+			case "cosh":
+				res = math.Cosh(n)
+			case "tanh":
+				res = math.Tanh(n)
+			case "exp":
+				res = math.Exp(n)
+			case "log":
+				if n <= 0 {
+					return nil, fmt.Errorf("log domain error: %g", n)
+				}
+				res = math.Log(n)
+			case "log10":
+				if n <= 0 {
+					return nil, fmt.Errorf("log10 domain error: %g", n)
+				}
+				res = math.Log10(n)
+			case "floor":
+				res = math.Floor(n)
+			case "ceil":
+				res = math.Ceil(n)
+			case "radians":
+				res = n * math.Pi / 180.0
+			case "degrees":
+				res = n * 180.0 / math.Pi
+			case "sign":
+				switch {
+				case n > 0:
+					res = 1
+				case n < 0:
+					res = -1
+				default:
+					res = 0
+				}
+			default:
+				handled = false
+			}
+			if handled {
+				if math.IsNaN(res) || math.IsInf(res, 0) {
+					return nil, fmt.Errorf("%s produced nonfinite result", name)
+				}
+				return res, nil
 			}
 		}
-		if ok && name == "round" && len(args) == 2 {
-			if d, ok := args[1].(float64); ok && d == math.Trunc(d) && math.Abs(d) <= 15 {
-				s := math.Pow(10, d)
-				return math.RoundToEven(n*s) / s, nil
+		if ok && len(args) == 2 {
+			if m, ok2 := args[1].(float64); ok2 {
+				var res float64
+				handled := true
+				switch name {
+				case "round":
+					if m != math.Trunc(m) || math.Abs(m) > 15 {
+						return nil, fmt.Errorf("invalid arguments to round")
+					}
+					s := math.Pow(10, m)
+					res = math.RoundToEven(n*s) / s
+				case "atan2":
+					res = math.Atan2(n, m)
+				case "hypot":
+					res = math.Hypot(n, m)
+				case "pow":
+					res = math.Pow(n, m)
+				case "log":
+					if n <= 0 || m <= 0 || m == 1 {
+						return nil, fmt.Errorf("log domain error: %g, %g", n, m)
+					}
+					res = math.Log(n) / math.Log(m)
+				default:
+					handled = false
+				}
+				if handled {
+					if math.IsNaN(res) || math.IsInf(res, 0) {
+						return nil, fmt.Errorf("%s produced nonfinite result", name)
+					}
+					return res, nil
+				}
+			}
+		}
+		if ok && name == "clamp" && len(args) == 3 {
+			lo, okLo := args[1].(float64)
+			hi, okHi := args[2].(float64)
+			if okLo && okHi && !math.IsNaN(lo) && !math.IsNaN(hi) && lo <= hi {
+				if n < lo {
+					return lo, nil
+				}
+				if n > hi {
+					return hi, nil
+				}
+				return n, nil
 			}
 		}
 		return nil, fmt.Errorf("invalid arguments to %s", name)
 	}, true
+}
+
+// FloatExpr is a compiled pure mathematical/boolean expression reusable across nodes.
+type FloatExpr struct {
+	fn fig2Expression
+}
+
+// CompileFloatExpr compiles a pure mathematical or boolean expression.
+func CompileFloatExpr(source string) (*FloatExpr, error) {
+	fn, err := compileFig2Expr(source)
+	if err != nil {
+		return nil, err
+	}
+	return &FloatExpr{fn: fn}, nil
+}
+
+// EvalFloat evaluates the expression and requires a finite numeric result.
+func (e *FloatExpr) EvalFloat(env map[string]any) (float64, error) {
+	v, err := e.fn(env)
+	if err != nil {
+		return 0, err
+	}
+	f, ok := v.(float64)
+	if !ok {
+		return 0, fmt.Errorf("expression did not evaluate to a number (got %T)", v)
+	}
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return 0, fmt.Errorf("expression evaluated to nonfinite value")
+	}
+	return f, nil
+}
+
+// EvalBool evaluates the expression as a truthy boolean condition.
+func (e *FloatExpr) EvalBool(env map[string]any) (bool, error) {
+	v, err := e.fn(env)
+	if err != nil {
+		return false, err
+	}
+	return fig2Truthy(v), nil
 }
 
 func fig2NumbersAsValues[T ~float64 | ~int](values []T) []any {
@@ -575,7 +721,10 @@ func fig2Property(v any, name string) (any, error) {
 			return math.Pi, nil
 		case "e":
 			return math.E, nil
-		case "abs", "sqrt", "min", "max", "sum", "round":
+		case "abs", "sqrt", "min", "max", "sum", "round",
+			"sin", "cos", "tan", "asin", "acos", "atan", "atan2",
+			"sinh", "cosh", "tanh", "exp", "log", "log10",
+			"floor", "ceil", "hypot", "pow", "radians", "degrees", "sign", "clamp":
 			fn, _ := fig2Builtin(name)
 			return fn, nil
 		case "norm":

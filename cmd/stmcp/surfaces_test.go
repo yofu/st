@@ -5,6 +5,8 @@ import (
 	st "github.com/yofu/st/stlib"
 	"maps"
 	"math"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -153,5 +155,124 @@ func TestGridPanelGridAndUpdateNodesInOneConstruct(t *testing.T) {
 	bad := workflowConstruction{UpdateNodes: []st.BuildNode{{ID: 105, XYZ: []float64{0, 0, 0}}}}
 	if _, err := bad.onPrivateFrame(f); err == nil {
 		t.Fatal("accepted update_nodes moving onto an existing node")
+	}
+}
+
+func TestTransformNodesCombinedWithGridPanelGridAndExplicitOverride(t *testing.T) {
+	f := st.NewFrame()
+	if _, err := f.Construct(st.GUIConstruction{
+		Properties: []st.BuildProperty{{ID: 101, Material: "SN400"}},
+		Sections:   []st.BuildSection{{ID: 501, Name: "G51", Property: 101, Shape: "HKYOU", Dimensions: []float64{200, 200, 8, 12}}},
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
+	var q workflowConstruction
+	raw := `{
+		"grid":{"origin_m":[0,0,0],"cells":[4,4,0],"pitch_m":[1,1,0],"first_node":101,"first_element":101,"type":"GIRDER","section":501},
+		"plate_sections":[{"id":711,"dead_load_kgf_m2":300,"lload_tf_m2":[0.06,0.04,0.03]}],
+		"panel_grid":{"plane":"XY","coordinate_m":0,"section":711,"type":"SLAB","expected_cells":16},
+		"transform_nodes":[
+			{"params":{"amp":0.5},"z":"amp * sin(pi * (x - xmin) / (xmax - xmin)) * sin(pi * (y - ymin) / (ymax - ymin))"}
+		],
+		"update_nodes":[
+			{"id":113,"xyz_m":[2,2,0.75]}
+		]
+	}`
+	if err := json.Unmarshal([]byte(raw), &q); err != nil {
+		t.Fatal(err)
+	}
+	r, err := q.onPrivateFrame(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.UpdatedNodes != 25 || len(r.BoundsMin) != 3 || len(r.BoundsMax) != 3 {
+		t.Fatalf("unexpected receipt: %+v", r)
+	}
+	if math.Abs(r.BoundsMin[2]) > 1e-9 || math.Abs(r.BoundsMax[2]-0.75) > 1e-9 {
+		t.Fatalf("unexpected Z bounds: min=%v max=%v", r.BoundsMin, r.BoundsMax)
+	}
+	if math.Abs(f.Nodes[113].Coord[2]-0.75) > 1e-9 {
+		t.Fatalf("explicit update_nodes should override transform_nodes: %v", f.Nodes[113].Coord)
+	}
+	if r.PlateArea[711] <= 16.0 {
+		t.Fatalf("expected deformed slab area > 16.0, got %v", r.PlateArea[711])
+	}
+
+	// Collapsing all nodes to one point must be rejected by ValidateMovedNodes.
+	collapse := workflowConstruction{TransformNodes: []st.NodeTransform{{X: "0", Y: "0", Z: "0"}}}
+	if _, err := collapse.onPrivateFrame(f); err == nil {
+		t.Fatal("accepted transform_nodes collapsing nodes onto one point")
+	}
+}
+
+func TestLoadNodeUpdatesFileFormatsAndSecurity(t *testing.T) {
+	dir := t.TempDir()
+	s := &modelSession{rootPath: dir}
+	t.Cleanup(func() {
+		if s.root != nil {
+			s.root.Close()
+		}
+	})
+
+	csvPath := filepath.Join(dir, "coords.csv")
+	csvContent := "\xef\xbb\xbf# comment line\nid,x,y,z\n101, 0, 0, 0.1\n\n102, 1, 0, 0.2\n"
+	if err := os.WriteFile(csvPath, []byte(csvContent), 0600); err != nil {
+		t.Fatal(err)
+	}
+	gotCSV, err := s.loadNodeUpdatesFile("coords.csv")
+	if err != nil || len(gotCSV) != 2 || gotCSV[0].ID != 101 || math.Abs(gotCSV[1].XYZ[2]-0.2) > 1e-9 {
+		t.Fatalf("csv parse failed: %v, %v", gotCSV, err)
+	}
+
+	csvNoHeader := filepath.Join(dir, "noheader.csv")
+	if err := os.WriteFile(csvNoHeader, []byte("101,0,0,0.5\n102,1,0,0.6\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	gotNoHdr, err := s.loadNodeUpdatesFile("noheader.csv")
+	if err != nil || len(gotNoHdr) != 2 || math.Abs(gotNoHdr[0].XYZ[2]-0.5) > 1e-9 {
+		t.Fatalf("headerless csv failed: %v, %v", gotNoHdr, err)
+	}
+
+	jsonPath := filepath.Join(dir, "coords.json")
+	if err := os.WriteFile(jsonPath, []byte(`[{"id":101,"xyz_m":[0,0,1.25]}]`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	gotJSON, err := s.loadNodeUpdatesFile("coords.json")
+	if err != nil || len(gotJSON) != 1 || math.Abs(gotJSON[0].XYZ[2]-1.25) > 1e-9 {
+		t.Fatalf("json parse failed: %v, %v", gotJSON, err)
+	}
+
+	jsonlPath := filepath.Join(dir, "coords.jsonl")
+	if err := os.WriteFile(jsonlPath, []byte("# header\n{\"id\":101,\"xyz_m\":[0,0,0.3]}\n{\"id\":102,\"xyz_m\":[1,0,0.4]}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	gotJSONL, err := s.loadNodeUpdatesFile("coords.jsonl")
+	if err != nil || len(gotJSONL) != 2 || math.Abs(gotJSONL[1].XYZ[2]-0.4) > 1e-9 {
+		t.Fatalf("jsonl parse failed: %v, %v", gotJSONL, err)
+	}
+
+	// Verify schema validity and presence of new fields.
+	var schema map[string]any
+	if err := json.Unmarshal([]byte(constructionSchema), &schema); err != nil {
+		t.Fatalf("invalid constructionSchema JSON: %v", err)
+	}
+	props := schema["properties"].(map[string]any)
+	if props["transform_nodes"] == nil || props["update_nodes_file"] == nil {
+		t.Fatalf("constructionSchema missing new bulk node edit properties")
+	}
+
+	// Security and error cases.
+	badCSV := filepath.Join(dir, "bad.csv")
+	if err := os.WriteFile(badCSV, []byte("101,0,0\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	txtFile := filepath.Join(dir, "bad.txt")
+	if err := os.WriteFile(txtFile, []byte("101,0,0,0\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, badPath := range []string{"../escape.csv", csvPath, "bad.txt", "bad.csv", "missing.csv"} {
+		if _, err := s.loadNodeUpdatesFile(badPath); err == nil {
+			t.Fatalf("expected error for update_nodes_file %q", badPath)
+		}
 	}
 }
