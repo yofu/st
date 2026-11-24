@@ -137,7 +137,7 @@ var viewerExCommands = strings.Fields(`
 	kaberyo keisansho kunst length lock max mergenode min mkdir mono move nminteraction node
 	nodeduplication nodenoreference nodeset nodesort noundo object paper parabola pdf pdiv
 	phase pile plan plate plateweight pload png postscript prestress printrange procs propsect
-	quit range reaction read redraw resource resultant rpipe save saveasarclm scale section
+	quit range rcyield reaction read redraw resource resultant rpipe save saveasarclm scale section
 	section+ sectionlist set setangle setboundary setcang show skip sleep slope spline srcal
 	srcalangle stop storey story sum suspicious svg tag tex thermal thick timehistory tkyou
 	tweak unchain undo unlock vibeig view vim weightcopy write writefig2 writekijun writelst

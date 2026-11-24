@@ -35,7 +35,7 @@ var modelExCommands = strings.Fields(`
 	setboundary unchain coord node nodeset conf phase pile scale xscale yscale zscale
 	pload cmq lock unlock elem fence filter bond section+ cang setcang axis2cang invert
 	prestress thermal join divide dividearc section thick add move copy arraycopy set erase
-	elimallpin camber parabola skip insert propsect addnode kunst read yieldlength steelyield
+	elimallpin camber parabola skip insert propsect addnode kunst read yieldlength steelyield rcyield
 `)
 
 var legacyEditors = strings.Fields(`

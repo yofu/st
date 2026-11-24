@@ -14,7 +14,8 @@ import (
 	st "github.com/yofu/st/stlib"
 )
 
-func TestMCPSteelYieldNakanoSaveAs(t *testing.T) {
+func openYieldTestModel(t *testing.T) (*modelSession, string, func(string, any) any) {
+	t.Helper()
 	path := os.Getenv("ST_STEEL_YIELD_TEST_INP")
 	if path == "" {
 		t.Skip("set ST_STEEL_YIELD_TEST_INP to nakano02_07.inp")
@@ -25,7 +26,7 @@ func TestMCPSteelYieldNakanoSaveAs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer root.Close()
+	t.Cleanup(func() { root.Close() })
 	for _, ext := range []string{".inp", ".lst"} {
 		data, err := os.ReadFile(st.Ce(path, ext))
 		if err != nil {
@@ -49,6 +50,11 @@ func TestMCPSteelYieldNakanoSaveAs(t *testing.T) {
 		return v
 	}
 	call("open_model", map[string]string{"path": "base.inp"})
+	return &s, dir, call
+}
+
+func TestMCPSteelYieldNakanoSaveAs(t *testing.T) {
+	s, dir, call := openYieldTestModel(t)
 	cmd := ":steelyield -elem=2399 -design=2 -factor=0.9"
 	preview := func(c string) map[string]any {
 		t.Helper()
