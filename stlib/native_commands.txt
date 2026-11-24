@@ -311,6 +311,7 @@
 :writeoutput	:writeoutput filename period
 :writereaction	:writereaction {-confed} {-nodeset=} filename direction
 :xscale	:xscale factor coord
+:yieldlength	:yieldlength [-elem=N] [-design=m] [-lk=m] [-lb=m] [-lkx=m] [-lky=m] [-lbx=m] [-lby=m]
 :yscale	:yscale factor coord
 :zoubundisp	:zoubundisp period direction
 :zoubunreaction	:zoubunreaction period direction

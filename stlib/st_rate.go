@@ -633,14 +633,16 @@ func (sc *SColumn) String() string {
 		rtn.WriteString("         YFACE   0.0   0.0             \"FACE LENGTH My:HEAD= 0,TAIL= 0[cm]\"\n")
 	}
 	if sc.BBLength != nil {
-		rtn.WriteString(fmt.Sprintf("         BBLEN %5.1f %5.1f\n", sc.BBLength[0], sc.BBLength[1]))
-	} else if sc.BBFactor != nil {
-		rtn.WriteString(fmt.Sprintf("         BBFAC %5.1f %5.1f\n", sc.BBFactor[0], sc.BBFactor[1]))
+		rtn.WriteString(steelLengthPair("BBLEN", sc.BBLength))
+	}
+	if sc.BBFactor != nil {
+		rtn.WriteString(steelLengthPair("BBFAC", sc.BBFactor))
 	}
 	if sc.BTLength != nil {
-		rtn.WriteString(fmt.Sprintf("         BTLEN %5.1f %5.1f\n", sc.BTLength[0], sc.BTLength[1]))
-	} else if sc.BTFactor != nil {
-		rtn.WriteString(fmt.Sprintf("         BTFAC %5.1f %5.1f\n", sc.BTFactor[0], sc.BTFactor[1]))
+		rtn.WriteString(steelLengthPair("BTLEN", sc.BTLength))
+	}
+	if sc.BTFactor != nil {
+		rtn.WriteString(steelLengthPair("BTFAC", sc.BTFactor))
 	}
 	return rtn.String()
 }
