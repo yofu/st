@@ -55,7 +55,8 @@ var (
 		"w/rite/rea/ction": complete.MustCompile(":writereaction [confed:] _", nil),
 		"w/rite/k/ijun":    complete.MustCompile(":writekijun _", nil),
 		"p/late/w/eight":   complete.MustCompile(":plateweight", nil),
-		"nmi/nteraction":   complete.MustCompile(":nminteraction [ndiv:] [output:]", nil),
+		"nmi/nteraction":   complete.MustCompile(":nminteraction [ndiv:] [output:] [period:_] [nm:_]", nil),
+		"rcyield/":         complete.MustCompile(":rcyield [sect:_] [elem:_] [ndiv:_] [qx:_] [qy:_] [dx:_] [dy:_] [period:_] [axis:_] [member:_] [pick:_] [nm:_] [apply:_]", nil),
 		"kabe/ryo": complete.MustCompile(":kaberyo [half:_] [fc:_] [alpha:_] [route:$ROUTE]",
 			map[string][]string{
 				"ROUTE": []string{"1", "2-1", "2-2"},
@@ -2269,7 +2270,11 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if err != nil {
 			return err
 		}
-		if al := frame.Sects[int(tmp)].Allow; al != nil {
+		sect := frame.Sects[int(tmp)]
+		if sect == nil {
+			return fmt.Errorf("nminteraction: unknown SECT %d", tmp)
+		}
+		if al := sect.Allow; al != nil {
 			var otp bytes.Buffer
 			var m bytes.Buffer
 			cond := NewCondition()
@@ -2278,9 +2283,10 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 				if nd != "" {
 					m.WriteString(fmt.Sprintf("NDIV: %s", nd))
 					tmp, err := strconv.ParseInt(nd, 10, 64)
-					if err == nil {
-						ndiv = int(tmp)
+					if err != nil || tmp < 1 || tmp > 1000000 {
+						return fmt.Errorf("nminteraction: invalid NDIV %q", nd)
 					}
+					ndiv = int(tmp)
 				}
 			}
 			filename := filepath.Join(filepath.Dir(frame.Path), "nmi.txt")
@@ -2297,66 +2303,68 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 					cond.Period = p
 				}
 			}
-			yield := make([]float64, 12)
-			for i := 0; i < 2; i++ {
+			var rc *RCColumn
+			girder := false
+			switch v := al.(type) {
+			case *RCColumn:
+				rc = v
+			case *RCGirder:
+				rc = &v.RCColumn
+				girder = true
+			default:
+				return nil
+			}
+			if rc.CShape == nil || len(rc.Reins) == 0 || len(rc.Hoops.Ps) != 2 {
+				return fmt.Errorf("nminteraction: incomplete CRECT, REINS or HOOPS on SECT %d", sect.Num)
+			}
+			if _, rect := rc.CShape.(CRect); rect && cond.Period == "U" {
+				rc = rcCentered(rc)
+			}
+			var curves [2]rcNMCurve
+			if nm, ok := argdict["NM"]; ok {
+				if !strings.EqualFold(nm, "block") || cond.Period != "U" || ndiv > 1000 {
+					return fmt.Errorf("use -nm=block with -period=U and NDIV<=1000")
+				}
+				if err := checkRCSection(rc); err != nil {
+					return err
+				}
+				curves, err = rcBlockCurves(rc, ndiv)
+				if err != nil {
+					return err
+				}
+			}
+			var yield [12]float64
+			for i, heading := range []string{"STRONG", "WEAK"} {
+				fmt.Fprintln(&otp, heading)
+				cond.Strong = i == 0
+				cv := curves[i]
+				if cv.points == nil {
+					cv = rcNMReference(rc, cond, ndiv)
+				}
+				for _, pt := range cv.points {
+					fmt.Fprintf(&otp, "%.5f %.5f\n", pt.n, pt.m)
+				}
+				cond.N = cv.points[ndiv].n
+				qu := al.Qa(cond)
+				if !girder {
+					fmt.Fprintf(&otp, "Qu %.5f\n", qu)
+					if cond.Period != "U" {
+						continue
+					}
+				}
+				peak := cv.peak
+				if cond.Period != "U" {
+					peak = rcNMPoint{}
+				}
 				if i == 0 {
-					otp.WriteString("STRONG\n")
-					cond.Strong = true
+					yield[0], yield[1] = 2*peak.n-cond.N, cond.N
+					yield[4], yield[5] = qu, -qu
+					mt := al.Mza(cond)
+					yield[6], yield[7] = mt, -mt
 				} else {
-					otp.WriteString("WEAK\n")
-					cond.Strong = false
+					yield[2], yield[3] = qu, -qu
 				}
-				switch al.(type) {
-				default:
-					return nil
-				case *RCColumn:
-					nmax := al.(*RCColumn).Nmax(cond)
-					nmin := al.(*RCColumn).Nmin(cond)
-					for i := 0; i <= ndiv; i++ {
-						cond.N = nmax - float64(i)*(nmax-nmin)/float64(ndiv)
-						if cond.Period == "U" {
-							otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.(*RCColumn).Mu(cond)))
-						} else {
-							otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.Ma(cond)))
-						}
-					}
-					otp.WriteString(fmt.Sprintf("Qu %.5f\n", al.Qa(cond)))
-				case *RCGirder:
-					nmax := al.(*RCGirder).Nmax(cond)
-					nmin := al.(*RCGirder).Nmin(cond)
-					nmid := 0.0
-					mmax := 0.0
-					for i := 0; i <= ndiv; i++ {
-						cond.N = nmax - float64(i)*(nmax-nmin)/float64(ndiv)
-						if cond.Period == "U" {
-							m := al.(*RCGirder).Mu(cond)
-							if m > mmax {
-								mmax = m
-								nmid = cond.N
-							}
-							otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, m))
-						} else {
-							otp.WriteString(fmt.Sprintf("%.5f %.5f\n", cond.N, al.Ma(cond)))
-						}
-					}
-					qu := al.Qa(cond)
-					if i == 0 {
-						mt := al.Mza(cond)
-						yield[0] = 2*nmid - nmin
-						yield[1] = nmin
-						yield[4] = qu
-						yield[5] = -qu
-						yield[6] = mt
-						yield[7] = -mt
-						yield[8] = mmax
-						yield[9] = -mmax
-					} else {
-						yield[2] = qu
-						yield[3] = -qu
-						yield[10] = mmax
-						yield[11] = -mmax
-					}
-				}
+				yield[8+2*i], yield[9+2*i] = peak.m, -peak.m
 			}
 			otp.WriteString(fmt.Sprintf("         NZMAX %9.3f NZMIN %9.3f\n", yield[0], yield[1]))
 			otp.WriteString(fmt.Sprintf("         QXMAX %9.3f QXMIN %9.3f\n", yield[2], yield[3]))
@@ -2364,12 +2372,9 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			otp.WriteString(fmt.Sprintf("         MZMAX %9.3f MZMIN %9.3f\n", yield[6], yield[7]))
 			otp.WriteString(fmt.Sprintf("         MXMAX %9.3f MXMIN %9.3f\n", yield[8], yield[9]))
 			otp.WriteString(fmt.Sprintf("         MYMAX %9.3f MYMIN %9.3f\n", yield[10], yield[11]))
-			w, err := os.Create(filename)
-			defer w.Close()
-			if err != nil {
+			if err := os.WriteFile(filename, otp.Bytes(), 0666); err != nil {
 				return err
 			}
-			otp.WriteTo(w)
 			return Message(m.String())
 		}
 	case "gohanlst":
@@ -5169,6 +5174,11 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			}
 		}
 		return Message(fmt.Sprintf("NODES: %d, ELEMS: %d", nnode, nelem))
+	case "rcyield":
+		if usage || narg != 1 {
+			return Usage(rcYieldUsage)
+		}
+		return rcYieldCommand(stw, input, argdict)
 	case "steelyield":
 		if usage || narg != 1 {
 			return Usage(":steelyield [-sect=N[,N...] | -elem=N | 選択部材] [-design=m] [-lk=m] [-lb=m] [-lkx=m] [-lky=m] [-lbx=m] [-lby=m] [-ratio=-1] [-k=5.4] [-factor=1] [-product=H,B,tw,tf,A,Ix,Iy,Zpx,Zpy (cm系)] [-apply=preview_id]\n長さはm。履歴の確認後、表示された反映コマンドを実行してください。")

@@ -235,7 +235,8 @@
 :mkdir	:mkdir dirname
 :mono
 :move	:move x y z
-:nminteraction	:nminteraction sectcode
+:nminteraction	:nminteraction sectcode [-period=U] [-ndiv=100] [-nm=block]
+:rcyield	:rcyield [-sect=N[,N...] | -elem=N] [-ndiv=20] [-qx=My_kNm,Qx_kN] [-qy=Mx_kNm,Qy_kN] [-dx=mm] [-dy=mm] [-period=X@80] [-axis=x|y|both] [-member=N | -pick=min] [-nm=block] [-apply=preview_id]
 :node
 :nodeduplication
 :nodenoreference
