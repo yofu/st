@@ -21,6 +21,8 @@ import (
 
 func TestMCPBucklingWorkflowOnIUP(t *testing.T) { testMCPOnIUP(t, "buckling") }
 
+func TestMCPSteelYieldOnIUP(t *testing.T) { testMCPOnIUP(t, "steelyield") }
+
 func TestMCPStaticResultOnIUP(t *testing.T) { testMCPOnIUP(t, "static") }
 
 func TestNativeAnalysisWaitOnIUP(t *testing.T) { testMCPOnIUP(t, "wait") }
@@ -119,6 +121,12 @@ func testMCPOnIUP(t *testing.T, mode string) {
 				t.Fatal(err)
 			}
 			f := w.Frame()
+			if mode == "steelyield" {
+				if f.Sects[511].Yield[2] != 49.896 || !w.IsChanged() {
+					t.Fatalf("IUP redo: QXMAX=%g dirty=%t", f.Sects[511].Yield[2], w.IsChanged())
+				}
+				return
+			}
 			if mode == "buckling" {
 				if f.Show.Period != "B1" || f.Eigenvalue[0] <= 0 || f.Show.PlotState&st.PLOT_DEFORMED == 0 {
 					t.Fatal("IUP final frame missing mode")
@@ -238,6 +246,9 @@ func exerciseMCPStaticGUI(ctx context.Context, exe, root, id, mode string) error
 	}
 	if mode == "buckling" {
 		return exerciseBucklingWorkflow(ctx, tool)
+	}
+	if mode == "steelyield" {
+		return exerciseMCPSteelYield(tool)
 	}
 	var job struct {
 		ID    uint64 `json:"job_id"`

@@ -35,7 +35,7 @@ var modelExCommands = strings.Fields(`
 	setboundary unchain coord node nodeset conf phase pile scale xscale yscale zscale
 	pload cmq lock unlock elem fence filter bond section+ cang setcang axis2cang invert
 	prestress thermal join divide dividearc section thick add move copy arraycopy set erase
-	elimallpin camber parabola skip insert propsect addnode kunst read
+	elimallpin camber parabola skip insert propsect addnode kunst read yieldlength steelyield
 `)
 
 var legacyEditors = strings.Fields(`
@@ -138,7 +138,16 @@ func (s *modelSession) previewGUI(args guiEditArgs) (_ any, err error) {
 		source = s.pending.data
 		lst = s.proposedLst(s.pending)
 	}
-	frame, err := readModel(source, s.parsePath)
+	// Section calculations must see the same LST (including proposed edits)
+	// as the live model, also when reconstructing an undo revision.
+	loadFrame := func(data []byte) (*st.Frame, error) {
+		f, err := readModel(data, s.parsePath)
+		if err == nil && len(lst) != 0 {
+			err = readLst(f, lst, s.lstPath)
+		}
+		return f, err
+	}
+	frame, err := loadFrame(source)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +183,7 @@ func (s *modelSession) previewGUI(args guiEditArgs) (_ any, err error) {
 			if next < 0 || next >= len(revisions) {
 				return nil, fmt.Errorf("command %d: no %s state in this batch", i+1, input.Command)
 			}
-			frame, err = readModel(revisions[next], s.parsePath)
+			frame, err = loadFrame(revisions[next])
 			if err != nil {
 				return nil, err
 			}
@@ -197,7 +206,7 @@ func (s *modelSession) previewGUI(args guiEditArgs) (_ any, err error) {
 	}
 	after := editorINP(frame)
 	data := mergeEditorINP(source, before, after)
-	reloaded, err := readModel(data, s.parsePath)
+	reloaded, err := loadFrame(data)
 	if err != nil {
 		return nil, fmt.Errorf("edited INP could not be reopened: %w", err)
 	}

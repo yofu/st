@@ -24,6 +24,7 @@ type guiCommandJob struct {
 	reply                     st.GUIResponse
 	modelRevision             string
 	knownPath, knownRevision  string
+	reportBytes               int
 }
 
 type guiCommandRunner struct {
@@ -301,18 +302,31 @@ func (w *guiCommandWindow) Redraw() {
 func (w *guiCommandWindow) UseCurrentModelInputs() bool { return true }
 func (w *guiCommandWindow) History(text string) {
 	w.Window.appendHistory(text)
-	_, _ = w.Write([]byte(text + "\n"))
+	w.runner.mu.Lock()
+	defer w.runner.mu.Unlock()
+	// Keep a complete multi-line command report available for client review.
+	// Streaming solver output still shares the ordinary 64 KiB tail.
+	if len(text) > guiCommandHistoryLimit {
+		w.job.reportBytes = max(w.job.reportBytes, len(text) + 1)
+	}
+	w.appendJobHistory(text + "\n")
 }
 func (w *guiCommandWindow) HistoryWriter() io.Writer { return w }
+
+const guiCommandHistoryLimit = 65536
+
 func (w *guiCommandWindow) Write(data []byte) (int, error) {
 	w.runner.mu.Lock()
 	defer w.runner.mu.Unlock()
-	history := w.job.status.History + string(data)
-	if len(history) > 65536 {
-		history = history[len(history)-65536:]
+	w.appendJobHistory(string(data))
+	return len(data), nil
+}
+func (w *guiCommandWindow) appendJobHistory(text string) {
+	history := w.job.status.History + text
+	if limit := guiCommandHistoryLimit + w.job.reportBytes; len(history) > limit {
+		history = history[len(history)-limit:]
 	}
 	w.job.status.History = history
-	return len(data), nil
 }
 func (w *guiCommandWindow) CurrentLap(message string, step, total int) {
 	w.Window.CurrentLap(message, step, total)

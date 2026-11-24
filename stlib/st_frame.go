@@ -99,6 +99,8 @@ type Frame struct {
 
 	Arclms map[string]*arclm.Frame
 
+	steelYieldReview *steelYieldReview
+
 	eigenReadVersion uint64
 	Eigenvalue       map[int]float64
 

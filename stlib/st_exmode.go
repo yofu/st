@@ -119,6 +119,7 @@ var (
 		"c/urrent/v/alue":    complete.MustCompile(":currentvalue [abs:]", nil),
 		"len/gth":            complete.MustCompile(":length [deformed:]", nil),
 		"yieldlength/":       complete.MustCompile(":yieldlength [elem:_] [design:_] [lk:_] [lb:_] [lkx:_] [lky:_] [lbx:_] [lby:_]", nil),
+		"steelyield/":        complete.MustCompile(":steelyield [sect:_] [elem:_] [design:_] [lk:_] [lb:_] [lkx:_] [lky:_] [lbx:_] [lby:_] [ratio:_] [k:_] [factor:_] [product:_] [apply:_]", nil),
 		"are/a":              complete.MustCompile(":area [deformed:]", nil),
 		"an/alysis": complete.MustCompile(":analysis [period:$PERIOD] [all:] [solver:$SOLVER] [eps:_] [nlgeom:] [nlmat:] [step:_] [noinit:] [wait:] [post:_] [sects:_] [comp:_] [z:_] _",
 			map[string][]string{
@@ -5168,6 +5169,11 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			}
 		}
 		return Message(fmt.Sprintf("NODES: %d, ELEMS: %d", nnode, nelem))
+	case "steelyield":
+		if usage || narg != 1 {
+			return Usage(":steelyield [-sect=N[,N...] | -elem=N | 選択部材] [-design=m] [-lk=m] [-lb=m] [-lkx=m] [-lky=m] [-lbx=m] [-lby=m] [-ratio=-1] [-k=5.4] [-factor=1] [-product=H,B,tw,tf,A,Ix,Iy,Zpx,Zpy (cm系)] [-apply=preview_id]\n長さはm。履歴の確認後、表示された反映コマンドを実行してください。")
+		}
+		return steelYieldCommand(stw, input, argdict)
 	case "yieldlength":
 		if usage || narg != 1 {
 			return Usage(":yieldlength [-elem=N] [-design=m] [-lk=m] [-lb=m] [-lkx=m] [-lky=m] [-lbx=m] [-lby=m]")
