@@ -843,8 +843,10 @@ func (sc *SColumn) Ne(cond *Condition) float64 {
 	}
 }
 func (sc *SColumn) Nc1(cond *Condition) float64 {
-	ny := sc.Ny()
-	ne := sc.Ne(cond)
+	return steelFlexuralBucklingLimit(sc.Ny(), sc.Ne(cond))
+}
+
+func steelFlexuralBucklingLimit(ny, ne float64) float64 {
 	lambda := math.Sqrt(ny/ne)
 	if lambda <= 0.15 {
 		return ny
