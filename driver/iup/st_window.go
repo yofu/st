@@ -3095,6 +3095,10 @@ func (stw *Window) UnlockAll() {
 }
 
 func (stw *Window) Animate(view *st.View) {
+	// CanvasCenterView has no target when the visible nodes have no projected extent.
+	if view == nil {
+		return
+	}
 	scale := 1.0
 	if stw.frame.View.Perspective {
 		scale = math.Pow(view.Dists[1]/stw.frame.View.Dists[1], stw.CanvasAnimateSpeed())
