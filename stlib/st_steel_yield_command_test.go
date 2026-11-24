@@ -64,7 +64,7 @@ func TestSteelYieldCommandReview(t *testing.T) {
 	if !strings.Contains(msg, "preview_id=") || w.changed != 0 || el.Sect.Yield[0] != 0 {
 		t.Fatal(msg)
 	}
-	for _, name := range steelYieldNames {
+	for _, name := range sectionYieldNames {
 		if !strings.Contains(msg, name+" ") {
 			t.Error("missing capacity", name)
 		}
@@ -134,7 +134,7 @@ func TestSteelYieldCommandNakanoRoundTrip(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		y, err := steelYieldINPLimits(raw)
+		y, err := sectionYieldINPLimits(raw)
 		if err != nil || slices.Equal(s.Yield, y[:]) {
 			t.Fatal(tc.num, err)
 		}
@@ -150,7 +150,7 @@ func TestSteelYieldCommandNakanoRoundTrip(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		y, err := steelYieldINPLimits(raw)
+		y, err := sectionYieldINPLimits(raw)
 		if err != nil || slices.Equal(s.Yield, y[:]) {
 			t.Fatal(tc.num, err)
 		}
