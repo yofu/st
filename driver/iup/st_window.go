@@ -1021,6 +1021,14 @@ func NewWindow(homedir string) *Window { // {{{
 			}
 		},
 	)
+	mcpConnect := iup.Button(
+		"NAME=mcpconnect",
+		"TITLE=MCP接続",
+		"TIP=MCPに接続して接続IDをクリップボードにコピー",
+		func(*iup.ButtonAction) {
+			st.ErrorMessage(stw, stw.copyGUIConnectionID(), st.ERROR)
+		},
+	)
 	stw.coord = iup.Text(
 		"CANFOCUS=NO",
 		fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
@@ -1230,7 +1238,7 @@ func NewWindow(homedir string) *Window { // {{{
 				stw.SideBar,
 				iup.Vbox(stw.canv,
 					iup.Hbox(stw.hist),
-					iup.Hbox(stw.cname, stw.cline, stw.coord)),
+					iup.Hbox(stw.cname, stw.cline, mcpConnect, stw.coord)),
 			),
 		),
 		func(arg *iup.DialogClose) {

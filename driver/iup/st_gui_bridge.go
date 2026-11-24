@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/atotto/clipboard"
 	"github.com/yofu/go-iup/iup"
 	st "github.com/yofu/st/stlib"
 )
@@ -21,9 +22,24 @@ type guiCall struct {
 }
 
 type guiConnection struct {
+	id       string
 	timer    *iup.Handle
 	cancel   context.CancelFunc
 	commands *guiCommandRunner
+}
+
+func (stw *Window) copyGUIConnectionID() error {
+	if stw.guiConnection == nil {
+		if err := stw.guiConnectionCommand(""); err != nil {
+			return err
+		}
+	}
+	id := stw.guiConnection.id
+	if err := clipboard.WriteAll(id); err != nil {
+		return fmt.Errorf("MCP接続ID %s をクリップボードにコピーできませんでした: %w", id, err)
+	}
+	stw.History("MCP接続IDをクリップボードにコピーしました。")
+	return nil
 }
 
 func (stw *Window) guiConnectionCommand(arg string) error {
@@ -98,7 +114,7 @@ func (stw *Window) guiConnectionCommand(arg string) error {
 		return err
 	}
 	enableTimerAction(timer)
-	stw.guiConnection = &guiConnection{timer: timer, cancel: cancel, commands: commands}
+	stw.guiConnection = &guiConnection{id: id, timer: timer, cancel: cancel, commands: commands}
 	timer.SetAttribute("RUN", "YES")
 	stw.History("MCP GUI connection ID: " + id)
 	return nil
