@@ -204,7 +204,6 @@ type Window struct { // {{{
 	cline                  *iup.Handle
 	coord                  *iup.Handle
 	hist                   *iup.Handle
-	formattag, lsformattag *iup.Handle
 	cname                  *iup.Handle
 	context                *iup.Handle
 
@@ -1042,15 +1041,17 @@ func NewWindow(homedir string) *Window { // {{{
 	)
 	stw.hist = iup.Text(
 		"CANFOCUS=NO",
+		fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
+		fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
 		fmt.Sprintf("BGCOLOR=\"%s\"", historyBGColor),
 		"EXPAND=HORIZONTAL",
 		"READONLY=YES",
-		"FORMATTING=YES",
 		"MULTILINE=YES",
+		"NC=1048576",
 		"AUTOHIDE=YES",
 		"BORDER=NO",
 		"CARET=NO",
-		"SIZE=x50",
+		"SIZE=x70",
 		"NAME=history",
 	)
 	stw.cname = iup.Text(
@@ -1067,12 +1068,6 @@ func NewWindow(homedir string) *Window { // {{{
 		"VALUE=\"SELECT\"",
 		"NAME=cname",
 	)
-	stw.formattag = iup.User(fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
-		fmt.Sprintf("BGCOLOR=\"%s\"", historyBGColor),
-		fmt.Sprintf("FONTFACE=%s", commandFontFace),
-		fmt.Sprintf("FONTSIZE=%s", commandFontSize))
-	iup.SetHandle("tag", stw.formattag)
-	stw.hist.SetAttribute("ADDFORMATTAG", "tag")
 	// DataLabel
 	pers := iup.Text(fmt.Sprintf("FONT=\"%s, %s\"", commandFontFace, commandFontSize),
 		fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
@@ -1922,12 +1917,8 @@ func (stw *Window) SetFont(mode int) {
 			commandFontFace = ff[0]
 			commandFontSize = strings.Trim(ff[1], " ")
 			labelFGColor = dlg.GetAttribute("COLOR")
-			stw.formattag = iup.User(fmt.Sprintf("FGCOLOR=\"%s\"", labelFGColor),
-				fmt.Sprintf("BGCOLOR=\"%s\"", commandBGColor),
-				fmt.Sprintf("FONTFACE=%s", commandFontFace),
-				fmt.Sprintf("FONTSIZE=%s", commandFontSize))
-			iup.SetHandle("tag", stw.formattag)
-			stw.hist.SetAttribute("ADDFORMATTAG", "tag")
+			stw.hist.SetAttribute("FONT", dlg.GetAttribute("VALUE"))
+			stw.hist.SetAttribute("FGCOLOR", dlg.GetAttribute("COLOR"))
 			stw.cline.SetAttribute("FONT", dlg.GetAttribute("VALUE"))
 			stw.cline.SetAttribute("FGCOLOR", dlg.GetAttribute("COLOR"))
 			stw.cname.SetAttribute("FONT", dlg.GetAttribute("VALUE"))
