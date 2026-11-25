@@ -4500,6 +4500,7 @@ func (cond *Condition) Snapshot() *Condition {
 	c.Strong = cond.Strong
 	c.Positive = cond.Positive
 	c.FbOld = cond.FbOld
+	c.RCTorsion = cond.RCTorsion
 	c.N = cond.N
 	c.M = cond.M
 	c.Q = cond.Q
@@ -4516,14 +4517,13 @@ func (cond *Condition) Snapshot() *Condition {
 	return c
 }
 
-func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string, string, error) {
+func evalRate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, []float64, string, error) {
 	if len(stress) < 12 {
-		return nil, "", "", errors.New("Rate: Not enough number of Stress")
+		return nil, nil, "", errors.New("Rate: Not enough number of Stress")
 	}
 	rate := make([]float64, 12)
 	fa := make([]float64, 12)
 	var ind int
-	var otp, tex bytes.Buffer
 	verbose := false
 	for i := 0; i < 2; i++ {
 		if cond.Verbose {
@@ -4547,7 +4547,8 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		cond.Compression = cond.N >= 0.0
 		na := sr.Na(cond)
 		if na == 0.0 && stress[ind] != 0.0 {
-			return rate, "", "", ZeroAllowableError{"Na"}
+			cond.Verbose = verbose
+			return rate, fa, "", ZeroAllowableError{"Na"}
 		}
 		rate[ind] = math.Abs(stress[ind] / na)
 		fa[ind] = na
@@ -4556,7 +4557,8 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		cond.Positive = cond.M >= 0.0
 		qay := sr.Qa(cond)
 		if qay == 0.0 && stress[ind] != 0.0 {
-			return rate, "", "", ZeroAllowableError{"Qay"}
+			cond.Verbose = verbose
+			return rate, fa, "", ZeroAllowableError{"Qay"}
 		}
 		rate[ind] = math.Abs(stress[ind] / qay)
 		fa[ind] = qay
@@ -4580,7 +4582,8 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		ind = 6*i + 1
 		qax := sr.Qa(cond)
 		if qax == 0.0 && stress[ind] != 0.0 {
-			return rate, "", "", ZeroAllowableError{"Qax"}
+			cond.Verbose = verbose
+			return rate, fa, "", ZeroAllowableError{"Qax"}
 		}
 		rate[ind] = math.Abs(stress[ind] / qax)
 		fa[ind] = qax
@@ -4595,12 +4598,23 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 		ind = 6*i + 3
 		maz := sr.Mza(cond)
 		if maz == 0.0 && stress[ind] != 0.0 {
-			return rate, "", "", ZeroAllowableError{"Maz"}
+			cond.Verbose = verbose
+			return rate, fa, "", ZeroAllowableError{"Maz"}
 		}
 		rate[ind] = math.Abs(stress[ind] / maz)
 		fa[ind] = maz
 	}
 	cond.Verbose = verbose
+	var verboseText string
+	if cond.Verbose {
+		verboseText = cond.Buffer.String()
+		cond.Buffer.Reset()
+	}
+	return rate, fa, verboseText, nil
+}
+
+func formatRate1Text(stress, fa, rate []float64, verboseText string, showVerbose bool) (string, string) {
+	var otp, tex bytes.Buffer
 	for i := 0; i < 6; i++ {
 		for j := 0; j < 2; j++ {
 			otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)", stress[6*j+i], stress[6*j+i]*SI))
@@ -4610,9 +4624,8 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 			}
 		}
 	}
-	if cond.Verbose {
-		otp.WriteString("\n" + cond.Buffer.String())
-		cond.Buffer.Reset()
+	if showVerbose {
+		otp.WriteString("\n" + verboseText)
 	} else {
 		otp.WriteString("\n")
 	}
@@ -4640,25 +4653,50 @@ func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string
 	}
 	otp.WriteString("\n")
 	tex.WriteString("\\\\\n")
-	return rate, otp.String(), tex.String(), nil
+	return otp.String(), tex.String()
 }
 
-func Rate2(sr SectionRate, stress float64, cond *Condition) (float64, string, string, error) {
-	var rate float64
-	var otp, tex bytes.Buffer
+func Rate1(sr SectionRate, stress []float64, cond *Condition) ([]float64, string, string, error) {
+	rate, fa, verboseText, err := evalRate1(sr, stress, cond)
+	if err != nil {
+		return rate, "", "", err
+	}
+	otp, tex := formatRate1Text(stress, fa, rate, verboseText, cond.Verbose)
+	return rate, otp, tex, nil
+}
+
+func evalRate2(sr SectionRate, stress float64, cond *Condition) (float64, float64, string, error) {
 	cond.Compression = stress >= 0.0
 	na := sr.Na(cond)
 	if na == 0.0 && stress != 0.0 {
-		return rate, "", "", ZeroAllowableError{"Na"}
+		return 0.0, 0.0, "", ZeroAllowableError{"Na"}
 	}
-	rate = math.Abs(stress / na)
+	rate := math.Abs(stress / na)
+	var verboseText string
+	if cond.Verbose {
+		verboseText = cond.Buffer.String()
+		cond.Buffer.Reset()
+	}
+	return rate, na, verboseText, nil
+}
+
+func formatRate2Text(stress, na, rate float64, verboseText string, showVerbose bool) (string, string) {
+	var otp, tex bytes.Buffer
 	otp.WriteString(fmt.Sprintf(" %8.3f(%8.2f)\n", stress, stress*SI))
 	tex.WriteString(fmt.Sprintf(" &%8.3f\\\\\n", stress*SI))
-	if cond.Verbose {
-		otp.WriteString(cond.Buffer.String())
-		cond.Buffer.Reset()
+	if showVerbose {
+		otp.WriteString(verboseText)
 	}
 	otp.WriteString(fmt.Sprintf("     許容値: %8.3f(%8.2f)\n     安全率: %8.3f\n", na, na*SI, rate))
 	tex.WriteString(fmt.Sprintf("~~~~~許容値 &%8.3f\\\\\n~~~~~安全率 &%8.3f\\\\\n", na*SI, rate))
-	return rate, otp.String(), tex.String(), nil
+	return otp.String(), tex.String()
+}
+
+func Rate2(sr SectionRate, stress float64, cond *Condition) (float64, string, string, error) {
+	rate, na, verboseText, err := evalRate2(sr, stress, cond)
+	if err != nil {
+		return rate, "", "", err
+	}
+	otp, tex := formatRate2Text(stress, na, rate, verboseText, cond.Verbose)
+	return rate, otp, tex, nil
 }

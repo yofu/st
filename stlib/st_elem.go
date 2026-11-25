@@ -579,92 +579,161 @@ func (elem *Elem) OutputRateRlt() string {
 	return rlt.String()
 }
 
+type elemRateCase struct {
+	Name        string
+	PeriodLabel string
+	Stress      []float64
+	Allow       []float64
+	Rate        []float64
+	QRate       float64
+	MRate       float64
+	Verbose     string
+	Err         error
+}
+
+type elemRateReport struct {
+	Elem        *Elem
+	Allow       SectionRate
+	Original    bool
+	IsRC        bool
+	Condition   *Condition
+	Cases       []elemRateCase
+	MaxRate     []float64
+	MaxQLCase   string
+	MaxQSCase   string
+	MaxMLCase   string
+	MaxMSCase   string
+	HasStress   bool
+	SectionInfo string
+	FullText    string
+	TexText     string
+}
+
 func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float64, alpha []float64, angle float64) (SectionRate, string, error) {
+	rep, err := elem.evaluateRate(elem.Condition, long, x1, x2, y1, y2, sign, alpha, angle)
+	if err != nil {
+		if rep != nil {
+			return rep.Allow, "", err
+		}
+		return nil, "", err
+	}
+	elem.Condition.Length = rep.Condition.Length
+	elem.Condition.Width = rep.Condition.Width
+	elem.Condition.Height = rep.Condition.Height
+	elem.Condition.Period = rep.Condition.Period
+	elem.MaxRate = rep.MaxRate
+	elem.SrcalTex = rep.TexText
+	return rep.Allow, rep.FullText, nil
+}
+
+func (elem *Elem) evaluateRate(baseCond *Condition, long, x1, x2, y1, y2 string, sign float64, alpha []float64, angle float64) (*elemRateReport, error) {
 	al, original, err := elem.GetSectionRate()
 	if err != nil {
-		return al, "", fmt.Errorf("rate is nil: ELEM %d", elem.Num)
+		return &elemRateReport{Elem: elem, Allow: al}, fmt.Errorf("rate is nil: ELEM %d", elem.Num)
 	}
-	if elem.Condition == nil {
-		return al, "", fmt.Errorf("condition is nil")
+	if baseCond == nil {
+		return &elemRateReport{Elem: elem, Allow: al}, fmt.Errorf("condition is nil")
 	}
+	cond := baseCond.Snapshot()
 	stname := []string{"鉛直時Z    :", "水平時X    :", "水平時X負  :", "水平時Y    :", "水平時Y負  :"}
 	var pername []string
+	var perlabels []string
 	if angle != 0.0 {
 		pername = []string{"長期       :", "短期P正方向:", "短期P負方向:", "短期Q正方向:", "短期Q負方向:"}
+		perlabels = []string{"L", "P+", "P-", "Q+", "Q-"}
 	} else {
 		pername = []string{"長期       :", "短期X正方向:", "短期X負方向:", "短期Y正方向:", "短期Y負方向:"}
+		perlabels = []string{"L", "X+", "X-", "Y+", "Y-"}
+	}
+	rep := &elemRateReport{
+		Elem:      elem,
+		Allow:     al,
+		Original:  original,
+		Condition: cond,
+	}
+	checkPeriods := []string{long}
+	if !cond.Skipshort {
+		checkPeriods = append(checkPeriods, x1, x2, y1, y2)
+	}
+	for _, per := range checkPeriods {
+		if _, ok := elem.Stress[per]; ok {
+			rep.HasStress = true
+			break
+		}
 	}
 	var otp, tex bytes.Buffer
-	var rate []float64
-	var rate2 float64
-	calc1 := func(allow SectionRate, cond *Condition, st1, st2, fact []float64, sign float64) ([]float64, error) {
+	calc1 := func(allow SectionRate, c *Condition, st1, st2, fact []float64, s float64) ([]float64, []float64, []float64, string, error) {
 		stress := make([]float64, 12)
 		if st2 != nil {
 			for i := 0; i < 2; i++ {
 				for j := 0; j < 6; j++ {
-					stress[6*i+j] = st1[6*i+j] + sign*fact[j]*st2[6*i+j]
+					stress[6*i+j] = st1[6*i+j] + s*fact[j]*st2[6*i+j]
 				}
 			}
 		} else {
-			stress = st1
+			copy(stress, st1)
 		}
-		rate, txt, textxt, err := Rate1(allow, stress, cond)
+		rate, fa, vtxt, err := evalRate1(allow, stress, c)
 		if err != nil {
-			return rate, err
+			return stress, fa, rate, vtxt, err
 		}
+		txt, textxt := formatRate1Text(stress, fa, rate, vtxt, c.Verbose)
 		otp.WriteString(txt)
 		tex.WriteString(textxt)
-		return rate, nil
+		return stress, fa, rate, vtxt, nil
 	}
-	calc1angle := func(allow SectionRate, cond *Condition, st1, st2, st3, fact []float64, sign float64, angle float64, direction int) ([]float64, error) {
+	calc1angle := func(allow SectionRate, c *Condition, st1, st2, st3, fact []float64, s float64, ang float64, direction int) ([]float64, []float64, []float64, string, error) {
 		stress := make([]float64, 12)
-		theta := math.Pi / 180.0 * angle
+		theta := math.Pi / 180.0 * ang
 		if st2 != nil {
 			for i := 0; i < 2; i++ {
 				for j := 0; j < 6; j++ {
 					if direction == 0 {
-						stress[6*i+j] = st1[6*i+j] + sign*fact[j]*(st2[6*i+j]*math.Cos(theta)+st3[6*i+j]*math.Sin(theta))
+						stress[6*i+j] = st1[6*i+j] + s*fact[j]*(st2[6*i+j]*math.Cos(theta)+st3[6*i+j]*math.Sin(theta))
 					} else {
-						stress[6*i+j] = st1[6*i+j] + sign*fact[j]*(-st2[6*i+j]*math.Sin(theta)+st3[6*i+j]*math.Cos(theta))
+						stress[6*i+j] = st1[6*i+j] + s*fact[j]*(-st2[6*i+j]*math.Sin(theta)+st3[6*i+j]*math.Cos(theta))
 					}
 				}
 			}
 		} else {
-			stress = st1
+			copy(stress, st1)
 		}
-		rate, txt, textxt, err := Rate1(allow, stress, cond)
+		rate, fa, vtxt, err := evalRate1(allow, stress, c)
 		if err != nil {
-			return rate, err
+			return stress, fa, rate, vtxt, err
 		}
+		txt, textxt := formatRate1Text(stress, fa, rate, vtxt, c.Verbose)
 		otp.WriteString(txt)
 		tex.WriteString(textxt)
-		return rate, nil
+		return stress, fa, rate, vtxt, nil
 	}
-	calc2 := func(allow SectionRate, cond *Condition, n1, n2, fact, sign float64) (float64, error) {
-		stress := n1 + sign*fact*n2
-		rate, txt, textxt, err := Rate2(allow, stress, cond)
+	calc2 := func(allow SectionRate, c *Condition, n1, n2, fact, s float64) (float64, float64, float64, string, error) {
+		stress := n1 + s*fact*n2
+		rate, na, vtxt, err := evalRate2(allow, stress, c)
 		if err != nil {
-			return rate, err
+			return stress, na, rate, vtxt, err
 		}
+		txt, textxt := formatRate2Text(stress, na, rate, vtxt, c.Verbose)
 		otp.WriteString(txt)
 		tex.WriteString(textxt)
-		return rate, nil
+		return stress, na, rate, vtxt, nil
 	}
-	calc2angle := func(allow SectionRate, cond *Condition, n1, n2, n3, fact, sign float64, angle float64, direction int) (float64, error) {
-		theta := math.Pi / 180.0 * angle
+	calc2angle := func(allow SectionRate, c *Condition, n1, n2, n3, fact, s float64, ang float64, direction int) (float64, float64, float64, string, error) {
+		theta := math.Pi / 180.0 * ang
 		stress := 0.0
 		if direction == 0 {
-			stress = n1 + sign*fact*(n2*math.Cos(theta)+n3*math.Sin(theta))
+			stress = n1 + s*fact*(n2*math.Cos(theta)+n3*math.Sin(theta))
 		} else {
-			stress = n1 + sign*fact*(-n2*math.Sin(theta)+n3*math.Cos(theta))
+			stress = n1 + s*fact*(-n2*math.Sin(theta)+n3*math.Cos(theta))
 		}
-		rate, txt, textxt, err := Rate2(allow, stress, cond)
+		rate, na, vtxt, err := evalRate2(allow, stress, c)
 		if err != nil {
-			return rate, err
+			return stress, na, rate, vtxt, err
 		}
+		txt, textxt := formatRate2Text(stress, na, rate, vtxt, c.Verbose)
 		otp.WriteString(txt)
 		tex.WriteString(textxt)
-		return rate, nil
+		return stress, na, rate, vtxt, nil
 	}
 	maxrate := func(rate ...float64) float64 {
 		rtn := 0.0
@@ -683,7 +752,7 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 		factor[3] = []float64{alpha[1], alpha[1], alpha[1], alpha[1], alpha[1], alpha[1]}
 	} else {
 		for i := 0; i < 4; i++ {
-			factor[i] = []float64{elem.Condition.Nfact, elem.Condition.Qfact, elem.Condition.Qfact, 1.0, elem.Condition.Mfact, elem.Condition.Mfact}
+			factor[i] = []float64{cond.Nfact, cond.Qfact, cond.Qfact, 1.0, cond.Mfact, cond.Mfact}
 		}
 	}
 	switch elem.Etype {
@@ -695,21 +764,22 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 		default:
 			isrc = false
 		}
-		if isrc && elem.Condition.Qfact < 1.5 {
+		rep.IsRC = isrc
+		if isrc && cond.Qfact < 1.5 {
 			for i := 0; i < 4; i++ {
 				factor[i][1] = 1.5
 				factor[i][2] = 1.5
 			}
 		} else {
 			for i := 0; i < 4; i++ {
-				factor[i][1] = elem.Condition.Qfact
-				factor[i][2] = elem.Condition.Qfact
+				factor[i][1] = cond.Qfact
+				factor[i][2] = cond.Qfact
 			}
 		}
-		elem.Condition.Length = elem.Length() * 100.0 // [cm]
+		cond.Length = elem.Length() * 100.0 // [cm]
 		otp.WriteString(strings.Repeat("-", 202))
-		otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, elem.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
-		tex.WriteString(fmt.Sprintf("\\multicolumn{11}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, elem.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
+		otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, elem.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
+		tex.WriteString(fmt.Sprintf("\\multicolumn{11}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%d=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, elem.Sect.Num, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
 		if alpha != nil {
 			otp.WriteString(fmt.Sprintf(" αx=%.3f αy=%.3f", alpha[0], alpha[1]))
 			tex.WriteString(fmt.Sprintf("\\multicolumn{11}{l}{\\textsb{αx=%.3f αy=%.3f θ=%.3f}}\\\\\n", alpha[0], alpha[1], angle))
@@ -749,102 +819,122 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 		}
 		otp.WriteString("\n")
 		tex.WriteString("\\\\\n")
-		if elem.Condition.Verbose {
+		if cond.Verbose {
+			var secbuf bytes.Buffer
 			switch al.(type) {
 			case *SColumn:
 				sh := al.(*SColumn).Shape
-				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
-				otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
-				otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
-				otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
-				otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
-				otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+				secbuf.WriteString("# 断面性能詳細\n")
+				secbuf.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+				secbuf.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+				secbuf.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+				secbuf.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+				secbuf.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
 				if an, ok := sh.(ANGLE); ok {
-					otp.WriteString(fmt.Sprintf("#                         Imin= %10.4f [cm4]\n", an.Imin()))
+					secbuf.WriteString(fmt.Sprintf("#                         Imin= %10.4f [cm4]\n", an.Imin()))
 				}
-				otp.WriteString(fmt.Sprintf("#     一様ねじり定数      J   = %10.4f [cm4]\n", sh.J()))
-				otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
-				otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+				secbuf.WriteString(fmt.Sprintf("#     一様ねじり定数      J   = %10.4f [cm4]\n", sh.J()))
+				secbuf.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+				secbuf.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
 			case *SGirder:
 				sh := al.(*SGirder).Shape
-				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
-				otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
-				otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
-				otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
-				otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
-				otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+				secbuf.WriteString("# 断面性能詳細\n")
+				secbuf.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+				secbuf.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+				secbuf.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+				secbuf.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+				secbuf.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
 				if an, ok := sh.(ANGLE); ok {
-					otp.WriteString(fmt.Sprintf("#                         Imin= %10.4f [cm4]\n", an.Imin()))
+					secbuf.WriteString(fmt.Sprintf("#                         Imin= %10.4f [cm4]\n", an.Imin()))
 				}
-				otp.WriteString(fmt.Sprintf("#     一様ねじり定数      J   = %10.4f [cm4]\n", sh.J()))
-				otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
-				otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+				secbuf.WriteString(fmt.Sprintf("#     一様ねじり定数      J   = %10.4f [cm4]\n", sh.J()))
+				secbuf.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+				secbuf.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
 			case *WoodColumn:
 				sh := al.(*WoodColumn).Shape
-				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
-				otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
-				otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
-				otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
-				otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
-				otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
-				otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J   = %10.4f [cm4]\n", sh.J()))
-				otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
-				otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+				secbuf.WriteString("# 断面性能詳細\n")
+				secbuf.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+				secbuf.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+				secbuf.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+				secbuf.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+				secbuf.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+				secbuf.WriteString(fmt.Sprintf("#     一様ねじり定数:     J   = %10.4f [cm4]\n", sh.J()))
+				secbuf.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+				secbuf.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
 			case *WoodGirder:
 				sh := al.(*WoodGirder).Shape
-				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
-				otp.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
-				otp.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
-				otp.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
-				otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
-				otp.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
-				otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J   = %10.4f [cm4]\n", sh.J()))
-				otp.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
-				otp.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
+				secbuf.WriteString("# 断面性能詳細\n")
+				secbuf.WriteString(fmt.Sprintf("#     断面積:             A   = %10.4f [cm2]\n", sh.A()))
+				secbuf.WriteString(fmt.Sprintf("#     Qax算定用断面積:    Asx = %10.4f [cm2]\n", sh.Asx()))
+				secbuf.WriteString(fmt.Sprintf("#     Qay算定用断面積:    Asy = %10.4f [cm2]\n", sh.Asy()))
+				secbuf.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix  = %10.4f [cm4]\n", sh.Ix()))
+				secbuf.WriteString(fmt.Sprintf("#                         Iy  = %10.4f [cm4]\n", sh.Iy()))
+				secbuf.WriteString(fmt.Sprintf("#     一様ねじり定数:     J   = %10.4f [cm4]\n", sh.J()))
+				secbuf.WriteString(fmt.Sprintf("#     断面係数:           Zx  = %10.4f [cm3]\n", sh.Zx()))
+				secbuf.WriteString(fmt.Sprintf("#                         Zy  = %10.4f [cm3]\n", sh.Zy()))
 			case *RCGirder:
 				rc := al.(*RCGirder)
-				otp.WriteString(fmt.Sprintf("# 断面性能詳細\n"))
-				otp.WriteString(fmt.Sprintf("#     断面積:             A  = %12.2f [cm2]\n", rc.Area()))
-				otp.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix = %12.2f [cm4]\n", rc.Ix()))
-				otp.WriteString(fmt.Sprintf("#                         Iy = %12.2f [cm4]\n", rc.Iy()))
-				otp.WriteString(fmt.Sprintf("#     一様ねじり定数:     J  = %12.2f [cm4]\n", rc.J()))
+				secbuf.WriteString("# 断面性能詳細\n")
+				secbuf.WriteString(fmt.Sprintf("#     断面積:             A  = %12.2f [cm2]\n", rc.Area()))
+				secbuf.WriteString(fmt.Sprintf("#     断面二次モーメント: Ix = %12.2f [cm4]\n", rc.Ix()))
+				secbuf.WriteString(fmt.Sprintf("#                         Iy = %12.2f [cm4]\n", rc.Iy()))
+				secbuf.WriteString(fmt.Sprintf("#     一様ねじり定数:     J  = %12.2f [cm4]\n", rc.J()))
 			}
+			rep.SectionInfo = secbuf.String()
+			otp.WriteString(rep.SectionInfo)
 		}
-		if elem.Condition.Temporary != "" {
-			elem.Condition.Period = elem.Condition.Temporary
+		summarizeCase1 := func(rate []float64) (q, m float64) {
+			if len(rate) < 12 {
+				return 0.0, 0.0
+			}
+			if isrc {
+				if cond.RCTorsion {
+					q = maxrate(rate[1]+rate[3], rate[2]+rate[3], rate[7]+rate[3], rate[8]+rate[3])   // TODO: use T1,T2 if T1,T2>T3
+					m = maxrate(rate[4]+rate[3], rate[5]+rate[3], rate[10]+rate[3], rate[11]+rate[3]) // TODO: use T3 if T1,T2<T3
+				} else {
+					q = maxrate(rate[1], rate[2], rate[7], rate[8])
+					m = maxrate(rate[4], rate[5], rate[10], rate[11])
+				}
+			} else {
+				q = maxrate(rate[1], rate[2], rate[7], rate[8])
+				if rate[0] >= 1.0 {
+					m = 10.0
+				} else if elem.BondState() == PIN_PIN { // 両端ピン柱の場合は軸力の検定比を表示
+					m = rate[0]
+				} else {
+					m = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
+				}
+			}
+			return q, m
+		}
+		if cond.Temporary != "" {
+			cond.Period = cond.Temporary
 		} else {
-			elem.Condition.Period = "L"
+			cond.Period = "L"
 		}
 		otp.WriteString(pername[0])
 		tex.WriteString(strings.Replace(pername[0], ":", "", -1))
-		rate, err = calc1(al, elem.Condition, stress[0], nil, nil, 1.0)
-		if isrc {
-			if elem.Condition.RCTorsion {
-				qlrate = maxrate(rate[1]+rate[3], rate[2]+rate[3], rate[7]+rate[3], rate[8]+rate[3])   // TODO: use T1,T2 if T1,T2>T3
-				mlrate = maxrate(rate[4]+rate[3], rate[5]+rate[3], rate[10]+rate[3], rate[11]+rate[3]) // TODO: use T3 if T1,T2<T3
-			} else {
-				qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
-				mlrate = maxrate(rate[4], rate[5], rate[10], rate[11])
-			}
-		} else {
-			qlrate = maxrate(rate[1], rate[2], rate[7], rate[8])
-			if rate[0] >= 1.0 {
-				mlrate = 10.0
-			} else {
-				if elem.BondState() == PIN_PIN { // 両端ピン柱の場合は軸力の検定比を表示
-					mlrate = rate[0]
-				} else {
-					mlrate = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
-				}
-			}
-		}
-		if elem.Condition.Skipshort {
+		combStress, allow, rate, vtxt, caseErr := calc1(al, cond, stress[0], nil, nil, 1.0)
+		qlrate, mlrate = summarizeCase1(rate)
+		rep.MaxQLCase, rep.MaxMLCase = perlabels[0], perlabels[0]
+		rep.Cases = append(rep.Cases, elemRateCase{
+			Name:        strings.TrimSpace(strings.TrimSuffix(pername[0], ":")),
+			PeriodLabel: perlabels[0],
+			Stress:      combStress,
+			Allow:       allow,
+			Rate:        rate,
+			QRate:       qlrate,
+			MRate:       mlrate,
+			Verbose:     vtxt,
+			Err:         caseErr,
+		})
+		if cond.Skipshort {
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
 			tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{11}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
-			elem.MaxRate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
+			rep.MaxRate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 			break
 		}
-		elem.Condition.Period = "S"
+		cond.Period = "S"
 		var s float64
 		for p := 1; p < 5; p++ {
 			if p%2 == 1 {
@@ -858,38 +948,39 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 			tex.WriteString(strings.Replace(pername[p], ":", "", -1))
 			if angle != 0.0 {
 				if p <= 2 {
-					rate, err = calc1angle(al, elem.Condition, stress[0], stress[p], stress[p+2], factor[p-1], s, angle, 0)
+					combStress, allow, rate, vtxt, caseErr = calc1angle(al, cond, stress[0], stress[p], stress[p+2], factor[p-1], s, angle, 0)
 				} else {
-					rate, err = calc1angle(al, elem.Condition, stress[0], stress[p-2], stress[p], factor[p-1], s, angle, 1)
+					combStress, allow, rate, vtxt, caseErr = calc1angle(al, cond, stress[0], stress[p-2], stress[p], factor[p-1], s, angle, 1)
 				}
 			} else {
-				rate, err = calc1(al, elem.Condition, stress[0], stress[p], factor[p-1], s)
+				combStress, allow, rate, vtxt, caseErr = calc1(al, cond, stress[0], stress[p], factor[p-1], s)
 			}
-			if isrc {
-				if elem.Condition.RCTorsion {
-					qsrate = maxrate(qsrate, rate[1]+rate[3], rate[2]+rate[3], rate[7]+rate[3], rate[8]+rate[3])
-					msrates[p-1] = maxrate(rate[4]+rate[3], rate[5]+rate[3], rate[10]+rate[3], rate[11]+rate[3])
-				} else {
-					qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
-					msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11])
-				}
-			} else {
-				qsrate = maxrate(qsrate, rate[1], rate[2], rate[7], rate[8])
-				if rate[0] >= 1.0 {
-					msrates[p-1] = 10.0
-				} else {
-					if elem.BondState() == PIN_PIN { // 両端ピン柱の場合は軸力の検定比を表示
-						msrates[p-1] = rate[0]
-					} else {
-						msrates[p-1] = maxrate(rate[4], rate[5], rate[10], rate[11]) / (1.0 - rate[0])
-					}
-				}
+			cq, cm := summarizeCase1(rate)
+			if p == 1 || cq > qsrate {
+				qsrate = cq
+				rep.MaxQSCase = perlabels[p]
 			}
+			msrates[p-1] = cm
+			if p == 1 || cm > msrate {
+				msrate = cm
+				rep.MaxMSCase = perlabels[p]
+			}
+			rep.Cases = append(rep.Cases, elemRateCase{
+				Name:        strings.TrimSpace(strings.TrimSuffix(pername[p], ":")),
+				PeriodLabel: perlabels[p],
+				Stress:      combStress,
+				Allow:       allow,
+				Rate:        rate,
+				QRate:       cq,
+				MRate:       cm,
+				Verbose:     vtxt,
+				Err:         caseErr,
+			})
 		}
 		msrate = maxrate(msrates...)
 		otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f M/MaL=%.5f M/MaS=%.5f\n", qlrate, qsrate, mlrate, msrate))
 		tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{11}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f, M/M_{aL}=%.5f, M/M_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate, mlrate, msrate))
-		elem.MaxRate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
+		rep.MaxRate = []float64{qlrate, qsrate, qurate, mlrate, msrate, murate}
 	case BRACE, WBRACE, SBRACE:
 		var isrc bool
 		switch al.(type) {
@@ -898,24 +989,25 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 		default:
 			isrc = false
 		}
+		rep.IsRC = isrc
 		var qlrate, qsrate, qurate float64
 		var fact float64
 		if elem.Etype == BRACE {
-			fact = elem.Condition.Bfact
-			elem.Condition.Length = elem.Length() * 100.0 // [cm]
+			fact = cond.Bfact
+			cond.Length = elem.Length() * 100.0 // [cm]
 		} else {
-			fact = elem.Condition.Wfact
+			fact = cond.Wfact
 			if bros, ok := elem.Brother(); ok {
-				elem.Condition.Length = 0.5 * (elem.Length() + bros.Length()) * 100.0 // [cm]
+				cond.Length = 0.5 * (elem.Length() + bros.Length()) * 100.0 // [cm]
 			} else {
-				elem.Condition.Length = elem.Length() * 100.0 // [cm]
+				cond.Length = elem.Length() * 100.0 // [cm]
 			}
 		}
 		if isrc && fact < 2.0 {
 			fact = 2.0
 		}
-		elem.Condition.Width = elem.Width() * 100.0   // [cm]
-		elem.Condition.Height = elem.Height() * 100.0 // [cm]
+		cond.Width = elem.Width() * 100.0   // [cm]
+		cond.Height = elem.Height() * 100.0 // [cm]
 		otp.WriteString(strings.Repeat("-", 202))
 		var sectstring string
 		if original {
@@ -923,8 +1015,8 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 		} else {
 			sectstring = fmt.Sprintf("　%d/◯%d", elem.OriginalSection().Num, elem.Sect.Num)
 		}
-		otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
-		tex.WriteString(fmt.Sprintf("\\multicolumn{11}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), elem.Condition.Length, elem.Condition.Length, elem.Condition.Length))
+		otp.WriteString(fmt.Sprintf("\n部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
+		tex.WriteString(fmt.Sprintf("\\multicolumn{11}{l}{\\textsb{部材:%d 始端:%d 終端:%d 断面:%s=%s 材長=%.1f[cm] Mx内法=%.1f[cm] My内法=%.1f[cm]}}\\\\\n", elem.Num, elem.Enod[0].Num, elem.Enod[1].Num, sectstring, strings.Replace(al.TypeString(), "　", "", -1), cond.Length, cond.Length, cond.Length))
 		if alpha != nil {
 			otp.WriteString(fmt.Sprintf(" αx=%.3f αy=%.3f", alpha[0], alpha[1]))
 		}
@@ -948,22 +1040,33 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 			tex.WriteString(fmt.Sprintf(" &%8.3f\\\\\n", stress[p]*SI))
 		}
 		otp.WriteString("\n")
-		if elem.Condition.Temporary != "" {
-			elem.Condition.Period = elem.Condition.Temporary
+		if cond.Temporary != "" {
+			cond.Period = cond.Temporary
 		} else {
-			elem.Condition.Period = "L"
+			cond.Period = "L"
 		}
 		otp.WriteString(pername[0])
 		tex.WriteString(strings.Replace(pername[0], ":", "", -1))
-		rate2, err = calc2(al, elem.Condition, stress[0], 0.0, 0.0, 1.0)
+		combN, allowN, rate2, vtxt, caseErr := calc2(al, cond, stress[0], 0.0, 0.0, 1.0)
 		qlrate = rate2
-		if elem.Condition.Skipshort {
+		rep.MaxQLCase = perlabels[0]
+		rep.Cases = append(rep.Cases, elemRateCase{
+			Name:        strings.TrimSpace(strings.TrimSuffix(pername[0], ":")),
+			PeriodLabel: perlabels[0],
+			Stress:      []float64{combN},
+			Allow:       []float64{allowN},
+			Rate:        []float64{rate2},
+			QRate:       rate2,
+			Verbose:     vtxt,
+			Err:         caseErr,
+		})
+		if cond.Skipshort {
 			otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
 			tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{11}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate))
-			elem.MaxRate = []float64{qlrate, qsrate, qurate}
+			rep.MaxRate = []float64{qlrate, qsrate, qurate}
 			break
 		}
-		elem.Condition.Period = "S"
+		cond.Period = "S"
 		var s float64
 		for p := 1; p < 5; p++ {
 			if p%2 == 1 {
@@ -976,21 +1079,37 @@ func (elem *Elem) OutputRateInformation(long, x1, x2, y1, y2 string, sign float6
 			tex.WriteString(strings.Replace(pername[p], ":", "", -1))
 			if angle != 0.0 {
 				if p <= 2 {
-					rate2, err = calc2angle(al, elem.Condition, stress[0], stress[p], stress[p+2], fact*factor[p-1][0], s, angle, 0)
+					combN, allowN, rate2, vtxt, caseErr = calc2angle(al, cond, stress[0], stress[p], stress[p+2], fact*factor[p-1][0], s, angle, 0)
 				} else {
-					rate2, err = calc2angle(al, elem.Condition, stress[0], stress[p-2], stress[p], fact*factor[p-1][0], s, angle, 1)
+					combN, allowN, rate2, vtxt, caseErr = calc2angle(al, cond, stress[0], stress[p-2], stress[p], fact*factor[p-1][0], s, angle, 1)
 				}
 			} else {
-				rate2, err = calc2(al, elem.Condition, stress[0], stress[p], fact*factor[p-1][0], s)
+				combN, allowN, rate2, vtxt, caseErr = calc2(al, cond, stress[0], stress[p], fact*factor[p-1][0], s)
 			}
-			qsrate = maxrate(qsrate, rate2)
+			if p == 1 || rate2 > qsrate {
+				qsrate = rate2
+				rep.MaxQSCase = perlabels[p]
+			}
+			rep.Cases = append(rep.Cases, elemRateCase{
+				Name:        strings.TrimSpace(strings.TrimSuffix(pername[p], ":")),
+				PeriodLabel: perlabels[p],
+				Stress:      []float64{combN},
+				Allow:       []float64{allowN},
+				Rate:        []float64{rate2},
+				QRate:       rate2,
+				Verbose:     vtxt,
+				Err:         caseErr,
+			})
 		}
 		otp.WriteString(fmt.Sprintf("\nMAX:Q/QaL=%.5f Q/QaS=%.5f\n", qlrate, qsrate))
 		tex.WriteString(fmt.Sprintf("\\\\\n\\multicolumn{11}{l}{MAX:$Q/Q_{aL}=%.5f, Q/Q_{aS}=%.5f$}\\\\\n\\\\ \\hline\n\\\\\n", qlrate, qsrate))
-		elem.MaxRate = []float64{qlrate, qsrate, qurate}
+		rep.MaxRate = []float64{qlrate, qsrate, qurate}
+	default:
+		return rep, fmt.Errorf("unsupported element type for section rate: ELEM %d (%s)", elem.Num, ETYPES[elem.Etype])
 	}
-	elem.SrcalTex = tex.String()
-	return al, otp.String(), nil
+	rep.FullText = otp.String()
+	rep.TexText = tex.String()
+	return rep, nil
 }
 
 func (elem *Elem) Amount() float64 {

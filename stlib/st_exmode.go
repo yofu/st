@@ -114,6 +114,7 @@ var (
 		"n/ode/n/oreference": complete.MustCompile(":nodenoreference", nil),
 		"i/ntersect/a/ll":    complete.MustCompile(":intersectall", nil),
 		"src/al":             complete.MustCompile(":srcal [fbold:] [noreload:] [qfact:_] [wfact:_] [bfact:_] [skipshort:] [temporary:] [moeshiro:]", nil),
+		"tst/":               complete.MustCompile(":tst [sect:_] [full:] [open:] [vim:] [out:_] [max:] [all:] [limit:_] [v:] [verbose:] [fbold:] [torsion:] [reload:] [qfact:_] [wfact:_] [bfact:_] [skipshort:] [temporary:] [moeshiro:] [sekisetsu:]", nil),
 		"co/nf":              complete.MustCompile(":conf", nil),
 		"pi/le":              complete.MustCompile(":pile", nil),
 		"sec/tion":           complete.MustCompile(":section [nodisp:]_", nil),
@@ -1944,12 +1945,6 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 		if usage {
 			return Usage(":srcal {-verbose} {-fbold} {-torsion} {-noreload} {-qfact=2.0} {-wfact=2.0} {-bfact=1.0} {-skipshort} {-temporary} {-moeshiro} {-sekisetsu} filename")
 		}
-		var m bytes.Buffer
-		cond := NewCondition()
-		if _, ok := argdict["FBOLD"]; ok {
-			m.WriteString("Fb: old\n")
-			cond.FbOld = true
-		}
 		var otp string
 		if fn == "" {
 			otp = frame.Path
@@ -1969,60 +1964,23 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 				return err
 			}
 		}
-		if qf, ok := argdict["QFACT"]; ok {
-			val, err := strconv.ParseFloat(qf, 64)
-			if err == nil {
-				cond.Qfact = val
-			}
-		}
-		m.WriteString(fmt.Sprintf("QFACT: %.3f\n", cond.Qfact))
-		if wf, ok := argdict["WFACT"]; ok {
-			val, err := strconv.ParseFloat(wf, 64)
-			if err == nil {
-				cond.Wfact = val
-			}
-		}
-		m.WriteString(fmt.Sprintf("WFACT: %.3f\n", cond.Wfact))
-		if wf, ok := argdict["BFACT"]; ok {
-			val, err := strconv.ParseFloat(wf, 64)
-			if err == nil {
-				cond.Bfact = val
-			}
-		}
-		m.WriteString(fmt.Sprintf("BFACT: %.3f\n", cond.Bfact))
-		if _, ok := argdict["SKIPSHORT"]; ok {
-			m.WriteString("SKIP SHORT\n")
-			cond.Skipshort = true
-		}
-		if _, ok := argdict["TEMPORARY"]; ok {
-			m.WriteString("TEMPORARY")
-			cond.Temporary = "S"
-		}
-		if _, ok := argdict["MOESHIRO"]; ok {
-			m.WriteString("MOESHIRO")
-			cond.Skipshort = true
-			cond.Temporary = "S"
-		}
-		if _, ok := argdict["SEKISETSU"]; ok {
-			m.WriteString("SEKISETSU")
-			cond.Skipshort = true
-			cond.Temporary = "ML"
-		}
-		if _, ok := argdict["V"]; ok {
-			argdict["VERBOSE"] = ""
-		}
-		if _, ok := argdict["VERBOSE"]; ok {
-			m.WriteString("VERBOSE")
-			cond.Verbose = true
-		}
-		if _, ok := argdict["TORSION"]; ok {
-			m.WriteString("TORSION")
-			cond.RCTorsion = true
+		cond, summary, err := applySrcalConditionOptions(nil, argdict, false)
+		if err != nil {
+			return err
 		}
 		if err := frame.sectionRateCalculation(otp, "L", "X", "X", "Y", "Y", -1.0, cond, func(path string) { reportCommandFile(stw, path) }); err != nil {
 			return err
 		}
-		return Message(m.String())
+		return Message(summary)
+	case "tst":
+		if usage {
+			return Usage(tstUsage)
+		}
+		out, err := tstCommand(stw, args, argdict, input, pipe, openArtifact)
+		if pipe {
+			sender = out
+		}
+		return err
 	case "srcalangle":
 		if usage {
 			return Usage(":srcalangle {-angle=0[deg]} {-fact=1.0}")
