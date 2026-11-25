@@ -57,18 +57,24 @@ func copyPlasticMaterial(s *plasticMaterialState) *plasticMaterialState {
 	return &c
 }
 
-// Material yielding is not a connection release. Use the input connection
-// definitions when condensing elastic springs and hinges for the material law.
+// inputBond recovers the physical connection behind a material yield marker.
+func (elem *Elem) inputBond(i int) *Sect {
+	if i < len(elem.plasticBonds) && elem.plasticBonds[i] != nil {
+		return elem.plasticBonds[i]
+	}
+	b := elem.Bonds[i]
+	if b != nil && b.Num < 0 {
+		b = b.Snapshot()
+		b.Num = 0
+	}
+	return b
+}
+
 func (elem *Elem) plasticConnection() *Elem {
 	c := *elem
-	c.Bonds = append([]*Sect(nil), elem.Bonds...)
-	for i, b := range c.Bonds {
-		if i < len(elem.plasticBonds) && elem.plasticBonds[i] != nil {
-			c.Bonds[i] = elem.plasticBonds[i]
-		} else if b.Num < 0 {
-			c.Bonds[i] = b.Snapshot()
-			c.Bonds[i].Num = 0
-		}
+	c.Bonds = make([]*Sect, len(elem.Bonds))
+	for i := range c.Bonds {
+		c.Bonds[i] = elem.inputBond(i)
 	}
 	return &c
 }

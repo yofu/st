@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -221,7 +222,17 @@ func (frame *Frame) SaveInput(fn string) error {
 	return nil
 }
 
-func (frame *Frame) Initialise() {
+func (frame *Frame) Initialise() error {
+	// Recover all end forces on the input geometry before discarding any
+	// committed state. An invalid connection must leave the frame intact.
+	initial := make([][]float64, len(frame.Elems))
+	for i, el := range frame.Elems {
+		q, err := el.condensedCMQ(true)
+		if err != nil {
+			return err
+		}
+		initial[i] = q
+	}
 	frame.plasticLoad, frame.plasticLoadValid = 0, false
 	frame.loading = nil
 	frame.transient = nil
@@ -235,14 +246,13 @@ func (frame *Frame) Initialise() {
 			n.Reaction[i] = 0.0
 		}
 	}
-	for _, el := range frame.Elems {
+	for i, el := range frame.Elems {
 		el.resetPlasticState()
-		for i := 0; i < 12; i++ {
-			el.Stress[i] = el.Cmq[i]
-		}
+		copy(el.Stress, initial[i])
 		el.Energy = 0.0
 		el.Energyb = 0.0
 	}
+	return nil
 }
 
 func (frame *Frame) SaveState() *FrameState {
@@ -323,6 +333,32 @@ func (frame *Frame) CheckSingularNode(e error) error {
 	return e
 }
 
+func (elem *Elem) condensedCMQ(reference bool) ([]float64, error) {
+	if !slices.ContainsFunc(elem.Cmq, func(v float64) bool { return v != 0 }) {
+		return make([]float64, 12), nil
+	}
+	if reference {
+		e := linearElementGeometry(elem, true)
+		elem = &e
+	}
+	_, q, err := plasticElasticLoads(elem)
+	if err != nil {
+		return nil, err
+	}
+	return q, nil
+}
+
+// InitialiseStress starts a member without saved stresses from its input CMQ.
+// Incremental recovery and restoration of committed states bypass this step.
+func (elem *Elem) InitialiseStress() error {
+	q, err := elem.condensedCMQ(true)
+	if err != nil {
+		return err
+	}
+	copy(elem.Stress, q)
+	return nil
+}
+
 func (frame *Frame) AssemGlobalVector(safety float64) (int, []bool, []float64, error) {
 	var err error
 	var tmatrix [][]float64
@@ -333,7 +369,13 @@ func (frame *Frame) AssemGlobalVector(safety float64) (int, []bool, []float64, e
 		if err != nil {
 			return 0, nil, nil, err
 		}
-		gvct = el.AssemCMQ(tmatrix, gvct, safety)
+		q, err := el.condensedCMQ(false)
+		if err != nil {
+			return 0, nil, nil, err
+		}
+		loaded := *el
+		loaded.Cmq = q
+		gvct = loaded.AssemCMQ(tmatrix, gvct, safety)
 	}
 	csize, conf, vec := frame.AssemConf(gvct, safety)
 	return csize, conf, vec, nil
@@ -346,10 +388,10 @@ func (frame *Frame) AssemGlobalMatrix(matf func(*Elem) ([][]float64, error), vec
 			return stiff, err
 		}
 		return el.ModifyHinge(stiff)
-	}, vecf, safety, false)
+	}, vecf, safety)
 }
 
-func (frame *Frame) assemGlobalMatrix(matf func(*Elem) ([][]float64, error), vecf func(*Elem, [][]float64, []float64, float64) []float64, safety float64, material bool) (*matrix.COOMatrix, []float64, error) {
+func (frame *Frame) assemGlobalMatrix(matf func(*Elem) ([][]float64, error), vecf func(*Elem, [][]float64, []float64, float64) []float64, safety float64) (*matrix.COOMatrix, []float64, error) {
 	var err error
 	var tmatrix, stiff [][]float64
 	size := 6 * len(frame.Nodes)
@@ -367,10 +409,6 @@ func (frame *Frame) assemGlobalMatrix(matf func(*Elem) ([][]float64, error), vec
 		if stiff == nil {
 			continue
 		}
-		connection := el
-		if material {
-			connection = el.plasticConnection()
-		}
 		stiff = Transformation(stiff, tmatrix)
 		for n1 := 0; n1 < 2; n1++ {
 			for i := 0; i < 6; i++ {
@@ -386,8 +424,13 @@ func (frame *Frame) assemGlobalMatrix(matf func(*Elem) ([][]float64, error), vec
 				}
 			}
 		}
-		connection.ModifyCMQ()
-		gvct = vecf(connection, tmatrix, gvct, safety)
+		q, err := el.condensedCMQ(false)
+		if err != nil {
+			return nil, nil, err
+		}
+		loaded := *el
+		loaded.Cmq = q
+		gvct = vecf(&loaded, tmatrix, gvct, safety)
 	}
 	return gmtx, gvct, nil
 }
@@ -414,12 +457,19 @@ func (frame *Frame) AssemMassMatrix() *matrix.COOMatrix {
 
 func (frame *Frame) KE(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
 	matf := func(elem *Elem) ([][]float64, error) {
-		return elem.StiffMatrix()
+		k, err := elem.StiffMatrix()
+		if err != nil {
+			return nil, err
+		}
+		if err := elem.condenseConnections(k, nil); err != nil {
+			return nil, err
+		}
+		return k, nil
 	}
 	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
 		return elem.AssemCMQ(tmatrix, gvct, safety)
 	}
-	return frame.AssemGlobalMatrix(matf, vecf, safety)
+	return frame.assemGlobalMatrix(matf, vecf, safety)
 }
 
 func (frame *Frame) KP(safety float64) (*matrix.COOMatrix, []float64, error) {
@@ -437,7 +487,7 @@ func (frame *Frame) KP(safety float64) (*matrix.COOMatrix, []float64, error) {
 	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
 		return elem.AssemCMQ(tmatrix, gvct, safety)
 	}
-	return frame.assemGlobalMatrix(matf, vecf, safety, true)
+	return frame.assemGlobalMatrix(matf, vecf, safety)
 }
 
 func (frame *Frame) KG(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
@@ -449,7 +499,7 @@ func (frame *Frame) KG(safety float64) (*matrix.COOMatrix, []float64, error) { /
 		gvct = elem.ModifyTrueForce(tmatrix, gvct)
 		return gvct
 	}
-	return frame.assemGlobalMatrix(matf, vecf, safety, false)
+	return frame.assemGlobalMatrix(matf, vecf, safety)
 }
 
 func (frame *Frame) KEKG(safety float64) (*matrix.COOMatrix, []float64, error) { // TODO: UNDER CONSTRUCTION
@@ -465,16 +515,16 @@ func (frame *Frame) KEKG(safety float64) (*matrix.COOMatrix, []float64, error) {
 		if err != nil {
 			return nil, err
 		}
-		stiff := make([][]float64, 12)
-		for i := 0; i < 12; i++ {
-			stiff[i] = make([]float64, 12)
+		// Use KG's elastic displacement recovery before summing the operators.
+		if err := elem.condenseConnectionOperators(estiff, nil, gstiff); err != nil {
+			return nil, err
 		}
-		for i := 0; i < 12; i++ {
-			for j := 0; j < 12; j++ {
-				stiff[i][j] = estiff[i][j] + gstiff[i][j]
+		for i := range estiff {
+			for j := range estiff[i] {
+				estiff[i][j] += gstiff[i][j]
 			}
 		}
-		return stiff, nil
+		return estiff, nil
 	}
 	vecf := func(elem *Elem, tmatrix [][]float64, gvct []float64, safety float64) []float64 {
 		if !elem.IsValid {
@@ -484,7 +534,7 @@ func (frame *Frame) KEKG(safety float64) (*matrix.COOMatrix, []float64, error) {
 		gvct = elem.ModifyTrueForce(tmatrix, gvct)
 		return gvct
 	}
-	return frame.AssemGlobalMatrix(matf, vecf, safety)
+	return frame.assemGlobalMatrix(matf, vecf, safety)
 }
 
 func (frame *Frame) AssemConf(gvct []float64, safety float64) (int, []bool, []float64) {
@@ -867,8 +917,7 @@ func (frame *Frame) notifyLap(lap int) {
 // solver cannot be continued here.
 func (frame *Frame) beginLinearIteration(name string, init bool) error {
 	if init {
-		frame.Initialise()
-		return nil
+		return frame.Initialise()
 	}
 	if frame.geometry != nil || frame.transient != nil || (frame.loading != nil && frame.loading.steps != 0) {
 		return fmt.Errorf("%s: saved state requires its original nonlinear solver", name)
@@ -1114,7 +1163,9 @@ func (frame *Frame) Bclng001WithDiagnostics(otp string, init bool, n int, eps fl
 	}
 	defer frame.RestoreState(frame.SaveState())
 	if init {
-		frame.Initialise()
+		if err := frame.Initialise(); err != nil {
+			return err
+		}
 	}
 	start := time.Now()
 	laptime := func(message string) {

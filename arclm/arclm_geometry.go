@@ -584,7 +584,9 @@ func (a *geometryAnalysis) setup() (float64, error) {
 		s.axes[m] = e.initial
 	}
 	if c.init {
-		f.Initialise()
+		if err := f.Initialise(); err != nil {
+			return 0, err
+		}
 	} else {
 		if f.transient != nil {
 			return 0, fmt.Errorf("geometric continuation requires a static state")

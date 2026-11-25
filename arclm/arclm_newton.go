@@ -675,7 +675,9 @@ func (frame *Frame) arclm101Newton(cancel context.CancelFunc, cond *AnalysisCond
 		entry = frame.SaveState()
 	}
 	if cond.init {
-		frame.Initialise()
+		if err := frame.Initialise(); err != nil {
+			return err
+		}
 		// Fixed-end forces are load dependent, not a permanent initial stress.
 		for _, elem := range frame.Elems {
 			for i := range elem.Stress {

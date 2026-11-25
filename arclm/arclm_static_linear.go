@@ -324,7 +324,9 @@ func (f *Frame) staticLinear(cancel context.CancelFunc, c *AnalysisCondition) er
 	}()
 	from := c.start
 	if c.init {
-		f.Initialise()
+		if err := f.Initialise(); err != nil {
+			return err
+		}
 	} else {
 		if f.geometry != nil || f.transient != nil || (f.loading != nil && f.loading.steps != 0) {
 			return fmt.Errorf("StaticAnalysis: saved state requires its original nonlinear solver")

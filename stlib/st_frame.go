@@ -5378,10 +5378,11 @@ func (frame *Frame) ExtractArclm(fn string) error {
 					} else {
 						ae.Stress[j] = stress[el.Enod[1].Num][j-6]
 					}
-				} else {
-					if p == "L" {
-						ae.Stress[j] = ae.Cmq[j]
-					}
+				}
+			}
+			if p == "L" && stress == nil {
+				if err := ae.InitialiseStress(); err != nil {
+					return err
 				}
 			}
 			af.Elems[ind] = ae

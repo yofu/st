@@ -12,7 +12,8 @@ func (elem *Elem) condenseConnections(k [][]float64, q []float64) error {
 // g is projected through the elastic displacement recovery, one rotation at
 // a time. A geometric operator alone need not have a usable release pivot.
 func (elem *Elem) condenseConnectionOperators(k [][]float64, q []float64, g [][]float64) error {
-	for j, bond := range elem.Bonds {
+	for j := range elem.Bonds {
+		bond := elem.inputBond(j)
 		if bond == nil {
 			return fmt.Errorf("ELEM %d: missing connection at DOF %d", elem.Num, j)
 		}
@@ -107,8 +108,11 @@ func (elem *Elem) bucklingGeometricStiffness() ([][]float64, error) {
 	// contributions. Condensing KG by itself would divide by a geometric
 	// pivot that can vanish as the axial force tends to zero.
 	released := false
-	for _, bond := range elem.Bonds {
-		released = released || bond.Num != 0
+	for j := range elem.Bonds {
+		if b := elem.inputBond(j); b == nil || b.Num != 0 {
+			released = true
+			break
+		}
 	}
 	if !released {
 		return g, nil

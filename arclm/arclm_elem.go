@@ -409,9 +409,8 @@ func ParseArclmElem(words []string, sects []*Sect, nodes []*Node) (*Elem, error)
 			return el, err
 		}
 		el.Cmq[i] = val
-		el.Stress[i] = val
 	}
-	return el, nil
+	return el, el.InitialiseStress()
 }
 
 func (elem *Elem) Length0() float64 {
@@ -715,7 +714,7 @@ func (elem *Elem) PlasticMatrix(estiff [][]float64) ([][]float64, error) {
 	if elem.material != nil && elem.material.tangent != nil {
 		return copyPlasticMatrix(elem.material.tangent), nil
 	}
-	return elem.plasticConnection().ModifyHinge(estiff)
+	return elem.ModifyHinge(estiff)
 }
 
 func (elem *Elem) PlasticMatrix2(estiff [][]float64) ([][]float64, error) { // ModifyHingeを参考にした版。valが回転剛性
@@ -849,71 +848,39 @@ func (elem *Elem) GeoStiffMatrix() ([][]float64, error) {
 	return estiff, nil
 }
 
+// ModifyHinge condenses a supplied elastic matrix without changing the caller's matrix.
 func (elem *Elem) ModifyHinge(estiff [][]float64) ([][]float64, error) {
-	h := make([][]float64, 12)
-	rtn := make([][]float64, 12)
-	for i := 0; i < 12; i++ {
-		h[i] = make([]float64, 12)
-		rtn[i] = make([]float64, 12)
-		for j := 0; j < 12; j++ {
-			rtn[i][j] = estiff[i][j]
-		}
+	k := copyPlasticMatrix(estiff)
+	if err := elem.condenseConnections(k, nil); err != nil {
+		return nil, err
 	}
-	for n := 0; n < 2; n++ {
-		for i := 0; i < 6; i++ {
-			// if elem.Bonds[6*n+i] != Rigid {
-			if elem.Bonds[6*n+i].Num != 0 {
-				kk := 6*n + i
-				bond := elem.Bonds[kk]
-				if rtn[kk][kk] == 0 {
-					// A pin on an already free rotation has nothing to eliminate.
-					uncoupledPin := bond.Num == 1
-					for j := range rtn {
-						uncoupledPin = uncoupledPin && rtn[kk][j] == 0 && rtn[j][kk] == 0
-					}
-					if uncoupledPin {
-						continue
-					}
-					return nil, fmt.Errorf("Modifyhinge: ELEM %d: Matrix Singular", elem.Num)
-				}
-				var k1, k2 float64
-				if bond.Num != 1 {
-					l := elem.Length()
-					k1 = (bond.Value[1] * l) / (4.0 * elem.Sect.E * elem.Sect.Value[1])
-					k2 = (bond.Value[2] * l) / (4.0 * elem.Sect.E * elem.Sect.Value[2])
-				}
-				for ii := 0; ii < 12; ii++ {
-					for jj := 0; jj < 12; jj++ {
-						if ii == 2 || ii == 4 || ii == 8 || ii == 10 {
-							h[ii][jj] = -rtn[ii][kk] / rtn[kk][kk] * rtn[kk][jj] * 1.0 / (k1 + 1.0)
-						} else {
-							h[ii][jj] = -rtn[ii][kk] / rtn[kk][kk] * rtn[kk][jj] * 1.0 / (k2 + 1.0)
-						}
-					}
-				}
-				for ii := 0; ii < 12; ii++ {
-					for jj := 0; jj < 12; jj++ {
-						rtn[ii][jj] += h[ii][jj]
-					}
-				}
-			}
-		}
-	}
-	return rtn, nil
+	return k, nil
 }
 
 // TODO: rotational spring
 func (elem *Elem) ModifyCMQ() {
 	l := elem.Length()
 	if elem.Bonds[4].Num == 1 && elem.Bonds[10].Num == 1 {
+		shift := (elem.Cmq[4] + elem.Cmq[10]) / l
+		elem.Cmq[2] += shift
+		elem.Cmq[8] -= shift
 		elem.Cmq[4] = 0.0
 		elem.Cmq[10] = 0.0
+		stressShift := (elem.Stress[4] + elem.Stress[10]) / l
+		elem.Stress[2] += stressShift
+		elem.Stress[8] -= stressShift
 		elem.Stress[4] = 0.0
 		elem.Stress[10] = 0.0
 	}
 	if elem.Bonds[5].Num == 1 && elem.Bonds[11].Num == 1 {
+		shift := (elem.Cmq[5] + elem.Cmq[11]) / l
+		elem.Cmq[1] -= shift
+		elem.Cmq[7] += shift
 		elem.Cmq[5] = 0.0
 		elem.Cmq[11] = 0.0
+		stressShift := (elem.Stress[5] + elem.Stress[11]) / l
+		elem.Stress[1] -= stressShift
+		elem.Stress[7] += stressShift
 		elem.Stress[5] = 0.0
 		elem.Stress[11] = 0.0
 	}

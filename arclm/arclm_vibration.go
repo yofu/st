@@ -63,7 +63,9 @@ func (frame *Frame) VibrationalEigenAnalysisWithDiagnostics(otp string, init boo
 	}
 	defer frame.RestoreState(frame.SaveState())
 	if init {
-		frame.Initialise()
+		if err := frame.Initialise(); err != nil {
+			return err
+		}
 	}
 	started := time.Now()
 	measure := func(phase, backend string, rank int, fn func() error) error {

@@ -76,6 +76,48 @@ func TestExtractArclmRegeneratesWeightFromCurrentInput(t *testing.T) {
 	}
 }
 
+func TestExtractAndReadInitialCMQStress(t *testing.T) {
+	f := yieldEndInputFrame()
+	f.Path = filepath.Join(t.TempDir(), "cmq.inp")
+	f.Ai.Nfloor, f.Ai.Boundary = 2, []float64{-1, .5, 2}
+	f.Ai.BetaX, f.Ai.BetaY = []float64{1}, []float64{1}
+	s, err := f.ParseSect(strings.Fields(yieldEndTestSection), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.AddNode(0, 0, 0)
+	a, b := f.AddNode(0, 0, 1), f.AddNode(6, 0, 1)
+	e := f.AddLineElem(103, []*Node{a, b}, s, GIRDER)
+	e.Bonds[5], e.Bonds[11] = Pin, Pin
+	e.Cmq[1], e.Cmq[5], e.Cmq[7], e.Cmq[11] = 2.7, 3.6, 6.3, -5.4
+	if err := f.ExtractArclm(Ce(f.Path, ".wgt")); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.SaveAsArclm(f.Path); err != nil {
+		t.Fatal(err)
+	}
+	loaded := arclm.NewFrame()
+	if err := loaded.ReadInput(f.DataFileName["L"]); err != nil {
+		t.Fatal(err)
+	}
+	for _, af := range []*arclm.Frame{f.Arclms["L"], loaded} {
+		el := af.Elems[0]
+		for j, want := range map[int]float64{1: 3, 5: 0, 7: 6, 11: 0} {
+			if math.Abs(el.Cmq[j]-e.Cmq[j]) > 1e-12 || math.Abs(el.Stress[j]-want) > 1e-12 {
+				t.Fatalf("DOF %d: input CMQ %g, initial stress %g, want %g and %g", j, el.Cmq[j], el.Stress[j], e.Cmq[j], want)
+			}
+		}
+	}
+	e.Stress["L"] = map[int][]float64{a.Num: {0, 1.25, 0, 0, 0, 0}, b.Num: {0, 2.5, 0, 0, 0, 0}}
+	if err := f.ExtractArclm(Ce(f.Path, ".wgt")); err != nil {
+		t.Fatal(err)
+	}
+	stress := f.Arclms["L"].Elems[0].Stress
+	if stress[1] != 1.25 || stress[7] != 2.5 {
+		t.Fatalf("extraction replaced saved stresses: %v", stress)
+	}
+}
+
 func TestStaticGravityReactionIncludesCMQAndNodalLoad(t *testing.T) {
 	f := yieldEndInputFrame()
 	dir := t.TempDir()
