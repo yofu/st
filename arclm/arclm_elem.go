@@ -445,7 +445,12 @@ func (elem *Elem) Direction(normalize bool) []float64 {
 }
 
 func (elem *Elem) PrincipalAxis(cang float64) ([]float64, []float64, error) {
-	d := elem.Direction(true)
+	return PrincipalAxes(elem.Direction(true), cang)
+}
+
+// PrincipalAxes returns the local y and z axes for a unit i-to-j direction
+// and code angle. Load generation uses the same axes as TransMatrix.
+func PrincipalAxes(d []float64, cang float64) ([]float64, []float64, error) {
 	c := math.Cos(cang)
 	s := math.Sin(cang)
 	strong := make([]float64, 3)
@@ -461,7 +466,7 @@ func (elem *Elem) PrincipalAxis(cang float64) ([]float64, []float64, error) {
 	}
 	dl1 = math.Sqrt(dl1)
 	dl2 = math.Sqrt(dl2)
-	if dl1 == 0 {
+	if !(dl1 > 0) {
 		return strong, weak, errors.New("PrincipalAxis: Length = 0")
 	} else if dl2 == 0 {
 		strong = []float64{-s, c, 0.0}

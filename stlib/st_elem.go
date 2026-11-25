@@ -1103,6 +1103,10 @@ func (elem *Elem) ConvertPerpendicularLoad(ind int, direction int) float64 {
 }
 
 func (elem *Elem) Distribute() error {
+	return elem.distribute(nil)
+}
+
+func (elem *Elem) distribute(gravity map[*Elem]Cmq) error {
 	var err error
 	w := elem.Sect.Weight() // tf/m or tf/m2
 	switch elem.Etype {
@@ -1113,10 +1117,6 @@ func (elem *Elem) Distribute() error {
 		els, factor, err := elem.PlateDivision(false)
 		if err != nil {
 			return err
-		}
-		area := 0.0
-		for _, el := range els {
-			area += el.Area()
 		}
 		for _, el := range els {
 			c := make([]*Cmq, 3)
@@ -1137,18 +1137,11 @@ func (elem *Elem) Distribute() error {
 				}
 			}
 			if edge != nil {
+				invert := el.Enod[0].Num != edge.Enod[0].Num
 				if ok, _ := edge.IsEdgeOfWall(); ok {
-					if el.Enod[0].Num == edge.Enod[0].Num {
-						edge.DistributeWeight(c, false)
-					} else {
-						edge.DistributeWeight(c, true)
-					}
-				} else {
-					if el.Enod[0].Num == edge.Enod[0].Num {
-						edge.DistributeGirder(c, false)
-					} else {
-						edge.DistributeGirder(c, true)
-					}
+					edge.DistributeWeight(c, invert)
+				} else if err := edge.distributeGirder(c, invert, gravity); err != nil {
+					return err
 				}
 			} else {
 				el.DistributeWeight(c, false)
@@ -1189,7 +1182,7 @@ func (elem *Elem) Distribute() error {
 		if ok, _ := elem.IsEdgeOfWall(); ok {
 			elem.DistributeWeight(c, false)
 		} else {
-			elem.DistributeGirder(c, false)
+			return elem.distributeGirder(c, false, gravity)
 		}
 		return nil
 	case COLUMN, BRACE:
@@ -1220,19 +1213,48 @@ func (elem *Elem) DistributeWeight(c []*Cmq, invert bool) {
 	}
 }
 
-func (elem *Elem) DistributeGirder(c []*Cmq, invert bool) {
-	if invert {
-		elem.Cmq[2] += c[1].Qj0
-		elem.Cmq[4] -= c[1].Cj
-		elem.Cmq[8] += c[1].Qi0
-		elem.Cmq[10] -= c[1].Ci
-	} else {
-		elem.Cmq[2] += c[1].Qi0
-		elem.Cmq[4] += c[1].Ci
-		elem.Cmq[8] += c[1].Qj0
-		elem.Cmq[10] += c[1].Cj
+func (elem *Elem) DistributeGirder(c []*Cmq, invert bool) error {
+	return elem.distributeGirder(c, invert, nil)
+}
+
+func (elem *Elem) distributeGirder(c []*Cmq, invert bool, gravity map[*Elem]Cmq) error {
+	load := gravity[elem]
+	load.Add(c[1], invert)
+	if gravity != nil {
+		gravity[elem] = load
+	} else if err := elem.addGravityCMQ(elem.Cmq, load); err != nil {
+		return err
 	}
 	elem.DistributeWeight(c, invert)
+	return nil
+}
+
+// addGravityCMQ adds the fixed-end actions opposing a downward gravity load.
+// Qi0 and Qj0 are the simply supported shares of the original vertical load.
+func (elem *Elem) addGravityCMQ(cmq []float64, load Cmq) error {
+	length := elem.Length()
+	if length == 0 {
+		return fmt.Errorf("gravity load: ELEM %d has zero length", elem.Num)
+	}
+	x := elem.Direction(true)
+	y, z, err := arclm.PrincipalAxes(x, elem.Cang)
+	if err != nil {
+		return fmt.Errorf("gravity load: ELEM %d: %w", elem.Num, err)
+	}
+	// Only the transverse fixed-end shears balance the end moments.
+	shift := (load.Ci + load.Cj) / length
+	vertical := [2]float64{load.Qi0, load.Qj0}
+	shear := [2]float64{load.Qi0 - shift, load.Qj0 + shift}
+	moment := [2]float64{load.Ci, load.Cj}
+	for i, weight := range vertical {
+		end := cmq[6*i:]
+		end[0] += x[2] * weight
+		end[1] += y[2] * shear[i]
+		end[2] += z[2] * shear[i]
+		end[4] += z[2] * moment[i]
+		end[5] -= y[2] * moment[i]
+	}
+	return nil
 }
 
 func (elem *Elem) IsEdgeOfWall() (bool, error) {

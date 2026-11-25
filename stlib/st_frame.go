@@ -5153,28 +5153,13 @@ func (frame *Frame) refreshAnalysisBrace(old, next *Elem) *Elem {
 }
 
 func (frame *Frame) ExtractArclm(fn string) error {
-	cmqs := make(map[int][]float64)
-	for _, el := range frame.Elems {
-		if el.IsLineElem() && el.Etype <= TRUSS {
-			cmqs[el.Num] = make([]float64, 12)
-			for i := 0; i < 12; i++ {
-				cmqs[el.Num][i] = el.Cmq[i]
-			}
-		}
-	}
 	defer func() {
 		for _, n := range frame.Nodes {
 			copy(n.Weight, n.ManualWeight[:])
 		}
-		for _, el := range frame.Elems {
-			if el.IsLineElem() && el.Etype <= TRUSS {
-				for i := 0; i < 12; i++ {
-					el.Cmq[i] = cmqs[el.Num][i]
-				}
-			}
-		}
 	}()
-	err := frame.WeightDistribution(fn)
+	gravity := make(map[*Elem]Cmq)
+	err := frame.weightDistribution(fn, gravity)
 	if err != nil {
 		return err
 	}
@@ -5367,15 +5352,17 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				stress = s
 			}
 			if p == "L" {
-				// WeightDistribution adds girder end shears to both Weight and
-				// CMQ. Remove that duplicate from the nodal gravity load, while
-				// preserving any fixed-end forces supplied in the input model.
-				if original := cmqs[el.Num]; original != nil {
+				copy(ae.Cmq, el.Cmq)
+				if load, ok := gravity[el]; ok {
+					if err := el.addGravityCMQ(ae.Cmq, load); err != nil {
+						return err
+					}
+					// The active girder carries these two vertical weight shares
+					// through CMQ. Its earthquake mass still includes both.
+					weight := [2]float64{load.Qi0, load.Qj0}
 					for k, en := range ae.Enod {
-						dof := 2 + 6*k
-						shear := el.Cmq[dof] - original[dof]
-						en.Force[2] += shear
-						el.Enod[k].Force[p][2] += shear
+						en.Force[2] += weight[k]
+						el.Enod[k].Force[p][2] += weight[k]
 					}
 				}
 			}
@@ -5385,9 +5372,6 @@ func (frame *Frame) ExtractArclm(fn string) error {
 				} else {
 					ae.Bonds[j] = af.Sects[arclmsects[el.Bonds[j].Num]].Snapshot()
 				}
-				if p == "L" {
-					ae.Cmq[j] = el.Cmq[j]
-				}
 				if stress != nil {
 					if j < 6 {
 						ae.Stress[j] = stress[el.Enod[0].Num][j]
@@ -5396,7 +5380,7 @@ func (frame *Frame) ExtractArclm(fn string) error {
 					}
 				} else {
 					if p == "L" {
-						ae.Stress[j] = el.Cmq[j]
+						ae.Stress[j] = ae.Cmq[j]
 					}
 				}
 			}
@@ -5410,6 +5394,12 @@ func (frame *Frame) ExtractArclm(fn string) error {
 }
 
 func (frame *Frame) WeightDistribution(fn string) error {
+	// Reporting must not turn generated gravity loads into input CMQ for
+	// a subsequent analysis.
+	return frame.weightDistribution(fn, make(map[*Elem]Cmq))
+}
+
+func (frame *Frame) weightDistribution(fn string, gravity map[*Elem]Cmq) error {
 	var otp bytes.Buffer
 	var tex32 bytes.Buffer
 	var tex33 bytes.Buffer
@@ -5435,7 +5425,7 @@ func (frame *Frame) WeightDistribution(fn string) error {
 		if el.Etype == WBRACE || el.Etype == SBRACE {
 			continue // the parent panel already supplies its weight and quantity
 		}
-		err := el.Distribute()
+		err := el.distribute(gravity)
 		if err != nil {
 			return err
 		}
