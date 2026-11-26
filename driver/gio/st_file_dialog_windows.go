@@ -51,6 +51,14 @@ func nativeDialogsSupported() bool { return true }
 func (w *Window) platformWindowEvent(e event.Event) {
 	if e, ok := e.(app.Win32ViewEvent); ok {
 		w.nativeOwner.Store(e.HWND)
+		if e.HWND != 0 && w.window != nil {
+			win, hwnd := w.window, e.HWND
+			// Run asynchronously so we do not deadlock while Win32ViewEvent is
+			// still being flushed before Gio's Win32 message loop starts.
+			go win.Run(func() {
+				installIMEFixSubclass(hwnd)
+			})
+		}
 	}
 }
 

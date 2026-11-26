@@ -25,6 +25,23 @@ import (
 	"github.com/yofu/abbrev"
 )
 
+// Classic IUP palette (matching driver/iup/st_window.go).
+var (
+	iupBgLabel    = color.NRGBA{R: 212, G: 208, B: 200, A: 255}
+	iupBgHistory  = color.NRGBA{R: 220, G: 220, B: 220, A: 255}
+	iupBgCommand  = color.NRGBA{R: 191, G: 191, B: 191, A: 255}
+	iupBgField    = color.NRGBA{R: 212, G: 208, B: 200, A: 255}
+	iupBgFieldAct = color.NRGBA{R: 226, G: 224, B: 218, A: 255}
+	iupBgTabInact = color.NRGBA{R: 196, G: 193, B: 186, A: 255}
+	iupBgButton   = color.NRGBA{R: 204, G: 200, B: 193, A: 255}
+	iupBgMenu     = color.NRGBA{R: 224, G: 220, B: 213, A: 255}
+	iupFgLabel    = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
+	iupFgCommand  = color.NRGBA{R: 0, G: 127, B: 31, A: 255}
+	iupFgSection  = color.NRGBA{R: 204, G: 51, B: 0, A: 255}
+	iupFgOff      = color.NRGBA{R: 128, G: 128, B: 128, A: 255}
+	iupBorder     = color.NRGBA{R: 145, G: 142, B: 136, A: 255}
+)
+
 // UI widgets belong to the frame goroutine. Logs, progress and questions may
 // arrive from analysis/command goroutines and are protected separately.
 type userInterface struct {
@@ -59,6 +76,22 @@ type userInterface struct {
 	values               map[string]string
 	flags                map[string]bool
 	properties           []string
+	propNodeDetails      []string
+	propElemCount        int
+	propLineCount        int
+	propPlateCount       int
+	propUnlocked         int
+	propEditable         int
+	propFixedBrace       int
+	propEditLines        int
+	propEditPlates       int
+	propSelectionKey     string
+	propSectLabel        string
+	propSectMixed        bool
+	propEtypeMixed       bool
+	propCommonEtype      int
+	sectionPickerOpen    bool
+	sectionPickerList    widget.List
 	sections             []int
 	tab                  int
 	menu                 int
@@ -76,6 +109,7 @@ type userInterface struct {
 	selectionEnd         f32.Point
 	cursorPosition       f32.Point
 	commandTail          []f32.Point
+	historyRect          image.Rectangle
 	commandRect          image.Rectangle
 	panelRect            image.Rectangle
 	menuRect             image.Rectangle
@@ -85,6 +119,7 @@ type userInterface struct {
 	pathRequests         chan *pathDialog
 	focusCommand         bool
 	status               string
+	commandName          string
 }
 
 type uiField struct {
@@ -129,6 +164,7 @@ func newUserInterface() *userInterface {
 		u.panelList[i].Axis = layout.Vertical
 	}
 	u.menuList.Axis = layout.Vertical
+	u.sectionPickerList.Axis = layout.Vertical
 	return u
 }
 
@@ -279,17 +315,53 @@ func (w *Window) smallButton(gtx layout.Context, id, text string, action func())
 		w.QueueRedrawAll()
 	}
 	style := material.Button(w.Theme, b, text)
-	style.TextSize = unit.Sp(12)
-	style.Inset = layout.Inset{Top: unit.Dp(5), Bottom: unit.Dp(5), Left: unit.Dp(9), Right: unit.Dp(9)}
-	style.Background = color.NRGBA{R: 230, G: 234, B: 240, A: 255}
-	style.Color = color.NRGBA{R: 25, G: 35, B: 50, A: 255}
+	style.TextSize = unit.Sp(11)
+	style.CornerRadius = unit.Dp(0)
+	style.Inset = layout.Inset{Top: unit.Dp(3), Bottom: unit.Dp(3), Left: unit.Dp(7), Right: unit.Dp(7)}
+	style.Background = iupBgButton
+	style.Color = iupFgLabel
+	return widget.Border{Color: iupBorder, Width: unit.Dp(1)}.Layout(gtx, style.Layout)
+}
+
+func (w *Window) flatButton(gtx layout.Context, id, text string, bg, fg color.NRGBA, inset layout.Inset, action func()) layout.Dimensions {
+	b := w.ui.button(id)
+	for b.Clicked(gtx) {
+		action()
+		w.QueueRedrawAll()
+	}
+	style := material.Button(w.Theme, b, text)
+	style.TextSize = unit.Sp(11)
+	style.CornerRadius = unit.Dp(0)
+	style.Inset = inset
+	style.Background = bg
+	style.Color = fg
 	return style.Layout(gtx)
 }
 
 func (w *Window) uiLabel(gtx layout.Context, text string) layout.Dimensions {
 	s := material.Body2(w.Theme, text)
-	s.TextSize = unit.Sp(12)
+	s.TextSize = unit.Sp(11)
+	s.Color = iupFgLabel
 	return s.Layout(gtx)
+}
+
+func (w *Window) setCommandName(name string) {
+	w.ui.mu.Lock()
+	w.ui.commandName = name
+	w.ui.mu.Unlock()
+}
+
+func (w *Window) currentModeName() string {
+	if w.interaction.Load() == nil {
+		return "SELECT"
+	}
+	w.ui.mu.Lock()
+	name := w.ui.commandName
+	w.ui.mu.Unlock()
+	if name == "" {
+		return "COMMAND"
+	}
+	return name
 }
 
 func region(gtx layout.Context, r image.Rectangle, draw layout.Widget) layout.Dimensions {
@@ -320,16 +392,18 @@ func (w *Window) Layout(gtx layout.Context) layout.Dimensions {
 	default:
 	}
 	size := gtx.Constraints.Max
-	paint.Fill(gtx.Ops, color.NRGBA{R: 240, G: 243, B: 247, A: 255})
-	menuH := min(gtx.Dp(34), size.Y)
-	bottomH := min(gtx.Dp(190), max(0, size.Y-menuH)/3)
-	commandH := min(gtx.Dp(36), max(0, size.Y-menuH-bottomH))
-	statusH := min(gtx.Dp(24), max(0, size.Y-menuH-bottomH-commandH))
-	panelW := min(gtx.Dp(290), size.X/2)
-	bodyBottom := max(menuH, size.Y-bottomH-commandH-statusH)
-	u.canvasRect = image.Rect(0, menuH, max(0, size.X-panelW), bodyBottom)
-	u.panelRect = image.Rect(u.canvasRect.Max.X, menuH, size.X, bodyBottom)
-	u.commandRect = image.Rect(0, size.Y-statusH-commandH, size.X, size.Y-statusH)
+	paint.Fill(gtx.Ops, iupBgLabel)
+	menuH := min(gtx.Dp(26), size.Y)
+	panelW := min(gtx.Dp(236), size.X/2)
+	commandH := min(gtx.Dp(30), max(0, size.Y-menuH))
+	historyH := min(gtx.Dp(136), max(0, size.Y-menuH-commandH)/3)
+	canvasBottom := max(menuH, size.Y-historyH-commandH)
+	// Match IUP layout: MenuBar on top, full-height SideBar on the left,
+	// and Canvas -> History -> [Mode | Command | Coord/Status] stacked on the right.
+	u.panelRect = image.Rect(0, menuH, panelW, size.Y)
+	u.canvasRect = image.Rect(panelW, menuH, size.X, canvasBottom)
+	u.historyRect = image.Rect(panelW, canvasBottom, size.X, size.Y-commandH)
+	u.commandRect = image.Rect(panelW, size.Y-commandH, size.X, size.Y)
 	// Command input has explicit filters; focused field editors keep their keys.
 	w.interactiveKeyboard(gtx)
 	w.keyboard(gtx)
@@ -369,15 +443,21 @@ func (w *Window) Layout(gtx layout.Context) layout.Dimensions {
 		// Like IUP's front-canvas rectangle, this is independent of model data
 		// and is repainted even while the command worker holds modelMu.
 		w.drawCanvasOverlay(c)
+		// Subtle border around canvas matching IUP's BORDER=YES.
+		widget.Border{Color: iupBorder, Width: unit.Dp(1)}.Layout(c, func(c layout.Context) layout.Dimensions {
+			return layout.Dimensions{Size: c.Constraints.Max}
+		})
 		return layout.Dimensions{Size: c.Constraints.Max}
 	})
 	w.scheduleViewAnimation(gtx)
 	region(body, u.panelRect, w.layoutPanel)
-	region(body, image.Rect(0, bodyBottom, size.X, u.commandRect.Min.Y), w.layoutHistory)
+	region(body, u.historyRect, w.layoutHistory)
 	region(body, u.commandRect, w.layoutCommand)
-	region(body, image.Rect(0, size.Y-statusH, size.X, size.Y), w.layoutStatus)
 	if u.menu >= 0 || len(u.contextItems) > 0 {
 		w.layoutMenuPopup(gtx)
+	}
+	if u.sectionPickerOpen {
+		w.layoutSectionPickerPopup(gtx)
 	}
 	u.mu.Lock()
 	question := u.question
@@ -390,6 +470,24 @@ func (w *Window) Layout(gtx layout.Context) layout.Dimensions {
 	return layout.Dimensions{Size: size}
 }
 
+func (w *Window) cycleSideBarTab(reverse bool) {
+	w.ui.sectionPickerOpen = false
+	if reverse {
+		w.ui.tab = (w.ui.tab + 2) % 3
+	} else {
+		w.ui.tab = (w.ui.tab + 1) % 3
+	}
+}
+
+func (w *Window) anyPanelFieldFocused(gtx layout.Context) bool {
+	for _, f := range w.ui.fields {
+		if f != nil && gtx.Focused(&f.ed) {
+			return true
+		}
+	}
+	return false
+}
+
 func (w *Window) keyboard(gtx layout.Context) {
 	u := w.ui
 	if u.focusCommand {
@@ -399,15 +497,25 @@ func (w *Window) keyboard(gtx layout.Context) {
 	for {
 		ev, ok := gtx.Event(
 			key.Filter{Focus: &u.command, Name: key.NameUpArrow}, key.Filter{Focus: &u.command, Name: key.NameDownArrow},
-			key.Filter{Focus: &u.command, Name: key.NameTab, Optional: key.ModShift}, key.Filter{Name: key.NameEscape},
+			key.Filter{Name: key.NameUpArrow, Required: key.ModCtrl}, key.Filter{Name: key.NameDownArrow, Required: key.ModCtrl},
+			key.Filter{Focus: &u.command, Name: key.NameTab, Optional: key.ModShift},
+			key.Filter{Name: key.NameTab, Required: key.ModCtrl, Optional: key.ModShift},
+			key.Filter{Name: key.NameEscape},
+			key.Filter{Name: key.NameDeleteForward},
 			key.Filter{Focus: &u.command, Name: ";", Optional: key.ModShift}, key.Filter{Focus: &u.command, Name: ":", Optional: key.ModShift},
 			key.Filter{Focus: &u.command, Name: key.NameSpace, Optional: key.ModShift},
 			key.Filter{Focus: &u.command, Name: "P", Required: key.ModCtrl}, key.Filter{Focus: &u.command, Name: "N", Required: key.ModCtrl},
+			key.Filter{Name: "N", Required: key.ModCtrl | key.ModShift},
 			key.Filter{Focus: &u.command, Name: "[", Required: key.ModCtrl},
-			key.Filter{Focus: &u.command, Name: "A", Required: key.ModCtrl}, key.Filter{Focus: &u.command, Name: "E", Required: key.ModCtrl}, key.Filter{Focus: &u.command, Name: "X", Required: key.ModCtrl},
+			key.Filter{Name: "A", Required: key.ModCtrl, Optional: key.ModShift},
+			key.Filter{Focus: &u.command, Name: "E", Required: key.ModCtrl}, key.Filter{Focus: &u.command, Name: "X", Required: key.ModCtrl},
+			key.Filter{Name: "D", Required: key.ModCtrl}, key.Filter{Name: "H", Required: key.ModCtrl},
+			key.Filter{Name: "F", Required: key.ModCtrl},
+			key.Filter{Name: "U", Required: key.ModCtrl, Optional: key.ModShift},
+			key.Filter{Name: "Z", Required: key.ModCtrl}, key.Filter{Name: "Y", Required: key.ModCtrl},
 			key.Filter{Name: "I", Required: key.ModCtrl}, key.Filter{Name: "M", Required: key.ModCtrl}, key.Filter{Name: "R", Required: key.ModCtrl},
 			key.Filter{Name: "O", Required: key.ModCtrl}, key.Filter{Name: "S", Required: key.ModCtrl},
-			key.Filter{Name: "L", Required: key.ModCtrl},
+			key.Filter{Name: "L", Required: key.ModCtrl, Optional: key.ModShift},
 		)
 		if !ok {
 			break
@@ -431,20 +539,66 @@ func (w *Window) keyboard(gtx layout.Context) {
 			if !strings.Contains(u.command.Text(), " ") {
 				u.spacePending = true
 			}
-		case key.NameUpArrow, "P":
+		case key.NameUpArrow:
+			if k.Modifiers&key.ModCtrl != 0 {
+				w.menuAction("next-floor")
+			} else {
+				w.browseHistory(true)
+			}
+		case "P":
 			w.browseHistory(true)
-		case key.NameDownArrow, "N":
-			w.browseHistory(false)
-		case key.NameTab:
+		case key.NameDownArrow:
+			if k.Modifiers&key.ModCtrl != 0 {
+				w.menuAction("prev-floor")
+			} else {
+				w.browseHistory(false)
+			}
+		case "N":
 			if k.Modifiers&key.ModShift != 0 {
+				w.menuAction("flip-period-sign")
+			} else {
+				w.browseHistory(false)
+			}
+		case key.NameTab:
+			if k.Modifiers&key.ModCtrl != 0 {
+				w.cycleSideBarTab(k.Modifiers&key.ModShift != 0)
+			} else if k.Modifiers&key.ModShift != 0 {
 				w.completeCommandDirection(-1)
 			} else {
 				w.completeCommand()
 			}
+		case "D":
+			w.menuAction("isolate")
+		case "H":
+			w.menuAction("hide")
+		case "F":
+			w.menuAction("focus-selected")
+		case "U":
+			if k.Modifiers&key.ModShift != 0 {
+				w.menuAction("unlock-all")
+			} else {
+				w.menuAction("toggle-unit")
+			}
+		case "Z":
+			if u.command.Text() == "" && !w.anyPanelFieldFocused(gtx) {
+				w.menuAction("undo")
+			}
+		case "Y":
+			if u.command.Text() == "" && !w.anyPanelFieldFocused(gtx) {
+				w.menuAction("redo")
+			}
+		case key.NameDeleteForward:
+			if u.command.Text() == "" && !w.anyPanelFieldFocused(gtx) {
+				w.menuAction("delete-direct")
+			}
 		case "I":
 			w.fileDialog("Insert")
 		case "A":
-			w.menuAction("showall")
+			if k.Modifiers&key.ModShift != 0 {
+				w.menuAction("select-visible")
+			} else {
+				w.menuAction("showall")
+			}
 		case "E":
 			w.menuAction("edit-inp")
 		case "X":
@@ -463,7 +617,11 @@ func (w *Window) keyboard(gtx layout.Context) {
 		case "S":
 			w.menuAction("save")
 		case "L":
-			gtx.Execute(key.FocusCmd{Tag: &u.command})
+			if k.Modifiers&key.ModShift != 0 {
+				w.menuAction("lock-selected")
+			} else {
+				gtx.Execute(key.FocusCmd{Tag: &u.command})
+			}
 		case key.NameEscape:
 			u.mu.Lock()
 			q := u.question
@@ -472,12 +630,20 @@ func (w *Window) keyboard(gtx layout.Context) {
 				w.answerQuestion(q, len(q.choices))
 				continue
 			}
+			if u.sectionPickerOpen {
+				u.sectionPickerOpen = false
+				continue
+			}
+			if w.cancelPropertyFieldEdit(gtx) {
+				continue
+			}
 			if u.modal != nil && u.modal.cancel != nil {
 				u.modal.cancel()
 			}
 			u.modal = nil
 			u.menu = -1
 			u.contextItems = nil
+			u.sectionPickerOpen = false
 			w.setCommandText("")
 			u.historyBrowsing = false
 			u.lastCompletion = false
@@ -511,14 +677,73 @@ func (w *Window) layoutCommand(gtx layout.Context) layout.Dimensions {
 			w.commandChanged()
 		}
 	}
-	return layout.Inset{Left: unit.Dp(8), Right: unit.Dp(8), Top: unit.Dp(3), Bottom: unit.Dp(3)}.Layout(gtx, func(c layout.Context) layout.Dimensions {
+	paint.Fill(gtx.Ops, iupBgHistory)
+	paint.FillShape(gtx.Ops, iupBorder, clip.Rect(image.Rect(0, 0, gtx.Constraints.Max.X, 1)).Op())
+	mode := w.currentModeName()
+	u.mu.Lock()
+	progress := u.progress
+	u.mu.Unlock()
+	coordText := u.status
+	if u.pending.Load() > 0 {
+		if progress != "" {
+			coordText = "Working... " + progress
+		} else {
+			coordText = "Working..."
+		}
+	} else if progress != "" {
+		coordText = progress
+	}
+	return layout.Inset{Top: unit.Dp(1)}.Layout(gtx, func(c layout.Context) layout.Dimensions {
 		return layout.Flex{Alignment: layout.Middle}.Layout(c,
-			layout.Rigid(func(c layout.Context) layout.Dimensions { return w.uiLabel(c, "Command >  ") }),
-			layout.Flexed(1, func(c layout.Context) layout.Dimensions {
-				return material.Editor(w.Theme, &u.command, ":command / 'figure command").Layout(c)
-			}),
+			// Left: IUP cname (mode display in green on history gray).
 			layout.Rigid(func(c layout.Context) layout.Dimensions {
-				return w.smallButton(c, "execute", "Run", func() { w.submitCommand(u.command.Text()) })
+				width := min(c.Dp(112), c.Constraints.Max.X/3)
+				c.Constraints = layout.Exact(image.Pt(width, c.Constraints.Max.Y))
+				paint.FillShape(c.Ops, iupBgHistory, clip.Rect{Max: c.Constraints.Max}.Op())
+				layout.Inset{Left: unit.Dp(6), Right: unit.Dp(4)}.Layout(c, func(c layout.Context) layout.Dimensions {
+					return layout.W.Layout(c, func(c layout.Context) layout.Dimensions {
+						s := material.Body2(w.Theme, mode)
+						s.TextSize = unit.Sp(13)
+						s.Color = iupFgCommand
+						s.MaxLines = 1
+						return s.Layout(c)
+					})
+				})
+				paint.FillShape(c.Ops, iupBorder, clip.Rect(image.Rect(width-1, 0, width, c.Constraints.Max.Y)).Op())
+				return layout.Dimensions{Size: c.Constraints.Max}
+			}),
+			// Center: IUP cline (command input on darker gray background).
+			layout.Flexed(1, func(c layout.Context) layout.Dimensions {
+				paint.FillShape(c.Ops, iupBgCommand, clip.Rect{Max: c.Constraints.Max}.Op())
+				return layout.Inset{Left: unit.Dp(6), Right: unit.Dp(6)}.Layout(c, func(c layout.Context) layout.Dimensions {
+					return layout.W.Layout(c, func(c layout.Context) layout.Dimensions {
+						e := material.Editor(w.Theme, &u.command, "Command")
+						e.TextSize = unit.Sp(13)
+						e.Color = iupFgLabel
+						e.HintColor = color.NRGBA{R: 95, G: 95, B: 95, A: 255}
+						return e.Layout(c)
+					})
+				})
+			}),
+			// Right: IUP coord/status readout on history gray.
+			layout.Rigid(func(c layout.Context) layout.Dimensions {
+				width := min(c.Dp(280), c.Constraints.Max.X/2)
+				if width < c.Dp(60) {
+					return layout.Dimensions{}
+				}
+				c.Constraints = layout.Exact(image.Pt(width, c.Constraints.Max.Y))
+				paint.FillShape(c.Ops, iupBgHistory, clip.Rect{Max: c.Constraints.Max}.Op())
+				paint.FillShape(c.Ops, iupBorder, clip.Rect(image.Rect(0, 0, 1, c.Constraints.Max.Y)).Op())
+				layout.Inset{Left: unit.Dp(6), Right: unit.Dp(6)}.Layout(c, func(c layout.Context) layout.Dimensions {
+					return layout.W.Layout(c, func(c layout.Context) layout.Dimensions {
+						s := material.Body2(w.Theme, coordText)
+						s.TextSize = unit.Sp(13)
+						s.Color = iupFgLabel
+						s.MaxLines = 1
+						return s.Layout(c)
+					})
+				})
+				return layout.Dimensions{Size: c.Constraints.Max}
 			}),
 		)
 	})
@@ -540,39 +765,41 @@ func (w *Window) layoutHistory(gtx layout.Context) layout.Dimensions {
 			u.history.SetCaret(start, end)
 		}
 	}
-	return layout.Inset{Top: unit.Dp(4), Bottom: unit.Dp(4), Left: unit.Dp(8), Right: unit.Dp(8)}.Layout(gtx, func(c layout.Context) layout.Dimensions {
-		return layout.Flex{Axis: layout.Vertical}.Layout(c,
-			layout.Rigid(func(c layout.Context) layout.Dimensions {
-				return layout.Flex{Alignment: layout.Middle}.Layout(c,
-					layout.Flexed(1, func(c layout.Context) layout.Dimensions { return w.uiLabel(c, "History / 解析ログ") }),
-					layout.Rigid(func(c layout.Context) layout.Dimensions {
-						return w.smallButton(c, "copy-history", "Copy", func() {
-							c.Execute(clipboard.WriteCmd{Type: "application/text", Data: io.NopCloser(strings.NewReader(text))})
-						})
-					}),
-					layout.Rigid(func(c layout.Context) layout.Dimensions {
-						return w.smallButton(c, "clear-history", "Clear", func() { u.mu.Lock(); u.log = ""; u.mu.Unlock() })
-					}),
-				)
-			}),
+	paint.Fill(gtx.Ops, iupBgHistory)
+	paint.FillShape(gtx.Ops, iupBorder, clip.Rect(image.Rect(0, 0, gtx.Constraints.Max.X, 1)).Op())
+	return layout.Inset{Top: unit.Dp(1)}.Layout(gtx, func(c layout.Context) layout.Dimensions {
+		return layout.Flex{Alignment: layout.Start}.Layout(c,
 			layout.Flexed(1, func(c layout.Context) layout.Dimensions {
-				e := material.Editor(w.Theme, &u.history, "")
-				e.TextSize = unit.Sp(12)
-				return e.Layout(c)
+				c.Constraints = layout.Exact(c.Constraints.Max)
+				return layout.Inset{Top: unit.Dp(2), Bottom: unit.Dp(2), Left: unit.Dp(6), Right: unit.Dp(6)}.Layout(c, func(c layout.Context) layout.Dimensions {
+					e := material.Editor(w.Theme, &u.history, "")
+					e.TextSize = unit.Sp(13)
+					e.Color = iupFgLabel
+					return e.Layout(c)
+				})
+			}),
+			layout.Rigid(func(c layout.Context) layout.Dimensions {
+				return layout.Inset{Top: unit.Dp(2), Right: unit.Dp(4)}.Layout(c, func(c layout.Context) layout.Dimensions {
+					btnInset := layout.Inset{Top: unit.Dp(1), Bottom: unit.Dp(1), Left: unit.Dp(5), Right: unit.Dp(5)}
+					return layout.Flex{Alignment: layout.Middle}.Layout(c,
+						layout.Rigid(func(c layout.Context) layout.Dimensions {
+							return w.flatButton(c, "copy-history", "Copy", iupBgButton, iupFgLabel, btnInset, func() {
+								c.Execute(clipboard.WriteCmd{Type: "application/text", Data: io.NopCloser(strings.NewReader(text))})
+							})
+						}),
+						layout.Rigid(layout.Spacer{Width: unit.Dp(2)}.Layout),
+						layout.Rigid(func(c layout.Context) layout.Dimensions {
+							return w.flatButton(c, "clear-history", "Clear", iupBgButton, iupFgLabel, btnInset, func() {
+								u.mu.Lock()
+								u.log = ""
+								u.mu.Unlock()
+							})
+						}),
+					)
+				})
 			}),
 		)
 	})
-}
-
-func (w *Window) layoutStatus(gtx layout.Context) layout.Dimensions {
-	u := w.ui
-	u.mu.Lock()
-	progress := u.progress
-	u.mu.Unlock()
-	if u.pending.Load() > 0 {
-		progress = "Working...  " + progress
-	}
-	return layout.Inset{Left: unit.Dp(8), Top: unit.Dp(3)}.Layout(gtx, func(c layout.Context) layout.Dimensions { return w.uiLabel(c, u.status+"   "+progress) })
 }
 
 func (w *Window) fileDialog(kind string) {

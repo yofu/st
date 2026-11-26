@@ -12,11 +12,11 @@ func TestCanvasPointerAt150Percent(t *testing.T) {
 	h := newUIHarness(t)
 	h.metric = unit.Metric{PxPerDp: 1.5, PxPerSp: 1.5}
 	h.frame()
-	y := float32(h.w.ui.canvasRect.Min.Y)
-	h.router.Queue(pointer.Event{Kind: pointer.Press, Source: pointer.Mouse, Buttons: pointer.ButtonPrimary, Position: f32.Pt(200, 160+y)})
+	ox, oy := float32(h.w.ui.canvasRect.Min.X), float32(h.w.ui.canvasRect.Min.Y)
+	h.router.Queue(pointer.Event{Kind: pointer.Press, Source: pointer.Mouse, Buttons: pointer.ButtonPrimary, Position: f32.Pt(200+ox, 160+oy)})
 	h.frame()
 	for _, p := range []f32.Point{f32.Pt(250, 210), f32.Pt(400, 350), f32.Pt(180, 140)} {
-		h.router.Queue(pointer.Event{Kind: pointer.Move, Source: pointer.Mouse, Buttons: pointer.ButtonPrimary, Position: p.Add(f32.Pt(0, y))})
+		h.router.Queue(pointer.Event{Kind: pointer.Move, Source: pointer.Mouse, Buttons: pointer.ButtonPrimary, Position: p.Add(f32.Pt(ox, oy))})
 		h.frame()
 		if h.w.start != f32.Pt(200, 160) || h.w.end != p {
 			t.Fatalf("150%% pointer mismatch: start=%v end=%v want=%v canvas=%v", h.w.start, h.w.end, p, h.w.ui.canvasRect)
@@ -30,7 +30,7 @@ func TestCanvasNativeCursorAndOverlayWhileBusy(t *testing.T) {
 		h.metric = unit.Metric{PxPerDp: 1.5, PxPerSp: 1.5}
 		h.frame()
 		w := h.w
-		y := float32(w.ui.canvasRect.Min.Y)
+		ox, oy := float32(w.ui.canvasRect.Min.X), float32(w.ui.canvasRect.Min.Y)
 		button := pointer.ButtonPrimary
 		mods := key.Modifiers(0)
 		if pan {
@@ -40,10 +40,10 @@ func TestCanvasNativeCursorAndOverlayWhileBusy(t *testing.T) {
 		w.SetCanvasMoveSpeedX(0.2)
 		w.SetCanvasMoveSpeedY(0.2)
 		center := append([]float64(nil), w.frame.View.Center...)
-		h.router.Queue(pointer.Event{Kind: pointer.Press, Source: pointer.Mouse, Buttons: button, Modifiers: mods, Position: f32.Pt(200, 160+y)})
+		h.router.Queue(pointer.Event{Kind: pointer.Press, Source: pointer.Mouse, Buttons: button, Modifiers: mods, Position: f32.Pt(200+ox, 160+oy)})
 		h.frame()
 		revision := w.ui.canvasRevision
-		actual := f32.Pt(300, 260+y)
+		actual := f32.Pt(300+ox, 260+oy)
 		w.pointerPosition = func() (f32.Point, bool) { return actual, true }
 		// Simulate a persistent event-coordinate offset. Native client pixels
 		// must win, rather than multiplying local coordinates by the DPI scale.

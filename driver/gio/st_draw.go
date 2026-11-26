@@ -178,11 +178,66 @@ func textOffset(alignment int, size image.Point) (int, int) {
 	}
 }
 
-func (stw *Window) Foreground(col int) int {
+const (
+	plateOpacityLightDefault  = uint8(0x55)
+	plateOpacityLightSelected = uint8(0x88)
+	plateOpacityDarkDefault   = uint8(0x24)
+	plateOpacityDarkSelected  = uint8(0x48)
+	plateOpacityOpaque        = uint8(0xff)
+)
+
+func (stw *Window) contrastColor(col int) int {
 	lis := st.IntColorList(col)
-	old := int(stw.currentPen.R)<<16 + int(stw.currentPen.G)<<8 + int(stw.currentPen.B)
+	r, g, b := lis[0], lis[1], lis[2]
+	if stw.canvasDark {
+		if r == 0 && g == 0 && b == 0 {
+			return st.WHITE
+		}
+	} else {
+		if r >= 250 && g >= 250 && b >= 250 {
+			return st.BLACK
+		}
+	}
+	return col
+}
+
+func (stw *Window) brushColor(r, g, b int, opacity uint8) color.NRGBA {
+	if !stw.canvasDark || opacity == plateOpacityOpaque {
+		return color.NRGBA{R: uint8(r), G: uint8(g), B: uint8(b), A: opacity}
+	}
+	// On a black canvas, Gio's linear-space GPU blending makes sRGB plate alphas
+	// look ~1.8x brighter and more saturated than GDI+. Soften saturation and
+	// brightness slightly for translucent plate fills while keeping line pens vivid.
+	lum := 0.299*float64(r) + 0.587*float64(g) + 0.114*float64(b)
+	soften := func(v int) uint8 {
+		c := (float64(v)*0.80 + lum*0.20) * 0.85
+		if c < 0 {
+			return 0
+		}
+		if c > 255 {
+			return 255
+		}
+		return uint8(math.Round(c))
+	}
+	return color.NRGBA{R: soften(r), G: soften(g), B: soften(b), A: opacity}
+}
+
+func (stw *Window) setPlateOpacity(light, dark uint8) {
+	if stw.canvasDark {
+		PLATE_OPACITY = dark
+	} else {
+		PLATE_OPACITY = light
+	}
+	lis := st.IntColorList(stw.contrastColor(stw.rawPen))
+	stw.currentBrush = stw.brushColor(lis[0], lis[1], lis[2], PLATE_OPACITY)
+}
+
+func (stw *Window) Foreground(col int) int {
+	old := stw.rawPen
+	stw.rawPen = col
+	lis := st.IntColorList(stw.contrastColor(col))
 	stw.currentPen = color.NRGBA{uint8(lis[0]), uint8(lis[1]), uint8(lis[2]), 0xff}
-	stw.currentBrush = color.NRGBA{uint8(lis[0]), uint8(lis[1]), uint8(lis[2]), PLATE_OPACITY}
+	stw.currentBrush = stw.brushColor(lis[0], lis[1], lis[2], PLATE_OPACITY)
 	// stw.font.color = color.RGBA{uint8(col[0]), uint8(col[1]), uint8(col[2]), 0xff}
 	return old
 }
@@ -201,7 +256,7 @@ func (stw *Window) TextOrientation(degrees float64) {
 func (stw *Window) DefaultStyle() {
 	stw.Foreground(0x000000)
 	stw.LineStyle(st.CONTINUOUS)
-	PLATE_OPACITY = 0x55
+	stw.setPlateOpacity(plateOpacityLightDefault, plateOpacityDarkDefault)
 }
 
 func (stw *Window) BondStyle(show *st.Show) {
@@ -210,12 +265,12 @@ func (stw *Window) BondStyle(show *st.Show) {
 
 func (stw *Window) PhingeStyle(show *st.Show) {
 	stw.Foreground(0x000000)
-	PLATE_OPACITY = 0xff
+	stw.setPlateOpacity(plateOpacityOpaque, plateOpacityOpaque)
 }
 
 func (stw *Window) ConfStyle(show *st.Show) {
 	stw.Foreground(0x000000)
-	PLATE_OPACITY = 0xff
+	stw.setPlateOpacity(plateOpacityOpaque, plateOpacityOpaque)
 }
 
 func (stw *Window) SelectNodeStyle() {
@@ -224,7 +279,7 @@ func (stw *Window) SelectNodeStyle() {
 
 func (stw *Window) SelectElemStyle() {
 	stw.LineStyle(st.DOTTED)
-	PLATE_OPACITY = 0x88
+	stw.setPlateOpacity(plateOpacityLightSelected, plateOpacityDarkSelected)
 }
 
 func (stw *Window) ShowPrintRange() bool {

@@ -83,9 +83,10 @@ func TestGioDragUsesSameModelDrawing(t *testing.T) {
 					}
 				}
 				before := capture()
+				ox, oy := w.ui.canvasRect.Min.X, w.ui.canvasRect.Min.Y
 				ink := 0
-				for y := 100; y < 350; y++ {
-					for x := 230; x < 400; x++ {
+				for y := 100 + oy; y < 350+oy; y++ {
+					for x := 230 + ox; x < 400+ox; x++ {
 						c := before.RGBAAt(x, y)
 						if c.R < 200 && c.G < 200 && c.B < 200 {
 							ink++
@@ -99,7 +100,7 @@ func TestGioDragUsesSameModelDrawing(t *testing.T) {
 				if pan {
 					mods = key.ModShift
 				}
-				start := f32.Pt(400, 400+float32(w.ui.canvasRect.Min.Y))
+				start := f32.Pt(400+float32(ox), 400+float32(oy))
 				h.router.Queue(pointer.Event{Kind: pointer.Press, Source: pointer.Mouse, PointerID: 7, Buttons: pointer.ButtonTertiary, Modifiers: mods, Position: start})
 				h.frame()
 				assertSame(before, capture(), "Press")

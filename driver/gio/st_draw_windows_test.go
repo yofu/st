@@ -22,14 +22,14 @@ func TestGioSelectionOverlayFollowsCursor(t *testing.T) {
 		t.Skipf("Direct3D unavailable: %v", err)
 	}
 	defer gpu.Release()
-	y := float32(h.w.ui.canvasRect.Min.Y)
-	h.router.Queue(pointer.Event{Kind: pointer.Press, Source: pointer.Mouse, Buttons: pointer.ButtonPrimary, Position: f32.Pt(180, 140+y)})
+	ox, oy := float32(h.w.ui.canvasRect.Min.X), float32(h.w.ui.canvasRect.Min.Y)
+	h.router.Queue(pointer.Event{Kind: pointer.Press, Source: pointer.Mouse, Buttons: pointer.ButtonPrimary, Position: f32.Pt(180+ox, 140+oy)})
 	h.frame()
-	h.w.pointerPosition = func() (f32.Point, bool) { return f32.Pt(300, 220+y), true }
+	h.w.pointerPosition = func() (f32.Point, bool) { return f32.Pt(300+ox, 220+oy), true }
 	// Exercise the overlay independently of the model cache and a stale offset
 	// in event coordinates. Its actual border must still end at the cursor.
 	h.w.ui.modelMu.Lock()
-	h.router.Queue(pointer.Event{Kind: pointer.Move, Source: pointer.Mouse, Buttons: pointer.ButtonPrimary, Position: f32.Pt(340, 280+y)})
+	h.router.Queue(pointer.Event{Kind: pointer.Move, Source: pointer.Mouse, Buttons: pointer.ButtonPrimary, Position: f32.Pt(340+ox, 280+oy)})
 	h.frame()
 	h.w.ui.modelMu.Unlock()
 	if err := gpu.Frame(&h.ops); err != nil {
@@ -39,13 +39,13 @@ func TestGioSelectionOverlayFollowsCursor(t *testing.T) {
 	if err := gpu.Screenshot(img); err != nil {
 		t.Fatal(err)
 	}
-	for _, p := range []image.Point{image.Pt(180, 141+int(y)), image.Pt(300, 219+int(y))} {
+	for _, p := range []image.Point{image.Pt(180+int(ox), 141+int(oy)), image.Pt(300+int(ox), 219+int(oy))} {
 		c := img.RGBAAt(p.X, p.Y)
 		if c.R < 240 || c.G >= 230 || c.B >= 230 {
 			t.Fatalf("selection missing at canvas coordinate %v: %v", p, c)
 		}
 	}
-	for _, p := range []image.Point{image.Pt(178, 141+int(y)), image.Pt(302, 219+int(y)), image.Pt(240, 180+int(y))} {
+	for _, p := range []image.Point{image.Pt(178+int(ox), 141+int(oy)), image.Pt(302+int(ox), 219+int(oy)), image.Pt(240+int(ox), 180+int(oy))} {
 		c := img.RGBAAt(p.X, p.Y)
 		if c.R < 240 || c.G < 240 || c.B < 240 {
 			t.Fatalf("selection extends beyond cursor at %v: %v", p, c)
@@ -129,13 +129,21 @@ func TestGioUIWindowsRendering(t *testing.T) {
 		if err := gpu.Screenshot(img); err != nil {
 			t.Fatal(err)
 		}
-		// Confirm all four requested UI regions actually paint text/controls.
-		for _, r := range []image.Rectangle{image.Rect(0, 0, 400, 34), image.Rect(918, 34, 1190, 140), image.Rect(0, 650, 500, 730), image.Rect(0, 840, 500, 875)} {
+		// Confirm all four UI regions (menu, left panel, history, command bar) actually paint text/controls,
+		// and History text starts on the left side directly above SELECT / Command.
+		u := h.w.ui
+		historyLeft := image.Rect(u.historyRect.Min.X, u.historyRect.Min.Y, min(u.historyRect.Max.X, u.historyRect.Min.X+240), u.historyRect.Max.Y)
+		for _, r := range []image.Rectangle{
+			image.Rect(0, 0, 400, u.panelRect.Min.Y),
+			image.Rect(u.panelRect.Min.X, u.panelRect.Min.Y, u.panelRect.Max.X, min(u.panelRect.Max.Y, u.panelRect.Min.Y+160)),
+			historyLeft,
+			u.commandRect,
+		} {
 			count := 0
 			for y := r.Min.Y; y < r.Max.Y; y++ {
 				for x := r.Min.X; x < r.Max.X; x++ {
 					p := img.RGBAAt(x, y)
-					if p.R < 180 && p.G < 180 && p.B < 180 {
+					if p.R < 160 && p.G < 160 && p.B < 160 {
 						count++
 					}
 				}
@@ -144,5 +152,81 @@ func TestGioUIWindowsRendering(t *testing.T) {
 				t.Errorf("tab %d: UI region %v is blank (%d dark pixels)", tab, r, count)
 			}
 		}
+		// Confirm the bottom of the left panel has uniform gray background (no stray white/cream column).
+		bottomPanel := image.Rect(u.panelRect.Min.X+4, u.panelRect.Max.Y-40, u.panelRect.Max.X-4, u.panelRect.Max.Y-4)
+		for y := bottomPanel.Min.Y; y < bottomPanel.Max.Y; y++ {
+			for x := bottomPanel.Min.X; x < bottomPanel.Max.X; x++ {
+				p := img.RGBAAt(x, y)
+				if p.R > 230 || p.G > 230 || p.B > 230 {
+					t.Fatalf("tab %d: bright non-gray pixel %v in bottom panel at (%d,%d)", tab, p, x, y)
+				}
+			}
+		}
+	}
+}
+
+func TestGioCanvasBackgroundContrastRendering(t *testing.T) {
+	gpu, err := headless.NewWindow(300, 200)
+	if err != nil {
+		t.Skipf("Direct3D unavailable: %v", err)
+	}
+	defer gpu.Release()
+
+	// 1) White background: white foreground (st.WHITE) must render visible dark pixels.
+	w := NewWindow(nil)
+	defer w.ui.close()
+	var ops op.Ops
+	w.layoutCanvas(layout.Context{Ops: &ops, Constraints: layout.Exact(image.Pt(300, 200))})
+	w.Foreground(st.WHITE)
+	w.Line(40, 100, 260, 100)
+	if err := gpu.Frame(&ops); err != nil {
+		t.Fatal(err)
+	}
+	img := image.NewRGBA(image.Rect(0, 0, 300, 200))
+	if err := gpu.Screenshot(img); err != nil {
+		t.Fatal(err)
+	}
+	if bg := img.RGBAAt(10, 10); bg.R < 245 || bg.G < 245 || bg.B < 245 {
+		t.Fatalf("expected white canvas background, got %v", bg)
+	}
+	darkLine := 0
+	for x := 60; x < 240; x++ {
+		for y := 98; y <= 102; y++ {
+			p := img.RGBAAt(x, y)
+			if p.R < 220 && p.G < 220 && p.B < 220 {
+				darkLine++
+			}
+		}
+	}
+	if darkLine < 100 {
+		t.Fatalf("white line on white canvas was not rendered in black: %d dark pixels", darkLine)
+	}
+
+	// 2) Black background: black foreground (st.BLACK) must render visible bright pixels.
+	w.SetCanvasDark(true)
+	ops.Reset()
+	w.layoutCanvas(layout.Context{Ops: &ops, Constraints: layout.Exact(image.Pt(300, 200))})
+	w.Foreground(st.BLACK)
+	w.Line(40, 100, 260, 100)
+	if err := gpu.Frame(&ops); err != nil {
+		t.Fatal(err)
+	}
+	if err := gpu.Screenshot(img); err != nil {
+		t.Fatal(err)
+	}
+	if bg := img.RGBAAt(10, 10); bg.R > 10 || bg.G > 10 || bg.B > 10 {
+		t.Fatalf("expected black canvas background, got %v", bg)
+	}
+	brightLine := 0
+	for x := 60; x < 240; x++ {
+		for y := 98; y <= 102; y++ {
+			p := img.RGBAAt(x, y)
+			if p.R > 40 && p.G > 40 && p.B > 40 {
+				brightLine++
+			}
+		}
+	}
+	if brightLine < 100 {
+		t.Fatalf("black line on black canvas was not rendered in white: %d bright pixels", brightLine)
 	}
 }

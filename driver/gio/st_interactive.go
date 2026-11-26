@@ -462,7 +462,7 @@ func (w *Window) interactiveKeyboard(gtx layout.Context) {
 		if k.Modifiers&key.ModCtrl != 0 {
 			global := true
 			switch k.Name {
-			case "L", "O", "S", "I", "M", "R":
+			case "L", "O", "S", "I", "M", "R", key.NameTab:
 			default:
 				global = false
 			}
@@ -481,6 +481,8 @@ func (w *Window) interactiveKeyboard(gtx layout.Context) {
 						w.menuAction("reload")
 					case "R":
 						w.menuAction("readall")
+					case key.NameTab:
+						w.cycleSideBarTab(k.Modifiers&key.ModShift != 0)
 					}
 				}
 				continue

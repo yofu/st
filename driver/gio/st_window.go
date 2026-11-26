@@ -7,7 +7,9 @@ import (
 	"io"
 	"math"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -22,6 +24,7 @@ import (
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
+	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"github.com/yofu/abbrev"
@@ -33,6 +36,13 @@ var (
 	tailnodes      []*st.Node
 	showprintrange = false
 	PLATE_OPACITY  = uint8(0x55)
+
+	axrnMinMax = regexp.MustCompile(`^([+-]?[0-9.]+)<=?([XYZ])<=?([+-]?[0-9.]+)$`)
+	axrnMin1   = regexp.MustCompile(`^([+-]?[0-9.]+)<=?([XYZ])$`)
+	axrnMin2   = regexp.MustCompile(`^([XYZ])>=?([+-]?[0-9.]+)$`)
+	axrnMax1   = regexp.MustCompile(`^([+-]?[0-9.]+)>=?([XYZ])$`)
+	axrnMax2   = regexp.MustCompile(`^([XYZ])<=?([+-]?[0-9.]+)$`)
+	axrnEq     = regexp.MustCompile(`^([XYZ])=([+-]?[0-9.]+)$`)
 )
 
 type Window struct {
@@ -82,6 +92,8 @@ type Window struct {
 	// history         *Dialog
 	currentPen      color.NRGBA
 	currentBrush    color.NRGBA
+	rawPen          int
+	canvasDark      bool
 	papersize       uint
 	changed         bool
 	lastexcommand   string
@@ -93,9 +105,16 @@ type Window struct {
 }
 
 func NewWindow(w *app.Window) *Window {
+	drawOption := st.NewDrawOption()
+	// Gio uses consecutive per-frame pointer deltas rather than IUP's cumulative
+	// offset from drag start; scale speeds to match IUP's feel and 1:5 rotate/pan ratio.
+	drawOption.SetCanvasRotateSpeedX(0.2)
+	drawOption.SetCanvasRotateSpeedY(0.2)
+	drawOption.SetCanvasMoveSpeedX(1.0)
+	drawOption.SetCanvasMoveSpeedY(1.0)
 	return &Window{
 		ui:            newUserInterface(),
-		DrawOption:    st.NewDrawOption(),
+		DrawOption:    drawOption,
 		Directory:     st.NewDirectory("", ""),
 		RecentFiles:   st.NewRecentFiles(3),
 		UndoStack:     st.NewUndoStack(10),
@@ -106,7 +125,7 @@ func NewWindow(w *app.Window) *Window {
 		Alias:         newWindowAlias(),
 		frame:         st.NewFrame(),
 		// Theme:         material.NewTheme(gofont.Collection()),
-		Theme:  material.NewTheme(),
+		Theme:  newWindowTheme(),
 		window: w,
 		// history:         nil,
 		// currentStrokeParam: &ui.DrawStrokeParams{
@@ -295,15 +314,55 @@ func (stw *Window) canvasInput(gtx layout.Context) {
 	stw.applyCanvasInput()
 }
 
+func (stw *Window) CanvasDark() bool {
+	return stw.canvasDark
+}
+
+func (stw *Window) SetCanvasDark(dark bool) {
+	if stw.canvasDark == dark {
+		return
+	}
+	stw.canvasDark = dark
+	if stw.frame != nil {
+		if dark && stw.frame.Show.ColorMode == st.ECOLOR_BLACKSECT {
+			stw.frame.Show.ColorMode = st.ECOLOR_SECT
+		} else if !dark && stw.frame.Show.ColorMode == st.ECOLOR_SECT {
+			stw.frame.Show.ColorMode = st.ECOLOR_BLACKSECT
+		}
+	}
+	stw.sceneDirty.Store(true)
+}
+
+func (stw *Window) ToggleCanvasBackground() {
+	stw.SetCanvasDark(!stw.canvasDark)
+}
+
+func canvasConfScale(metric unit.Metric) float64 {
+	scale := float64(metric.PxPerDp)
+	if scale < 1.0 {
+		scale = 1.0
+	}
+	return scale * 1.2
+}
+
 func (stw *Window) drawCanvas(gtx layout.Context) {
 	stw.context = gtx
 	area := clip.Rect{Max: stw.canvasSize}.Push(gtx.Ops)
 	defer area.Pop()
-	paint.Fill(gtx.Ops, color.NRGBA{R: 255, G: 255, B: 255, A: 255})
+	bg := color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	if stw.canvasDark {
+		bg = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
+	}
+	paint.Fill(gtx.Ops, bg)
 	if stw.frame != nil {
+		// Gio renders in physical pixels while IUP is DPI-scaled; scale support
+		// symbol size by display DPI during drawing without mutating Show.ConfSize.
+		origConfSize := stw.frame.Show.ConfSize
+		stw.frame.Show.ConfSize = origConfSize * canvasConfScale(gtx.Metric)
 		// Use the same geometry, deformation and visibility rules during a drag
 		// as before/after it. DrawFrameNode omits parts of the normal drawing.
 		st.DrawFrame(stw, stw.frame, stw.frame.Show.ColorMode, false)
+		stw.frame.Show.ConfSize = origConfSize
 		if stw.viewer == nil {
 			stw.Foreground(stw.frame.Show.CanvasFontColor)
 			for _, box := range stw.TextBoxes() {
@@ -505,6 +564,10 @@ func (stw *Window) ExecCommand(command string) {
 	stw.cancelViewAnimation()
 	stw.mouse.lastEdit = ""
 	stw.stopMouseEdit()
+	if stw.handleBackgroundCommand(command) {
+		stw.Redraw()
+		return
+	}
 	if stw.frame == nil {
 		if strings.HasPrefix(command, ":") {
 			err := st.ExMode(stw, command)
@@ -525,10 +588,17 @@ func (stw *Window) ExecCommand(command string) {
 	}
 	switch {
 	default:
-		if c, ok := stw.CommandAlias(strings.ToUpper(command)); ok {
+		trimmed := strings.TrimSpace(command)
+		upper := strings.ToUpper(trimmed)
+		if upper == "." {
+			if stw.lastcommand != nil {
+				stw.startInteractiveCommand(stw.lastcommand)
+			}
+		} else if c, ok := stw.CommandAlias(upper); ok {
 			stw.lastcommand = c
+			stw.setCommandName(upper)
 			stw.startInteractiveCommand(c)
-		} else {
+		} else if !stw.axisRangeCommand(trimmed) {
 			stw.History(fmt.Sprintf("command doesn't exist: %s", command))
 		}
 	case strings.HasPrefix(command, ":"):
@@ -546,6 +616,126 @@ func (stw *Window) ExecCommand(command string) {
 			st.ErrorMessage(stw, err, st.ERROR)
 		}
 	}
+}
+
+func axisIndex(name string) int {
+	switch name {
+	case "X":
+		return 0
+	case "Y":
+		return 1
+	case "Z":
+		return 2
+	default:
+		return -1
+	}
+}
+
+// axisRangeCommand matches IUP's axis range shortcuts such as "z=0", "0<=z<=3.5", "x>=2", "y<=5".
+func (stw *Window) axisRangeCommand(cmd string) bool {
+	if stw.frame == nil {
+		return false
+	}
+	alu := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(cmd), " ", ""))
+	switch {
+	case axrnMinMax.MatchString(alu):
+		fs := axrnMinMax.FindStringSubmatch(alu)
+		minVal, err1 := strconv.ParseFloat(fs[1], 64)
+		maxVal, err2 := strconv.ParseFloat(fs[3], 64)
+		axis := axisIndex(fs[2])
+		if err1 != nil || err2 != nil || axis < 0 {
+			return false
+		}
+		st.AxisRange(stw, axis, minVal, maxVal, false)
+		stw.History(fmt.Sprintf("AxisRange: %.3f <= %s <= %.3f", minVal, fs[2], maxVal))
+	case axrnMin1.MatchString(alu):
+		fs := axrnMin1.FindStringSubmatch(alu)
+		minVal, err := strconv.ParseFloat(fs[1], 64)
+		axis := axisIndex(fs[2])
+		if err != nil || axis < 0 {
+			return false
+		}
+		st.AxisRange(stw, axis, minVal, st.RANGE_MAX, false)
+		stw.History(fmt.Sprintf("AxisRange: %.3f <= %s", minVal, fs[2]))
+	case axrnMin2.MatchString(alu):
+		fs := axrnMin2.FindStringSubmatch(alu)
+		minVal, err := strconv.ParseFloat(fs[2], 64)
+		axis := axisIndex(fs[1])
+		if err != nil || axis < 0 {
+			return false
+		}
+		st.AxisRange(stw, axis, minVal, st.RANGE_MAX, false)
+		stw.History(fmt.Sprintf("AxisRange: %.3f <= %s", minVal, fs[1]))
+	case axrnMax1.MatchString(alu):
+		fs := axrnMax1.FindStringSubmatch(alu)
+		maxVal, err := strconv.ParseFloat(fs[1], 64)
+		axis := axisIndex(fs[2])
+		if err != nil || axis < 0 {
+			return false
+		}
+		st.AxisRange(stw, axis, st.RANGE_MIN, maxVal, false)
+		stw.History(fmt.Sprintf("AxisRange: %s <= %.3f", fs[2], maxVal))
+	case axrnMax2.MatchString(alu):
+		fs := axrnMax2.FindStringSubmatch(alu)
+		maxVal, err := strconv.ParseFloat(fs[2], 64)
+		axis := axisIndex(fs[1])
+		if err != nil || axis < 0 {
+			return false
+		}
+		st.AxisRange(stw, axis, st.RANGE_MIN, maxVal, false)
+		stw.History(fmt.Sprintf("AxisRange: %s <= %.3f", fs[1], maxVal))
+	case axrnEq.MatchString(alu):
+		fs := axrnEq.FindStringSubmatch(alu)
+		val, err := strconv.ParseFloat(fs[2], 64)
+		axis := axisIndex(fs[1])
+		if err != nil || axis < 0 {
+			return false
+		}
+		st.AxisRange(stw, axis, val, val, false)
+		stw.History(fmt.Sprintf("AxisRange: %s = %.3f", fs[1], val))
+	default:
+		return false
+	}
+	return true
+}
+
+func (stw *Window) handleBackgroundCommand(command string) bool {
+	fields := strings.Fields(strings.TrimSpace(command))
+	if len(fields) == 0 || !strings.EqualFold(fields[0], ":bg") {
+		return false
+	}
+	if len(fields) == 1 || strings.EqualFold(fields[1], "toggle") {
+		stw.ToggleCanvasBackground()
+	} else {
+		switch strings.ToLower(fields[1]) {
+		case "black", "dark":
+			stw.SetCanvasDark(true)
+		case "white", "light":
+			stw.SetCanvasDark(false)
+		default:
+			stw.History("usage: :bg [white|black|toggle]")
+			return true
+		}
+	}
+	if stw.canvasDark {
+		stw.History("BG: BLACK")
+	} else {
+		stw.History("BG: WHITE")
+	}
+	return true
+}
+
+func (stw *Window) setShowRange() {
+	if stw.frame == nil {
+		return
+	}
+	xmin, xmax, ymin, ymax, zmin, zmax := stw.frame.Bbox(true)
+	stw.frame.Show.Xrange[0] = xmin
+	stw.frame.Show.Xrange[1] = xmax
+	stw.frame.Show.Yrange[0] = ymin
+	stw.frame.Show.Yrange[1] = ymax
+	stw.frame.Show.Zrange[0] = zmin
+	stw.frame.Show.Zrange[1] = zmax
 }
 
 func (stw *Window) LastExCommand() string {
@@ -827,6 +1017,9 @@ func (stw *Window) SetColorMode(mode uint) {
 }
 
 func (stw *Window) DefaultColorMode() uint {
+	if stw.canvasDark {
+		return st.ECOLOR_SECT
+	}
 	return st.ECOLOR_BLACKSECT
 }
 

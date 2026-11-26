@@ -80,3 +80,15 @@ func TestPopupJapaneseWindowsRendering(t *testing.T) {
 		}
 	}
 }
+
+func TestIPAMinchoThemeLoaded(t *testing.T) {
+	if _, err := os.Stat(defaultIPAMinchoPath); err != nil {
+		t.Skipf("IPA Mincho font not accessible at %s: %v", defaultIPAMinchoPath, err)
+	}
+	w := NewWindow(nil)
+	defer w.ui.close()
+	if w.Theme.Face == "" {
+		t.Fatalf("expected Theme.Face to be set from %s, got empty", defaultIPAMinchoPath)
+	}
+	t.Logf("loaded Theme.Face = %q from %s", w.Theme.Face, ipaMinchoPath)
+}

@@ -183,7 +183,7 @@ func TestInteractiveKeyWheelAndCancellation(t *testing.T) {
 		t.Fatal("X key did not enable command wheel input")
 	}
 	scale := w.frame.View.Gfact
-	h.router.Queue(pointer.Event{Kind: pointer.Scroll, Source: pointer.Mouse, Position: f32.Pt(300, 300+float32(w.ui.canvasRect.Min.Y)), Scroll: f32.Pt(0, -20)})
+	h.router.Queue(pointer.Event{Kind: pointer.Scroll, Source: pointer.Mouse, Position: f32.Pt(300+float32(w.ui.canvasRect.Min.X), 300+float32(w.ui.canvasRect.Min.Y)), Scroll: f32.Pt(0, -20)})
 	h.frame()
 	flushInteraction(t, h, s)
 	h.router.Queue(key.Event{Name: key.NameReturn, State: key.Press}, key.Event{Name: key.NameReturn, State: key.Release})
