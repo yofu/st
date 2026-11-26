@@ -76,6 +76,8 @@ github.com/yofu/dxf v0.0.0-20261114161146-b17aa67668c3 h1:cfYiS6cGSCm2uGfY8aYGAW
 github.com/yofu/dxf v0.0.0-20261114161146-b17aa67668c3/go.mod h1:i8CfY4ls2PIQ0Obaz5UCj5WmNjnRsOZyYT/KsMDrfSw=
 github.com/yofu/go-iup v0.0.0-20210219022104-ea9e2731834f h1:0C4M99NVkCGwbitP/X4pKmSDg1viJ5utJvJYgWzyiXY=
 github.com/yofu/go-iup v0.0.0-20210219022104-ea9e2731834f/go.mod h1:7YBQ3QBtd8/1g8+MC6BNHnISg2Of8vrJK+8ZhT0iRMY=
+github.com/yofu/go-iup v0.0.0-20261126003606-d1d33e159d5d h1:ZxQo6yGI/LXinT2shJHUUU3fRevCavL/bX33Vx5WLXc=
+github.com/yofu/go-iup v0.0.0-20261126003606-d1d33e159d5d/go.mod h1:JzUFf7eO8ipo/DotvHhRsEO9FWG1hbjdhPekyFmFDIY=
 github.com/yofu/ps v0.0.0-20160628011709-3a690efc3eee h1:WgX+f30UM/bEb178d9KFTc1TzC5jco+fDazmGm47VRg=
 github.com/yofu/ps v0.0.0-20160628011709-3a690efc3eee/go.mod h1:C+t+5/w/P++EMz60yzuKnVvRqNU2R/wsBOf99+Ag9is=
 github.com/yofu/unit v0.0.0-20161121054805-9ae92caf5dc5 h1:p6XsBR20/RXjUj1Jjqw4zEG0BAG7XEJHkRE695agxHE=
