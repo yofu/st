@@ -1517,7 +1517,9 @@ func rotate(stw *Window) {
 					key := iup.KeyState(arg.Key)
 					switch key.Key() {
 					default:
-						stw.cline.SetAttribute("APPEND", string(key.Key()))
+						if s, ok := printableKeyText(key); ok {
+							stw.cline.SetAttribute("APPEND", s)
+						}
 					case KEY_BS:
 						val := stw.cline.GetAttribute("VALUE")
 						if val != "" {
@@ -2352,7 +2354,9 @@ func selectnode(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.cline.SetAttribute("APPEND", string(key.Key()))
+			if s, ok := printableKeyText(key); ok {
+				stw.cline.SetAttribute("APPEND", s)
+			}
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -2440,7 +2444,9 @@ func selectelem(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.cline.SetAttribute("APPEND", string(key.Key()))
+			if s, ok := printableKeyText(key); ok {
+				stw.cline.SetAttribute("APPEND", s)
+			}
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -2487,7 +2493,9 @@ func selectsect(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.cline.SetAttribute("APPEND", string(key.Key()))
+			if s, ok := printableKeyText(key); ok {
+				stw.cline.SetAttribute("APPEND", s)
+			}
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -2518,7 +2526,9 @@ func hidesection(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.cline.SetAttribute("APPEND", string(key.Key()))
+			if s, ok := printableKeyText(key); ok {
+				stw.cline.SetAttribute("APPEND", s)
+			}
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -3732,7 +3742,9 @@ func uplift(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.cline.SetAttribute("APPEND", string(key.Key()))
+			if s, ok := printableKeyText(key); ok {
+				stw.cline.SetAttribute("APPEND", s)
+			}
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {

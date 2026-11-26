@@ -131,7 +131,9 @@ func gravity(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.cline.SetAttribute("INSERT", string(key.Key()))
+			if s, ok := printableKeyText(key); ok {
+				stw.cline.SetAttribute("INSERT", s)
+			}
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -228,7 +230,9 @@ func smooth(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.cline.SetAttribute("INSERT", string(key.Key()))
+			if s, ok := printableKeyText(key); ok {
+				stw.cline.SetAttribute("INSERT", s)
+			}
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {
@@ -318,7 +322,9 @@ func hanging(stw *Window) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.cline.SetAttribute("INSERT", string(key.Key()))
+			if s, ok := printableKeyText(key); ok {
+				stw.cline.SetAttribute("INSERT", s)
+			}
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {

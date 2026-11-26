@@ -53,7 +53,9 @@ func tensegrity(stw *Window, f func(cs, ts, sz int), csect, tsect, size int) {
 		key := iup.KeyState(arg.Key)
 		switch key.Key() {
 		default:
-			stw.cline.SetAttribute("INSERT", string(key.Key()))
+			if s, ok := printableKeyText(key); ok {
+				stw.cline.SetAttribute("INSERT", s)
+			}
 		case KEY_BS:
 			val := stw.cline.GetAttribute("VALUE")
 			if val != "" {

@@ -145,17 +145,17 @@ const (
 
 // Key & Button
 const (
-	KEY_BS         = 8
-	KEY_TAB        = 9
-	KEY_ENTER      = 13
-	KEY_DELETE     = 139
-	KEY_ESCAPE     = 141
-	KEY_UPARROW    = 130
-	KEY_LEFTARROW  = 132
-	KEY_RIGHTARROW = 134
-	KEY_DOWNARROW  = 136
-	KEY_SPACE      = 32
-	KEY_F4         = 146
+	KEY_BS         = iup.K_BS
+	KEY_TAB        = iup.K_TAB
+	KEY_ENTER      = iup.K_CR
+	KEY_DELETE     = iup.K_DEL
+	KEY_ESCAPE     = iup.K_ESC
+	KEY_UPARROW    = iup.K_UP
+	KEY_LEFTARROW  = iup.K_LEFT
+	KEY_RIGHTARROW = iup.K_RIGHT
+	KEY_DOWNARROW  = iup.K_DOWN
+	KEY_SPACE      = iup.K_SP
+	KEY_F4         = iup.K_F4
 
 	BUTTON_LEFT   = 49
 	BUTTON_CENTER = 50
@@ -208,6 +208,7 @@ type Window struct { // {{{
 	context                *iup.Handle
 
 	currentCanvas *cd.Canvas
+	plateAlpha    int
 
 	sectiondlg *iup.Handle
 
@@ -2438,7 +2439,9 @@ func (stw *Window) AxisRange(axis int, min, max float64, any bool) {
 // Draw// {{{
 func (stw *Window) DrawFrame(canv *cd.Canvas, color uint, flush bool) {
 	stw.currentCanvas = canv
-	canv.Hatch(cd.CD_FDIAGONAL)
+	if !stw.canUseTranslucentPlate() {
+		canv.Hatch(cd.CD_FDIAGONAL)
+	}
 	canv.Clear()
 	st.DrawFrame(stw, stw.frame, color, flush)
 	stw.SetViewData()
@@ -3924,13 +3927,21 @@ func (stw *Window) CB_CanvasWheel() {
 	})
 }
 
+func printableKeyText(key iup.KeyState) (string, bool) {
+	if !key.IsPrint() || key.IsCtrl() || key.IsAlt() || key.IsSys() {
+		return "", false
+	}
+	return string(rune(key.Key())), true
+}
+
 func (stw *Window) DefaultKeyAny(arg *iup.CommonKeyAny) {
 	key := iup.KeyState(arg.Key)
 	switch key.Key() {
 	default:
-		// fmt.Println(key.Key())
-		stw.cline.SetAttribute("APPEND", string(key.Key()))
-		iup.SetFocus(stw.cline)
+		if s, ok := printableKeyText(key); ok {
+			stw.cline.SetAttribute("APPEND", s)
+			iup.SetFocus(stw.cline)
+		}
 	case '/':
 		if stw.cline.GetAttribute("VALUE") != "" {
 			stw.cline.SetAttribute("APPEND", "/")

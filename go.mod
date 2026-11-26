@@ -47,3 +47,5 @@ require (
 	golang.org/x/sys v0.39.0 // indirect
 	honnef.co/go/js/dom v0.0.0-20200509013220-d4405f7ab4d8 // indirect
 )
+
+replace github.com/yofu/go-iup => ../go-iup

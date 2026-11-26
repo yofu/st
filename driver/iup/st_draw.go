@@ -7,6 +7,12 @@ import (
 	st "github.com/yofu/st/stlib"
 )
 
+const (
+	plateAlphaDefault  = 0x55
+	plateAlphaSelected = 0x88
+	plateAlphaOpaque   = 0xff
+)
+
 func (stw *Window) Line(x1, y1, x2, y2 float64) {
 	stw.currentCanvas.FLine(x1, y1, x2, y2)
 }
@@ -21,8 +27,21 @@ func (stw *Window) Polyline(coords [][]float64) {
 	cvs.End()
 }
 
+func (stw *Window) canUseTranslucentPlate() bool {
+	return stw.currentCanvas != nil && stw.currentCanvas == stw.dbuff && canFillTranslucentPolygon(stw.currentCanvas)
+}
+
 func (stw *Window) Polygon(coords [][]float64) {
+	if len(coords) < 3 {
+		return
+	}
 	cvs := stw.currentCanvas
+	if stw.plateAlpha > 0 && stw.plateAlpha < plateAlphaOpaque && stw.canUseTranslucentPlate() {
+		fg := cvs.Foreground(cd.CD_QUERY)
+		if fillTranslucentPolygon(cvs, coords, fg, stw.plateAlpha) {
+			return
+		}
+	}
 	cvs.Begin(cd.CD_FILL)
 	for _, c := range coords {
 		cvs.FVertex(c[0], c[1])
@@ -50,8 +69,14 @@ func (stw *Window) Foreground(fg int) int {
 func (stw *Window) DefaultStyle() {
 	stw.currentCanvas.Foreground(cd.CD_WHITE)
 	stw.currentCanvas.LineStyle(cd.CD_CONTINUOUS)
-	stw.currentCanvas.InteriorStyle(cd.CD_HATCH)
-	stw.currentCanvas.Hatch(cd.CD_FDIAGONAL)
+	if stw.canUseTranslucentPlate() {
+		stw.currentCanvas.InteriorStyle(cd.CD_SOLID)
+		stw.plateAlpha = plateAlphaDefault
+	} else {
+		stw.currentCanvas.InteriorStyle(cd.CD_HATCH)
+		stw.currentCanvas.Hatch(cd.CD_FDIAGONAL)
+		stw.plateAlpha = plateAlphaOpaque
+	}
 }
 
 func (stw *Window) BondStyle(show *st.Show) {
@@ -61,11 +86,13 @@ func (stw *Window) BondStyle(show *st.Show) {
 func (stw *Window) PhingeStyle(show *st.Show) {
 	stw.currentCanvas.InteriorStyle(cd.CD_SOLID)
 	stw.currentCanvas.Foreground(show.BondColor)
+	stw.plateAlpha = plateAlphaOpaque
 }
 
 func (stw *Window) ConfStyle(show *st.Show) {
 	stw.currentCanvas.InteriorStyle(cd.CD_SOLID)
 	stw.currentCanvas.Foreground(show.ConfColor)
+	stw.plateAlpha = plateAlphaOpaque
 }
 
 func (stw *Window) SelectNodeStyle() {
@@ -74,7 +101,13 @@ func (stw *Window) SelectNodeStyle() {
 
 func (stw *Window) SelectElemStyle() {
 	stw.LineStyle(st.DOTTED)
-	stw.currentCanvas.Hatch(cd.CD_DIAGCROSS)
+	if stw.canUseTranslucentPlate() {
+		stw.currentCanvas.InteriorStyle(cd.CD_SOLID)
+		stw.plateAlpha = plateAlphaSelected
+	} else {
+		stw.currentCanvas.Hatch(cd.CD_DIAGCROSS)
+		stw.plateAlpha = plateAlphaOpaque
+	}
 }
 
 func (stw *Window) LineStyle(ls int) {
