@@ -328,9 +328,9 @@ func Dists(stw Commander) chan bool {
 func AddLineElem(stw Commander) chan bool {
 	return twonodes(stw, func(n0, n *Node) (bool, error) {
 		frame := stw.Frame()
-		sec := frame.DefaultSect()
-		el := frame.AddLineElem(-1, []*Node{n0, n}, sec, NULL)
-		stw.History(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d)", el.Num, n0.Num, n.Num, sec.Num))
+		sec, etype := ResolveLinePen(stw, frame)
+		el := frame.AddLineElem(-1, []*Node{n0, n}, sec, etype)
+		stw.History(fmt.Sprintf("ELEM: %d (ENOD: %d - %d, SECT: %d, ETYPE: %s)", el.Num, n0.Num, n.Num, sec.Num, ETYPES[etype]))
 		Snapshot(stw)
 		return true, nil
 	})
@@ -507,14 +507,14 @@ func AddPlateElem(stw Commander) chan bool {
 			return fmt.Errorf("too few nodes")
 		}
 		frame := stw.Frame()
-		sec := frame.DefaultSect()
-		el := frame.AddPlateElem(-1, ns, sec, NULL)
+		sec, etype := ResolvePlatePen(stw, frame)
+		el := frame.AddPlateElem(-1, ns, sec, etype)
 		var buf bytes.Buffer
 		buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
 		for _, n := range ns {
 			buf.WriteString(fmt.Sprintf("%d ", n.Num))
 		}
-		buf.WriteString(fmt.Sprintf(", SECT: %d)", sec.Num))
+		buf.WriteString(fmt.Sprintf(", SECT: %d, ETYPE: %s)", sec.Num, ETYPES[etype]))
 		stw.History(buf.String())
 		Snapshot(stw)
 		return nil
@@ -868,14 +868,14 @@ func AddPlateElemByLine(stw Commander) chan bool {
 			ns[2] = elems[1].Enod[1]
 			ns[3] = elems[1].Enod[0]
 		}
-		sec := frame.DefaultSect()
-		el := frame.AddPlateElem(-1, ns, sec, NULL)
+		sec, etype := ResolvePlatePen(stw, frame)
+		el := frame.AddPlateElem(-1, ns, sec, etype)
 		var buf bytes.Buffer
 		buf.WriteString(fmt.Sprintf("ELEM: %d (ENOD: ", el.Num))
 		for _, n := range ns {
 			buf.WriteString(fmt.Sprintf("%d ", n.Num))
 		}
-		buf.WriteString(fmt.Sprintf(", SECT: %d)", sec.Num))
+		buf.WriteString(fmt.Sprintf(", SECT: %d, ETYPE: %s)", sec.Num, ETYPES[etype]))
 		stw.History(buf.String())
 		Snapshot(stw)
 		return nil
@@ -888,7 +888,7 @@ func HatchPlateElem(stw Commander) chan bool {
 		en := ModifyEnod(ns)
 		en = Upside(en)
 		frame := stw.Frame()
-		sec := frame.DefaultSect()
+		sec, etype := ResolvePlatePen(stw, frame)
 		switch len(en) {
 		case 0, 1, 2:
 			return fmt.Errorf("too few nodes")
@@ -896,7 +896,7 @@ func HatchPlateElem(stw Commander) chan bool {
 			if len(frame.SearchElem(en...)) != 0 {
 				return fmt.Errorf("elem already exists")
 			}
-			frame.AddPlateElem(-1, en, sec, NULL)
+			frame.AddPlateElem(-1, en, sec, etype)
 			return nil
 		default:
 			return fmt.Errorf("too many nodes")

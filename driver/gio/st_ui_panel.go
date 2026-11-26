@@ -97,6 +97,10 @@ func (w *Window) applySetting(name, text string) error {
 		return w.applySelectedSection(text)
 	case "PROP_ETYPE":
 		return w.applySelectedEtype(text)
+	case "PEN_LINE_SECT":
+		return w.applyPenSection(false, text)
+	case "PEN_PLATE_SECT":
+		return w.applyPenSection(true, text)
 	}
 	p := w.numericSetting(name)
 	if p == nil {
@@ -262,6 +266,90 @@ func (w *Window) applySelectedEtype(text string) error {
 		w.Changed(true)
 	}
 	return nil
+}
+
+func (w *Window) applyPenSection(isPlate bool, text string) error {
+	if w.frame == nil {
+		return fmt.Errorf("no model")
+	}
+	fields := strings.Fields(strings.TrimSpace(text))
+	if len(fields) == 0 {
+		return fmt.Errorf("PEN: 断面番号を入力してください")
+	}
+	snum, err := strconv.Atoi(fields[0])
+	if err != nil {
+		return fmt.Errorf("PEN: 断面番号は整数で入力してください (%q)", fields[0])
+	}
+	if _, ok := w.frame.Sects[snum]; !ok {
+		return fmt.Errorf("PEN: 断面 %d は存在しません", snum)
+	}
+	inferred := st.InferEtypeFromSect(w.frame, snum, isPlate)
+	if isPlate {
+		w.SetPlatePen(snum, inferred)
+	} else {
+		w.SetLinePen(snum, inferred)
+	}
+	return nil
+}
+
+func (w *Window) applyPenEtype(isPlate bool, etype int) error {
+	if w.frame == nil {
+		return fmt.Errorf("no model")
+	}
+	if isPlate {
+		switch etype {
+		case st.NULL, st.WALL, st.SLAB:
+			sec, _ := st.ResolvePlatePen(w, w.frame)
+			snum := w.PlatePen().Sect
+			if snum == 0 && sec != nil {
+				snum = sec.Num
+			}
+			w.SetPlatePen(snum, etype)
+			return nil
+		default:
+			return fmt.Errorf("PLATE PEN: %s は面材種別ではありません", st.ETYPES[etype])
+		}
+	}
+	switch etype {
+	case st.NULL, st.COLUMN, st.GIRDER, st.BRACE:
+		sec, _ := st.ResolveLinePen(w, w.frame)
+		snum := w.LinePen().Sect
+		if snum == 0 && sec != nil {
+			snum = sec.Num
+		}
+		w.SetLinePen(snum, etype)
+		return nil
+	default:
+		return fmt.Errorf("LINE PEN: %s は線材種別ではありません", st.ETYPES[etype])
+	}
+}
+
+func (w *Window) pickPenFromSelected() error {
+	if w.frame == nil {
+		return fmt.Errorf("no model")
+	}
+	for _, el := range nonNilElems(w.SelectedElems()) {
+		if el.Sect == nil || isFixedBraceEtype(el.Etype) {
+			continue
+		}
+		if el.IsLineElem() {
+			et := el.Etype
+			if et != st.COLUMN && et != st.GIRDER && et != st.BRACE {
+				et = st.NULL
+			}
+			w.SetLinePen(el.Sect.Num, et)
+			w.History(fmt.Sprintf("LINE PEN: %d %s / %s", el.Sect.Num, el.Sect.Name, st.ETYPES[et]))
+			return nil
+		}
+		et := el.Etype
+		if et != st.WALL && et != st.SLAB {
+			et = st.NULL
+		}
+		w.SetPlatePen(el.Sect.Num, et)
+		w.History(fmt.Sprintf("PLATE PEN: %d %s / %s", el.Sect.Num, el.Sect.Name, st.ETYPES[et]))
+		return nil
+	}
+	return fmt.Errorf("PEN: 取得可能な部材が選択されていません")
 }
 
 func nonNilElems(els []*st.Elem) []*st.Elem {
@@ -471,7 +559,9 @@ func (w *Window) snapshotControls() {
 	key := selectionKey(els)
 	if key != u.propSelectionKey {
 		u.propSelectionKey = key
-		u.sectionPickerOpen = false
+		if u.sectionPickerTarget == "" || u.sectionPickerTarget == "PROP" {
+			u.sectionPickerOpen = false
+		}
 		for _, name := range []string{"PROP_SECTION", "PROP_ETYPE"} {
 			if field := u.fields[name]; field != nil {
 				field.dirty = false
@@ -527,7 +617,7 @@ func (w *Window) snapshotControls() {
 	u.propEditPlates = editPlates
 	u.propSectMixed = sectMixed
 	u.propEtypeMixed = etypeMixed
-	if editable == 0 {
+	if editable == 0 && (u.sectionPickerTarget == "" || u.sectionPickerTarget == "PROP") {
 		u.sectionPickerOpen = false
 	}
 	if len(els) == 0 {
@@ -579,13 +669,31 @@ func (w *Window) snapshotControls() {
 		n := ns[0]
 		u.propNodeDetails = append(u.propNodeDetails, fmt.Sprintf("NODE: %d", n.Num), fmt.Sprintf("XYZ: %.4f, %.4f, %.4f", n.Coord[0], n.Coord[1], n.Coord[2]))
 	}
+	lineSec, lineEt := st.ResolveLinePen(w, f)
+	if lineSec != nil {
+		u.values["PEN_LINE_SECT"] = strconv.Itoa(lineSec.Num)
+		u.penLineSectLabel = lineSec.Name
+	} else {
+		u.values["PEN_LINE_SECT"] = ""
+		u.penLineSectLabel = "-"
+	}
+	u.penLineEtype = lineEt
+	plateSec, plateEt := st.ResolvePlatePen(w, f)
+	if plateSec != nil {
+		u.values["PEN_PLATE_SECT"] = strconv.Itoa(plateSec.Num)
+		u.penPlateSectLabel = plateSec.Name
+	} else {
+		u.values["PEN_PLATE_SECT"] = ""
+		u.penPlateSectLabel = "-"
+	}
+	u.penPlateEtype = plateEt
 	u.status = fmt.Sprintf("%s | %d nodes / %d members | %s", f.Name, len(f.Nodes), len(f.Elems), f.Show.Period)
 }
 
 func (w *Window) cancelPropertyFieldEdit(gtx layout.Context) bool {
 	u := w.ui
 	cancelled := false
-	for _, name := range []string{"PROP_SECTION", "PROP_ETYPE"} {
+	for _, name := range []string{"PROP_SECTION", "PROP_ETYPE", "PEN_LINE_SECT", "PEN_PLATE_SECT"} {
 		field := u.fields[name]
 		if field == nil {
 			continue
@@ -699,7 +807,7 @@ func (w *Window) propertySectionEditor(gtx layout.Context) layout.Dimensions {
 		layout.Rigid(layout.Spacer{Width: unit.Dp(2)}.Layout),
 		layout.Rigid(func(c layout.Context) layout.Dimensions {
 			bg := iupBgButton
-			if u.sectionPickerOpen {
+			if u.sectionPickerOpen && u.sectionPickerTarget == "PROP" {
 				bg = iupBgCommand
 			}
 			return widget.Border{Color: iupBorder, Width: unit.Dp(1)}.Layout(c, func(c layout.Context) layout.Dimensions {
@@ -708,8 +816,11 @@ func (w *Window) propertySectionEditor(gtx layout.Context) layout.Dimensions {
 					func() {
 						u.menu = -1
 						u.contextItems = nil
-						u.sectionPickerOpen = !u.sectionPickerOpen
-						if u.sectionPickerOpen {
+						if u.sectionPickerOpen && u.sectionPickerTarget == "PROP" {
+							u.sectionPickerOpen = false
+						} else {
+							u.sectionPickerOpen = true
+							u.sectionPickerTarget = "PROP"
 							u.sectionPickerList.Position = layout.Position{}
 						}
 					},
@@ -797,13 +908,120 @@ func (w *Window) propertyEtypeButtons(gtx layout.Context) layout.Dimensions {
 	})
 }
 
-func (w *Window) sectionPickerCandidates() []int {
+func (w *Window) penSectionEditor(gtx layout.Context, isPlate bool) layout.Dimensions {
 	u := w.ui
-	if u.propEditable == 0 {
-		return nil
+	label, fieldName, pickerBtn, target := "LINE", "PEN_LINE_SECT", "pen-line-picker", "PEN_LINE"
+	if isPlate {
+		label, fieldName, pickerBtn, target = "PLATE", "PEN_PLATE_SECT", "pen-plate-picker", "PEN_PLATE"
 	}
-	allowLine := u.propEditLines > 0
-	allowPlate := u.propEditPlates > 0
+	return layout.Flex{Alignment: layout.Middle}.Layout(gtx,
+		layout.Rigid(func(c layout.Context) layout.Dimensions {
+			c.Constraints.Min.X = c.Dp(66)
+			return layout.Inset{Left: unit.Dp(4), Right: unit.Dp(4)}.Layout(c, func(c layout.Context) layout.Dimensions {
+				return w.uiLabel(c, label)
+			})
+		}),
+		layout.Flexed(1, func(c layout.Context) layout.Dimensions {
+			return w.settingEditorCore(c, fieldName, "")
+		}),
+		layout.Rigid(layout.Spacer{Width: unit.Dp(2)}.Layout),
+		layout.Rigid(func(c layout.Context) layout.Dimensions {
+			bg := iupBgButton
+			if u.sectionPickerOpen && u.sectionPickerTarget == target {
+				bg = iupBgCommand
+			}
+			return widget.Border{Color: iupBorder, Width: unit.Dp(1)}.Layout(c, func(c layout.Context) layout.Dimensions {
+				return w.flatButton(c, pickerBtn, "▼", bg, iupFgLabel,
+					layout.Inset{Top: unit.Dp(1), Bottom: unit.Dp(1), Left: unit.Dp(5), Right: unit.Dp(5)},
+					func() {
+						u.menu = -1
+						u.contextItems = nil
+						if u.sectionPickerOpen && u.sectionPickerTarget == target {
+							u.sectionPickerOpen = false
+						} else {
+							u.sectionPickerOpen = true
+							u.sectionPickerTarget = target
+							u.sectionPickerList.Position = layout.Position{}
+						}
+					},
+				)
+			})
+		}),
+	)
+}
+
+func (w *Window) penEtypeButtons(gtx layout.Context, isPlate bool) layout.Dimensions {
+	u := w.ui
+	type penChoice struct {
+		code  int
+		short string
+	}
+	choices := []penChoice{
+		{st.COLUMN, "COL"},
+		{st.GIRDER, "GIR"},
+		{st.BRACE, "BRC"},
+		{st.NULL, "NULL"},
+	}
+	prefix := "pen-line-etype-"
+	current := u.penLineEtype
+	if isPlate {
+		choices = []penChoice{
+			{st.WALL, "WAL"},
+			{st.SLAB, "SLB"},
+			{st.NULL, "NULL"},
+		}
+		prefix = "pen-plate-etype-"
+		current = u.penPlateEtype
+	}
+	inset := layout.Inset{Top: unit.Dp(2), Bottom: unit.Dp(2), Left: unit.Dp(2), Right: unit.Dp(2)}
+	children := make([]layout.FlexChild, 0, len(choices)*2-1)
+	for i, ch := range choices {
+		ch := ch
+		if i > 0 {
+			children = append(children, layout.Rigid(layout.Spacer{Width: unit.Dp(2)}.Layout))
+		}
+		children = append(children, layout.Flexed(1, func(c layout.Context) layout.Dimensions {
+			active := current == ch.code
+			bg := iupBgButton
+			if active {
+				bg = iupBgCommand
+			}
+			return widget.Border{Color: iupBorder, Width: unit.Dp(1)}.Layout(c, func(c layout.Context) layout.Dimensions {
+				d := w.flatButton(c, fmt.Sprintf("%s%d", prefix, ch.code), ch.short, bg, iupFgLabel, inset, func() {
+					w.enqueue(func() {
+						if err := w.applyPenEtype(isPlate, ch.code); err != nil {
+							w.History(err.Error())
+						}
+						w.Redraw()
+					})
+				})
+				if active {
+					paint.FillShape(c.Ops, iupFgSection, clip.Rect(image.Rect(0, 0, d.Size.X, c.Dp(2))).Op())
+				}
+				return d
+			})
+		}))
+	}
+	return layout.Inset{Top: unit.Dp(2), Bottom: unit.Dp(2), Left: unit.Dp(4)}.Layout(gtx, func(c layout.Context) layout.Dimensions {
+		return layout.Flex{Alignment: layout.Middle}.Layout(c, children...)
+	})
+}
+
+func (w *Window) sectionPickerCandidatesFor(target string) []int {
+	u := w.ui
+	var allowLine, allowPlate bool
+	switch target {
+	case "PEN_LINE":
+		allowLine = true
+	case "PEN_PLATE":
+		allowPlate = true
+	default:
+		if u.propEditable == 0 {
+			return nil
+		}
+		allowLine = u.propEditLines > 0
+		allowPlate = u.propEditPlates > 0
+	}
 	out := make([]int, 0, len(u.sections))
 	for _, id := range u.sections {
 		if allowLine && id >= 100 && id <= 699 {
@@ -813,6 +1031,10 @@ func (w *Window) sectionPickerCandidates() []int {
 		}
 	}
 	return out
+}
+
+func (w *Window) sectionPickerCandidates() []int {
+	return w.sectionPickerCandidatesFor("PROP")
 }
 
 func (w *Window) propertyReadOnlyRow(gtx layout.Context, label, value string) layout.Dimensions {
@@ -837,11 +1059,15 @@ func (w *Window) propertyReadOnlyRow(gtx layout.Context, label, value string) la
 
 func (w *Window) layoutSectionPickerPopup(gtx layout.Context) {
 	u := w.ui
-	if u.tab != 2 || u.propEditable == 0 {
+	target := u.sectionPickerTarget
+	if target == "" {
+		target = "PROP"
+	}
+	if u.tab != 2 || (target == "PROP" && u.propEditable == 0) {
 		u.sectionPickerOpen = false
 		return
 	}
-	candidates := w.sectionPickerCandidates()
+	candidates := w.sectionPickerCandidatesFor(target)
 	shield := u.button("section-picker-shield")
 	for shield.Clicked(gtx) {
 		u.sectionPickerOpen = false
@@ -859,6 +1085,18 @@ func (w *Window) layoutSectionPickerPopup(gtx layout.Context) {
 	rect := image.Rect(x, y, x+width, y+height)
 	itemInset := layout.Inset{Top: unit.Dp(3), Bottom: unit.Dp(3), Left: unit.Dp(8), Right: unit.Dp(8)}
 	current := u.values["PROP_SECTION"]
+	isMixed := u.propSectMixed
+	btnPrefix := "prop-section-pick-"
+	switch target {
+	case "PEN_LINE":
+		current = u.values["PEN_LINE_SECT"]
+		isMixed = false
+		btnPrefix = "pen-line-pick-"
+	case "PEN_PLATE":
+		current = u.values["PEN_PLATE_SECT"]
+		isMixed = false
+		btnPrefix = "pen-plate-pick-"
+	}
 	region(gtx, rect, func(c layout.Context) layout.Dimensions {
 		paint.Fill(c.Ops, iupBgMenu)
 		return widget.Border{Color: iupBorder, Width: unit.Dp(1)}.Layout(c, func(c layout.Context) layout.Dimensions {
@@ -875,14 +1113,23 @@ func (w *Window) layoutSectionPickerPopup(gtx layout.Context) {
 				idText := strconv.Itoa(id)
 				label := fmt.Sprintf("%d  %s", id, u.values[fmt.Sprintf("SECT/%d", id)])
 				bg := iupBgMenu
-				if idText == current && !u.propSectMixed {
+				if idText == current && !isMixed {
 					bg = iupBgCommand
 				}
-				b := u.button(fmt.Sprintf("prop-section-pick-%d", id))
+				b := u.button(fmt.Sprintf("%s%d", btnPrefix, id))
 				for b.Clicked(c) {
 					u.sectionPickerOpen = false
 					w.enqueue(func() {
-						if err := w.applySelectedSection(idText); err != nil {
+						var err error
+						switch target {
+						case "PEN_LINE":
+							err = w.applyPenSection(false, idText)
+						case "PEN_PLATE":
+							err = w.applyPenSection(true, idText)
+						default:
+							err = w.applySelectedSection(idText)
+						}
+						if err != nil {
 							w.History(err.Error())
 						}
 						w.Redraw()
@@ -1289,6 +1536,47 @@ func (w *Window) panelRows() []layout.Widget {
 		rows = append(rows, func(c layout.Context) layout.Dimensions {
 			return layout.Inset{Top: unit.Dp(4)}.Layout(c, func(c layout.Context) layout.Dimensions {
 				return w.smallButton(c, "deselect", "Deselect / 選択解除", func() { w.menuAction("deselect") })
+			})
+		})
+		heading("PEN (部材追加)")
+		rows = append(rows, func(c layout.Context) layout.Dimensions { return w.penSectionEditor(c, false) })
+		if u.penLineSectLabel != "" && u.penLineSectLabel != "-" {
+			name := u.penLineSectLabel
+			rows = append(rows, func(c layout.Context) layout.Dimensions {
+				return layout.Inset{Left: unit.Dp(74)}.Layout(c, func(c layout.Context) layout.Dimensions {
+					s := material.Body2(w.Theme, name)
+					s.TextSize = unit.Sp(10)
+					s.Color = iupFgOff
+					s.MaxLines = 1
+					return s.Layout(c)
+				})
+			})
+		}
+		rows = append(rows, func(c layout.Context) layout.Dimensions { return w.penEtypeButtons(c, false) })
+		rows = append(rows, func(c layout.Context) layout.Dimensions { return w.penSectionEditor(c, true) })
+		if u.penPlateSectLabel != "" && u.penPlateSectLabel != "-" {
+			name := u.penPlateSectLabel
+			rows = append(rows, func(c layout.Context) layout.Dimensions {
+				return layout.Inset{Left: unit.Dp(74)}.Layout(c, func(c layout.Context) layout.Dimensions {
+					s := material.Body2(w.Theme, name)
+					s.TextSize = unit.Sp(10)
+					s.Color = iupFgOff
+					s.MaxLines = 1
+					return s.Layout(c)
+				})
+			})
+		}
+		rows = append(rows, func(c layout.Context) layout.Dimensions { return w.penEtypeButtons(c, true) })
+		rows = append(rows, func(c layout.Context) layout.Dimensions {
+			return layout.Inset{Top: unit.Dp(4)}.Layout(c, func(c layout.Context) layout.Dimensions {
+				return w.smallButton(c, "pen-pick-selected", "選択部材からペン取得", func() {
+					w.enqueue(func() {
+						if err := w.pickPenFromSelected(); err != nil {
+							w.History(err.Error())
+						}
+						w.Redraw()
+					})
+				})
 			})
 		})
 	}

@@ -90,7 +90,12 @@ type userInterface struct {
 	propSectMixed        bool
 	propEtypeMixed       bool
 	propCommonEtype      int
+	penLineSectLabel     string
+	penLineEtype         int
+	penPlateSectLabel    string
+	penPlateEtype        int
 	sectionPickerOpen    bool
+	sectionPickerTarget  string
 	sectionPickerList    widget.List
 	sections             []int
 	tab                  int

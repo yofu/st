@@ -7,6 +7,7 @@ import (
 	"io"
 	"math"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -597,6 +598,7 @@ func (stw *Window) ExecCommand(command string) {
 		} else if c, ok := stw.CommandAlias(upper); ok {
 			stw.lastcommand = c
 			stw.setCommandName(upper)
+			stw.logActivePenForCommand(c)
 			stw.startInteractiveCommand(c)
 		} else if !stw.axisRangeCommand(trimmed) {
 			stw.History(fmt.Sprintf("command doesn't exist: %s", command))
@@ -723,6 +725,27 @@ func (stw *Window) handleBackgroundCommand(command string) bool {
 		stw.History("BG: WHITE")
 	}
 	return true
+}
+
+func (stw *Window) logActivePenForCommand(cmd func(st.Commander) chan bool) {
+	if stw.frame == nil || cmd == nil {
+		return
+	}
+	ptr := reflect.ValueOf(cmd).Pointer()
+	switch ptr {
+	case reflect.ValueOf(st.AddLineElem).Pointer():
+		sec, etype := st.ResolveLinePen(stw, stw.frame)
+		if sec != nil {
+			stw.History(fmt.Sprintf("LINE PEN: %d %s / %s", sec.Num, sec.Name, st.ETYPES[etype]))
+		}
+	case reflect.ValueOf(st.AddPlateElem).Pointer(),
+		reflect.ValueOf(st.AddPlateElemByLine).Pointer(),
+		reflect.ValueOf(st.HatchPlateElem).Pointer():
+		sec, etype := st.ResolvePlatePen(stw, stw.frame)
+		if sec != nil {
+			stw.History(fmt.Sprintf("PLATE PEN: %d %s / %s", sec.Num, sec.Name, st.ETYPES[etype]))
+		}
+	}
 }
 
 func (stw *Window) setShowRange() {

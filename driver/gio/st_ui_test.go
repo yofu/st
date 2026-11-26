@@ -890,3 +890,121 @@ func TestGioCanvasBackgroundContrastAndToggle(t *testing.T) {
 		t.Fatalf("drawCanvas mutated Show.ConfSize: got %g, want %g", w.frame.Show.ConfSize, beforeConf)
 	}
 }
+
+func TestGioDrawingPenUIAndCommands(t *testing.T) {
+	h := newUIHarness(t)
+	w := h.w
+	f := w.frame
+	for _, s := range []struct {
+		id   int
+		name string
+	}{
+		{101, "C1"},
+		{201, "G1"},
+		{501, "B1"},
+		{701, "W150"},
+		{801, "S150"},
+	} {
+		sec := f.AddSect(s.id)
+		sec.Name = s.name
+	}
+	n1 := f.AddNode(0, 0, 0)
+	n2 := f.AddNode(4, 0, 0)
+	n3 := f.AddNode(4, 4, 0)
+	n4 := f.AddNode(0, 4, 0)
+	existingCol := f.AddLineElem(-1, []*st.Node{n1, n2}, f.Sects[101], st.COLUMN)
+	existingWall := f.AddPlateElem(-1, []*st.Node{n1, n2, n3, n4}, f.Sects[701], st.WALL)
+
+	// 1) Property tab PEN section: picking section 201 auto-infers GIRDER.
+	w.ui.tab = 2
+	h.size = image.Pt(1200, 1200)
+	h.frame()
+	w.ui.button("pen-line-picker").Click()
+	h.frame()
+	if !w.ui.sectionPickerOpen || w.ui.sectionPickerTarget != "PEN_LINE" {
+		t.Fatalf("line pen picker did not open: open=%v target=%q", w.ui.sectionPickerOpen, w.ui.sectionPickerTarget)
+	}
+	w.ui.button("pen-line-pick-201").Click()
+	h.frame()
+	waitUI(t, w)
+	h.frame()
+	if lp := w.LinePen(); lp.Sect != 201 || lp.Etype != st.GIRDER {
+		t.Fatalf("line pen after picking 201 = %+v, want {201 GIRDER}", lp)
+	}
+
+	// 2) Manual ETYPE override via 1-click button -> BRACE.
+	w.ui.button(fmt.Sprintf("pen-line-etype-%d", st.BRACE)).Click()
+	h.frame()
+	waitUI(t, w)
+	h.frame()
+	if lp := w.LinePen(); lp.Sect != 201 || lp.Etype != st.BRACE {
+		t.Fatalf("line pen after manual BRACE = %+v, want {201 BRACE}", lp)
+	}
+
+	// 3) Plate pen picker: picking 801 auto-infers SLAB, then manual override to WALL.
+	w.ui.button("pen-plate-picker").Click()
+	h.frame()
+	w.ui.button("pen-plate-pick-801").Click()
+	h.frame()
+	waitUI(t, w)
+	h.frame()
+	if pp := w.PlatePen(); pp.Sect != 801 || pp.Etype != st.SLAB {
+		t.Fatalf("plate pen after picking 801 = %+v, want {801 SLAB}", pp)
+	}
+	w.ui.button(fmt.Sprintf("pen-plate-etype-%d", st.WALL)).Click()
+	h.frame()
+	waitUI(t, w)
+	h.frame()
+	if pp := w.PlatePen(); pp.Sect != 801 || pp.Etype != st.WALL {
+		t.Fatalf("plate pen after manual WALL = %+v, want {801 WALL}", pp)
+	}
+
+	// 4) Eyedropper button copies section & ETYPE from selected element.
+	w.SelectElem([]*st.Elem{existingCol})
+	h.frame()
+	w.ui.button("pen-pick-selected").Click()
+	h.frame()
+	waitUI(t, w)
+	h.frame()
+	if lp := w.LinePen(); lp.Sect != 101 || lp.Etype != st.COLUMN {
+		t.Fatalf("eyedropper from column = %+v, want {101 COLUMN}", lp)
+	}
+	w.SelectElem([]*st.Elem{existingWall})
+	h.frame()
+	w.ui.button("pen-pick-selected").Click()
+	h.frame()
+	waitUI(t, w)
+	h.frame()
+	if pp := w.PlatePen(); pp.Sect != 701 || pp.Etype != st.WALL {
+		t.Fatalf("eyedropper from wall = %+v, want {701 WALL}", pp)
+	}
+
+	// 5) ExMode :pen commands (auto-infer, explicit ETYPE, reset).
+	w.ExecCommand(":pen 501")
+	if lp := w.LinePen(); lp.Sect != 501 || lp.Etype != st.BRACE {
+		t.Fatalf(":pen 501 = %+v, want {501 BRACE}", lp)
+	}
+	w.ExecCommand(":pen 501 girder")
+	if lp := w.LinePen(); lp.Sect != 501 || lp.Etype != st.GIRDER {
+		t.Fatalf(":pen 501 girder = %+v, want {501 GIRDER}", lp)
+	}
+	w.ExecCommand(":pen 801")
+	if pp := w.PlatePen(); pp.Sect != 801 || pp.Etype != st.SLAB {
+		t.Fatalf(":pen 801 = %+v, want {801 SLAB}", pp)
+	}
+
+	// 6) ResolveLinePen / ResolvePlatePen supply configured sect & ETYPE for member creation.
+	lsec, let := st.ResolveLinePen(w, f)
+	if lsec == nil || lsec.Num != 501 || let != st.GIRDER {
+		t.Fatalf("ResolveLinePen = (%v, %d), want (501, GIRDER)", lsec, let)
+	}
+	psec, pet := st.ResolvePlatePen(w, f)
+	if psec == nil || psec.Num != 801 || pet != st.SLAB {
+		t.Fatalf("ResolvePlatePen = (%v, %d), want (801, SLAB)", psec, pet)
+	}
+
+	w.ExecCommand(":pen reset")
+	if lp, pp := w.LinePen(), w.PlatePen(); lp.Sect != 0 || lp.Etype != st.NULL || pp.Sect != 0 || pp.Etype != st.NULL {
+		t.Fatalf(":pen reset left pen set: line=%+v plate=%+v", lp, pp)
+	}
+}

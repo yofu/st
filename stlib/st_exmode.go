@@ -109,6 +109,10 @@ var (
 			map[string][]string{
 				"ETYPE": []string{"column", "girder", "brace", "slab", "wall"},
 			}),
+		"pen/": complete.MustCompile(":pen [sect:_] [etype:$ETYPE] [line:] [plate:]",
+			map[string][]string{
+				"ETYPE": []string{"column", "girder", "brace", "wall", "slab", "null"},
+			}),
 		"n/ode/dup/lication": complete.MustCompile(":nodeduplication", nil),
 		"e/lem/dup/lication": complete.MustCompile(":elemduplication [ignoresect:]", nil),
 		"n/ode/n/oreference": complete.MustCompile(":nodenoreference", nil),
@@ -4840,6 +4844,178 @@ func exCommand(stw ExModer, command string, input []interface{}, output *[]inter
 			}
 			Snapshot(stw)
 		}
+	case "pen":
+		if usage {
+			return Usage(":pen [sect] [etype] | :pen [-sect=N] [-etype=TYPE] [-line|-plate] | :pen pick | :pen reset")
+		}
+		provider, ok := stw.(ElemPenProvider)
+		if !ok {
+			return errors.New(":pen: not supported by current driver")
+		}
+		formatPen := func(label string, sec *Sect, etype int) string {
+			if sec == nil {
+				return fmt.Sprintf("%s: - / %s", label, ETYPES[etype])
+			}
+			if sec.Name != "" {
+				return fmt.Sprintf("%s: %d %s / %s", label, sec.Num, sec.Name, ETYPES[etype])
+			}
+			return fmt.Sprintf("%s: %d / %s", label, sec.Num, ETYPES[etype])
+		}
+		showPens := func() {
+			lsec, let := ResolveLinePen(stw, frame)
+			psec, pet := ResolvePlatePen(stw, frame)
+			stw.History(formatPen("LINE PEN ", lsec, let))
+			stw.History(formatPen("PLATE PEN", psec, pet))
+		}
+		parsePenEtype := func(word string) (int, bool) {
+			w := strings.TrimSpace(word)
+			switch {
+			case strings.EqualFold(w, "null"), strings.EqualFold(w, "none"):
+				return NULL, true
+			case Re_column.MatchString(w):
+				return COLUMN, true
+			case Re_girder.MatchString(w):
+				return GIRDER, true
+			case Re_brace.MatchString(w):
+				return BRACE, true
+			case Re_wall.MatchString(w):
+				return WALL, true
+			case Re_slab.MatchString(w):
+				return SLAB, true
+			}
+			return 0, false
+		}
+		if len(args) <= 1 && len(argdict) == 0 {
+			showPens()
+			return nil
+		}
+		if len(args) == 2 && len(argdict) == 0 {
+			switch strings.ToLower(args[1]) {
+			case "reset":
+				provider.SetLinePen(0, NULL)
+				provider.SetPlatePen(0, NULL)
+				showPens()
+				return nil
+			case "pick":
+				var picked *Elem
+				if sel, ok := stw.(Selector); ok {
+					for _, el := range sel.SelectedElems() {
+						if el != nil && el.Sect != nil && el.Etype != WBRACE && el.Etype != SBRACE {
+							picked = el
+							break
+						}
+					}
+				}
+				if picked == nil {
+					return errors.New(":pen pick: 対象となる部材が選択されていません")
+				}
+				if picked.IsLineElem() {
+					et := picked.Etype
+					if et != COLUMN && et != GIRDER && et != BRACE {
+						et = NULL
+					}
+					provider.SetLinePen(picked.Sect.Num, et)
+				} else {
+					et := picked.Etype
+					if et != WALL && et != SLAB {
+						et = NULL
+					}
+					provider.SetPlatePen(picked.Sect.Num, et)
+				}
+				showPens()
+				return nil
+			}
+		}
+		hasSect := false
+		sectNum := 0
+		hasEtype := false
+		etypeVal := NULL
+		_, forceLine := argdict["LINE"]
+		_, forcePlate := argdict["PLATE"]
+		if val, ok := argdict["SECT"]; ok {
+			n, err := strconv.Atoi(strings.TrimSpace(val))
+			if err != nil {
+				return fmt.Errorf(":pen: invalid section %q", val)
+			}
+			hasSect = true
+			sectNum = n
+		}
+		if val, ok := argdict["ETYPE"]; ok {
+			et, ok := parsePenEtype(val)
+			if !ok {
+				return fmt.Errorf(":pen: unknown etype %q", val)
+			}
+			hasEtype = true
+			etypeVal = et
+		}
+		for _, tok := range args[1:] {
+			if n, err := strconv.Atoi(tok); err == nil && !hasSect {
+				hasSect = true
+				sectNum = n
+				continue
+			}
+			if et, ok := parsePenEtype(tok); ok && !hasEtype {
+				hasEtype = true
+				etypeVal = et
+				continue
+			}
+			return fmt.Errorf(":pen: unrecognized argument %q", tok)
+		}
+		if !hasSect && !hasEtype {
+			showPens()
+			return nil
+		}
+		if hasSect {
+			if _, ok := frame.Sects[sectNum]; !ok {
+				return fmt.Errorf(":pen: sect %d doesn't exist", sectNum)
+			}
+		}
+		isPlate := false
+		switch {
+		case forcePlate && !forceLine:
+			isPlate = true
+		case forceLine && !forcePlate:
+			isPlate = false
+		case hasEtype && (etypeVal == WALL || etypeVal == SLAB):
+			isPlate = true
+		case hasEtype && (etypeVal == COLUMN || etypeVal == GIRDER || etypeVal == BRACE):
+			isPlate = false
+		case hasSect && sectNum >= 700 && sectNum <= 899:
+			isPlate = true
+		}
+		if hasEtype && etypeVal != NULL {
+			isPlateEtype := etypeVal == WALL || etypeVal == SLAB
+			if isPlate != isPlateEtype {
+				return fmt.Errorf(":pen: ETYPE %s is incompatible with target pen", ETYPES[etypeVal])
+			}
+		}
+		if isPlate {
+			cur := provider.PlatePen()
+			nextSect := cur.Sect
+			nextEtype := cur.Etype
+			if hasSect {
+				nextSect = sectNum
+				nextEtype = InferEtypeFromSect(frame, sectNum, true)
+			}
+			if hasEtype {
+				nextEtype = etypeVal
+			}
+			provider.SetPlatePen(nextSect, nextEtype)
+		} else {
+			cur := provider.LinePen()
+			nextSect := cur.Sect
+			nextEtype := cur.Etype
+			if hasSect {
+				nextSect = sectNum
+				nextEtype = InferEtypeFromSect(frame, sectNum, false)
+			}
+			if hasEtype {
+				nextEtype = etypeVal
+			}
+			provider.SetLinePen(nextSect, nextEtype)
+		}
+		showPens()
+		return nil
 	case "currentvalue":
 		if usage {
 			return Usage(":currentvalue {-abs}")

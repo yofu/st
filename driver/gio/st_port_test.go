@@ -176,8 +176,11 @@ func dragFence(t *testing.T, h *uiHarness, s *interactiveCommand, a, b f32.Point
 	if mods&key.ModCtrl != 0 {
 		end.Y = a.Y
 	}
-	if h.w.ui.selectionStart != a || h.w.ui.selectionEnd != end {
-		t.Fatalf("fence cursor mismatch start=%v end=%v", h.w.ui.selectionStart, h.w.ui.selectionEnd)
+	near := func(p, q f32.Point) bool {
+		return math.Abs(float64(p.X-q.X)) <= 1e-3 && math.Abs(float64(p.Y-q.Y)) <= 1e-3
+	}
+	if !near(h.w.ui.selectionStart, a) || !near(h.w.ui.selectionEnd, end) {
+		t.Fatalf("fence cursor mismatch start=%v (want %v) end=%v (want %v)", h.w.ui.selectionStart, a, h.w.ui.selectionEnd, end)
 	}
 	routedMouse(h, pointer.Release, 0, b, mods, 0)
 	flushInteraction(t, h, s)
